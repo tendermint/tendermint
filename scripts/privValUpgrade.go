@@ -33,7 +33,7 @@ func main() {
 func loadAndUpgrade(oldPVPath, newPVKeyPath, newPVStatePath string) error {
 	oldPV, err := privval.LoadOldFilePV(oldPVPath)
 	if err != nil {
-		return fmt.Errorf("Error reading OldPrivValidator from %v: %v\n", oldPVPath, err)
+		return fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPVPath, err)
 	}
 	logger.Info("Upgrading PrivValidator file",
 		"old", oldPVPath,

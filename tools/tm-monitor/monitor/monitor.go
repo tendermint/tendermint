@@ -82,7 +82,7 @@ func (m *Monitor) Monitor(n *Node) error {
 	m.Nodes = append(m.Nodes, n)
 	m.mtx.Unlock()
 
-	blockCh := make(chan tmtypes.Header, 10)
+	blockCh := make(chan *tmtypes.Block, 10)
 	n.SendBlocksTo(blockCh)
 	blockLatencyCh := make(chan float64, 10)
 	n.SendBlockLatenciesTo(blockLatencyCh)
@@ -167,7 +167,7 @@ func (m *Monitor) Stop() {
 // main loop where we listen for events from the node
 func (m *Monitor) listen(
 	nodeName string,
-	blockCh <-chan tmtypes.Header,
+	blockCh <-chan *tmtypes.Block,
 	blockLatencyCh <-chan float64,
 	disconnectCh <-chan bool,
 	quit <-chan struct{}) {
@@ -224,7 +224,7 @@ func (m *Monitor) updateNumValidatorLoop() {
 		m.mtx.Lock()
 		nodesCount := len(m.Nodes)
 		m.mtx.Unlock()
-		if 0 == nodesCount {
+		if nodesCount == 0 {
 			time.Sleep(m.numValidatorsUpdateInterval)
 			continue
 		}

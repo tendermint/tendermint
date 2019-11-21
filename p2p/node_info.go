@@ -179,13 +179,13 @@ func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
 	}
 
 	if info.ProtocolVersion.Block != other.ProtocolVersion.Block {
-		return fmt.Errorf("Peer is on a different Block version. Got %v, expected %v",
+		return fmt.Errorf("peer is on a different Block version. Got %v, expected %v",
 			other.ProtocolVersion.Block, info.ProtocolVersion.Block)
 	}
 
 	// nodes must be on the same network
 	if info.Network != other.Network {
-		return fmt.Errorf("Peer is on a different network. Got %v, expected %v", other.Network, info.Network)
+		return fmt.Errorf("peer is on a different network. Got %v, expected %v", other.Network, info.Network)
 	}
 
 	// if we have no channels, we're just testing
@@ -205,7 +205,7 @@ OUTER_LOOP:
 		}
 	}
 	if !found {
-		return fmt.Errorf("Peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
+		return fmt.Errorf("peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
 	}
 	return nil
 }

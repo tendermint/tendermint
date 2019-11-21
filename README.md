@@ -136,8 +136,8 @@ hosted at: https://tendermint.com/docs/
 
 ### Tools
 
-Benchmarking and monitoring is provided by `tm-bench` and `tm-monitor`, respectively.
-Their code is found [here](/tools) and these binaries need to be built seperately.
+Benchmarking and monitoring is provided by `tm-load-test` and `tm-monitor`, respectively.
+The code for `tm-monitor` can be found [here](/tools) and the code for `tm-load-test` can be found [here](https://github.com/interchainio/tm-load-test) these binaries need to be built seperately.
 Additional documentation is found [here](/docs/tools).
 
 ### Sub-projects
@@ -157,5 +157,6 @@ Additional documentation is found [here](/docs/tools).
 
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 - [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-- [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
+- [Original Whitepaper](https://github.com/tendermint/spec)
+  - You can find the link at the bottom of the readme
 - [Blog](https://blog.cosmos.network/tendermint/home)

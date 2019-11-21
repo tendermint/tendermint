@@ -28,25 +28,6 @@ func TestStoreLoadValidators(t *testing.T) {
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	// TODO(melekes): REMOVE in 0.33 release
-	// https://github.com/tendermint/tendermint/issues/3543
-	// for releases prior to v0.31.4, it uses last height changed
-	valInfo := &sm.ValidatorsInfo{
-		LastHeightChanged: sm.ValSetCheckpointInterval,
-	}
-	stateDB.Set(sm.CalcValidatorsKey(sm.ValSetCheckpointInterval), valInfo.Bytes())
-	assert.NotPanics(t, func() {
-		sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval+1, 1, vals)
-		loadedVals, err := sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval+1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if loadedVals.Size() == 0 {
-			t.Fatal("Expected validators to be non-empty")
-		}
-	})
-	// ENDREMOVE
-
 	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
 
 	loadedVals, err = sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval)
@@ -59,7 +40,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	config := cfg.ResetTestRoot("state_")
 	defer os.RemoveAll(config.RootDir)
-	dbType := dbm.DBBackendType(config.DBBackend)
+	dbType := dbm.BackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {

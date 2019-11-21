@@ -62,7 +62,7 @@ func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error
 		return nil, err
 	}
 	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
-		return nil, fmt.Errorf("Expected flush response but got something else: %v", reflect.TypeOf(resFlush))
+		return nil, fmt.Errorf("expected flush response but got something else: %v", reflect.TypeOf(resFlush))
 	}
 
 	return res, nil

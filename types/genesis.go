@@ -66,7 +66,7 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 // and fills in defaults for optional fields left empty
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.ChainID == "" {
-		return errors.New("Genesis doc must include non-empty chain_id")
+		return errors.New("genesis doc must include non-empty chain_id")
 	}
 	if len(genDoc.ChainID) > MaxChainIDLen {
 		return errors.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
@@ -80,10 +80,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	for i, v := range genDoc.Validators {
 		if v.Power == 0 {
-			return errors.Errorf("The genesis file cannot contain validators with no voting power: %v", v)
+			return errors.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
 		}
 		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return errors.Errorf("Incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
+			return errors.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
 		}
 		if len(v.Address) == 0 {
 			genDoc.Validators[i].Address = v.PubKey.Address()

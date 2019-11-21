@@ -46,7 +46,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						ctx.JSONReq.ID,
 						resultEvent,
 					))
 			case <-sub.Cancelled():
@@ -58,8 +58,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						reason = sub.Err().Error()
 					}
 					ctx.WSConn.TryWriteRPCResponse(
-						rpctypes.RPCServerError(rpctypes.JSONRPCStringID(
-							fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						rpctypes.RPCServerError(
+							ctx.JSONReq.ID,
 							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
 						))
 				}

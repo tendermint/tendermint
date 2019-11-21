@@ -27,7 +27,7 @@ func TestHChaCha20(t *testing.T) {
 
 		HChaCha20(&key, &nonce, &key)
 		if !bytes.Equal(key[:], v.keystream) {
-			t.Errorf("Test %d: keystream mismatch:\n \t got:  %s\n \t want: %s", i, toHex(key[:]), toHex(v.keystream))
+			t.Errorf("test %d: keystream mismatch:\n \t got:  %s\n \t want: %s", i, toHex(key[:]), toHex(v.keystream))
 		}
 	}
 }
@@ -78,14 +78,14 @@ func TestVectors(t *testing.T) {
 
 		dst := aead.Seal(nil, nonce[:], v.plaintext, v.ad)
 		if !bytes.Equal(dst, v.ciphertext) {
-			t.Errorf("Test %d: ciphertext mismatch:\n \t got:  %s\n \t want: %s", i, toHex(dst), toHex(v.ciphertext))
+			t.Errorf("test %d: ciphertext mismatch:\n \t got:  %s\n \t want: %s", i, toHex(dst), toHex(v.ciphertext))
 		}
 		open, err := aead.Open(nil, nonce[:], dst, v.ad)
 		if err != nil {
 			t.Error(err)
 		}
 		if !bytes.Equal(open, v.plaintext) {
-			t.Errorf("Test %d: plaintext mismatch:\n \t got:  %s\n \t want: %s", i, string(open), string(v.plaintext))
+			t.Errorf("test %d: plaintext mismatch:\n \t got:  %s\n \t want: %s", i, string(open), string(v.plaintext))
 		}
 	}
 }

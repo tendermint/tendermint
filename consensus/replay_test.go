@@ -548,8 +548,8 @@ func TestMockProxyApp(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTx = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTx = append(abciResWithEmptyDeliverTx.DeliverTx, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
@@ -562,7 +562,7 @@ func TestMockProxyApp(t *testing.T) {
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
 		abciRes := new(sm.ABCIResponses)
-		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
+		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {
 			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
@@ -576,7 +576,7 @@ func TestMockProxyApp(t *testing.T) {
 					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 					invalidTxs++
 				}
-				abciRes.DeliverTx[txIndex] = txRes
+				abciRes.DeliverTxs[txIndex] = txRes
 				txIndex++
 			}
 		}
@@ -932,7 +932,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, fmt.Errorf("WAL does not contain height %d", height)
+		return nil, nil, fmt.Errorf("wal does not contain height %d", height)
 	}
 	defer gr.Close() // nolint: errcheck
 

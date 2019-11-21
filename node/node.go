@@ -62,7 +62,7 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
+	dbType := dbm.BackendType(ctx.Config.DBBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
@@ -99,7 +99,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
 		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
 		if err != nil {
-			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPrivVal, err)
 		}
 		logger.Info("Upgrading PrivValidator file",
 			"old", oldPrivVal,
@@ -1154,7 +1154,7 @@ func LoadStateFromDBOrGenesisDocProvider(
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	b := db.Get(genesisDocKey)
 	if len(b) == 0 {
-		return nil, errors.New("Genesis doc not found")
+		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(b, &genDoc)

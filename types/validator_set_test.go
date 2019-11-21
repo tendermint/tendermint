@@ -141,7 +141,7 @@ func TestProposerSelection1(t *testing.T) {
 		` foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo` +
 		` foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo`
 	if expected != strings.Join(proposers, " ") {
-		t.Errorf("Expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
+		t.Errorf("expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
 }
 
@@ -322,16 +322,16 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 	return NewValidatorSet(validators)
 }
 
-func (valSet *ValidatorSet) toBytes() []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(valSet)
+func (vals *ValidatorSet) toBytes() []byte {
+	bz, err := cdc.MarshalBinaryLengthPrefixed(vals)
 	if err != nil {
 		panic(err)
 	}
 	return bz
 }
 
-func (valSet *ValidatorSet) fromBytes(b []byte) {
-	err := cdc.UnmarshalBinaryLengthPrefixed(b, &valSet)
+func (vals *ValidatorSet) fromBytes(b []byte) {
+	err := cdc.UnmarshalBinaryLengthPrefixed(b, &vals)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)
@@ -352,6 +352,21 @@ func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
 	}
 
 	assert.Panics(t, shouldPanic)
+}
+
+func TestValidatorSetShouldNotErrorOnTemporalOverflow(t *testing.T) {
+	// Updating the validator set might trigger an Overflow error during the update process
+	valSet := NewValidatorSet([]*Validator{
+		{Address: []byte("b"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: 1, ProposerPriority: 0},
+	})
+
+	err := valSet.UpdateWithChangeSet([]*Validator{
+		{Address: []byte("b"), VotingPower: 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+	})
+
+	assert.NoError(t, err)
 }
 
 func TestAvgProposerPriority(t *testing.T) {

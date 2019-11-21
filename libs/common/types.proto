@@ -1,5 +1,6 @@
 syntax = "proto3";
-package common;
+package tendermint.libs.common;
+option go_package = "github.com/tendermint/tendermint/libs/common";
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 

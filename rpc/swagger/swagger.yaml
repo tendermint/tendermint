@@ -584,6 +584,20 @@ paths:
           description: height to return. If no height is provided, it will fetch validato set at the latest block. 0 means latest
           default: 0
           x-example: 1
+        - in: query
+          name: page
+          type: number
+          description: "Page number (1-based)"
+          required: false
+          x-example: 1
+          default: 0
+        - in: query
+          name: per_page
+          type: number
+          description: "Number of entries per page (max: 100)"
+          required: false
+          x-example: 30
+          default: 30
       tags:
         - Info
       description: |
@@ -904,11 +918,11 @@ definitions:
     type: object
     properties:
       id:
-        type: string
-        x-example: ""
+        type: number
+        example: 0
       jsonrpc:
         type: string
-        x-example: "2.0"
+        example: "2.0"
   EmptyResponse:
     description: Empty Response
     allOf:
@@ -1162,14 +1176,12 @@ definitions:
             x-example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
         type: object
     type: object
-  BlockMetaHeader:
+  BlockHeader:
     required:
       - "version"
       - "chain_id"
       - "height"
       - "time"
-      - "num_txs"
-      - "total_txs"
       - "last_block_id"
       - "last_commit_hash"
       - "data_hash"
@@ -1202,12 +1214,6 @@ definitions:
       time:
         type: string
         x-example: "2019-04-22T17:01:51.701356223Z"
-      num_txs:
-        type: string
-        x-example: "2"
-      total_txs:
-        type: string
-        x-example: "3"
       last_block_id:
         $ref: "#/definitions/BlockID"
       last_commit_hash:
@@ -1238,7 +1244,7 @@ definitions:
         type: string
         x-example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
     type: object
-  BlockMetaId:
+  BlockId:
     required:
       - "hash"
       - "parts"
@@ -1262,10 +1268,16 @@ definitions:
   BlockMeta:
     type: object
     properties:
+      block_size:
+        type: number
+        x-example: 1000000
       block_id:
-        $ref: "#/definitions/BlockMetaId"
+        $ref: "#/definitions/BlockId"
       header:
-        $ref: "#/definitions/BlockMetaHeader"
+        $ref: "#/definitions/BlockHeader"
+      number_txs:
+        type: string
+        example: "54"
   Blockchain:
     type: object
     required:
@@ -1325,7 +1337,7 @@ definitions:
     type: object
     properties:
       header:
-        $ref: "#/definitions/BlockMetaHeader"
+        $ref: "#/definitions/BlockHeader"
       data:
         type: array
         items:
@@ -1369,8 +1381,8 @@ definitions:
   BlockComplete:
     type: object
     properties:
-      block_meta:
-        $ref: "#/definitions/BlockMeta"
+      block_id:
+        $ref: "#/definitions/BlockID"
       block:
         $ref: "#/definitions/Block"
   BlockResponse:
@@ -1402,58 +1414,171 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
+        type: "object"
         required:
           - "height"
-          - "results"
         properties:
           height:
             type: "string"
             example: "12"
-          results:
-            required:
-              - "deliver_tx"
-              - "end_block"
-              - "begin_block"
-            properties:
-              deliver_tx:
-                type: "array"
-                x-nullable: true
-                items:
+          txs_results:
+            type: "array"
+            x-nullable: true
+            items:
+              type: "object"
+              properties:
+                code:
+                  type: "string"
+                  example: "0"
+                data:
+                  type: "string"
+                  example: ""
+                log:
+                  type: "string"
+                  example: "not enough gas"
+                info:
+                  type: "string"
+                  example: ""
+                gasWanted:
+                  type: "string"
+                  example: "100"
+                gasUsed:
+                  type: "string"
+                  example: "100"
+                events:
+                  type: "array"
+                  x-nullable: true
+                  items:
+                    type: "object"
+                    properties:
+                      type:
+                        type: "string"
+                        example: "app"
+                      attributes:
+                        type: "array"
+                        x-nullable: false
+                        items:
+                          type: "object"
+                          properties:
+                            key:
+                              type: "string"
+                              example: "Y3JlYXRvcg=="
+                            value:
+                              type: "string"
+                              example: "Q29zbW9zaGkgTmV0b3dva28="
+                codespace:
+                  type: "string"
+                  example: "ibc"
+          begin_block_events:
+            type: "array"
+            x-nullable: true
+            items:
+              type: "object"
+              properties:
+                type:
+                  type: "string"
+                  example: "app"
+                attributes:
+                  type: "array"
+                  x-nullable: false
+                  items:
+                    type: "object"
+                    properties:
+                      key:
+                        type: "string"
+                        example: "Y3JlYXRvcg=="
+                      value:
+                        type: "string"
+                        example: "Q29zbW9zaGkgTmV0b3dva28="
+          end_block:
+            type: "array"
+            x-nullable: true
+            items:
+              type: "object"
+              properties:
+                type:
+                  type: "string"
+                  example: "app"
+                attributes:
+                  type: "array"
+                  x-nullable: false
+                  items:
+                    type: "object"
+                    properties:
+                      key:
+                        type: "string"
+                        example: "Y3JlYXRvcg=="
+                      value:
+                        type: "string"
+                        example: "Q29zbW9zaGkgTmV0b3dva28="
+          validator_updates:
+            type: "array"
+            x-nullable: true
+            items:
+              type: "object"
+              properties:
+                pub_key:
                   type: "object"
+                  required:
+                    - "type"
+                    - "value"
                   properties:
-                    log:
+                    type:
                       type: "string"
-                      example: '[{"msg_index":"0","success":true,"log":""}]'
-                    gasWanted:
+                      example: "tendermint/PubKeyEd25519"
+                    value:
                       type: "string"
-                      example: "25629"
-                    gasUsed:
-                      type: "string"
-                      example: "25629"
-                    tags:
-                      type: "array"
-                      items:
-                        type: "object"
-                        properties:
-                          key:
-                            type: "string"
-                            example: "YWN0aW9u"
-                          value:
-                            type: "string"
-                            example: "c2VuZA=="
-              end_block:
-                required:
-                  - "validator_updates"
-                properties: {}
-                type: "object"
-              begin_block:
-                properties: {}
-                type: "object"
+                      example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+                power:
+                  type: "string"
+                  example: "300"
+          consensus_param_updates:
             type: "object"
-        type: "object"
+            x-nullable: true
+            required:
+              - "block"
+              - "evidence"
+              - "validator"
+            properties:
+              block:
+                type: "object"
+                required:
+                  - "max_bytes"
+                  - "max_gas"
+                  - "time_iota_ms"
+                properties:
+                  max_bytes:
+                    type: "string"
+                    example: "22020096"
+                  max_gas:
+                    type: "string"
+                    example: "1000"
+                  time_iota_ms:
+                    type: "string"
+                    example: "1000"
+              evidence:
+                type: "object"
+                required:
+                  - "max_age"
+                properties:
+                  max_age:
+                    type: "string"
+                    example: "100000"
+              validator:
+                type: "object"
+                required:
+                  - "pub_key_types"
+                properties:
+                  pub_key_types:
+                    type: "array"
+                    items:
+                      type: "string"
+                    example:
+                      - "ed25519"
+
   CommitResponse:
     type: "object"
     required:
@@ -1465,8 +1590,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "signed_header"
@@ -1483,8 +1608,6 @@ definitions:
                   - "chain_id"
                   - "height"
                   - "time"
-                  - "num_txs"
-                  - "total_txs"
                   - "last_block_id"
                   - "last_commit_hash"
                   - "data_hash"
@@ -1517,12 +1640,6 @@ definitions:
                   time:
                     type: "string"
                     example: "2019-04-22T17:01:51.701356223Z"
-                  num_txs:
-                    type: "string"
-                    example: "2"
-                  total_txs:
-                    type: "string"
-                    example: "3"
                   last_block_id:
                     required:
                       - "hash"
@@ -1662,8 +1779,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "block_height"
@@ -1710,13 +1827,15 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
+        type: "object"
         required:
           - "genesis"
         properties:
           genesis:
+            type: "object"
             required:
               - "genesis_time"
               - "chain_id"
@@ -1731,12 +1850,14 @@ definitions:
                 type: "string"
                 example: "cosmoshub-2"
               consensus_params:
+                type: "object"
                 required:
                   - "block"
                   - "evidence"
                   - "validator"
                 properties:
                   block:
+                    type: "object"
                     required:
                       - "max_bytes"
                       - "max_gas"
@@ -1744,23 +1865,23 @@ definitions:
                     properties:
                       max_bytes:
                         type: "string"
-                        example: "200000"
+                        example: "22020096"
                       max_gas:
                         type: "string"
-                        example: "2000000"
+                        example: "1000"
                       time_iota_ms:
                         type: "string"
                         example: "1000"
-                    type: "object"
                   evidence:
+                    type: "object"
                     required:
                       - "max_age"
                     properties:
                       max_age:
                         type: "string"
-                        example: "1000000"
-                    type: "object"
+                        example: "100000"
                   validator:
+                    type: "object"
                     required:
                       - "pub_key_types"
                     properties:
@@ -1770,8 +1891,6 @@ definitions:
                           type: "string"
                         example:
                           - "ed25519"
-                    type: "object"
-                type: "object"
               validators:
                 type: "array"
                 items:
@@ -1804,8 +1923,7 @@ definitions:
               app_state:
                 properties: {}
                 type: "object"
-            type: "object"
-        type: "object"
+
   DumpConsensusResponse:
     type: object
     required:
@@ -1817,8 +1935,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "round_state"
@@ -2162,8 +2280,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "round_state"
@@ -2233,9 +2351,10 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
+        type: "object"
         required:
           - "block_height"
           - "consensus_params"
@@ -2244,12 +2363,14 @@ definitions:
             type: "string"
             example: "1313448"
           consensus_params:
+            type: "object"
             required:
               - "block"
               - "evidence"
               - "validator"
             properties:
               block:
+                type: "object"
                 required:
                   - "max_bytes"
                   - "max_gas"
@@ -2257,23 +2378,23 @@ definitions:
                 properties:
                   max_bytes:
                     type: "string"
-                    example: "200000"
+                    example: "22020096"
                   max_gas:
                     type: "string"
-                    example: "2000000"
+                    example: "1000"
                   time_iota_ms:
                     type: "string"
                     example: "1000"
-                type: "object"
               evidence:
+                type: "object"
                 required:
                   - "max_age"
                 properties:
                   max_age:
                     type: "string"
-                    example: "1000000"
-                type: "object"
+                    example: "100000"
               validator:
+                type: "object"
                 required:
                   - "pub_key_types"
                 properties:
@@ -2283,9 +2404,7 @@ definitions:
                       type: "string"
                     example:
                       - "ed25519"
-                type: "object"
-            type: "object"
-        type: "object"
+
   NumUnconfirmedTransactionsResponse:
     type: object
     required:
@@ -2297,8 +2416,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "n_txs"
@@ -2334,8 +2453,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "n_txs"
@@ -2372,8 +2491,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "txs"
@@ -2475,8 +2594,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "hash"
@@ -2536,8 +2655,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "response"
@@ -2608,8 +2727,8 @@ definitions:
             type: "object"
         type: "object"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2626,8 +2745,8 @@ definitions:
         type: "string"
         example: ""
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2689,8 +2808,8 @@ definitions:
             type: "object"
         type: "object"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2706,8 +2825,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "code"

@@ -70,7 +70,7 @@ $(PROTOBUF):
 gox: $(GOX)
 $(GOX):
 	@echo "Get Gox"
-# used to build tm-monitor & tm-bench binaries
+# used to build tm-monitor binaries
 	## gox v1.0.1
 	@go get github.com/mitchellh/gox@d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 

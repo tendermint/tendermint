@@ -29,7 +29,7 @@ type Block struct {
 }
 ```
 
-Note the `LastCommit` is the set of  votes that committed the last block.
+Note the `LastCommit` is the set of votes that committed the last block.
 
 ## Header
 
@@ -43,8 +43,6 @@ type Header struct {
 	ChainID  string
 	Height   int64
 	Time     Time
-	NumTxs   int64
-	TotalTxs int64
 
 	// prev block info
 	LastBlockID BlockID
@@ -78,7 +76,6 @@ type Version struct {
     App     uint64
 }
 ```
-
 
 ## BlockID
 
@@ -264,24 +261,6 @@ if block.Header.Height == 1 {
 ```
 
 See the section on [BFT time](../consensus/bft-time.md) for more details.
-
-### NumTxs
-
-```go
-block.Header.NumTxs == len(block.Txs.Txs)
-```
-
-Number of transactions included in the block.
-
-### TotalTxs
-
-```go
-block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
-```
-
-The cumulative sum of all transactions included in this blockchain.
-
-The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 

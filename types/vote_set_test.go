@@ -75,14 +75,14 @@ func TestAddVote(t *testing.T) {
 
 	val0Addr := val0.GetPubKey().Address()
 	if voteSet.GetByAddress(val0Addr) != nil {
-		t.Errorf("Expected GetByAddress(val0.Address) to be nil")
+		t.Errorf("expected GetByAddress(val0.Address) to be nil")
 	}
 	if voteSet.BitArray().GetIndex(0) {
-		t.Errorf("Expected BitArray.GetIndex(0) to be false")
+		t.Errorf("expected BitArray.GetIndex(0) to be false")
 	}
 	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
-		t.Errorf("There should be no 2/3 majority")
+		t.Errorf("there should be no 2/3 majority")
 	}
 
 	vote := &Vote{
@@ -100,14 +100,14 @@ func TestAddVote(t *testing.T) {
 	}
 
 	if voteSet.GetByAddress(val0Addr) == nil {
-		t.Errorf("Expected GetByAddress(val0.Address) to be present")
+		t.Errorf("expected GetByAddress(val0.Address) to be present")
 	}
 	if !voteSet.BitArray().GetIndex(0) {
-		t.Errorf("Expected BitArray.GetIndex(0) to be true")
+		t.Errorf("expected BitArray.GetIndex(0) to be true")
 	}
 	blockID, ok = voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
-		t.Errorf("There should be no 2/3 majority")
+		t.Errorf("there should be no 2/3 majority")
 	}
 }
 
@@ -135,7 +135,7 @@ func Test2_3Majority(t *testing.T) {
 	}
 	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
-		t.Errorf("There should be no 2/3 majority")
+		t.Errorf("there should be no 2/3 majority")
 	}
 
 	// 7th validator voted for some blockhash
@@ -148,7 +148,7 @@ func Test2_3Majority(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
-			t.Errorf("There should be no 2/3 majority")
+			t.Errorf("there should be no 2/3 majority")
 		}
 	}
 
@@ -162,7 +162,7 @@ func Test2_3Majority(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if !ok || !blockID.IsZero() {
-			t.Errorf("There should be 2/3 majority for nil")
+			t.Errorf("there should be 2/3 majority for nil")
 		}
 	}
 }
@@ -196,7 +196,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	}
 	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
-		t.Errorf("There should be no 2/3 majority")
+		t.Errorf("there should be no 2/3 majority")
 	}
 
 	// 67th validator voted for nil
@@ -209,7 +209,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
-			t.Errorf("There should be no 2/3 majority: last vote added was nil")
+			t.Errorf("there should be no 2/3 majority: last vote added was nil")
 		}
 	}
 
@@ -224,7 +224,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
-			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Hash")
+			t.Errorf("there should be no 2/3 majority: last vote added had different PartSetHeader Hash")
 		}
 	}
 
@@ -239,7 +239,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
-			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Total")
+			t.Errorf("there should be no 2/3 majority: last vote added had different PartSetHeader Total")
 		}
 	}
 
@@ -253,7 +253,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
-			t.Errorf("There should be no 2/3 majority: last vote added had different BlockHash")
+			t.Errorf("there should be no 2/3 majority: last vote added had different BlockHash")
 		}
 	}
 
@@ -267,7 +267,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if !ok || !blockID.Equals(BlockID{blockHash, blockPartsHeader}) {
-			t.Errorf("There should be 2/3 majority")
+			t.Errorf("there should be 2/3 majority")
 		}
 	}
 }
@@ -292,7 +292,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, addr, 0)
 		added, err := signAddVote(privValidators[0], vote, voteSet)
 		if !added || err != nil {
-			t.Errorf("Expected VoteSet.Add to succeed")
+			t.Errorf("expected VoteSet.Add to succeed")
 		}
 	}
 
@@ -302,7 +302,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, addr, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
 		if added || err == nil {
-			t.Errorf("Expected VoteSet.Add to fail, conflicting vote.")
+			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
 		}
 	}
 
@@ -312,7 +312,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, addr, 1)
 		added, err := signAddVote(privValidators[1], withHeight(vote, height+1), voteSet)
 		if added || err == nil {
-			t.Errorf("Expected VoteSet.Add to fail, wrong height")
+			t.Errorf("expected VoteSet.Add to fail, wrong height")
 		}
 	}
 
@@ -322,7 +322,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withRound(vote, round+1), voteSet)
 		if added || err == nil {
-			t.Errorf("Expected VoteSet.Add to fail, wrong round")
+			t.Errorf("expected VoteSet.Add to fail, wrong round")
 		}
 	}
 
@@ -332,7 +332,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, addr, 3)
 		added, err := signAddVote(privValidators[3], withType(vote, byte(PrecommitType)), voteSet)
 		if added || err == nil {
-			t.Errorf("Expected VoteSet.Add to fail, wrong type")
+			t.Errorf("expected VoteSet.Add to fail, wrong type")
 		}
 	}
 }
@@ -359,7 +359,7 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, val0Addr, 0)
 		added, err := signAddVote(privValidators[0], vote, voteSet)
 		if !added || err != nil {
-			t.Errorf("Expected VoteSet.Add to succeed")
+			t.Errorf("expected VoteSet.Add to succeed")
 		}
 	}
 
@@ -368,10 +368,10 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, val0Addr, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash1), voteSet)
 		if added {
-			t.Errorf("Expected VoteSet.Add to fail, conflicting vote.")
+			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
 		}
 		if err == nil {
-			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+			t.Errorf("expected VoteSet.Add to return error, conflicting vote.")
 		}
 	}
 
@@ -383,10 +383,10 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, val0Addr, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash1), voteSet)
 		if !added {
-			t.Errorf("Expected VoteSet.Add to succeed, called SetPeerMaj23().")
+			t.Errorf("expected VoteSet.Add to succeed, called SetPeerMaj23().")
 		}
 		if err == nil {
-			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+			t.Errorf("expected VoteSet.Add to return error, conflicting vote.")
 		}
 	}
 
@@ -398,10 +398,10 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, val0Addr, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash2), voteSet)
 		if added {
-			t.Errorf("Expected VoteSet.Add to fail, duplicate SetPeerMaj23() from peerA")
+			t.Errorf("expected VoteSet.Add to fail, duplicate SetPeerMaj23() from peerA")
 		}
 		if err == nil {
-			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+			t.Errorf("expected VoteSet.Add to return error, conflicting vote.")
 		}
 	}
 
@@ -411,16 +411,16 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, addr, 1)
 		added, err := signAddVote(privValidators[1], withBlockHash(vote, blockHash1), voteSet)
 		if !added || err != nil {
-			t.Errorf("Expected VoteSet.Add to succeed")
+			t.Errorf("expected VoteSet.Add to succeed")
 		}
 	}
 
 	// check
 	if voteSet.HasTwoThirdsMajority() {
-		t.Errorf("We shouldn't have 2/3 majority yet")
+		t.Errorf("we shouldn't have 2/3 majority yet")
 	}
 	if voteSet.HasTwoThirdsAny() {
-		t.Errorf("We shouldn't have 2/3 if any votes yet")
+		t.Errorf("we shouldn't have 2/3 if any votes yet")
 	}
 
 	// val2 votes for blockHash2.
@@ -429,16 +429,16 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash2), voteSet)
 		if !added || err != nil {
-			t.Errorf("Expected VoteSet.Add to succeed")
+			t.Errorf("expected VoteSet.Add to succeed")
 		}
 	}
 
 	// check
 	if voteSet.HasTwoThirdsMajority() {
-		t.Errorf("We shouldn't have 2/3 majority yet")
+		t.Errorf("we shouldn't have 2/3 majority yet")
 	}
 	if !voteSet.HasTwoThirdsAny() {
-		t.Errorf("We should have 2/3 if any votes")
+		t.Errorf("we should have 2/3 if any votes")
 	}
 
 	// now attempt tracking blockHash1
@@ -450,23 +450,23 @@ func TestConflicts(t *testing.T) {
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash1), voteSet)
 		if !added {
-			t.Errorf("Expected VoteSet.Add to succeed")
+			t.Errorf("expected VoteSet.Add to succeed")
 		}
 		if err == nil {
-			t.Errorf("Expected VoteSet.Add to return error, conflicting vote")
+			t.Errorf("expected VoteSet.Add to return error, conflicting vote")
 		}
 	}
 
 	// check
 	if !voteSet.HasTwoThirdsMajority() {
-		t.Errorf("We should have 2/3 majority for blockHash1")
+		t.Errorf("we should have 2/3 majority for blockHash1")
 	}
 	blockIDMaj23, _ := voteSet.TwoThirdsMajority()
 	if !bytes.Equal(blockIDMaj23.Hash, blockHash1) {
-		t.Errorf("Got the wrong 2/3 majority blockhash")
+		t.Errorf("got the wrong 2/3 majority blockhash")
 	}
 	if !voteSet.HasTwoThirdsAny() {
-		t.Errorf("We should have 2/3 if any votes")
+		t.Errorf("we should have 2/3 if any votes")
 	}
 
 }
@@ -526,12 +526,12 @@ func TestMakeCommit(t *testing.T) {
 
 	// Commit should have 10 elements
 	if len(commit.Precommits) != 10 {
-		t.Errorf("Commit Precommits should have the same number of precommits as validators")
+		t.Errorf("commit Precommits should have the same number of precommits as validators")
 	}
 
 	// Ensure that Commit precommits are ordered.
 	if err := commit.ValidateBasic(); err != nil {
-		t.Errorf("Error in Commit.ValidateBasic(): %v", err)
+		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
 
 }

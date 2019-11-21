@@ -608,14 +608,14 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
 		return fmt.Errorf(
-			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			"commit size doesn't match number of active validators. Got %d, expected %d",
 			block.LastCommit.Size(),
 			len(activeVals))
 	}
 
 	for _, vote := range block.LastCommit.Precommits {
 		if _, ok := activeVals[string(vote.ValidatorAddress)]; !ok {
-			return fmt.Errorf("Found vote for unactive validator %X", vote.ValidatorAddress)
+			return fmt.Errorf("found vote for unactive validator %X", vote.ValidatorAddress)
 		}
 	}
 	return nil
@@ -704,11 +704,11 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *NewValidBlockMessage) {}, ""},
-		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "Negative Height"},
-		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "Negative Round"},
+		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 2 },
-			"BlockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
+			"blockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
@@ -716,7 +716,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
-			"BlockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
+			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
 
@@ -747,9 +747,9 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *ProposalPOLMessage) {}, ""},
-		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "Negative Height"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "Negative ProposalPOLRound"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "Empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "empty ProposalPOL bit array"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(types.MaxVotesCount + 1) },
 			"ProposalPOL bit array is too big: 10001, max: 10000"},
 	}
@@ -893,9 +893,9 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *VoteSetBitsMessage) {}, ""},
-		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "Negative Height"},
-		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "Negative Round"},
-		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "Invalid Type"},
+		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "negative Round"},
+		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
 				Hash: cmn.HexBytes{},
@@ -904,9 +904,9 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 					Hash:  cmn.HexBytes{},
 				},
 			}
-		}, "Wrong BlockID: Wrong PartsHeader: Negative Total"},
+		}, "wrong BlockID: wrong PartsHeader: negative Total"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
-			"Votes bit array is too big: 10001, max: 10000"},
+			"votes bit array is too big: 10001, max: 10000"},
 	}
 
 	for i, tc := range testCases {

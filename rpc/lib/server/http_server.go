@@ -163,7 +163,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					WriteRPCResponseHTTPError(
 						rww,
 						http.StatusInternalServerError,
-						types.RPCInternalError(types.JSONRPCStringID(""), e.(error)),
+						types.RPCInternalError(types.JSONRPCIntID(-1), e.(error)),
 					)
 				}
 			}

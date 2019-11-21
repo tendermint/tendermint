@@ -59,12 +59,12 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepSub typ
 			case stepMsg := <-newStepSub.Out():
 				m2 := stepMsg.Data().(types.EventDataRoundState)
 				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
-					return fmt.Errorf("RoundState mismatch. Got %v; Expected %v", m2, m)
+					return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
 				}
 			case <-newStepSub.Cancelled():
-				return fmt.Errorf("Failed to read off newStepSub.Out(). newStepSub was cancelled")
+				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was cancelled")
 			case <-ticker:
-				return fmt.Errorf("Failed to read off newStepSub.Out()")
+				return fmt.Errorf("failed to read off newStepSub.Out()")
 			}
 		}
 	case msgInfo:
@@ -90,7 +90,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepSub typ
 		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
 		cs.handleTimeout(m, cs.RoundState)
 	default:
-		return fmt.Errorf("Replay: Unknown TimedWALMessage type: %v", reflect.TypeOf(msg.Msg))
+		return fmt.Errorf("replay: Unknown TimedWALMessage type: %v", reflect.TypeOf(msg.Msg))
 	}
 	return nil
 }
@@ -119,7 +119,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		}
 	}
 	if found {
-		return fmt.Errorf("WAL should not contain #ENDHEIGHT %d", csHeight)
+		return fmt.Errorf("wal should not contain #ENDHEIGHT %d", csHeight)
 	}
 
 	// Search for last height marker.
@@ -132,7 +132,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
+		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
 	}
 	defer gr.Close() // nolint: errcheck
 
@@ -175,11 +175,11 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 		line = strings.TrimRight(line, "\n")
 		parts := strings.Split(line, " ")
 		if len(parts) != 2 {
-			return -1, errors.New("Line did not have 2 parts")
+			return -1, errors.New("line did not have 2 parts")
 		}
 		i, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return -1, errors.New("Failed to parse INFO: " + err.Error())
+			return -1, errors.New("failed to parse INFO: " + err.Error())
 		}
 		if height < i {
 			return 1, nil
@@ -243,12 +243,12 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// Handshake is done via ABCI Info on the query conn.
 	res, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
-		return fmt.Errorf("Error calling Info: %v", err)
+		return fmt.Errorf("error calling Info: %v", err)
 	}
 
 	blockHeight := res.LastBlockHeight
 	if blockHeight < 0 {
-		return fmt.Errorf("Got a negative last block height (%d) from the app", blockHeight)
+		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
 
@@ -530,7 +530,7 @@ type mockProxyApp struct {
 }
 
 func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTx[mock.txCount]
+	r := mock.abciResponses.DeliverTxs[mock.txCount]
 	mock.txCount++
 	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
 		return abci.ResponseDeliverTx{}

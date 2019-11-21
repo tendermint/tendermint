@@ -17,8 +17,8 @@ func TestTracingLogger(t *testing.T) {
 	logger := log.NewTMJSONLogger(&buf)
 
 	logger1 := log.NewTracingLogger(logger)
-	err1 := errors.New("Courage is grace under pressure.")
-	err2 := errors.New("It does not matter how slowly you go, so long as you do not stop.")
+	err1 := errors.New("courage is grace under pressure.")
+	err2 := errors.New("it does not matter how slowly you go, so long as you do not stop.")
 	logger1.With("err1", err1).Info("foo", "err2", err2)
 
 	want := strings.Replace(

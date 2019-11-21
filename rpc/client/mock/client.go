@@ -149,8 +149,8 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(&rpctypes.Context{}, height)
+func (c Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return core.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 
 func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

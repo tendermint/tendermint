@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrInvalidBlockPartSignature = errors.New("Error invalid block part signature")
-	ErrInvalidBlockPartHash      = errors.New("Error invalid block part hash")
+	ErrInvalidBlockPartSignature = errors.New("error invalid block part signature")
+	ErrInvalidBlockPartHash      = errors.New("error invalid block part hash")
 )
 
 // Proposal defines a block proposal for the consensus.
@@ -46,32 +46,32 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
 	if p.Type != ProposalType {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if p.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if p.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if p.POLRound < -1 {
-		return errors.New("Negative POLRound (exception: -1)")
+		return errors.New("negative POLRound (exception: -1)")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {
-		return fmt.Errorf("Expected a complete, non-empty BlockID, got: %v", p.BlockID)
+		return fmt.Errorf("expected a complete, non-empty BlockID, got: %v", p.BlockID)
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if len(p.Signature) == 0 {
-		return errors.New("Signature is missing")
+		return errors.New("signature is missing")
 	}
 	if len(p.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }
