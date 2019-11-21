@@ -137,7 +137,7 @@ func (e peerState) String() string {
 	case peerStateRemoved:
 		return "Removed"
 	default:
-		return fmt.Sprintf("unknown peerState: %d", e)
+		panic(fmt.Sprintf("unknown peerState: %d", e))
 	}
 }
 
@@ -150,7 +150,7 @@ type scPeer struct {
 
 	height      int64 // updated when statusResponse is received
 	lastTouched time.Time
-	lastRate    int64 // updated when blockResponse is received
+	lastRate    int64 // last receive rate in bytes
 }
 
 func (p scPeer) String() string {
@@ -360,10 +360,12 @@ func (sc *scheduler) peersInactiveSince(duration time.Duration, now time.Time) [
 		}
 	}
 
+	// Ensure the order is deterministic for testing
 	sort.Sort(PeerByID(peers))
 	return peers
 }
 
+// will return peers who's lastRate i slower than minSpeed denominated in bytes
 func (sc *scheduler) peersSlowerThan(minSpeed int64) []p2p.ID {
 	peers := []p2p.ID{}
 	for peerID, peer := range sc.peers {
@@ -375,6 +377,7 @@ func (sc *scheduler) peersSlowerThan(minSpeed int64) []p2p.ID {
 		}
 	}
 
+	// Ensure the order is deterministic for testing
 	sort.Sort(PeerByID(peers))
 	return peers
 }
@@ -418,8 +421,6 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 			height, pendingTime, now)
 	}
 
-	// This may divide by zero - needs to measure every 10s blocks (see v0 and v1),
-	// for now changed to nsecs.
 	peer.lastRate = size / now.Sub(pendingTime).Nanoseconds()
 
 	sc.setStateAtHeight(height, blockStateReceived)
