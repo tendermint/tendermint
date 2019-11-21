@@ -1,21 +1,39 @@
 # Contributing
 
-Thank you for considering making contributions to Tendermint and related repositories! Start by taking a look at the [coding repo](https://github.com/tendermint/coding) for overall information on repository workflow and standards.
+Thank you for your interest in contributing to tendermint!  Before
+contributing, it may be helpful to understand the goal of the project. The goal
+of tendermint is to develop a BFT consensus engine sufficiently robust to
+support permissionless value carrying networks.  While all contributions are
+welcome, contributors should bear this goal in mind in deciding if they should
+target the main tendermint project or a potential fork.  When targeting the
+main tendermint project, the following process leads to the best chance of
+landing changes in master.
 
-Please follow standard github best practices: fork the repo, branch from the tip of `master`, make some commits, and submit a pull request to `master`.
-See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
+All contributions should start with an Issue. The issue helps capture the
+problem your trying to solve and allows early feedback.  Once the problem
+description has been captured by an issue, the process can proceed in different
+direction depending on how well defined the problem and proposed
+solution are.  If the change is simple and well understood, maintainers will +1
+the issue and sign off on reviewing such a change when it’s ready Changes
+should start with a [draft pull](https://github.blog/2019-02-14-introducing-draft-pull-requests/) request against master. The draft signals that
+work is underway, even if it’s not ready for review When changes are ready for
+review, they should be kept up to date with master If the issue is well
+understood but leads to some structural change to the codebase, any change
+should be preceded by an [Architectural Decision Record (ADR)](./docs/architecture/). The ADR will help build consensus on an overall
+strategy to changes to ensure the code base maintains coherence in the larger
+context.  If you are not comfortable with writing an ADR, you can open a
+less-formal issue and the Tendermint team will help you turn it into an ADR.
+If the issue would benefit from thorough discussion, maintainers of tendermint
+may request that you create an [Request For Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion at the RFC stage
+will help build the consensus necessary to ensure changes land in the protocol
+in a timely fashion.  If the conclusion of the discussion is a large structural
+change to the codebase, an ADR should follow with a proposed strategy.
 
-Before making a pull request, please open an issue describing the
-change you would like to make. If an issue for your change already exists,
-please comment on it that you will submit a pull request. Be sure to reference the issue in the opening
-comment of your pull request. If your change is substantial, you will be asked
-to write a more detailed design document in the form of an
-Architectural Decision Record (ie. see [here](./docs/architecture/)) before submitting code
-changes.
+![Contributing flow](./docs/imgs/contributing.png)
 
-Please open a [Draft PR](https://github.blog/2019-02-14-introducing-draft-pull-requests/), even if your contribution is incomplete, this inidicates to the community you're working on something and allows them to provide comments early in the development process. When the code is complete it can be marked as ready-for-review.
-
-Please make sure to use `gofmt` before every commit - the easiest way to do this is have your editor run it for you upon saving a file. Additionally please ensure that your code is lint compliant by running `make lint`
+Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
+* Contributors don’t waste their time implementing/proposing features which won’t land in master.
+* Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
 
