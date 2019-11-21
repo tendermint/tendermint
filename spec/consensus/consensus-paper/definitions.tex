@@ -4,7 +4,7 @@
 
 We consider a system of processes that communicate by exchanging messages.
 Processes can be correct or faulty, where a faulty process can behave in an
-arbitrary way, i.e., Byzantine faults. We assume that each process
+arbitrary way, i.e., we consider Byzantine faults. We assume that each process
 has some amount of voting power (voting power of a process can be $0$).
 Processes in our model are not part of a single administrative domain;
 therefore we cannot enforce a direct network connectivity between all
@@ -13,19 +13,30 @@ processes called peers, such that there is an indirect communication channel
 between all correct processes. Communication between processes is established
 using a gossip protocol \cite{Dem1987:gossip}.
 
-Formally, we model the network communication using the \emph{partially
+Formally, we model the network communication using a variant of the \emph{partially
 synchronous system model}~\cite{DLS88:jacm}: in all executions of the system
 there is a bound $\Delta$ and an instant GST (Global Stabilization Time) such
 that all communication among correct processes after GST is reliable and
 $\Delta$-timely, i.e., if a correct process $p$ sends message $m$ at time $t
-\ge GST$ to correct process $q$, then $q$ will receive $m$ before $t +
+\ge GST$ to a correct process $q$, then $q$ will receive $m$ before $t +
 \Delta$\footnote{Note that as we do not assume direct communication channels
     among all correct processes, this implies that before the message $m$
     reaches $q$, it might pass through a number of correct processes that will
-forward the message $m$ using gossip protocol towards $q$.}. Messages among
-correct processes can be delayed, dropped or duplicated before GST.
-Spoofing/impersonation attacks are assumed to be impossible at all times due to
-the use of public-key cryptography. The bound $\Delta$ and GST are system
+forward the message $m$ using gossip protocol towards $q$.}. 
+In addition to the standard \emph{partially
+	synchronous system model}~\cite{DLS88:jacm}, we assume an auxiliary property 
+that captures gossip-based nature of communication\footnote{The details of the Tendermint gossip protocol will be discussed in a separate
+	technical report. }:
+
+
+\begin{itemize} \item \emph{Gossip communication:} If a correct process $p$
+	sends some message $m$ at time $t$, all correct processes will receive
+	$m$ before $max\{t, GST\} + \Delta$. Furthermore, if a correct process $p$
+	receives some message $m$ at time $t$, all correct processes will receive
+	$m$ before $max\{t, GST\} + \Delta$.    \end{itemize}
+
+
+The bound $\Delta$ and GST are system
 parameters whose values are not required to be known for the safety of our
 algorithm. Termination of the algorithm is guaranteed within a bounded duration
 after GST.  In practice, the algorithm will work correctly in the slightly
@@ -37,18 +48,16 @@ lost), but consideration of the GST model simplifies the discussion.
 
 We assume that process steps (which might include sending and receiving
 messages) take zero time.  Processes are equipped with clocks so they can
-measure local timeouts.  All protocol messages are signed, i.e., when a correct
+measure local timeouts.  
+Spoofing/impersonation attacks are assumed to be impossible at all times due to
+the use of public-key cryptography, i.e., we assume that all protocol messages contains a digital signature.
+Therefore, when a correct
 process $q$ receives a signed message $m$ from its peer, the process $q$ can
-verify who was the original sender of the message $m$.
+verify who was the original sender of the message $m$ and if the message signature is valid.
+We do not explicitly state a signature verification step in the pseudo-code of the algorithm to improve readability;
+we assume that only messages with the valid signature are considered at that level (and messages with invalid signatures
+are dropped).  
 
-The details of the Tendermint gossip protocol will be discussed in a separate
-technical report. For the sake of this paper it is sufficient to assume that
-messages are being gossiped between processes and the following property holds
-(in addition to the partial synchrony network assumptions):
-
-\begin{itemize} \item \emph{Gossip communication:} If a correct process $p$
-    receives some message $m$ at time $t$, all correct processes will receive
-    $m$ before $max\{t, GST\} + \Delta$.    \end{itemize}
 
 
 %Messages that are being gossiped are created by the consensus layer. We can
