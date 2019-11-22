@@ -12,6 +12,11 @@ different modules:
 - Go API: the `Header` broke
 - P2P: since blocks go over the wire, technically the P2P protocol broke
 
+Also, blocks are significantly smaller 🔥 because we got rid of the redundant
+information in `Block#LastCommit`. `Commit` now mainly consists of a signature
+and a validator address plus a timestamp. Note we may remove the validator
+address & timestamp fields in the future (see ADR-25).
+
 Special thanks to external contributors on this release:
 @erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev
 
@@ -66,6 +71,7 @@ program](https://hackerone.com/tendermint).
 
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
   - [types][\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
+  - [types] \#1648 Change `Commit` to consist of just signatures
 
 - P2P Protocol
 
