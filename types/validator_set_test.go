@@ -354,21 +354,6 @@ func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
 	assert.Panics(t, shouldPanic)
 }
 
-func TestValidatorSetShouldNotErrorOnTemporalOverflow(t *testing.T) {
-	// Updating the validator set might trigger an Overflow error during the update process
-	valSet := NewValidatorSet([]*Validator{
-		{Address: []byte("b"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
-		{Address: []byte("a"), VotingPower: 1, ProposerPriority: 0},
-	})
-
-	err := valSet.UpdateWithChangeSet([]*Validator{
-		{Address: []byte("b"), VotingPower: 1, ProposerPriority: 0},
-		{Address: []byte("a"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
-	})
-
-	assert.NoError(t, err)
-}
-
 func TestAvgProposerPriority(t *testing.T) {
 	// Create Validator set without calling IncrementProposerPriority:
 	tcs := []struct {
@@ -1273,7 +1258,16 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "2 no false overflow error messages for deletes",
+			// this test shows that it is important to apply the updates in the order of the change in power
+			// i.e. apply first updates with decreases in power, v2 change in this case.
+			name:         "2 no false overflow error messages for updates",
+			startVals:    []testVal{{"v1", 1}, {"v2", big - 1}},
+			updatedVals:  []testVal{{"v1", big/2 - 1}, {"v2", big / 2}},
+			expectedVals: []testVal{{"v1", big/2 - 1}, {"v2", big / 2}},
+			wantErr:      false,
+		},
+		{
+			name:         "3 no false overflow error messages for deletes",
 			startVals:    []testVal{{"v1", big - 2}, {"v2", 1}, {"v3", 1}},
 			deletedVals:  []testVal{{"v1", 0}},
 			addedVals:    []testVal{{"v4", big - 2}},
@@ -1281,7 +1275,16 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "3 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
+			name:         "4 no false overflow error messages for adds, updates and deletes",
+			startVals:    []testVal{{"v1", big / 4}, {"v2", big / 4}, {"v3", big / 4}, {"v4", big / 4}},
+			deletedVals:  []testVal{{"v2", 0}},
+			updatedVals:  []testVal{{"v1", big/2 - 2}, {"v3", big/2 - 3}, {"v4", 2}},
+			addedVals:    []testVal{{"v5", 3}},
+			expectedVals: []testVal{{"v1", big/2 - 2}, {"v3", big/2 - 3}, {"v4", 2}, {"v5", 3}},
+			wantErr:      false,
+		},
+		{
+			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
 			startVals: []testVal{
 				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
 				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
