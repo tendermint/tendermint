@@ -1277,7 +1277,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			startVals:    []testVal{{"v1", big - 2}, {"v2", 1}, {"v3", 1}},
 			deletedVals:  []testVal{{"v1", 0}},
 			addedVals:    []testVal{{"v4", big - 2}},
-			expectedVals: []testVal{{"v2", 1}, {"v3", 1}, {"v1", big - 2}},
+			expectedVals: []testVal{{"v2", 1}, {"v3", 1}, {"v4", big - 2}},
 			wantErr:      false,
 		},
 		{
