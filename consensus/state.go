@@ -1465,7 +1465,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
 		if i >= len(block.LastCommit.Precommits) {
-			continue
+			break
 		}
 		precommit := block.LastCommit.Precommits[i]
 		if precommit.Absent() {

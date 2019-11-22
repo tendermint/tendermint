@@ -335,7 +335,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 
 	for i, val := range lastValSet.Validators {
 		if i >= len(block.LastCommit.Precommits) {
-			continue
+			break
 		}
 		cs := block.LastCommit.Precommits[i]
 		voteInfo := abci.VoteInfo{
