@@ -1299,6 +1299,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// create a new validator set
 			valSet := createNewValidatorSet(tt.startVals)
