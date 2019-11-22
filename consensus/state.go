@@ -1468,7 +1468,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			continue
 		}
 		precommit := block.LastCommit.Precommits[i]
-		if precommit.BlockIDFlag == types.BlockIDFlagAbsent {
+		if precommit.Absent() {
 			missingValidators++
 			missingValidatorsPower += val.VotingPower
 		}

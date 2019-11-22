@@ -340,7 +340,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		cs := block.LastCommit.Precommits[i]
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: cs.BlockIDFlag != types.BlockIDFlagAbsent,
+			SignedLastBlock: !cs.Absent(),
 		}
 		voteInfos[i] = voteInfo
 	}

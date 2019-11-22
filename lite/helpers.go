@@ -72,7 +72,7 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
 	commitSigs := make([]types.CommitSig, len(pkz))
 	for i := 0; i < len(pkz); i++ {
-		commitSigs[i] = types.CommitSig{BlockIDFlag: types.BlockIDFlagAbsent}
+		commitSigs[i] = types.NewCommitSigAbsent()
 	}
 
 	// We need this list to keep the ordering.

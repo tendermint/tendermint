@@ -72,7 +72,7 @@ func TestBeginBlockValidators(t *testing.T) {
 			[]byte("Signature2"),
 			state.Validators.Validators[1].Address,
 			now)
-		absentSig = types.CommitSig{BlockIDFlag: types.BlockIDFlagAbsent}
+		absentSig = types.NewCommitSigAbsent()
 	)
 
 	testCases := []struct {

@@ -59,12 +59,7 @@ type Vote struct {
 // CommitSig converts the Vote to a CommitSig.
 func (vote *Vote) CommitSig() CommitSig {
 	if vote == nil {
-		return CommitSig{
-			BlockIDFlag:      BlockIDFlagAbsent,
-			ValidatorAddress: []byte{},
-			Timestamp:        time.Time{},
-			Signature:        []byte{},
-		}
+		return NewCommitSigAbsent()
 	}
 
 	var blockIDFlag BlockIDFlag

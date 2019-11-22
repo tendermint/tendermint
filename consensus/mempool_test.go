@@ -111,21 +111,19 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	blockDB := dbm.NewMemDB()
 	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
 	sm.SaveState(blockDB, state)
-	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
 
-	NTxs := 3000
-	go deliverTxsRange(cs, 0, NTxs)
+	const numTxs int64 = 3000
+	go deliverTxsRange(cs, 0, int(numTxs))
 
-	startTestRound(cs, height, round)
-	for nTxs := 0; nTxs < NTxs; {
-		ticker := time.NewTicker(time.Second * 30)
+	startTestRound(cs, cs.Height, cs.Round)
+	for n := int64(0); n < numTxs; {
 		select {
-		case msg := <-newBlockCh:
-			blockEvent := msg.Data().(types.EventDataNewBlock)
-			nTxs += len(blockEvent.Block.Txs)
-		case <-ticker.C:
-			panic("Timed out waiting to commit blocks with transactions")
+		case msg := <-newBlockHeaderCh:
+			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
+			n += headerEvent.NumTxs
+		case <-time.After(30 * time.Second):
+			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}
 	}
 }

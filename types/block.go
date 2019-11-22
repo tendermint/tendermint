@@ -464,6 +464,19 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 	}
 }
 
+// NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
+// fields are all empty.
+func NewCommitSigAbsent() CommitSig {
+	return CommitSig{
+		BlockIDFlag: BlockIDFlagAbsent,
+	}
+}
+
+// Absent returns true if CommitSig is absent.
+func (cs CommitSig) Absent() bool {
+	return cs.BlockIDFlag == BlockIDFlagAbsent
+}
+
 func (cs CommitSig) String() string {
 	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
 		cmn.Fingerprint(cs.Signature),
@@ -555,7 +568,7 @@ func NewCommit(height int64, round int, blockID BlockID, precommits []CommitSig)
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
 	for idx, precommit := range commit.Precommits {
-		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+		if precommit.Absent() {
 			continue // OK, some precommits can be missing.
 		}
 		added, err := voteSet.AddVote(commit.GetVote(idx))
@@ -626,7 +639,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 		for i, precommit := range commit.Precommits {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
-			commit.bitArray.SetIndex(i, precommit.BlockIDFlag != BlockIDFlagAbsent)
+			commit.bitArray.SetIndex(i, !precommit.Absent())
 		}
 	}
 	return commit.bitArray

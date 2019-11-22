@@ -614,7 +614,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	talliedVotingPower := int64(0)
 
 	for idx, precommit := range commit.Precommits {
-		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+		if precommit.Absent() {
 			continue // OK, some precommits can be missing.
 		}
 		_, val := vals.GetByIndex(idx)
@@ -683,7 +683,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	seen := map[int]bool{}
 
 	for idx, precommit := range commit.Precommits {
-		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+		if precommit.Absent() {
 			continue // OK, some precommits can be missing.
 		}
 
