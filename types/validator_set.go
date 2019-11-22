@@ -13,18 +13,17 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 )
 
-// MaxTotalVotingPower - the maximum allowed total voting power.
-// It needs to be sufficiently small to, in all cases:
-// 1. prevent clipping in incrementProposerPriority()
-// 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
-// (Proof of 1 is tricky, left to the reader).
-// It could be higher, but this is sufficiently large for our purposes,
-// and leaves room for defensive purposes.
-// PriorityWindowSizeFactor - is a constant that when multiplied with the total voting power gives
-// the maximum allowed distance between validator priorities.
-
 const (
-	MaxTotalVotingPower      = int64(math.MaxInt64) / 8
+	// MaxTotalVotingPower - the maximum allowed total voting power.
+	// It needs to be sufficiently small to, in all cases:
+	// 1. prevent clipping in incrementProposerPriority()
+	// 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
+	// (Proof of 1 is tricky, left to the reader).
+	// It could be higher, but this is sufficiently large for our purposes,
+	// and leaves room for defensive purposes.
+	MaxTotalVotingPower = int64(math.MaxInt64) / 8
+	// PriorityWindowSizeFactor - is a constant that when multiplied with the total voting power gives
+	// the maximum allowed distance between validator priorities.
 	PriorityWindowSizeFactor = 2
 )
 
@@ -66,12 +65,13 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	return vals
 }
 
-// Nil or empty validator sets are invalid.
+// IsNilOrEmpty returns true if validator set is nil or empty.
 func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
 }
 
-// Increment ProposerPriority and update the proposer on a copy, and return it.
+// CopyIncrementProposerPriority increments ProposerPriority and update the
+// proposer on a copy, and return it.
 func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet {
 	copy := vals.Copy()
 	copy.IncrementProposerPriority(times)
@@ -105,6 +105,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.Proposer = proposer
 }
 
+// RescalePriorities ...
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	if vals.IsNilOrEmpty() {
 		panic("empty validator set")
@@ -176,9 +177,8 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	diff := max - min
 	if diff < 0 {
 		return -1 * diff
-	} else {
-		return diff
 	}
+	return diff
 }
 
 func (vals *ValidatorSet) getValWithMostPriority() *Validator {
@@ -718,6 +718,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 //-----------------
 // ErrTooMuchChange
 
+// IsErrTooMuchChange returns true if validator set changed too much.
 func IsErrTooMuchChange(err error) bool {
 	_, ok := errors.Cause(err).(errTooMuchChange)
 	return ok
@@ -738,7 +739,7 @@ func (vals *ValidatorSet) String() string {
 	return vals.StringIndented("")
 }
 
-// String
+// StringIndented returns an intended string representation of ValidatorSet.
 func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
@@ -763,7 +764,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 //-------------------------------------
 // Implements sort for sorting validators by address.
 
-// Sort validators by address.
+// ValidatorsByAddress is used to sort validators by address.
 type ValidatorsByAddress []*Validator
 
 func (valz ValidatorsByAddress) Len() int {
