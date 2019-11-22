@@ -101,7 +101,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
-	wrongPrecommitsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
+	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
 	badPrivVal := types.NewMockPV()
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
@@ -131,13 +131,13 @@ func TestValidateBlockCommit(t *testing.T) {
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
 			/*
-				#2589: test len(block.LastCommit.Precommits) == state.LastValidators.Size()
+				#2589: test len(block.LastCommit.Signatures) == state.LastValidators.Size()
 			*/
-			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, proposerAddr)
+			block, _ = state.MakeBlock(height, makeTxs(height), wrongSigsCommit, nil, proposerAddr)
 			err = blockExec.ValidateBlock(state, block)
-			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
-			require.True(t, isErrInvalidCommitPrecommits,
-				"expected ErrInvalidCommitPrecommits at height %d, but got: %v",
+			_, isErrInvalidCommitSignatures := err.(types.ErrInvalidCommitSignatures)
+			require.True(t, isErrInvalidCommitSignatures,
+				"expected ErrInvalidCommitSignatures at height %d, but got: %v",
 				height,
 				err,
 			)
@@ -160,7 +160,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		require.NoError(t, err, "height %d", height)
 
 		/*
-			wrongPrecommitsCommit is fine except for the extra bad precommit
+			wrongSigsCommit is fine except for the extra bad precommit
 		*/
 		goodVote, err := types.MakeVote(height, blockID, state.Validators, privVals[proposerAddr.String()], chainID)
 		require.NoError(t, err, "height %d", height)
@@ -178,7 +178,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		err = badPrivVal.SignVote(chainID, badVote)
 		require.NoError(t, err, "height %d", height)
 
-		wrongPrecommitsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
+		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
 	}
 }

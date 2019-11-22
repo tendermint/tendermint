@@ -1464,11 +1464,11 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		if i >= len(block.LastCommit.Precommits) {
+		if i >= len(block.LastCommit.Signatures) {
 			break
 		}
-		precommit := block.LastCommit.Precommits[i]
-		if precommit.Absent() {
+		commitSig := block.LastCommit.Signatures[i]
+		if commitSig.Absent() {
 			missingValidators++
 			missingValidatorsPower += val.VotingPower
 		}

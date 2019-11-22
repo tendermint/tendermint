@@ -600,8 +600,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	if err := commit.ValidateBasic(); err != nil {
 		return err
 	}
-	if vals.Size() != len(commit.Precommits) {
-		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
+	if vals.Size() != len(commit.Signatures) {
+		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
 	// NOTE: commit.Round is not being checked. Should we check it?
 	if height != commit.Height {
@@ -613,23 +613,23 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 	talliedVotingPower := int64(0)
 
-	for idx, precommit := range commit.Precommits {
-		if precommit.Absent() {
-			continue // OK, some precommits can be missing.
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
-		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("wrong signature (#%d): %X", idx, precommit.Signature)
+		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
-		// Good precommit!
-		if blockID.Equals(precommit.BlockID(commit.BlockID)) {
+		// Good!
+		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 			talliedVotingPower += val.VotingPower
 		}
 		// else {
 		// It's OK that the BlockID doesn't match.  We include stray
-		// precommits to measure validator availability.
+		// signatures (~votes for nil) to measure validator availability.
 		// }
 	}
 
@@ -682,30 +682,30 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	oldVotingPower := int64(0)
 	seen := map[int]bool{}
 
-	for idx, precommit := range commit.Precommits {
-		if precommit.Absent() {
-			continue // OK, some precommits can be missing.
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
 
 		// See if this validator is in oldVals.
-		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
+		oldIdx, val := oldVals.GetByAddress(commitSig.ValidatorAddress)
 		if val == nil || seen[oldIdx] {
 			continue // missing or double vote...
 		}
 		seen[oldIdx] = true
 
 		// Validate signature.
-		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return errors.Errorf("wrong signature (#%d): %X", idx, precommit.Signature)
+		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
-		// Good precommit!
-		if blockID.Equals(precommit.BlockID(commit.BlockID)) {
+		// Good!
+		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 			oldVotingPower += val.VotingPower
 		}
 		// else {
 		// It's OK that the BlockID doesn't match.  We include stray
-		// precommits to measure validator availability.
+		// signatures (~votes for nil) to measure validator availability.
 		// }
 	}
 

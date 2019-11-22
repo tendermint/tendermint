@@ -319,28 +319,27 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 			panic(err) // shouldn't happen
 		}
 
-		// Sanity check that commit length matches validator set size -
+		// Sanity check that commit size matches validator set size -
 		// only applies after first block
-
-		precommitLen := block.LastCommit.Size()
+		commitSize := block.LastCommit.Size()
 		valSetLen := len(lastValSet.Validators)
-		if precommitLen != valSetLen {
+		if commitSize != valSetLen {
 			// sanity check
-			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators))
 		}
 	} else {
 		lastValSet = types.NewValidatorSet(nil)
 	}
 
 	for i, val := range lastValSet.Validators {
-		if i >= len(block.LastCommit.Precommits) {
+		if i >= len(block.LastCommit.Signatures) {
 			break
 		}
-		cs := block.LastCommit.Precommits[i]
+		commitSig := block.LastCommit.Signatures[i]
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: !cs.Absent(),
+			SignedLastBlock: !commitSig.Absent(),
 		}
 		voteInfos[i] = voteInfo
 	}

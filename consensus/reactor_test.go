@@ -613,9 +613,9 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 			len(activeVals))
 	}
 
-	for _, vote := range block.LastCommit.Precommits {
-		if _, ok := activeVals[string(vote.ValidatorAddress)]; !ok {
-			return fmt.Errorf("found vote for unactive validator %X", vote.ValidatorAddress)
+	for _, commitSig := range block.LastCommit.Signatures {
+		if _, ok := activeVals[string(commitSig.ValidatorAddress)]; !ok {
+			return fmt.Errorf("found vote for inactive validator %X", commitSig.ValidatorAddress)
 		}
 	}
 	return nil

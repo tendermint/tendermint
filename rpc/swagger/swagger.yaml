@@ -1350,9 +1350,13 @@ definitions:
       last_commit:
         type: object
         properties:
+          height:
+            type: number
+          round:
+            type: number
           block_id:
             $ref: "#/definitions/BlockID"
-          precommits:
+          signatures:
             type: array
             items:
               $ref: "#/definitions/Commit"

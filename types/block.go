@@ -438,7 +438,7 @@ func (h *Header) StringIndented(indent string) string {
 type BlockIDFlag byte
 
 const (
-	// BlockIDFlagAbsent - vote is not included in the Commit.Precommits.
+	// BlockIDFlagAbsent - no vote was received from a validator.
 	BlockIDFlagAbsent BlockIDFlag = iota + 1
 	// BlockIDFlagCommit - voted for the Commit.BlockID.
 	BlockIDFlagCommit
@@ -547,14 +547,14 @@ func (cs CommitSig) ValidateBasic() error {
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 type Commit struct {
-	// NOTE: The Precommits are in order of address to preserve the bonded
+	// NOTE: The signatures are in order of address to preserve the bonded
 	// ValidatorSet order.
-	// Any peer with a block can gossip precommits by index with a peer without
+	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
 	Height     int64       `json:"height"`
 	Round      int         `json:"round"`
 	BlockID    BlockID     `json:"block_id"`
-	Precommits []CommitSig `json:"precommits"`
+	Signatures []CommitSig `json:"signatures"`
 
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
@@ -564,22 +564,22 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int, blockID BlockID, precommits []CommitSig) *Commit {
+func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig) *Commit {
 	return &Commit{
 		Height:     height,
 		Round:      round,
 		BlockID:    blockID,
-		Precommits: precommits,
+		Signatures: commitSigs,
 	}
 }
 
 // CommitToVoteSet constructs a VoteSet from the Commit and validator set.
-// Panics if precommits from the commit can't be added to the voteset.
+// Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
-	for idx, precommit := range commit.Precommits {
-		if precommit.Absent() {
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
 		}
 		added, err := voteSet.AddVote(commit.GetVote(idx))
@@ -594,7 +594,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 // Returns nil if the precommit at valIdx is nil.
 // Panics if valIdx >= commit.Size().
 func (commit *Commit) GetVote(valIdx int) *Vote {
-	commitSig := commit.Precommits[valIdx]
+	commitSig := commit.Signatures[valIdx]
 	return &Vote{
 		Type:             PrecommitType,
 		Height:           commit.Height,
@@ -633,24 +633,24 @@ func (commit *Commit) GetRound() int {
 	return commit.Round
 }
 
-// Size returns the number of votes in the commit
+// Size returns the number of signatures in the commit.
 // Implements VoteSetReader.
 func (commit *Commit) Size() int {
 	if commit == nil {
 		return 0
 	}
-	return len(commit.Precommits)
+	return len(commit.Signatures)
 }
 
-// BitArray returns a BitArray of which validators voted in this commit
+// BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
 // Implements VoteSetReader.
 func (commit *Commit) BitArray() *cmn.BitArray {
 	if commit.bitArray == nil {
-		commit.bitArray = cmn.NewBitArray(len(commit.Precommits))
-		for i, precommit := range commit.Precommits {
+		commit.bitArray = cmn.NewBitArray(len(commit.Signatures))
+		for i, commitSig := range commit.Signatures {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
-			commit.bitArray.SetIndex(i, !precommit.Absent())
+			commit.bitArray.SetIndex(i, !commitSig.Absent())
 		}
 	}
 	return commit.bitArray
@@ -663,10 +663,10 @@ func (commit *Commit) GetByIndex(valIdx int) *Vote {
 	return commit.GetVote(valIdx)
 }
 
-// IsCommit returns true if there is at least one vote.
+// IsCommit returns true if there is at least one signature.
 // Implements VoteSetReader.
 func (commit *Commit) IsCommit() bool {
-	return len(commit.Precommits) != 0
+	return len(commit.Signatures) != 0
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -683,11 +683,11 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("commit cannot be for nil block")
 	}
 
-	if len(commit.Precommits) == 0 {
-		return errors.New("no precommits in commit")
+	if len(commit.Signatures) == 0 {
+		return errors.New("no signatures in commit")
 	}
-	for i, precommit := range commit.Precommits {
-		if err := precommit.ValidateBasic(); err != nil {
+	for i, commitSig := range commit.Signatures {
+		if err := commitSig.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
 		}
 	}
@@ -701,9 +701,9 @@ func (commit *Commit) Hash() cmn.HexBytes {
 		return nil
 	}
 	if commit.hash == nil {
-		bs := make([][]byte, len(commit.Precommits))
-		for i, precommit := range commit.Precommits {
-			bs[i] = cdcEncode(precommit)
+		bs := make([][]byte, len(commit.Signatures))
+		for i, commitSig := range commit.Signatures {
+			bs[i] = cdcEncode(commitSig)
 		}
 		commit.hash = merkle.SimpleHashFromByteSlices(bs)
 	}
@@ -715,22 +715,22 @@ func (commit *Commit) StringIndented(indent string) string {
 	if commit == nil {
 		return "nil-Commit"
 	}
-	precommitStrings := make([]string, len(commit.Precommits))
-	for i, precommit := range commit.Precommits {
-		precommitStrings[i] = precommit.String()
+	commitSigStrings := make([]string, len(commit.Signatures))
+	for i, commitSig := range commit.Signatures {
+		commitSigStrings[i] = commitSig.String()
 	}
 	return fmt.Sprintf(`Commit{
 %s  Height:     %d
 %s  Round:      %d
 %s  BlockID:    %v
-%s  Precommits:
+%s  Signatures:
 %s    %v
 %s}#%v`,
 		indent, commit.Height,
 		indent, commit.Round,
 		indent, commit.BlockID,
 		indent,
-		indent, strings.Join(precommitStrings, "\n"+indent+"    "),
+		indent, strings.Join(commitSigStrings, "\n"+indent+"    "),
 		indent, commit.hash)
 }
 

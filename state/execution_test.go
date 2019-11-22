@@ -77,7 +77,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	testCases := []struct {
 		desc                     string
-		lastCommitPrecommits     []types.CommitSig
+		lastCommitSigs           []types.CommitSig
 		expectedAbsentValidators []int
 	}{
 		{"none absent", []types.CommitSig{commitSig0, commitSig1}, []int{}},
@@ -86,7 +86,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitPrecommits)
+		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
