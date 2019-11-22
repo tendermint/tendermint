@@ -512,20 +512,31 @@ func (cs CommitSig) ValidateBasic() error {
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
-	// if len(cs.ValidatorAddress) != crypto.AddressSize {
-	// 	return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
-	// 		crypto.AddressSize,
-	// 		len(cs.ValidatorAddress),
-	// 	)
-	// }
-
-	// NOTE: Timestamp validation is subtle and handled elsewhere.
-
-	// if len(cs.Signature) == 0 {
-	// 	return errors.New("signature is missing")
-	// }
-	if len(cs.Signature) > MaxSignatureSize {
-		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
+	switch cs.BlockIDFlag {
+	case BlockIDFlagAbsent:
+		if len(cs.ValidatorAddress) != 0 {
+			return errors.New("validator address is present")
+		}
+		if !cs.Timestamp.IsZero() {
+			return errors.New("time is present")
+		}
+		if len(cs.Signature) != 0 {
+			return errors.New("signature is present")
+		}
+	default:
+		if len(cs.ValidatorAddress) != crypto.AddressSize {
+			return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
+				crypto.AddressSize,
+				len(cs.ValidatorAddress),
+			)
+		}
+		// NOTE: Timestamp validation is subtle and handled elsewhere.
+		if len(cs.Signature) == 0 {
+			return errors.New("signature is missing")
+		}
+		if len(cs.Signature) > MaxSignatureSize {
+			return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
+		}
 	}
 
 	return nil
@@ -676,9 +687,6 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("no precommits in commit")
 	}
 	for i, precommit := range commit.Precommits {
-		if precommit.BlockIDFlag == BlockIDFlagAbsent {
-			continue // OK, some precommits can be missing.
-		}
 		if err := precommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
 		}
