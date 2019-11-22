@@ -1733,8 +1733,8 @@ definitions:
                       type: "object"
                       properties:
                         block_id_flag:
-                          type: "string"
-                          example: "1"
+                          type: "number"
+                          example: 2
                         validator_address:
                           type: "string"
                           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
