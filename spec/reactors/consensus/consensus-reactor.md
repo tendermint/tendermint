@@ -340,7 +340,7 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 1d) if prs.CatchupCommitRound != -1 and 0 < prs.Height and
         prs.Height <= blockStore.Height() then
         Commit = LoadCommit(prs.Height)
-        m = VoteSetMaj23Message(prs.Height,Commit.Round,Precommit,Commit.blockId)
+        m = VoteSetMaj23Message(prs.Height,Commit.Round,Precommit,Commit.BlockID)
         Send m to peer
         Sleep PeerQueryMaj23SleepDuration
 
