@@ -400,37 +400,29 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
-
-	// create a temporary slice to compute the changes in power
-	powerChanges := make([]powerChange, 0, len(updates))
-
-	for _, valUpdate := range updates {
-		address := valUpdate.Address
-		_, val := vals.GetByAddress(address)
-		if val == nil {
-			// new validator
-			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower, address: address})
-		} else {
-			// Updated validator, add the difference in power to the total.
-			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower - val.VotingPower, address: address})
+	delta := func(update *Validator, vals *ValidatorSet) int64 {
+		_, val := vals.GetByAddress(update.Address)
+		if val != nil {
+			return update.VotingPower - val.VotingPower
 		}
+		return update.VotingPower
 	}
 
-	// sort by increasing power changes so the decreases in power are processed first
-	sort.Sort(updatesByPowerChange(powerChanges))
+	updatesCopy := validatorListCopy(updates)
+	sort.Slice(updatesCopy, func(i, j int) bool {
+		return delta(updatesCopy[i], vals) < delta(updatesCopy[j], vals)
+	})
 
 	tvpAfterRemovals := vals.TotalVotingPower() - removedPower
-
-	for _, powerChange := range powerChanges {
-		tvpAfterRemovals += powerChange.delta
+	for _, upd := range updatesCopy {
+		tvpAfterRemovals += delta(upd, vals)
 		if tvpAfterRemovals > MaxTotalVotingPower {
 			err = fmt.Errorf(
 				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				powerChange.address, MaxTotalVotingPower)
+				upd.Address, MaxTotalVotingPower)
 			return 0, err
 		}
 	}
-
 	return tvpAfterRemovals + removedPower, nil
 }
 
