@@ -358,9 +358,15 @@ func (c *Client) bisection(
 				nextVals.Hash(),
 				pivot)
 		}
+
+		err = c.updateTrustedHeaderAndVals(pivotHeader, nextVals)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update trusted state #%d", pivot)
+		}
+
 		err = c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
 		if err != nil {
-			return errors.Wrapf(err, "bisection of #%d and #%d", lastHeader.Height, pivot)
+			return errors.Wrapf(err, "bisection of #%d and #%d", pivot, newHeader.Height)
 		}
 	}
 
