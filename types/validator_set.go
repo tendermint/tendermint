@@ -430,17 +430,15 @@ func verifyUpdates(
 			return 0, err
 		}
 	}
-	tvpAfterUpdatesBeforeRemovals = tvpAfterRemovals + removedPower
-	return tvpAfterUpdatesBeforeRemovals, nil
+
+	return tvpAfterRemovals + removedPower, nil
 }
 
 // Computes the number of new validators in the update.
 func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
 	numNewValidators := 0
 	for _, valUpdate := range updates {
-		address := valUpdate.Address
-		_, val := vals.GetByAddress(address)
-		if val == nil {
+		if !vals.HasAddress(valUpdate.Address) {
 			numNewValidators++
 		}
 	}
