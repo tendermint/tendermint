@@ -375,7 +375,7 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 	return updates, removals, err
 }
 
-// Verifies a list of updates against a validator set, making sure the allowed
+// verifyUpdates verifies a list of updates against a validator set, making sure the allowed
 // total voting power would not be exceeded if these updates would be applied to the set.
 //
 // Inputs:
@@ -431,7 +431,8 @@ func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
 	return numNewValidators
 }
 
-// Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'.
+// computeNewPriorities computes the proposer priority for the validators not present in the set based on
+// 'updatedTotalVotingPower'.
 // Leaves unchanged the priorities of validators that are changed.
 //
 // 'updates' parameter must be a list of unique validators to be added or updated.
