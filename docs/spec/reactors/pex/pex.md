@@ -33,6 +33,11 @@ connections die, or we fail to dial, we will redial every 5s for a few minutes,
 then switch to an exponential backoff schedule, and after about a day of
 trying, stop dialing the peer.
 
+But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer 
+will not exceed `persistent_peers_max_dial_period` during exponential backoff. 
+Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
+and we keep trying again regardless of `maxAttemptsToDial`
+
 As long as we have less than `MaxNumOutboundPeers`, we periodically request
 additional peers from each of our own and try seeds.
 

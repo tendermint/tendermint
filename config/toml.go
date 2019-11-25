@@ -252,10 +252,10 @@ max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
-# unconditional node id list to avoid limit of max_num_inbound_peers, max_num_outbound_peers
+# Unconditional node id list to avoid limit of max_num_inbound_peers, max_num_outbound_peers
 unconditional_peer_ids = "{{ .P2P.UnconditionalPeerIDs }}"
 
-# Maximum dial period seconds when exponential back off for persistent peers, 0 == default as exponential back off
+# Maximum dial period seconds when exponential backoff for persistent peers, only works when not "0s" or not #annotated
 persistent_peers_max_dial_period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
 
 # Time to wait before flushing messages out on the connection

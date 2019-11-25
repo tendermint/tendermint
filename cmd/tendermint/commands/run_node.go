@@ -49,7 +49,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
 	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma-delimited ID@host:port seed nodes")
 	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "Comma-delimited ID@host:port persistent peers")
-	cmd.Flags().String("p2p.unconditional_peer_ids", config.P2P.UnconditionalPeerIDs, "Comma-delimited ID unconditional peers")
+	cmd.Flags().String("p2p.unconditional_peer_ids",
+		config.P2P.UnconditionalPeerIDs, "Comma-delimited ID unconditional peers")
 	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "Enable/disable UPNP port forwarding")
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
 	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "Enable/disable seed mode")
