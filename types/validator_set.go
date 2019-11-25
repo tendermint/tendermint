@@ -375,11 +375,6 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 	return updates, removals, err
 }
 
-type powerChange struct {
-	address Address
-	delta   int64
-}
-
 // Verifies a list of updates against a validator set, making sure the allowed
 // total voting power would not be exceeded if these updates would be applied to the set.
 //
@@ -818,26 +813,6 @@ func (valz ValidatorsByAddress) Less(i, j int) bool {
 }
 
 func (valz ValidatorsByAddress) Swap(i, j int) {
-	it := valz[i]
-	valz[i] = valz[j]
-	valz[j] = it
-}
-
-//-------------------------------------
-// Implements sort for sorting updates by voting power changes.
-
-// Sort validators by voting power.
-type updatesByPowerChange []powerChange
-
-func (valz updatesByPowerChange) Len() int {
-	return len(valz)
-}
-
-func (valz updatesByPowerChange) Less(i, j int) bool {
-	return valz[i].delta < valz[j].delta
-}
-
-func (valz updatesByPowerChange) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
