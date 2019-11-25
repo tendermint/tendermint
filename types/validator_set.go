@@ -331,7 +331,8 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	}
 }
 
-// Checks changes against duplicates, splits the changes in updates and removals, sorts them by address.
+// Checks changes against duplicates, splits the changes in updates and
+// removals, sorts them by address.
 //
 // Returns:
 // updates, removals - the sorted lists of updates and removals
@@ -353,22 +354,24 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 			err = fmt.Errorf("duplicate entry %v in %v", valUpdate, changes)
 			return nil, nil, err
 		}
-		if valUpdate.VotingPower < 0 {
-			err = fmt.Errorf("voting power can't be negative: %v", valUpdate)
+
+		switch {
+		case valUpdate.VotingPower < 0:
+			err = fmt.Errorf("voting power can't be negative: %d", valUpdate.VotingPower)
 			return nil, nil, err
-		}
-		if valUpdate.VotingPower > MaxTotalVotingPower {
-			err = fmt.Errorf("to prevent clipping/ overflow, voting power can't be higher than %v: %v ",
-				MaxTotalVotingPower, valUpdate)
+		case valUpdate.VotingPower > MaxTotalVotingPower:
+			err = fmt.Errorf("to prevent clipping/overflow, voting power can't be higher than %d, got %d",
+				MaxTotalVotingPower, valUpdate.VotingPower)
 			return nil, nil, err
-		}
-		if valUpdate.VotingPower == 0 {
+		case valUpdate.VotingPower == 0:
 			removals = append(removals, valUpdate)
-		} else {
+		default:
 			updates = append(updates, valUpdate)
 		}
+
 		prevAddr = valUpdate.Address
 	}
+
 	return updates, removals, err
 }
 
