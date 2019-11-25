@@ -434,7 +434,6 @@ func verifyUpdates(
 	return tvpAfterRemovals + removedPower, nil
 }
 
-// Computes the number of new validators in the update.
 func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
 	numNewValidators := 0
 	for _, valUpdate := range updates {
@@ -442,7 +441,6 @@ func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
 			numNewValidators++
 		}
 	}
-
 	return numNewValidators
 }
 
