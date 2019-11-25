@@ -391,14 +391,12 @@ type powerChange struct {
 //   Note that this will be < 2 * MaxTotalVotingPower in case high power validators are removed and
 //   validators are added/ updated with high power values.
 //
-// numNewValidators -  number of new validators
 // err - non-nil if the maximum allowed total voting power would be exceeded
-//
 func verifyUpdates(
 	updates []*Validator,
 	vals *ValidatorSet,
 	removedPower int64,
-) (tvpAfterUpdatesBeforeRemovals int64, numNewValidators int, err error) {
+) (tvpAfterUpdatesBeforeRemovals int64, err error) {
 
 	// create a temporary slice to compute the changes in power
 	powerChanges := make([]powerChange, 0, len(updates))
@@ -409,7 +407,6 @@ func verifyUpdates(
 		if val == nil {
 			// new validator
 			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower, address: address})
-			numNewValidators++
 		} else {
 			// Updated validator, add the difference in power to the total.
 			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower - val.VotingPower, address: address})
@@ -427,11 +424,25 @@ func verifyUpdates(
 			err = fmt.Errorf(
 				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
 				powerChange.address, MaxTotalVotingPower)
-			return 0, 0, err
+			return 0, err
 		}
 	}
 	tvpAfterUpdatesBeforeRemovals = tvpAfterRemovals + removedPower
-	return tvpAfterUpdatesBeforeRemovals, numNewValidators, nil
+	return tvpAfterUpdatesBeforeRemovals, nil
+}
+
+// Computes the number of new validators in the update.
+func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
+	numNewValidators := 0
+	for _, valUpdate := range updates {
+		address := valUpdate.Address
+		_, val := vals.GetByAddress(address)
+		if val == nil {
+			numNewValidators++
+		}
+	}
+
+	return numNewValidators
 }
 
 // Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'.
@@ -574,6 +585,11 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 		return fmt.Errorf("cannot process validators with voting power 0: %v", deletes)
 	}
 
+	// Check that the resulting set will not be empty.
+	if numNewValidators(updates, vals) == 0 && len(vals.Validators) == len(deletes) {
+		return errors.New("applying the validator changes would result in empty set")
+	}
+
 	// Verify that applying the 'deletes' against 'vals' will not result in error.
 	// Get the voting power that is going to be removed.
 	removedVotingPower, err := verifyRemovals(deletes, vals)
@@ -583,14 +599,9 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 
 	// Verify that applying the 'updates' against 'vals' will not result in error.
 	// Get the updated total voting power before removal. Note that this is < 2 * MaxTotalVotingPower
-	tvpAfterUpdatesBeforeRemovals, numNewValidators, err := verifyUpdates(updates, vals, removedVotingPower)
+	tvpAfterUpdatesBeforeRemovals, err := verifyUpdates(updates, vals, removedVotingPower)
 	if err != nil {
 		return err
-	}
-
-	// Check that the resulting set will not be empty.
-	if numNewValidators == 0 && len(vals.Validators) == len(deletes) {
-		return errors.New("applying the validator changes would result in empty set")
 	}
 
 	// Compute the priorities for updates.
