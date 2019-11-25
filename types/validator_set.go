@@ -400,37 +400,27 @@ func verifyUpdates(
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, numNewValidators int, err error) {
 
-	// powerChanges is a temporary slice that eventually stores the changes, starting with the
-	// decreases in validator powers.
+	// create a temporary slice to compute the changes in power
 	powerChanges := make([]powerChange, 0, len(updates))
-	powerIncreases := make([]powerChange, 0, len(updates))
 
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
 		if val == nil {
 			// new validator
-			powerIncreases = append(powerIncreases, powerChange{delta: valUpdate.VotingPower, address: address})
+			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower, address: address})
 			numNewValidators++
 		} else {
-			// updated validator, compute the power change
-			delta := valUpdate.VotingPower - val.VotingPower
-			change := powerChange{delta: delta, address: address}
-			if delta < 0 {
-				powerChanges = append(powerChanges, change)
-			} else {
-				powerIncreases = append(powerIncreases, change)
-			}
+			// Updated validator, add the difference in power to the total.
+			powerChanges = append(powerChanges, powerChange{delta: valUpdate.VotingPower - val.VotingPower, address: address})
 		}
 	}
 
-	// powerChanges only includes power decreases, append the increases
-	powerChanges = append(powerChanges, powerIncreases...)
+	// sort by increasing power changes so the decreases in power are processed first
+	sort.Sort(updatesByPowerChange(powerChanges))
 
-	// compute the total voting power after removals
 	tvpAfterRemovals := vals.TotalVotingPower() - removedPower
 
-	// compute the total voting power after updates starting with the power decreases
 	for _, powerChange := range powerChanges {
 		tvpAfterRemovals += powerChange.delta
 		if tvpAfterRemovals > MaxTotalVotingPower {
@@ -826,6 +816,26 @@ func (valz ValidatorsByAddress) Less(i, j int) bool {
 }
 
 func (valz ValidatorsByAddress) Swap(i, j int) {
+	it := valz[i]
+	valz[i] = valz[j]
+	valz[j] = it
+}
+
+//-------------------------------------
+// Implements sort for sorting updates by voting power changes.
+
+// Sort validators by voting power.
+type updatesByPowerChange []powerChange
+
+func (valz updatesByPowerChange) Len() int {
+	return len(valz)
+}
+
+func (valz updatesByPowerChange) Less(i, j int) bool {
+	return valz[i].delta < valz[j].delta
+}
+
+func (valz updatesByPowerChange) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
