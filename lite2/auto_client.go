@@ -62,7 +62,7 @@ func (c *AutoClient) autoUpdate() {
 				c.err <- err
 				continue
 			}
-			h, err := c.base.TrustedHeader(lastTrustedHeight + 1)
+			h, err := c.base.TrustedHeader(lastTrustedHeight+1, time.Now())
 			if err != nil {
 				c.err <- err
 				continue

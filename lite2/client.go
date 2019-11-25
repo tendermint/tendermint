@@ -106,9 +106,11 @@ type Client struct {
 	alternatives []provider.Provider
 
 	// Where trusted headers are stored.
-	trustedStore    store.Store
-	trustedHeader   *types.SignedHeader // H
-	trustedNextVals *types.ValidatorSet // H+1
+	trustedStore store.Store
+	// Highest trusted header from the store (height=H).
+	trustedHeader *types.SignedHeader
+	// Highest next validator set from the store (height=H+1).
+	trustedNextVals *types.ValidatorSet
 
 	logger log.Logger
 }
@@ -177,14 +179,18 @@ func (c *Client) SetLogger(l log.Logger) {
 	c.logger = l
 }
 
-// TrustedHeader returns a trusted header at the given height or nil if no such
-// header exist. It returns an error if there are some issues with the trusted
-// store, although that should not happen normally. TODO: mention how many
-// headers will be kept by the light client.
-//
-// 0 - the latest.
+// TrustedHeader returns a trusted header at the given height (0 - the latest)
+// or nil if no such header exist. 
+// TODO: mention how many headers will be kept by the light client.
+// .
 // height must be >= 0.
-func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
+//
+// It returns an error if:
+//		- the header expired (ErrOldHeaderExpired). In that case, update your
+//		client to more recent height;
+//		- there are some issues with the trusted store, although that should not
+//		happen normally.
+func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height < 0 {
 		return nil, errors.New("negative height")
 	}
@@ -197,7 +203,18 @@ func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 		}
 	}
 
-	return c.trustedStore.SignedHeader(height)
+	h, err := c.trustedStore.SignedHeader(height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure header can still be trusted.
+	expirationTime := h.Time.Add(c.trustingPeriod)
+	if !expirationTime.After(now) {
+		return nil, ErrOldHeaderExpired{expirationTime, now}
+	}
+
+	return h, nil
 }
 
 // LastTrustedHeight returns a last trusted height.

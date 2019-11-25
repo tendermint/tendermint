@@ -92,7 +92,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpccl
 	}
 
 	// AppHash for height H is in header H+1.
-	h, err := c.lc.TrustedHeader(resp.Height + 1)
+	h, err := c.lc.TrustedHeader(resp.Height+1, time.Now())
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(%d)", resp.Height+1)
 	}
@@ -192,7 +192,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 
 	// Verify each of the BlockMetas.
 	for _, meta := range res.BlockMetas {
-		h, err := c.lc.TrustedHeader(meta.Header.Height)
+		h, err := c.lc.TrustedHeader(meta.Header.Height, time.Now())
 		if err != nil {
 			return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
 		}
@@ -234,7 +234,7 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 
 	// Verify block.
-	h, err := c.lc.TrustedHeader(res.Block.Height)
+	h, err := c.lc.TrustedHeader(res.Block.Height, time.Now())
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Block.Height)
 	}
@@ -267,7 +267,7 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	}
 
 	// Verify commit.
-	h, err := c.lc.TrustedHeader(res.Height)
+	h, err := c.lc.TrustedHeader(res.Height, time.Now())
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
 	}
@@ -298,7 +298,7 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	// Validate the proof.
-	h, err := c.lc.TrustedHeader(res.Height)
+	h, err := c.lc.TrustedHeader(res.Height, time.Now())
 	if err != nil {
 		return res, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
 	}
