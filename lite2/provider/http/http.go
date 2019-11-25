@@ -64,12 +64,30 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		return nil, err
 	}
 
-	res, err := p.client.Validators(h)
+	const maxPerPage = 100
+	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
 		return nil, err
 	}
 
-	return types.NewValidatorSet(res.Validators), nil
+	var (
+		vals = res.Validators
+		page = 1
+	)
+
+	// Check if there are more validators.
+	for len(res.Validators) == maxPerPage {
+		res, err = p.client.Validators(h, page, maxPerPage)
+		if err != nil {
+			return nil, err
+		}
+		if len(res.Validators) > 0 {
+			vals = append(vals, res.Validators...)
+		}
+		page++
+	}
+
+	return types.NewValidatorSet(vals), nil
 }
 
 func validateHeight(height int64) (*int64, error) {

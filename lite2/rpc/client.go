@@ -217,14 +217,14 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 
 	// Validate res.
-	if err := res.BlockMeta.ValidateBasic(); err != nil {
+	if err := res.BlockID.ValidateBasic(); err != nil {
 		return nil, err
 	}
 	if err := res.Block.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	if bmH, bH := res.BlockMeta.Header.Hash(), res.Block.Hash(); !bytes.Equal(bmH, bH) {
-		return nil, errors.Errorf("BlockMeta#Header %X does not match with Block %X",
+	if bmH, bH := res.BlockID.Hash, res.Block.Hash(); !bytes.Equal(bmH, bH) {
+		return nil, errors.Errorf("BlockID %X does not match with Block %X",
 			bmH, bH)
 	}
 
@@ -309,8 +309,8 @@ func (c *Client) TxSearch(query string, prove bool, page, perPage int) (*ctypes.
 	return c.next.TxSearch(query, prove, page, perPage)
 }
 
-func (c *Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return c.next.Validators(height)
+func (c *Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return c.next.Validators(height, page, perPage)
 }
 
 func (c *Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
