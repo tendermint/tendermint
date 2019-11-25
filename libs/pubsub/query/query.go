@@ -29,7 +29,7 @@ type Query struct {
 	parser *QueryParser
 }
 
-// Condition represents a single condition within a query and consists of event
+// Condition represents a single condition within a query and consists of composite key
 // (e.g. "tx.gas"), operator (e.g. "=") and operand (e.g. "7").
 type Condition struct {
 	CompositeKey string
@@ -63,7 +63,7 @@ func (q *Query) String() string {
 	return q.str
 }
 
-// Operator is an operator that defines some kind of relation between event and
+// Operator is an operator that defines some kind of relation between composite key and
 // operand (equality, etc.).
 type Operator uint8
 

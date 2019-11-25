@@ -29,7 +29,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		},
 	}
 
-	// PublishEventTx adds 3 compositeKeys, so the query below should work
+	// PublishEventTx adds 3 composite keys, so the query below should work
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)

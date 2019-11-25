@@ -875,7 +875,7 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 // TxIndexConfig
 
 // TxIndexConfig defines the configuration for the transaction indexer,
-// including compositeKeys to index.
+// including composite keys to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
