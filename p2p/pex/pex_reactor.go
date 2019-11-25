@@ -100,6 +100,7 @@ func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
 	return r.ensurePeersPeriod / 3
 }
 
+// isMaxDialPeriodTarget checks if the addr exponential backoff target for or not
 func (r *PEXReactor) isMaxDialPeriodTarget(addr *p2p.NetAddress) bool {
 	return r.config.PersistentPeersMaxDialPeriod > 0 && r.Switch.IsPeerPersistent(addr)
 }
@@ -567,7 +568,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return errors.Wrapf(err, "dialing failed (attempts: %d, maxDialPeriodTarget: %t, " +
+		return errors.Wrapf(err, "dialing failed (attempts: %d, maxDialPeriodTarget: %t, "+
 			"persistent_peers_max_dial_period: %s, persistent_peer: %t)", attempts+1, maxDialPeriodTarget,
 			r.config.PersistentPeersMaxDialPeriod, r.Switch.IsPeerPersistent(addr))
 	}
