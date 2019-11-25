@@ -1247,41 +1247,43 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 }
 
 func TestValSetUpdateOverflowRelated(t *testing.T) {
-	// short name for test readability
-	big := MaxTotalVotingPower
 	testCases := []testVSetCfg{
 		{
 			name:         "1 no false overflow error messages for updates",
-			startVals:    []testVal{{"v1", 1}, {"v2", big - 1}},
-			updatedVals:  []testVal{{"v1", big - 1}, {"v2", 1}},
-			expectedVals: []testVal{{"v1", big - 1}, {"v2", 1}},
+			startVals:    []testVal{{"v1", 1}, {"v2", MaxTotalVotingPower - 1}},
+			updatedVals:  []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
+			expectedVals: []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
 			wantErr:      false,
 		},
 		{
 			// this test shows that it is important to apply the updates in the order of the change in power
 			// i.e. apply first updates with decreases in power, v2 change in this case.
 			name:         "2 no false overflow error messages for updates",
-			startVals:    []testVal{{"v1", 1}, {"v2", big - 1}},
-			updatedVals:  []testVal{{"v1", big/2 - 1}, {"v2", big / 2}},
-			expectedVals: []testVal{{"v1", big/2 - 1}, {"v2", big / 2}},
+			startVals:    []testVal{{"v1", 1}, {"v2", MaxTotalVotingPower - 1}},
+			updatedVals:  []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
+			expectedVals: []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
 			wantErr:      false,
 		},
 		{
 			name:         "3 no false overflow error messages for deletes",
-			startVals:    []testVal{{"v1", big - 2}, {"v2", 1}, {"v3", 1}},
+			startVals:    []testVal{{"v1", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
 			deletedVals:  []testVal{{"v1", 0}},
-			addedVals:    []testVal{{"v4", big - 2}},
-			expectedVals: []testVal{{"v2", 1}, {"v3", 1}, {"v4", big - 2}},
+			addedVals:    []testVal{{"v4", MaxTotalVotingPower - 2}},
+			expectedVals: []testVal{{"v2", 1}, {"v3", 1}, {"v4", MaxTotalVotingPower - 2}},
 			wantErr:      false,
 		},
 		{
-			name:         "4 no false overflow error messages for adds, updates and deletes",
-			startVals:    []testVal{{"v1", big / 4}, {"v2", big / 4}, {"v3", big / 4}, {"v4", big / 4}},
-			deletedVals:  []testVal{{"v2", 0}},
-			updatedVals:  []testVal{{"v1", big/2 - 2}, {"v3", big/2 - 3}, {"v4", 2}},
-			addedVals:    []testVal{{"v5", 3}},
-			expectedVals: []testVal{{"v1", big/2 - 2}, {"v3", big/2 - 3}, {"v4", 2}, {"v5", 3}},
-			wantErr:      false,
+			name: "4 no false overflow error messages for adds, updates and deletes",
+			startVals: []testVal{
+				{"v1", MaxTotalVotingPower / 4}, {"v2", MaxTotalVotingPower / 4},
+				{"v3", MaxTotalVotingPower / 4}, {"v4", MaxTotalVotingPower / 4}},
+			deletedVals: []testVal{{"v2", 0}},
+			updatedVals: []testVal{
+				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}},
+			addedVals: []testVal{{"v5", 3}},
+			expectedVals: []testVal{
+				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}, {"v5", 3}},
+			wantErr: false,
 		},
 		{
 			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
@@ -1289,8 +1291,9 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
 				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
 			updatedVals: []testVal{
-				{"v1", big}, {"v2", big}, {"v3", big}, {"v4", big}, {"v5", big},
-				{"v6", big}, {"v7", big}, {"v8", big}, {"v9", 8}},
+				{"v1", MaxTotalVotingPower}, {"v2", MaxTotalVotingPower}, {"v3", MaxTotalVotingPower},
+				{"v4", MaxTotalVotingPower}, {"v5", MaxTotalVotingPower}, {"v6", MaxTotalVotingPower},
+				{"v7", MaxTotalVotingPower}, {"v8", MaxTotalVotingPower}, {"v9", 8}},
 			expectedVals: []testVal{
 				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
 				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
@@ -1301,7 +1304,6 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 	for _, tt := range testCases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			// create a new validator set
 			valSet := createNewValidatorSet(tt.startVals)
 			verifyValidatorSet(t, valSet)
 

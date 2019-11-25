@@ -258,7 +258,8 @@ func (vals *ValidatorSet) Size() int {
 	return len(vals.Validators)
 }
 
-// Force recalculation of the set's total voting power.
+// Forces recalculation of the set's total voting power.
+// Panics if total voting power is bigger than MaxTotalVotingPower.
 func (vals *ValidatorSet) updateTotalVotingPower() {
 
 	sum := int64(0)
@@ -517,7 +518,7 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 // Checks that the validators to be removed are part of the validator set.
 // No changes are made to the validator set 'vals'.
-func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (int64, error) {
+func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (votingPower int64, err error) {
 
 	removedVotingPower := int64(0)
 	for _, valUpdate := range deletes {
