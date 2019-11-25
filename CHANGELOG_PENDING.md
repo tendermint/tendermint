@@ -2,6 +2,16 @@
 
 \*\*
 
+This release contains breaking changes to the `Block#Header`, specifically
+`NumTxs` and `TotalTxs` were removed (\#2521). Here's how this change affects
+different modules:
+
+- apps: it breaks the ABCI header field numbering
+- state: it breaks the format of `State` on disk
+- RPC: all RPC requests which expose the header broke
+- Go API: the `Header` broke
+- P2P: since blocks go over the wire, technically the P2P protocol broke
+
 Special thanks to external contributors on this release:
 @erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev
 
@@ -43,12 +53,13 @@ program](https://hackerone.com/tendermint).
 
 - Apps
 
-- [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
+  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
 
 - Go API
 
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
+  - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
 
 - Blockchain Protocol
@@ -57,6 +68,7 @@ program](https://hackerone.com/tendermint).
   - [types][\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
 
 - P2P Protocol
+
   - [p2p][\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
 
 - [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.

@@ -20,9 +20,9 @@ Respective versioned files can be found https://raw.githubusercontent.com/tender
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [the docs](https://tendermint.com/docs/introduction/#quick-start).
+For more background, see the [the docs](https://docs.tendermint.com/master/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://tendermint.com/docs/introduction/quick-start.html).
+To get started developing applications, see the [application developers guide](https://docs.tendermint.com/master/introduction/quick-start.html).
 
 ## How to use this image
 
