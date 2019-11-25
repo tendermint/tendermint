@@ -12,6 +12,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
@@ -112,6 +113,10 @@ func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) *HTTP {
 
 var _ Client = (*HTTP)(nil)
 
+func (c *HTTP) SetLogger(l log.Logger) {
+	c.WSEvents.SetLogger(l)
+}
+
 // NewBatch creates a new batch client for this HTTP client.
 func (c *HTTP) NewBatch() *BatchHTTP {
 	rpcBatch := c.rpc.NewRequestBatch()
@@ -170,7 +175,10 @@ func (c *baseRPCClient) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.Resul
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
-func (c *baseRPCClient) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQueryWithOptions(
+	path string,
+	data cmn.HexBytes,
+	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.caller.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "prove": opts.Prove},
@@ -345,9 +353,13 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int) (*
 	return result, nil
 }
 
-func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, error) {
+func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.caller.Call("validators", map[string]interface{}{"height": height}, result)
+	_, err := c.caller.Call("validators", map[string]interface{}{
+		"height":   height,
+		"page":     page,
+		"per_page": perPage,
+	}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}
@@ -397,6 +409,7 @@ func (w *WSEvents) OnStart() error {
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	w.ws.SetCodec(w.cdc)
+	w.ws.SetLogger(w.Logger)
 
 	err := w.ws.Start()
 	if err != nil {

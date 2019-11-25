@@ -53,6 +53,8 @@ type ValidatorSet struct {
 // the new ValidatorSet will have an empty list of Validators.
 // The addresses of validators in `valz` must be unique otherwise the
 // function panics.
+// Note the validator set size has an implied limit equal to that of the MaxVotesCount -
+// commits by a validator set larger than this will fail validation.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{}
 	err := vals.updateWithChangeSet(valz, false)
@@ -380,7 +382,10 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 // 'updates' should be a list of proper validator changes, i.e. they have been verified
 // by processChanges for duplicates and invalid values.
 // No changes are made to the validator set 'vals'.
-func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, numNewValidators int, err error) {
+func verifyUpdates(
+	updates []*Validator,
+	vals *ValidatorSet,
+) (updatedTotalVotingPower int64, numNewValidators int, err error) {
 
 	updatedTotalVotingPower = vals.TotalVotingPower()
 
@@ -395,13 +400,14 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVoting
 			// Updated validator, add the difference in power to the total.
 			updatedTotalVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
-		overflow := updatedTotalVotingPower > MaxTotalVotingPower
-		if overflow {
-			err = fmt.Errorf(
-				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				valUpdate, MaxTotalVotingPower)
-			return 0, 0, err
-		}
+	}
+
+	overflow := updatedTotalVotingPower > MaxTotalVotingPower
+	if overflow {
+		err = fmt.Errorf(
+			"failed to add/update validator, total voting power would exceed the max allowed %v",
+			MaxTotalVotingPower)
+		return 0, 0, err
 	}
 
 	return updatedTotalVotingPower, numNewValidators, nil
@@ -613,7 +619,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
@@ -681,13 +687,13 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			continue
 		}
 		if precommit.Height != height {
-			return errors.Errorf("Blocks don't match - %d vs %d", round, precommit.Round)
+			return errors.Errorf("blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
-			return errors.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return errors.Errorf("invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != PrecommitType {
-			return errors.Errorf("Invalid commit -- not precommit @ index %v", idx)
+			return errors.Errorf("invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.
 		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
@@ -699,7 +705,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			return errors.Errorf("invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {

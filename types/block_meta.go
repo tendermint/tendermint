@@ -6,17 +6,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BlockMeta contains meta information about a block - namely, it's ID and Header.
+// BlockMeta contains meta information.
 type BlockMeta struct {
-	BlockID BlockID `json:"block_id"` // the block hash and partsethash
-	Header  Header  `json:"header"`   // The block's Header
+	BlockID   BlockID `json:"block_id"`
+	BlockSize int     `json:"block_size"`
+	Header    Header  `json:"header"`
+	NumTxs    int     `json:"num_txs"`
 }
 
-// NewBlockMeta returns a new BlockMeta from the block and its blockParts.
+// NewBlockMeta returns a new BlockMeta.
 func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 	return &BlockMeta{
-		BlockID: BlockID{block.Hash(), blockParts.Header()},
-		Header:  block.Header,
+		BlockID:   BlockID{block.Hash(), blockParts.Header()},
+		BlockSize: block.Size(),
+		Header:    block.Header,
+		NumTxs:    len(block.Data.Txs),
 	}
 }
 

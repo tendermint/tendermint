@@ -111,16 +111,28 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:26658", "address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress,
+		"address",
+		"",
+		"tcp://0.0.0.0:26658",
+		"address of application socket")
 	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose,
+		"verbose",
+		"v",
+		false,
+		"print the command and results as if it were a console session")
 	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
 func addQueryFlags() {
 	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
 	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve,
+		"prove",
+		"",
+		false,
+		"whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {
@@ -338,7 +350,7 @@ LOOP:
 		line, more, err := bufReader.ReadLine()
 		switch {
 		case more:
-			return errors.New("Input line is too long")
+			return errors.New("input line is too long")
 		case err == io.EOF:
 			break LOOP
 		case len(line) == 0:
@@ -362,7 +374,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			return errors.New("Input is too long")
+			return errors.New("input is too long")
 		} else if err != nil {
 			return err
 		}
@@ -718,14 +730,14 @@ func stringOrHexToBytes(s string) ([]byte, error) {
 	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
-			err = fmt.Errorf("Error decoding hex argument: %s", err.Error())
+			err = fmt.Errorf("error decoding hex argument: %s", err.Error())
 			return nil, err
 		}
 		return b, nil
 	}
 
 	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
-		err := fmt.Errorf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
+		err := fmt.Errorf("invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
 		return nil, err
 	}
 

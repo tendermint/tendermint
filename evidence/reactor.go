@@ -154,7 +154,10 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 
 // Returns the message to send the peer, or nil if the evidence is invalid for the peer.
 // If message is nil, return true if we should sleep and try again.
-func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
+func (evR EvidenceReactor) checkSendEvidenceMessage(
+	peer p2p.Peer,
+	ev types.Evidence,
+) (msg EvidenceMessage, retry bool) {
 	// make sure the peer is up to date
 	evHeight := ev.Height()
 	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
@@ -178,7 +181,14 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 		// evidence is too old, skip
 		// NOTE: if evidence is too old for an honest peer,
 		// then we're behind and either it already got committed or it never will!
-		evR.Logger.Info("Not sending peer old evidence", "peerHeight", peerHeight, "evHeight", evHeight, "maxAge", maxAge, "peer", peer)
+		evR.Logger.Info(
+			"Not sending peer old evidence",
+			"peerHeight", peerHeight,
+			"evHeight", evHeight,
+			"maxAge", maxAge,
+			"peer", peer,
+		)
+
 		return nil, false
 	}
 
@@ -208,7 +218,7 @@ func RegisterEvidenceMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -225,7 +235,7 @@ type EvidenceListMessage struct {
 func (m *EvidenceListMessage) ValidateBasic() error {
 	for i, ev := range m.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
-			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
 	}
 	return nil

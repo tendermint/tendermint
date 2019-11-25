@@ -51,7 +51,12 @@ func CreateRandomPeer(outbound bool) *peer {
 func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
-		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656", cmn.RandBytes(20), cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256)
+		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
+			cmn.RandBytes(20),
+			cmn.RandInt()%256,
+			cmn.RandInt()%256,
+			cmn.RandInt()%256,
+			cmn.RandInt()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
@@ -66,16 +71,20 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 //------------------------------------------------------------------
 // Connects switches via arbitrary net.Conn. Used for testing.
 
-const TEST_HOST = "localhost"
+const TestHost = "localhost"
 
 // MakeConnectedSwitches returns n switches, connected according to the connect func.
 // If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(cfg *config.P2PConfig,
+	n int,
+	initSwitch func(int, *Switch) *Switch,
+	connect func([]*Switch, int, int),
+) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {

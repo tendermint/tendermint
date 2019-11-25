@@ -114,11 +114,9 @@ func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
-		ChainID:  chainID,
-		Height:   height,
-		Time:     bTime,
-		NumTxs:   int64(len(txs)),
-		TotalTxs: int64(len(txs)),
+		ChainID: chainID,
+		Height:  height,
+		Time:    bTime,
 		// LastBlockID
 		// LastCommitHash
 		ValidatorsHash:     valset.Hash(),

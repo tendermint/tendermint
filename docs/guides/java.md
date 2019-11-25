@@ -1,3 +1,7 @@
+---
+order: 3
+---
+
 # Creating an application in Java
 
 ## Guide Assumptions

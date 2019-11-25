@@ -26,7 +26,11 @@ func createTestMConnection(conn net.Conn) *MConnection {
 	return c
 }
 
-func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+func createMConnectionWithCallbacks(
+	conn net.Conn,
+	onReceive func(chID byte, msgBytes []byte),
+	onError func(r interface{}),
+) *MConnection {
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond

@@ -106,7 +106,7 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		err = fmt.Errorf("expected height >= 1, got height %v", height)
 		return
 	}
-	res, err := p.client.Validators(&height)
+	res, err := p.client.Validators(&height, 0, 0)
 	if err != nil {
 		// TODO pass through other types of errors.
 		return nil, lerr.ErrUnknownValidators(chainID, height)

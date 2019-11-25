@@ -40,7 +40,7 @@ func TestValidateBlock(t *testing.T) {
 		{
 			block:        &types.Block{Header: types.Header{Height: 10}},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "Header heights mismatched",
+			wantErr:      "header heights mismatched",
 		},
 
 		{
@@ -53,7 +53,7 @@ func TestValidateBlock(t *testing.T) {
 		{
 			block:        &types.Block{Header: hdrHeight11},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "Headers don't match",
+			wantErr:      "headers don't match",
 		},
 
 		{
@@ -72,7 +72,7 @@ func TestValidateBlock(t *testing.T) {
 				Header: &types.Header{Height: 11},
 				Commit: types.NewCommit(types.BlockID{Hash: []byte("0xDEADBEEF")}, nil),
 			},
-			wantErr: "Data hash doesn't match header",
+			wantErr: "data hash doesn't match header",
 		},
 		{
 			block: &types.Block{
@@ -119,7 +119,7 @@ func TestValidateBlockMeta(t *testing.T) {
 		{
 			meta:         &types.BlockMeta{Header: types.Header{Height: 10}},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "Header heights mismatched",
+			wantErr:      "header heights mismatched",
 		},
 
 		{
@@ -132,7 +132,7 @@ func TestValidateBlockMeta(t *testing.T) {
 		{
 			meta:         &types.BlockMeta{Header: hdrHeight11},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "Headers don't match",
+			wantErr:      "headers don't match",
 		},
 
 		{
@@ -152,7 +152,7 @@ func TestValidateBlockMeta(t *testing.T) {
 			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11, DataHash: deadBeefHash},
 			},
-			wantErr: "Headers don't match",
+			wantErr: "headers don't match",
 		},
 
 		{
@@ -171,7 +171,7 @@ func TestValidateBlockMeta(t *testing.T) {
 				},
 				Commit: types.NewCommit(types.BlockID{Hash: []byte("DEADBEEF")}, nil),
 			},
-			wantErr: "Headers don't match",
+			wantErr: "headers don't match",
 		},
 
 		{
@@ -190,7 +190,7 @@ func TestValidateBlockMeta(t *testing.T) {
 				},
 				Commit: types.NewCommit(types.BlockID{Hash: []byte("DEADBEEF")}, nil),
 			},
-			wantErr: "Headers don't match",
+			wantErr: "headers don't match",
 		},
 		// End Headers don't match test
 	}

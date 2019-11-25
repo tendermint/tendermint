@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fmt"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 
@@ -107,11 +106,6 @@ func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 	sh := resCommit.SignedHeader
 
-	// now verify
-	err = ValidateBlockMeta(resBlock.BlockMeta, sh)
-	if err != nil {
-		return nil, err
-	}
 	err = ValidateBlock(resBlock.Block, sh)
 	if err != nil {
 		return nil, err
@@ -170,7 +164,7 @@ func (w Wrapper) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						ctx.JSONReq.ID,
 						resultEvent,
 					))
 			case <-w.Client.Quit():

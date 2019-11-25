@@ -44,11 +44,9 @@ func (tm2pb) Header(header *Header) abci.Header {
 			Block: header.Version.Block.Uint64(),
 			App:   header.Version.App.Uint64(),
 		},
-		ChainID:  header.ChainID,
-		Height:   header.Height,
-		Time:     header.Time,
-		NumTxs:   header.NumTxs,
-		TotalTxs: header.TotalTxs,
+		ChainID: header.ChainID,
+		Height:  header.Height,
+		Time:    header.Time,
 
 		LastBlockId: TM2PB.BlockID(header.LastBlockID),
 
@@ -190,7 +188,7 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 	switch pubKey.Type {
 	case ABCIPubKeyTypeEd25519:
 		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d",
+			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
 				len(pubKey.Data), ed25519.PubKeyEd25519Size)
 		}
 		var pk ed25519.PubKeyEd25519
@@ -198,14 +196,14 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
 		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
-			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d",
+			return nil, fmt.Errorf("invalid size for PubKeySecp256k1. Got %d, expected %d",
 				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
 		}
 		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	default:
-		return nil, fmt.Errorf("Unknown pubkey type %v", pubKey.Type)
+		return nil, fmt.Errorf("unknown pubkey type %v", pubKey.Type)
 	}
 }
 

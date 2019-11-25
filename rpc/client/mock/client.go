@@ -90,7 +90,10 @@ func (c Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQue
 	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (c Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c Client) ABCIQueryWithOptions(
+	path string,
+	data cmn.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 
@@ -150,8 +153,8 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(&rpctypes.Context{}, height)
+func (c Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return core.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 
 func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

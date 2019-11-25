@@ -109,7 +109,7 @@ func _TestGCFifo(t *testing.T) {
 	_ = done
 
 	if *gcCount != numElements {
-		t.Errorf("Expected gcCount to be %v, got %v", numElements,
+		t.Errorf("expected gcCount to be %v, got %v", numElements,
 			*gcCount)
 	}
 }
@@ -157,7 +157,7 @@ func _TestGCRandom(t *testing.T) {
 	time.Sleep(time.Second * 3)
 
 	if gcCount != numElements {
-		t.Errorf("Expected gcCount to be %v, got %v", numElements,
+		t.Errorf("expected gcCount to be %v, got %v", numElements,
 			gcCount)
 	}
 }

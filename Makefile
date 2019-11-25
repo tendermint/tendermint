@@ -7,7 +7,7 @@ GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
+INCLUDE = -I=${GOPATH}/src/github.com/tendermint/tendermint -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
@@ -47,7 +47,7 @@ protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 	## See https://stackoverflow.com/a/25518702
 	## Note the $< here is substituted for the %.proto
 	## Note the $@ here is substituted for the %.pb.go
-	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
+	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
 
 ########################################
 ### Build ABCI
@@ -70,19 +70,6 @@ install_abci:
 # TODO add abci to these scripts
 dist:
 	@BUILD_TAGS=$(BUILD_TAGS) sh -c "'$(CURDIR)/scripts/dist.sh'"
-
-#For ABCI and libs
-get_protoc:
-	@# https://github.com/google/protobuf/releases
-	curl -L https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz | tar xvz && \
-		cd protobuf-3.6.1 && \
-		DIST_LANG=cpp ./configure && \
-		make && \
-		make check && \
-		sudo make install && \
-		sudo ldconfig && \
-		cd .. && \
-		rm -rf protobuf-3.6.1
 
 go-mod-cache: go.sum
 	@echo "--> Download go modules to local cache"
@@ -152,6 +139,26 @@ lint:
 	@golangci-lint run
 
 DESTINATION = ./index.html.md
+
+###########################################################
+### Documentation
+
+build-docs:
+	cd docs && \
+	while read p; do \
+		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
+		mkdir -p ~/output/$${p} ; \
+		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
+		cp ~/output/$${p}/index.html ~/output ; \
+	done < versions ;
+
+sync-docs:
+	cd ~/output && \
+	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \
+	echo "CI job = ${CIRCLE_BUILD_URL}" >> version.html ; \
+	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
+	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
+.PHONY: sync-docs
 
 ###########################################################
 ### Docker image
@@ -227,7 +234,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt rpc-docs build-linux localnet-start \
+ 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
  	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux

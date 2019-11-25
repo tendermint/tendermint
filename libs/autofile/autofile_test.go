@@ -50,10 +50,10 @@ func TestSIGHUP(t *testing.T) {
 
 	// Both files should exist
 	if body := cmn.MustReadFile(name + "_old"); string(body) != "Line 1\nLine 2\n" {
-		t.Errorf("Unexpected body %s", body)
+		t.Errorf("unexpected body %s", body)
 	}
 	if body := cmn.MustReadFile(name); string(body) != "Line 3\nLine 4\n" {
-		t.Errorf("Unexpected body %s", body)
+		t.Errorf("unexpected body %s", body)
 	}
 }
 

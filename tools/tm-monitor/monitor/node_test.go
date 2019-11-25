@@ -28,16 +28,16 @@ func TestNodeStartStop(t *testing.T) {
 }
 
 func TestNodeNewBlockReceived(t *testing.T) {
-	blockCh := make(chan tmtypes.Header, 100)
+	blockCh := make(chan *tmtypes.Block, 100)
 	n, emMock := startValidatorNode(t)
 	defer n.Stop()
 	n.SendBlocksTo(blockCh)
 
-	blockHeader := tmtypes.Header{Height: 5}
-	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{Header: blockHeader})
+	block := &tmtypes.Block{Header: tmtypes.Header{Height: 5}}
+	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlock{Block: block})
 
 	assert.Equal(t, int64(5), n.Height)
-	assert.Equal(t, blockHeader, <-blockCh)
+	assert.Equal(t, block, <-blockCh)
 }
 
 func TestNodeNewBlockLatencyReceived(t *testing.T) {
@@ -79,13 +79,16 @@ func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter)
 
 	stubs := make(map[string]interface{})
 	pubKey := ed25519.GenPrivKey().PubKey()
-	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
+	stubs["validators"] = ctypes.ResultValidators{
+		BlockHeight: blockHeight,
+		Validators:  []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)},
+	}
 	stubs["status"] = ctypes.ResultStatus{ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey}}
 	cdc := amino.NewCodec()
-	rpcClientMock := &mock.RpcClient{Stubs: stubs}
+	rpcClientMock := &mock.RPCClient{Stubs: stubs}
 	rpcClientMock.SetCodec(cdc)
 
-	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:26657", emMock, rpcClientMock)
+	n = monitor.NewNodeWithEventMeterAndRPCClient("tcp://127.0.0.1:26657", emMock, rpcClientMock)
 
 	err := n.Start()
 	require.Nil(t, err)

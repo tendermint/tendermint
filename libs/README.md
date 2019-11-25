@@ -19,11 +19,6 @@ Clist provides a linked list that is safe for concurrent access by many readers.
 
 Common provides a hodgepodge of useful functions.
 
-## db
-
-DB provides a database interface and a number of implementions, including ones using an in-memory map, the filesystem directory structure,
-an implemention of LevelDB in Go, and the official LevelDB in C.
-
 ## events
 
 Events is a synchronous PubSub package.

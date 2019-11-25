@@ -137,8 +137,9 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: maxMsgSize,
 		},
 		{
-			ID:                  DataChannel, // maybe split between gossiping current block and catchup stuff
-			Priority:            10,          // once we gossip the whole block there's nothing left to send until next height or round
+			ID: DataChannel, // maybe split between gossiping current block and catchup stuff
+			// once we gossip the whole block there's nothing left to send until next height or round
+			Priority:            10,
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: maxMsgSize,
@@ -500,10 +501,12 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					panic(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
-						prs.Height, conR.conS.blockStore.Height()))
+					heightLogger.Error("Failed to load block meta",
+						"blockstoreHeight", conR.conS.blockStore.Height())
+					time.Sleep(conR.conS.config.PeerGossipSleepDuration)
+				} else {
+					ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
 				}
-				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
 				// continue the loop since prs is a copy and not effected by this initialization
 				continue OUTER_LOOP
 			}
@@ -670,7 +673,11 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+func (conR *ConsensusReactor) gossipVotesForHeight(
+	logger log.Logger,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState) bool {
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
@@ -893,8 +900,8 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 //-----------------------------------------------------------------------------
 
 var (
-	ErrPeerStateHeightRegression = errors.New("Error peer state height regression")
-	ErrPeerStateInvalidStartTime = errors.New("Error peer state invalid startTime")
+	ErrPeerStateHeightRegression = errors.New("error peer state height regression")
+	ErrPeerStateInvalidStartTime = errors.New("error peer state invalid startTime")
 )
 
 // PeerState contains the known state of a peer, including its connection and
@@ -1119,7 +1126,13 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			panic(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			panic(fmt.Sprintf(
+				"Conflicting CatchupCommitRound. Height: %v,
+				Orig: %v,
+				New: %v",
+				height,
+				ps.CatchupCommitRound,
+				round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {
@@ -1211,7 +1224,11 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int, type_ types.SignedMsgType, index int) {
-	logger := ps.logger.With("peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", fmt.Sprintf("%d/%d", height, round))
+	logger := ps.logger.With(
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
@@ -1384,7 +1401,7 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg ConsensusMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -1405,20 +1422,20 @@ type NewRoundStepMessage struct {
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !m.Step.IsValid() {
-		return errors.New("Invalid Step")
+		return errors.New("invalid Step")
 	}
 
 	// NOTE: SecondsSinceStartTime may be negative
 
 	if (m.Height == 1 && m.LastCommitRound != -1) ||
 		(m.Height > 1 && m.LastCommitRound < -1) { // TODO: #2737 LastCommitRound should always be >= 0 for heights > 1
-		return errors.New("Invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
+		return errors.New("invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
 	}
 	return nil
 }
@@ -1445,18 +1462,24 @@ type NewValidBlockMessage struct {
 // ValidateBasic performs basic validation.
 func (m *NewValidBlockMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
+		return fmt.Errorf("wrong BlockPartsHeader: %v", err)
+	}
+	if m.BlockParts.Size() == 0 {
+		return errors.New("Empty BlockParts")
 	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
-		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
+		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
+	}
+	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }
@@ -1496,13 +1519,16 @@ type ProposalPOLMessage struct {
 // ValidateBasic performs basic validation.
 func (m *ProposalPOLMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.ProposalPOLRound < 0 {
-		return errors.New("Negative ProposalPOLRound")
+		return errors.New("negative ProposalPOLRound")
 	}
 	if m.ProposalPOL.Size() == 0 {
-		return errors.New("Empty ProposalPOL bit array")
+		return errors.New("empty ProposalPOL bit array")
+	}
+	if m.ProposalPOL.Size() > types.MaxVotesCount {
+		return errors.Errorf("ProposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
 	}
 	return nil
 }
@@ -1524,13 +1550,13 @@ type BlockPartMessage struct {
 // ValidateBasic performs basic validation.
 func (m *BlockPartMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Part: %v", err)
+		return fmt.Errorf("wrong Part: %v", err)
 	}
 	return nil
 }
@@ -1570,16 +1596,16 @@ type HasVoteMessage struct {
 // ValidateBasic performs basic validation.
 func (m *HasVoteMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if m.Index < 0 {
-		return errors.New("Negative Index")
+		return errors.New("negative Index")
 	}
 	return nil
 }
@@ -1602,16 +1628,16 @@ type VoteSetMaj23Message struct {
 // ValidateBasic performs basic validation.
 func (m *VoteSetMaj23Message) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	return nil
 }
@@ -1635,18 +1661,21 @@ type VoteSetBitsMessage struct {
 // ValidateBasic performs basic validation.
 func (m *VoteSetBitsMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
+	if m.Votes.Size() > types.MaxVotesCount {
+		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	}
 	return nil
 }
 

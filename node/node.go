@@ -62,7 +62,7 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
+	dbType := dbm.BackendType(ctx.Config.DBBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
@@ -99,7 +99,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
 		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
 		if err != nil {
-			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPrivVal, err)
 		}
 		logger.Info("Upgrading PrivValidator file",
 			"old", oldPrivVal,
@@ -266,8 +266,14 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus types.BlockEventPublisher, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
+func doHandshake(
+	stateDB dbm.DB,
+	state sm.State,
+	blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc,
+	eventBus types.BlockEventPublisher,
+	proxyApp proxy.AppConns,
+	consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -400,7 +406,15 @@ func createConsensusReactor(config *cfg.Config,
 	return consensusReactor, consensusState
 }
 
-func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
+func createTransport(
+	config *cfg.Config,
+	nodeInfo p2p.NodeInfo,
+	nodeKey *p2p.NodeKey,
+	proxyApp proxy.AppConns,
+) (
+	*p2p.MultiplexTransport,
+	[]p2p.PeerFilterFunc,
+) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -839,7 +853,6 @@ func (n *Node) ConfigureRPC() {
 	pubKey := n.privValidator.GetPubKey()
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
@@ -1115,7 +1128,10 @@ var (
 // database, or creates one using the given genesisDocProvider and persists the
 // result to the database. On success this also returns the genesis doc loaded
 // through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+func LoadStateFromDBOrGenesisDocProvider(
+	stateDB dbm.DB,
+	genesisDocProvider GenesisDocProvider,
+) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
@@ -1138,7 +1154,7 @@ func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider Gene
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	b := db.Get(genesisDocKey)
 	if len(b) == 0 {
-		return nil, errors.New("Genesis doc not found")
+		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(b, &genDoc)

@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrPartSetUnexpectedIndex = errors.New("Error part set unexpected index")
-	ErrPartSetInvalidProof    = errors.New("Error part set invalid proof")
+	ErrPartSetUnexpectedIndex = errors.New("error part set unexpected index")
+	ErrPartSetInvalidProof    = errors.New("error part set invalid proof")
 )
 
 type Part struct {
@@ -26,10 +26,13 @@ type Part struct {
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
 	if part.Index < 0 {
-		return errors.New("Negative Index")
+		return errors.New("negative Index")
 	}
 	if len(part.Bytes) > BlockPartSizeBytes {
-		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
+	}
+	if err := part.Proof.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "wrong Proof")
 	}
 	return nil
 }
@@ -71,7 +74,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 // ValidateBasic performs basic validation.
 func (psh PartSetHeader) ValidateBasic() error {
 	if psh.Total < 0 {
-		return errors.New("Negative Total")
+		return errors.New("negative Total")
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {

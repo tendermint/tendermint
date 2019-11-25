@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -35,7 +36,7 @@ func TestBasicPartSet(t *testing.T) {
 		//t.Logf("\n%v", part)
 		added, err := partSet2.AddPart(part)
 		if !added || err != nil {
-			t.Errorf("Failed to add part %v, error: %v", i, err)
+			t.Errorf("failed to add part %v, error: %v", i, err)
 		}
 	}
 	// adding part with invalid index
@@ -72,7 +73,7 @@ func TestWrongProof(t *testing.T) {
 	part.Proof.Aunts[0][0] += byte(0x01)
 	added, err := partSet2.AddPart(part)
 	if added || err == nil {
-		t.Errorf("Expected to fail adding a part with bad trail.")
+		t.Errorf("expected to fail adding a part with bad trail.")
 	}
 
 	// Test adding a part with wrong bytes.
@@ -80,7 +81,7 @@ func TestWrongProof(t *testing.T) {
 	part.Bytes[0] += byte(0x01)
 	added, err = partSet2.AddPart(part)
 	if added || err == nil {
-		t.Errorf("Expected to fail adding a part with bad bytes.")
+		t.Errorf("expected to fail adding a part with bad bytes.")
 	}
 }
 
@@ -115,6 +116,13 @@ func TestPartValidateBasic(t *testing.T) {
 		{"Good Part", func(pt *Part) {}, false},
 		{"Negative index", func(pt *Part) { pt.Index = -1 }, true},
 		{"Too big part", func(pt *Part) { pt.Bytes = make([]byte, BlockPartSizeBytes+1) }, true},
+		{"Too big proof", func(pt *Part) {
+			pt.Proof = merkle.SimpleProof{
+				Total:    1,
+				Index:    1,
+				LeafHash: make([]byte, 1024*1024),
+			}
+		}, true},
 	}
 
 	for _, tc := range testCases {

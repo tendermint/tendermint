@@ -135,9 +135,13 @@ func TestProposerSelection1(t *testing.T) {
 		proposers = append(proposers, string(val.Address))
 		vset.IncrementProposerPriority(1)
 	}
-	expected := `foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo foo baz bar foo foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo`
+	expected := `foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar` +
+		` foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar` +
+		` foo baz foo foo bar foo baz foo foo bar foo baz foo foo foo baz bar foo foo foo baz` +
+		` foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo` +
+		` foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo`
 	if expected != strings.Join(proposers, " ") {
-		t.Errorf("Expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
+		t.Errorf("expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
 }
 
@@ -205,13 +209,31 @@ func TestProposerSelection2(t *testing.T) {
 	}
 
 	if propCount[0] != 40*N {
-		t.Fatalf("Expected prop count for validator with 4/12 of voting power to be %d/%d. Got %d/%d", 40*N, 120*N, propCount[0], 120*N)
+		t.Fatalf(
+			"Expected prop count for validator with 4/12 of voting power to be %d/%d. Got %d/%d",
+			40*N,
+			120*N,
+			propCount[0],
+			120*N,
+		)
 	}
 	if propCount[1] != 50*N {
-		t.Fatalf("Expected prop count for validator with 5/12 of voting power to be %d/%d. Got %d/%d", 50*N, 120*N, propCount[1], 120*N)
+		t.Fatalf(
+			"Expected prop count for validator with 5/12 of voting power to be %d/%d. Got %d/%d",
+			50*N,
+			120*N,
+			propCount[1],
+			120*N,
+		)
 	}
 	if propCount[2] != 30*N {
-		t.Fatalf("Expected prop count for validator with 3/12 of voting power to be %d/%d. Got %d/%d", 30*N, 120*N, propCount[2], 120*N)
+		t.Fatalf(
+			"Expected prop count for validator with 3/12 of voting power to be %d/%d. Got %d/%d",
+			30*N,
+			120*N,
+			propCount[2],
+			120*N,
+		)
 	}
 }
 
@@ -247,7 +269,15 @@ func TestProposerSelection3(t *testing.T) {
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
 			if !bytes.Equal(got, computed.Address) {
-				t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))
+				t.Fatalf(
+					fmt.Sprintf(
+						"vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)",
+						got,
+						computed.Address,
+						i,
+						j,
+					),
+				)
 			}
 		}
 
@@ -292,16 +322,16 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 	return NewValidatorSet(validators)
 }
 
-func (valSet *ValidatorSet) toBytes() []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(valSet)
+func (vals *ValidatorSet) toBytes() []byte {
+	bz, err := cdc.MarshalBinaryLengthPrefixed(vals)
 	if err != nil {
 		panic(err)
 	}
 	return bz
 }
 
-func (valSet *ValidatorSet) fromBytes(b []byte) {
-	err := cdc.UnmarshalBinaryLengthPrefixed(b, &valSet)
+func (vals *ValidatorSet) fromBytes(b []byte) {
+	err := cdc.UnmarshalBinaryLengthPrefixed(b, &vals)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)
@@ -324,6 +354,21 @@ func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
 	assert.Panics(t, shouldPanic)
 }
 
+func TestValidatorSetShouldNotErrorOnTemporalOverflow(t *testing.T) {
+	// Updating the validator set might trigger an Overflow error during the update process
+	valSet := NewValidatorSet([]*Validator{
+		{Address: []byte("b"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: 1, ProposerPriority: 0},
+	})
+
+	err := valSet.UpdateWithChangeSet([]*Validator{
+		{Address: []byte("b"), VotingPower: 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+	})
+
+	assert.NoError(t, err)
+}
+
 func TestAvgProposerPriority(t *testing.T) {
 	// Create Validator set without calling IncrementProposerPriority:
 	tcs := []struct {
@@ -331,10 +376,26 @@ func TestAvgProposerPriority(t *testing.T) {
 		want int64
 	}{
 		0: {ValidatorSet{Validators: []*Validator{{ProposerPriority: 0}, {ProposerPriority: 0}, {ProposerPriority: 0}}}, 0},
-		1: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}, {ProposerPriority: 0}}}, math.MaxInt64 / 3},
-		2: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}}}, math.MaxInt64 / 2},
-		3: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: math.MaxInt64}}}, math.MaxInt64},
-		4: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MinInt64}, {ProposerPriority: math.MinInt64}}}, math.MinInt64},
+		1: {
+			ValidatorSet{
+				Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}, {ProposerPriority: 0}},
+			}, math.MaxInt64 / 3,
+		},
+		2: {
+			ValidatorSet{
+				Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}},
+			}, math.MaxInt64 / 2,
+		},
+		3: {
+			ValidatorSet{
+				Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: math.MaxInt64}},
+			}, math.MaxInt64,
+		},
+		4: {
+			ValidatorSet{
+				Validators: []*Validator{{ProposerPriority: math.MinInt64}, {ProposerPriority: math.MinInt64}},
+			}, math.MinInt64,
+		},
 	}
 	for i, tc := range tcs {
 		got := tc.vs.computeAvgProposerPriority()
