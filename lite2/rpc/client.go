@@ -68,7 +68,9 @@ func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
 // XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
-func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes,
+	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+
 	res, err := c.next.ABCIQueryWithOptions(path, data, opts)
 	if err != nil {
 		return nil, err

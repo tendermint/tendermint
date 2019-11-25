@@ -180,7 +180,7 @@ func (c *Client) SetLogger(l log.Logger) {
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest)
-// or nil if no such header exist. 
+// or nil if no such header exist.
 // TODO: mention how many headers will be kept by the light client.
 // .
 // height must be >= 0.
@@ -303,7 +303,8 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
 
-		err = Verify(c.chainID, c.trustedHeader, c.trustedNextVals, interimHeader, c.trustedNextVals, c.trustingPeriod, now, c.trustLevel)
+		err = Verify(c.chainID, c.trustedHeader, c.trustedNextVals, interimHeader, c.trustedNextVals,
+			c.trustingPeriod, now, c.trustLevel)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}

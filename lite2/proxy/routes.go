@@ -48,133 +48,181 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 	}
 }
 
-func makeHealthFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
+type rpcHealthFunc func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error)
+
+func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
 		return c.Health()
 	}
 }
 
-func makeStatusFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+type rpcStatusFunc func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error)
+
+// nolint: interfacer
+func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status()
 	}
 }
 
-func makeNetInfoFunc(c *lrpc.Client) func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
+type rpcNetInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error)
+
+func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
 		return c.NetInfo()
 	}
 }
 
-func makeBlockchainInfoFunc(c *lrpc.Client) func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
+
+func makeBlockchainInfoFunc(c *lrpc.Client) rpcBlockchainInfoFunc {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 		return c.BlockchainInfo(minHeight, maxHeight)
 	}
 }
 
-func makeGenesisFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
+type rpcGenesisFunc func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error)
+
+func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 		return c.Genesis()
 	}
 }
 
-func makeBlockFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
+type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error)
+
+func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 		return c.Block(height)
 	}
 }
 
-func makeBlockResultsFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error) {
+type rpcBlockResultsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error)
+
+func makeBlockResultsFunc(c *lrpc.Client) rpcBlockResultsFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error) {
 		return c.BlockResults(height)
 	}
 }
 
-func makeCommitFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error) {
+type rpcCommitFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error)
+
+func makeCommitFunc(c *lrpc.Client) rpcCommitFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error) {
 		return c.Commit(height)
 	}
 }
 
-func makeTxFunc(c *lrpc.Client) func(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+type rpcTxFunc func(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error)
+
+func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 	return func(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 		return c.Tx(hash, prove)
 	}
 }
 
-func makeTxSearchFunc(c *lrpc.Client) func(ctx *rpctypes.Context, query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
+type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
+	page, perPage int) (*ctypes.ResultTxSearch, error)
+
+func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
 		return c.TxSearch(query, prove, page, perPage)
 	}
 }
 
-func makeValidatorsFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
+	page, perPage int) (*ctypes.ResultValidators, error)
+
+func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
 	return func(ctx *rpctypes.Context, height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 		return c.Validators(height, page, perPage)
 	}
 }
 
-func makeDumpConsensusStateFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
+type rpcDumpConsensusStateFunc func(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error)
+
+func makeDumpConsensusStateFunc(c *lrpc.Client) rpcDumpConsensusStateFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 		return c.DumpConsensusState()
 	}
 }
 
-func makeConsensusStateFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
+type rpcConsensusStateFunc func(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
+
+func makeConsensusStateFunc(c *lrpc.Client) rpcConsensusStateFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 		return c.ConsensusState()
 	}
 }
 
-func makeConsensusParamsFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+type rpcConsensusParamsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error)
+
+func makeConsensusParamsFunc(c *lrpc.Client) rpcConsensusParamsFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
 		return c.ConsensusParams(height)
 	}
 }
 
-func makeUnconfirmedTxsFunc(c *lrpc.Client) func(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+type rpcUnconfirmedTxsFunc func(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error)
+
+func makeUnconfirmedTxsFunc(c *lrpc.Client) rpcUnconfirmedTxsFunc {
 	return func(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 		return c.UnconfirmedTxs(limit)
 	}
 }
 
-func makeNumUnconfirmedTxsFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
+type rpcNumUnconfirmedTxsFunc func(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error)
+
+func makeNumUnconfirmedTxsFunc(c *lrpc.Client) rpcNumUnconfirmedTxsFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 		return c.NumUnconfirmedTxs()
 	}
 }
 
-func makeBroadcastTxCommitFunc(c *lrpc.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+type rpcBroadcastTxCommitFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
+
+func makeBroadcastTxCommitFunc(c *lrpc.Client) rpcBroadcastTxCommitFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return c.BroadcastTxCommit(tx)
 	}
 }
 
-func makeBroadcastTxSyncFunc(c *lrpc.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+type rpcBroadcastTxSyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+
+func makeBroadcastTxSyncFunc(c *lrpc.Client) rpcBroadcastTxSyncFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxSync(tx)
 	}
 }
 
-func makeBroadcastTxAsyncFunc(c *lrpc.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+type rpcBroadcastTxAsyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+
+func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxAsync(tx)
 	}
 }
 
-func makeABCIQueryFunc(c *lrpc.Client) func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
+
+func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQuery(path, data)
 	}
 }
 
-func makeABCIInfoFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
+type rpcABCIInfoFunc func(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error)
+
+func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
 		return c.ABCIInfo()
 	}
 }
 
-func makeBroadcastEvidenceFunc(c *lrpc.Client) func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+
+// nolint: interfacer
+func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ev)
 	}

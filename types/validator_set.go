@@ -755,7 +755,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			// Validate signature.
 			precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 			if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-				return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
+				return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
 			}
 
 			// Good precommit!
@@ -769,7 +769,9 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		}
 	}
 
-	if got, needed := talliedVotingPower, (vals.TotalVotingPower()*trustLevel.Numerator)/trustLevel.Denominator; got <= needed {
+	got := talliedVotingPower
+	needed := (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
+	if got <= needed {
 		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 
