@@ -607,7 +607,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 	talliedVotingPower := int64(0)
 	for idx, commitSig := range commit.Signatures {
-		if precommit == nil {
+		if commitSig.Absent() {
 			continue // OK, some signatures can be absent.
 		}
 
@@ -730,31 +730,28 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	}
 
 	talliedVotingPower := int64(0)
-	for idx, precommit := range commit.Precommits {
-		// skip absent and nil votes
-		// NOTE: do we want to check the validity of votes
-		// for nil?
-		if precommit == nil {
-			continue
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
-		_, val := vals.GetByAddress(precommit.ValidatorAddress)
+		_, val := vals.GetByAddress(commitSig.ValidatorAddress)
 		if val != nil {
 			// Validate signature.
-			precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-			if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-				return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
+			voteSignBytes := commit.VoteSignBytes(chainID, idx)
+			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
-			// Good precommit!
-			if blockID.Equals(precommit.BlockID) {
+			// Good!
+			if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 				talliedVotingPower += val.VotingPower
 			}
 			// else {
 			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
+			// signatures (~votes for nil) to measure validator availability.
 			// }
 		}
 	}
