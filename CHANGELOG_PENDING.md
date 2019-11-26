@@ -100,4 +100,6 @@ program](https://hackerone.com/tendermint).
 - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
 - [types] [\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
 - [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
+- [types] \#4164 Prevent temporary power overflows on validator updates (joint
+  efforts of @gchaincl and @ancazamfir)
 - [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
