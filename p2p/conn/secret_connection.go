@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -20,7 +21,6 @@ import (
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/nacl/box"
 
-	"github.com/gtank/merlin"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -98,9 +98,9 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	transcript := merlin.NewTranscript("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH")
 
-	transcript.AppendMessage([]byte("EPHEMERAL_LOWER_PUBLIC_KEYS"), loEphPub[:])
+	transcript.AppendMessage([]byte("EPHEMERAL_LOWER_PUBLIC_KEY"), loEphPub[:])
 
-	transcript.AppendMessage([]byte("EPHEMERAL_UPPER_PUBLIC_KEYS"), hiEphPub[:])
+	transcript.AppendMessage([]byte("EPHEMERAL_UPPER_PUBLIC_KEY"), hiEphPub[:])
 
 	// Check if the local ephemeral public key was the least, lexicographically
 	// sorted.
@@ -119,10 +119,11 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// from the dhSecret).
 	recvSecret, sendSecret := deriveSecrets(dhSecret, locIsLeast)
 
-	var challenge [32]byte
-	challengeSlice := transcript.ExtractBytes([]byte("SECRET_CONNECTION_MAC"), 32)
+	const challengeSize = 32
+	var challenge [challengeSize]byte
+	challengeSlice := transcript.ExtractBytes([]byte("SECRET_CONNECTION_MAC"), challengeSize)
 
-	copy(challenge[:], challengeSlice[0:32])
+	copy(challenge[:], challengeSlice[0:challengeSize])
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
