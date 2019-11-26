@@ -760,7 +760,7 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 
 	// Check ChainID.
 	if sh.ChainID != chainID {
-		return fmt.Errorf("header belongs to another chain '%s' not '%s'",
+		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'",
 			sh.ChainID, chainID)
 	}
 	// Check Height.
