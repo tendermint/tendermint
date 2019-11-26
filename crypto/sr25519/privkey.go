@@ -1,42 +1,13 @@
 package sr25519
 
 import (
-	"bytes"
 	"crypto/subtle"
-	"fmt"
 	"io"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	schnorrkel "github.com/ChainSafe/go-schnorrkel"
 )
-
-//-------------------------------------
-
-var _ crypto.PrivKey = PrivKeySr25519{}
-
-const (
-	PrivKeyAminoName = "tendermint/PrivKeySr25519"
-	PubKeyAminoName  = "tendermint/PubKeySr25519"
-
-	// SignatureSize is the size of an Edwards25519 signature. Namely the size of a compressed
-	// Sr25519 point, and a field element. Both of which are 32 bytes.
-	SignatureSize = 64
-)
-
-var cdc = amino.NewCodec()
-
-func init() {
-	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(PubKeySr25519{},
-		PubKeyAminoName, nil)
-
-	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(PrivKeySr25519{},
-		PrivKeyAminoName, nil)
-}
 
 // PrivKeySr25519 implements crypto.PrivKey.
 type PrivKeySr25519 [32]byte
@@ -96,7 +67,7 @@ func GenPrivKey() PrivKeySr25519 {
 	return genPrivKey(crypto.CReader())
 }
 
-// genPrivKey generates a new ed25519 private key using the provided reader.
+// genPrivKey generates a new sr25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKeySr25519 {
 	var seed [64]byte
 
@@ -121,66 +92,4 @@ func GenPrivKeyFromSecret(secret []byte) PrivKeySr25519 {
 	copy(bz[:], seed)
 	privKey, _ := schnorrkel.NewMiniSecretKeyFromRaw(bz)
 	return privKey.ExpandEd25519().Encode()
-}
-
-//-------------------------------------
-
-var _ crypto.PubKey = PubKeySr25519{}
-
-// PubKeyEd25519Size is the number of bytes in an Ed25519 signature.
-const PubKeySr25519Size = 32
-
-// PubKeyEd25519 implements crypto.PubKey for the Ed25519 signature scheme.
-type PubKeySr25519 [PubKeySr25519Size]byte
-
-// Address is the SHA256-20 of the raw pubkey bytes.
-func (pubKey PubKeySr25519) Address() crypto.Address {
-	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
-}
-
-// Bytes marshals the PubKey using amino encoding.
-func (pubKey PubKeySr25519) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
-	if err != nil {
-		panic(err)
-	}
-	return bz
-}
-
-func (pubKey PubKeySr25519) VerifyBytes(msg []byte, sig []byte) bool {
-	// make sure we use the same algorithm to sign
-	if len(sig) != SignatureSize {
-		return false
-	}
-	var sig64 [SignatureSize]byte
-	copy(sig64[:], sig)
-
-	publicKey := &(schnorrkel.PublicKey{})
-	err := publicKey.Decode(pubKey)
-	if err != nil {
-		return false
-	}
-
-	signingContext := schnorrkel.NewSigningContext([]byte{}, msg)
-
-	signature := &(schnorrkel.Signature{})
-	err = signature.Decode(sig64)
-	if err != nil {
-		return false
-	}
-
-	return publicKey.Verify(signature, signingContext)
-}
-
-func (pubKey PubKeySr25519) String() string {
-	return fmt.Sprintf("PubKeySr25519{%X}", pubKey[:])
-}
-
-// nolint: golint
-func (pubKey PubKeySr25519) Equals(other crypto.PubKey) bool {
-	if otherEd, ok := other.(PubKeySr25519); ok {
-		return bytes.Equal(pubKey[:], otherEd[:])
-	} else {
-		return false
-	}
 }
