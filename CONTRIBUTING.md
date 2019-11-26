@@ -10,7 +10,7 @@ main tendermint project, the following process leads to the best chance of
 landing changes in master.
 
 All contributions should start with an Issue. The issue helps capture the
-problem your trying to solve and allows early feedback.  Once the problem
+problem you're trying to solve and allows for early feedback.  Once the problem
 description has been captured by an issue, the process can proceed in different
 direction depending on how well defined the problem and proposed
 solution are.  If the change is simple and well understood, maintainers will +1
