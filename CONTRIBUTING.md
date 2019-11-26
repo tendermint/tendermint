@@ -16,7 +16,7 @@ direction depending on how well defined the problem and proposed
 solution are.  If the change is simple and well understood, maintainers will +1
 the issue and sign off on reviewing such a change when it’s ready Changes
 should start with a [draft pull](https://github.blog/2019-02-14-introducing-draft-pull-requests/) request against master. The draft signals that
-work is underway, even if it’s not ready for review When changes are ready for
+work is underway, even if it’s not ready for review. When changes are ready for
 review, they should be kept up to date with master If the issue is well
 understood but leads to some structural change to the codebase, any change
 should be preceded by an [Architectural Decision Record (ADR)](./docs/architecture/). The ADR will help build consensus on an overall
