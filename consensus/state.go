@@ -1461,20 +1461,26 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
-	missingValidators := 0
-	missingValidatorsPower := int64(0)
-	for i, val := range cs.Validators.Validators {
-		if i >= len(block.LastCommit.Signatures) {
-			break
-		}
-		commitSig := block.LastCommit.Signatures[i]
-		if commitSig.Absent() {
-			missingValidators++
-			missingValidatorsPower += val.VotingPower
+
+	var (
+		missingValidators      int
+		missingValidatorsPower int64
+	)
+	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
+	// Remember that the first LastCommit is intentionally empty, so it's not
+	// fair to increment missing validators number.
+	if height > 1 {
+		for i, val := range cs.Validators.Validators {
+			commitSig := block.LastCommit.Signatures[i]
+			if commitSig.Absent() {
+				missingValidators++
+				missingValidatorsPower += val.VotingPower
+			}
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 	byzantineValidatorsPower := int64(0)
 	for _, ev := range block.Evidence.Evidence {

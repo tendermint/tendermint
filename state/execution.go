@@ -332,16 +332,17 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		lastValSet = types.NewValidatorSet(nil)
 	}
 
-	for i, val := range lastValSet.Validators {
-		if i >= len(block.LastCommit.Signatures) {
-			break
+	// block.Height=1 -> LastCommitInfo.Votes are empty.
+	// Remember that the first LastCommit is intentionally empty, so it makes
+	// sense for LastCommitInfo.Votes to also be empty.
+	if block.Height > 1 {
+		for i, val := range lastValSet.Validators {
+				commitSig := block.LastCommit.Signatures[i]
+				voteInfos[i] = abci.VoteInfo{
+					Validator:       types.TM2PB.Validator(val),
+					SignedLastBlock: !commitSig.Absent(),
+				}
 		}
-		commitSig := block.LastCommit.Signatures[i]
-		voteInfo := abci.VoteInfo{
-			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: !commitSig.Absent(),
-		}
-		voteInfos[i] = voteInfo
 	}
 
 	for i, ev := range block.Evidence.Evidence {
