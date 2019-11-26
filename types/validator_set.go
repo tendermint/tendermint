@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
@@ -623,30 +624,28 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 	return vals.updateWithChangeSet(changes, true)
 }
 
-// VerifyCommit checks that +2/3 of the set had signed the given signBytes.
+// VerifyCommit verifies that +2/3 of the validator set signed this commit.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
-
-	if err := commit.ValidateBasic(); err != nil {
-		return err
-	}
 	if vals.Size() != len(commit.Precommits) {
 		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
 	}
-	if height != commit.Height() {
-		return NewErrInvalidCommitHeight(height, commit.Height())
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("invalid commit -- wrong block id: want %v got %v",
-			blockID, commit.BlockID)
+	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+		return err
 	}
 
 	talliedVotingPower := int64(0)
-
 	for idx, precommit := range commit.Precommits {
+		// skip absent and nil votes
+		// NOTE: do we want to check the validity of votes
+		// for nil?
 		if precommit == nil {
 			continue // OK, some precommits can be missing.
 		}
-		_, val := vals.GetByIndex(idx)
+
+		// The vals and commit have a 1-to-1 correspondance.
+		// This means we don't need the validator address or to do any lookup.
+		val := vals.Validators[idx]
+
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
@@ -662,10 +661,11 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// }
 	}
 
-	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
-		return nil
+	if got, needed := talliedVotingPower, vals.TotalVotingPower()*2/3; got <= needed {
+		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
-	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*2/3 + 1}
+
+	return nil
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -747,8 +747,77 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// }
 	}
 
-	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
-		return errTooMuchChange{oldVotingPower, oldVals.TotalVotingPower()*2/3 + 1}
+	if got, needed := oldVotingPower, oldVals.TotalVotingPower()*2/3; got <= needed {
+		return ErrTooMuchChange{Got: got, Needed: needed}
+	}
+	return nil
+}
+
+// VerifyCommitTrusting verifies that trustLevel ([1/3, 1]) of the validator
+// set signed this commit.
+// NOTE the given validators do not necessarily correspond to the validator set
+// for this commit, but there may be some intersection.
+func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
+	height int64, commit *Commit, trustLevel cmn.Fraction) error {
+
+	if trustLevel.Numerator*3 < trustLevel.Denominator || // < 1/3
+		trustLevel.Numerator > trustLevel.Denominator { // > 1
+		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
+	}
+
+	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+		return err
+	}
+
+	talliedVotingPower := int64(0)
+	for idx, precommit := range commit.Precommits {
+		// skip absent and nil votes
+		// NOTE: do we want to check the validity of votes
+		// for nil?
+		if precommit == nil {
+			continue
+		}
+
+		// We don't know the validators that committed this block, so we have to
+		// check for each vote if its validator is already known.
+		_, val := vals.GetByAddress(precommit.ValidatorAddress)
+		if val != nil {
+			// Validate signature.
+			precommitSignBytes := commit.VoteSignBytes(chainID, idx)
+			if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+				return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
+			}
+
+			// Good precommit!
+			if blockID.Equals(precommit.BlockID) {
+				talliedVotingPower += val.VotingPower
+			}
+			// else {
+			// It's OK that the BlockID doesn't match.  We include stray
+			// precommits to measure validator availability.
+			// }
+		}
+	}
+
+	got := talliedVotingPower
+	needed := (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
+	if got <= needed {
+		return ErrTooMuchChange{Got: got, Needed: needed}
+	}
+
+	return nil
+}
+
+func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
+	if err := commit.ValidateBasic(); err != nil {
+		return err
+	}
+	if height != commit.Height() {
+		return NewErrInvalidCommitHeight(height, commit.Height())
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
+			blockID, commit.BlockID)
 	}
 	return nil
 }
@@ -756,19 +825,21 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 //-----------------
 // ErrTooMuchChange
 
-// IsErrTooMuchChange checks if an error was caused by errTooMuchChange
+// IsErrTooMuchChange returns true if err is related to changes in validator
+// set exceeding max limit.
 func IsErrTooMuchChange(err error) bool {
-	_, ok := errors.Cause(err).(errTooMuchChange)
+	_, ok := errors.Cause(err).(ErrTooMuchChange)
 	return ok
 }
 
-type errTooMuchChange struct {
-	got    int64
-	needed int64
+// ErrTooMuchChange indicates that changes in the validator set exceeded max limit.
+type ErrTooMuchChange struct {
+	Got    int64
+	Needed int64
 }
 
-func (e errTooMuchChange) Error() string {
-	return fmt.Sprintf("Invalid commit -- insufficient old voting power: got %v, needed %v", e.got, e.needed)
+func (e ErrTooMuchChange) Error() string {
+	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %d, needed more than %d", e.Got, e.Needed)
 }
 
 //----------------

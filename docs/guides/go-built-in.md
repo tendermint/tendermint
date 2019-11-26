@@ -200,7 +200,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -319,7 +319,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://tendermint.com/docs/spec/abci/).
+[here](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
@@ -647,4 +647,4 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://tendermint.com/docs/).
+deeper, read [the docs](https://docs.tendermint.com/master/).
