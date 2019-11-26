@@ -27,16 +27,25 @@ import (
 )
 
 // 4 + 1024 == 1028 total frame size
-const dataLenSize = 4
-const dataMaxSize = 1024
-const totalFrameSize = dataMaxSize + dataLenSize
-const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
-const aeadKeySize = chacha20poly1305.KeySize
-const aeadNonceSize = chacha20poly1305.NonceSize
+const (
+	dataLenSize      = 4
+	dataMaxSize      = 1024
+	totalFrameSize   = dataMaxSize + dataLenSize
+	aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
+	aeadKeySize      = chacha20poly1305.KeySize
+	aeadNonceSize    = chacha20poly1305.NonceSize
+)
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
 	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
+
+	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
+	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
+	labelDHSecret                = []byte("DH_SECRET")
+	labelSecretConnectionMac     = []byte("SECRET_CONNECTION_MAC")
+
+	secretConnKeyAndChallengeGen = []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN")
 )
 
 // SecretConnection implements net.Conn.
@@ -98,9 +107,8 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	transcript := merlin.NewTranscript("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH")
 
-	transcript.AppendMessage([]byte("EPHEMERAL_LOWER_PUBLIC_KEY"), loEphPub[:])
-
-	transcript.AppendMessage([]byte("EPHEMERAL_UPPER_PUBLIC_KEY"), hiEphPub[:])
+	transcript.AppendMessage(labelEphemeralLowerPublicKey, loEphPub[:])
+	transcript.AppendMessage(labelEphemeralUpperPublicKey, hiEphPub[:])
 
 	// Check if the local ephemeral public key was the least, lexicographically
 	// sorted.
@@ -112,7 +120,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		return nil, err
 	}
 
-	transcript.AppendMessage([]byte("DH_SECRET"), dhSecret[:])
+	transcript.AppendMessage(labelDHSecret, dhSecret[:])
 
 	// Generate the secret used for receiving, sending, challenge via HKDF-SHA2
 	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key
@@ -121,7 +129,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	const challengeSize = 32
 	var challenge [challengeSize]byte
-	challengeSlice := transcript.ExtractBytes([]byte("SECRET_CONNECTION_MAC"), challengeSize)
+	challengeSlice := transcript.ExtractBytes(labelSecretConnectionMac, challengeSize)
 
 	copy(challenge[:], challengeSlice[0:challengeSize])
 
@@ -322,7 +330,7 @@ func deriveSecrets(
 	locIsLeast bool,
 ) (recvSecret, sendSecret *[aeadKeySize]byte) {
 	hash := sha256.New
-	hkdf := hkdf.New(hash, dhSecret[:], nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN"))
+	hkdf := hkdf.New(hash, dhSecret[:], nil, secretConnKeyAndChallengeGen)
 	// get enough data for 2 aead keys, and a 32 byte challenge
 	res := new([2*aeadKeySize + 32]byte)
 	_, err := io.ReadFull(hkdf, res[:])
