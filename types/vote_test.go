@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -43,19 +42,6 @@ func exampleVote(t byte) *Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
-}
-
-// Ensure that Vote and CommitSig have the same encoding.
-// This ensures using CommitSig isn't a breaking change.
-// This test will fail and can be removed once CommitSig contains only sigs and
-// timestamps.
-func TestVoteEncoding(t *testing.T) {
-	vote := examplePrecommit()
-	commitSig := vote.CommitSig()
-	cdc := amino.NewCodec()
-	bz1 := cdc.MustMarshalBinaryBare(vote)
-	bz2 := cdc.MustMarshalBinaryBare(commitSig)
-	assert.Equal(t, bz1, bz2)
 }
 
 func TestVoteSignable(t *testing.T) {

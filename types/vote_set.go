@@ -98,20 +98,23 @@ func (voteSet *VoteSet) ChainID() string {
 	return voteSet.chainID
 }
 
-func (voteSet *VoteSet) Height() int64 {
+// Implements VoteSetReader.
+func (voteSet *VoteSet) GetHeight() int64 {
 	if voteSet == nil {
 		return 0
 	}
 	return voteSet.height
 }
 
-func (voteSet *VoteSet) Round() int {
+// Implements VoteSetReader.
+func (voteSet *VoteSet) GetRound() int {
 	if voteSet == nil {
 		return -1
 	}
 	return voteSet.round
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) Type() byte {
 	if voteSet == nil {
 		return 0x00
@@ -119,6 +122,7 @@ func (voteSet *VoteSet) Type() byte {
 	return byte(voteSet.type_)
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) Size() int {
 	if voteSet == nil {
 		return 0
@@ -335,6 +339,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 	return nil
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) BitArray() *cmn.BitArray {
 	if voteSet == nil {
 		return nil
@@ -358,6 +363,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *cmn.BitArray {
 }
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
+// Implements VoteSetReader.
 func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	if voteSet == nil {
 		return nil
@@ -389,6 +395,7 @@ func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
 	return voteSet.maj23 != nil
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
@@ -556,11 +563,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	commitSigs := make([]*CommitSig, len(voteSet.votes))
+	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
 		commitSigs[i] = v.CommitSig()
 	}
-	return NewCommit(*voteSet.maj23, commitSigs)
+
+	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
 }
 
 //--------------------------------------------------------------------------------
@@ -607,8 +615,8 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
-	Height() int64
-	Round() int
+	GetHeight() int64
+	GetRound() int
 	Type() byte
 	Size() int
 	BitArray() *cmn.BitArray

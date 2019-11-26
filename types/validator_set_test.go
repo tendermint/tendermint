@@ -587,9 +587,12 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})
 
-	chainID := "mychainID"
-	blockID := BlockID{Hash: []byte("hello")}
-	height := int64(5)
+	// good
+	var (
+		chainID = "mychainID"
+		blockID = makeBlockIDRandom()
+		height  = int64(5)
+	)
 	vote := &Vote{
 		ValidatorAddress: v1.Address,
 		ValidatorIndex:   0,
@@ -602,12 +605,15 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
 	assert.NoError(t, err)
 	vote.Signature = sig
-	commit := NewCommit(blockID, []*CommitSig{vote.CommitSig()})
+	commit := NewCommit(vote.Height, vote.Round, blockID, []CommitSig{vote.CommitSig()})
 
-	badChainID := "notmychainID"
-	badBlockID := BlockID{Hash: []byte("goodbye")}
-	badHeight := height + 1
-	badCommit := NewCommit(blockID, []*CommitSig{nil})
+	// bad
+	var (
+		badChainID = "notmychainID"
+		badBlockID = BlockID{Hash: []byte("goodbye")}
+		badHeight  = height + 1
+		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}})
+	)
 
 	// test some error cases
 	// TODO: test more cases!
