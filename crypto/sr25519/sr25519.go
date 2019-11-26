@@ -7,7 +7,6 @@ import (
 	"io"
 
 	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
@@ -21,8 +20,9 @@ var _ crypto.PrivKey = PrivKeySr25519{}
 const (
 	PrivKeyAminoName = "tendermint/PrivKeySr25519"
 	PubKeyAminoName  = "tendermint/PubKeySr25519"
-	// Size of an Edwards25519 signature. Namely the size of a compressed
-	// Edwards25519 point, and a field element. Both of which are 32 bytes.
+
+	// SignatureSize is the size of an Edwards25519 signature. Namely the size of a compressed
+	// Sr25519 point, and a field element. Both of which are 32 bytes.
 	SignatureSize = 64
 )
 

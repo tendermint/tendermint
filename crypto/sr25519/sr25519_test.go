@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
-func TestSignAndValidateEd25519(t *testing.T) {
+func TestSignAndValidateSr25519(t *testing.T) {
 
 	privKey := sr25519.GenPrivKey()
 	pubKey := privKey.PubKey()
