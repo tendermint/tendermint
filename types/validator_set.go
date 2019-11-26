@@ -14,18 +14,17 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// MaxTotalVotingPower - the maximum allowed total voting power.
-// It needs to be sufficiently small to, in all cases:
-// 1. prevent clipping in incrementProposerPriority()
-// 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
-// (Proof of 1 is tricky, left to the reader).
-// It could be higher, but this is sufficiently large for our purposes,
-// and leaves room for defensive purposes.
-// PriorityWindowSizeFactor - is a constant that when multiplied with the total voting power gives
-// the maximum allowed distance between validator priorities.
-
 const (
-	MaxTotalVotingPower      = int64(math.MaxInt64) / 8
+	// MaxTotalVotingPower - the maximum allowed total voting power.
+	// It needs to be sufficiently small to, in all cases:
+	// 1. prevent clipping in incrementProposerPriority()
+	// 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
+	// (Proof of 1 is tricky, left to the reader).
+	// It could be higher, but this is sufficiently large for our purposes,
+	// and leaves room for defensive purposes.
+	MaxTotalVotingPower = int64(math.MaxInt64) / 8
+	// PriorityWindowSizeFactor - is a constant that when multiplied with the total voting power gives
+	// the maximum allowed distance between validator priorities.
 	PriorityWindowSizeFactor = 2
 )
 
@@ -67,12 +66,13 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	return vals
 }
 
-// Nil or empty validator sets are invalid.
+// IsNilOrEmpty returns true if validator set is nil or empty.
 func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
 }
 
-// Increment ProposerPriority and update the proposer on a copy, and return it.
+// CopyIncrementProposerPriority increments ProposerPriority and update the
+// proposer on a copy, and return it.
 func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet {
 	copy := vals.Copy()
 	copy.IncrementProposerPriority(times)
@@ -106,6 +106,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.Proposer = proposer
 }
 
+// RescalePriorities ...
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	if vals.IsNilOrEmpty() {
 		panic("empty validator set")
@@ -177,9 +178,8 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	diff := max - min
 	if diff < 0 {
 		return -1 * diff
-	} else {
-		return diff
 	}
+	return diff
 }
 
 func (vals *ValidatorSet) getValWithMostPriority() *Validator {
@@ -594,22 +594,21 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 	return vals.updateWithChangeSet(changes, true)
 }
 
-// VerifyCommit verifies that +2/3 of the validator set signed this commit.
-func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
-	if vals.Size() != len(commit.Precommits) {
-		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
+// VerifyCommit verifies +2/3 of the set had signed the given commit.
+func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
+	height int64, commit *Commit) error {
+
+	if vals.Size() != len(commit.Signatures) {
+		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
 	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
 		return err
 	}
 
 	talliedVotingPower := int64(0)
-	for idx, precommit := range commit.Precommits {
-		// skip absent and nil votes
-		// NOTE: do we want to check the validity of votes
-		// for nil?
-		if precommit == nil {
-			continue // OK, some precommits can be missing.
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
 
 		// The vals and commit have a 1-to-1 correspondance.
@@ -617,17 +616,17 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		val := vals.Validators[idx]
 
 		// Validate signature.
-		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
+		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
-		// Good precommit!
-		if blockID.Equals(precommit.BlockID) {
+		// Good!
+		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 			talliedVotingPower += val.VotingPower
 		}
 		// else {
 		// It's OK that the BlockID doesn't match.  We include stray
-		// precommits to measure validator availability.
+		// signatures (~votes for nil) to measure validator availability.
 		// }
 	}
 
@@ -680,40 +679,31 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	// Check old voting power.
 	oldVotingPower := int64(0)
 	seen := map[int]bool{}
-	round := commit.Round()
 
-	for idx, precommit := range commit.Precommits {
-		if precommit == nil {
-			continue
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
-		if precommit.Height != height {
-			return errors.Errorf("blocks don't match - %d vs %d", round, precommit.Round)
-		}
-		if precommit.Round != round {
-			return errors.Errorf("invalid commit -- wrong round: %v vs %v", round, precommit.Round)
-		}
-		if precommit.Type != PrecommitType {
-			return errors.Errorf("invalid commit -- not precommit @ index %v", idx)
-		}
+
 		// See if this validator is in oldVals.
-		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
+		oldIdx, val := oldVals.GetByAddress(commitSig.ValidatorAddress)
 		if val == nil || seen[oldIdx] {
 			continue // missing or double vote...
 		}
 		seen[oldIdx] = true
 
 		// Validate signature.
-		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return errors.Errorf("invalid commit -- invalid signature: %v", precommit)
+		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
-		// Good precommit!
-		if blockID.Equals(precommit.BlockID) {
+		// Good!
+		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 			oldVotingPower += val.VotingPower
 		}
 		// else {
 		// It's OK that the BlockID doesn't match.  We include stray
-		// precommits to measure validator availability.
+		// signatures (~votes for nil) to measure validator availability.
 		// }
 	}
 
@@ -740,31 +730,28 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	}
 
 	talliedVotingPower := int64(0)
-	for idx, precommit := range commit.Precommits {
-		// skip absent and nil votes
-		// NOTE: do we want to check the validity of votes
-		// for nil?
-		if precommit == nil {
-			continue
+	for idx, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue // OK, some signatures can be absent.
 		}
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
-		_, val := vals.GetByAddress(precommit.ValidatorAddress)
+		_, val := vals.GetByAddress(commitSig.ValidatorAddress)
 		if val != nil {
 			// Validate signature.
-			precommitSignBytes := commit.VoteSignBytes(chainID, idx)
-			if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-				return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
+			voteSignBytes := commit.VoteSignBytes(chainID, idx)
+			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
-			// Good precommit!
-			if blockID.Equals(precommit.BlockID) {
+			// Good!
+			if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
 				talliedVotingPower += val.VotingPower
 			}
 			// else {
 			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
+			// signatures (~votes for nil) to measure validator availability.
 			// }
 		}
 	}
@@ -782,8 +769,8 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 	if err := commit.ValidateBasic(); err != nil {
 		return err
 	}
-	if height != commit.Height() {
-		return NewErrInvalidCommitHeight(height, commit.Height())
+	if height != commit.Height {
+		return NewErrInvalidCommitHeight(height, commit.Height)
 	}
 	if !blockID.Equals(commit.BlockID) {
 		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
@@ -797,7 +784,6 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 
 // IsErrTooMuchChange returns true if err is related to changes in validator
 // set exceeding max limit.
-// TODO: remove
 func IsErrTooMuchChange(err error) bool {
 	_, ok := errors.Cause(err).(ErrTooMuchChange)
 	return ok
@@ -819,7 +805,7 @@ func (vals *ValidatorSet) String() string {
 	return vals.StringIndented("")
 }
 
-// String
+// StringIndented returns an intended string representation of ValidatorSet.
 func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
@@ -844,7 +830,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 //-------------------------------------
 // Implements sort for sorting validators by address.
 
-// Sort validators by address.
+// ValidatorsByAddress is used to sort validators by address.
 type ValidatorsByAddress []*Validator
 
 func (valz ValidatorsByAddress) Len() int {
