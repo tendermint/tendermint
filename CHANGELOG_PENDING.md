@@ -69,7 +69,7 @@ program](https://hackerone.com/tendermint).
 
 - P2P Protocol
 
-  - [p2p] [\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
+  - [p2p] [\#3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
 
 - [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.
   - ABCI becomes `tendermint.abci.types` with the new API endpoint `/tendermint.abci.types.ABCIApplication/`
@@ -85,7 +85,7 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
 - [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
 - [docs] [\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
-- [p2p] [\4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
+- [p2p] [\#4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
 
 ### BUG FIXES:
 
