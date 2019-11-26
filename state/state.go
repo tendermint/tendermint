@@ -164,15 +164,18 @@ func (state State) MakeBlock(
 // the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
 // computed value.
 func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Precommits))
+	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
 	totalVotingPower := int64(0)
 
-	for i, vote := range commit.Precommits {
-		if vote != nil {
-			_, validator := validators.GetByIndex(vote.ValidatorIndex)
+	for i, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue
+		}
+		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
+		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
+		if validator != nil {
 			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(vote.Timestamp, validator.VotingPower)
+			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
 		}
 	}
 

@@ -33,7 +33,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -45,7 +45,7 @@ paths:
 
 
         Please refer to
-        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -74,7 +74,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -86,7 +86,7 @@ paths:
         3. node can be offline
 
         Please refer to
-        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -116,7 +116,7 @@ paths:
         IMPORTANT: use only for testing and development. In production, use
         BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
         result using JSONRPC via a websocket. See
-        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
 
         CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
         waiting for tx to commit.
@@ -125,7 +125,7 @@ paths:
         will contain a non-OK ABCI code.
 
         Please refer to
-        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -1268,14 +1268,14 @@ definitions:
   BlockMeta:
     type: object
     properties:
+      block_id:
+        $ref: "#/definitions/BlockId"
       block_size:
         type: number
         x-example: 1000000
-      block_id:
-        $ref: "#/definitions/BlockId"
       header:
         $ref: "#/definitions/BlockHeader"
-      number_txs:
+      num_txs:
         type: string
         example: "54"
   Blockchain:
@@ -1350,9 +1350,13 @@ definitions:
       last_commit:
         type: object
         properties:
+          height:
+            type: number
+          round:
+            type: number
           block_id:
             $ref: "#/definitions/BlockID"
-          precommits:
+          signatures:
             type: array
             items:
               $ref: "#/definitions/Commit"
@@ -1691,9 +1695,17 @@ definitions:
                 type: "object"
               commit:
                 required:
+                  - "height"
+                  - "round"
                   - "block_id"
-                  - "precommits"
+                  - "signatures"
                 properties:
+                  height:
+                    type: "string"
+                    example: "1311801"
+                  round:
+                    type: "string"
+                    example: "0"
                   block_id:
                     required:
                       - "hash"
@@ -1715,50 +1727,20 @@ definitions:
                             example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
                         type: "object"
                     type: "object"
-                  precommits:
+                  signatures:
                     type: "array"
                     items:
                       type: "object"
                       properties:
-                        type:
+                        block_id_flag:
                           type: "number"
                           example: 2
-                        height:
-                          type: "string"
-                          example: "12"
-                        round:
-                          type: "string"
-                          example: "0"
-                        block_id:
-                          required:
-                            - "hash"
-                            - "parts"
-                          properties:
-                            hash:
-                              type: "string"
-                              example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
-                            parts:
-                              required:
-                                - "total"
-                                - "hash"
-                              properties:
-                                total:
-                                  type: "string"
-                                  example: "1"
-                                hash:
-                                  type: "string"
-                                  example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-                              type: "object"
-                          type: "object"
-                        timestamp:
-                          type: "string"
-                          example: "2019-04-22T17:01:58.376629719Z"
                         validator_address:
                           type: "string"
                           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
-                        validator_index:
+                        timestamp:
                           type: "string"
-                          example: "0"
+                          example: "2019-04-22T17:01:58.376629719Z"
                         signature:
                           type: "string"
                           example: "14jaTQXYRt8kbLKEhdHq7AXycrFImiLuZx50uOjs2+Zv+2i7RTG/jnObD07Jo2ubZ8xd7bNBJMqkgtkd0oQHAw=="
