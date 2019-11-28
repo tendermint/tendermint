@@ -198,29 +198,38 @@ captured by the `hasExpired` function that depends on trusted period (`tp`) and 
 not considered expired.
 
 ```go
-  func hasExpired(h) {
+  // return true if header has expired, i.e., it is outside its trusted period; otherwise it returns false
+  func hasExpired(h) bool {
     if h.Header.bfttime + tp - Delta < now { // Observation 1
       return true
   }
 
-  // basic validation (function `verify`) has already been called on h2
-  func CheckSupport(h1,h2,trustlevel) bool {
-    if hasExpired(h1) then return false //old header was once trusted but it is expired
+  // return true if header is correctly signed by 2/3+ voting power in the corresponding validator set; otherwise false. Additional checks should be done in the implementation
+  // to ensure header is well formed.
+  func verify(h) bool {
+    vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
+    return votingpower_in(signers(h.Commit),h.Header.V) > 2/3 * vp_all
+  }
 
-    vp_all := totalVotingPower(h1.Header.NextV)
-    // total sum of voting power of validators in h1
+  // Captures skipping condition. h1 and h2 has already passed basic validation (function `verify`).
+  // returns (true, nil) in case h2 can be trusted based on h1, (false, nil) in case it cannot be trusted but no errors are observed during check and (false, error) in case
+  // an error is detected (for example adjacent headers are not consistent).
+  func CheckSupport(h1,h2,trustlevel) (bool, error) {
+      assume h1.Header.Height < h2.header.Height
 
-    if h2.Header.height == h1.Header.height + 1 {
-        // specific check for adjacent headers
-        if h1.Header.NextV == h2.Header.V then
-            return hasExpired(h2)
-        }
-     }
+      if hasExpired(h1) return (false, ErrHeaderExpired(h1))
 
-     // validators that signed h2 are more than a third of voting power in h1
-     if (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all) {
-        return hasExpired(h2)
-     }
+      // total sum of voting power of validators in h1.NextV
+      vp_all := totalVotingPower(h1.Header.NextV)
+
+      // check for adjacent headers
+      if (h2.Header.height == h1.Header.height + 1) {
+            if h1.Header.NextV == h2.Header.V return (true, nil)
+            else return (false, ErrInvalidAdjacentHeaders)
+      } else {
+      // check for non-adjacent headers
+            return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all, nil)
+      }
   }
 ```
 
@@ -258,58 +267,47 @@ Towards Lite Client Completeness:
 
 
 ```go
-func verify(h) {
-  if hasExpired(h) return false
+// return (true, nil) in case we can trust header h2 based on header h1; otherwise return (false, error) where error captures the nature of the error.
+func Bisection(h1,h2,trustlevel) (bool, error) {
+  assume h1.Header.Height < h2.header.Height
 
-  vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
+  ok, err = CheckSupport(h1,h2,trustlevel)
+  if (ok or err != nil) return (ok, err)
 
-  if votingpower_in(signers(h.Commit),h.Header.V) > 2/3 * vp_all {
-        return hasExpired(h)
-  } else {
-        return false
-  }
-}
-
-func Bisection(h1,h2,trustlevel) bool{
+  // we cannot verify h2 based on h1, so we try to move trusted header closer to h2 so we can verify h2
   th := h1 // th is trusted header
-  while th.Header.Height <= h2.Header.height do {
+  while th.Header.Height <= h2.Header.height - 1 do {
        // try to move trusted header forward with stored headers
-       // we assume here that iteration will be done in order of header heights
        ih := th
-       for all stored headers h s.t ih.Header.Height < h.Header.height < h2.Header.height do {
-            if CheckSupport(th,h,trustlevel) {
+       for all stored headers h s.t ih.Header.Height < h.Header.height < h2.Header.height do {  // try to move trusted header forward
+            // we assume here that iteration is done in the order of header heights
+            ok, err = CheckSupport(th,h,trustlevel)
+            if err != nil { return (ok, err) }
+            if ok {
                 th = h
-            } else if h.Header.height == th.Header.height + 1 {
-                return false // fail to verify succesive headers!
-            } else break // for
+            }
         }
 
-        if CheckSupport(th,h2,trustlevel) {
-            return hasExpired(h2)
-        }
+        // at this point we have potentially updated th based on stored headers so we try to verify h2 based on new trusted header
+        ok, err = CheckSupport(th,h2,trustlevel)
+        if (ok or err != nil) return (ok, err)
 
-        if h2.Header.height == th.Header.height + 1 {
-            // we have adjacent headers that are not matching (failed the CheckSupport)
-            // we could submit evidence here
-            return false
-        }
-
-        // try to move th
+        // we cannot verify h2 based on th, so we try to move trusted header closer to h2 by downloading header(s) between th and h2
         endHeight = h2.Header.height
         foundPivot = false
         while(!foundPivot) {
             pivot := (th.Header.height + endHeight) / 2
             hp := Commit(pivot)
-            if !verify(hp) return false
+            if !verify(hp) return (false, ErrInvalidHeader(hp))
             Store(hp)
 
-            if CheckSupport(th,hd,trustlevel) {
-                th = hd
+            // try to move trusted header forward to hp
+            ok, err = CheckSupport(th,hp,trustlevel)
+            if err != nil { return (ok, err) }
+            if ok {
+                th = hp
                 foundPivot = true
-            } else if pivot.Header.height == th.Header.height + 1 {
-                return false // fail to verify succesive headers!
             }
-
             endHeight = pivot
         }
   }
