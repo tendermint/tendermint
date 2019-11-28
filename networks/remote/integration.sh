@@ -3,7 +3,7 @@
 # XXX: this script is intended to be run from a fresh Digital Ocean droplet
 
 # NOTE: you must set this manually now
-echo "export DO_API_TOKEN=\"9478e6da3f4eb04b4c52f54c77928656f496987e1295d04929df50682d266d64\"" >> ~/.profile
+echo "export DO_API_TOKEN=\"yourtoken\"" >> ~/.profile
 
 sudo apt-get update -y
 sudo apt-get upgrade -y
