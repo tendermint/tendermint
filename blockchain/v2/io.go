@@ -21,6 +21,12 @@ type switchIo struct {
 	sw *p2p.Switch
 }
 
+func newSwitchIo(sw *p2p.Switch) *switchIo {
+	return &switchIo{
+		sw: sw,
+	}
+}
+
 const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
@@ -52,12 +58,14 @@ func (sio *switchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
 		return fmt.Errorf("peer not found")
 	}
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{Height: height})
-	peer.Send(BlockchainChannel, msgBytes)
+
+	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
+		return fmt.Errorf("peer queue full")
+	}
 
 	return nil
 }
 
-// XXX: should p[robably return an error
 func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
@@ -75,9 +83,6 @@ func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 }
 
 func (sio *switchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
-	if sio.sw == nil {
-		return fmt.Errorf("the switch is not initialized")
-	}
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")

@@ -3,14 +3,15 @@ package v2
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"sync"
-	"time"
 )
 
 //-------------------------------------
@@ -158,8 +159,12 @@ func NewBlockchainReactor(state state.State, blockApplier blockApplier, store bl
 
 // SetSwitch implements Reactor interface.
 func (r *BlockchainReactor) SetSwitch(sw *p2p.Switch) {
+	if sw == nil {
+		panic("Initalized BlockchainReactor with a nil switch")
+	}
+
 	r.Switch = sw
-	r.io = &switchIo{r.Switch}
+	r.io = newSwitchIo(sw)
 }
 
 func (r *BlockchainReactor) setMaxPeerHeight(height int64) {
@@ -307,8 +312,7 @@ func (r *BlockchainReactor) demux() {
 		// Terminal event from processor
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
-			msg, ok := event.(pcFinished)
-			if ok {
+			if msg, ok := event.(pcFinished); ok {
 				r.io.switchToConsensus(msg.tdState, msg.blocksSynced)
 			}
 		case <-r.stopDemux:
