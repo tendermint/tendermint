@@ -3,23 +3,23 @@
 Thank you for your interest in contributing to Tendermint! Before
 contributing, it may be helpful to understand the goal of the project. The goal
 of Tendermint is to develop a BFT consensus engine robust enough to
-support permissionless value carrying networks. While all contributions are
+support permissionless value-carrying networks. While all contributions are
 welcome, contributors should bear this goal in mind in deciding if they should
 target the main tendermint project or a potential fork. When targeting the
 main Tendermint project, the following process leads to the best chance of
 landing changes in master.
 
-All contributions should start with an
-[Issue](https://github.com/tendermint/tendermint/issues). The issue
-helps capture the problem you're trying to solve and allows for early
-feedback. Once the problem has been captured by an issue,
-the process can proceed in different directions depending on how well
-defined the problem and potential solution are. If the change is simple
-and well understood, maintainers will +1 the issue and sign off on
-reviewing such a change when it’s ready. 
+All contributions should start with a [Github
+Issue](https://github.com/tendermint/tendermint/issues). The issue helps
+capture the problem you're trying to solve and allows for early
+feedback. Once the problem has been captured by an issue, the process
+can proceed in different directions depending on how well defined the
+problem and potential solution are. If the change is simple and well
+understood, maintainers will indiciate their support with a heartfelt 
+emoji.
 
 If the issue would benefit from thorough discussion, maintainers may
-request that you create an [Request For
+request that you create a [Request For
 Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
