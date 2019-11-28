@@ -2,6 +2,21 @@
 
 \*\*
 
+This release contains breaking changes to the `Block#Header`, specifically
+`NumTxs` and `TotalTxs` were removed (\#2521). Here's how this change affects
+different modules:
+
+- apps: it breaks the ABCI header field numbering
+- state: it breaks the format of `State` on disk
+- RPC: all RPC requests which expose the header broke
+- Go API: the `Header` broke
+- P2P: since blocks go over the wire, technically the P2P protocol broke
+
+Also, blocks are significantly smaller 🔥 because we got rid of the redundant
+information in `Block#LastCommit`. `Commit` now mainly consists of a signature
+and a validator address plus a timestamp. Note we may remove the validator
+address & timestamp fields in the future (see ADR-25).
+
 Special thanks to external contributors on this release:
 @erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev
 
@@ -29,9 +44,9 @@ program](https://hackerone.com/tendermint).
       }
     }
     ```
-  - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) Remove `#event` suffix from the ID in event responses.
+  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Remove `#event` suffix from the ID in event responses.
     `{"jsonrpc": "2.0", "id": 0, "result": ...}`
-  - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) Switch to integer IDs instead of `json-client-XYZ`
+  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Switch to integer IDs instead of `json-client-XYZ`
     ```
     id=0 method=/subscribe
     id=0 result=...
@@ -43,21 +58,24 @@ program](https://hackerone.com/tendermint).
 
 - Apps
 
-- [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
+  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
 
 - Go API
 
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
+  - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
 
 - Blockchain Protocol
 
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
-  - [types][\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
+  - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
+  - [types] \#1648 Change `Commit` to consist of just signatures
 
 - P2P Protocol
-  - [p2p][\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
+
+  - [p2p] [\#3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
 
 - [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.
   - ABCI becomes `tendermint.abci.types` with the new API endpoint `/tendermint.abci.types.ABCIApplication/`
@@ -72,12 +90,16 @@ program](https://hackerone.com/tendermint).
 
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
 - [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
-- [docs][\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
+- [docs] [\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
+- [p2p] [\#4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
 
 ### BUG FIXES:
 
-- [rpc/lib][\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
-- [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
-- [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
-- [types][\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
+- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
+- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
+- [types] [\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
 - [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
+- [types] \#4164 Prevent temporary power overflows on validator updates (joint
+  efforts of @gchaincl and @ancazamfir)
+- [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
