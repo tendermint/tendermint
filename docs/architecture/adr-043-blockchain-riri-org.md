@@ -3,6 +3,7 @@
 ## Changelog
 * 18-06-2019: Initial draft
 * 08-07-2019: Reviewed
+* 29-11-2019: Implemented
 
 ## Context
 
@@ -363,7 +364,14 @@ type Peer struct {
 
 ## Status
 
-Work in progress
+This design has been implemented and is currently going through
+acceptance testing. The Implementations have been stages in the
+following PR:
+
+* [Routine](https://github.com/tendermint/tendermint/pull/3878)
+* [Processor](https://github.com/tendermint/tendermint/pull/4012)
+* [Scheduler](https://github.com/tendermint/tendermint/pull/4043)
+* [Reactor](https://github.com/tendermint/tendermint/pull/4067)
 
 ## Consequences
 
@@ -385,7 +393,6 @@ Work in progress
 * Implement the demuxer, write integration test, review integration tests
 
 ## References
-
 
 * [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
 * [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
