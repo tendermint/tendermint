@@ -364,8 +364,8 @@ type Peer struct {
 
 ## Status
 
-This design is under active development. The Implementations have been
-stages in the following PRs:
+This design is under active development. The Implementation has been
+staged in the following PRs:
 
 * [Routine](https://github.com/tendermint/tendermint/pull/3878)
 * [Processor](https://github.com/tendermint/tendermint/pull/4012)
