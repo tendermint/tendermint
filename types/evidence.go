@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -103,6 +104,27 @@ type DuplicateVoteEvidence struct {
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
+// NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
+// two conflicting votes. If one of the votes is nil, evidence returned is nil as well
+func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+	var voteA, voteB *Vote
+	if vote1 == nil || vote2 == nil {
+		return nil
+	}
+	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
+		voteA = vote1
+		voteB = vote2
+	} else {
+		voteA = vote2
+		voteB = vote1
+	}
+	return &DuplicateVoteEvidence{
+		PubKey: pubkey,
+		VoteA:  voteA,
+		VoteB:  voteB,
+	}
+}
+
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
 	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
@@ -136,13 +158,13 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
 		dve.VoteA.Type != dve.VoteB.Type {
-		return fmt.Errorf("DuplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
+		return fmt.Errorf("duplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
 	}
 
 	// Address must be the same
 	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
 		return fmt.Errorf(
-			"DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X",
+			"duplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X",
 			dve.VoteA.ValidatorAddress,
 			dve.VoteB.ValidatorAddress,
 		)
@@ -151,7 +173,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// Index must be the same
 	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
 		return fmt.Errorf(
-			"DuplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
+			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
 			dve.VoteA.ValidatorIndex,
 			dve.VoteB.ValidatorIndex,
 		)
@@ -160,7 +182,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
 		return fmt.Errorf(
-			"DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote",
+			"duplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote",
 			dve.VoteA.BlockID,
 		)
 	}
@@ -168,16 +190,16 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// pubkey must match address (this should already be true, sanity check)
 	addr := dve.VoteA.ValidatorAddress
 	if !bytes.Equal(pubKey.Address(), addr) {
-		return fmt.Errorf("DuplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
+		return fmt.Errorf("duplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
 			addr, pubKey, pubKey.Address())
 	}
 
 	// Signatures must be valid
 	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
-		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
+		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
 	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
-		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
+		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 
 	return nil
@@ -198,16 +220,20 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	if len(dve.PubKey.Bytes()) == 0 {
-		return errors.New("Empty PubKey")
+		return errors.New("empty PubKey")
 	}
 	if dve.VoteA == nil || dve.VoteB == nil {
-		return fmt.Errorf("One or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
+		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
 	if err := dve.VoteA.ValidateBasic(); err != nil {
-		return fmt.Errorf("Invalid VoteA: %v", err)
+		return fmt.Errorf("invalid VoteA: %v", err)
 	}
 	if err := dve.VoteB.ValidateBasic(); err != nil {
-		return fmt.Errorf("Invalid VoteB: %v", err)
+		return fmt.Errorf("invalid VoteB: %v", err)
+	}
+	// Enforce Votes are lexicographically sorted on blockID
+	if strings.Compare(dve.VoteA.BlockID.Key(), dve.VoteB.BlockID.Key()) >= 0 {
+		return errors.New("duplicate votes in invalid order")
 	}
 	return nil
 }
@@ -271,7 +297,7 @@ type MockBadEvidence struct {
 }
 
 func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	return fmt.Errorf("MockBadEvidence")
+	return fmt.Errorf("mockBadEvidence")
 }
 func (e MockBadEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockBadEvidence)

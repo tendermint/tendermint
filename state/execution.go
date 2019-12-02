@@ -146,7 +146,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
-		return state, fmt.Errorf("Error in validator updates: %v", err)
+		return state, fmt.Errorf("error in validator updates: %v", err)
 	}
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
 	if err != nil {
@@ -159,13 +159,13 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
-		return state, fmt.Errorf("Commit failed for application: %v", err)
+		return state, fmt.Errorf("commit failed for application: %v", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
 	appHash, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
 	if err != nil {
-		return state, fmt.Errorf("Commit failed for application: %v", err)
+		return state, fmt.Errorf("commit failed for application: %v", err)
 	}
 
 	// Update evpool with the block and state.
@@ -319,28 +319,27 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 			panic(err) // shouldn't happen
 		}
 
-		// Sanity check that commit length matches validator set size -
+		// Sanity check that commit size matches validator set size -
 		// only applies after first block
-
-		precommitLen := block.LastCommit.Size()
+		commitSize := block.LastCommit.Size()
 		valSetLen := len(lastValSet.Validators)
-		if precommitLen != valSetLen {
+		if commitSize != valSetLen {
 			// sanity check
-			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators))
 		}
 	} else {
 		lastValSet = types.NewValidatorSet(nil)
 	}
 
 	for i, val := range lastValSet.Validators {
-		var vote *types.CommitSig
-		if i < len(block.LastCommit.Precommits) {
-			vote = block.LastCommit.Precommits[i]
+		if i >= len(block.LastCommit.Signatures) {
+			break
 		}
+		commitSig := block.LastCommit.Signatures[i]
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: vote != nil,
+			SignedLastBlock: !commitSig.Absent(),
 		}
 		voteInfos[i] = voteInfo
 	}
@@ -357,7 +356,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	}
 
 	commitInfo := abci.LastCommitInfo{
-		Round: int32(block.LastCommit.Round()),
+		Round: int32(block.LastCommit.Round),
 		Votes: voteInfos,
 	}
 	return commitInfo, byzVals
@@ -368,7 +367,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	params types.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
-			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+			return fmt.Errorf("voting power can't be negative %v", valUpdate)
 		} else if valUpdate.GetPower() == 0 {
 			// continue, since this is deleting the validator, and thus there is no
 			// pubkey to check
@@ -378,7 +377,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
 		if !params.IsValidPubkeyType(thisKeyType) {
-			return fmt.Errorf("Validator %v is using pubkey %s, which is unsupported for consensus",
+			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
 	}
@@ -403,7 +402,7 @@ func updateState(
 	if len(validatorUpdates) > 0 {
 		err := nValSet.UpdateWithChangeSet(validatorUpdates)
 		if err != nil {
-			return state, fmt.Errorf("Error changing validator set: %v", err)
+			return state, fmt.Errorf("error changing validator set: %v", err)
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
@@ -420,7 +419,7 @@ func updateState(
 		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
 		err := nextParams.Validate()
 		if err != nil {
-			return state, fmt.Errorf("Error updating consensus params: %v", err)
+			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
 		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1

@@ -23,7 +23,7 @@ import (
 // setupTestCase does setup common to all test cases.
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	config := cfg.ResetTestRoot("state_")
-	dbType := dbm.DBBackendType(config.DBBackend)
+	dbType := dbm.BackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
@@ -159,7 +159,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		h := int64(i + 1) // last block height, one below what we save
 		responses := &sm.ABCIResponses{
 			DeliverTxs: tc.added,
-			EndBlock:  &abci.ResponseEndBlock{},
+			EndBlock:   &abci.ResponseEndBlock{},
 		}
 		sm.SaveABCIResponses(stateDB, h, responses)
 	}

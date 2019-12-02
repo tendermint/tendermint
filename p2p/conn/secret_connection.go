@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -26,16 +27,25 @@ import (
 )
 
 // 4 + 1024 == 1028 total frame size
-const dataLenSize = 4
-const dataMaxSize = 1024
-const totalFrameSize = dataMaxSize + dataLenSize
-const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
-const aeadKeySize = chacha20poly1305.KeySize
-const aeadNonceSize = chacha20poly1305.NonceSize
+const (
+	dataLenSize      = 4
+	dataMaxSize      = 1024
+	totalFrameSize   = dataMaxSize + dataLenSize
+	aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
+	aeadKeySize      = chacha20poly1305.KeySize
+	aeadNonceSize    = chacha20poly1305.NonceSize
+)
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
 	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
+
+	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
+	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
+	labelDHSecret                = []byte("DH_SECRET")
+	labelSecretConnectionMac     = []byte("SECRET_CONNECTION_MAC")
+
+	secretConnKeyAndChallengeGen = []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN")
 )
 
 // SecretConnection implements net.Conn.
@@ -78,8 +88,6 @@ type SecretConnection struct {
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
 	var (
-		hash      = sha256.New
-		hdkfState = new([32]byte)
 		locPubKey = locPrivKey.PubKey()
 	)
 
@@ -97,17 +105,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
-	hkdfInit := hkdf.New(hash, []byte("INIT_HANDSHAKE"), nil, []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-	if _, err := io.ReadFull(hkdfInit, hdkfState[:]); err != nil {
-		return nil, err
-	}
+	transcript := merlin.NewTranscript("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH")
 
-	hkdfLoEphPub := hkdf.New(hash, loEphPub[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-	if _, err := io.ReadFull(hkdfLoEphPub, hdkfState[:]); err != nil {
-		return nil, err
-	}
-
-	hkdfHiEphPub := hkdf.New(hash, hiEphPub[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+	transcript.AppendMessage(labelEphemeralLowerPublicKey, loEphPub[:])
+	transcript.AppendMessage(labelEphemeralUpperPublicKey, hiEphPub[:])
 
 	// Check if the local ephemeral public key was the least, lexicographically
 	// sorted.
@@ -118,19 +119,19 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.ReadFull(hkdfHiEphPub, hdkfState[:]); err != nil {
-		return nil, err
-	}
 
-	hkdfSecret := hkdf.New(hash, dhSecret[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-	if _, err := io.ReadFull(hkdfSecret, hdkfState[:]); err != nil {
-		return nil, err
-	}
+	transcript.AppendMessage(labelDHSecret, dhSecret[:])
 
 	// Generate the secret used for receiving, sending, challenge via HKDF-SHA2
 	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key
 	// from the dhSecret).
-	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(hdkfState, locIsLeast)
+	recvSecret, sendSecret := deriveSecrets(dhSecret, locIsLeast)
+
+	const challengeSize = 32
+	var challenge [challengeSize]byte
+	challengeSlice := transcript.ExtractBytes(labelSecretConnectionMac, challengeSize)
+
+	copy(challenge[:], challengeSlice[0:challengeSize])
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
@@ -151,7 +152,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sign the challenge bytes for authentication.
-	locSignature := signChallenge(challenge, locPrivKey)
+	locSignature := signChallenge(&challenge, locPrivKey)
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
@@ -296,21 +297,20 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
 			if err1 != nil {
-				return nil, err1, true // abort
+				return nil, true, err1 // abort
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _remEphPub [32]byte
 			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
 			if err2 != nil {
-				return nil, err2, true // abort
+				return nil, true, err2 // abort
 			}
-
-			return _remEphPub, nil, false
+			return _remEphPub, false, nil
 		},
 	)
 
@@ -325,12 +325,12 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 	return &_remEphPub, nil
 }
 
-func deriveSecretAndChallenge(
+func deriveSecrets(
 	dhSecret *[32]byte,
 	locIsLeast bool,
-) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
+) (recvSecret, sendSecret *[aeadKeySize]byte) {
 	hash := sha256.New
-	hkdf := hkdf.New(hash, dhSecret[:], nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN"))
+	hkdf := hkdf.New(hash, dhSecret[:], nil, secretConnKeyAndChallengeGen)
 	// get enough data for 2 aead keys, and a 32 byte challenge
 	res := new([2*aeadKeySize + 32]byte)
 	_, err := io.ReadFull(hkdf, res[:])
@@ -338,11 +338,8 @@ func deriveSecretAndChallenge(
 		panic(err)
 	}
 
-	challenge = new([32]byte)
 	recvSecret = new([aeadKeySize]byte)
 	sendSecret = new([aeadKeySize]byte)
-	// Use the last 32 bytes as the challenge
-	copy(challenge[:], res[2*aeadKeySize:2*aeadKeySize+32])
 
 	// bytes 0 through aeadKeySize - 1 are one aead key.
 	// bytes aeadKeySize through 2*aeadKeySize -1 are another aead key.
@@ -405,20 +402,20 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
 			if err1 != nil {
-				return nil, err1, true // abort
+				return nil, true, err1 // abort
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _recvMsg authSigMessage
 			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
 			if err2 != nil {
-				return nil, err2, true // abort
+				return nil, true, err2 // abort
 			}
-			return _recvMsg, nil, false
+			return _recvMsg, false, nil
 		},
 	)
 

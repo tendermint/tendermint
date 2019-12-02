@@ -46,7 +46,7 @@ func TestDeterminism(t *testing.T) {
 		if i == 0 {
 			firstOutput = output
 		} else if firstOutput != output {
-			t.Errorf("Run #%d's output was different from first run.\nfirst: %v\nlast: %v",
+			t.Errorf("run #%d's output was different from first run.\nfirst: %v\nlast: %v",
 				i, firstOutput, output)
 		}
 	}

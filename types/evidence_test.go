@@ -144,15 +144,19 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
 			ev.VoteA = makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, blockID2)
 		}, true},
+		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
+			swap := ev.VoteA.Copy()
+			ev.VoteA = ev.VoteB.Copy()
+			ev.VoteB = swap
+		}, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			ev := &DuplicateVoteEvidence{
-				PubKey: secp256k1.GenPrivKey().PubKey(),
-				VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID),
-				VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2),
-			}
+			pk := secp256k1.GenPrivKey().PubKey()
+			vote1 := makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID)
+			vote2 := makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2)
+			ev := NewDuplicateVoteEvidence(pk, vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})

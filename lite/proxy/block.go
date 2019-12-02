@@ -24,7 +24,7 @@ func ValidateBlock(meta *types.Block, sh types.SignedHeader) error {
 		return err
 	}
 	if !bytes.Equal(meta.Data.Hash(), meta.Header.DataHash) {
-		return errors.New("Data hash doesn't match header")
+		return errors.New("data hash doesn't match header")
 	}
 	return nil
 }
@@ -38,11 +38,11 @@ func ValidateHeader(head *types.Header, sh types.SignedHeader) error {
 	}
 	// Make sure they are for the same height (obvious fail).
 	if head.Height != sh.Height {
-		return errors.New("Header heights mismatched")
+		return errors.New("header heights mismatched")
 	}
 	// Check if they are equal by using hashes.
 	if !bytes.Equal(head.Hash(), sh.Hash()) {
-		return errors.New("Headers don't match")
+		return errors.New("headers don't match")
 	}
 	return nil
 }

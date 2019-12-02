@@ -27,10 +27,10 @@ import (
 // Errors
 
 var (
-	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
-	ErrInvalidProposalPOLRound  = errors.New("Error invalid proposal POL round")
-	ErrAddingVote               = errors.New("Error adding vote")
-	ErrVoteHeightMismatch       = errors.New("Error vote height mismatch")
+	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
+	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
+	ErrAddingVote               = errors.New("error adding vote")
+	ErrVoteHeightMismatch       = errors.New("error vote height mismatch")
 )
 
 //-----------------------------------------------------------------------------
@@ -969,8 +969,8 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	cs.wal.FlushAndSync()
 
 	// Make proposal
-	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	propBlockID := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
 		// send proposal and block parts on internal msg queue
@@ -1013,7 +1013,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	case cs.Height == 1:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(types.BlockID{}, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
@@ -1464,11 +1464,11 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		var vote *types.CommitSig
-		if i < len(block.LastCommit.Precommits) {
-			vote = block.LastCommit.Precommits[i]
+		if i >= len(block.LastCommit.Signatures) {
+			break
 		}
-		if vote == nil {
+		commitSig := block.LastCommit.Signatures[i]
+		if commitSig.Absent() {
 			missingValidators++
 			missingValidatorsPower += val.VotingPower
 		}

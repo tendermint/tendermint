@@ -70,19 +70,19 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 // These methods are for Protobuf Compatibility
 
 // Size returns the size of the amino encoding, in bytes.
-func (ps *PeerRoundState) Size() int {
-	bs, _ := ps.Marshal()
+func (prs *PeerRoundState) Size() int {
+	bs, _ := prs.Marshal()
 	return len(bs)
 }
 
 // Marshal returns the amino encoding.
-func (ps *PeerRoundState) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(ps)
+func (prs *PeerRoundState) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(prs)
 }
 
 // MarshalTo calls Marshal and copies to the given buffer.
-func (ps *PeerRoundState) MarshalTo(data []byte) (int, error) {
-	bs, err := ps.Marshal()
+func (prs *PeerRoundState) MarshalTo(data []byte) (int, error) {
+	bs, err := prs.Marshal()
 	if err != nil {
 		return -1, err
 	}
@@ -90,6 +90,6 @@ func (ps *PeerRoundState) MarshalTo(data []byte) (int, error) {
 }
 
 // Unmarshal deserializes from amino encoded form.
-func (ps *PeerRoundState) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, ps)
+func (prs *PeerRoundState) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, prs)
 }

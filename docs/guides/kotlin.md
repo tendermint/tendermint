@@ -301,7 +301,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [JetBrains Xodus](https://github.com/JetBrains/xodus), which is a transactional schema-less embedded high-performance database written in Java.
@@ -433,7 +433,7 @@ override fun query(req: RequestQuery, responseObserver: StreamObserver<ResponseQ
 ```
 
 The complete specification can be found
-[here](https://tendermint.com/docs/spec/abci/).
+[here](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
@@ -520,7 +520,7 @@ I[2019-07-16|18:20:36.482] Generated genesis file                       module=m
 
 Feel free to explore the generated files, which can be found at
 `/tmp/example/config` directory. Documentation on the config can be found
-[here](https://tendermint.com/docs/tendermint-core/configuration.html).
+[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
@@ -586,6 +586,6 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://tendermint.com/docs/).
+deeper, read [the docs](https://docs.tendermint.com/master/).
 
 The full source code of this example project can be found [here](https://github.com/climber73/tendermint-abci-grpc-kotlin).

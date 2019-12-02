@@ -60,7 +60,7 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 	case "grpc":
 		client = NewGRPCClient(addr, mustConnect)
 	default:
-		err = fmt.Errorf("Unknown abci transport %s", transport)
+		err = fmt.Errorf("unknown abci transport %s", transport)
 	}
 	return
 }

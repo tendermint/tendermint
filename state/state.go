@@ -164,15 +164,18 @@ func (state State) MakeBlock(
 // the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
 // computed value.
 func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Precommits))
+	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
 	totalVotingPower := int64(0)
 
-	for i, vote := range commit.Precommits {
-		if vote != nil {
-			_, validator := validators.GetByIndex(vote.ValidatorIndex)
+	for i, commitSig := range commit.Signatures {
+		if commitSig.Absent() {
+			continue
+		}
+		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
+		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
+		if validator != nil {
 			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(vote.Timestamp, validator.VotingPower)
+			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
 		}
 	}
 
@@ -198,11 +201,11 @@ func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
+		return nil, fmt.Errorf("couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading GenesisDoc: %v", err)
+		return nil, fmt.Errorf("error reading GenesisDoc: %v", err)
 	}
 	return genDoc, nil
 }
@@ -211,7 +214,7 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("Error in genesis file: %v", err)
+		return State{}, fmt.Errorf("error in genesis file: %v", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet

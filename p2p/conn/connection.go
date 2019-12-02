@@ -617,7 +617,7 @@ FOR_LOOP:
 		case PacketMsg:
 			channel, ok := c.channelsIdx[pkt.ChannelID]
 			if !ok || channel == nil {
-				err := fmt.Errorf("Unknown channel %X", pkt.ChannelID)
+				err := fmt.Errorf("unknown channel %X", pkt.ChannelID)
 				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
 				break FOR_LOOP
@@ -637,7 +637,7 @@ FOR_LOOP:
 				c.onReceive(pkt.ChannelID, msgBytes)
 			}
 		default:
-			err := fmt.Errorf("Unknown message type %v", reflect.TypeOf(packet))
+			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
 			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
@@ -844,7 +844,7 @@ func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
 	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
 	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Bytes)
 	if recvCap < recvReceived {
-		return nil, fmt.Errorf("Received message exceeds available capacity: %v < %v", recvCap, recvReceived)
+		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {
@@ -882,9 +882,9 @@ func RegisterPacket(cdc *amino.Codec) {
 	cdc.RegisterConcrete(PacketMsg{}, "tendermint/p2p/PacketMsg", nil)
 }
 
-func (_ PacketPing) AssertIsPacket() {}
-func (_ PacketPong) AssertIsPacket() {}
-func (_ PacketMsg) AssertIsPacket()  {}
+func (PacketPing) AssertIsPacket() {}
+func (PacketPong) AssertIsPacket() {}
+func (PacketMsg) AssertIsPacket()  {}
 
 type PacketPing struct {
 }
