@@ -14,7 +14,7 @@ type handleFunc = func(event Event) (Event, error)
 // stream of events processed by a handle function. This Routine structure
 // handles the concurrency and messaging guarantees. Events are sent via
 // `send` are handled by the `handle` function to produce an iterator
-// `next()`. Calling `close()` on a routine will conclude processing of all
+// `next()`. Calling `stop()` on a routine will conclude processing of all
 // sent events and produce `final()` event representing the terminal state.
 type Routine struct {
 	name    string
@@ -115,7 +115,7 @@ func (rt *Routine) ready() chan struct{} {
 }
 
 func (rt *Routine) stop() {
-	if !rt.isRunning() {
+	if !rt.isRunning() { // XXX: this should check rt.queue.Disposed()
 		return
 	}
 
