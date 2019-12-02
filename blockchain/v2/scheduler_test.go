@@ -37,7 +37,6 @@ func verifyScheduler(sc *scheduler) {
 
 func newTestScheduler(params scTestParams) *scheduler {
 	peers := make(map[p2p.ID]*scPeer)
-	var maxHeight int64
 
 	sc := newScheduler(params.initHeight)
 	if params.height != 0 {
@@ -47,9 +46,6 @@ func newTestScheduler(params scTestParams) *scheduler {
 	for id, peer := range params.peers {
 		peer.peerID = p2p.ID(id)
 		peers[p2p.ID(id)] = peer
-		if maxHeight < peer.height {
-			maxHeight = peer.height
-		}
 	}
 	for _, h := range params.allB {
 		sc.blockStates[h] = blockStateNew
