@@ -12,7 +12,7 @@ import (
 
 var _ crypto.PubKey = PubKeySr25519{}
 
-// PubKeySr25519Size is the number of bytes in an Sr25519 signature.
+// PubKeySr25519Size is the number of bytes in an Sr25519 public key.
 const PubKeySr25519Size = 32
 
 // PubKeySr25519 implements crypto.PubKey for the Sr25519 signature scheme.

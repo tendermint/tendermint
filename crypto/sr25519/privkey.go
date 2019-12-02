@@ -2,6 +2,7 @@ package sr25519
 
 import (
 	"crypto/subtle"
+	"fmt"
 	"io"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -9,8 +10,11 @@ import (
 	schnorrkel "github.com/ChainSafe/go-schnorrkel"
 )
 
+// PrivKeySr25519Size is the number of bytes in an Sr25519 private key.
+const PrivKeySr25519Size = 32
+
 // PrivKeySr25519 implements crypto.PrivKey.
-type PrivKeySr25519 [32]byte
+type PrivKeySr25519 [PrivKeySr25519Size]byte
 
 // Bytes marshals the privkey using amino encoding.
 func (privKey PrivKeySr25519) Bytes() []byte {
@@ -88,7 +92,7 @@ func genPrivKey(rand io.Reader) PrivKeySr25519 {
 // if it's derived from user input.
 func GenPrivKeyFromSecret(secret []byte) PrivKeySr25519 {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-	var bz [32]byte
+	var bz [PrivKeySr25519Size]byte
 	copy(bz[:], seed)
 	privKey, _ := schnorrkel.NewMiniSecretKeyFromRaw(bz)
 	return privKey.ExpandEd25519().Encode()
