@@ -11,9 +11,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestVerifyAdjustedHeaders(t *testing.T) {
+func TestVerifyAdjacentHeaders(t *testing.T) {
 	const (
-		chainID    = "TestVerifyAdjustedHeaders"
+		chainID    = "TestVerifyAdjacentHeaders"
 		lastHeight = 1
 		nextHeight = 2
 	)
@@ -52,7 +52,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"h2.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not 'TestVerifyAdjustedHeaders'",
+			"h2.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not 'TestVerifyAdjacentHeaders'",
 		},
 		// 3/3 signed -> no error
 		2: {
@@ -133,9 +133,9 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 	}
 }
 
-func TestVerifyNonAdjustedHeaders(t *testing.T) {
+func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	const (
-		chainID    = "TestVerifyNonAdjustedHeaders"
+		chainID    = "TestVerifyNonAdjacentHeaders"
 		lastHeight = 1
 	)
 

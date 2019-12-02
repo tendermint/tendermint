@@ -67,7 +67,7 @@ func SequentialVerification() Option {
 //
 // trustLevel - fraction of the old validator set (in terms of voting power),
 // which must sign the new header in order for us to trust it. NOTE this only
-// applies to non-adjusted headers. For adjusted headers, sequential
+// applies to non-adjacent headers. For adjacent headers, sequential
 // verification is used.
 func SkippingVerification(trustLevel cmn.Fraction) Option {
 	if err := ValidateTrustLevel(trustLevel); err != nil {
