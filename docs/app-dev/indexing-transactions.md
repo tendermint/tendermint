@@ -16,6 +16,17 @@ Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
 details on `Events`, see the [ABCI](../spec/abci/abci.md) documentation.
 
+An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
+For example:
+
+```json
+"jack": [
+  "account.number": 100
+]
+```
+
+would be equal to the composite key of `jack.account.numer`.
+
 Let's take a look at the `[tx_index]` config section:
 
 ```toml

@@ -873,7 +873,13 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 
 //-----------------------------------------------------------------------------
 // TxIndexConfig
-
+// Remember that Event has the following structure:
+// type: [
+//  key: value,
+//  ...
+// ]
+//
+// CompositeKeys are constructed by `type.key`
 // TxIndexConfig defines the configuration for the transaction indexer,
 // including composite keys to index.
 type TxIndexConfig struct {
