@@ -81,7 +81,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 50, Needed: 93},
+			types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93},
 			"",
 		},
 		// vals does not match with what we have -> error
@@ -195,7 +195,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 50, Needed: 93},
+			types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93},
 			"",
 		},
 		// 3/3 new vals signed, 2/3 old vals present -> no error
@@ -225,7 +225,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			lessThanOneThirdVals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 20, Needed: 46},
+			types.ErrNotEnoughVotingPowerSigned{Got: 20, Needed: 46},
 			"",
 		},
 	}

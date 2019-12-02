@@ -662,7 +662,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	}
 
 	if got, needed := talliedVotingPower, vals.TotalVotingPower()*2/3; got <= needed {
-		return ErrTooMuchChange{Got: got, Needed: needed}
+		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
 	}
 
 	return nil
@@ -739,7 +739,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	}
 
 	if got, needed := oldVotingPower, oldVals.TotalVotingPower()*2/3; got <= needed {
-		return ErrTooMuchChange{Got: got, Needed: needed}
+		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
 	}
 	return nil
 }
@@ -790,7 +790,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	got := talliedVotingPower
 	needed := (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	if got <= needed {
-		return ErrTooMuchChange{Got: got, Needed: needed}
+		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
 	}
 
 	return nil
@@ -811,23 +811,23 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 }
 
 //-----------------
-// ErrTooMuchChange
 
-// IsErrTooMuchChange returns true if err is related to changes in validator
-// set exceeding max limit.
-func IsErrTooMuchChange(err error) bool {
-	_, ok := errors.Cause(err).(ErrTooMuchChange)
+// IsErrNotEnoughVotingPowerSigned returns true if err is
+// ErrNotEnoughVotingPowerSigned.
+func IsErrNotEnoughVotingPowerSigned(err error) bool {
+	_, ok := errors.Cause(err).(ErrNotEnoughVotingPowerSigned)
 	return ok
 }
 
-// ErrTooMuchChange indicates that changes in the validator set exceeded max limit.
-type ErrTooMuchChange struct {
+// ErrNotEnoughVotingPowerSigned is returned when not enough validators signed
+// a commit.
+type ErrNotEnoughVotingPowerSigned struct {
 	Got    int64
 	Needed int64
 }
 
-func (e ErrTooMuchChange) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %d, needed more than %d", e.Got, e.Needed)
+func (e ErrNotEnoughVotingPowerSigned) Error() string {
+	return fmt.Sprintf("invalid commit -- insufficient voting power: got %d, needed more than %d", e.Got, e.Needed)
 }
 
 //----------------

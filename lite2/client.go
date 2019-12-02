@@ -339,7 +339,7 @@ func (c *Client) bisection(
 	switch err.(type) {
 	case nil:
 		return nil
-	case types.ErrTooMuchChange:
+	case types.ErrNotEnoughVotingPowerSigned:
 		// continue bisection
 	default:
 		return errors.Wrapf(err, "failed to verify the header #%d ", newHeader.Height)
