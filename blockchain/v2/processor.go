@@ -131,7 +131,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *scBlockReceived:
 		if event.block == nil {
-			return noOp, nil
+			panic("processor received an event with a nil block")
 		}
 		if event.block.Height <= state.height {
 			return pcShortBlock{}, nil
