@@ -202,9 +202,11 @@ not considered expired.
   func hasExpired(h) bool {
     if h.Header.bfttime + tp - Delta < now { // Observation 1
       return true
+    }
   }
 
-  // return true if header is correctly signed by 2/3+ voting power in the corresponding validator set; otherwise false. Additional checks should be done in the implementation
+  // return true if header is correctly signed by 2/3+ voting power in the corresponding validator set; 
+  // otherwise false. Additional checks should be done in the implementation
   // to ensure header is well formed.
   func verify(h) bool {
     vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
@@ -224,11 +226,12 @@ not considered expired.
 
       // check for adjacent headers
       if (h2.Header.height == h1.Header.height + 1) {
-            if h1.Header.NextV == h2.Header.V return (true, nil)
-            else return (false, ErrInvalidAdjacentHeaders)
+            if h1.Header.NextV == h2.Header.V 
+                return (true, nil)
+            return (false, ErrInvalidAdjacentHeaders)
       } else {
       // check for non-adjacent headers
-            return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all, nil)
+        return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all, nil)
       }
   }
 ```
@@ -279,7 +282,8 @@ func Bisection(h1,h2,trustlevel) (bool, error) {
   while th.Header.Height <= h2.Header.height - 1 do {
        // try to move trusted header forward with stored headers
        ih := th
-       for all stored headers h s.t ih.Header.Height < h.Header.height < h2.Header.height do {  // try to move trusted header forward
+       // try to move trusted header forward
+       for h in stored headers s.t ih.Header.Height < h.Header.height < h2.Header.height do {  
             // we assume here that iteration is done in the order of header heights
             ok, err = CheckSupport(th,h,trustlevel)
             if err != nil { return (ok, err) }
@@ -288,7 +292,8 @@ func Bisection(h1,h2,trustlevel) (bool, error) {
             }
         }
 
-        // at this point we have potentially updated th based on stored headers so we try to verify h2 based on new trusted header
+        // at this point we have potentially updated th based on stored headers so we try to verify h2 
+        // based on new trusted header
         ok, err = CheckSupport(th,h2,trustlevel)
         if (ok or err != nil) return (ok, err)
 
