@@ -42,7 +42,7 @@ func (privKey PrivKeySr25519) PubKey() crypto.PubKey {
 	secretKey := &(schnorrkel.SecretKey{})
 	err := secretKey.Decode(privKey)
 	if err != nil {
-		panic("invalid private key")
+		panic(fmt.Sprintf("Invalid private key: %v", err))
 	}
 
 	pubkey, _ := secretKey.Public()
