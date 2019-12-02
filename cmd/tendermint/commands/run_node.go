@@ -59,6 +59,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks",
 		config.Consensus.CreateEmptyBlocks,
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	cmd.Flags().String(
+		"consensus.create_empty_blocks_interval",
+		string(config.Consensus.CreateEmptyBlocksInterval),
+		"The possible interval between empty blocks")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
