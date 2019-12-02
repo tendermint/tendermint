@@ -44,7 +44,7 @@ func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
 // IndexEvents is an option for setting which composite keys to index.
 func IndexEvents(compositeKeys []string) func(*TxIndex) {
 	return func(txi *TxIndex) {
-		txi.compositeKeysToIndex = events
+		txi.compositeKeysToIndex = compositeKeys
 	}
 }
 
