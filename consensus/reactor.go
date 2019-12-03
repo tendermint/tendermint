@@ -1472,7 +1472,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 		return fmt.Errorf("wrong BlockPartsHeader: %v", err)
 	}
 	if m.BlockParts.Size() == 0 {
-		return errors.New("Empty BlockParts")
+		return errors.New("empty blockParts")
 	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
 		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
@@ -1480,7 +1480,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockPartsHeader.Total)
 	}
 	if m.BlockParts.Size() > types.MaxBlockPartsCount {
-		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+		return errors.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }

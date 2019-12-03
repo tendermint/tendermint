@@ -586,7 +586,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
+		result, err := c.BroadcastEvidence(&ev)
 		require.Nil(t, err)
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
 

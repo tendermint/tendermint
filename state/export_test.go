@@ -39,7 +39,7 @@ func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.V
 
 // CalcValidatorsKey is an alias for the private calcValidatorsKey method in
 // store.go, exported exclusively and explicitly for testing.
-func CalcValidatorsKey(height int64) []byte {
+func CalcValidatorsKey(height int64) []byte { // nolint:unused,deadcode
 	return calcValidatorsKey(height)
 }
 

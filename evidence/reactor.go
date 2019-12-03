@@ -210,7 +210,7 @@ type Message interface {
 	ValidateBasic() error
 }
 
-func RegisterEvidenceMessages(cdc *amino.Codec) {
+func RegisterMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Message)(nil), nil)
 	cdc.RegisterConcrete(&ListMessage{},
 		"tendermint/evidence/ListMessage", nil)

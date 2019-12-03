@@ -378,7 +378,7 @@ func (n *upnpNAT) AddPortMapping(
 	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
-	return
+	return mappedExternalPort, err
 }
 
 func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort int) (err error) {
