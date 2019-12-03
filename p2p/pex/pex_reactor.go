@@ -432,15 +432,13 @@ func (r *PEXReactor) ensurePeersRoutine() {
 // already connected or not.
 func (r *PEXReactor) ensurePeers() {
 	var (
-		out, in, dial, uncOut, uncIn = r.Switch.NumPeers()
-		numToDial                    = r.Switch.MaxNumOutboundPeers() - (out - uncOut + dial)
+		out, in, dial = r.Switch.NumPeers()
+		numToDial     = r.Switch.MaxNumOutboundPeers() - (out + dial)
 	)
 	r.Logger.Info(
 		"Ensure peers",
 		"numOutPeers", out,
 		"numInPeers", in,
-		"numUnconditionalOutPeers", uncOut,
-		"numUnconditionalInPeers", uncIn,
 		"numDialing", dial,
 		"numToDial", numToDial,
 	)
@@ -653,7 +651,7 @@ func (r *PEXReactor) crawlPeersRoutine() {
 // nodeHasSomePeersOrDialingAny returns true if the node is connected to some
 // peers or dialing them currently.
 func (r *PEXReactor) nodeHasSomePeersOrDialingAny() bool {
-	out, in, dial, _, _ := r.Switch.NumPeers()
+	out, in, dial := r.Switch.NumPeers()
 	return out+in+dial > 0
 }
 

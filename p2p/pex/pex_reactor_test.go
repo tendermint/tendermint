@@ -535,7 +535,7 @@ func assertPeersWithTimeout(
 			// check peers are connected
 			allGood := true
 			for _, s := range switches {
-				outbound, inbound, _, _, _ := s.NumPeers()
+				outbound, inbound, _ := s.NumPeers()
 				if outbound+inbound < nPeers {
 					allGood = false
 					break
@@ -551,7 +551,7 @@ func assertPeersWithTimeout(
 		case <-time.After(remaining):
 			numPeersStr := ""
 			for i, s := range switches {
-				outbound, inbound, _, _, _ := s.NumPeers()
+				outbound, inbound, _ := s.NumPeers()
 				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
 			}
 			t.Errorf(

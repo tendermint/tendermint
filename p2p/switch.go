@@ -281,20 +281,17 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	return successChan
 }
 
-// NumPeers returns the count of outbound/inbound, outbound-dialing and unconditional peers.
-func (sw *Switch) NumPeers() (outbound, inbound, dialing, unconditionalOutbound, unconditionalInbound int) {
+// NumPeers returns the count of outbound/inbound and outbound-dialing peers.
+func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := sw.peers.List()
 	for _, peer := range peers {
-		unconditional := sw.IsPeerUnconditional(peer.ID())
 		if peer.IsOutbound() {
-			outbound++
-			if unconditional {
-				unconditionalOutbound++
+			if !sw.IsPeerUnconditional(peer.ID()) {
+				outbound++
 			}
 		} else {
-			inbound++
-			if unconditional {
-				unconditionalInbound++
+			if !sw.IsPeerUnconditional(peer.ID()) {
+				inbound++
 			}
 		}
 	}
@@ -656,14 +653,13 @@ func (sw *Switch) acceptRoutine() {
 		}
 
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
-			// Ignore connection if we already have enough peers, except unconditional peer
-			_, in, _, _, unconditionalIn := sw.NumPeers()
-			if in-unconditionalIn >= sw.config.MaxNumInboundPeers {
+			// Ignore connection if we already have enough peers.
+			_, in, _ := sw.NumPeers()
+			if in >= sw.config.MaxNumInboundPeers {
 				sw.Logger.Info(
 					"Ignoring inbound connection: already have enough inbound peers",
 					"address", p.SocketAddr(),
 					"have", in,
-					"unconditional_inbound", unconditionalIn,
 					"max", sw.config.MaxNumInboundPeers,
 				)
 
