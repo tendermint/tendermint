@@ -538,7 +538,8 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	if attempts > 0 {
 		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
-		if r.Switch.IsPeerPersistent(addr) && r.config.PersistentPeersMaxDialPeriod > 0 && backoffDuration > r.config.PersistentPeersMaxDialPeriod {
+		if r.Switch.IsPeerPersistent(addr) && r.config.PersistentPeersMaxDialPeriod > 0 &&
+			backoffDuration > r.config.PersistentPeersMaxDialPeriod {
 			backoffDuration = r.config.PersistentPeersMaxDialPeriod
 		}
 		sinceLastDialed := time.Since(lastDialed)
