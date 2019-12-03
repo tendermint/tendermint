@@ -302,7 +302,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing, unconditionalOutbound,
 	return
 }
 
-func (sw *Switch) IsUnconditionalPeer(id ID) bool {
+func (sw *Switch) IsPeerUnconditional(id ID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -574,10 +574,10 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
-	for _, id := range ids {
+	for i, id := range ids {
 		err := validateID(ID(id))
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "wrong ID #%d", i)
 		}
 		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
 	}
