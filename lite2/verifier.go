@@ -42,7 +42,7 @@ func Verify(
 
 	if h2.Height == h1.Height+1 {
 		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) {
-			return errors.Errorf("expected old header validators (%X) to match those from new header (%X)",
+			return errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
 				h1NextVals.Hash(),
 				h2.ValidatorsHash,
 			)
@@ -95,8 +95,8 @@ func verifyNewHeaderAndVals(
 
 	if !bytes.Equal(h2.ValidatorsHash, h2Vals.Hash()) {
 		return errors.Errorf("expected new header validators (%X) to match those that were supplied (%X)",
+			h2.ValidatorsHash,
 			h2Vals.Hash(),
-			h2.NextValidatorsHash,
 		)
 	}
 

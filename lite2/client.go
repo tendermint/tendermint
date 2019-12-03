@@ -157,21 +157,39 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// NOTE: Verify func will check if it's expired or not.
 	if err := h.ValidateBasic(c.chainID); err != nil {
-		return errors.Wrap(err, "ValidateBasic failed")
+		return err
 	}
 
 	if !bytes.Equal(h.Hash(), options.Hash) {
 		return errors.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
 	}
 
-	// 2) Fetch and verify the next vals.
-	vals, err := c.primary.ValidatorSet(options.Height + 1)
+	// 2) Fetch and verify the vals.
+	vals, err := c.primary.ValidatorSet(options.Height)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(h.ValidatorsHash, vals.Hash()) {
+		return errors.Errorf("expected header's validators (%X) to match those that were supplied (%X)",
+			h.ValidatorsHash,
+			vals.Hash(),
+		)
+	}
+	// Ensure that +2/3 of validators signed correctly.
+	err = vals.VerifyCommit(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
+	if err != nil {
+		return errors.Wrap(err, "invalid commit")
+	}
+
+	// 3) Fetch and verify the next vals (verification happens in
+	// updateTrustedHeaderAndVals).
+	nextVals, err := c.primary.ValidatorSet(options.Height + 1)
 	if err != nil {
 		return err
 	}
 
-	// 3) Persist both of them and continue.
-	return c.updateTrustedHeaderAndVals(h, vals)
+	// 4) Persist both of them and continue.
+	return c.updateTrustedHeaderAndVals(h, nextVals)
 }
 
 // SetLogger sets a logger.
