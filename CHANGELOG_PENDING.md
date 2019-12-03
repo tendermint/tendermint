@@ -56,6 +56,7 @@ program](https://hackerone.com/tendermint).
     - ID is unique for each request;
     - Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
   - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
+    - You will have to generate a new config for your Tendermint node(s)
 
 - Apps
 
