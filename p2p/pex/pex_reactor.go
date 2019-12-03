@@ -100,11 +100,6 @@ func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
 	return r.ensurePeersPeriod / 3
 }
 
-// isMaxDialPeriodTarget checks if the addr exponential backoff target for or not
-func (r *PEXReactor) isMaxDialPeriodTarget(addr *p2p.NetAddress) bool {
-	return r.config.PersistentPeersMaxDialPeriod > 0 && r.Switch.IsPeerPersistent(addr)
-}
-
 // PEXReactorConfig holds reactor specific configuration data.
 type PEXReactorConfig struct {
 	// Seed/Crawler mode
@@ -475,7 +470,6 @@ func (r *PEXReactor) ensurePeers() {
 			continue
 		}
 		if r.Switch.IsUnconditionalPeer(try.ID) {
-			numToDial++
 			maxAttempts++
 		}
 		// TODO: consider moving some checks from toDial into here
@@ -531,8 +525,7 @@ func (r *PEXReactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastD
 
 func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
-	maxDialPeriodTarget := r.isMaxDialPeriodTarget(addr)
-	if !r.Switch.IsPersistentPeer(addr) && attempts > maxAttemptsToDial {
+	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
 		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
 		// failed to connect to. Then we can clean up attemptsToDial, which acts as
 		// a blacklist currently.
@@ -545,7 +538,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	if attempts > 0 {
 		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
-		if r.Switch.IsPersistentPeer(addr) && r.config.PersistentPeersMaxDialPeriod > 0 && backoffDuration > r.config.PersistentPeersMaxDialPeriod {
+		if r.Switch.IsPeerPersistent(addr) && r.config.PersistentPeersMaxDialPeriod > 0 && backoffDuration > r.config.PersistentPeersMaxDialPeriod {
 			backoffDuration = r.config.PersistentPeersMaxDialPeriod
 		}
 		sinceLastDialed := time.Since(lastDialed)
@@ -568,8 +561,8 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return errors.Wrapf(err, "dialing failed (attempts: %d, maxDialPeriodTarget: %t, "+
-			"persistent_peers_max_dial_period: %s, persistent_peer: %t)", attempts+1, maxDialPeriodTarget,
+		return errors.Wrapf(err, "dialing failed (attempts: %d,"+
+			"persistent_peers_max_dial_period: %s, persistent_peer: %t)", attempts+1,
 			r.config.PersistentPeersMaxDialPeriod, r.Switch.IsPeerPersistent(addr))
 	}
 
