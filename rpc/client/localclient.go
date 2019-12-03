@@ -116,6 +116,10 @@ func (c *Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	return core.ConsensusState(c.ctx)
 }
 
+func (c *Local) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	return core.ConsensusParams(c.ctx, height)
+}
+
 func (c *Local) Health() (*ctypes.ResultHealth, error) {
 	return core.Health(c.ctx)
 }
