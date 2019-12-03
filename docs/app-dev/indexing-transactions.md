@@ -25,7 +25,7 @@ For example:
 ]
 ```
 
-would be equal to the composite key of `jack.account.numer`.
+would be equal to the composite key of `jack.account.number`.
 
 Let's take a look at the `[tx_index]` config section:
 

@@ -299,6 +299,7 @@ blocktime_iota = "1s"
 indexer = "kv"
 
 # Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
+# Remember that Event has the following structure: key.type
 #
 # You can also index transactions by height by adding "tx.height" event here.
 #

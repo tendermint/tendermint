@@ -348,6 +348,7 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 indexer = "{{ .TxIndex.Indexer }}"
 
 # Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
+# Remember that Event has the following structure: key.type
 #
 # You can also index transactions by height by adding "tx.height" key here.
 #
