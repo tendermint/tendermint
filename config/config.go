@@ -505,10 +505,10 @@ type P2PConfig struct { //nolint: maligned
 	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
-	// Unconditional node id list to avoid limit of MaxNumInboundPeers, MaxNumOutboundPeers
+	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional_peer_ids"`
 
-	// Maximum dial period seconds when exponential backoff for persistent peers, when value exist or not zero
+	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
 	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent_peers_max_dial_period"`
 
 	// Time to wait before flushing messages out on the connection

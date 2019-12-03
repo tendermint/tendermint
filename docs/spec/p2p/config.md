@@ -27,7 +27,7 @@ anchor us in the p2p network. The auto-redial uses exponential
 backoff and will give up after a day of trying to connect.
 
 But If `persistent_peers_max_dial_period` is set greater than zero,
-terms between each dial to each persistent peer will not exceed `persistent_peers_max_dial_period`
+pause between each dial to each persistent peer will not exceed `persistent_peers_max_dial_period`
 during exponential backoff and we keep trying again without giving up
 
 **Note:** If `seeds` and `persistent_peers` intersect,

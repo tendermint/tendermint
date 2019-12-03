@@ -115,7 +115,7 @@ type PEXReactorConfig struct {
 	// disconnecting.
 	SeedDisconnectWaitPeriod time.Duration
 
-	// Maximum dial period seconds when exponential backoff for persistent peers, when value exist or not zero
+	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
 	PersistentPeersMaxDialPeriod time.Duration
 
 	// Seeds is a list of addresses reactor may use
@@ -532,7 +532,7 @@ func (r *PEXReactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastD
 func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 	maxDialPeriodTarget := r.isMaxDialPeriodTarget(addr)
-	if attempts > maxAttemptsToDial && !maxDialPeriodTarget {
+	if !r.Switch.IsPersistentPeer(addr) && attempts > maxAttemptsToDial {
 		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
 		// failed to connect to. Then we can clean up attemptsToDial, which acts as
 		// a blacklist currently.
@@ -545,7 +545,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	if attempts > 0 {
 		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
-		if backoffDuration > r.config.PersistentPeersMaxDialPeriod && maxDialPeriodTarget {
+		if r.Switch.IsPersistentPeer(addr) && r.config.PersistentPeersMaxDialPeriod > 0 && backoffDuration > r.config.PersistentPeersMaxDialPeriod {
 			backoffDuration = r.config.PersistentPeersMaxDialPeriod
 		}
 		sinceLastDialed := time.Since(lastDialed)
