@@ -24,8 +24,8 @@ func BenchmarkTxSearch(b *testing.B) {
 		b.Errorf("failed to create database: %s", err)
 	}
 
-	allowedTags := []string{"transfer.address", "transfer.amount"}
-	indexer := NewTxIndex(db, IndexEvents(allowedTags))
+	allowedKeys := []string{"transfer.address", "transfer.amount"}
+	indexer := NewTxIndex(db, IndexEvents(allowedKeys))
 
 	for i := 0; i < 35000; i++ {
 		events := []abci.Event{
