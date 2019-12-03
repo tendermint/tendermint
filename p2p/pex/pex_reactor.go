@@ -469,7 +469,7 @@ func (r *PEXReactor) ensurePeers() {
 		if r.Switch.IsDialingOrExistingAddress(try) {
 			continue
 		}
-		if r.Switch.IsUnconditionalPeer(try.ID) {
+		if r.Switch.IsPeerUnconditional(try.ID) {
 			maxAttempts++
 		}
 		// TODO: consider moving some checks from toDial into here
@@ -562,9 +562,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return errors.Wrapf(err, "dialing failed (attempts: %d,"+
-			"persistent_peers_max_dial_period: %s, persistent_peer: %t)", attempts+1,
-			r.config.PersistentPeersMaxDialPeriod, r.Switch.IsPeerPersistent(addr))
+		return errors.Wrapf(err, "dialing failed (attempts: %d)", attempts+1)
 	}
 
 	// cleanup any history

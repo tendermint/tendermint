@@ -285,7 +285,7 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 func (sw *Switch) NumPeers() (outbound, inbound, dialing, unconditionalOutbound, unconditionalInbound int) {
 	peers := sw.peers.List()
 	for _, peer := range peers {
-		unconditional := sw.IsUnconditionalPeer(peer.ID())
+		unconditional := sw.IsPeerUnconditional(peer.ID())
 		if peer.IsOutbound() {
 			outbound++
 			if unconditional {
@@ -655,7 +655,7 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
-		if !sw.IsUnconditionalPeer(p.NodeInfo().ID()) {
+		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers, except unconditional peer
 			_, in, _, _, unconditionalIn := sw.NumPeers()
 			if in-unconditionalIn >= sw.config.MaxNumInboundPeers {
