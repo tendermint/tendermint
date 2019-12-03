@@ -61,7 +61,8 @@ func (pubKey PubKeySr25519) String() string {
 	return fmt.Sprintf("PubKeySr25519{%X}", pubKey[:])
 }
 
-// nolint: golint
+// Equals - checks that two public keys are the same time
+// Runs in constant time based on length of the keys.
 func (pubKey PubKeySr25519) Equals(other crypto.PubKey) bool {
 	if otherEd, ok := other.(PubKeySr25519); ok {
 		return bytes.Equal(pubKey[:], otherEd[:])
