@@ -9,7 +9,7 @@ import (
 var cdc = amino.NewCodec()
 
 func init() {
-	RegisterMessages(cdc)
+	RegisterEvidenceMessages(cdc)
 	cryptoamino.RegisterAmino(cdc)
 	types.RegisterEvidences(cdc)
 }

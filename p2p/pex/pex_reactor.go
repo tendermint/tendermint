@@ -368,7 +368,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 				err := r.dialPeer(addr)
 				if err != nil {
 					switch err.(type) {
-					case errMaxAttemptsToDial, errTooEarlyToDial:
+					case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 						r.Logger.Debug(err.Error(), "addr", addr)
 					default:
 						r.Logger.Error(err.Error(), "addr", addr)
@@ -590,7 +590,9 @@ func (r *Reactor) dialSeeds() {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
 		err := r.Switch.DialPeerWithAddress(seedAddr)
-		if err == nil {
+
+		switch err.(type) {
+		case nil, p2p.ErrCurrentlyDialingOrExistingAddress:
 			return
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
@@ -676,7 +678,7 @@ func (r *Reactor) crawlPeers(addrs []*p2p.NetAddress) {
 		err := r.dialPeer(addr)
 		if err != nil {
 			switch err.(type) {
-			case errMaxAttemptsToDial, errTooEarlyToDial:
+			case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			default:
 				r.Logger.Error(err.Error(), "addr", addr)
@@ -743,7 +745,7 @@ func RegisterMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg Message, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

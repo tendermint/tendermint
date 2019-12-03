@@ -59,6 +59,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks",
 		config.Consensus.CreateEmptyBlocks,
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	cmd.Flags().String(
+		"consensus.create_empty_blocks_interval",
+		string(config.Consensus.CreateEmptyBlocksInterval),
+		"The possible interval between empty blocks")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
@@ -70,7 +74,7 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n, err := nodeProvider(config, logger)
 			if err != nil {
-				return fmt.Errorf("Failed to create node: %v", err)
+				return fmt.Errorf("failed to create node: %v", err)
 			}
 
 			// Stop upon receiving SIGTERM or CTRL-C.
@@ -81,7 +85,7 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 			})
 
 			if err := n.Start(); err != nil {
-				return fmt.Errorf("Failed to start node: %v", err)
+				return fmt.Errorf("failed to start node: %v", err)
 			}
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 

@@ -427,7 +427,7 @@ func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message,
 	case actual := <-ch:
 		assert.Equal(t, expected, actual.Data(), msgAndArgs...)
 	case <-time.After(1 * time.Second):
-		t.Errorf("Expected to receive %v from the channel, got nothing after 1s", expected)
+		t.Errorf("expected to receive %v from the channel, got nothing after 1s", expected)
 		debug.PrintStack()
 	}
 }

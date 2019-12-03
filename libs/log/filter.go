@@ -141,7 +141,7 @@ func AllowLevel(lvl string) (Option, error) {
 	case "none":
 		return AllowNone(), nil
 	default:
-		return nil, fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
+		return nil, fmt.Errorf("expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
 	}
 }
 

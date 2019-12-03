@@ -1,5 +1,6 @@
 module.exports = {
   theme: "cosmos",
+  title: "Tendermint",
   // locales: {
   //   "/": {
   //     lang: "en-US"
@@ -8,28 +9,33 @@ module.exports = {
   //     lang: "ru"
   //   }
   // },
+  base: process.env.VUEPRESS_BASE,
   themeConfig: {
     docsRepo: "tendermint/tendermint",
-    editLink: true,
+    editLinks: true,
     docsDir: "docs",
     logo: "/logo.svg",
     label: "core",
     gutter: {
       title: "Help & Support",
       editLink: true,
-      children: [
-        {
-          title: "Riot Chat",
-          text: "Chat with Tendermint developers on Riot Chat.",
-          highlighted: "500+ people chatting now"
-        },
-        {
-          title: "Tendermint Forum",
-          text: "Found an Issue?",
-          highlighted:
-            "Help us improve this page by suggesting edits on GitHub."
-        }
-      ]
+      chat: {
+        title: "Riot Chat",
+        text: "Chat with Tendermint developers on Riot Chat.",
+        url: "https://riot.im/app/#/room/#tendermint:matrix.org",
+        bg: "#222"
+      },
+      forum: {
+        title: "Tendermint Forum",
+        text: "Join the Tendermint forum to learn more",
+        url: "https://forum.cosmos.network/c/tendermint",
+        bg: "#0B7E0B",
+        logo: "tendermint"
+      },
+      github: {
+        title: "Found an Issue?",
+        text: "Help us improve this page by suggesting edits on GitHub."
+      }
     },
     footer: {
       logo: "/logo-bw.svg",
@@ -125,7 +131,7 @@ module.exports = {
           },
           {
             title: "RPC",
-            path: "/rpc/",
+            path: "/master/rpc/",
             static: true
           }
         ]
@@ -136,5 +142,13 @@ module.exports = {
     anchor: {
       permalinkSymbol: ""
     }
-  }
+  },
+  plugins: [
+    [
+      "@vuepress/google-analytics",
+      {
+        ga: "UA-51029217-11"
+      }
+    ]
+  ],
 };

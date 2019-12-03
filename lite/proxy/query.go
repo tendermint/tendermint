@@ -24,7 +24,7 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
 
 	if reqHeight < 0 {
-		err = cmn.NewError("Height cannot be negative")
+		err = errors.New("Height cannot be negative")
 		return
 	}
 
@@ -54,7 +54,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 
 	// Validate the response, e.g. height.
 	if resp.IsErr() {
-		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
+		err = errors.Errorf("Query error for key %d: %d", key, resp.Code)
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		return nil, lerr.ErrEmptyTree()
 	}
 	if resp.Height == 0 {
-		return nil, cmn.NewError("Height returned is zero")
+		return nil, errors.New("Height returned is zero")
 	}
 
 	// AppHash for height H is in header H+1

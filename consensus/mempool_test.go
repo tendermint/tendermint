@@ -99,7 +99,7 @@ func deliverTxsRange(cs *State, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil)
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil, mempl.TxInfo{})
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -111,21 +111,19 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	blockDB := dbm.NewMemDB()
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
 	sm.SaveState(blockDB, state)
-	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
 
-	NTxs := 3000
-	go deliverTxsRange(cs, 0, NTxs)
+	const numTxs int64 = 3000
+	go deliverTxsRange(cs, 0, int(numTxs))
 
-	startTestRound(cs, height, round)
-	for nTxs := 0; nTxs < NTxs; {
-		ticker := time.NewTicker(time.Second * 30)
+	startTestRound(cs, cs.Height, cs.Round)
+	for n := int64(0); n < numTxs; {
 		select {
-		case msg := <-newBlockCh:
-			blockEvent := msg.Data().(types.EventDataNewBlock)
-			nTxs += int(blockEvent.Block.Header.NumTxs)
-		case <-ticker.C:
-			panic("Timed out waiting to commit blocks with transactions")
+		case msg := <-newBlockHeaderCh:
+			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
+			n += headerEvent.NumTxs
+		case <-time.After(30 * time.Second):
+			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}
 	}
 }
@@ -159,9 +157,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 				return
 			}
 			checkTxRespCh <- struct{}{}
-		})
+		}, mempl.TxInfo{})
 		if err != nil {
-			t.Errorf("Error after CheckTx: %v", err)
+			t.Errorf("error after CheckTx: %v", err)
 			return
 		}
 
@@ -182,7 +180,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-checkTxRespCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to return")
+		t.Errorf("timed out waiting for tx to return")
 		return
 	}
 
@@ -192,7 +190,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to be removed")
+		t.Errorf("timed out waiting for tx to be removed")
 		return
 	}
 }

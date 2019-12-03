@@ -63,10 +63,12 @@ func NewMockReporter() *MockReporter {
 }
 
 // Report stores the PeerBehaviour produced by the peer identified by peerID.
-func (mpbr *MockReporter) Report(behaviour PeerBehaviour) {
+func (mpbr *MockReporter) Report(behaviour PeerBehaviour) error {
 	mpbr.mtx.Lock()
 	defer mpbr.mtx.Unlock()
 	mpbr.pb[behaviour.peerID] = append(mpbr.pb[behaviour.peerID], behaviour)
+
+	return nil
 }
 
 // GetBehaviours returns all behaviours reported on the peer identified by peerID.

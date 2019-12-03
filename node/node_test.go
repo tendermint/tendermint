@@ -267,7 +267,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	txLength := 1000
 	for i := 0; i < maxBytes/txLength; i++ {
 		tx := cmn.RandBytes(txLength)
-		err := mempool.CheckTx(tx, nil)
+		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -279,7 +279,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 	)
 
-	commit := types.NewCommit(types.BlockID{}, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,

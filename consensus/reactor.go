@@ -452,7 +452,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 		Round:                 rs.Round,
 		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommit.Round(),
+		LastCommitRound:       rs.LastCommit.GetRound(),
 	}
 	return
 }
@@ -501,10 +501,12 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					panic(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
-						prs.Height, conR.conS.blockStore.Height()))
+					heightLogger.Error("Failed to load block meta",
+						"blockstoreHeight", conR.conS.blockStore.Height())
+					time.Sleep(conR.conS.config.PeerGossipSleepDuration)
+				} else {
+					ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
 				}
-				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
 				// continue the loop since prs is a copy and not effected by this initialization
 				continue OUTER_LOOP
 			}
@@ -804,7 +806,7 @@ OUTER_LOOP:
 				commit := conR.conS.LoadCommit(prs.Height)
 				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 					Height:  prs.Height,
-					Round:   commit.Round(),
+					Round:   commit.Round,
 					Type:    types.PrecommitType,
 					BlockID: commit.BlockID,
 				}))
@@ -1052,7 +1054,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, msgType, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, votesType, size := votes.GetHeight(), votes.GetRound(), types.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1060,7 +1062,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	}
 	ps.ensureVoteBitArrays(height, size)
 
-	psVotes := ps.getVoteBitArray(height, round, msgType)
+	psVotes := ps.getVoteBitArray(height, round, votesType)
 	if psVotes == nil {
 		return nil, false // Not something worth sending
 	}
@@ -1070,14 +1072,14 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.SignedMsgType) *cmn.BitArray {
-	if !types.IsVoteTypeValid(msgType) {
+func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.SignedMsgType) *cmn.BitArray {
+	if !types.IsVoteTypeValid(votesType) {
 		return nil
 	}
 
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
-			switch msgType {
+			switch votesType {
 			case types.PrevoteType:
 				return ps.PRS.Prevotes
 			case types.PrecommitType:
@@ -1085,7 +1087,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.Sign
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
-			switch msgType {
+			switch votesType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1093,7 +1095,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.Sign
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
-			switch msgType {
+			switch votesType {
 			case types.PrevoteType:
 				return ps.PRS.ProposalPOL
 			case types.PrecommitType:
@@ -1104,7 +1106,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.Sign
 	}
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
-			switch msgType {
+			switch votesType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1222,17 +1224,16 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int, msgType types.SignedMsgType, index int) {
+func (ps *PeerState) setHasVote(height int64, round int, voteType types.SignedMsgType, index int) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R",
-		fmt.Sprintf("%d/%d", height, round),
-	)
-	logger.Debug("setHasVote", "type", msgType, "index", index)
+		fmt.Sprintf("%d/%d", height, round))
+	logger.Debug("setHasVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
-	psVotes := ps.getVoteBitArray(height, round, msgType)
+	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
 		psVotes.SetIndex(index, true)
 	}
@@ -1401,7 +1402,7 @@ func RegisterMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg Message, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -1468,12 +1469,18 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
+		return fmt.Errorf("wrong BlockPartsHeader: %v", err)
+	}
+	if m.BlockParts.Size() == 0 {
+		return errors.New("Empty BlockParts")
 	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
-		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
+		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
+	}
+	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }
@@ -1521,6 +1528,9 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 	if m.ProposalPOL.Size() == 0 {
 		return errors.New("empty ProposalPOL bit array")
 	}
+	if m.ProposalPOL.Size() > types.MaxVotesCount {
+		return errors.Errorf("ProposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
+	}
 	return nil
 }
 
@@ -1547,7 +1557,7 @@ func (m *BlockPartMessage) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Part: %v", err)
+		return fmt.Errorf("wrong Part: %v", err)
 	}
 	return nil
 }
@@ -1628,7 +1638,7 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	return nil
 }
@@ -1661,9 +1671,12 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
+	if m.Votes.Size() > types.MaxVotesCount {
+		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	}
 	return nil
 }
 

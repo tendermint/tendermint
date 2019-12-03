@@ -69,10 +69,10 @@ type EventDataNewBlock struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
-// light weight event for benchmarking
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
+	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }

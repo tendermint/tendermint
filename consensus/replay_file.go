@@ -32,7 +32,7 @@ const (
 
 // replay the wal file
 func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
-	consensusState := newStateForReplay(config, csConfig)
+	consensusState := newConsensusStateForReplay(config, csConfig)
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
 		cmn.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
@@ -274,8 +274,8 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
-	dbType := dbm.DBBackendType(config.DBBackend)
+func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
+	dbType := dbm.BackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
 	blockStore := store.NewBlockStore(blockStoreDB)

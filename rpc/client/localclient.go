@@ -116,6 +116,10 @@ func (c *Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	return core.ConsensusState(c.ctx)
 }
 
+func (c *Local) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	return core.ConsensusParams(c.ctx, height)
+}
+
 func (c *Local) Health() (*ctypes.ResultHealth, error) {
 	return core.Health(c.ctx)
 }
@@ -148,8 +152,8 @@ func (c *Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(c.ctx, height)
+func (c *Local) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return core.Validators(c.ctx, height, page, perPage)
 }
 
 func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {

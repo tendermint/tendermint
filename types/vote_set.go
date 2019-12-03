@@ -11,6 +11,13 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxVotesCount is the maximum number of votes in a set. Used in ValidateBasic funcs for
+	// protection against DOS attacks. Note this implies a corresponding equal limit to
+	// the number of validators.
+	MaxVotesCount = 10000
+)
+
 // UNSTABLE
 // XXX: duplicate of p2p.ID to avoid dependence between packages.
 // Perhaps we can have a minimal types package containing this (and other things?)
@@ -91,20 +98,23 @@ func (voteSet *VoteSet) ChainID() string {
 	return voteSet.chainID
 }
 
-func (voteSet *VoteSet) Height() int64 {
+// Implements VoteSetReader.
+func (voteSet *VoteSet) GetHeight() int64 {
 	if voteSet == nil {
 		return 0
 	}
 	return voteSet.height
 }
 
-func (voteSet *VoteSet) Round() int {
+// Implements VoteSetReader.
+func (voteSet *VoteSet) GetRound() int {
 	if voteSet == nil {
 		return -1
 	}
 	return voteSet.round
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) Type() byte {
 	if voteSet == nil {
 		return 0x00
@@ -112,6 +122,7 @@ func (voteSet *VoteSet) Type() byte {
 	return byte(voteSet.signedMsgType)
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) Size() int {
 	if voteSet == nil {
 		return 0
@@ -307,7 +318,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 		if existing.Equals(blockID) {
 			return nil // Nothing to do
 		}
-		return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
+		return fmt.Errorf("setPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
 			peerID, blockID, existing)
 	}
 	voteSet.peerMaj23s[peerID] = blockID
@@ -328,6 +339,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 	return nil
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) BitArray() *cmn.BitArray {
 	if voteSet == nil {
 		return nil
@@ -351,6 +363,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *cmn.BitArray {
 }
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
+// Implements VoteSetReader.
 func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	if voteSet == nil {
 		return nil
@@ -382,6 +395,7 @@ func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
 	return voteSet.maj23 != nil
 }
 
+// Implements VoteSetReader.
 func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
@@ -549,11 +563,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	commitSigs := make([]*CommitSig, len(voteSet.votes))
+	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
 		commitSigs[i] = v.CommitSig()
 	}
-	return NewCommit(*voteSet.maj23, commitSigs)
+
+	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
 }
 
 //--------------------------------------------------------------------------------
@@ -600,8 +615,8 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
-	Height() int64
-	Round() int
+	GetHeight() int64
+	GetRound() int
 	Type() byte
 	Size() int
 	BitArray() *cmn.BitArray
