@@ -31,7 +31,12 @@ On startup, we will also immediately dial the given list of `persistent_peers`,
 and will attempt to maintain persistent connections with them. If the
 connections die, or we fail to dial, we will redial every 5s for a few minutes,
 then switch to an exponential backoff schedule, and after about a day of
-trying, stop dialing the peer.
+trying, stop dialing the peer. This behavior is when `persistent_peers_max_dial_period` is configured to zero.
+
+But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer 
+will not exceed `persistent_peers_max_dial_period` during exponential backoff. 
+Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
+and we keep trying again regardless of `maxAttemptsToDial`
 
 As long as we have less than `MaxNumOutboundPeers`, we periodically request
 additional peers from each of our own and try seeds.
@@ -93,7 +98,8 @@ the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
 If we fail to connect to the peer after 16 tries (with exponential backoff), we
-remove from address book completely.
+remove from address book completely. But for persistent peers, we indefinitely try to
+dial all persistent peers unless `persistent_peers_max_dial_period` is configured to zero
 
 ## Select Peers to Exchange
 
