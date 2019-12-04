@@ -16,7 +16,7 @@ var (
 
 // A Subscription represents a client subscription for a particular query and
 // consists of three things:
-// 1) channel onto which messages and tags are published
+// 1) channel onto which messages and events are published
 // 2) channel which is closed if a client is too slow or choose to unsubscribe
 // 3) err indicating the reason for (2)
 type Subscription struct {
@@ -35,7 +35,7 @@ func NewSubscription(outCapacity int) *Subscription {
 	}
 }
 
-// Out returns a channel onto which messages and tags are published.
+// Out returns a channel onto which messages and events are published.
 // Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
 // receiving a nil message.
 func (s *Subscription) Out() <-chan Message {
@@ -68,7 +68,7 @@ func (s *Subscription) cancel(err error) {
 	close(s.cancelled)
 }
 
-// Message glues data and tags together.
+// Message glues data and events together.
 type Message struct {
 	data   interface{}
 	events map[string][]string

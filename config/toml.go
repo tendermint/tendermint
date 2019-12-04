@@ -252,6 +252,12 @@ max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
+# List of node IDs, to which a connection will be (re)established ignoring any existing limits
+unconditional_peer_ids = "{{ .P2P.UnconditionalPeerIDs }}"
+
+# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+persistent_peers_max_dial_period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
+
 # Time to wait before flushing messages out on the connection
 flush_throttle_timeout = "{{ .P2P.FlushThrottleTimeout }}"
 
@@ -347,22 +353,27 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
-# Comma-separated list of tags to index (by default the only tag is "tx.hash")
+# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
+# Remember that Event has the following structure: type.key
+# type: [
+#  key: value,
+#  ...
+# ]
 #
-# You can also index transactions by height by adding "tx.height" tag here.
+# You can also index transactions by height by adding "tx.height" key here.
 #
-# It's recommended to index only a subset of tags due to possible memory
+# It's recommended to index only a subset of keys due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = "{{ .TxIndex.IndexTags }}"
+index_keys = "{{ .TxIndex.IndexKeys }}"
 
-# When set to true, tells indexer to index all tags (predefined tags:
-# "tx.hash", "tx.height" and all tags from DeliverTx responses).
+# When set to true, tells indexer to index all compositeKeys (predefined keys:
+# "tx.hash", "tx.height" and all keys from DeliverTx responses).
 #
-# Note this may be not desirable (see the comment above). IndexTags has a
-# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# Note this may be not desirable (see the comment above). IndexKeys has a
+# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
 # indexed).
-index_all_tags = {{ .TxIndex.IndexAllTags }}
+index_all_keys = {{ .TxIndex.IndexAllKeys }}
 
 ##### instrumentation configuration options #####
 [instrumentation]

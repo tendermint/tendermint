@@ -29,12 +29,12 @@ type Query struct {
 	parser *QueryParser
 }
 
-// Condition represents a single condition within a query and consists of tag
+// Condition represents a single condition within a query and consists of composite key
 // (e.g. "tx.gas"), operator (e.g. "=") and operand (e.g. "7").
 type Condition struct {
-	Tag     string
-	Op      Operator
-	Operand interface{}
+	CompositeKey string
+	Op           Operator
+	Operand      interface{}
 }
 
 // New parses the given string and returns a query or error if the string is
@@ -63,7 +63,7 @@ func (q *Query) String() string {
 	return q.str
 }
 
-// Operator is an operator that defines some kind of relation between tag and
+// Operator is an operator that defines some kind of relation between composite key and
 // operand (equality, etc.).
 type Operator uint8
 
@@ -399,7 +399,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 	case reflect.Struct: // time
 		operandAsTime := operand.Interface().(time.Time)
 
-		// try our best to convert value from tags to time.Time
+		// try our best to convert value from events to time.Time
 		var (
 			v   time.Time
 			err error
