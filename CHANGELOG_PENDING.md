@@ -88,6 +88,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [p2p] \#4053 Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
+
 ### IMPROVEMENTS:
 
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
