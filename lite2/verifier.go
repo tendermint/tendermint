@@ -31,9 +31,8 @@ func Verify(
 	}
 
 	// Ensure last header can still be trusted.
-	expirationTime := h1.Time.Add(trustingPeriod)
-	if !expirationTime.After(now) {
-		return ErrOldHeaderExpired{expirationTime, now}
+	if HeaderExpired(h1, trustingPeriod, now) {
+		return ErrOldHeaderExpired{h1.Time.Add(trustingPeriod), now}
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
@@ -113,4 +112,10 @@ func ValidateTrustLevel(lvl cmn.Fraction) error {
 		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}
 	return nil
+}
+
+// HeaderExpired return true if the given header expired.
+func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time.Time) bool {
+	expirationTime := h.Time.Add(trustingPeriod)
+	return !expirationTime.After(now)
 }

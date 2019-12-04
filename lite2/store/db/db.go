@@ -29,29 +29,36 @@ func New(db dbm.DB, prefix string) store.Store {
 	return &dbs{db: db, prefix: prefix, cdc: cdc}
 }
 
-func (s *dbs) SaveSignedHeader(sh *types.SignedHeader) error {
+func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
 	if sh.Height <= 0 {
 		panic("negative or zero height")
 	}
 
+	// TODO: batch
 	bz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
 	if err != nil {
 		return err
 	}
 	s.db.Set(s.shKey(sh.Height), bz)
+
+	bz, err = s.cdc.MarshalBinaryLengthPrefixed(valSet)
+	if err != nil {
+		return err
+	}
+	s.db.Set(s.vsKey(sh.Height+1), bz)
+
 	return nil
 }
 
-func (s *dbs) SaveValidatorSet(valSet *types.ValidatorSet, height int64) error {
+func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
-	bz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
-	if err != nil {
-		return err
-	}
-	s.db.Set(s.vsKey(height), bz)
+	// TODO: batch
+	s.db.Delete(s.shKey(height))
+	s.db.Delete(s.vsKey(height + 1))
+
 	return nil
 }
 
@@ -79,6 +86,24 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	itr := s.db.ReverseIterator(
+		s.shKey(1),
+		append(s.shKey(1<<63-1), byte(0x00)),
+	)
+	defer itr.Close()
+
+	for itr.Valid() {
+		key := itr.Key()
+		_, height, ok := parseShKey(key)
+		if ok {
+			return height, nil
+		}
+	}
+
+	return -1, errors.New("no headers found")
+}
+
+func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
+	itr := s.db.Iterator(
 		s.shKey(1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
