@@ -62,8 +62,10 @@ You can simply use below table and concatenate Prefix || Length (of raw bytes) |
 | Type                    | Name                               | Prefix     | Length   | Notes |
 | ----------------------- | ---------------------------------- | ---------- | -------- | ----- |
 | PubKeyEd25519           | tendermint/PubKeyEd25519           | 0x1624DE64 | 0x20     |       |
+| PubKeySr25519           | tendermint/PubKeySr25519           | 0x0DFB1005 | 0x20     |       |
 | PubKeySecp256k1         | tendermint/PubKeySecp256k1         | 0xEB5AE987 | 0x21     |       |
 | PrivKeyEd25519          | tendermint/PrivKeyEd25519          | 0xA3288910 | 0x40     |       |
+| PrivKeySr25519          | tendermint/PrivKeySr25519          | 0x2F82D78B | 0x20     |       |
 | PrivKeySecp256k1        | tendermint/PrivKeySecp256k1        | 0xE1B0F79B | 0x20     |       |
 | PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |       |
 
@@ -79,6 +81,18 @@ would be encoded as
 Each type specifies it's own pubkey, address, and signature format.
 
 #### Ed25519
+
+TODO: pubkey
+
+The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
+
+```
+address = SHA256(pubkey)[:20]
+```
+
+The signature is the raw 64-byte ED25519 signature.
+
+#### Sr25519
 
 TODO: pubkey
 
