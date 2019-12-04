@@ -23,15 +23,9 @@ echo "export GOPATH=/root/goApps" >> ~/.profile
 echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 # **turn on the go module, default is auto. The value is off, if tendermint source code
 #is downloaded under $GOPATH/src directory
-
 echo "export GO111MODULE=on" >> ~/.profile
 
 source ~/.profile
-
-## get the code and move into repo
-#REPO=github.com/tendermint/tendermint
-#go get $REPO
-#cd $GOPATH/src/$REPO
 
 mkdir -p $GOPATH/src/github.com/tendermint
 cd $GOPATH/src/github.com/tendermint
