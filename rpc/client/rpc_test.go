@@ -504,7 +504,7 @@ func newEvidence(
 	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
 	require.NoError(t, err)
 
-	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, vote2)
+	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, deepcpVote2)
 }
 
 func makeEvidences(
