@@ -282,6 +282,7 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 }
 
 // NumPeers returns the count of outbound/inbound and outbound-dialing peers.
+// unconditional peers are not counted here.
 func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := sw.peers.List()
 	for _, peer := range peers {
