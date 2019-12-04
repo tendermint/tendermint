@@ -533,10 +533,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	if attempts > 0 {
 		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
-		if r.Switch.IsPeerPersistent(addr) && r.config.PersistentPeersMaxDialPeriod > 0 &&
-			backoffDuration > r.config.PersistentPeersMaxDialPeriod {
-			backoffDuration = r.config.PersistentPeersMaxDialPeriod
-		}
+		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
 			return errTooEarlyToDial{backoffDuration, lastDialed}
@@ -563,6 +560,16 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	// cleanup any history
 	r.attemptsToDial.Delete(addr.DialString())
 	return nil
+}
+
+// maxBackoffDurationForPeer caps the backoff duration for persistent peers.
+func (r *PEXReactor) maxBackoffDurationForPeer(addr *p2p.NetAddress, planned time.Duration) time.Duration {
+	if r.config.PersistentPeersMaxDialPeriod > 0 &&
+		planned > r.config.PersistentPeersMaxDialPeriod &&
+		r.Switch.IsPeerPersistent(addr) {
+		return r.config.PersistentPeersMaxDialPeriod
+	}
+	return planned
 }
 
 // checkSeeds checks that addresses are well formed.
