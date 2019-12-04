@@ -452,14 +452,14 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
-		// query using a tag (see kvstore application)
+		// query using a compositeKey (see kvstore application)
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
-		// query using a tag (see kvstore application) and height
+		// query using a compositeKey (see kvstore application) and height
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {

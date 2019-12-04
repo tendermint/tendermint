@@ -29,7 +29,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		},
 	}
 
-	// PublishEventTx adds all these 3 tags, so the query below should work
+	// PublishEventTx adds 3 composite keys, so the query below should work
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		},
 	}
 
-	// PublishEventNewBlock adds the tm.event tag, so the query below should work
+	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
@@ -225,7 +225,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		},
 	}
 
-	// PublishEventNewBlockHeader adds the tm.event tag, so the query below should work
+	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)

@@ -125,7 +125,7 @@ type EventDataValidatorSetUpdates struct {
 ///////////////////////////////////////////////////////////////////////////////
 
 const (
-	// EventTypeKey is a reserved key, used to specify event type in tags.
+	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "tm.event"
 	// TxHashKey is a reserved key, used to specify transaction's hash.
 	// see EventBus#PublishEventTx

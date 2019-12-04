@@ -21,10 +21,10 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 - `state.db`: Stores the current blockchain state (ie. height, validators,
   consensus params). Only grows if consensus params or validators change. Also
   used to temporarily store intermediate results during block processing.
-- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
+- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
 
 By default, Tendermint will only index txs by their hash, not by their DeliverTx
-result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
+result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
 There is no current strategy for pruning the databases. Consider reducing
