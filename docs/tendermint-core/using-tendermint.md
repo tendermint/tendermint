@@ -263,12 +263,18 @@ create_empty_blocks = false
 Remember: because the default is to _create empty blocks_, avoiding
 empty blocks requires the config option to be set to `false`.
 
-The block interval setting allows for a delay (in seconds) between the
-creation of each new empty block. It is set via the `config.toml`:
+The block interval setting allows for a delay (in time.Duration format [ParseDuration](https://golang.org/pkg/time/#ParseDuration)) between the
+creation of each new empty block. It can be set with this additional flag:
+
+```
+--consensus.create_empty_blocks_interval="5s"
+```
+
+or set the configuration via the `config.toml` file:
 
 ```
 [consensus]
-create_empty_blocks_interval = 5
+create_empty_blocks_interval = "5s"
 ```
 
 With this setting, empty blocks will be produced every 5s if no block
