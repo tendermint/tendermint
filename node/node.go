@@ -541,7 +541,8 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 			// TODO (melekes): make it dynamic based on the actual block latencies
 			// from the live network.
 			// https://github.com/tendermint/tendermint/issues/3523
-			SeedDisconnectWaitPeriod: 28 * time.Hour,
+			SeedDisconnectWaitPeriod:     28 * time.Hour,
+			PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
 		})
 	pexReactor.SetLogger(logger.With("module", "pex"))
 	sw.AddReactor("PEX", pexReactor)
@@ -675,6 +676,11 @@ func NewNode(config *cfg.Config,
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
+	}
+
+	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not add peer ids from unconditional_peer_ids field")
 	}
 
 	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
