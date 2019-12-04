@@ -27,7 +27,7 @@ When writing a p2p service, there are two primary responsibilities:
 1. Routing: Who gets which messages?
 2. Peer management: Who can you talk to? What is their state? And how can you do peer discovery? 
 
-The first responsbility is handled by the Switch:
+The first responsibility is handled by the Switch:
 - Responsible for routing connections between peers
 - Notably _only handles TCP connections_; RPC/HTTP is separate
 - Is a dependency for every reactor; all reactors expose a function `setSwitch`
@@ -41,6 +41,32 @@ The second responsibility is handled by a combination of the PEX and the Address
 
 	TODO: What is the PEX and the Address Book? 
 	
+#### The Nature of TCP, and Introduction to the `mconnection`
+Here are some relevant facts about TCP:
+1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
+3. The syn/ack process also means that there's a high overhead for small, frequent messages 
+4. Sockets are represented by file descriptors.
+
+![tcp-window](tcp-window.png)
+
+In order to have performant TCP connections under the conditions  created in Tendermint, we've created the `mconnection`, or the multiplexing connection. It is our own protocol built on top of TCP. It lets us reuse TCP connections to minimize overhead, and it keeps the window size high by sending auxiliary messages when necessary.
+
+The `mconnection` is represented by a struct, which contains a batch of messages, read and write buffers, and a map of channel IDs to reactors. It communicates with TCP via file descriptors, which it can write to. There is one `mconnection` per peer connection.
+
+The `mconnection` has two methods: `send`, which takes a raw handle to the socket and writes to it; and `trySend`, which writes to a different buffer. (TODO: which buffer?) 
+
+The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch: 
+
+```
+switch
+	transport
+		peer
+			mconnection
+		peer
+			mconnection
+		peer
+			mconnection	
+```
 
 ## node.go 
 
