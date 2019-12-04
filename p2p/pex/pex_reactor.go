@@ -563,7 +563,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 }
 
 // maxBackoffDurationForPeer caps the backoff duration for persistent peers.
-func (r *PEXReactor) maxBackoffDurationForPeer(addr *p2p.NetAddress, planned time.Duration) time.Duration {
+func (r *Reactor) maxBackoffDurationForPeer(addr *p2p.NetAddress, planned time.Duration) time.Duration {
 	if r.config.PersistentPeersMaxDialPeriod > 0 &&
 		planned > r.config.PersistentPeersMaxDialPeriod &&
 		r.Switch.IsPeerPersistent(addr) {
