@@ -39,13 +39,12 @@ TODO: More information (maybe) on the implementation of the Switch.
 
 The second responsibility is handled by a combination of the PEX and the Address Book. 
 
-TODO: What is the PEX and the Address Book? 
+	TODO: What is the PEX and the Address Book? 
+	
 
 ## node.go 
 
 node.go is the entrypoint for running a node. It sets up reactors, sets up the switch, and registers all the RPC endpoints for a node.
-
-TODO: Enumerate reactors and (maybe) endpoints.
 
 ## Types of Nodes
 1. Validator Node: 
@@ -53,3 +52,36 @@ TODO: Enumerate reactors and (maybe) endpoints.
 3. Seed Node:
 
 TODO: Flesh out the differences between the types of nodes and how they're configured. 
+
+## Reactors 
+
+Here are some Reactor Facts: 
+- Every reactor holds a pointer to the global switch (set through `SetSwitch()`)
+- The switch holds a pointer to every reactor (`addReactor()`)
+- Every reactor gets set up in node.go (and if you are using custom reactors, this is where you specify that)
+- `addReactor` is called by the switch; `addReactor` calls `setSwitch` for that reactor 
+- There's an assumption that all the reactors are added before 
+- Sometimes reactors talk to each other by fetching references to one another via the switch (which maintains a pointer to each reactor). **Question: Can reactors talk to each other in any other way?**
+
+Furthermore, all reactors expose:
+1. A TCP channel
+2. A `receive` method 
+3. An `addReactor` call
+
+The `receive` method can be called many times by the mconnection. It has the same signature across all reactors.
+
+The `addReactor` call does a for loop over all the channels on the reactor and creates a map of channel IDs->reactors. The switch holds onto this map, and passes it to the _transport_, a thin wrapper around TCP connections.
+
+The following is an exhaustive (?) list of reactors:
+- Blockchain Reactor
+- Consensus Reactor 
+- Evidence Reactor 
+- Mempool Reactor
+- PEX Reactor
+
+Each of these will be discussed in more detail later.
+
+### Blockchain Reactor 
+The blockchain reactor has two responsibilities: 
+1. Serve blocks at the request of peers 
+2. TODO: learn about the second responsibility of the blockchain reactor 
