@@ -38,14 +38,14 @@ func TestTracingLogger(t *testing.T) {
 	buf.Reset()
 
 	logger.With(
-		"err1", stderr.New("Opportunities don't happen. You create them"),
+		"err1", stderr.New("opportunities don't happen. You create them"),
 	).Info(
-		"foo", "err2", stderr.New("Once you choose hope, anything's possible"),
+		"foo", "err2", stderr.New("once you choose hope, anything's possible"),
 	)
 
 	want = `{"_msg":"foo",` +
-		`"err1":"Opportunities don't happen. You create them",` +
-		`"err2":"Once you choose hope, anything's possible",` +
+		`"err1":"opportunities don't happen. You create them",` +
+		`"err2":"once you choose hope, anything's possible",` +
 		`"level":"info"}`
 	have = strings.TrimSpace(buf.String())
 	if want != have {

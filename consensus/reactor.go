@@ -865,12 +865,12 @@ func (conR *Reactor) peerStatsRoutine() {
 // TODO: improve!
 func (conR *Reactor) String() string {
 	// better not to access shared variables
-	return "Reactor" // conR.StringIndented("")
+	return "ConsensusReactor" // conR.StringIndented("")
 }
 
 // StringIndented returns an indented string representation of the Reactor
 func (conR *Reactor) StringIndented(indent string) string {
-	s := "Reactor{\n"
+	s := "ConsensusReactor{\n"
 	s += indent + "  " + conR.conS.StringIndented(indent+"  ") + "\n"
 	for _, peer := range conR.Switch.Peers().List() {
 		ps, ok := peer.Get(types.PeerStateKey).(*PeerState)

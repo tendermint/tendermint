@@ -204,7 +204,7 @@ func StateMetrics(metrics *Metrics) StateOption {
 // String returns a string.
 func (cs *State) String() string {
 	// better not to access shared variables
-	return fmt.Sprintf("State") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+	return fmt.Sprintf("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
 }
 
 // GetState returns a copy of the chain state.
