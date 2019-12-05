@@ -204,6 +204,71 @@ func (r *BlockchainReactor) Start() error {
 	return nil
 }
 
+// reactor generated ticker events:
+// ticker for cleaning peers
+type rTryPrunePeer struct {
+	priorityHigh
+	time time.Time
+}
+
+func (e rTryPrunePeer) String() string {
+	return fmt.Sprintf(": %v", e.time)
+}
+
+// ticker event for scheduling block requests
+type rTrySchedule struct {
+	priorityHigh
+	time time.Time
+}
+
+func (e rTrySchedule) String() string {
+	return fmt.Sprintf(": %v", e.time)
+}
+
+// ticker for block processing
+type rProcessBlock struct {
+	priorityNormal
+}
+
+// reactor generated events based on blockchain related messages from peers:
+// blockResponse message received from a peer
+type bcBlockResponse struct {
+	priorityNormal
+	time   time.Time
+	peerID p2p.ID
+	size   int64
+	block  *types.Block
+}
+
+// blockNoResponse message received from a peer
+type bcNoBlockResponse struct {
+	priorityNormal
+	time   time.Time
+	peerID p2p.ID
+	height int64
+}
+
+// statusResponse message received from a peer
+type bcStatusResponse struct {
+	priorityNormal
+	time   time.Time
+	peerID p2p.ID
+	height int64
+}
+
+// new peer is connected
+type bcAddNewPeer struct {
+	priorityNormal
+	peerID p2p.ID
+}
+
+// existing peer is removed
+type bcRemovePeer struct {
+	priorityHigh
+	peerID p2p.ID
+	reason interface{}
+}
+
 func (r *BlockchainReactor) demux() {
 	var lastRate = 0.0
 	var lastHundred = time.Now()
@@ -213,7 +278,7 @@ func (r *BlockchainReactor) demux() {
 		doProcessBlockCh = make(chan struct{}, 1)
 		doProcessBlockTk = time.NewTicker(processBlockFreq)
 
-		prunePeerFreq = 15 * time.Second
+		prunePeerFreq = 1 * time.Second
 		doPrunePeerCh = make(chan struct{}, 1)
 		doPrunePeerTk = time.NewTicker(prunePeerFreq)
 
@@ -229,7 +294,7 @@ func (r *BlockchainReactor) demux() {
 	// XXX: Extract timers to make testing atemporal
 	for {
 		select {
-		// Pacers: send at most per freequency but don't saturate
+		// Pacers: send at most per frequency but don't saturate
 		case <-doProcessBlockTk.C:
 			select {
 			case doProcessBlockCh <- struct{}{}:
@@ -253,11 +318,11 @@ func (r *BlockchainReactor) demux() {
 
 		// Tickers: perform tasks periodically
 		case <-doScheduleCh:
-			r.scheduler.send(trySchedule{time: time.Now()})
+			r.scheduler.send(rTrySchedule{time: time.Now()})
 		case <-doPrunePeerCh:
-			r.scheduler.send(tryPrunePeer{time: time.Now()})
+			r.scheduler.send(rTryPrunePeer{time: time.Now()})
 		case <-doProcessBlockCh:
-			r.processor.send(pcProcessBlock{})
+			r.processor.send(rProcessBlock{})
 		case <-doStatusCh:
 			r.io.broadcastStatusRequest(r.SyncHeight())
 
@@ -267,8 +332,7 @@ func (r *BlockchainReactor) demux() {
 			case bcStatusResponse:
 				r.setMaxPeerHeight(event.height)
 				r.scheduler.send(event)
-
-			case addNewPeer, bcRemovePeer, bcBlockResponse, bcNoBlockResponse:
+			case bcAddNewPeer, bcRemovePeer, bcBlockResponse, bcNoBlockResponse:
 				r.scheduler.send(event)
 			}
 
@@ -302,6 +366,8 @@ func (r *BlockchainReactor) demux() {
 				r.scheduler.send(event)
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
+			case pcFinished:
+				r.processor.stop()
 			}
 
 		// Terminal events from scheduler
@@ -427,13 +493,7 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	if err != nil {
 		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
 	}
-	r.events <- addNewPeer{peerID: peer.ID()}
-}
-
-type bcRemovePeer struct {
-	priorityHigh
-	peerID p2p.ID
-	reason interface{}
+	r.events <- bcAddNewPeer{peerID: peer.ID()}
 }
 
 // RemovePeer implements Reactor interface.

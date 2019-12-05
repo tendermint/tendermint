@@ -304,195 +304,6 @@ func TestScTouchPeer(t *testing.T) {
 	}
 }
 
-func TestScPeersInactiveSince(t *testing.T) {
-	now := time.Now()
-
-	type args struct {
-		threshold time.Duration
-		time      time.Time
-	}
-
-	tests := []struct {
-		name       string
-		fields     scTestParams
-		args       args
-		wantResult []p2p.ID
-	}{
-		{
-			name:       "no peers",
-			fields:     scTestParams{peers: map[string]*scPeer{}},
-			args:       args{threshold: time.Second, time: now},
-			wantResult: []p2p.ID{},
-		},
-		{
-			name:       "one active peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now}}},
-			args:       args{threshold: time.Second, time: now},
-			wantResult: []p2p.ID{},
-		},
-		{
-			name:       "one inactive peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Second + time.Millisecond)},
-			wantResult: []p2p.ID{"P1"},
-		},
-		{
-			name: "one active and one inactive peer",
-			fields: scTestParams{peers: map[string]*scPeer{
-				"P1": {state: peerStateReady, lastTouched: now},
-				"P2": {state: peerStateReady, lastTouched: now.Add(time.Second)}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Second + time.Millisecond)},
-			wantResult: []p2p.ID{"P1"},
-		},
-		{
-			name:       "one New peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateNew}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Millisecond)},
-			wantResult: []p2p.ID{},
-		},
-		{
-			name:       "one Removed peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastTouched: now}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Millisecond)},
-			wantResult: []p2p.ID{},
-		},
-		{
-			name: "one Ready active peer and one New",
-			fields: scTestParams{peers: map[string]*scPeer{
-				"P1": {state: peerStateRemoved, lastTouched: now},
-				"P2": {state: peerStateReady, lastTouched: now.Add(time.Millisecond)}}},
-			args:       args{threshold: time.Second, time: now.Add(2 * time.Millisecond)},
-			wantResult: []p2p.ID{},
-		},
-		{
-			name: "one Ready inactive peer and one New",
-			fields: scTestParams{peers: map[string]*scPeer{
-				"P1": {state: peerStateRemoved, lastTouched: now},
-				"P2": {state: peerStateReady, lastTouched: now.Add(time.Millisecond)}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Second + 2*time.Millisecond)},
-			wantResult: []p2p.ID{"P2"},
-		},
-		{
-			name: "combination of New, Removed and, active and non active Ready peers",
-			fields: scTestParams{peers: map[string]*scPeer{
-				"P1": {state: peerStateNew},
-				"P2": {state: peerStateRemoved, lastTouched: now},
-				"P3": {state: peerStateRemoved, lastTouched: now.Add(time.Second)},
-				"P4": {state: peerStateReady, lastTouched: now.Add(time.Millisecond)},
-				"P5": {state: peerStateReady, lastTouched: now.Add(3 * time.Millisecond)}}},
-			args:       args{threshold: time.Second, time: now.Add(time.Second + 2*time.Millisecond)},
-			wantResult: []p2p.ID{"P4"},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			sc := newTestScheduler(tt.fields)
-			// peersInactiveSince should not mutate the scheduler
-			wantSc := sc
-			res := sc.peersInactiveSince(tt.args.threshold, tt.args.time)
-			sort.Sort(PeerByID(res))
-			assert.Equal(t, tt.wantResult, res)
-			assert.Equal(t, wantSc, sc)
-		})
-	}
-}
-
-func TestScPeersSlowerThan(t *testing.T) {
-	type args struct {
-		minSpeed int64
-	}
-
-	tests := []struct {
-		name       string
-		fields     scTestParams
-		args       args
-		wantResult map[p2p.ID]struct{}
-	}{
-		{
-			name:       "no peers",
-			fields:     scTestParams{peers: map[string]*scPeer{}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one Ready faster peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 101}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one Ready equal peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 100}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one Ready slow peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 99}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{"P1": {}},
-		},
-		{
-			name:       "one Removed faster peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 101}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		}, {
-			name:       "one Removed equal peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 100}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one Removed slow peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 99}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one New peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateNew}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name:       "one New peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateNew}}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
-		},
-		{
-			name: "mixed peers",
-			fields: scTestParams{peers: map[string]*scPeer{
-				"P1": {state: peerStateRemoved, lastRate: 101},
-				"P2": {state: peerStateReady, lastRate: 101},
-				"P3": {state: peerStateRemoved, lastRate: 100},
-				"P4": {state: peerStateReady, lastRate: 100},
-				"P5": {state: peerStateReady, lastRate: 99},
-				"P6": {state: peerStateNew},
-				"P7": {state: peerStateRemoved, lastRate: 99},
-				"P8": {state: peerStateReady, lastRate: 99},
-			}},
-			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{"P5": {}, "P8": {}},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			sc := newTestScheduler(tt.fields)
-			// peersSlowerThan should not mutate the scheduler
-			wantSc := sc
-			res := sc.peersSlowerThan(tt.args.minSpeed)
-			assert.Equal(t, tt.wantResult, res)
-			assert.Equal(t, wantSc, sc)
-		})
-	}
-}
-
 func TestScPrunablePeers(t *testing.T) {
 	now := time.Now()
 
@@ -1803,11 +1614,11 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 }
 
 func TestScHandleAddNewPeer(t *testing.T) {
-	addP1 := addNewPeer{
+	addP1 := bcAddNewPeer{
 		peerID: p2p.ID("P1"),
 	}
 	type args struct {
-		event addNewPeer
+		event bcAddNewPeer
 	}
 
 	tests := []struct {
@@ -1855,76 +1666,14 @@ func TestScHandleAddNewPeer(t *testing.T) {
 	}
 }
 
-func TestScHandlePeerError(t *testing.T) {
-	errP1 := peerError{
-		peerID: p2p.ID("P1"),
-	}
-	type args struct {
-		event peerError
-	}
-
-	tests := []struct {
-		name      string
-		fields    scTestParams
-		args      args
-		wantEvent Event
-		wantErr   bool
-	}{
-		{
-			name:      "no peers",
-			fields:    scTestParams{},
-			args:      args{event: errP1},
-			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
-		},
-		{
-			name: "error finds no peer",
-			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P2": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
-			},
-			args:      args{event: errP1},
-			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
-		},
-		{
-			name: "error finds peer, only peer is removed",
-			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
-			},
-			args:      args{event: errP1},
-			wantEvent: scFinishedEv{},
-		},
-		{
-			name: "error finds peer, one of two peers are removed",
-			fields: scTestParams{
-				peers: map[string]*scPeer{"P1": {height: 8, state: peerStateReady}, "P2": {height: 8, state: peerStateReady}},
-				allB:  []int64{1, 2, 3, 4, 5, 6, 7, 8},
-			},
-			args:      args{event: errP1},
-			wantEvent: noOpEvent{},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			sc := newTestScheduler(tt.fields)
-			event, err := sc.handlePeerError(tt.args.event)
-			checkScResults(t, tt.wantErr, err, tt.wantEvent, event)
-		})
-	}
-}
-
 func TestScHandleTryPrunePeer(t *testing.T) {
 	now := time.Now()
 
-	pruneEv := tryPrunePeer{
+	pruneEv := rTryPrunePeer{
 		time: now.Add(time.Second + time.Millisecond),
 	}
 	type args struct {
-		event tryPrunePeer
+		event rTryPrunePeer
 	}
 
 	tests := []struct {
@@ -2017,12 +1766,12 @@ func TestScHandleTryPrunePeer(t *testing.T) {
 
 func TestScHandleTrySchedule(t *testing.T) {
 	now := time.Now()
-	tryEv := trySchedule{
+	tryEv := rTrySchedule{
 		time: now.Add(time.Second + time.Millisecond),
 	}
 
 	type args struct {
-		event trySchedule
+		event rTrySchedule
 	}
 	tests := []struct {
 		name      string
@@ -2231,7 +1980,7 @@ func TestScHandle(t *testing.T) {
 			steps: []scStep{
 				{ // add P1
 					currentSc: &scTestParams{startTime: now, peers: map[string]*scPeer{}, height: 1},
-					args:      args{event: addNewPeer{peerID: "P1"}},
+					args:      args{event: bcAddNewPeer{peerID: "P1"}},
 					wantEvent: noOpEvent{},
 					wantSc:    &scTestParams{startTime: now, peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}, height: 1},
 				},
@@ -2246,7 +1995,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // schedule block 1
-					args:      args{event: trySchedule{time: tick[1]}},
+					args:      args{event: rTrySchedule{time: tick[1]}},
 					wantEvent: scBlockRequest{peerID: "P1", height: 1},
 					wantSc: &scTestParams{
 						startTime:   now,
@@ -2258,7 +2007,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // schedule block 2
-					args:      args{event: trySchedule{time: tick[2]}},
+					args:      args{event: rTrySchedule{time: tick[2]}},
 					wantEvent: scBlockRequest{peerID: "P1", height: 2},
 					wantSc: &scTestParams{
 						startTime:   now,
@@ -2270,7 +2019,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // schedule block 3
-					args:      args{event: trySchedule{time: tick[3]}},
+					args:      args{event: rTrySchedule{time: tick[3]}},
 					wantEvent: scBlockRequest{peerID: "P1", height: 3},
 					wantSc: &scTestParams{
 						startTime:   now,

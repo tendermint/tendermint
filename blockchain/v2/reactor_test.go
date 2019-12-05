@@ -343,9 +343,9 @@ func TestReactorTerminationScenarios(t *testing.T) {
 				case "Receive":
 					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(step.event))
 				case "BlockReq":
-					reactor.scheduler.send(trySchedule{time: time.Now()})
+					reactor.scheduler.send(rTrySchedule{time: time.Now()})
 				case "Process":
-					reactor.processor.send(pcProcessBlock{})
+					reactor.processor.send(rProcessBlock{})
 				}
 				// time for messages to propagate between routines
 				time.Sleep(time.Millisecond)
