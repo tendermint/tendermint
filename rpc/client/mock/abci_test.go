@@ -156,7 +156,7 @@ func TestABCIRecorder(t *testing.T) {
 
 func TestABCIApp(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	m := mock.ABCIApp{app}
 
 	// get some info

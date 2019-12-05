@@ -80,7 +80,7 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 }
 
 // NodeProvider takes a config and a logger and returns a ready to go Node.
-type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
+type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
@@ -191,12 +191,12 @@ type Node struct {
 	bcReactor        p2p.Reactor       // for fast-syncing
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
-	consensusState   *cs.ConsensusState     // latest consensus state
-	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
-	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
-	evidencePool     *evidence.EvidencePool // tracking evidence
-	proxyApp         proxy.AppConns         // connection to the application
-	rpcListeners     []net.Listener         // rpc servers
+	consensusState   *cs.State      // latest consensus state
+	consensusReactor *cs.Reactor    // for participating in the consensus
+	pexReactor       *pex.Reactor   // for exchanging peer addresses
+	evidencePool     *evidence.Pool // tracking evidence
+	proxyApp         proxy.AppConns // connection to the application
+	rpcListeners     []net.Listener // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
 	prometheusSrv    *http.Server
@@ -339,16 +339,16 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
+	stateDB dbm.DB, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
+	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
-	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
+	evidenceReactor := evidence.NewReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
 }
@@ -378,14 +378,14 @@ func createConsensusReactor(config *cfg.Config,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mempool *mempl.CListMempool,
-	evidencePool *evidence.EvidencePool,
+	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
 	fastSync bool,
 	eventBus *types.EventBus,
-	consensusLogger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
+	consensusLogger log.Logger) (*consensus.Reactor, *consensus.State) {
 
-	consensusState := cs.NewConsensusState(
+	consensusState := cs.NewState(
 		config.Consensus,
 		state.Copy(),
 		blockExec,
@@ -398,7 +398,7 @@ func createConsensusReactor(config *cfg.Config,
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
@@ -476,8 +476,8 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
-	consensusReactor *consensus.ConsensusReactor,
-	evidenceReactor *evidence.EvidenceReactor,
+	consensusReactor *consensus.Reactor,
+	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -529,11 +529,11 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
-	sw *p2p.Switch, logger log.Logger) *pex.PEXReactor {
+	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	// TODO persistent peers ? so we can have their DNS addrs saved
-	pexReactor := pex.NewPEXReactor(addrBook,
-		&pex.PEXReactorConfig{
+	pexReactor := pex.NewReactor(addrBook,
+		&pex.ReactorConfig{
 			Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 			SeedMode: config.P2P.SeedMode,
 			// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
@@ -700,7 +700,7 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	var pexReactor *pex.PEXReactor
+	var pexReactor *pex.Reactor
 	if config.P2P.PexReactor {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
@@ -992,12 +992,12 @@ func (n *Node) BlockStore() *store.BlockStore {
 }
 
 // ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.ConsensusState {
+func (n *Node) ConsensusState() *cs.State {
 	return n.consensusState
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
+func (n *Node) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
@@ -1012,12 +1012,12 @@ func (n *Node) Mempool() mempl.Mempool {
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *Node) PEXReactor() *pex.PEXReactor {
+func (n *Node) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
 // EvidencePool returns the Node's EvidencePool.
-func (n *Node) EvidencePool() *evidence.EvidencePool {
+func (n *Node) EvidencePool() *evidence.Pool {
 	return n.evidencePool
 }
 
@@ -1092,9 +1092,9 @@ func makeNodeInfo(
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
-		ID_:     nodeKey.ID(),
-		Network: genDoc.ChainID,
-		Version: version.TMCoreSemVer,
+		DefaultNodeID: nodeKey.ID(),
+		Network:       genDoc.ChainID,
+		Version:       version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,

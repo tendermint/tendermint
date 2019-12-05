@@ -66,11 +66,11 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "counter":
-		return NewLocalClientCreator(counter.NewCounterApplication(false))
+		return NewLocalClientCreator(counter.NewApplication(false))
 	case "counter_serial":
-		return NewLocalClientCreator(counter.NewCounterApplication(true))
+		return NewLocalClientCreator(counter.NewApplication(true))
 	case "kvstore":
-		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
+		return NewLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
 	case "noop":

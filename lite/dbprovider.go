@@ -128,17 +128,18 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 			err := dbp.cdc.UnmarshalBinaryLengthPrefixed(shBz, &sh)
 			if err != nil {
 				return FullCommit{}, err
-			} else {
-				lfc, err := dbp.fillFullCommit(sh)
-				if err == nil {
-					dbp.logger.Info("DBProvider.LatestFullCommit() found latest.", "height", lfc.Height())
-					return lfc, nil
-				} else {
-					dbp.logger.Error("DBProvider.LatestFullCommit() got error", "lfc", lfc)
-					dbp.logger.Error(fmt.Sprintf("%+v", err))
-					return lfc, err
-				}
 			}
+
+			lfc, err := dbp.fillFullCommit(sh)
+			if err == nil {
+				dbp.logger.Info("DBProvider.LatestFullCommit() found latest.", "height", lfc.Height())
+				return lfc, nil
+			}
+
+			dbp.logger.Error("DBProvider.LatestFullCommit() got error", "lfc", lfc)
+			dbp.logger.Error(fmt.Sprintf("%+v", err))
+			return lfc, err
+
 		}
 	}
 	return FullCommit{}, lerr.ErrCommitNotFound()
@@ -208,16 +209,17 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 		_, height, ok := parseChainKeyPrefix(key)
 		if !ok {
 			return fmt.Errorf("unexpected key %v", key)
-		} else {
-			if height < lastHeight {
-				lastHeight = height
-				numSeen += 1
-			}
-			if numSeen > after {
-				dbp.db.Delete(key)
-				numDeleted += 1
-			}
 		}
+
+		if height < lastHeight {
+			lastHeight = height
+			numSeen++
+		}
+		if numSeen > after {
+			dbp.db.Delete(key)
+			numDeleted++
+		}
+
 		itr.Next()
 	}
 

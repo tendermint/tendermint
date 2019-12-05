@@ -77,7 +77,7 @@ func genStatefulHandler(maxCount int) handleFunc {
 	counter := 0
 	return func(event Event) (Event, error) {
 		if _, ok := event.(eventA); ok {
-			counter += 1
+			counter++
 			if counter >= maxCount {
 				return noOp, finalCount{counter}
 			}

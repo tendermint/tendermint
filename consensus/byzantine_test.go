@@ -70,7 +70,7 @@ func TestByzantine(t *testing.T) {
 		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we don't start the consensus states
+		conR := NewReactor(css[i], true) // so we don't start the consensus states
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
@@ -90,7 +90,7 @@ func TestByzantine(t *testing.T) {
 			if rr, ok := r.(*ByzantineReactor); ok {
 				rr.reactor.Switch.Stop()
 			} else {
-				r.(*ConsensusReactor).Switch.Stop()
+				r.(*Reactor).Switch.Stop()
 			}
 		}
 	}()
@@ -110,7 +110,7 @@ func TestByzantine(t *testing.T) {
 	// start the non-byz state machines.
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
-		cr := reactors[i].(*ConsensusReactor)
+		cr := reactors[i].(*Reactor)
 		cr.SwitchToConsensus(cr.conS.GetState(), 0)
 	}
 
@@ -171,7 +171,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *ConsensusState, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -209,11 +209,12 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 func sendProposalAndParts(
 	height int64,
 	round int,
-	cs *ConsensusState,
+	cs *State,
 	peer p2p.Peer,
 	proposal *types.Proposal,
 	blockHash []byte,
-	parts *types.PartSet) {
+	parts *types.PartSet,
+) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
@@ -244,10 +245,10 @@ func sendProposalAndParts(
 
 type ByzantineReactor struct {
 	cmn.Service
-	reactor *ConsensusReactor
+	reactor *Reactor
 }
 
-func NewByzantineReactor(conR *ConsensusReactor) *ByzantineReactor {
+func NewByzantineReactor(conR *Reactor) *ByzantineReactor {
 	return &ByzantineReactor{
 		Service: conR,
 		reactor: conR,

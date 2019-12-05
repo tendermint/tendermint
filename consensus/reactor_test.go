@@ -34,18 +34,18 @@ import (
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, n int) (
-	[]*ConsensusReactor,
+func startConsensusNet(t *testing.T, css []*State, n int) (
+	[]*Reactor,
 	[]types.Subscription,
 	[]*types.EventBus,
 ) {
-	reactors := make([]*ConsensusReactor, n)
+	reactors := make([]*Reactor, n)
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, n)
 	for i := 0; i < n; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
-		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
 		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
@@ -78,10 +78,10 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, n int) (
 	return reactors, blocksSubs, eventBuses
 }
 
-func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuses []*types.EventBus) {
+func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*types.EventBus) {
 	logger.Info("stopConsensusNet", "n", len(reactors))
 	for i, r := range reactors {
-		logger.Info("stopConsensusNet: Stopping ConsensusReactor", "i", i)
+		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
 		r.Switch.Stop()
 	}
 	for i, b := range eventBuses {
@@ -119,7 +119,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
-	css := make([]*ConsensusState, nValidators)
+	css := make([]*State, nValidators)
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -133,7 +133,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		pv := privVals[i]
 		// duplicate code from:
-		// css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
+		// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -156,9 +156,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		addr := privVals[vIdx].GetPubKey().Address()
 		evpool := newMockEvidencePool(addr)
 
-		// Make ConsensusState
+		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-		cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)
 
@@ -521,7 +521,7 @@ func waitForAndValidateBlock(
 	n int,
 	activeVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 	txs ...[]byte,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
@@ -543,7 +543,7 @@ func waitForAndValidateBlockWithTx(
 	n int,
 	activeVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 	txs ...[]byte,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
@@ -578,7 +578,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	n int,
 	updatedVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
 
@@ -621,7 +621,7 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	return nil
 }
 
-func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
+func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
@@ -712,7 +712,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
-			"Empty BlockParts",
+			"empty blockParts",
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },

@@ -33,11 +33,11 @@ const (
 
 //-----------------------------------------------------------------------------
 
-// ConsensusReactor defines a reactor for the consensus service.
-type ConsensusReactor struct {
+// Reactor defines a reactor for the consensus service.
+type Reactor struct {
 	p2p.BaseReactor // BaseService + p2p.Switch
 
-	conS *ConsensusState
+	conS *State
 
 	mtx      sync.RWMutex
 	fastSync bool
@@ -46,18 +46,18 @@ type ConsensusReactor struct {
 	metrics *Metrics
 }
 
-type ReactorOption func(*ConsensusReactor)
+type ReactorOption func(*Reactor)
 
-// NewConsensusReactor returns a new ConsensusReactor with the given
+// NewReactor returns a new Reactor with the given
 // consensusState.
-func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options ...ReactorOption) *ConsensusReactor {
-	conR := &ConsensusReactor{
+func NewReactor(consensusState *State, fastSync bool, options ...ReactorOption) *Reactor {
+	conR := &Reactor{
 		conS:     consensusState,
 		fastSync: fastSync,
 		metrics:  NopMetrics(),
 	}
 	conR.updateFastSyncingMetric()
-	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
+	conR.BaseReactor = *p2p.NewBaseReactor("Reactor", conR)
 
 	for _, option := range options {
 		option(conR)
@@ -68,8 +68,8 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options 
 
 // OnStart implements BaseService by subscribing to events, which later will be
 // broadcasted to other peers and starting state if we're not in fast sync.
-func (conR *ConsensusReactor) OnStart() error {
-	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
+func (conR *Reactor) OnStart() error {
+	conR.Logger.Info("Reactor ", "fastSync", conR.FastSync())
 
 	// start routine that computes peer statistics for evaluating peer quality
 	go conR.peerStatsRoutine()
@@ -88,7 +88,7 @@ func (conR *ConsensusReactor) OnStart() error {
 
 // OnStop implements BaseService by unsubscribing from events and stopping
 // state.
-func (conR *ConsensusReactor) OnStop() {
+func (conR *Reactor) OnStop() {
 	conR.unsubscribeFromBroadcastEvents()
 	conR.conS.Stop()
 	if !conR.FastSync() {
@@ -98,7 +98,7 @@ func (conR *ConsensusReactor) OnStop() {
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
-func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int) {
+func (conR *Reactor) SwitchToConsensus(state sm.State, blocksSynced int) {
 	conR.Logger.Info("SwitchToConsensus")
 	conR.conS.reconstructLastCommit(state)
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
@@ -127,7 +127,7 @@ conR:
 }
 
 // GetChannels implements Reactor
-func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
+func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
 		{
@@ -162,7 +162,7 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 // InitPeer implements Reactor by creating a state for the peer.
-func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
+func (conR *Reactor) InitPeer(peer p2p.Peer) p2p.Peer {
 	peerState := NewPeerState(peer).SetLogger(conR.Logger)
 	peer.Set(types.PeerStateKey, peerState)
 	return peer
@@ -170,7 +170,7 @@ func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
 
 // AddPeer implements Reactor by spawning multiple gossiping goroutines for the
 // peer.
-func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
+func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	if !conR.IsRunning() {
 		return
 	}
@@ -192,7 +192,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 }
 
 // RemovePeer is a noop.
-func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
 	}
@@ -210,7 +210,7 @@ func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Peer state updates can happen in parallel, but processing of
 // proposals, block parts, and votes are ordered by the receiveRoutine
 // NOTE: blocks on consensus state for proposals, block parts, and votes
-func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if !conR.IsRunning() {
 		conR.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
 		return
@@ -360,13 +360,13 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 }
 
 // SetEventBus sets event bus.
-func (conR *ConsensusReactor) SetEventBus(b *types.EventBus) {
+func (conR *Reactor) SetEventBus(b *types.EventBus) {
 	conR.eventBus = b
 	conR.conS.SetEventBus(b)
 }
 
 // FastSync returns whether the consensus reactor is in fast-sync mode.
-func (conR *ConsensusReactor) FastSync() bool {
+func (conR *Reactor) FastSync() bool {
 	conR.mtx.RLock()
 	defer conR.mtx.RUnlock()
 	return conR.fastSync
@@ -377,7 +377,7 @@ func (conR *ConsensusReactor) FastSync() bool {
 // subscribeToBroadcastEvents subscribes for new round steps and votes
 // using internal pubsub defined on state to broadcast
 // them to peers upon receiving.
-func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
+func (conR *Reactor) subscribeToBroadcastEvents() {
 	const subscriber = "consensus-reactor"
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
 		func(data tmevents.EventData) {
@@ -396,17 +396,17 @@ func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 
 }
 
-func (conR *ConsensusReactor) unsubscribeFromBroadcastEvents() {
+func (conR *Reactor) unsubscribeFromBroadcastEvents() {
 	const subscriber = "consensus-reactor"
 	conR.conS.evsw.RemoveListener(subscriber)
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
+func (conR *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
 }
 
-func (conR *ConsensusReactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
+func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 	csMsg := &NewValidBlockMessage{
 		Height:           rs.Height,
 		Round:            rs.Round,
@@ -418,7 +418,7 @@ func (conR *ConsensusReactor) broadcastNewValidBlockMessage(rs *cstypes.RoundSta
 }
 
 // Broadcasts HasVoteMessage to peers that care.
-func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
+func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 	msg := &HasVoteMessage{
 		Height: vote.Height,
 		Round:  vote.Round,
@@ -457,13 +457,13 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 	return
 }
 
-func (conR *ConsensusReactor) sendNewRoundStepMessage(peer p2p.Peer) {
+func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg := makeRoundStepMessage(rs)
 	peer.Send(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
 }
 
-func (conR *ConsensusReactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
+func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
 OUTER_LOOP:
@@ -559,7 +559,7 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundState,
+func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundState,
 	prs *cstypes.PeerRoundState, ps *PeerState, peer p2p.Peer) {
 
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
@@ -602,7 +602,7 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 	time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 }
 
-func (conR *ConsensusReactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
+func (conR *Reactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
 	// Simple hack to throttle logs upon sleep.
@@ -673,11 +673,12 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipVotesForHeight(
+func (conR *Reactor) gossipVotesForHeight(
 	logger log.Logger,
 	rs *cstypes.RoundState,
 	prs *cstypes.PeerRoundState,
-	ps *PeerState) bool {
+	ps *PeerState,
+) bool {
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
@@ -733,7 +734,7 @@ func (conR *ConsensusReactor) gossipVotesForHeight(
 
 // NOTE: `queryMaj23Routine` has a simple crude design since it only comes
 // into play for liveness when there's a signature DDoS attack happening.
-func (conR *ConsensusReactor) queryMaj23Routine(peer p2p.Peer, ps *PeerState) {
+func (conR *Reactor) queryMaj23Routine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
 OUTER_LOOP:
@@ -819,7 +820,7 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) peerStatsRoutine() {
+func (conR *Reactor) peerStatsRoutine() {
 	for {
 		if !conR.IsRunning() {
 			conR.Logger.Info("Stopping peerStatsRoutine")
@@ -859,16 +860,16 @@ func (conR *ConsensusReactor) peerStatsRoutine() {
 	}
 }
 
-// String returns a string representation of the ConsensusReactor.
+// String returns a string representation of the Reactor.
 // NOTE: For now, it is just a hard-coded string to avoid accessing unprotected shared variables.
 // TODO: improve!
-func (conR *ConsensusReactor) String() string {
+func (conR *Reactor) String() string {
 	// better not to access shared variables
 	return "ConsensusReactor" // conR.StringIndented("")
 }
 
-// StringIndented returns an indented string representation of the ConsensusReactor
-func (conR *ConsensusReactor) StringIndented(indent string) string {
+// StringIndented returns an indented string representation of the Reactor
+func (conR *Reactor) StringIndented(indent string) string {
 	s := "ConsensusReactor{\n"
 	s += indent + "  " + conR.conS.StringIndented(indent+"  ") + "\n"
 	for _, peer := range conR.Switch.Peers().List() {
@@ -882,7 +883,7 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 	return s
 }
 
-func (conR *ConsensusReactor) updateFastSyncingMetric() {
+func (conR *Reactor) updateFastSyncingMetric() {
 	var fastSyncing float64
 	if conR.fastSync {
 		fastSyncing = 1
@@ -894,7 +895,7 @@ func (conR *ConsensusReactor) updateFastSyncingMetric() {
 
 // ReactorMetrics sets the metrics
 func ReactorMetrics(metrics *Metrics) ReactorOption {
-	return func(conR *ConsensusReactor) { conR.metrics = metrics }
+	return func(conR *Reactor) { conR.metrics = metrics }
 }
 
 //-----------------------------------------------------------------------------
@@ -1381,13 +1382,13 @@ func (ps *PeerState) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 // Messages
 
-// ConsensusMessage is a message that can be sent and received on the ConsensusReactor
-type ConsensusMessage interface {
+// Message is a message that can be sent and received on the Reactor
+type Message interface {
 	ValidateBasic() error
 }
 
-func RegisterConsensusMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*ConsensusMessage)(nil), nil)
+func RegisterMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Message)(nil), nil)
 	cdc.RegisterConcrete(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage", nil)
 	cdc.RegisterConcrete(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage", nil)
 	cdc.RegisterConcrete(&ProposalMessage{}, "tendermint/Proposal", nil)
@@ -1399,7 +1400,7 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&VoteSetBitsMessage{}, "tendermint/VoteSetBits", nil)
 }
 
-func decodeMsg(bz []byte) (msg ConsensusMessage, err error) {
+func decodeMsg(bz []byte) (msg Message, err error) {
 	if len(bz) > maxMsgSize {
 		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
@@ -1471,7 +1472,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 		return fmt.Errorf("wrong BlockPartsHeader: %v", err)
 	}
 	if m.BlockParts.Size() == 0 {
-		return errors.New("Empty BlockParts")
+		return errors.New("empty blockParts")
 	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
 		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
@@ -1479,7 +1480,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockPartsHeader.Total)
 	}
 	if m.BlockParts.Size() > types.MaxBlockPartsCount {
-		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+		return errors.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }

@@ -219,7 +219,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -249,7 +249,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	types.RegisterMockEvidencesGlobal() // XXX!
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
+	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
