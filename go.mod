@@ -3,6 +3,7 @@ module github.com/tendermint/tendermint
 go 1.12
 
 require (
+	github.com/ChainSafe/go-schnorrkel v0.0.0-20191204112926-74e22bf42a85
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/Workiva/go-datastructures v1.0.50
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
@@ -18,6 +19,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/magiconair/properties v1.8.1
+	github.com/mitchellh/gox v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
@@ -25,6 +27,7 @@ require (
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v0.0.1
 	github.com/spf13/viper v1.5.0
+	github.com/square/certstrap v1.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/stumble/gorocksdb v0.0.3 // indirect
 	github.com/tendermint/go-amino v0.14.1
