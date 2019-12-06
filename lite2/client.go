@@ -161,9 +161,16 @@ func NewClient(
 	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
 		return nil, err
 	}
+	if c.trustedHeader != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
 
-	if err := c.initializeWithTrustOptions(trustOptions); err != nil {
-		return nil, err
+	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+			return nil, err
+		}
 	}
 
 	go c.removeNoLongerTrustedHeadersRoutine()
@@ -190,6 +197,37 @@ func (c *Client) restoreTrustedHeaderAndNextVals() error {
 
 		c.trustedHeader = trustedHeader
 		c.trustedNextVals = trustedNextVals
+	}
+
+	return nil
+}
+
+func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
+	var primaryHash []byte
+	switch {
+	case options.Height > c.trustedHeader.Height:
+		h, err := c.primary.SignedHeader(c.trustedHeader.Height)
+		if err != nil {
+			return err
+		}
+		primaryHash = h.Hash()
+	case options.Height == c.trustedHeader.Height:
+		primaryHash = options.Hash
+	case options.Height < c.trustedHeader.Height:
+		// remove all the headers ( options.Height, trustedHeader.Height ]
+		c.cleanup(options.Height + 1)
+		// set c.trustedHeader to one at options.Height
+		c.restoreTrustedHeaderAndNextVals()
+		primaryHash = options.Hash
+	}
+
+	if !bytes.Equal(primaryHash, c.trustedHeader.Hash()) {
+		c.logger.Info("Prev. trusted header's hash %X doesn't match hash %X from primary provider",
+			c.trustedHeader.Hash(), primaryHash)
+		err := c.Cleanup()
+		if err != nil {
+			return errors.Wrap(err, "failed to cleanup")
+		}
 	}
 
 	return nil
@@ -358,6 +396,43 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return err
 	}
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
+}
+
+// Cleanup removes all the data (headers and validator sets) stored.
+func (c *Client) Cleanup() error {
+	return c.cleanup(0)
+}
+
+// stopHeight=0 -> remove all data
+func (c *Client) cleanup(stopHeight int64) error {
+	// 1) Get the oldest height.
+	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get first trusted height")
+	}
+
+	// 2) Get the latest height.
+	latestHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get first trusted height")
+	}
+
+	// 3) Remove all headers and validator sets.
+	if stopHeight == 0 {
+		stopHeight = oldestHeight
+	}
+	for height := stopHeight; height < latestHeight; height++ {
+		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
+		if err != nil {
+			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
+			continue
+		}
+	}
+
+	c.trustedHeader = nil
+	c.trustedNextVals = nil
+
+	return nil
 }
 
 func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
