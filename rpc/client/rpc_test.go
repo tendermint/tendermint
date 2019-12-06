@@ -500,11 +500,11 @@ func newEvidence(
 	chainID string,
 ) types.DuplicateVoteEvidence {
 	var err error
-	vote2_ := deepcpVote(vote2)
-	vote2_.Signature, err = val.Key.PrivKey.Sign(vote2_.SignBytes(chainID))
+	deepcpVote2 := deepcpVote(vote2)
+	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
 	require.NoError(t, err)
 
-	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, vote2_)
+	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, deepcpVote2)
 }
 
 func makeEvidences(
@@ -586,7 +586,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
+		result, err := c.BroadcastEvidence(&ev)
 		require.Nil(t, err)
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
 

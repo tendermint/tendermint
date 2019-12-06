@@ -14,7 +14,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app)
 
 	code := m.Run()

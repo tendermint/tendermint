@@ -9,7 +9,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// privKeys is a helper type for testing.
+// PrivKeys is a helper type for testing.
 //
 // It lets us simulate signing with many keys.  The main use case is to create
 // a set, and call GenSignedHeader to get properly signed header for testing.

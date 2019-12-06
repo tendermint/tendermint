@@ -297,24 +297,24 @@ func (r queryRange) lowerBoundValue() interface{} {
 
 	if r.includeLowerBound {
 		return r.lowerBound
-	} else {
-		switch t := r.lowerBound.(type) {
-		case int64:
-			return t + 1
-		case time.Time:
-			return t.Unix() + 1
-		default:
-			panic("not implemented")
-		}
+	}
+
+	switch t := r.lowerBound.(type) {
+	case int64:
+		return t + 1
+	case time.Time:
+		return t.Unix() + 1
+	default:
+		panic("not implemented")
 	}
 }
 
 func (r queryRange) AnyBound() interface{} {
 	if r.lowerBound != nil {
 		return r.lowerBound
-	} else {
-		return r.upperBound
 	}
+
+	return r.upperBound
 }
 
 func (r queryRange) upperBoundValue() interface{} {
@@ -324,15 +324,15 @@ func (r queryRange) upperBoundValue() interface{} {
 
 	if r.includeUpperBound {
 		return r.upperBound
-	} else {
-		switch t := r.upperBound.(type) {
-		case int64:
-			return t - 1
-		case time.Time:
-			return t.Unix() - 1
-		default:
-			panic("not implemented")
-		}
+	}
+
+	switch t := r.upperBound.(type) {
+	case int64:
+		return t - 1
+	case time.Time:
+		return t.Unix() - 1
+	default:
+		panic("not implemented")
 	}
 }
 

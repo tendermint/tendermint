@@ -132,7 +132,7 @@ type ExternalIPAddress struct {
 	IP      string
 }
 
-type UPNPService struct {
+type Service struct {
 	ServiceType string `xml:"serviceType"`
 	ControlURL  string `xml:"controlURL"`
 }
@@ -142,7 +142,7 @@ type DeviceList struct {
 }
 
 type ServiceList struct {
-	Service []UPNPService `xml:"service"`
+	Service []Service `xml:"service"`
 }
 
 type Device struct {
@@ -166,7 +166,7 @@ func getChildDevice(d *Device, deviceType string) *Device {
 	return nil
 }
 
-func getChildService(d *Device, serviceType string) *UPNPService {
+func getChildService(d *Device, serviceType string) *Service {
 	sl := d.ServiceList.Service
 	for i := 0; i < len(sl); i++ {
 		if strings.Contains(sl[i].ServiceType, serviceType) {
@@ -378,7 +378,7 @@ func (n *upnpNAT) AddPortMapping(
 	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
-	return
+	return mappedExternalPort, err
 }
 
 func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort int) (err error) {

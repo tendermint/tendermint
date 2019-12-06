@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
 //-------------------------------------------------------
@@ -21,12 +22,14 @@ const (
 
 const (
 	ABCIPubKeyTypeEd25519   = "ed25519"
+	ABCIPubKeyTypeSr25519   = "sr25519"
 	ABCIPubKeyTypeSecp256k1 = "secp256k1"
 )
 
 // TODO: Make non-global by allowing for registration of more pubkey types
 var ABCIPubKeyTypesToAminoNames = map[string]string{
 	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoName,
+	ABCIPubKeyTypeSr25519:   sr25519.PubKeyAminoName,
 	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoName,
 }
 
@@ -100,6 +103,11 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	case ed25519.PubKeyEd25519:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeEd25519,
+			Data: pk[:],
+		}
+	case sr25519.PubKeySr25519:
+		return abci.PubKey{
+			Type: ABCIPubKeyTypeSr25519,
 			Data: pk[:],
 		}
 	case secp256k1.PubKeySecp256k1:
@@ -192,6 +200,14 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 				len(pubKey.Data), ed25519.PubKeyEd25519Size)
 		}
 		var pk ed25519.PubKeyEd25519
+		copy(pk[:], pubKey.Data)
+		return pk, nil
+	case ABCIPubKeyTypeSr25519:
+		if len(pubKey.Data) != sr25519.PubKeySr25519Size {
+			return nil, fmt.Errorf("invalid size for PubKeySr25519. Got %d, expected %d",
+				len(pubKey.Data), sr25519.PubKeySr25519Size)
+		}
+		var pk sr25519.PubKeySr25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:

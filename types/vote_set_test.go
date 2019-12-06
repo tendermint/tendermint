@@ -15,12 +15,12 @@ import (
 func randVoteSet(
 	height int64,
 	round int,
-	type_ SignedMsgType,
+	signedMsgType SignedMsgType,
 	numValidators int,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 // Convenience: Return new vote with different validator address/index
@@ -46,9 +46,9 @@ func withRound(vote *Vote, round int) *Vote {
 }
 
 // Convenience: Return new vote with different type
-func withType(vote *Vote, type_ byte) *Vote {
+func withType(vote *Vote, signedMsgType byte) *Vote {
 	vote = vote.Copy()
-	vote.Type = SignedMsgType(type_)
+	vote.Type = SignedMsgType(signedMsgType)
 	return vote
 }
 

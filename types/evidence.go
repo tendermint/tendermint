@@ -256,13 +256,13 @@ func NewMockRandomGoodEvidence(height int64, address []byte, randBytes []byte) M
 }
 
 func (e MockRandomGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.randBytes))
+	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
 }
 
 // UNSTABLE
 type MockGoodEvidence struct {
-	Height_  int64
-	Address_ []byte
+	EvidenceHeight  int64
+	EvidenceAddress []byte
 }
 
 var _ Evidence = &MockGoodEvidence{}
@@ -272,23 +272,23 @@ func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence
 	return MockGoodEvidence{height, address}
 }
 
-func (e MockGoodEvidence) Height() int64   { return e.Height_ }
-func (e MockGoodEvidence) Address() []byte { return e.Address_ }
+func (e MockGoodEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockGoodEvidence) Address() []byte { return e.EvidenceAddress }
 func (e MockGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
+	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
 }
 func (e MockGoodEvidence) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
+	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
 }
 func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
-	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_)
+	return e.EvidenceHeight == e2.EvidenceHeight &&
+		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
 }
 func (e MockGoodEvidence) ValidateBasic() error { return nil }
 func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s", e.Height_, e.Address_)
+	return fmt.Sprintf("GoodEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
 }
 
 // UNSTABLE
@@ -301,12 +301,12 @@ func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 }
 func (e MockBadEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockBadEvidence)
-	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_)
+	return e.EvidenceHeight == e2.EvidenceHeight &&
+		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
 }
 func (e MockBadEvidence) ValidateBasic() error { return nil }
 func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s", e.Height_, e.Address_)
+	return fmt.Sprintf("BadEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
 }
 
 //-------------------------------------------

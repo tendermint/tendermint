@@ -77,8 +77,8 @@ type DefaultNodeInfo struct {
 
 	// Authenticate
 	// TODO: replace with NetAddress
-	ID_        ID     `json:"id"`          // authenticated identifier
-	ListenAddr string `json:"listen_addr"` // accepting incoming
+	DefaultNodeID ID     `json:"id"`          // authenticated identifier
+	ListenAddr    string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
@@ -99,7 +99,7 @@ type DefaultNodeInfoOther struct {
 
 // ID returns the node's peer ID.
 func (info DefaultNodeInfo) ID() ID {
-	return info.ID_
+	return info.DefaultNodeID
 }
 
 // Validate checks the self-reported DefaultNodeInfo is safe.
@@ -172,10 +172,10 @@ func (info DefaultNodeInfo) Validate() error {
 // CompatibleWith checks if two DefaultNodeInfo are compatible with eachother.
 // CONTRACT: two nodes are compatible if the Block version and network match
 // and they have at least one channel in common.
-func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
-	other, ok := other_.(DefaultNodeInfo)
+func (info DefaultNodeInfo) CompatibleWith(otherInfo NodeInfo) error {
+	other, ok := otherInfo.(DefaultNodeInfo)
 	if !ok {
-		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(other_))
+		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(otherInfo))
 	}
 
 	if info.ProtocolVersion.Block != other.ProtocolVersion.Block {

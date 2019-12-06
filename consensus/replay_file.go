@@ -40,7 +40,7 @@ func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console
 }
 
 // Replay msgs in file or start the console
-func (cs *ConsensusState) ReplayFile(file string, console bool) error {
+func (cs *State) ReplayFile(file string, console bool) error {
 
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
@@ -98,7 +98,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 // playback manager
 
 type playback struct {
-	cs *ConsensusState
+	cs *State
 
 	fp    *os.File
 	dec   *WALDecoder
@@ -109,7 +109,7 @@ type playback struct {
 	genesisState sm.State // so the replay session knows where to restart from
 }
 
-func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState sm.State) *playback {
+func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *playback {
 	return &playback{
 		cs:           cs,
 		fp:           fp,
@@ -124,7 +124,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	pb.cs.Stop()
 	pb.cs.Wait()
 
-	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -158,7 +158,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	return nil
 }
 
-func (cs *ConsensusState) startForReplay() {
+func (cs *State) startForReplay() {
 	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
 	/* TODO:!
 	// since we replay tocks we just ignore ticks
@@ -274,7 +274,7 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
+func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
 	dbType := dbm.BackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
@@ -314,7 +314,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	mempool, evpool := mock.Mempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
-	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,
+	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)
