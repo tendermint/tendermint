@@ -203,6 +203,7 @@ not considered expired.
     if h.Header.bfttime + tp - Delta < now { // Observation 1
       return true
     }
+    return false
   }
 
   // return true if header is correctly signed by 2/3+ voting power in the corresponding validator set; 
@@ -266,62 +267,6 @@ Towards Lite Client Completeness:
 
 **Bisection.** The following function uses CheckSupport in a recursion to find intermediate headers that allow to establish a sequence of trust.
 
-
-
-
-```go
-// return (true, nil) in case we can trust header h2 based on header h1; otherwise return (false, error) where error captures the nature of the error.
-func Bisection(h1,h2,trustlevel) (bool, error) {
-  assume h1.Header.Height < h2.header.Height
-
-  ok, err = CheckSupport(h1,h2,trustlevel)
-  if (ok or err != nil) return (ok, err)
-
-  // we cannot verify h2 based on h1, so we try to move trusted header closer to h2 so we can verify h2
-  th := h1 // th is trusted header
-  while th.Header.Height <= h2.Header.height - 1 do {
-       // try to move trusted header forward with stored headers
-       ih := th
-       // try to move trusted header forward
-       for h in stored headers s.t ih.Header.Height < h.Header.height < h2.Header.height do {  
-            // we assume here that iteration is done in the order of header heights
-            ok, err = CheckSupport(th,h,trustlevel)
-            if err != nil { return (ok, err) }
-            if ok {
-                th = h
-            }
-        }
-
-        // at this point we have potentially updated th based on stored headers so we try to verify h2 
-        // based on new trusted header
-        ok, err = CheckSupport(th,h2,trustlevel)
-        if (ok or err != nil) return (ok, err)
-
-        // we cannot verify h2 based on th, so we try to move trusted header closer to h2 by downloading header(s) between th and h2
-        endHeight = h2.Header.height
-        foundPivot = false
-        while(!foundPivot) {
-            pivot := (th.Header.height + endHeight) / 2
-            hp := Commit(pivot)
-            if !verify(hp) return (false, ErrInvalidHeader(hp))
-            Store(hp)
-
-            // try to move trusted header forward to hp
-            ok, err = CheckSupport(th,hp,trustlevel)
-            if err != nil { return (ok, err) }
-            if ok {
-                th = hp
-                foundPivot = true
-            }
-            endHeight = pivot
-        }
-  }
-}
-```  
-
-
-
-
 *Correctness arguments (sketch)*
 
 Lite Client Accuracy:
@@ -363,3 +308,97 @@ func Backwards(h1,h2) bool {
   return (hash(h2) == old.Header.hash)
  }
 ```
+
+```go
+// return true if header has expired, i.e., it is outside its trusted period; otherwise it returns false
+func hasExpired(h) bool {
+    if now - h.Header.bfttime > tp - Delta
+        return true  // Observation 1 
+    return false
+}
+
+// return true if header is correctly signed by 2/3+ voting power in the corresponding validator set; 
+// otherwise false. Additional checks should be done in the implementation
+// to ensure header is well formed.
+func verify(h) bool {
+    vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
+    return votingpower_in(signers(h.Commit),h.Header.V) > 2/3 * vp_all
+}
+
+// Captures skipping condition. h1 and h2 has already passed basic validation (function `verify`).
+// returns (true, nil) in case h2 can be trusted based on h1, (false, nil) in case it cannot be trusted but no errors 
+// are observed during check and (false, error) in case an error is detected (for example adjacent 
+// headers are not consistent).
+func CheckSupport(h1,h2,trustlevel) (bool, error) {
+    assume h1.Header.Height < h2.header.Height
+
+    // check for adjacent headers
+    if h2.Header.height == h1.Header.height + 1 {
+        if h1.Header.NextV == h2.Header.V return nil
+        return false, ErrInvalidAdjacentHeaders
+    }
+
+    // total sum of voting power of validators in h1.NextV 
+    vp_all := totalVotingPower(h1.Header.NextV)
+    // check for non-adjacent headers
+    return votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all, nil
+}
+
+// return nil in case we can trust header h2 based on header h1, error otherwise
+func Bisection(h1,h2,trustlevel) error {
+    assume h1.Header.Height < h2.header.Height
+
+    th := h1 
+    pivot = h2.Header.height
+    untrustedHeaders = []
+
+    while h2 not in Store.Headers() { // could be replaced with while true and check if h2 is stored in the loop
+        // check support for pivot, bisect if no support until a higher trusted header is found
+        while pivot < h1.Header.height {
+            hp := Commit(pivot)
+            if !verify(hp) return ErrInvalidHeader(hp)
+            done, err = CheckSupport(th,hp,trustlevel)
+            if err != nil return err
+            if done {
+                th = hp
+                Store.Add(hp)
+                break
+            }
+            untrustedHeaders.add(hp)
+            pivot := (th.Header.height + endHeight) / 2
+        }
+
+        // try to move trusted header forward
+        for h in untrustedHeaders {  
+            // we assume here that iteration is done in the order of header heights
+            done, err = CheckSupport(th,h,trustlevel)
+            if err != nil return err 
+            if done {
+                th = h
+                Store.Add(h)
+            }
+        }
+    }
+    return nil
+}
+
+func VerifyHeader(h2, trustlevel) error {
+    if h2 in Store.Headers()
+        return nil
+
+    Store.DisableExpiration()
+    // get the highest trusted headers lower than h2
+    h1 = Store.HighestTrusted(h2.Header.height)
+    if h1 == nil 
+        return ErrNoTrustedHeader
+
+    err = Bisection(h1, h2, trustlevel)
+    if err != nil return err
+
+    // remove all expired headers and start the expiration timer
+    Store.EnableExpiration() 
+    if h2 in Store.Headers() return nil
+    return ErrHeaderExpired
+}
+
+```  
