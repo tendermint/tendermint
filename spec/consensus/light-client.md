@@ -168,38 +168,38 @@ When we say we trust *h.Header.NextV* we do *not* trust that each individual val
 
 ### Functions
 
-The function *Bisection* checks whether to trust header *h2* based on the trusted header *h1*. It does so by calling
-the function *CheckSupport* in the process of
-bisection/recursion. *CheckSupport* implements the trusted period method and, for two adjacent headers (in term of heights), it checks uninterrupted sequence of proof.
+The function *CanTrust* checks whether to trust header *h2* based on the trusted header *h1*. It does so by (potentially)
+building transitive trust relation between *h1* and *h2*, over some intermediate headers. For example, in case we cannot trust
+header *h2* based on the trusted header *h1*, the function *CanTrust* will try to find headers such that we can transition trust
+from *h1* over intermediate headers to *h2*. We will give two implementations of *CanTrust* based on *CheckSupport*, the one based
+on bisection that is recursive and the other that is non-recursive. We give two implementations as recursive version might be easier
+to understand but non-recursive version might be simpler to formally express and verify using TLA+/TLC.
+
+Both implementations of *CanTrust* function are based on *CheckSupport* function that implements the conditions under which we can trust a
+header *h2* given the trust in the header *h1* as a single step,
+i.e., it does not assume ensuring transitive trust relation between headers through some intermediate headers.
+
 
 *Assumption*: In the following, we assume that *h2.Header.height > h1.Header.height*. We will quickly discuss the other case in the next section.
 
 We consider the following set-up:
 - the lite client communicates with one full node
-- the lite client locally stores all the signed headers it obtained (trusted or not). In the pseudo code below we write *Store(header)* for this.
-- If *Bisection* returns *false*, then the lite client has seen a  forged header.
-  * However, it does not know which header(s) is/are the problematic one(s).
-  * In this case, the lite client can submit (some of) the headers it has seen as evidence. As the lite client communicates with one full node only when executing Bisection, there are two cases
-    - the full node is faulty
-    - the full node is correct and there was a fork in Tendermint consensus. Header *h1* is from a different branch than the one taken by the full node. This case is not focus of this document, but will be treated in the document on fork accountability.
-
-- the lite client must retry to retrieve correct headers from another full node
-  * it picks a new full node
-  * it restarts *Bisection*
-  * there might be optimizations; a lite client may not need to call *Commit(k)*, for a height *k* for which it already has a signed header it trusts.
-  * how to make sure that a lite client can communicate with a correct full node will be the focus of a separate document (recall Issue 3 from "Context of this document").
+- the lite client locally stores all the headers that has passed basic verification. In the pseudo code below we write *Store(header)* for this. If a header failed to verify, then
+the full node we are talking to is faulty and we should disconnect from it and reinitialise lite client.
+- If *CanTrust* returns *error*, then the lite client has seen a forged header or the trusted header has expired (it is outside its trusted period).
+  * In case of forged header, the full node is faulty so lite client should disconnect and reinitialise with new trusted header.
 
 **Auxiliary Functions.** We will use the  function ```votingpower_in(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
 we will write ```totalVotingPower(V)``` for ```votingpower_in(V,V)```, which returns the total voting power in V.
 We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
 
 **CheckSupport.** The following function checks whether we can trust the header h2 based on header h1 following the trusting period method. Time constraint is
-captured by the `hasExpired` function that depends on trusted period (`tp`) and a parameter `Delta` that denotes minimum duration of header so it is
-not considered expired.
+captured by the ```hasExpired``` function that depends on trusted period (`tp`) and it returns true in case the header is outside its trusted period.
+```verify``` function is capturing basic header verification, i.e., it ensures that the header is signed by more than 2/3 of the voting power of the corresponding validator set.
 
 ```go
   // return true if header has expired, i.e., it is outside its trusted period; otherwise it returns false
-  func hasExpired(h) bool {
+  func hasExpired(h, Delta) bool {
     if h.Header.bfttime + tp - Delta < now { // Observation 1
       return true
     }
@@ -214,12 +214,14 @@ not considered expired.
   }
 
   // Captures skipping condition. h1 and h2 has already passed basic validation (function `verify`).
-  // returns (true, nil) in case h2 can be trusted based on h1, (false, nil) in case it cannot be trusted but no errors are observed during check and (false, error) in case
-  // an error is detected (for example adjacent headers are not consistent).
-  func CheckSupport(h1,h2,trustlevel) (bool, error) {
+  // returns nil in case h2 can be trusted based on h1, otherwise returns error.
+  // ErrHeaderExpired is used to signal that h1 has expired,
+  // ErrInvalidAdjacentHeaders that adjacent headers are not consistent and
+  // ErrTooMuchChange that there is not enough intersection between validator sets to have skipping condition true.
+  func CheckSupport(h1,h2,trustlevel) error {
       assume h1.Header.Height < h2.header.Height
 
-      if hasExpired(h1) return (false, ErrHeaderExpired(h1))
+      if hasExpired(h1) return ErrHeaderExpired(h1)
 
       // total sum of voting power of validators in h1.NextV
       vp_all := totalVotingPower(h1.Header.NextV)
@@ -227,11 +229,14 @@ not considered expired.
       // check for adjacent headers
       if (h2.Header.height == h1.Header.height + 1) {
             if h1.Header.NextV == h2.Header.V 
-                return (true, nil)
-            return (false, ErrInvalidAdjacentHeaders)
+                return nil
+            return ErrInvalidAdjacentHeaders
       } else {
       // check for non-adjacent headers
-        return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all, nil)
+        if votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all
+            return nil
+        else
+            return ErrTooMuchChange(h1, h2)
       }
   }
 ```
@@ -267,11 +272,9 @@ Towards Lite Client Completeness:
 **Bisection.** The following function uses CheckSupport in a recursion to find intermediate headers that allow to establish a sequence of trust.
 
 
-
-
 ```go
 // return (true, nil) in case we can trust header h2 based on header h1; otherwise return (false, error) where error captures the nature of the error.
-func Bisection(h1,h2,trustlevel) (bool, error) {
+func CanTrust(h1,h2,trustlevel) (bool, error) {
   assume h1.Header.Height < h2.header.Height
 
   ok, err = CheckSupport(h1,h2,trustlevel)
@@ -318,6 +321,33 @@ func Bisection(h1,h2,trustlevel) (bool, error) {
   }
 }
 ```  
+
+```go
+func CanTrustBisection(h1,h2,trustlevel) bool{
+  if CheckSupport(h1,h2,trustlevel) {
+    return true
+  }
+  if h2.Header.height == h1.Header.height + 1 {
+    // we have adjacent headers that are not matching (failed
+    // the CheckSupport)
+    // we could submit evidence here
+    return false
+  }
+  pivot := (h1.Header.height + h2.Header.height) / 2
+  hp := Commit(pivot)
+    // ask a full node for header of height pivot
+  Store(hp)
+    // store header hp locally
+  if Bisection(h1,hp,trustlevel) {
+    // only check right branch if hp is trusted
+    // (otherwise a lot of unnecessary computation may be done)
+    return Bisection(hp,h2,trustlevel)
+  }
+  else {
+    return false
+  }
+}
+```
 
 
 
