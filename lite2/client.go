@@ -158,6 +158,10 @@ func NewClient(
 		o(c)
 	}
 
+	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
+		return nil, err
+	}
+
 	if err := c.initializeWithTrustOptions(trustOptions); err != nil {
 		return nil, err
 	}
@@ -165,6 +169,30 @@ func NewClient(
 	go c.removeNoLongerTrustedHeadersRoutine()
 
 	return c, nil
+}
+
+func (c *Client) restoreTrustedHeaderAndNextVals() error {
+	lastHeight, err := c.trustedStore.LastSignedHeaderHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get last trusted header height")
+	}
+
+	if lastHeight > 0 {
+		trustedHeader, err := c.trustedStore.SignedHeader(lastHeight)
+		if err != nil {
+			return errors.Wrap(err, "can't get last trusted header")
+		}
+
+		trustedNextVals, err := c.trustedStore.ValidatorSet(lastHeight + 1)
+		if err != nil {
+			return errors.Wrap(err, "can't get last trusted next validators")
+		}
+
+		c.trustedHeader = trustedHeader
+		c.trustedNextVals = trustedNextVals
+	}
+
+	return nil
 }
 
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {

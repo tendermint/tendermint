@@ -35,11 +35,11 @@ type Store interface {
 
 	// LastSignedHeaderHeight returns the last (newest) SignedHeader height.
 	//
-	// If the store is empty, -1 and an error are returned.
+	// If the store is empty, -1 and nil error are returned.
 	LastSignedHeaderHeight() (int64, error)
 
 	// FirstSignedHeaderHeight returns the first (oldest) SignedHeader height.
 	//
-	// If the store is empty, -1 and an error are returned.
+	// If the store is empty, -1 and nil error are returned.
 	FirstSignedHeaderHeight() (int64, error)
 }
