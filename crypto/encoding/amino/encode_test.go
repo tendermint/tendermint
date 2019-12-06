@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
 type byter interface {
@@ -57,9 +58,11 @@ func ExamplePrintRegisteredTypes() {
 	// Output: | Type | Name | Prefix | Length | Notes |
 	//| ---- | ---- | ------ | ----- | ------ |
 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
 	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
 }
 
@@ -71,6 +74,12 @@ func TestKeyEncodings(t *testing.T) {
 		{
 			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
+			pubSize:  37,
+			sigSize:  65,
+		},
+		{
+			privKey:  sr25519.GenPrivKey(),
+			privSize: 37,
 			pubSize:  37,
 			sigSize:  65,
 		},
@@ -139,6 +148,7 @@ func TestPubkeyAminoName(t *testing.T) {
 		found bool
 	}{
 		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
+		{sr25519.PubKeySr25519{}, sr25519.PubKeyAminoName, true},
 		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
 		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
@@ -219,6 +229,7 @@ func TestRegisterKeyType(t *testing.T) {
 	nameTable = make(map[reflect.Type]string, 3)
 	RegisterAmino(cdc)
 	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(sr25519.PubKeySr25519{})] = sr25519.PubKeyAminoName
 	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
 	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }

@@ -15,12 +15,12 @@ import (
 func randVoteSet(
 	height int64,
 	round int,
-	type_ SignedMsgType,
+	signedMsgType SignedMsgType,
 	numValidators int,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 // Convenience: Return new vote with different validator address/index
@@ -46,9 +46,9 @@ func withRound(vote *Vote, round int) *Vote {
 }
 
 // Convenience: Return new vote with different type
-func withType(vote *Vote, type_ byte) *Vote {
+func withType(vote *Vote, signedMsgType byte) *Vote {
 	vote = vote.Copy()
-	vote.Type = SignedMsgType(type_)
+	vote.Type = SignedMsgType(signedMsgType)
 	return vote
 }
 
@@ -522,16 +522,27 @@ func TestMakeCommit(t *testing.T) {
 		}
 	}
 
+	// The 9th voted for nil.
+	{
+		addr := privValidators[8].GetPubKey().Address()
+		vote := withValidator(voteProto, addr, 8)
+		vote.BlockID = BlockID{}
+
+		_, err := signAddVote(privValidators[8], vote, voteSet)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
 	commit := voteSet.MakeCommit()
 
 	// Commit should have 10 elements
-	if len(commit.Precommits) != 10 {
-		t.Errorf("commit Precommits should have the same number of precommits as validators")
+	if len(commit.Signatures) != 10 {
+		t.Errorf("expected commit to include %d elems, got %d", 10, len(commit.Signatures))
 	}
 
-	// Ensure that Commit precommits are ordered.
+	// Ensure that Commit is good.
 	if err := commit.ValidateBasic(); err != nil {
 		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
-
 }

@@ -47,8 +47,8 @@ func (mc *multiProvider) SaveFullCommit(fc FullCommit) (err error) {
 // Returns the first error encountered.
 func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc FullCommit, err error) {
 	for _, p := range mc.providers {
-		var fc_ FullCommit
-		fc_, err = p.LatestFullCommit(chainID, minHeight, maxHeight)
+		var commit FullCommit
+		commit, err = p.LatestFullCommit(chainID, minHeight, maxHeight)
 		if lerr.IsErrCommitNotFound(err) {
 			err = nil
 			continue
@@ -56,9 +56,9 @@ func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight i
 			return
 		}
 		if fc == (FullCommit{}) {
-			fc = fc_
-		} else if fc_.Height() > fc.Height() {
-			fc = fc_
+			fc = commit
+		} else if commit.Height() > fc.Height() {
+			fc = commit
 		}
 		if fc.Height() == maxHeight {
 			return

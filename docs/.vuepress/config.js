@@ -1,5 +1,6 @@
 module.exports = {
   theme: "cosmos",
+  title: "Tendermint",
   // locales: {
   //   "/": {
   //     lang: "en-US"

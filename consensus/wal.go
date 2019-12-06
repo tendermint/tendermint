@@ -20,7 +20,10 @@ import (
 
 const (
 	// amino overhead + time.Time + max consensus msg size
-	// TODO: Can we clarify better where 24 comes from precisely?
+	//
+	// q: where 24 bytes are coming from?
+	// a: cdc.MustMarshalBinaryBare(empty consensus part msg) = 14 bytes. +10
+	// bytes just in case amino will require more space in the future.
 	maxMsgSizeBytes = maxMsgSize + 24
 
 	// how often the WAL should be sync'd during period sync'ing
@@ -203,7 +206,8 @@ func (wal *baseWAL) WriteSync(msg WALMessage) error {
 	}
 
 	if err := wal.FlushAndSync(); err != nil {
-		wal.Logger.Error("WriteSync failed to flush consensus wal. WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted",
+		wal.Logger.Error(`WriteSync failed to flush consensus wal. 
+		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
 			"err", err)
 		return err
 	}

@@ -29,10 +29,10 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
 
     # install go
-    wget -q https://dl.google.com/go/go1.12.linux-amd64.tar.gz
-    tar -xvf go1.12.linux-amd64.tar.gz
+    wget -q https://dl.google.com/go/go1.13.linux-amd64.tar.gz
+    tar -xvf go1.13.linux-amd64.tar.gz
     mv go /usr/local
-    rm -f go1.12.linux-amd64.tar.gz
+    rm -f go1.13.linux-amd64.tar.gz
 
     # install nodejs (for docs)
     curl -sL https://deb.nodesource.com/setup_11.x | bash -

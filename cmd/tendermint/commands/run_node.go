@@ -49,6 +49,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
 	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma-delimited ID@host:port seed nodes")
 	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "Comma-delimited ID@host:port persistent peers")
+	cmd.Flags().String("p2p.unconditional_peer_ids",
+		config.P2P.UnconditionalPeerIDs, "Comma-delimited IDs of unconditional peers")
 	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "Enable/disable UPNP port forwarding")
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
 	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "Enable/disable seed mode")
@@ -59,11 +61,15 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks",
 		config.Consensus.CreateEmptyBlocks,
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	cmd.Flags().String(
+		"consensus.create_empty_blocks_interval",
+		string(config.Consensus.CreateEmptyBlocksInterval),
+		"The possible interval between empty blocks")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
 // It can be used with a custom PrivValidator and in-process ABCI application.
-func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
+func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",

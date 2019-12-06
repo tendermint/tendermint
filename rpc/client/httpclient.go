@@ -260,6 +260,15 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	return result, nil
 }
 
+func (c *baseRPCClient) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	result := new(ctypes.ResultConsensusParams)
+	_, err := c.caller.Call("consensus_params", map[string]interface{}{"height": height}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "ConsensusParams")
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) Health() (*ctypes.ResultHealth, error) {
 	result := new(ctypes.ResultHealth)
 	_, err := c.caller.Call("health", map[string]interface{}{}, result)

@@ -44,10 +44,10 @@ func waitForRPC() {
 		_, err := client.Call("status", map[string]interface{}{}, result)
 		if err == nil {
 			return
-		} else {
-			fmt.Println("error", err)
-			time.Sleep(time.Millisecond)
 		}
+
+		fmt.Println("error", err)
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -97,7 +97,7 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
+	c.TxIndex.IndexKeys = "app.creator,tx.height" // see kvstore application
 	return c
 }
 

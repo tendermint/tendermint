@@ -57,7 +57,7 @@ func TestEvidencePool(t *testing.T) {
 	height := int64(5)
 	stateDB := initializeValidatorState(valAddr, height)
 	evidenceDB := dbm.NewMemDB()
-	pool := NewEvidencePool(stateDB, evidenceDB)
+	pool := NewPool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
 	badEvidence := types.MockBadEvidence{MockGoodEvidence: goodEvidence}
@@ -91,7 +91,7 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	height := int64(42)
 	stateDB := initializeValidatorState(valAddr, height)
 	evidenceDB := dbm.NewMemDB()
-	pool := NewEvidencePool(stateDB, evidenceDB)
+	pool := NewPool(stateDB, evidenceDB)
 
 	// evidence not seen yet:
 	evidence := types.NewMockGoodEvidence(height, 0, valAddr)

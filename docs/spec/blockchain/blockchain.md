@@ -187,6 +187,8 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
+Votes are lexicographically sorted on `BlockID`.
+
 See the [pubkey spec](./encoding.md#key-types) for more.
 
 ## Validation

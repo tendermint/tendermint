@@ -57,7 +57,8 @@ func NewNodeWithEventMeterAndRPCClient(
 	rpcAddr string,
 	em eventMeter,
 	rpcClient rpc_client.HTTPClient,
-	options ...func(*Node)) *Node {
+	options ...func(*Node),
+) *Node {
 	n := &Node{
 		rpcAddr:                  rpcAddr,
 		em:                       em,

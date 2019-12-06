@@ -82,9 +82,9 @@ func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
 					rp += 2
 				} else {
 					items[wp] = items[rp]
-					rp += 1
+					rp++
 				}
-				wp += 1
+				wp++
 			}
 			size = wp
 		}

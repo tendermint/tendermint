@@ -257,15 +257,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-// MempoolMessage is a message sent or received by the Reactor.
-type MempoolMessage interface{}
+// Message is a message sent or received by the Reactor.
+type Message interface{}
 
-func RegisterMempoolMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*MempoolMessage)(nil), nil)
+func RegisterMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Message)(nil), nil)
 	cdc.RegisterConcrete(&TxMessage{}, "tendermint/mempool/TxMessage", nil)
 }
 
-func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
+func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
 	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
 	if l := len(bz); l > maxMsgSize {
 		return msg, ErrTxTooLarge{maxMsgSize, l}
@@ -276,7 +276,7 @@ func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
 
 //-------------------------------------
 
-// TxMessage is a MempoolMessage containing a transaction.
+// TxMessage is a Message containing a transaction.
 type TxMessage struct {
 	Tx types.Tx
 }

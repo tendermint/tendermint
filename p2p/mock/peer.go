@@ -45,8 +45,8 @@ func (mp *Peer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *Peer) Send(chID byte, msgBytes []byte) bool    { return true }
 func (mp *Peer) NodeInfo() p2p.NodeInfo {
 	return p2p.DefaultNodeInfo{
-		ID_:        mp.addr.ID,
-		ListenAddr: mp.addr.DialString(),
+		DefaultNodeID: mp.addr.ID,
+		ListenAddr:    mp.addr.DialString(),
 	}
 }
 func (mp *Peer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }

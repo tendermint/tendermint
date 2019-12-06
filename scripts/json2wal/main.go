@@ -22,7 +22,7 @@ import (
 var cdc = amino.NewCodec()
 
 func init() {
-	cs.RegisterConsensusMessages(cdc)
+	cs.RegisterMessages(cdc)
 	cs.RegisterWALMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }
