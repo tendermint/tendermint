@@ -53,17 +53,19 @@ paths:
           required: true
           description: The transaction
           x-example: "456"
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/BroadcastTxResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastTxResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /broadcast_tx_async:
     get:
       summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
@@ -99,12 +101,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/BroadcastTxResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastTxResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /broadcast_tx_commit:
     get:
       summary: Returns with the responses from CheckTx and DeliverTx.
@@ -138,12 +144,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/BroadcastTxCommitResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastTxCommitResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -283,12 +293,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/EmptyResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /unsubscribe:
     get:
       summary: Unsubscribe from event on Websocket
@@ -326,12 +340,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/EmptyResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /unsubscribe_all:
     get:
       summary: Unsubscribe from all events via WebSocket
@@ -345,12 +363,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/EmptyResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /health:
     get:
       summary: Node heartbeat
@@ -364,12 +386,16 @@ paths:
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/EmptyResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /status:
     get:
       summary: Node Status
@@ -378,17 +404,19 @@ paths:
         - Info
       description: |
         Get Tendermint status including node info, pubkey, latest block hash, app hash, block height and time.
-      produces:
-        - application/json
       responses:
         200:
           description: Status of the node
-          schema:
-            $ref: "#/components/schemas/StatusResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
       summary: Network informations
@@ -397,17 +425,19 @@ paths:
         - Info
       description: |
         Get network info.
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
-          schema:
-            $ref: "#/components/schemas/NetInfoResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetInfoResponse"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dial_seeds:
     post:
       summary: Dial Seeds (Unsafe)
@@ -416,8 +446,6 @@ paths:
         - unsafe
       description: |
         Dial a peer, this route in under unsafe, and has to manually enabled to use
-      consumes:
-        - application/json
       parameters:
         - description: string of possible peers
           in: body
@@ -430,12 +458,16 @@ paths:
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
-          schema:
-            $ref: "#/components/schemas/dialResp"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dialResp"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dial_peers:
     post:
       summary: Add Peers/Persistent Peers (unsafe)
@@ -458,12 +490,16 @@ paths:
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
-          schema:
-            $ref: "#/components/schemas/dialResp"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dialResp"
         500:
           description: empty error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /blockchain:
     get:
       summary: Get block headers for minHeight <= height <= maxHeight.
@@ -488,12 +524,16 @@ paths:
       responses:
         200:
           description: Block headers, returned in descending order (highest first).
-          schema:
-            $ref: "#/components/schemas/BlockchainResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockchainResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /block:
     get:
       summary: Get block at a specified height
@@ -514,12 +554,16 @@ paths:
       responses:
         200:
           description: Block informations.
-          schema:
-            $ref: "#/components/schemas/BlockResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /block_results:
     get:
       summary: Get block results at a specified height
@@ -540,12 +584,16 @@ paths:
       responses:
         200:
           description: Block results.
-          schema:
-            $ref: "#/components/schemas/BlockResultsResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResultsResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /commit:
     get:
       summary: Get commit results at a specified height
@@ -566,12 +614,16 @@ paths:
       responses:
         200:
           description: Commit results.
-          schema:
-            $ref: "#/components/schemas/CommitResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /validators:
     get:
       summary: Get validator set at a specified height
@@ -606,12 +658,16 @@ paths:
       responses:
         200:
           description: Commit results.
-          schema:
-            $ref: "#/components/schemas/ValidatorsResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidatorsResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /genesis:
     get:
       summary: Get Genesis
@@ -625,12 +681,16 @@ paths:
       responses:
         200:
           description: Genesis results.
-          schema:
-            $ref: "#/components/schemas/GenesisResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dump_consensus_state:
     get:
       summary: Get consensus state
@@ -644,12 +704,16 @@ paths:
       responses:
         200:
           description: consensus state results.
-          schema:
-            $ref: "#/components/schemas/DumpConsensusResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DumpConsensusResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /consensus_state:
     get:
       summary: Get consensus state
@@ -663,12 +727,16 @@ paths:
       responses:
         200:
           description: consensus state results.
-          schema:
-            $ref: "#/components/schemas/ConsensusStateResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsensusStateResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /consensus_params:
     get:
       summary: Get consensus parameters
@@ -689,12 +757,16 @@ paths:
       responses:
         200:
           description: consensus parameters results.
-          schema:
-            $ref: "#/components/schemas/ConsensusParamsResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsensusParamsResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /unconfirmed_txs:
     get:
       summary: Get the list of unconfirmed transactions
@@ -714,12 +786,16 @@ paths:
       responses:
         200:
           description: List of unconfirmed transactions
-          schema:
-            $ref: "#/components/schemas/UnconfirmedTransactionsResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnconfirmedTransactionsResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /num_unconfirmed_txs:
     get:
       summary: Get data about unconfirmed transactions
@@ -733,12 +809,16 @@ paths:
       responses:
         200:
           description: status about unconfirmed transactions
-          schema:
-            $ref: "#/components/schemas/NumUnconfirmedTransactionsResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NumUnconfirmedTransactionsResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /tx_search:
     get:
       summary: Search for transactions
@@ -780,12 +860,16 @@ paths:
       responses:
         200:
           description: List of unconfirmed transactions
-          schema:
-            $ref: "#/components/schemas/TxSearchResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TxSearchResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /tx:
     get:
       summary: Get transactions by hash
@@ -813,12 +897,16 @@ paths:
       responses:
         200:
           description: Get a transaction
-          schema:
-            $ref: "#/components/schemas/TxResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TxResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /abci_info:
     get:
       summary: Get some info about the application.
