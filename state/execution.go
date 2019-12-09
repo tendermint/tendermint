@@ -10,6 +10,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -425,7 +426,7 @@ func updateState(
 		lastHeightParamsChanged = header.Height + 1
 	}
 
-	// TODO: allow app to upgrade version
+	state.Version.Consensus.App = version.Protocol(abciResponses.EndBlock.AppVersion)
 	nextVersion := state.Version
 
 	// NOTE: the AppHash has not been populated.

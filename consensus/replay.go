@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -258,12 +257,6 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)
-
-	// Set AppVersion on the state.
-	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
-		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
-		sm.SaveState(h.stateDB, h.initialState)
-	}
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
