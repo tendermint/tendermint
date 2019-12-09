@@ -1,4 +1,4 @@
-package main
+package debug
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ consensus and networking state, go-routine state, and the node's WAL and config
 information. This aggregated data is packaged into a compressed archive.
 
 Example:
-$ tendermintdb 34255 /path/to/tm-debug.zip`,
+$ tendermint debug 34255 /path/to/tm-debug.zip`,
 	Args: cobra.ExactArgs(2),
 	RunE: killCmdHandler,
 }
