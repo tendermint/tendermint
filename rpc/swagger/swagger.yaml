@@ -55,13 +55,13 @@ paths:
           x-example: "456"
       responses:
         200:
-          description: empty answer
+          description: Empty
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/BroadcastTxResponse"
         500:
-          description: empty error
+          description: Error
           content:
             application/json:
               schema:
@@ -96,8 +96,6 @@ paths:
           required: true
           description: The transaction
           x-example: "123"
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
@@ -139,8 +137,6 @@ paths:
           required: true
           description: The transaction
           x-example: "785"
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
@@ -288,8 +284,6 @@ paths:
             operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
             string (escaped with single quotes), number, date or time.
           x-example: tm.event = 'Tx' AND tx.height = 5
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
@@ -335,17 +329,15 @@ paths:
             operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
             string (escaped with single quotes), number, date or time.
           x-example: tm.event = 'Tx' AND tx.height = 5
-      produces:
-        - application/json
       responses:
         200:
-          description: empty answer
+          description: Answer
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmptyResponse"
         500:
-          description: empty error
+          description: Error
           content:
             application/json:
               schema:
@@ -358,8 +350,6 @@ paths:
       operationId: unsubscribe_all
       description: |
         Unsubscribe from all events via WebSocket
-      produces:
-        - application/json
       responses:
         200:
           description: empty answer
@@ -381,11 +371,9 @@ paths:
       operationId: health
       description: |
         Get node health. Returns empty result (200 OK) on success, no response - in case of an error.
-      produces:
-        - application/json
       responses:
         200:
-          description: empty answer
+          description: Gets Node Health
           content:
             application/json:
               schema:
@@ -453,8 +441,6 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/dialSeedsPost"
-      produces:
-        - application/json
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -476,8 +462,6 @@ paths:
         - unsafe
       description: |
         Set a persistent peer, this route in under unsafe, and has to manually enabled to use
-      consumes:
-        - application/json
       parameters:
         - description: string of possible peers, bool argument if they should be added as persistent
           in: body
@@ -485,8 +469,6 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/dialPeersPost"
-      produces:
-        - application/json
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -519,8 +501,6 @@ paths:
         - Info
       description: |
         Get Blockchain info.
-      produces:
-        - application/json
       responses:
         200:
           description: Block headers, returned in descending order (highest first).
@@ -549,8 +529,6 @@ paths:
         - Info
       description: |
         Get Block.
-      produces:
-        - application/json
       responses:
         200:
           description: Block informations.
@@ -579,8 +557,6 @@ paths:
         - Info
       description: |
         Get block_results.
-      produces:
-        - application/json
       responses:
         200:
           description: Block results.
@@ -609,8 +585,6 @@ paths:
         - Info
       description: |
         Get Commit.
-      produces:
-        - application/json
       responses:
         200:
           description: Commit results.
@@ -653,8 +627,6 @@ paths:
         - Info
       description: |
         Get Validators.
-      produces:
-        - application/json
       responses:
         200:
           description: Commit results.
@@ -676,8 +648,6 @@ paths:
         - Info
       description: |
         Get genesis.
-      produces:
-        - application/json
       responses:
         200:
           description: Genesis results.
@@ -699,8 +669,6 @@ paths:
         - Info
       description: |
         Get consensus state.
-      produces:
-        - application/json
       responses:
         200:
           description: consensus state results.
@@ -722,8 +690,6 @@ paths:
         - Info
       description: |
         Get consensus state.
-      produces:
-        - application/json
       responses:
         200:
           description: consensus state results.
@@ -752,8 +718,6 @@ paths:
         - Info
       description: |
         Get consensus parameters.
-      produces:
-        - application/json
       responses:
         200:
           description: consensus parameters results.
@@ -781,8 +745,6 @@ paths:
         - Info
       description: |
         Get list of unconfirmed transactions
-      produces:
-        - application/json
       responses:
         200:
           description: List of unconfirmed transactions
@@ -804,8 +766,6 @@ paths:
         - Info
       description: |
         Get data about unconfirmed transactions
-      produces:
-        - application/json
       responses:
         200:
           description: status about unconfirmed transactions
@@ -855,8 +815,6 @@ paths:
         - Info
       description: |
         Get list of unconfirmed transactions
-      produces:
-        - application/json
       responses:
         200:
           description: List of unconfirmed transactions
@@ -892,11 +850,9 @@ paths:
         - Info
       description: |
         Get a trasasction
-      produces:
-        - application/json
       responses:
         200:
-          description: Get a transaction
+          description: Get a transaction`
           content:
             application/json:
               schema:
@@ -915,17 +871,19 @@ paths:
         - ABCI
       description: |
         Get some info about the application.
-      produces:
-        - application/json
       responses:
         200:
           description: Get some info about the application.
-          schema:
-            $ref: "#/components/schemas/ABCIInfoResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ABCIInfoResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /abci_query:
     get:
       summary: Query the application for some information.
@@ -961,17 +919,19 @@ paths:
         - ABCI
       description: |
         Query the application for some information.
-      produces:
-        - application/json
       responses:
         200:
           description: Response of the submitted query
-          schema:
-            $ref: "#/components/schemas/ABCIQueryResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ABCIQueryResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /broadcast_evidence:
     get:
       summary: Broadcast evidence of the misbehavior.
@@ -987,17 +947,19 @@ paths:
         - Info
       description: |
         Broadcast evidence of the misbehavior.
-      produces:
-        - application/json
       responses:
         200:
           description: Broadcast evidence of the misbehavior.
-          schema:
-            $ref: "#/components/schemas/BroadcastEvidenceResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastEvidenceResponse"
         500:
           description: Error
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
