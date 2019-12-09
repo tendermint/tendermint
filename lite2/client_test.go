@@ -136,7 +136,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 		if tc.verifyErr {
 			assert.Error(t, err)
 		} else {
@@ -233,7 +233,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 		if tc.verifyErr {
 			assert.Error(t, err)
 		} else {

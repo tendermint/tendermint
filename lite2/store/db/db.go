@@ -22,12 +22,16 @@ type dbs struct {
 
 // New returns a Store that wraps any DB (with an optional prefix in case you
 // want to use one DB with many light clients).
+//
+// Objects are marshalled using amino (github.com/tendermint/go-amino)
 func New(db dbm.DB, prefix string) store.Store {
 	cdc := amino.NewCodec()
 	cryptoAmino.RegisterAmino(cdc)
 	return &dbs{db: db, prefix: prefix, cdc: cdc}
 }
 
+// SaveSignedHeaderAndNextValidatorSet persists SignedHeader and ValidatorSet
+// to the db.
 func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
 	if sh.Height <= 0 {
 		panic("negative or zero height")
@@ -49,6 +53,8 @@ func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet
 	return nil
 }
 
+// DeleteSignedHeaderAndNextValidatorSet deletes SignedHeader and ValidatorSet
+// from the db.
 func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 	if height <= 0 {
 		panic("negative or zero height")
@@ -61,6 +67,7 @@ func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 	return nil
 }
 
+// SignedHeader loads SignedHeader at the given height.
 func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	bz := s.db.Get(s.shKey(height))
 	if bz == nil {
@@ -72,6 +79,7 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	return signedHeader, err
 }
 
+// ValidatorSet loads ValidatorSet at the given height.
 func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	bz := s.db.Get(s.vsKey(height))
 	if bz == nil {
@@ -83,6 +91,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	return valSet, err
 }
 
+// LastSignedHeaderHeight returns the last SignedHeader height stored.
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	itr := s.db.ReverseIterator(
 		s.shKey(1),
@@ -101,6 +110,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	return -1, nil
 }
 
+// FirstSignedHeaderHeight returns the first SignedHeader height stored.
 func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	itr := s.db.Iterator(
 		s.shKey(1),

@@ -16,6 +16,15 @@ var (
 	DefaultTrustLevel = cmn.Fraction{Numerator: 1, Denominator: 3}
 )
 
+// Verify verifies the new header (h2) against the old header (h1). It ensures that:
+//
+//	a) h1 can still be trusted (if not, ErrOldHeaderExpired is returned);
+//	b) h2 is valid;
+//	c) either h2.ValidatorsHash equals h1NextVals.Hash()
+//		 OR trustLevel ([1/3, 1]) of last trusted validators (h1NextVals) signed
+//		 correctly  (if not, ErrNotEnoughVotingPowerSigned is returned);
+//	c) more than 2/3 of new validators (h2Vals) have signed h2 (if not,
+//	   ErrNotEnoughVotingPowerSigned is returned).
 func Verify(
 	chainID string,
 	h1 *types.SignedHeader,

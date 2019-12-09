@@ -45,29 +45,35 @@ func (c *AutoClient) Stop() {
 }
 
 func (c *AutoClient) autoUpdate() {
-	lastTrustedHeight, err := c.base.LastTrustedHeight()
-	if err != nil {
-		c.err <- err
-		return
-	}
-
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
+
+	var (
+		lastTrustedHeight int64 = -1
+		err               error
+	)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := c.base.VerifyHeaderAtHeight(lastTrustedHeight+1, time.Now())
+			lastTrustedHeight, err = c.base.LastTrustedHeight()
 			if err != nil {
 				c.err <- err
 				continue
 			}
-			h, err := c.base.TrustedHeader(lastTrustedHeight+1, time.Now())
+			if lastTrustedHeight == -1 {
+				// no headers yet => wait
+				continue
+			}
+
+			h, err := c.base.VerifyHeaderAtHeight(lastTrustedHeight+1, time.Now())
 			if err != nil {
+				// no header yet or verification error => try again after updatePeriod
 				c.err <- err
 				continue
 			}
 			c.trustedHeaders <- h
+
 			lastTrustedHeight = h.Height
 		case <-c.quit:
 			return

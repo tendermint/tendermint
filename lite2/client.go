@@ -54,8 +54,8 @@ const (
 type Option func(*Client)
 
 // SequentialVerification option configures the light client to sequentially
-// check the headers. Note this is much slower than SkippingVerification,
-// albeit more secure.
+// check the headers (every header, in ascending height order). Note this is
+// much slower than SkippingVerification, albeit more secure.
 func SequentialVerification() Option {
 	return func(c *Client) {
 		c.verificationMode = sequential
@@ -339,18 +339,18 @@ func (c *Client) ChainID() string {
 // and calls VerifyHeader.
 //
 // If the trusted header is more recent than one here, an error is returned.
-func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
+func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if c.trustedHeader.Height >= height {
-		return errors.Errorf("height #%d is already trusted (last: #%d)", height, c.trustedHeader.Height)
+		return nil, errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
 	// Request the header and the vals.
 	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.VerifyHeader(newHeader, newVals, now)
+	return newHeader, c.VerifyHeader(newHeader, newVals, now)
 }
 
 // VerifyHeader verifies new header against the trusted state.
@@ -368,7 +368,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 // If the trusted header is more recent than one here, an error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	if c.trustedHeader.Height >= newHeader.Height {
-		return errors.Errorf("height #%d is already trusted (last: #%d)", newHeader.Height, c.trustedHeader.Height)
+		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
 	if len(c.alternatives) > 0 {
