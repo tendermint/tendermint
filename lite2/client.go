@@ -490,8 +490,10 @@ func (c *Client) bisection(
 		return errors.Wrapf(err, "failed to verify the header #%d ", newHeader.Height)
 	}
 
-	if newHeader.Height == c.trustedHeader.Height+1 {
-		// TODO: submit evidence here
+	if newHeader.Height == lastHeader.Height+1 {
+		// Malformed header, but not necessarily evidence of slashable behaviour.
+		// Evidence comes from cross-checking verified headers and it should
+		// probably be done as part of failure detection module.
 		return errors.Errorf("adjacent headers (#%d and #%d) that are not matching", lastHeader.Height, newHeader.Height)
 	}
 
