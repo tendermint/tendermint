@@ -8,9 +8,9 @@ info:
     url: https://github.com/tendermint/tendermint/blob/master/LICENSE
 servers:
   - url: https://stargate.cosmos.network:26657
-    description: Optional Cosmos mainnet node to interact with the Tendermint RPC
+    description: Cosmos mainnet node to interact with the Tendermint RPC
   - url: http://localhost:26657
-    description: Optional Interact with the Tendermint RPC locally on your device
+    description: Interact with the Tendermint RPC locally on your device
 tags:
   - name: Websocket
     description: Subscribe/unsubscribe are reserved for websocket events.
@@ -49,10 +49,11 @@ paths:
       parameters:
         - in: query
           name: tx
-          type: string
           required: true
+          schema:
+            type: string
+            example: "456"
           description: The transaction
-          x-example: "456"
       responses:
         200:
           description: Empty
@@ -92,10 +93,11 @@ paths:
       parameters:
         - in: query
           name: tx
-          type: string
           required: true
+          schema: 
+            type: string
+            example: "123"
           description: The transaction
-          x-example: "123"
       responses:
         200:
           description: empty answer
@@ -133,10 +135,11 @@ paths:
       parameters:
         - in: query
           name: tx
-          type: string
           required: true
+          schema:
+            type: string
+            example: "785"
           description: The transaction
-          x-example: "785"
       responses:
         200:
           description: empty answer
@@ -275,15 +278,16 @@ paths:
       parameters:
         - in: query
           name: query
-          type: string
           required: true
+          schema:
+            type: string
+            example: tm.event = 'Tx' AND tx.height = 5
           description: |
             query is a string, which has a form: "condition AND condition ..." (no OR at the
             moment). condition has a form: "key operation operand". key is a string with
             a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
             operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
             string (escaped with single quotes), number, date or time.
-          x-example: tm.event = 'Tx' AND tx.height = 5
       responses:
         200:
           description: empty answer
@@ -320,15 +324,16 @@ paths:
       parameters:
         - in: query
           name: query
-          type: string
           required: true
+          schema:
+            type: string
+            example: tm.event = 'Tx' AND tx.height = 5
           description: |
             query is a string, which has a form: "condition AND condition ..." (no OR at the
             moment). condition has a form: "key operation operand". key is a string with
             a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
             operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
             string (escaped with single quotes), number, date or time.
-          x-example: tm.event = 'Tx' AND tx.height = 5
       responses:
         200:
           description: Answer
@@ -489,14 +494,16 @@ paths:
       parameters:
         - in: query
           name: minHeight
-          type: number
           description: Minimum block height to return
-          x-example: 1
+          schema:
+            type: number
+            example: 1
         - in: query
           name: maxHeight
-          type: number
           description: Maximum block height to return
-          x-example: 2
+          schema:
+            type: number
+            example: 2
       tags:
         - Info
       description: |
@@ -521,10 +528,11 @@ paths:
       parameters:
         - in: query
           name: height
-          type: number
+          schema:
+            type: number
+            default: 0
+            example: 1
           description: height to return. If no height is provided, it will fetch the latest block. 0 means latest
-          default: 0
-          x-example: 1
       tags:
         - Info
       description: |
@@ -549,10 +557,11 @@ paths:
       parameters:
         - in: query
           name: height
-          type: number
           description: height to return. If no height is provided, it will fetch informations regarding the latest block. 0 means latest
-          default: 0
-          x-example: 1
+          schema:
+            type: number
+            default: 0
+            example: 1
       tags:
         - Info
       description: |
@@ -577,10 +586,11 @@ paths:
       parameters:
         - in: query
           name: height
-          type: number
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
-          default: 0
-          x-example: 1
+          schema:  
+            type: number
+            default: 0
+            example: 1
       tags:
         - Info
       description: |
@@ -605,24 +615,27 @@ paths:
       parameters:
         - in: query
           name: height
-          type: number
           description: height to return. If no height is provided, it will fetch validato set at the latest block. 0 means latest
-          default: 0
-          x-example: 1
+          schema:
+            type: number
+            default: 0
+            example: 1
         - in: query
           name: page
-          type: number
           description: "Page number (1-based)"
           required: false
-          x-example: 1
-          default: 0
+          schema:
+            type: number
+            default: 0
+            example: 1
         - in: query
           name: per_page
-          type: number
           description: "Number of entries per page (max: 100)"
           required: false
-          x-example: 30
-          default: 30
+          schema:
+            type: number
+            example: 30
+            default: 30
       tags:
         - Info
       description: |
@@ -710,10 +723,11 @@ paths:
       parameters:
         - in: query
           name: height
-          type: number
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
-          default: 0
-          x-example: 1
+          schema:
+            type: number
+            default: 0
+            example: 1
       tags:
         - Info
       description: |
@@ -738,9 +752,10 @@ paths:
       parameters:
         - in: query
           name: limit
-          type: number
           description: Maximum number of unconfirmed transactions to return
-          x-example: 1
+          schema:
+            type: number
+            example: 1
       tags:
         - Info
       description: |
@@ -786,31 +801,35 @@ paths:
       parameters:
         - in: query
           name: query
-          type: string
           description: Query
           required: true
-          x-example: "tx.height=1000"
+          schema:
+            type: string
+            example: "tx.height=1000"
         - in: query
           name: prove
-          type: boolean
           description: Include proofs of the transactions inclusion in the block
           required: false
-          x-example: true
-          default: false
+          schema:
+            type: boolean
+            default: false
+            example: true
         - in: query
           name: page
-          type: number
           description: "Page number (1-based)"
           required: false
-          x-example: 1
-          default: 1
+          schema:
+            type: number
+            default: 1
+            example: 1
         - in: query
           name: per_page
-          type: number
           description: "Number of entries per page (max: 100)"
           required: false
-          x-example: 30
-          default: 30
+          schema:
+            type: number
+            default: 30
+            example: 30
       tags:
         - Info
       description: |
@@ -835,17 +854,19 @@ paths:
       parameters:
         - in: query
           name: hash
-          type: string
           description: transaction Hash to retrive
           required: true
-          x-example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
         - in: query
           name: prove
-          type: boolean
           description: Include proofs of the transactions inclusion in the block
           required: false
-          x-example: true
-          default: false
+          schema:
+            type: boolean
+            example: true
+            default: false
       tags:
         - Info
       description: |
@@ -891,30 +912,34 @@ paths:
       parameters:
         - in: query
           name: path
-          type: string
           description: Path to the data ("/a/b/c")
           required: true
-          x-example: "/a/b/c"
+          schema:
+            type: string
+            example: "/a/b/c"
         - in: query
           name: data
-          type: string
           description: Data
           required: true
-          x-example: "IHAVENOIDEA"
+          schema:
+            type: string
+            example: "IHAVENOIDEA"
         - in: query
           name: height
-          type: number
           description: Height (0 means latest)
           required: false
-          x-example: 1
-          default: 0
+          schema:
+            type: number
+            example: 1
+            default: 0
         - in: query
           name: prove
-          type: boolean
           description: Include proofs of the transactions inclusion in the block
           required: false
-          x-example: true
-          default: false
+          schema:
+            type: boolean
+            example: true
+            default: false
       tags:
         - ABCI
       description: |
@@ -939,10 +964,11 @@ paths:
       parameters:
         - in: query
           name: evidence
-          type: string
           description: Amino-encoded JSON evidence
           required: true
-          x-example: "JSON_EVIDENCE_Amino_encoded"
+          schema:
+            type: string
+            example: "JSON_EVIDENCE_Amino_encoded"
       tags:
         - Info
       description: |
