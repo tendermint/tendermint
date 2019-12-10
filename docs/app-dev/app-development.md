@@ -187,7 +187,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []cmn.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},

@@ -187,28 +187,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
-                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: kv.Pairs{
+                      kv.Pair{Key: []byte("address"), Value: []byte("AddrA")},
+                      kv.Pair{Key: []byte("source"), Value: []byte("SrcX")},
+                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
-                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: kv.Pairs{
+                      kv.Pair{Key: []byte("address"), Value: []byte("AddrB")},
+                      kv.Pair{Key: []byte("source"), Value: []byte("SrcY")},
+                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
-                      cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                  Attributes: kv.Pairs{
+                      kv.Pair{Key: []byte("sender"), Value: []byte("AddrC")},
+                      kv.Pair{Key: []byte("recipient"), Value: []byte("AddrD")},
+                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
                   },
               },
           },

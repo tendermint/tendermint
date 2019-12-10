@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -31,7 +31,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		events := []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []cmn.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("address"), Value: []byte(fmt.Sprintf("address_%d", i%100))},
 					{Key: []byte("amount"), Value: []byte("50")},
 				},
