@@ -13,7 +13,7 @@ type AutoClient struct {
 	quit         chan struct{}
 
 	trustedHeaders chan *types.SignedHeader
-	err            chan error
+	errs           chan error
 }
 
 // NewAutoClient creates a new client and starts a polling goroutine.
@@ -23,7 +23,7 @@ func NewAutoClient(base *Client, updatePeriod time.Duration) *AutoClient {
 		updatePeriod:   updatePeriod,
 		quit:           make(chan struct{}),
 		trustedHeaders: make(chan *types.SignedHeader),
-		err:            make(chan error),
+		errs:           make(chan error),
 	}
 	go c.autoUpdate()
 	return c
@@ -35,8 +35,8 @@ func (c *AutoClient) TrustedHeaders() <-chan *types.SignedHeader {
 }
 
 // Err returns a channel onto which errors are posted.
-func (c *AutoClient) Err() <-chan error {
-	return c.err
+func (c *AutoClient) Errs() <-chan error {
+	return c.errs
 }
 
 // Stop stops the client.
@@ -48,19 +48,15 @@ func (c *AutoClient) autoUpdate() {
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
-	var (
-		lastTrustedHeight int64 = -1
-		err               error
-	)
-
 	for {
 		select {
 		case <-ticker.C:
-			lastTrustedHeight, err = c.base.LastTrustedHeight()
+			lastTrustedHeight, err := c.base.LastTrustedHeight()
 			if err != nil {
-				c.err <- err
+				c.errs <- err
 				continue
 			}
+
 			if lastTrustedHeight == -1 {
 				// no headers yet => wait
 				continue
@@ -69,12 +65,10 @@ func (c *AutoClient) autoUpdate() {
 			h, err := c.base.VerifyHeaderAtHeight(lastTrustedHeight+1, time.Now())
 			if err != nil {
 				// no header yet or verification error => try again after updatePeriod
-				c.err <- err
+				c.errs <- err
 				continue
 			}
 			c.trustedHeaders <- h
-
-			lastTrustedHeight = h.Height
 		case <-c.quit:
 			return
 		}
