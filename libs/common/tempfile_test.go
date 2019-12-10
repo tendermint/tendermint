@@ -10,12 +10,14 @@ import (
 	testing "testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestWriteFileAtomic(t *testing.T) {
 	var (
-		data             = []byte(RandStr(RandIntn(2048)))
-		old              = RandBytes(RandIntn(2048))
+		data             = []byte(rand.RandStr(rand.RandIntn(2048)))
+		old              = rand.RandBytes(rand.RandIntn(2048))
 		perm os.FileMode = 0600
 	)
 

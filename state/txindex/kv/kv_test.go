@@ -12,9 +12,9 @@ import (
 	db "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
@@ -325,7 +325,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	batch := txindex.NewBatch(txsCount)
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
-		tx := cmn.RandBytes(250)
+		tx := rand.RandBytes(250)
 		txResult := &types.TxResult{
 			Height: 1,
 			Index:  txIndex,

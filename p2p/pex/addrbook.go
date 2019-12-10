@@ -16,6 +16,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -81,7 +82,7 @@ type addrBook struct {
 
 	// accessed concurrently
 	mtx        sync.Mutex
-	rand       *cmn.Rand
+	rand       *tmrand.Rand
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
@@ -102,7 +103,7 @@ type addrBook struct {
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
-		rand:              cmn.NewRand(),
+		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
 		privateIDs:        make(map[p2p.ID]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
@@ -361,7 +362,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// `numAddresses' since we are throwing the rest.
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := cmn.RandIntn(len(allAddr)-i) + i
+		j := tmrand.RandIntn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 

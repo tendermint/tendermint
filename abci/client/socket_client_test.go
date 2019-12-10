@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestSocketClientStopForErrorDeadlock(t *testing.T) {
@@ -96,7 +97,7 @@ func TestHangingSyncCalls(t *testing.T) {
 func setupClientServer(t *testing.T, app types.Application) (
 	cmn.Service, abcicli.Client) {
 	// some port between 20k and 30k
-	port := 20000 + cmn.RandInt32()%10000
+	port := 20000 + rand.RandInt32()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	s, err := server.NewServer(addr, "socket", app)
