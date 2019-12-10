@@ -1235,11 +1235,11 @@ func (m *ResponseFlush) XXX_DiscardUnknown() {
 var xxx_messageInfo_ResponseFlush proto.InternalMessageInfo
 
 type ResponseInfo struct {
-	Data                 string   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	AppVersion           uint64   `protobuf:"varint,3,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
-	LastBlockHeight      int64    `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
-	LastBlockAppHash     []byte   `protobuf:"bytes,5,opt,name=last_block_app_hash,json=lastBlockAppHash,proto3" json:"last_block_app_hash,omitempty"`
+	Data                 string   `protobuf:"bytes,1,opt,name=data,proto3" json:"data"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version"`
+	AppVersion           uint64   `protobuf:"varint,3,opt,name=app_version,json=appVersion,proto3" json:"app_version"`
+	LastBlockHeight      int64    `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height"`
+	LastBlockAppHash     []byte   `protobuf:"bytes,5,opt,name=last_block_app_hash,json=lastBlockAppHash,proto3" json:"last_block_app_hash"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
