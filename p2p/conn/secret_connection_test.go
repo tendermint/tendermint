@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 type kvstoreConn struct {
@@ -103,7 +104,7 @@ func TestSecretConnectionHandshake(t *testing.T) {
 
 func TestConcurrentWrite(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
-	fooWriteText := cmn.RandStr(dataMaxSize)
+	fooWriteText := rand.RandStr(dataMaxSize)
 
 	// write from two routines.
 	// should be safe from race according to net.Conn:
@@ -125,7 +126,7 @@ func TestConcurrentWrite(t *testing.T) {
 
 func TestConcurrentRead(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
-	fooWriteText := cmn.RandStr(dataMaxSize)
+	fooWriteText := rand.RandStr(dataMaxSize)
 	n := 100
 
 	// read from two routines.
@@ -172,8 +173,8 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 	// Pre-generate the things to write (for foo & bar)
 	for i := 0; i < 100; i++ {
-		fooWrites = append(fooWrites, cmn.RandStr((cmn.RandInt()%(dataMaxSize*5))+1))
-		barWrites = append(barWrites, cmn.RandStr((cmn.RandInt()%(dataMaxSize*5))+1))
+		fooWrites = append(fooWrites, rand.RandStr((rand.RandInt()%(dataMaxSize*5))+1))
+		barWrites = append(barWrites, rand.RandStr((rand.RandInt()%(dataMaxSize*5))+1))
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
@@ -370,11 +371,11 @@ func TestNonEd25519Pubkey(t *testing.T) {
 func createGoldenTestVectors(t *testing.T) string {
 	data := ""
 	for i := 0; i < 32; i++ {
-		randSecretVector := cmn.RandBytes(32)
+		randSecretVector := rand.RandBytes(32)
 		randSecret := new([32]byte)
 		copy((*randSecret)[:], randSecretVector)
 		data += hex.EncodeToString((*randSecret)[:]) + ","
-		locIsLeast := cmn.RandBool()
+		locIsLeast := rand.RandBool()
 		data += strconv.FormatBool(locIsLeast) + ","
 		recvSecret, sendSecret := deriveSecrets(randSecret, locIsLeast)
 		data += hex.EncodeToString((*recvSecret)[:]) + ","
@@ -398,7 +399,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 	}
 	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
 	for _, size := range randomMsgSizes {
-		fooWriteBytes = append(fooWriteBytes, cmn.RandBytes(size))
+		fooWriteBytes = append(fooWriteBytes, rand.RandBytes(size))
 	}
 	// Consume reads from bar's reader
 	go func() {
@@ -416,7 +417,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		idx := cmn.RandIntn(len(fooWriteBytes))
+		idx := rand.RandIntn(len(fooWriteBytes))
 		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
 			b.Errorf("failed to write to fooSecConn: %v", err)
@@ -446,11 +447,11 @@ func BenchmarkReadSecretConnection(b *testing.B) {
 	}
 	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
 	for _, size := range randomMsgSizes {
-		fooWriteBytes = append(fooWriteBytes, cmn.RandBytes(size))
+		fooWriteBytes = append(fooWriteBytes, rand.RandBytes(size))
 	}
 	go func() {
 		for i := 0; i < b.N; i++ {
-			idx := cmn.RandIntn(len(fooWriteBytes))
+			idx := rand.RandIntn(len(fooWriteBytes))
 			_, err := fooSecConn.Write(fooWriteBytes[idx])
 			if err != nil {
 				b.Errorf("failed to write to fooSecConn: %v, %v,%v", err, i, b.N)

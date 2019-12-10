@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -46,7 +46,7 @@ func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, er
 var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", rand.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -80,7 +80,7 @@ func TestEcho(t *testing.T) {
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", rand.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -119,7 +119,7 @@ func BenchmarkEcho(b *testing.B) {
 }
 
 func TestInfo(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", rand.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server

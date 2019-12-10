@@ -13,6 +13,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -347,7 +348,7 @@ func BenchmarkEventBus(b *testing.B) {
 
 func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *testing.B) {
 	// for random* functions
-	cmn.Seed(time.Now().Unix())
+	rand.Seed(time.Now().Unix())
 
 	eventBus := NewEventBusWithBufferCapacity(0) // set buffer capacity to 0 so we are not testing cache
 	eventBus.Start()
@@ -403,7 +404,7 @@ var events = []string{
 	EventVote}
 
 func randEvent() string {
-	return events[cmn.RandIntn(len(events))]
+	return events[rand.RandIntn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
@@ -421,5 +422,5 @@ var queries = []tmpubsub.Query{
 	EventQueryVote}
 
 func randQuery() tmpubsub.Query {
-	return queries[cmn.RandIntn(len(queries))]
+	return queries[rand.RandIntn(len(queries))]
 }

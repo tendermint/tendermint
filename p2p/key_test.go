@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestLoadOrGenNodeKey(t *testing.T) {
-	filePath := filepath.Join(os.TempDir(), cmn.RandStr(12)+"_peer_id.json")
+	filePath := filepath.Join(os.TempDir(), rand.RandStr(12)+"_peer_id.json")
 
 	nodeKey, err := LoadOrGenNodeKey(filePath)
 	assert.Nil(t, err)
