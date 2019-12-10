@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	kv "github.com/tendermint/tendermint/libs/kv"
+	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/version"
 	dbm "github.com/tendermint/tm-db"
 )

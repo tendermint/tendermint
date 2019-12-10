@@ -220,7 +220,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 	// for all other conditions
 	for i, c := range conditions {
-		if cmn.IntInSlice(i, skipIndexes) {
+		if IntInSlice(i, skipIndexes) {
 			continue
 		}
 
