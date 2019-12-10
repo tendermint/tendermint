@@ -1015,28 +1015,28 @@ components:
           properties:
             error:
               type: string
-              x-example: "Description of failure"
+              example: "Description of failure"
     ProtocolVersion:
       type: object
       properties:
         p2p:
           type: string
-          x-example: "7"
+          example: "7"
         block:
           type: string
-          x-example: "10"
+          example: "10"
         app:
           type: string
-          x-example: "0"
+          example: "0"
     PubKey:
       type: object
       properties:
         type:
           type: string
-          x-example: "tendermint/PubKeyEd25519"
+          example: "tendermint/PubKeyEd25519"
         value:
           type: string
-          x-example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
+          example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
     NodeInfo:
       type: object
       properties:
@@ -1044,61 +1044,61 @@ components:
           $ref: "#/components/schemas/ProtocolVersion"
         id:
           type: string
-          x-example: "5576458aef205977e18fd50b274e9b5d9014525a"
+          example: "5576458aef205977e18fd50b274e9b5d9014525a"
         listen_addr:
           type: string
-          x-example: "tcp:0.0.0.0:26656"
+          example: "tcp:0.0.0.0:26656"
         network:
           type: string
-          x-example: "cosmoshub-2"
+          example: "cosmoshub-2"
         version:
           type: string
-          x-example: "0.32.1"
+          example: "0.32.1"
         channels:
           type: string
-          x-example: "4020212223303800"
+          example: "4020212223303800"
         moniker:
           type: string
-          x-example: "moniker-node"
+          example: "moniker-node"
         other:
           type: object
           properties:
             tx_index:
               type: string
-              x-example: "on"
+              example: "on"
             rpc_address:
               type: string
-              x-example: "tcp:0.0.0.0:26657"
-          x-example: "moniker-node"
+              example: "tcp:0.0.0.0:26657"
+          example: "moniker-node"
     SyncInfo:
       type: object
       properties:
         latest_block_hash:
           type: string
-          x-example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+          example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
         latest_app_hash:
           type: string
-          x-example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+          example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
         latest_block_height:
           type: string
-          x-example: "1262196"
+          example: "1262196"
         latest_block_time:
           type: string
-          x-example: "2019-08-01T11:52:22.818762194Z"
+          example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
-          x-example: false
+          example: false
     ValidatorInfo:
       type: object
       properties:
         address:
           type: string
-          x-example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
+          example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
         pub_key:
           $ref: "#/components/schemas/PubKey"
         voting_power:
           type: string
-          x-example: "0"
+          example: "0"
     Status:
       description: Status Response
       type: object
@@ -1122,67 +1122,67 @@ components:
       properties:
         Active:
           type: boolean
-          x-example: true
+          example: true
         Start:
           type: string
-          x-example: "2019-07-31T14:31:28.66Z"
+          example: "2019-07-31T14:31:28.66Z"
         Duration:
           type: string
-          x-example: "168901060000000"
+          example: "168901060000000"
         Idle:
           type: string
-          x-example: "168901040000000"
+          example: "168901040000000"
         Bytes:
           type: string
-          x-example: "5"
+          example: "5"
         Samples:
           type: string
-          x-example: "1"
+          example: "1"
         InstRate:
           type: string
-          x-example: "0"
+          example: "0"
         CurRate:
           type: string
-          x-example: "0"
+          example: "0"
         AvgRate:
           type: string
-          x-example: "0"
+          example: "0"
         PeakRate:
           type: string
-          x-example: "0"
+          example: "0"
         BytesRem:
           type: string
-          x-example: "0"
+          example: "0"
         TimeRem:
           type: string
-          x-example: "0"
+          example: "0"
         Progress:
           type: number
-          x-example: 0
+          example: 0
     Channel:
       type: object
       properties:
         ID:
           type: number
-          x-example: 48
+          example: 48
         SendQueueCapacity:
           type: string
-          x-example: "1"
+          example: "1"
         SendQueueSize:
           type: string
-          x-example: "0"
+          example: "0"
         Priority:
           type: string
-          x-example: "5"
+          example: "5"
         RecentlySent:
           type: string
-          x-example: "0"
+          example: "0"
     ConnectionStatus:
       type: object
       properties:
         Duration:
           type: string
-          x-example: "168901057956119"
+          example: "168901057956119"
         SendMonitor:
           $ref: "#/components/schemas/Monitor"
         RecvMonitor:
@@ -1198,26 +1198,26 @@ components:
           $ref: "#/components/schemas/NodeInfo"
         is_outbound:
           type: boolean
-          x-example: true
+          example: true
         connection_status:
           $ref: "#/components/schemas/ConnectionStatus"
         remote_ip:
           type: string
-          x-example: "95.179.155.35"
+          example: "95.179.155.35"
     NetInfo:
       type: object
       properties:
         listening:
           type: boolean
-          x-example: true
+          example: true
         listeners:
           type: array
           items:
             type: string
-            x-example: "Listener(@)"
+            example: "Listener(@)"
         n_peers:
           type: number
-          x-example: "1"
+          example: "1"
         peers:
           type: array
           items:
@@ -1237,7 +1237,7 @@ components:
       properties:
         hash:
           type: string
-          x-example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
+          example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
         parts:
           required:
             - "total"
@@ -1245,10 +1245,10 @@ components:
           properties:
             total:
               type: string
-              x-example: "1"
+              example: "1"
             hash:
               type: string
-              x-example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
+              example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
           type: object
       type: object
     BlockHeader:
@@ -1275,49 +1275,49 @@ components:
           properties:
             block:
               type: string
-              x-example: "10"
+              example: "10"
             app:
               type: string
-              x-example: "0"
+              example: "0"
           type: object
         chain_id:
           type: string
-          x-example: "cosmoshub-2"
+          example: "cosmoshub-2"
         height:
           type: string
-          x-example: "12"
+          example: "12"
         time:
           type: string
-          x-example: "2019-04-22T17:01:51.701356223Z"
+          example: "2019-04-22T17:01:51.701356223Z"
         last_block_id:
           $ref: "#/components/schemas/BlockID"
         last_commit_hash:
           type: string
-          x-example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+          example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
         data_hash:
           type: string
-          x-example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+          example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
         validators_hash:
           type: string
-          x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
         next_validators_hash:
           type: string
-          x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
         consensus_hash:
           type: string
-          x-example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+          example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
         app_hash:
           type: string
-          x-example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+          example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
         last_results_hash:
           type: string
-          x-example: ""
+          example: ""
         evidence_hash:
           type: string
-          x-example: ""
+          example: ""
         proposer_address:
           type: string
-          x-example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+          example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
       type: object
     BlockId:
       required:
@@ -1326,7 +1326,7 @@ components:
       properties:
         hash:
           type: string
-          x-example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
         parts:
           required:
             - "total"
@@ -1334,10 +1334,10 @@ components:
           properties:
             total:
               type: string
-              x-example: "1"
+              example: "1"
             hash:
               type: string
-              x-example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
           type: object
       type: object
     BlockMeta:
@@ -1347,7 +1347,7 @@ components:
           $ref: "#/components/schemas/BlockId"
         block_size:
           type: number
-          x-example: 1000000
+          example: 1000000
         header:
           $ref: "#/components/schemas/BlockHeader"
         num_txs:
@@ -1361,7 +1361,7 @@ components:
       properties:
         last_height:
           type: string
-          x-example: "1276718"
+          example: "1276718"
         block_metas:
           type: "array"
           items:
@@ -1387,27 +1387,27 @@ components:
       properties:
         type:
           type: number
-          x-example: 2
+          example: 2
         height:
           type: string
-          x-example: "1262085"
+          example: "1262085"
         round:
           type: string
-          x-example: "0"
+          example: "0"
         block_id:
           $ref: "#/components/schemas/BlockID"
         timestamp:
           type: string
-          x-example: "2019-08-01T11:39:38.867269833Z"
+          example: "2019-08-01T11:39:38.867269833Z"
         validator_address:
           type: string
-          x-example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
         validator_index:
           type: string
-          x-example: "0"
+          example: "0"
         signature:
           type: string
-          x-example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
+          example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
     Block:
       type: object
       properties:
@@ -1417,7 +1417,7 @@ components:
           type: array
           items:
             type: string
-            x-example: "yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0="
+            example: "yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0="
         evidence:
           type: array
           items:
@@ -2931,4 +2931,4 @@ components:
       properties:
         Log:
           type: string
-          x-example: "Dialing seeds in progress. See /net_info for details"
+          example: "Dialing seeds in progress. See /net_info for details"
