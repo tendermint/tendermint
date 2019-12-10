@@ -9,12 +9,13 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 // var maxNumberConnections = 2
 
 type SocketServer struct {
-	cmn.BaseService
+	service.BaseService
 
 	proto    string
 	addr     string
@@ -28,7 +29,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
+func NewSocketServer(protoAddr string, app types.Application) service.Service {
 	proto, addr := cmn.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
 		proto:    proto,
@@ -37,7 +38,7 @@ func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
 	return s
 }
 

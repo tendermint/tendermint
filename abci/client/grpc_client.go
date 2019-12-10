@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 var _ Client = (*grpcClient)(nil)
@@ -18,7 +19,7 @@ var _ Client = (*grpcClient)(nil)
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	cmn.BaseService
+	service.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -35,7 +36,7 @@ func NewGRPCClient(addr string, mustConnect bool) *grpcClient {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
 	return cli
 }
 

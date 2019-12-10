@@ -14,6 +14,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
@@ -379,7 +380,7 @@ func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroa
 // WSEvents
 
 type WSEvents struct {
-	cmn.BaseService
+	service.BaseService
 	cdc      *amino.Codec
 	remote   string
 	endpoint string
@@ -398,11 +399,11 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
 	}
 
-	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
+	wsEvents.BaseService = *service.NewBaseService(nil, "WSEvents", wsEvents)
 	return wsEvents
 }
 
-// OnStart implements cmn.Service by starting WSClient and event loop.
+// OnStart implements service.Service by starting WSClient and event loop.
 func (w *WSEvents) OnStart() error {
 	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		// resubscribe immediately
@@ -420,7 +421,7 @@ func (w *WSEvents) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by stopping WSClient.
+// OnStop implements service.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
 	_ = w.ws.Stop()
 }

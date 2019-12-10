@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -19,7 +19,7 @@ var trustMetricKey = []byte("trustMetricStore")
 
 // MetricStore - Manages all trust metrics for peers
 type MetricStore struct {
-	cmn.BaseService
+	service.BaseService
 
 	// Maps a Peer.Key to that peer's TrustMetric
 	peerMetrics map[string]*Metric
@@ -44,7 +44,7 @@ func NewTrustMetricStore(db dbm.DB, tmc MetricConfig) *MetricStore {
 		config:      tmc,
 	}
 
-	tms.BaseService = *cmn.NewBaseService(nil, "MetricStore", tms)
+	tms.BaseService = *service.NewBaseService(nil, "MetricStore", tms)
 	return tms
 }
 

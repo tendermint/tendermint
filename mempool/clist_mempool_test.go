@@ -24,6 +24,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -580,7 +581,7 @@ func newRemoteApp(
 	app abci.Application,
 ) (
 	clientCreator proxy.ClientCreator,
-	server cmn.Service,
+	server service.Service,
 ) {
 	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)
 

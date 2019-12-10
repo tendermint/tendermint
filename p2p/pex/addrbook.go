@@ -16,6 +16,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -29,7 +30,7 @@ const (
 // peers to dial.
 // TODO: break this up?
 type AddrBook interface {
-	cmn.Service
+	service.Service
 
 	// Add our own addresses so we don't later add ourselves
 	AddOurAddress(*p2p.NetAddress)
@@ -77,7 +78,7 @@ var _ AddrBook = (*addrBook)(nil)
 // addrBook - concurrency safe peer address manager.
 // Implements AddrBook.
 type addrBook struct {
-	cmn.BaseService
+	service.BaseService
 
 	// accessed concurrently
 	mtx        sync.Mutex
@@ -110,7 +111,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 		routabilityStrict: routabilityStrict,
 	}
 	am.init()
-	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
+	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
 	return am
 }
 

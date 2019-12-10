@@ -12,11 +12,11 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
-func NewServer(protoAddr, transport string, app types.Application) (cmn.Service, error) {
-	var s cmn.Service
+func NewServer(protoAddr, transport string, app types.Application) (service.Service, error) {
+	var s service.Service
 	var err error
 	switch transport {
 	case "socket":
