@@ -315,6 +315,9 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	if err != nil {
 		return nil, err
 	}
+	if h == nil {
+		return nil, nil
+	}
 
 	// Ensure header can still be trusted.
 	if HeaderExpired(h, c.trustingPeriod, now) {
@@ -590,51 +593,57 @@ func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) er
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {
 	ticker := time.NewTicker(c.removeNoLongerTrustedHeadersPeriod)
 	defer ticker.Stop()
-OUTER_LOOP:
-	for {
-		now := time.Now()
 
+	for {
 		select {
 		case <-ticker.C:
-			// 1) Get the oldest height.
-			oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
-			if err != nil {
-				c.logger.Error("can't get first trusted height", "err", err)
-				continue
-			}
-
-			// 2) Get the latest height.
-			latestHeight, err := c.LastTrustedHeight()
-			if err != nil {
-				c.logger.Error("can't get last trusted height", "err", err)
-				continue
-			}
-
-			// 3) Remove all headers (except the very last one) that are outside of
-			// the trusting period.
-			for height := oldestHeight; height < latestHeight; height++ {
-				h, err := c.TrustedHeader(height, time.Now())
-				if err != nil {
-					c.logger.Error("can't get a trusted header", "err", err, "height", height)
-					continue
-				}
-				if h == nil {
-					continue
-				}
-
-				// Stop if the header is within the trusting period.
-				if !HeaderExpired(h, c.trustingPeriod, now) {
-					break
-				}
-
-				err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
-				if err != nil {
-					c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
-					continue OUTER_LOOP
-				}
-			}
+			c.RemoveNoLongerTrustedHeaders(time.Now())
 		case <-c.quit:
 			return
+		}
+	}
+}
+
+// RemoveNoLongerTrustedHeaders removes no longer trusted headers.
+//
+// Exposed for testing.
+func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
+	// 1) Get the oldest height.
+	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	if err != nil {
+		c.logger.Error("can't get first trusted height", "err", err)
+		return
+	}
+
+	// 2) Get the latest height.
+	latestHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		c.logger.Error("can't get last trusted height", "err", err)
+		return
+	}
+
+	// 3) Remove all headers (except the very last one) that are outside of
+	// the trusting period.
+	for height := oldestHeight; height < latestHeight; height++ {
+		h, err := c.trustedStore.SignedHeader(height)
+		if err != nil {
+			c.logger.Error("can't get a trusted header", "err", err, "height", height)
+			continue
+		}
+		if h == nil {
+			c.logger.Debug("attempted to remove non-existing header", "height", height)
+			continue
+		}
+
+		// Stop if the header is within the trusting period.
+		if !HeaderExpired(h, c.trustingPeriod, now) {
+			break
+		}
+
+		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
+		if err != nil {
+			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
+			continue
 		}
 	}
 }
