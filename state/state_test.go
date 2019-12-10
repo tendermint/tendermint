@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/kv"
 	sm "github.com/tendermint/tendermint/state"
 	dbm "github.com/tendermint/tm-db"
 
@@ -132,8 +133,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{
 					Data: []byte("Gotcha!"),
 					Events: []abci.Event{
-						{Type: "type1", Attributes: []cmn.KVPair{{Key: []byte("a"), Value: []byte("1")}}},
-						{Type: "type2", Attributes: []cmn.KVPair{{Key: []byte("build"), Value: []byte("stuff")}}},
+						{Type: "type1", Attributes: []kv.Pair{{Key: []byte("a"), Value: []byte("1")}}},
+						{Type: "type2", Attributes: []kv.Pair{{Key: []byte("build"), Value: []byte("stuff")}}},
 					},
 				},
 			},
