@@ -22,8 +22,8 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -456,7 +456,7 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 	for i, testCase := range testCases {
 		caseString := fmt.Sprintf("case %d, len %d", i, testCase.len)
 
-		tx := cmn.RandBytes(testCase.len)
+		tx := tmrand.RandBytes(testCase.len)
 		err := mempl.CheckTx(tx, nil, TxInfo{})
 		msg := &TxMessage{tx}
 		encoded := cdc.MustMarshalBinaryBare(msg)
@@ -543,7 +543,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 // TODO: all of the tests should probably also run using the remote proxy app
 // since otherwise we're not actually testing the concurrency of the mempool here!
 func TestMempoolRemoteAppConcurrency(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.RandStr(6))
 	app := kvstore.NewApplication()
 	cc, server := newRemoteApp(t, sockPath, app)
 	defer server.Stop()
@@ -556,7 +556,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	txLen := 200
 	txs := make([]types.Tx, nTxs)
 	for i := 0; i < nTxs; i++ {
-		txs[i] = cmn.RandBytes(txLen)
+		txs[i] = tmrand.RandBytes(txLen)
 	}
 
 	// simulate a group of peers sending them over and over

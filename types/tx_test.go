@@ -6,20 +6,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	ctest "github.com/tendermint/tendermint/libs/test"
 )
 
 func makeTxs(cnt, size int) Txs {
 	txs := make(Txs, cnt)
 	for i := 0; i < cnt; i++ {
-		txs[i] = cmn.RandBytes(size)
+		txs[i] = rand.RandBytes(size)
 	}
 	return txs
 }
 
 func randInt(low, high int) int {
-	off := cmn.RandInt() % (high - low)
+	off := rand.RandInt() % (high - low)
 	return low + off
 }
 

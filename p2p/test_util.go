@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -52,11 +53,11 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
 		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
-			cmn.RandBytes(20),
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256)
+			rand.RandBytes(20),
+			rand.RandInt()%256,
+			rand.RandInt()%256,
+			rand.RandInt()%256,
+			rand.RandInt()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)

@@ -27,7 +27,7 @@ type DBProvider struct {
 func NewDBProvider(label string, db dbm.DB) *DBProvider {
 
 	// NOTE: when debugging, this type of construction might be useful.
-	//db = dbm.NewDebugDB("db provider "+cmn.RandStr(4), db)
+	//db = dbm.NewDebugDB("db provider "+rand.RandStr(4), db)
 
 	cdc := amino.NewCodec()
 	cryptoamino.RegisterAmino(cdc)
