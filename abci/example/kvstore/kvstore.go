@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/version"
 	dbm "github.com/tendermint/tm-db"
 )
@@ -91,7 +91,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []cmn.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},

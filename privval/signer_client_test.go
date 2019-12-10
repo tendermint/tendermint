@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -24,7 +24,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
 	for _, dtc := range getDialerTestCases(t) {
-		chainID := common.RandStr(12)
+		chainID := rand.RandStr(12)
 		mockPV := types.NewMockPV()
 
 		// get a pair of signer listener, signer dialer endpoints

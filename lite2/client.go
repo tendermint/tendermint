@@ -9,6 +9,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
@@ -421,7 +422,7 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 
 func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) error {
 	// 1. Pick an alternative provider.
-	p := c.alternatives[cmn.RandIntn(len(c.alternatives))]
+	p := c.alternatives[rand.RandIntn(len(c.alternatives))]
 
 	// 2. Fetch the header.
 	altHeader, err := p.SignedHeader(h.Height)

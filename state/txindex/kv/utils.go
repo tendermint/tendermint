@@ -1,7 +1,7 @@
-package common
+package kv
 
 // IntInSlice returns true if a is found in the list.
-func IntInSlice(a int, list []int) bool {
+func intInSlice(a int, list []int) bool {
 	for _, b := range list {
 		if b == a {
 			return true

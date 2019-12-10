@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
-	testID := cmn.RandStr(12)
+	testID := rand.RandStr(12)
 	testDir := "_test_" + testID
 	err := cmn.EnsureDir(testDir, 0700)
 	require.NoError(t, err, "Error creating dir")
@@ -48,7 +49,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err := g.WriteLine(cmn.RandStr(999))
+		err := g.WriteLine(rand.RandStr(999))
 		require.NoError(t, err, "Error appending to head")
 	}
 	g.FlushAndSync()
@@ -59,7 +60,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
-	err := g.WriteLine(cmn.RandStr(999))
+	err := g.WriteLine(rand.RandStr(999))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 
@@ -68,7 +69,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1000000, 0)
 
 	// Write 1000 more bytes.
-	err = g.WriteLine(cmn.RandStr(999))
+	err = g.WriteLine(rand.RandStr(999))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 
@@ -78,7 +79,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err = g.WriteLine(cmn.RandStr(999))
+		err = g.WriteLine(rand.RandStr(999))
 		require.NoError(t, err, "Error appending to head")
 	}
 	g.FlushAndSync()
@@ -89,7 +90,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2000000, 0)
 
 	// Write 1000 more bytes.
-	_, err = g.Head.Write([]byte(cmn.RandStr(999) + "\n"))
+	_, err = g.Head.Write([]byte(rand.RandStr(999) + "\n"))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
