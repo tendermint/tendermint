@@ -136,6 +136,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 		} else {
 			require.NoError(t, err)
 		}
+		defer c.Stop()
 
 		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 		if tc.verifyErr {
@@ -233,6 +234,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 		} else {
 			require.NoError(t, err)
 		}
+		defer c.Stop()
 
 		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 		if tc.verifyErr {
@@ -286,6 +288,7 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 	)
 	require.NoError(t, err)
+	defer c.Stop()
 	c.SetLogger(log.TestingLogger())
 
 	// Verify new headers.
@@ -307,4 +310,49 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 	h, err = c.TrustedHeader(2, now)
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
+}
+
+func TestClient_Cleanup(t *testing.T) {
+	const (
+		chainID = "TestClient_Cleanup"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   header.Hash(),
+		},
+		mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+			},
+		),
+		dbs.New(dbm.NewMemDB(), chainID),
+	)
+	require.NoError(t, err)
+	c.SetLogger(log.TestingLogger())
+
+	c.Cleanup()
+
+	// Check no headers exist after Cleanup.
+	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	assert.NoError(t, err)
+	assert.Nil(t, h)
 }

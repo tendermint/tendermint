@@ -415,16 +415,16 @@ func (c *Client) cleanup(stopHeight int64) error {
 	}
 
 	// 2) Get the latest height.
-	latestHeight, err := c.LastTrustedHeight()
+	latestHeight, err := c.trustedStore.LastSignedHeaderHeight()
 	if err != nil {
-		return errors.Wrap(err, "can't get first trusted height")
+		return errors.Wrap(err, "can't get last trusted height")
 	}
 
 	// 3) Remove all headers and validator sets.
 	if stopHeight == 0 {
 		stopHeight = oldestHeight
 	}
-	for height := stopHeight; height < latestHeight; height++ {
+	for height := stopHeight; height <= latestHeight; height++ {
 		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
 		if err != nil {
 			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
