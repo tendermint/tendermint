@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/kv"
 )
 
 func TestMarshalJSON(t *testing.T) {
@@ -24,7 +24,7 @@ func TestMarshalJSON(t *testing.T) {
 		Events: []Event{
 			{
 				Type: "testEvent",
-				Attributes: []cmn.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("pho"), Value: []byte("bo")},
 				},
 			},
@@ -91,7 +91,7 @@ func TestWriteReadMessage2(t *testing.T) {
 			Events: []Event{
 				{
 					Type: "testEvent",
-					Attributes: []cmn.KVPair{
+					Attributes: []kv.Pair{
 						{Key: []byte("abc"), Value: []byte("def")},
 					},
 				},
