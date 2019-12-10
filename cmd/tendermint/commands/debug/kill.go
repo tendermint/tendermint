@@ -12,14 +12,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-)
-
-var (
-	nodeAddr string
-	nodeHome string
 )
 
 var killCmd = &cobra.Command{
@@ -36,23 +33,6 @@ $ tendermint debug 34255 /path/to/tm-debug.zip`,
 	RunE: killCmdHandler,
 }
 
-func init() {
-	killCmd.Flags().SortFlags = true
-
-	killCmd.Flags().StringVar(
-		&nodeAddr,
-		"node-addr",
-		"tcp://localhost:26657",
-		"The Tendermint node's RPC address (<host>:<port>)",
-	)
-	killCmd.Flags().StringVar(
-		&nodeHome,
-		"node-home",
-		os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)),
-		"The Tendermint node's home directory",
-	)
-}
-
 func killCmdHandler(cmd *cobra.Command, args []string) error {
 	pid, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {
@@ -64,10 +44,11 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc := rpcclient.NewHTTP(nodeAddr, "/websocket")
+	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
 
+	home := viper.GetString(cli.HomeFlag)
 	conf := cfg.DefaultConfig()
-	conf = conf.SetRoot(nodeHome)
+	conf = conf.SetRoot(home)
 	cfg.EnsureRoot(conf.RootDir)
 
 	// Create a temporary directory which will contain all the state dumps and
@@ -78,82 +59,38 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	logger.Info("getting node status...")
 	if err := dumpStatus(rpc, tmpDir, "status.json"); err != nil {
 		return err
 	}
 
+	logger.Info("getting node network info...")
 	if err := dumpNetInfo(rpc, tmpDir, "net_info.json"); err != nil {
 		return err
 	}
 
+	logger.Info("getting node consensus state...")
 	if err := dumpConsensusState(rpc, tmpDir, "consensus_state.json"); err != nil {
 		return err
 	}
 
+	logger.Info("copying node WAL...")
 	if err := copyWAL(conf, tmpDir); err != nil {
 		return err
 	}
 
-	if err := copyConfig(tmpDir); err != nil {
+	logger.Info("copying node configuration...")
+	if err := copyConfig(home, tmpDir); err != nil {
 		return err
 	}
 
+	logger.Info("killing Tendermint process")
 	if err := killProc(pid, tmpDir); err != nil {
 		return err
 	}
 
+	logger.Info("archiving and compressing debug directory...")
 	return zipDir(tmpDir, outFile)
-}
-
-// dumpStatus gets node status state dump from the Tendermint RPC and writes it
-// to file. It returns an error upon failure.
-func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
-	status, err := rpc.Status()
-	if err != nil {
-		return errors.Wrap(err, "failed to get node status")
-	}
-
-	return writeStateJSONToFile(status, dir, filename)
-}
-
-// dumpNetInfo gets network information state dump from the Tendermint RPC and
-// writes it to file. It returns an error upon failure.
-func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
-	netInfo, err := rpc.NetInfo()
-	if err != nil {
-		return errors.Wrap(err, "failed to get node network information")
-	}
-
-	return writeStateJSONToFile(netInfo, dir, filename)
-}
-
-// dumpConsensusState gets consensus state dump from the Tendermint RPC and
-// writes it to file. It returns an error upon failure.
-func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
-	consDump, err := rpc.DumpConsensusState()
-	if err != nil {
-		return errors.Wrap(err, "failed to get node consensus dump")
-	}
-
-	return writeStateJSONToFile(consDump, dir, filename)
-}
-
-// copyWAL copies the Tendermint node's WAL file. It returns an error if the
-// WAL file cannot be read or copied.
-func copyWAL(conf *cfg.Config, dir string) error {
-	walPath := conf.Consensus.WalFile()
-	walFile := filepath.Base(walPath)
-
-	return copyFile(walPath, filepath.Join(dir, walFile))
-}
-
-// copyConfig copies the Tendermint node's config file. It returns an error if
-// the config file cannot be read or copied.
-func copyConfig(dir string) error {
-	configFile := "config.toml"
-	configPath := filepath.Join(nodeHome, "config", configFile)
-
-	return copyFile(configPath, filepath.Join(dir, configFile))
 }
 
 // killProc attempts to kill the Tendermint process with a given PID with an
@@ -190,8 +127,8 @@ func killProc(pid uint64, dir string) error {
 
 		// allow some time to allow the Tendermint process to be killed
 		//
-		// TODO: We should 'wait' for a kill to succeed. Regardless, this should be
-		// ample time.
+		// TODO: We should 'wait' for a kill to succeed (e.g. poll for PID until it
+		// cannot be found). Regardless, this should be ample time.
 		time.Sleep(5 * time.Second)
 
 		if err := cmd.Process.Kill(); err != nil {
