@@ -61,7 +61,7 @@ Prior to the update, suppose your `ResponseDeliverTx` look like:
 
 ```go
 abci.ResponseDeliverTx{
-  Tags: []cmn.KVPair{
+  Tags: []kv.Pair{
     {Key: []byte("sender"), Value: []byte("foo")},
     {Key: []byte("recipient"), Value: []byte("bar")},
     {Key: []byte("amount"), Value: []byte("35")},
@@ -85,7 +85,7 @@ abci.ResponseDeliverTx{
   Events: []abci.Event{
     {
       Type: "transfer",
-      Attributes: cmn.KVPairs{
+      Attributes: kv.Pairs{
         {Key: []byte("sender"), Value: []byte("foo")},
         {Key: []byte("recipient"), Value: []byte("bar")},
         {Key: []byte("amount"), Value: []byte("35")},

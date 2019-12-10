@@ -95,7 +95,7 @@ get_deps_bin_size:
 ########################################
 ### Libs
 
-protoc_libs: libs/common/types.pb.go
+protoc_libs: libs/kv/types.pb.go
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
