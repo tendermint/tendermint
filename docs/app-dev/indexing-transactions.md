@@ -76,10 +76,10 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
     events := []abci.Event{
         {
             Type: "transfer",
-            Attributes: cmn.KVPairs{
-                cmn.KVPair{Key: []byte("sender"), Value: []byte("Bob")},
-                cmn.KVPair{Key: []byte("recipient"), Value: []byte("Alice")},
-                cmn.KVPair{Key: []byte("balance"), Value: []byte("100")},
+            Attributes: kv.KVPairs{
+                kv.KVPair{Key: []byte("sender"), Value: []byte("Bob")},
+                kv.KVPair{Key: []byte("recipient"), Value: []byte("Alice")},
+                kv.KVPair{Key: []byte("balance"), Value: []byte("100")},
             },
         },
     }

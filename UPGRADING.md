@@ -85,7 +85,7 @@ abci.ResponseDeliverTx{
   Events: []abci.Event{
     {
       Type: "transfer",
-      Attributes: cmn.KVPairs{
+      Attributes: kv.KVPairs{
         {Key: []byte("sender"), Value: []byte("foo")},
         {Key: []byte("recipient"), Value: []byte("bar")},
         {Key: []byte("amount"), Value: []byte("35")},

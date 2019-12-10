@@ -13,7 +13,7 @@ import (
 	golang_proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	merkle "github.com/tendermint/tendermint/crypto/merkle"
-	common "github.com/tendermint/tendermint/libs/common"
+	kv "github.com/tendermint/tendermint/libs/kv"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -2186,7 +2186,7 @@ func (m *LastCommitInfo) GetVotes() []VoteInfo {
 
 type Event struct {
 	Type                 string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Attributes           []common.KVPair `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
+	Attributes           []kv.KVPair `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`

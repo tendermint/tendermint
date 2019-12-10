@@ -179,28 +179,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
-                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: kv.KVPairs{
+                      kv.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
+                      kv.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
+                      kv.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      kv.KVPair{Key: []byte("balance"), Value: []byte("...")},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
-                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: kv.KVPairs{
+                      kv.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
+                      kv.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
+                      kv.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      kv.KVPair{Key: []byte("balance"), Value: []byte("...")},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: cmn.KVPairs{
-                      cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
-                      cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
-                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                  Attributes: kv.KVPairs{
+                      kv.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
+                      kv.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
+                      kv.KVPair{Key: []byte("amount"), Value: []byte("...")},
                   },
               },
           },
