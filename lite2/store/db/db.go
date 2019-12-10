@@ -130,11 +130,11 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 }
 
 func (s *dbs) shKey(height int64) []byte {
-	return []byte(fmt.Sprintf("sh/%s/%010d", s.prefix, height))
+	return []byte(fmt.Sprintf("sh/%s/%020d", s.prefix, height))
 }
 
 func (s *dbs) vsKey(height int64) []byte {
-	return []byte(fmt.Sprintf("vs/%s/%010d", s.prefix, height))
+	return []byte(fmt.Sprintf("vs/%s/%020d", s.prefix, height))
 }
 
 var keyPattern = regexp.MustCompile(`^(sh|vs)/([^/]*)/([0-9]+)/$`)
@@ -147,11 +147,10 @@ func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	part = string(submatch[1])
 	prefix = string(submatch[2])
 	heightStr := string(submatch[3])
-	heightInt, err := strconv.Atoi(heightStr)
+	height, err := strconv.ParseInt(heightStr, 10, 64)
 	if err != nil {
 		return "", "", 0, false
 	}
-	height = int64(heightInt)
 	ok = true // good!
 	return
 }
