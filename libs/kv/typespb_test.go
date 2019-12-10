@@ -22,15 +22,15 @@ var _ = golang_proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-func TestKVPairProto(t *testing.T) {
+func TestPairProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, false)
+	p := NewPopulatedPair(popr, false)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &KVPair{}
+	msg := &Pair{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -53,10 +53,10 @@ func TestKVPairProto(t *testing.T) {
 	}
 }
 
-func TestKVPairMarshalTo(t *testing.T) {
+func TestPairMarshalTo(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, false)
+	p := NewPopulatedPair(popr, false)
 	size := p.Size()
 	dAtA := make([]byte, size)
 	for i := range dAtA {
@@ -66,7 +66,7 @@ func TestKVPairMarshalTo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &KVPair{}
+	msg := &Pair{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -134,16 +134,16 @@ func TestKI64PairMarshalTo(t *testing.T) {
 	}
 }
 
-func TestKVPairJSON(t *testing.T) {
+func TestPairJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, true)
+	p := NewPopulatedPair(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &KVPair{}
+	msg := &Pair{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -170,12 +170,12 @@ func TestKI64PairJSON(t *testing.T) {
 		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
 	}
 }
-func TestKVPairProtoText(t *testing.T) {
+func TestPairProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, true)
+	p := NewPopulatedPair(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &KVPair{}
+	msg := &Pair{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -184,12 +184,12 @@ func TestKVPairProtoText(t *testing.T) {
 	}
 }
 
-func TestKVPairProtoCompactText(t *testing.T) {
+func TestPairProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, true)
+	p := NewPopulatedPair(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &KVPair{}
+	msg := &Pair{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -226,10 +226,10 @@ func TestKI64PairProtoCompactText(t *testing.T) {
 	}
 }
 
-func TestKVPairSize(t *testing.T) {
+func TestPairSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedKVPair(popr, true)
+	p := NewPopulatedPair(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {

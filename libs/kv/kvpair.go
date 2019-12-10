@@ -11,17 +11,17 @@ import (
 /*
 Defined in types.proto
 
-type KVPair struct {
+type Pair struct {
 	Key   []byte
 	Value []byte
 }
 */
 
-type KVPairs []KVPair
+type Pairs []Pair
 
 // Sorting
-func (kvs KVPairs) Len() int { return len(kvs) }
-func (kvs KVPairs) Less(i, j int) bool {
+func (kvs Pairs) Len() int { return len(kvs) }
+func (kvs Pairs) Less(i, j int) bool {
 	switch bytes.Compare(kvs[i].Key, kvs[j].Key) {
 	case -1:
 		return true
@@ -33,8 +33,8 @@ func (kvs KVPairs) Less(i, j int) bool {
 		panic("invalid comparison result")
 	}
 }
-func (kvs KVPairs) Swap(i, j int) { kvs[i], kvs[j] = kvs[j], kvs[i] }
-func (kvs KVPairs) Sort()         { sort.Sort(kvs) }
+func (kvs Pairs) Swap(i, j int) { kvs[i], kvs[j] = kvs[j], kvs[i] }
+func (kvs Pairs) Sort()         { sort.Sort(kvs) }
 
 //----------------------------------------
 // KI64Pair

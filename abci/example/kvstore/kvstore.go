@@ -91,7 +91,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []kv.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},

@@ -20,12 +20,12 @@ var (
 	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
 )
 
-func (r *KVPair) MarshalJSON() ([]byte, error) {
+func (r *Pair) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *KVPair) UnmarshalJSON(b []byte) error {
+func (r *Pair) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
@@ -50,5 +50,5 @@ type jsonRoundTripper interface {
 	json.Unmarshaler
 }
 
-var _ jsonRoundTripper = (*KVPair)(nil)
+var _ jsonRoundTripper = (*Pair)(nil)
 var _ jsonRoundTripper = (*KI64Pair)(nil)

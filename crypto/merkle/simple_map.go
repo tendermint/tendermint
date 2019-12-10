@@ -12,7 +12,7 @@ import (
 // Leaves are `hash(key) | hash(value)`.
 // Leaves are sorted before Merkle hashing.
 type simpleMap struct {
-	kvs    kv.KVPairs
+	kvs    kv.Pairs
 	sorted bool
 }
 
@@ -33,7 +33,7 @@ func (sm *simpleMap) Set(key string, value []byte) {
 	// and make a determination to fetch or not.
 	vhash := tmhash.Sum(value)
 
-	sm.kvs = append(sm.kvs, kv.KVPair{
+	sm.kvs = append(sm.kvs, kv.Pair{
 		Key:   []byte(key),
 		Value: vhash,
 	})
@@ -56,9 +56,9 @@ func (sm *simpleMap) Sort() {
 
 // Returns a copy of sorted KVPairs.
 // NOTE these contain the hashed key and value.
-func (sm *simpleMap) KVPairs() kv.KVPairs {
+func (sm *simpleMap) KVPairs() kv.Pairs {
 	sm.Sort()
-	kvs := make(kv.KVPairs, len(sm.kvs))
+	kvs := make(kv.Pairs, len(sm.kvs))
 	copy(kvs, sm.kvs)
 	return kvs
 }
@@ -68,7 +68,7 @@ func (sm *simpleMap) KVPairs() kv.KVPairs {
 // A local extension to KVPair that can be hashed.
 // Key and value are length prefixed and concatenated,
 // then hashed.
-type KVPair kv.KVPair
+type KVPair kv.Pair
 
 // Bytes returns key || value, with both the
 // key and value length prefixed.
@@ -85,7 +85,7 @@ func (kv KVPair) Bytes() []byte {
 	return b.Bytes()
 }
 
-func hashKVPairs(kvs kv.KVPairs) []byte {
+func hashKVPairs(kvs kv.Pairs) []byte {
 	kvsH := make([][]byte, len(kvs))
 	for i, kvp := range kvs {
 		kvsH[i] = KVPair(kvp).Bytes()

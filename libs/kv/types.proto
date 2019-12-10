@@ -17,7 +17,7 @@ option (gogoproto.testgen_all) = true;
 // Abstract types
 
 // Define these here for compatibility but use tmlibs/common.KVPair.
-message KVPair {
+message Pair {
   bytes key = 1;
   bytes value = 2;
 }

@@ -133,8 +133,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{
 					Data: []byte("Gotcha!"),
 					Events: []abci.Event{
-						{Type: "type1", Attributes: []kv.KVPair{{Key: []byte("a"), Value: []byte("1")}}},
-						{Type: "type2", Attributes: []kv.KVPair{{Key: []byte("build"), Value: []byte("stuff")}}},
+						{Type: "type1", Attributes: []kv.Pair{{Key: []byte("a"), Value: []byte("1")}}},
+						{Type: "type2", Attributes: []kv.Pair{{Key: []byte("build"), Value: []byte("stuff")}}},
 					},
 				},
 			},

@@ -31,7 +31,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		events := []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []kv.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("address"), Value: []byte(fmt.Sprintf("address_%d", i%100))},
 					{Key: []byte("amount"), Value: []byte("50")},
 				},

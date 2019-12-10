@@ -24,7 +24,7 @@ func TestMarshalJSON(t *testing.T) {
 		Events: []Event{
 			{
 				Type: "testEvent",
-				Attributes: []kv.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("pho"), Value: []byte("bo")},
 				},
 			},
@@ -91,7 +91,7 @@ func TestWriteReadMessage2(t *testing.T) {
 			Events: []Event{
 				{
 					Type: "testEvent",
-					Attributes: []kv.KVPair{
+					Attributes: []kv.Pair{
 						{Key: []byte("abc"), Value: []byte("def")},
 					},
 				},

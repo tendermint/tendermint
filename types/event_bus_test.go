@@ -26,7 +26,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []kv.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []kv.Pair{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 
@@ -70,12 +70,12 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []kv.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []kv.Pair{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []kv.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []kv.Pair{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		Events: []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []kv.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("sender"), Value: []byte("foo")},
 					{Key: []byte("recipient"), Value: []byte("bar")},
 					{Key: []byte("amount"), Value: []byte("5")},
@@ -128,7 +128,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "transfer",
-				Attributes: []kv.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("sender"), Value: []byte("baz")},
 					{Key: []byte("recipient"), Value: []byte("cat")},
 					{Key: []byte("amount"), Value: []byte("13")},
@@ -136,7 +136,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "withdraw.rewards",
-				Attributes: []kv.KVPair{
+				Attributes: []kv.Pair{
 					{Key: []byte("address"), Value: []byte("bar")},
 					{Key: []byte("source"), Value: []byte("iceman")},
 					{Key: []byte("amount"), Value: []byte("33")},
@@ -217,12 +217,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []kv.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []kv.Pair{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []kv.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []kv.Pair{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 

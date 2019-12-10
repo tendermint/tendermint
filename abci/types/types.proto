@@ -245,7 +245,7 @@ message LastCommitInfo {
 
 message Event {
   string type = 1;
-  repeated tendermint.libs.kv.KVPair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
+  repeated tendermint.libs.kv.Pair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
 }
 
 //----------------------------------------

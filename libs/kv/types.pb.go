@@ -27,7 +27,7 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // Define these here for compatibility but use tmlibs/common.KVPair.
-type KVPair struct {
+type Pair struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -35,18 +35,18 @@ type KVPair struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *KVPair) Reset()         { *m = KVPair{} }
-func (m *KVPair) String() string { return proto.CompactTextString(m) }
-func (*KVPair) ProtoMessage()    {}
-func (*KVPair) Descriptor() ([]byte, []int) {
+func (m *Pair) Reset()         { *m = Pair{} }
+func (m *Pair) String() string { return proto.CompactTextString(m) }
+func (*Pair) ProtoMessage()    {}
+func (*Pair) Descriptor() ([]byte, []int) {
 	return fileDescriptor_31432671d164f444, []int{0}
 }
-func (m *KVPair) XXX_Unmarshal(b []byte) error {
+func (m *Pair) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *KVPair) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Pair) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_KVPair.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Pair.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -56,26 +56,26 @@ func (m *KVPair) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *KVPair) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_KVPair.Merge(m, src)
+func (m *Pair) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Pair.Merge(m, src)
 }
-func (m *KVPair) XXX_Size() int {
+func (m *Pair) XXX_Size() int {
 	return m.Size()
 }
-func (m *KVPair) XXX_DiscardUnknown() {
-	xxx_messageInfo_KVPair.DiscardUnknown(m)
+func (m *Pair) XXX_DiscardUnknown() {
+	xxx_messageInfo_Pair.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_KVPair proto.InternalMessageInfo
+var xxx_messageInfo_Pair proto.InternalMessageInfo
 
-func (m *KVPair) GetKey() []byte {
+func (m *Pair) GetKey() []byte {
 	if m != nil {
 		return m.Key
 	}
 	return nil
 }
 
-func (m *KVPair) GetValue() []byte {
+func (m *Pair) GetValue() []byte {
 	if m != nil {
 		return m.Value
 	}
@@ -139,8 +139,8 @@ func (m *KI64Pair) GetValue() int64 {
 }
 
 func init() {
-	proto.RegisterType((*KVPair)(nil), "tendermint.libs.kv.KVPair")
-	golang_proto.RegisterType((*KVPair)(nil), "tendermint.libs.kv.KVPair")
+	proto.RegisterType((*Pair)(nil), "tendermint.libs.kv.Pair")
+	golang_proto.RegisterType((*Pair)(nil), "tendermint.libs.kv.Pair")
 	proto.RegisterType((*KI64Pair)(nil), "tendermint.libs.kv.KI64Pair")
 	golang_proto.RegisterType((*KI64Pair)(nil), "tendermint.libs.kv.KI64Pair")
 }
@@ -149,30 +149,30 @@ func init() { proto.RegisterFile("libs/kv/types.proto", fileDescriptor_31432671d
 func init() { golang_proto.RegisterFile("libs/kv/types.proto", fileDescriptor_31432671d164f444) }
 
 var fileDescriptor_31432671d164f444 = []byte{
-	// 195 bytes of a gzipped FileDescriptorProto
+	// 193 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0xce, 0xc9, 0x4c, 0x2a,
 	0xd6, 0xcf, 0x2e, 0xd3, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
 	0x12, 0x2a, 0x49, 0xcd, 0x4b, 0x49, 0x2d, 0xca, 0xcd, 0xcc, 0x2b, 0xd1, 0x03, 0xc9, 0xeb, 0x65,
 	0x97, 0x49, 0xe9, 0xa6, 0x67, 0x96, 0x64, 0x94, 0x26, 0xe9, 0x25, 0xe7, 0xe7, 0xea, 0xa7, 0xe7,
 	0xa7, 0xe7, 0xeb, 0x83, 0x95, 0x26, 0x95, 0xa6, 0x81, 0x79, 0x60, 0x0e, 0x98, 0x05, 0x31, 0x42,
-	0xc9, 0x80, 0x8b, 0xcd, 0x3b, 0x2c, 0x20, 0x31, 0xb3, 0x48, 0x48, 0x80, 0x8b, 0x39, 0x3b, 0xb5,
-	0x52, 0x82, 0x51, 0x81, 0x51, 0x83, 0x27, 0x08, 0xc4, 0x14, 0x12, 0xe1, 0x62, 0x2d, 0x4b, 0xcc,
-	0x29, 0x4d, 0x95, 0x60, 0x02, 0x8b, 0x41, 0x38, 0x4a, 0x46, 0x5c, 0x1c, 0xde, 0x9e, 0x66, 0x26,
-	0xc4, 0xe8, 0x61, 0x86, 0xea, 0x71, 0x72, 0xfb, 0xf1, 0x50, 0x8e, 0x71, 0xc5, 0x23, 0x39, 0xc6,
-	0x1d, 0x8f, 0xe4, 0x18, 0x4f, 0x3c, 0x92, 0x63, 0xbc, 0xf0, 0x48, 0x8e, 0xf1, 0xc1, 0x23, 0x39,
-	0xc6, 0x03, 0x8f, 0xe5, 0x18, 0xa3, 0x34, 0x90, 0x9c, 0x8c, 0xf0, 0x11, 0x32, 0x13, 0xea, 0xf9,
-	0x24, 0x36, 0xb0, 0xa3, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0x99, 0x11, 0x66, 0xf8, 0x0e,
-	0x01, 0x00, 0x00,
+	0x49, 0x8f, 0x8b, 0x25, 0x20, 0x31, 0xb3, 0x48, 0x48, 0x80, 0x8b, 0x39, 0x3b, 0xb5, 0x52, 0x82,
+	0x51, 0x81, 0x51, 0x83, 0x27, 0x08, 0xc4, 0x14, 0x12, 0xe1, 0x62, 0x2d, 0x4b, 0xcc, 0x29, 0x4d,
+	0x95, 0x60, 0x02, 0x8b, 0x41, 0x38, 0x4a, 0x46, 0x5c, 0x1c, 0xde, 0x9e, 0x66, 0x26, 0xc4, 0xe8,
+	0x61, 0x86, 0xea, 0x71, 0x72, 0xfb, 0xf1, 0x50, 0x8e, 0x71, 0xc5, 0x23, 0x39, 0xc6, 0x1d, 0x8f,
+	0xe4, 0x18, 0x4f, 0x3c, 0x92, 0x63, 0xbc, 0xf0, 0x48, 0x8e, 0xf1, 0xc1, 0x23, 0x39, 0xc6, 0x03,
+	0x8f, 0xe5, 0x18, 0xa3, 0x34, 0x90, 0x1c, 0x8c, 0xf0, 0x0f, 0x32, 0x13, 0xea, 0xf5, 0x24, 0x36,
+	0xb0, 0x93, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0x01, 0x3f, 0x5a, 0xca, 0x0c, 0x01, 0x00,
+	0x00,
 }
 
-func (this *KVPair) Equal(that interface{}) bool {
+func (this *Pair) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*KVPair)
+	that1, ok := that.(*Pair)
 	if !ok {
-		that2, ok := that.(KVPair)
+		that2, ok := that.(Pair)
 		if ok {
 			that1 = &that2
 		} else {
@@ -225,7 +225,7 @@ func (this *KI64Pair) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (m *KVPair) Marshal() (dAtA []byte, err error) {
+func (m *Pair) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -235,12 +235,12 @@ func (m *KVPair) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *KVPair) MarshalTo(dAtA []byte) (int, error) {
+func (m *Pair) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *KVPair) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Pair) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -316,8 +316,8 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func NewPopulatedKVPair(r randyTypes, easy bool) *KVPair {
-	this := &KVPair{}
+func NewPopulatedPair(r randyTypes, easy bool) *Pair {
+	this := &Pair{}
 	v1 := r.Intn(100)
 	this.Key = make([]byte, v1)
 	for i := 0; i < v1; i++ {
@@ -423,7 +423,7 @@ func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
 	dAtA = append(dAtA, uint8(v))
 	return dAtA
 }
-func (m *KVPair) Size() (n int) {
+func (m *Pair) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -468,7 +468,7 @@ func sovTypes(x uint64) (n int) {
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *KVPair) Unmarshal(dAtA []byte) error {
+func (m *Pair) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -491,10 +491,10 @@ func (m *KVPair) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: KVPair: wiretype end group for non-group")
+			return fmt.Errorf("proto: Pair: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: KVPair: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Pair: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
