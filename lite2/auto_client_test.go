@@ -1,7 +1,6 @@
 package lite
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -24,9 +23,9 @@ func TestAutoClient(t *testing.T) {
 	var (
 		keys = genPrivKeys(4)
 		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals     = keys.ToValidators(20, 10)
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+		vals   = keys.ToValidators(20, 10)
+		bTime  = time.Now().Add(-1 * time.Hour)
+		header = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
@@ -43,10 +42,10 @@ func TestAutoClient(t *testing.T) {
 				// trusted header
 				1: header,
 				// interim header (3/3 signed)
-				2: keys.GenSignedHeader(chainID, 2, bTime.Add(1*time.Hour), nil, vals, vals,
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 				// last header (3/3 signed)
-				3: keys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
+				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			},
 			map[int64]*types.ValidatorSet{
@@ -61,17 +60,13 @@ func TestAutoClient(t *testing.T) {
 	require.NoError(t, err)
 	base.SetLogger(log.TestingLogger())
 
-	hh, err := base.LastTrustedHeight()
-	fmt.Println(err)
-	fmt.Println(hh)
-
 	c := NewAutoClient(base, 1*time.Second)
 	defer c.Stop()
 
-	for i := 0; i < 3; i++ {
+	for i := 2; i <= 3; i++ {
 		select {
 		case h := <-c.TrustedHeaders():
-			assert.Equal(t, i, h.Height)
+			assert.EqualValues(t, i, h.Height)
 		case err := <-c.Errs():
 			require.NoError(t, err)
 		case <-time.After(2 * time.Second):

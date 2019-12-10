@@ -69,6 +69,10 @@ func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 
 // SignedHeader loads SignedHeader at the given height.
 func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
+	if height <= 0 {
+		panic("negative or zero height")
+	}
+
 	bz := s.db.Get(s.shKey(height))
 	if bz == nil {
 		return nil, nil
@@ -81,6 +85,10 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 // ValidatorSet loads ValidatorSet at the given height.
 func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
+	if height <= 0 {
+		panic("negative or zero height")
+	}
+
 	bz := s.db.Get(s.vsKey(height))
 	if bz == nil {
 		return nil, nil
@@ -105,6 +113,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 		if ok {
 			return height, nil
 		}
+		itr.Next()
 	}
 
 	return -1, nil
@@ -124,6 +133,7 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 		if ok {
 			return height, nil
 		}
+		itr.Next()
 	}
 
 	return -1, nil
@@ -137,7 +147,7 @@ func (s *dbs) vsKey(height int64) []byte {
 	return []byte(fmt.Sprintf("vs/%s/%020d", s.prefix, height))
 }
 
-var keyPattern = regexp.MustCompile(`^(sh|vs)/([^/]*)/([0-9]+)/$`)
+var keyPattern = regexp.MustCompile(`^(sh|vs)/([^/]*)/([0-9]+)$`)
 
 func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	submatch := keyPattern.FindSubmatch(key)
@@ -146,8 +156,7 @@ func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	}
 	part = string(submatch[1])
 	prefix = string(submatch[2])
-	heightStr := string(submatch[3])
-	height, err := strconv.ParseInt(heightStr, 10, 64)
+	height, err := strconv.ParseInt(string(submatch[3]), 10, 64)
 	if err != nil {
 		return "", "", 0, false
 	}
