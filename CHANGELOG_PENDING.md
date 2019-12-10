@@ -70,6 +70,9 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
   - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
+  - [libs/common] \#4230 Move `KV` out of common to its own pkg
+  - [libs/common] \#4230 Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
+
 
 - Blockchain Protocol
 
