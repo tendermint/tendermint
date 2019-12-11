@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/version"
 )

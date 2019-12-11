@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
 	"github.com/tendermint/tendermint/types"

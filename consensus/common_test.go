@@ -23,7 +23,6 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
