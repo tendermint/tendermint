@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 // BitArray is a thread-safe implementation of a bit array.
@@ -250,7 +252,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 
-	return trueIndices[RandIntn(len(trueIndices))], true
+	return trueIndices[rand.RandIntn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
