@@ -77,6 +77,13 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#4237 Move byte functions from `libs/common` into pkg `bytes`
   - [libs/common] \#4237 Move throttletimer functions from `libs/common` into pkg `timer`
   - [libs/common] \#4237 Move tempfile functions from `libs/common` into pkg `tempfile`
+  - [libs/common] \#4240 Move os functions from `libs/common` into pkg `os`
+  - [libs/common] \#4240 Move net functions from `libs/common` into pkg `net`
+  - [libs/common] \#4240 Move mathematical functions and types out of `libs/common` to `math` pkg
+  - [libs/common] \#4240 Move string functions out of `libs/common` to `strings` pkg
+  - [libs/common] \#4240 Move async functions out of `libs/common` to `async` pkg
+  - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
+  - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
 
 
 - Blockchain Protocol
