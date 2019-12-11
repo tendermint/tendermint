@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	tmos "github.com/tendermint/tendermint/libs/os"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 /* Loading & Saving */
@@ -35,7 +35,7 @@ func (a *addrBook) saveToFile(filePath string) {
 		a.Logger.Error("Failed to save AddrBook to file", "err", err)
 		return
 	}
-	err = tmos.WriteFileAtomic(filePath, jsonBytes, 0644)
+	err = cmn.WriteFileAtomic(filePath, jsonBytes, 0644)
 	if err != nil {
 		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "err", err)
 	}

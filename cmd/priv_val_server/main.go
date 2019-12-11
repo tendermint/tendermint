@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	tmos "github.com/tendermint/tendermint/libs/os"
 
 	"github.com/tendermint/tendermint/privval"
 )

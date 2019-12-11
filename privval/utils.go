@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/n"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 )
 
 // IsConnTimeout returns a boolean indicating whether the error is known to
