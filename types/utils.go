@@ -1,4 +1,4 @@
-package common
+package types
 
 import "reflect"
 
@@ -7,7 +7,7 @@ import "reflect"
 //  - https://dave.cheney.net/2017/08/09/typed-nils-in-go-2
 //  - https://groups.google.com/forum/#!topic/golang-nuts/wnH302gBa4I/discussion
 //  - https://github.com/golang/go/issues/21538
-func IsTypedNil(o interface{}) bool {
+func isTypedNil(o interface{}) bool {
 	rv := reflect.ValueOf(o)
 	switch rv.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Slice:
@@ -18,7 +18,7 @@ func IsTypedNil(o interface{}) bool {
 }
 
 // Returns true if it has zero length.
-func IsEmpty(o interface{}) bool {
+func isEmpty(o interface{}) bool {
 	rv := reflect.ValueOf(o)
 	switch rv.Kind() {
 	case reflect.Array, reflect.Chan, reflect.Map, reflect.Slice, reflect.String:

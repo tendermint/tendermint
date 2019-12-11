@@ -11,6 +11,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -141,7 +142,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 // OnStart implements BaseService
 func (r *Reactor) OnStart() error {
 	err := r.book.Start()
-	if err != nil && err != cmn.ErrAlreadyStarted {
+	if err != nil && err != service.ErrAlreadyStarted {
 		return err
 	}
 

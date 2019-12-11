@@ -71,6 +71,8 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
   - [libs/common] \#4230 Move `KV` out of common to its own pkg
   - [libs/common] \#4230 Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
+  - [libs/common] \#4232 Move `Service` & `BaseService` from `libs/common` to `libs/service`
+  - [libs/common] \#4232 Move `common/nil.go` to `types/utils.go` & make the functions private
   - [libs/common] \#4231 Move random functions from `libs/common` into pkg `rand`
 
 

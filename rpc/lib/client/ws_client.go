@@ -14,8 +14,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -74,7 +74,7 @@ type WSClient struct { // nolint: maligned
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
 
-	cmn.BaseService
+	service.BaseService
 
 	// Time between sending a ping and receiving a pong. See
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
@@ -110,7 +110,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
+	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
 		option(c)
 	}
@@ -162,7 +162,7 @@ func (c *WSClient) String() string {
 	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
-// OnStart implements cmn.Service by dialing a server and creating read and
+// OnStart implements service.Service by dialing a server and creating read and
 // write routines.
 func (c *WSClient) OnStart() error {
 	err := c.dial()
@@ -186,7 +186,7 @@ func (c *WSClient) OnStart() error {
 	return nil
 }
 
-// Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
+// Stop overrides service.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
 func (c *WSClient) Stop() error {
 	if err := c.BaseService.Stop(); err != nil {

@@ -39,7 +39,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 type operation int
@@ -88,7 +88,7 @@ type cmd struct {
 // Server allows clients to subscribe/unsubscribe for messages, publishing
 // messages with or without events, and manages internal state.
 type Server struct {
-	cmn.BaseService
+	service.BaseService
 
 	cmds    chan cmd
 	cmdsCap int
@@ -109,7 +109,7 @@ func NewServer(options ...Option) *Server {
 	s := &Server{
 		subscriptions: make(map[string]map[string]struct{}),
 	}
-	s.BaseService = *cmn.NewBaseService(nil, "PubSub", s)
+	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
 
 	for _, option := range options {
 		option(s)

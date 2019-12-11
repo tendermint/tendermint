@@ -24,6 +24,7 @@ import (
 	"context"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,7 +32,7 @@ import (
 // Client wraps most important rpc calls a client would make if you want to
 // listen for events, test if it also implements events.EventSwitch.
 type Client interface {
-	cmn.Service
+	service.Service
 	ABCIClient
 	EventsClient
 	HistoryClient

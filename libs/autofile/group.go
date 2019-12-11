@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -53,7 +53,7 @@ The Group can also be used to binary-search for some line,
 assuming that marker lines are written occasionally.
 */
 type Group struct {
-	cmn.BaseService
+	service.BaseService
 
 	ID                 string
 	Head               *AutoFile // The head AutoFile to write to
@@ -102,7 +102,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 		option(g)
 	}
 
-	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
+	g.BaseService = *service.NewBaseService(nil, "Group", g)
 
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
@@ -131,7 +131,7 @@ func GroupTotalSizeLimit(limit int64) func(*Group) {
 	}
 }
 
-// OnStart implements cmn.Service by starting the goroutine that checks file
+// OnStart implements service.Service by starting the goroutine that checks file
 // and group limits.
 func (g *Group) OnStart() error {
 	g.ticker = time.NewTicker(g.groupCheckDuration)
@@ -139,7 +139,7 @@ func (g *Group) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by stopping the goroutine described above.
+// OnStop implements service.Service by stopping the goroutine described above.
 // NOTE: g.Head must be closed separately using Close.
 func (g *Group) OnStop() {
 	g.ticker.Stop()

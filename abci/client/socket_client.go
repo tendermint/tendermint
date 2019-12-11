@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const reqQueueSize = 256 // TODO make configurable
@@ -25,7 +26,7 @@ var _ Client = (*socketClient)(nil)
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	cmn.BaseService
+	service.BaseService
 
 	addr        string
 	mustConnect bool
@@ -51,7 +52,7 @@ func NewSocketClient(addr string, mustConnect bool) *socketClient {
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
 	return cli
 }
 

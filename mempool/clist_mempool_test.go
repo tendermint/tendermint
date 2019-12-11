@@ -22,9 +22,9 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -581,7 +581,7 @@ func newRemoteApp(
 	app abci.Application,
 ) (
 	clientCreator proxy.ClientCreator,
-	server cmn.Service,
+	server service.Service,
 ) {
 	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)
 
