@@ -1,7 +1,6 @@
 package v2
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -166,7 +165,6 @@ type testReactorParams struct {
 	privVals    []types.PrivValidator
 	startHeight int64
 	bufferSize  int
-	mockV       bool
 	mockA       bool
 }
 
@@ -199,9 +197,6 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 }
 
 func TestReactorTerminationScenarios(t *testing.T) {
-	var (
-		channelID = byte(0x40)
-	)
 
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
@@ -214,14 +209,13 @@ func TestReactorTerminationScenarios(t *testing.T) {
 		privVals:    privVals,
 		startHeight: 10,
 		bufferSize:  100,
-		mockV:       false,
 		mockA:       true,
 	}
 
 	type testEvent struct {
 		evType string
 		peer   string
-		event  interface{}
+		height int64
 	}
 
 	tests := []struct {
@@ -233,92 +227,92 @@ func TestReactorTerminationScenarios(t *testing.T) {
 			name:   "simple termination on max peer height - one peer",
 			params: params,
 			msgs: []testEvent{
-				{"AddPeer", "P1", nil},
-				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
-				{"BlockReq", "", nil},
-				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(11)}},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(12)}},
-				{"Process", "", nil},
-				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(13)}},
-				{"Process", "", nil},
+				{evType: "AddPeer", peer: "P1"},
+				{evType: "ReceiveS", peer: "P1", height: 13},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P1", height: 11},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P1", height: 12},
+				{evType: "Process"},
+				{evType: "ReceiveB", peer: "P1", height: 13},
+				{evType: "Process"},
 			},
 		},
 		{
 			name:   "simple termination on max peer height - two peers",
 			params: params,
 			msgs: []testEvent{
-				{"AddPeer", "P1", nil},
-				{"AddPeer", "P2", nil},
-				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
-				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(11)}},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(13)}},
-				{"Process", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
-				{"Process", "", nil},
+				{evType: "AddPeer", peer: "P1"},
+				{evType: "AddPeer", peer: "P2"},
+				{evType: "ReceiveS", peer: "P1", height: 13},
+				{evType: "ReceiveS", peer: "P2", height: 15},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P1", height: 11},
+				{evType: "ReceiveB", peer: "P2", height: 12},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P1", height: 13},
+				{evType: "Process"},
+				{evType: "ReceiveB", peer: "P2", height: 14},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 15},
+				{evType: "Process"},
 			},
 		},
 		{
 			name:   "termination on max peer height - two peers, noBlock error",
 			params: params,
 			msgs: []testEvent{
-				{"AddPeer", "P1", nil},
-				{"AddPeer", "P2", nil},
-				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
-				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P1", bcNoBlockResponseMessage{11}},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(11)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(13)}},
-				{"Process", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
-				{"Process", "", nil},
+				{evType: "AddPeer", peer: "P1"},
+				{evType: "AddPeer", peer: "P2"},
+				{evType: "ReceiveS", peer: "P1", height: 13},
+				{evType: "ReceiveS", peer: "P2", height: 15},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveNB", peer: "P1", height: 11},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 12},
+				{evType: "ReceiveB", peer: "P2", height: 11},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 13},
+				{evType: "Process"},
+				{evType: "ReceiveB", peer: "P2", height: 14},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 15},
+				{evType: "Process"},
 			},
 		},
 		{
 			name:   "termination on max peer height - two peers, remove one peer",
 			params: params,
 			msgs: []testEvent{
-				{"AddPeer", "P1", nil},
-				{"AddPeer", "P2", nil},
-				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
-				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"RemovePeer", "P1", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(11)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(13)}},
-				{"Process", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
-				{"Process", "", nil},
-				{"BlockReq", "", nil},
-				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
-				{"Process", "", nil},
+				{evType: "AddPeer", peer: "P1"},
+				{evType: "AddPeer", peer: "P2"},
+				{evType: "ReceiveS", peer: "P1", height: 13},
+				{evType: "ReceiveS", peer: "P2", height: 15},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "RemovePeer", peer: "P1"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 12},
+				{evType: "ReceiveB", peer: "P2", height: 11},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 13},
+				{evType: "Process"},
+				{evType: "ReceiveB", peer: "P2", height: 14},
+				{evType: "Process"},
+				{evType: "BlockReq"},
+				{evType: "ReceiveB", peer: "P2", height: 15},
+				{evType: "Process"},
 			},
 		},
 	}
@@ -337,23 +331,40 @@ func TestReactorTerminationScenarios(t *testing.T) {
 			for _, step := range tt.msgs {
 				switch step.evType {
 				case "AddPeer":
-					reactor.AddPeer(mockPeer{id: p2p.ID(step.peer)})
+					reactor.scheduler.send(bcAddNewPeer{peerID: p2p.ID(step.peer)})
 				case "RemovePeer":
-					reactor.RemovePeer(mockPeer{id: p2p.ID(step.peer)}, fmt.Errorf("some error"))
-				case "Receive":
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(step.event))
+					reactor.scheduler.send(bcRemovePeer{peerID: p2p.ID(step.peer)})
+				case "ReceiveS":
+					reactor.scheduler.send(bcStatusResponse{
+						peerID: p2p.ID(step.peer),
+						height: step.height,
+						time:   time.Now(),
+					})
+				case "ReceiveB":
+					reactor.scheduler.send(bcBlockResponse{
+						peerID: p2p.ID(step.peer),
+						block:  refStore.LoadBlock(step.height),
+						size:   10,
+						time:   time.Now(),
+					})
+				case "ReceiveNB":
+					reactor.scheduler.send(bcNoBlockResponse{
+						peerID: p2p.ID(step.peer),
+						height: step.height,
+						time:   time.Now(),
+					})
 				case "BlockReq":
 					reactor.scheduler.send(rTrySchedule{time: time.Now()})
 				case "Process":
 					reactor.processor.send(rProcessBlock{})
 				}
-				// time for messages to propagate between routines
+				// give time for messages to propagate between routines
 				time.Sleep(time.Millisecond)
 			}
 
+			// time for processor to finish and reactor to switch to consensus
 			time.Sleep(20 * time.Millisecond)
 			assert.True(t, mockSwitch.hasSwitchedToConsensus())
-
 			reactor.Stop()
 		})
 	}
@@ -374,7 +385,6 @@ func TestReactorHelperMode(t *testing.T) {
 		privVals:    privVals,
 		startHeight: 20,
 		bufferSize:  100,
-		mockV:       false,
 		mockA:       true,
 	}
 
@@ -407,8 +417,6 @@ func TestReactorHelperMode(t *testing.T) {
 			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
-			// time for go routines to start
-			time.Sleep(time.Millisecond)
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
@@ -429,8 +437,6 @@ func TestReactorHelperMode(t *testing.T) {
 					}
 				}
 			}
-			time.Sleep(time.Millisecond)
-
 			reactor.Stop()
 		})
 	}
