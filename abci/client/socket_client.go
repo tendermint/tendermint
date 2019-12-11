@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -61,7 +62,7 @@ func (cli *socketClient) OnStart() error {
 	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err = cmn.Connect(cli.addr)
+		conn, err = tmnet.Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err

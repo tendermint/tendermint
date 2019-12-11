@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
 	testID := rand.RandStr(12)
 	testDir := "_test_" + testID
-	err := cmn.EnsureDir(testDir, 0700)
+	err := tmos.EnsureDir(testDir, 0700)
 	require.NoError(t, err, "Error creating dir")
 
 	headPath := testDir + "/myfile"

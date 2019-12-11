@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
 )
 
 const (
@@ -66,7 +66,7 @@ type VoteSet struct {
 	valSet        *ValidatorSet
 
 	mtx           sync.Mutex
-	votesBitArray *cmn.BitArray
+	votesBitArray *bits.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
@@ -85,7 +85,7 @@ func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsg
 		round:         round,
 		signedMsgType: signedMsgType,
 		valSet:        valSet,
-		votesBitArray: cmn.NewBitArray(valSet.Size()),
+		votesBitArray: bits.NewBitArray(valSet.Size()),
 		votes:         make([]*Vote, valSet.Size()),
 		sum:           0,
 		maj23:         nil,
@@ -340,7 +340,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) BitArray() *cmn.BitArray {
+func (voteSet *VoteSet) BitArray() *bits.BitArray {
 	if voteSet == nil {
 		return nil
 	}
@@ -349,7 +349,7 @@ func (voteSet *VoteSet) BitArray() *cmn.BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *cmn.BitArray {
+func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 	if voteSet == nil {
 		return nil
 	}
@@ -580,16 +580,16 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	2. A peer claims to have a 2/3 majority w/ blockKey (peerMaj23=true)
 */
 type blockVotes struct {
-	peerMaj23 bool          // peer claims to have maj23
-	bitArray  *cmn.BitArray // valIndex -> hasVote?
-	votes     []*Vote       // valIndex -> *Vote
-	sum       int64         // vote sum
+	peerMaj23 bool           // peer claims to have maj23
+	bitArray  *bits.BitArray // valIndex -> hasVote?
+	votes     []*Vote        // valIndex -> *Vote
+	sum       int64          // vote sum
 }
 
 func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 	return &blockVotes{
 		peerMaj23: peerMaj23,
-		bitArray:  cmn.NewBitArray(numValidators),
+		bitArray:  bits.NewBitArray(numValidators),
 		votes:     make([]*Vote, numValidators),
 		sum:       0,
 	}
@@ -619,7 +619,7 @@ type VoteSetReader interface {
 	GetRound() int
 	Type() byte
 	Size() int
-	BitArray() *cmn.BitArray
+	BitArray() *bits.BitArray
 	GetByIndex(int) *Vote
 	IsCommit() bool
 }

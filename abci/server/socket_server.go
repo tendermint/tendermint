@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -30,7 +30,7 @@ type SocketServer struct {
 }
 
 func NewSocketServer(protoAddr string, app types.Application) service.Service {
-	proto, addr := cmn.ProtocolAndAddress(protoAddr)
+	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
 		proto:    proto,
 		addr:     addr,

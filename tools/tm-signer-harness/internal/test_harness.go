@@ -13,8 +13,9 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -321,10 +322,10 @@ func (th *TestHarness) Shutdown(err error) {
 
 // newTestHarnessListener creates our client instance which we will use for testing.
 func newTestHarnessListener(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerListenerEndpoint, error) {
-	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
+	proto, addr := tmnet.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it
-		if cmn.FileExists(addr) {
+		if tmos.FileExists(addr) {
 			if err := os.Remove(addr); err != nil {
 				logger.Error("Failed to remove existing Unix domain socket", "addr", addr)
 				return nil, err

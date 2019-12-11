@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 
@@ -111,7 +111,7 @@ type peer struct {
 	channels []byte
 
 	// User data
-	Data *cmn.CMap
+	Data *cmap.CMap
 
 	metrics       *Metrics
 	metricsTicker *time.Ticker
@@ -132,7 +132,7 @@ func newPeer(
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
 		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
-		Data:          cmn.NewCMap(),
+		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}

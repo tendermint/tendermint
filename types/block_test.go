@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/bits"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -220,7 +221,7 @@ func TestCommit(t *testing.T) {
 	}
 
 	require.NotNil(t, commit.BitArray())
-	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
+	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
 
 	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
 	assert.True(t, commit.IsCommit())

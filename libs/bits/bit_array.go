@@ -1,4 +1,4 @@
-package common
+package bits
 
 import (
 	"encoding/binary"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -121,8 +122,8 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 	}
 	bA.mtx.Lock()
 	o.mtx.Lock()
-	c := bA.copyBits(MaxInt(bA.Bits, o.Bits))
-	smaller := MinInt(len(bA.Elems), len(o.Elems))
+	c := bA.copyBits(tmmath.MaxInt(bA.Bits, o.Bits))
+	smaller := tmmath.MinInt(len(bA.Elems), len(o.Elems))
 	for i := 0; i < smaller; i++ {
 		c.Elems[i] |= o.Elems[i]
 	}
@@ -148,7 +149,7 @@ func (bA *BitArray) And(o *BitArray) *BitArray {
 }
 
 func (bA *BitArray) and(o *BitArray) *BitArray {
-	c := bA.copyBits(MinInt(bA.Bits, o.Bits))
+	c := bA.copyBits(tmmath.MinInt(bA.Bits, o.Bits))
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] &= o.Elems[i]
 	}
@@ -190,7 +191,7 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	// If o is longer, those bits are ignored.
 	// If bA is longer, then skipping those iterations is equivalent
 	// to right padding with 0's
-	smaller := MinInt(len(bA.Elems), len(o.Elems))
+	smaller := tmmath.MinInt(len(bA.Elems), len(o.Elems))
 	for i := 0; i < smaller; i++ {
 		// &^ is and not in golang
 		c.Elems[i] &^= o.Elems[i]

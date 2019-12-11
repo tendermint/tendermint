@@ -20,6 +20,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/bits"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -711,11 +712,11 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"blockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = bits.NewBitArray(0) },
 			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(types.MaxBlockPartsCount + 1) },
 			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
@@ -729,7 +730,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 				BlockPartsHeader: types.PartSetHeader{
 					Total: 1,
 				},
-				BlockParts: cmn.NewBitArray(1),
+				BlockParts: bits.NewBitArray(1),
 			}
 
 			tc.malleateFn(msg)
@@ -749,8 +750,8 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) {}, ""},
 		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "empty ProposalPOL bit array"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"ProposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
@@ -760,7 +761,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 			msg := &ProposalPOLMessage{
 				Height:           1,
 				ProposalPOLRound: 1,
-				ProposalPOL:      cmn.NewBitArray(1),
+				ProposalPOL:      bits.NewBitArray(1),
 			}
 
 			tc.malleateFn(msg)
@@ -905,7 +906,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 				},
 			}
 		}, "wrong BlockID: wrong PartsHeader: negative Total"},
-		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}
 
@@ -916,7 +917,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 				Height:  1,
 				Round:   0,
 				Type:    0x01,
-				Votes:   cmn.NewBitArray(1),
+				Votes:   bits.NewBitArray(1),
 				BlockID: types.BlockID{},
 			}
 

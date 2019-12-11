@@ -3,9 +3,9 @@ package core
 import (
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -54,11 +54,11 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 	}
 
 	// limit max to the height
-	max = cmn.MinInt64(height, max)
+	max = tmmath.MinInt64(height, max)
 
 	// limit min to within `limit` of max
 	// so the total number of blocks returned will be `limit`
-	min = cmn.MaxInt64(min, max-limit+1)
+	min = tmmath.MaxInt64(min, max-limit+1)
 
 	if min > max {
 		return min, max, fmt.Errorf("min height %d can't be greater than max height %d", min, max)

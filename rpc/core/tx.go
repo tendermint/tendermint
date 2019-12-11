@@ -3,7 +3,7 @@ package core
 import (
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -78,7 +78,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 	}
 	skipCount := validateSkipCount(page, perPage)
 
-	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))
+	apiResults := make([]*ctypes.ResultTx, tmmath.MinInt(perPage, totalCount-skipCount))
 	var proof types.TxProof
 	// if there's no tx in the results array, we don't need to loop through the apiResults array
 	for i := 0; i < len(apiResults); i++ {

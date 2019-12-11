@@ -9,9 +9,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
 const (
@@ -749,7 +748,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
 func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
-	height int64, commit *Commit, trustLevel cmn.Fraction) error {
+	height int64, commit *Commit, trustLevel tmmath.Fraction) error {
 
 	if trustLevel.Numerator*3 < trustLevel.Denominator || // < 1/3
 		trustLevel.Numerator > trustLevel.Denominator { // > 1

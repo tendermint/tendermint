@@ -12,6 +12,9 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/bits"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
 )
@@ -560,7 +563,7 @@ type Commit struct {
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
 	hash     cmn.HexBytes
-	bitArray *cmn.BitArray
+	bitArray *bits.BitArray
 }
 
 // NewCommit returns a new Commit.
@@ -644,9 +647,9 @@ func (commit *Commit) Size() int {
 
 // BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
 // Implements VoteSetReader.
-func (commit *Commit) BitArray() *cmn.BitArray {
+func (commit *Commit) BitArray() *bits.BitArray {
 	if commit.bitArray == nil {
-		commit.bitArray = cmn.NewBitArray(len(commit.Signatures))
+		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
@@ -828,7 +831,7 @@ func (data *Data) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Data"
 	}
-	txStrings := make([]string, cmn.MinInt(len(data.Txs), 21))
+	txStrings := make([]string, tmmath.MinInt(len(data.Txs), 21))
 	for i, tx := range data.Txs {
 		if i == 20 {
 			txStrings[i] = fmt.Sprintf("... (%v total)", len(data.Txs))
@@ -866,7 +869,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Evidence"
 	}
-	evStrings := make([]string, cmn.MinInt(len(data.Evidence), 21))
+	evStrings := make([]string, tmmath.MinInt(len(data.Evidence), 21))
 	for i, ev := range data.Evidence {
 		if i == 20 {
 			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidence))
