@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
@@ -262,5 +262,5 @@ func moniker(i int) string {
 }
 
 func randomMoniker() string {
-	return cmn.HexBytes(rand.RandBytes(8)).String()
+	return bytes.HexBytes(rand.RandBytes(8)).String()
 }

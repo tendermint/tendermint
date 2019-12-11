@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
 )
@@ -82,9 +83,9 @@ type DefaultNodeInfo struct {
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network  string       `json:"network"`  // network/chain ID
-	Version  string       `json:"version"`  // major.minor.revision
-	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
+	Network  string         `json:"network"`  // network/chain ID
+	Version  string         `json:"version"`  // major.minor.revision
+	Channels bytes.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string               `json:"moniker"` // arbitrary moniker

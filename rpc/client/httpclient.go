@@ -11,7 +11,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -172,13 +172,13 @@ func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return result, nil
 }
 
-func (c *baseRPCClient) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
 func (c *baseRPCClient) ABCIQueryWithOptions(
 	path string,
-	data cmn.HexBytes,
+	data bytes.HexBytes,
 	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.caller.Call("abci_query",

@@ -74,6 +74,9 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#4232 Move `Service` & `BaseService` from `libs/common` to `libs/service`
   - [libs/common] \#4232 Move `common/nil.go` to `types/utils.go` & make the functions private
   - [libs/common] \#4231 Move random functions from `libs/common` into pkg `rand`
+  - [libs/common] \#4237 Move byte functions from `libs/common` into pkg `bytes`
+  - [libs/common] \#4237 Move throttletimer functions from `libs/common` into pkg `timer`
+  - [libs/common] \#4237 Move tempfile functions from `libs/common` into pkg `tempfile`
 
 
 - Blockchain Protocol

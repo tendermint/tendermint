@@ -20,6 +20,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/bytes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -850,10 +851,10 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
-		Hash: cmn.HexBytes{},
+		Hash: bytes.HexBytes{},
 		PartsHeader: types.PartSetHeader{
 			Total: -1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
@@ -898,10 +899,10 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
-				Hash: cmn.HexBytes{},
+				Hash: bytes.HexBytes{},
 				PartsHeader: types.PartSetHeader{
 					Total: -1,
-					Hash:  cmn.HexBytes{},
+					Hash:  bytes.HexBytes{},
 				},
 			}
 		}, "wrong BlockID: wrong PartsHeader: negative Total"},
