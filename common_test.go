@@ -17,7 +17,8 @@ import (
 // Helper functions.
 
 func checkValue(t *testing.T, db DB, key []byte, valueWanted []byte) {
-	valueGot := db.Get(key)
+	valueGot, err := db.Get(key)
+	assert.NoError(t, err)
 	assert.Equal(t, valueWanted, valueGot)
 }
 
@@ -27,13 +28,14 @@ func checkValid(t *testing.T, itr Iterator, expected bool) {
 }
 
 func checkNext(t *testing.T, itr Iterator, expected bool) {
-	itr.Next()
+	itr.Next() // nolint:errcheck
+	// assert.NoError(t, err) TODO: look at fixing this
 	valid := itr.Valid()
 	require.Equal(t, expected, valid)
 }
 
-func checkNextPanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Next() }, "checkNextPanics expected panic but didn't")
+func checkNextErrors(t *testing.T, itr Iterator) {
+	assert.Error(t, itr.Next(), "checkNextErrors expected an error but didn't")
 }
 
 func checkDomain(t *testing.T, itr Iterator, start, end []byte) {
@@ -43,24 +45,33 @@ func checkDomain(t *testing.T, itr Iterator, start, end []byte) {
 }
 
 func checkItem(t *testing.T, itr Iterator, key []byte, value []byte) {
-	k, v := itr.Key(), itr.Value()
+	v, err := itr.Value()
+	assert.NoError(t, err)
+
+	k, err := itr.Key()
+	assert.NoError(t, err)
+
 	assert.Exactly(t, key, k)
 	assert.Exactly(t, value, v)
 }
 
 func checkInvalid(t *testing.T, itr Iterator) {
 	checkValid(t, itr, false)
-	checkKeyPanics(t, itr)
-	checkValuePanics(t, itr)
-	checkNextPanics(t, itr)
+	checkKeyErrors(t, itr)
+	checkValueErrors(t, itr)
+	checkNextErrors(t, itr)
 }
 
-func checkKeyPanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Key() }, "checkKeyPanics expected panic but didn't")
+func checkKeyErrors(t *testing.T, itr Iterator) {
+	key, err := itr.Key()
+	assert.Empty(t, key)
+	assert.Error(t, err, "checkKeyErrors expected an error but didn't")
 }
 
-func checkValuePanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Value() }, "checkValuePanics expected panic but didn't")
+func checkValueErrors(t *testing.T, itr Iterator) {
+	value, err := itr.Value()
+	assert.Empty(t, value)
+	assert.Error(t, err, "checkValueErrors expected an error but didn't")
 }
 
 func newTempDB(t *testing.T, backend BackendType) (db DB, dbDir string) {
@@ -131,14 +142,14 @@ func (mdb *mockDB) DeleteNoLockSync([]byte) {
 	mdb.calls["DeleteNoLockSync"]++
 }
 
-func (mdb *mockDB) Iterator(start, end []byte) Iterator {
+func (mdb *mockDB) Iterator(start, end []byte) (Iterator, error) {
 	mdb.calls["Iterator"]++
-	return &mockIterator{}
+	return &mockIterator{}, nil
 }
 
-func (mdb *mockDB) ReverseIterator(start, end []byte) Iterator {
+func (mdb *mockDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	mdb.calls["ReverseIterator"]++
-	return &mockIterator{}
+	return &mockIterator{}, nil
 }
 
 func (mdb *mockDB) Close() {
@@ -150,9 +161,10 @@ func (mdb *mockDB) NewBatch() Batch {
 	return &memBatch{db: mdb}
 }
 
-func (mdb *mockDB) Print() {
+func (mdb *mockDB) Print() error {
 	mdb.calls["Print"]++
 	fmt.Printf("mockDB{%v}", mdb.Stats())
+	return nil
 }
 
 func (mdb *mockDB) Stats() map[string]string {
@@ -178,15 +190,16 @@ func (mockIterator) Valid() bool {
 	return false
 }
 
-func (mockIterator) Next() {
-}
-
-func (mockIterator) Key() []byte {
+func (mockIterator) Next() error {
 	return nil
 }
 
-func (mockIterator) Value() []byte {
-	return nil
+func (mockIterator) Key() ([]byte, error) {
+	return nil, nil
+}
+
+func (mockIterator) Value() ([]byte, error) {
+	return nil, nil
 }
 
 func (mockIterator) Close() {
@@ -214,7 +227,8 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 			idxBytes := int642Bytes(idx)
 			valBytes := int642Bytes(val)
 			//fmt.Printf("Set %X -> %X\n", idxBytes, valBytes)
-			db.Set(idxBytes, valBytes)
+			err := db.Set(idxBytes, valBytes)
+			b.Error(err)
 		}
 
 		// Read something
@@ -222,7 +236,8 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
 			valExp := internal[idx]
 			idxBytes := int642Bytes(idx)
-			valBytes := db.Get(idxBytes)
+			valBytes, err := db.Get(idxBytes)
+			b.Error(err)
 			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if valExp == 0 {
 				if !bytes.Equal(valBytes, nil) {

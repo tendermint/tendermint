@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 // IteratePrefix is a convenience function for iterating over a key domain
 // restricted by prefix.
-func IteratePrefix(db DB, prefix []byte) Iterator {
+func IteratePrefix(db DB, prefix []byte) (Iterator, error) {
 	var start, end []byte
 	if len(prefix) == 0 {
 		start = nil
@@ -17,7 +19,11 @@ func IteratePrefix(db DB, prefix []byte) Iterator {
 		start = cp(prefix)
 		end = cpIncr(prefix)
 	}
-	return db.Iterator(start, end)
+	itr, err := db.Iterator(start, end)
+	if err != nil {
+		return nil, err
+	}
+	return itr, nil
 }
 
 /*
@@ -52,58 +58,69 @@ func (pdb *PrefixDB) Mutex() *sync.Mutex {
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Get(key []byte) []byte {
+func (pdb *PrefixDB) Get(key []byte) ([]byte, error) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
 	pkey := pdb.prefixed(key)
-	value := pdb.db.Get(pkey)
-	return value
+	value, err := pdb.db.Get(pkey)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Has(key []byte) bool {
+func (pdb *PrefixDB) Has(key []byte) (bool, error) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
-	return pdb.db.Has(pdb.prefixed(key))
+	ok, err := pdb.db.Has(pdb.prefixed(key))
+	if err != nil {
+		return ok, err
+	}
+
+	return ok, nil
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Set(key []byte, value []byte) {
+func (pdb *PrefixDB) Set(key []byte, value []byte) error {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
 	pkey := pdb.prefixed(key)
-	pdb.db.Set(pkey, value)
+	if err := pdb.db.Set(pkey, value); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Implements DB.
-func (pdb *PrefixDB) SetSync(key []byte, value []byte) {
+func (pdb *PrefixDB) SetSync(key []byte, value []byte) error {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
-	pdb.db.SetSync(pdb.prefixed(key), value)
+	return pdb.db.SetSync(pdb.prefixed(key), value)
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Delete(key []byte) {
+func (pdb *PrefixDB) Delete(key []byte) error {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
-	pdb.db.Delete(pdb.prefixed(key))
+	return pdb.db.Delete(pdb.prefixed(key))
 }
 
 // Implements DB.
-func (pdb *PrefixDB) DeleteSync(key []byte) {
+func (pdb *PrefixDB) DeleteSync(key []byte) error {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
-	pdb.db.DeleteSync(pdb.prefixed(key))
+	return pdb.db.DeleteSync(pdb.prefixed(key))
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Iterator(start, end []byte) Iterator {
+func (pdb *PrefixDB) Iterator(start, end []byte) (Iterator, error) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -113,20 +130,21 @@ func (pdb *PrefixDB) Iterator(start, end []byte) Iterator {
 		pend = cpIncr(pdb.prefix)
 	} else {
 		pend = append(cp(pdb.prefix), end...)
+	}
+	itr, err := pdb.db.Iterator(pstart, pend)
+	if err != nil {
+		return nil, err
 	}
 	return newPrefixIterator(
 		pdb.prefix,
 		start,
 		end,
-		pdb.db.Iterator(
-			pstart,
-			pend,
-		),
-	)
+		itr,
+	), nil
 }
 
 // Implements DB.
-func (pdb *PrefixDB) ReverseIterator(start, end []byte) Iterator {
+func (pdb *PrefixDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -137,13 +155,16 @@ func (pdb *PrefixDB) ReverseIterator(start, end []byte) Iterator {
 	} else {
 		pend = append(cp(pdb.prefix), end...)
 	}
-	ritr := pdb.db.ReverseIterator(pstart, pend)
+	ritr, err := pdb.db.ReverseIterator(pstart, pend)
+	if err != nil {
+		return nil, err
+	}
 	return newPrefixIterator(
 		pdb.prefix,
 		start,
 		end,
 		ritr,
-	)
+	), nil
 }
 
 // Implements DB.
@@ -179,24 +200,37 @@ func (pdb *PrefixDB) DeleteNoLockSync(key []byte) {
 */
 
 // Implements DB.
-func (pdb *PrefixDB) Close() {
+func (pdb *PrefixDB) Close() error {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
-	pdb.db.Close()
+	return pdb.db.Close()
 }
 
 // Implements DB.
-func (pdb *PrefixDB) Print() {
+func (pdb *PrefixDB) Print() error {
 	fmt.Printf("prefix: %X\n", pdb.prefix)
 
-	itr := pdb.Iterator(nil, nil)
+	itr, err := pdb.Iterator(nil, nil)
+	if err != nil {
+		return err
+	}
 	defer itr.Close()
-	for ; itr.Valid(); itr.Next() {
-		key := itr.Key()
-		value := itr.Value()
+	for ; itr.Valid(); err = itr.Next() {
+		if err != nil {
+			return errors.Wrap(err, "next")
+		}
+		key, err := itr.Key()
+		if err != nil {
+			return errors.Wrap(err, "key")
+		}
+		value, err := itr.Value()
+		if err != nil {
+			return errors.Wrap(err, "value")
+		}
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
+	return nil
 }
 
 // Implements DB.
@@ -240,12 +274,12 @@ func (pb prefixBatch) Delete(key []byte) {
 	pb.source.Delete(pkey)
 }
 
-func (pb prefixBatch) Write() {
-	pb.source.Write()
+func (pb prefixBatch) Write() error {
+	return pb.source.Write()
 }
 
-func (pb prefixBatch) WriteSync() {
-	pb.source.WriteSync()
+func (pb prefixBatch) WriteSync() error {
+	return pb.source.WriteSync()
 }
 
 func (pb prefixBatch) Close() {
@@ -267,7 +301,11 @@ type prefixIterator struct {
 }
 
 func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterator {
-	if !source.Valid() || !bytes.HasPrefix(source.Key(), prefix) {
+	// Ignoring the error here as the iterator is invalid
+	// but this is being conveyed in the below if statement
+	key, _ := source.Key() //nolint:errcheck
+
+	if !source.Valid() || !bytes.HasPrefix(key, prefix) {
 		return &prefixIterator{
 			prefix: prefix,
 			start:  start,
@@ -293,29 +331,45 @@ func (itr *prefixIterator) Valid() bool {
 	return itr.valid && itr.source.Valid()
 }
 
-func (itr *prefixIterator) Next() {
+func (itr *prefixIterator) Next() error {
 	if !itr.valid {
-		panic("prefixIterator invalid, cannot call Next()")
+		return errors.New("prefixIterator invalid; cannot call Next()")
 	}
-	itr.source.Next()
-	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
+	err := itr.source.Next()
+	if err != nil {
+		return err
+	}
+	key, err := itr.source.Key()
+	if err != nil {
+		return err
+	}
+	if !itr.source.Valid() || !bytes.HasPrefix(key, itr.prefix) {
 		itr.valid = false
-		return
+		return nil
 	}
+	return nil
 }
 
-func (itr *prefixIterator) Key() (key []byte) {
+func (itr *prefixIterator) Key() (key []byte, err error) {
 	if !itr.valid {
-		panic("prefixIterator invalid, cannot call Key()")
+		return nil, errors.New("prefixIterator invalid; cannot call Key()")
 	}
-	return stripPrefix(itr.source.Key(), itr.prefix)
+	key, err = itr.source.Key()
+	if err != nil {
+		return nil, err
+	}
+	return stripPrefix(key, itr.prefix), nil
 }
 
-func (itr *prefixIterator) Value() (value []byte) {
+func (itr *prefixIterator) Value() (value []byte, err error) {
 	if !itr.valid {
-		panic("prefixIterator invalid, cannot call Value()")
+		return nil, errors.New("prefixIterator invalid; cannot call Value()")
 	}
-	return itr.source.Value()
+	value, err = itr.source.Value()
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 func (itr *prefixIterator) Close() {
@@ -329,7 +383,7 @@ func stripPrefix(key []byte, prefix []byte) (stripped []byte) {
 		panic("should not happen")
 	}
 	if !bytes.Equal(key[:len(prefix)], prefix) {
-		panic("should not happne")
+		panic("should not happn")
 	}
 	return key[len(prefix):]
 }

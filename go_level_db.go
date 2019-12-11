@@ -41,59 +41,64 @@ func NewGoLevelDBWithOpts(name string, dir string, o *opt.Options) (*GoLevelDB, 
 }
 
 // Implements DB.
-func (db *GoLevelDB) Get(key []byte) []byte {
+func (db *GoLevelDB) Get(key []byte) ([]byte, error) {
 	key = nonNilBytes(key)
 	res, err := db.db.Get(key, nil)
 	if err != nil {
 		if err == errors.ErrNotFound {
-			return nil
+			return nil, nil
 		}
-		panic(err)
+		return nil, err
 	}
-	return res
+	return res, nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) Has(key []byte) bool {
-	return db.Get(key) != nil
+func (db *GoLevelDB) Has(key []byte) (bool, error) {
+	bytes, err := db.Get(key)
+	if err != nil {
+		return false, err
+	}
+	return bytes != nil, nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) Set(key []byte, value []byte) {
+func (db *GoLevelDB) Set(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
-	err := db.db.Put(key, value, nil)
-	if err != nil {
-		panic(err)
+	if err := db.db.Put(key, value, nil); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) SetSync(key []byte, value []byte) {
+func (db *GoLevelDB) SetSync(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
-	err := db.db.Put(key, value, &opt.WriteOptions{Sync: true})
-	if err != nil {
-		panic(err)
+	if err := db.db.Put(key, value, &opt.WriteOptions{Sync: true}); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) Delete(key []byte) {
+func (db *GoLevelDB) Delete(key []byte) error {
 	key = nonNilBytes(key)
-	err := db.db.Delete(key, nil)
-	if err != nil {
-		panic(err)
+	if err := db.db.Delete(key, nil); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) DeleteSync(key []byte) {
+func (db *GoLevelDB) DeleteSync(key []byte) error {
 	key = nonNilBytes(key)
 	err := db.db.Delete(key, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func (db *GoLevelDB) DB() *leveldb.DB {
@@ -101,13 +106,19 @@ func (db *GoLevelDB) DB() *leveldb.DB {
 }
 
 // Implements DB.
-func (db *GoLevelDB) Close() {
-	db.db.Close()
+func (db *GoLevelDB) Close() error {
+	if err := db.db.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) Print() {
-	str, _ := db.db.GetProperty("leveldb.stats")
+func (db *GoLevelDB) Print() error {
+	str, err := db.db.GetProperty("leveldb.stats")
+	if err != nil {
+		return err
+	}
 	fmt.Printf("%v\n", str)
 
 	itr := db.db.NewIterator(nil, nil)
@@ -116,6 +127,7 @@ func (db *GoLevelDB) Print() {
 		value := itr.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
+	return nil
 }
 
 // Implements DB.
@@ -166,19 +178,21 @@ func (mBatch *goLevelDBBatch) Delete(key []byte) {
 }
 
 // Implements Batch.
-func (mBatch *goLevelDBBatch) Write() {
+func (mBatch *goLevelDBBatch) Write() error {
 	err := mBatch.db.db.Write(mBatch.batch, &opt.WriteOptions{Sync: false})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // Implements Batch.
-func (mBatch *goLevelDBBatch) WriteSync() {
+func (mBatch *goLevelDBBatch) WriteSync() error {
 	err := mBatch.db.db.Write(mBatch.batch, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // Implements Batch.
@@ -191,15 +205,15 @@ func (mBatch *goLevelDBBatch) Close() {}
 // Before creating a third version, refactor.
 
 // Implements DB.
-func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
+func (db *GoLevelDB) Iterator(start, end []byte) (Iterator, error) {
 	itr := db.db.NewIterator(nil, nil)
-	return newGoLevelDBIterator(itr, start, end, false)
+	return newGoLevelDBIterator(itr, start, end, false), nil
 }
 
 // Implements DB.
-func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
+func (db *GoLevelDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	itr := db.db.NewIterator(nil, nil)
-	return newGoLevelDBIterator(itr, start, end, true)
+	return newGoLevelDBIterator(itr, start, end, true), nil
 }
 
 type goLevelDBIterator struct {
@@ -257,7 +271,9 @@ func (itr *goLevelDBIterator) Valid() bool {
 	}
 
 	// Panic on DB error.  No way to recover.
-	itr.assertNoError()
+	if err := itr.assertNoError(); err != nil {
+		panic(err)
+	}
 
 	// If source is invalid, invalid.
 	if !itr.source.Valid() {
@@ -287,32 +303,45 @@ func (itr *goLevelDBIterator) Valid() bool {
 }
 
 // Implements Iterator.
-func (itr *goLevelDBIterator) Key() []byte {
+func (itr *goLevelDBIterator) Key() ([]byte, error) {
 	// Key returns a copy of the current key.
 	// See https://github.com/syndtr/goleveldb/blob/52c212e6c196a1404ea59592d3f1c227c9f034b2/leveldb/iterator/iter.go#L88
-	itr.assertNoError()
-	itr.assertIsValid()
-	return cp(itr.source.Key())
+	if err := itr.assertNoError(); err != nil {
+		return nil, err
+	}
+	if err := itr.assertIsValid(); err != nil {
+		return nil, err
+	}
+	return cp(itr.source.Key()), nil
 }
 
 // Implements Iterator.
-func (itr *goLevelDBIterator) Value() []byte {
+func (itr *goLevelDBIterator) Value() ([]byte, error) {
 	// Value returns a copy of the current value.
 	// See https://github.com/syndtr/goleveldb/blob/52c212e6c196a1404ea59592d3f1c227c9f034b2/leveldb/iterator/iter.go#L88
-	itr.assertNoError()
-	itr.assertIsValid()
-	return cp(itr.source.Value())
+	if err := itr.assertNoError(); err != nil {
+		return nil, err
+	}
+	if err := itr.assertIsValid(); err != nil {
+		return nil, err
+	}
+	return cp(itr.source.Value()), nil
 }
 
 // Implements Iterator.
-func (itr *goLevelDBIterator) Next() {
-	itr.assertNoError()
-	itr.assertIsValid()
+func (itr *goLevelDBIterator) Next() error {
+	if err := itr.assertNoError(); err != nil {
+		return err
+	}
+	if err := itr.assertIsValid(); err != nil {
+		return err
+	}
 	if itr.isReverse {
 		itr.source.Prev()
 	} else {
 		itr.source.Next()
 	}
+	return nil
 }
 
 // Implements Iterator.
@@ -320,14 +349,16 @@ func (itr *goLevelDBIterator) Close() {
 	itr.source.Release()
 }
 
-func (itr *goLevelDBIterator) assertNoError() {
+func (itr *goLevelDBIterator) assertNoError() error {
 	if err := itr.source.Error(); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (itr goLevelDBIterator) assertIsValid() {
+func (itr goLevelDBIterator) assertIsValid() error {
 	if !itr.Valid() {
-		panic("goLevelDBIterator is invalid")
+		return errors.New("goLevelDBIterator is invalid")
 	}
+	return nil
 }

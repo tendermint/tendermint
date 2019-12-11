@@ -13,6 +13,7 @@ test:
 lint:
 	@echo "--> Running linter"
 	@golangci-lint run
+	@go mod verify
 
 tools:
 	go get -v $(GOTOOLS)

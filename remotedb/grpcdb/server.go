@@ -57,7 +57,7 @@ var _ protodb.DBServer = (*server)(nil)
 //  * cleveldb (if built with gcc enabled)
 //  * fsdb
 //  * memdB
-//  * leveldb
+//  * goleveldb
 // See https://godoc.org/github.com/tendermint/tendermint/libs/db#BackendType
 func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, error) {
 	s.mu.Lock()
@@ -68,19 +68,28 @@ func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, e
 }
 
 func (s *server) Delete(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
-	s.db.Delete(in.Key)
+	err := s.db.Delete(in.Key)
+	if err != nil {
+		return nil, err
+	}
 	return nothing, nil
 }
 
 var nothing = new(protodb.Nothing)
 
 func (s *server) DeleteSync(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
-	s.db.DeleteSync(in.Key)
+	err := s.db.DeleteSync(in.Key)
+	if err != nil {
+		return nil, err
+	}
 	return nothing, nil
 }
 
 func (s *server) Get(ctx context.Context, in *protodb.Entity) (*protodb.Entity, error) {
-	value := s.db.Get(in.Key)
+	value, err := s.db.Get(in.Key)
+	if err != nil {
+		return nil, err
+	}
 	return &protodb.Entity{Value: value}, nil
 }
 
@@ -122,22 +131,34 @@ func (s *server) GetStream(ds protodb.DB_GetStreamServer) error {
 }
 
 func (s *server) Has(ctx context.Context, in *protodb.Entity) (*protodb.Entity, error) {
-	exists := s.db.Has(in.Key)
+	exists, err := s.db.Has(in.Key)
+	if err != nil {
+		return nil, err
+	}
 	return &protodb.Entity{Exists: exists}, nil
 }
 
 func (s *server) Set(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
-	s.db.Set(in.Key, in.Value)
+	err := s.db.Set(in.Key, in.Value)
+	if err != nil {
+		return nil, err
+	}
 	return nothing, nil
 }
 
 func (s *server) SetSync(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
-	s.db.SetSync(in.Key, in.Value)
+	err := s.db.SetSync(in.Key, in.Value)
+	if err != nil {
+		return nil, err
+	}
 	return nothing, nil
 }
 
 func (s *server) Iterator(query *protodb.Entity, dis protodb.DB_IteratorServer) error {
-	it := s.db.Iterator(query.Start, query.End)
+	it, err := s.db.Iterator(query.Start, query.End)
+	if err != nil {
+		return err
+	}
 	defer it.Close()
 	return s.handleIterator(it, dis.Send)
 }
@@ -145,24 +166,38 @@ func (s *server) Iterator(query *protodb.Entity, dis protodb.DB_IteratorServer) 
 func (s *server) handleIterator(it db.Iterator, sendFunc func(*protodb.Iterator) error) error {
 	for it.Valid() {
 		start, end := it.Domain()
+		key, err := it.Key()
+		if err != nil {
+			return err
+		}
+		value, err := it.Value()
+		if err != nil {
+			return err
+		}
 		out := &protodb.Iterator{
 			Domain: &protodb.Domain{Start: start, End: end},
 			Valid:  it.Valid(),
-			Key:    it.Key(),
-			Value:  it.Value(),
+			Key:    key,
+			Value:  value,
 		}
 		if err := sendFunc(out); err != nil {
 			return err
 		}
 
 		// Finally move the iterator forward
-		it.Next()
+		if err = it.Next(); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (s *server) ReverseIterator(query *protodb.Entity, dis protodb.DB_ReverseIteratorServer) error {
-	it := s.db.ReverseIterator(query.Start, query.End)
+	it, err := s.db.ReverseIterator(query.Start, query.End)
+	if err != nil {
+		return err
+	}
 	defer it.Close()
 	return s.handleIterator(it, dis.Send)
 }
@@ -192,9 +227,15 @@ func (s *server) batchWrite(c context.Context, b *protodb.Batch, sync bool) (*pr
 		}
 	}
 	if sync {
-		bat.WriteSync()
+		err := bat.WriteSync()
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		bat.Write()
+		err := bat.Write()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return nothing, nil
 }

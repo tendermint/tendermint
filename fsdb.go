@@ -43,7 +43,7 @@ func NewFSDB(dir string) *FSDB {
 	return database
 }
 
-func (db *FSDB) Get(key []byte) []byte {
+func (db *FSDB) Get(key []byte) ([]byte, error) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 	key = escapeKey(key)
@@ -51,82 +51,97 @@ func (db *FSDB) Get(key []byte) []byte {
 	path := db.nameToPath(key)
 	value, err := read(path)
 	if os.IsNotExist(err) {
-		return nil
+		return nil, nil
 	} else if err != nil {
-		panic(errors.Wrapf(err, "Getting key %s (0x%X)", string(key), key))
+		return nil, errors.Wrapf(err, "getting key %s (0x%X)", string(key), key)
 	}
-	return value
+	return value, nil
 }
 
-func (db *FSDB) Has(key []byte) bool {
+func (db *FSDB) Has(key []byte) (bool, error) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 	key = escapeKey(key)
 
 	path := db.nameToPath(key)
-	return FileExists(path)
+	return FileExists(path), nil
 }
 
-func (db *FSDB) Set(key []byte, value []byte) {
+func (db *FSDB) Set(key []byte, value []byte) error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	db.SetNoLock(key, value)
+	if err := db.SetNoLock(key, value); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *FSDB) SetSync(key []byte, value []byte) {
+func (db *FSDB) SetSync(key []byte, value []byte) error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	db.SetNoLock(key, value)
+	if err := db.SetNoLock(key, value); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NOTE: Implements atomicSetDeleter.
-func (db *FSDB) SetNoLock(key []byte, value []byte) {
+func (db *FSDB) SetNoLock(key []byte, value []byte) error {
 	key = escapeKey(key)
 	value = nonNilBytes(value)
 	path := db.nameToPath(key)
 	err := write(path, value)
 	if err != nil {
-		panic(errors.Wrapf(err, "Setting key %s (0x%X)", string(key), key))
+		return errors.Wrapf(err, "setting key %s (0x%X)", string(key), key)
 	}
+	return nil
 }
 
-func (db *FSDB) Delete(key []byte) {
+func (db *FSDB) Delete(key []byte) error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	db.DeleteNoLock(key)
+	if err := db.DeleteNoLock(key); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *FSDB) DeleteSync(key []byte) {
+func (db *FSDB) DeleteSync(key []byte) error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	db.DeleteNoLock(key)
+	if err := db.DeleteNoLock(key); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NOTE: Implements atomicSetDeleter.
-func (db *FSDB) DeleteNoLock(key []byte) {
+func (db *FSDB) DeleteNoLock(key []byte) error {
 	key = escapeKey(key)
 	path := db.nameToPath(key)
 	err := remove(path)
 	if os.IsNotExist(err) {
-		return
+		return nil
 	} else if err != nil {
-		panic(errors.Wrapf(err, "Removing key %s (0x%X)", string(key), key))
+		return errors.Wrapf(err, "removing key %s (0x%X)", string(key), key)
 	}
+	return nil
 }
 
-func (db *FSDB) Close() {
+func (db *FSDB) Close() error {
 	// Nothing to do.
+	return nil
 }
 
-func (db *FSDB) Print() {
+func (db *FSDB) Print() error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	panic("FSDB.Print not yet implemented")
+	return errors.New("fsdb.Print not yet implemented")
 }
 
 func (db *FSDB) Stats() map[string]string {
@@ -149,8 +164,8 @@ func (db *FSDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
-func (db *FSDB) Iterator(start, end []byte) Iterator {
-	return db.MakeIterator(start, end, false)
+func (db *FSDB) Iterator(start, end []byte) (Iterator, error) {
+	return db.MakeIterator(start, end, false), nil
 }
 
 func (db *FSDB) MakeIterator(start, end []byte, isReversed bool) Iterator {
@@ -171,8 +186,8 @@ func (db *FSDB) MakeIterator(start, end []byte, isReversed bool) Iterator {
 	return newMemDBIterator(db, keys, start, end)
 }
 
-func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
-	return db.MakeIterator(start, end, true)
+func (db *FSDB) ReverseIterator(start, end []byte) (Iterator, error) {
+	return db.MakeIterator(start, end, true), nil
 }
 
 func (db *FSDB) nameToPath(name []byte) string {

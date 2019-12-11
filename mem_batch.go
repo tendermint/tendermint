@@ -36,12 +36,14 @@ func (mBatch *memBatch) Delete(key []byte) {
 	mBatch.ops = append(mBatch.ops, operation{opTypeDelete, key, nil})
 }
 
-func (mBatch *memBatch) Write() {
+func (mBatch *memBatch) Write() error {
 	mBatch.write(false)
+	return nil
 }
 
-func (mBatch *memBatch) WriteSync() {
+func (mBatch *memBatch) WriteSync() error {
 	mBatch.write(true)
+	return nil
 }
 
 func (mBatch *memBatch) Close() {

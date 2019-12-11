@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### BREAKING CHANGES
+
+- [\#30](https://github.com/tendermint/tm-db/pull/30) Interface Breaking, Interfaces return errors instead of panic:
+  - Changes to function signatures:
+    - DB interface:
+      - `Get([]byte) ([]byte, error)`
+      - `Has(key []byte) (bool, error)`
+      - `Set([]byte, []byte) error`
+      - `SetSync([]byte, []byte) error`
+      - `Delete([]byte) error`
+      - `DeleteSync([]byte) error`
+      - `Iterator(start, end []byte) (Iterator, error)`
+      - `ReverseIterator(start, end []byte) (Iterator, error)`
+      - `Close() error`
+      - `Print() error`
+    - Batch interface:
+      - `Write() error`
+      - `WriteSync() error`
+    - Iterator interface:
+      - `Next() error`
+      - `Key() (key []byte, err error)`
+      - `Value() (value []byte, err error)`
+
+
+### IMPROVEMENTS
+
 ## 0.3
 
 **2019-11-18**

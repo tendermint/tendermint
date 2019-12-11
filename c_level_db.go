@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/jmhodges/levigo"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -50,56 +51,60 @@ func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
 }
 
 // Implements DB.
-func (db *CLevelDB) Get(key []byte) []byte {
+func (db *CLevelDB) Get(key []byte) ([]byte, error) {
 	key = nonNilBytes(key)
 	res, err := db.db.Get(db.ro, key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return res
+	return res, nil
 }
 
 // Implements DB.
-func (db *CLevelDB) Has(key []byte) bool {
-	return db.Get(key) != nil
+func (db *CLevelDB) Has(key []byte) (bool, error) {
+	bytes, err := db.Get(key)
+	if err != nil {
+		return false, err
+	}
+	return bytes != nil, nil
 }
 
 // Implements DB.
-func (db *CLevelDB) Set(key []byte, value []byte) {
+func (db *CLevelDB) Set(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
-	err := db.db.Put(db.wo, key, value)
-	if err != nil {
-		panic(err)
+	if err := db.db.Put(db.wo, key, value); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *CLevelDB) SetSync(key []byte, value []byte) {
+func (db *CLevelDB) SetSync(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
-	err := db.db.Put(db.woSync, key, value)
-	if err != nil {
-		panic(err)
+	if err := db.db.Put(db.woSync, key, value); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *CLevelDB) Delete(key []byte) {
+func (db *CLevelDB) Delete(key []byte) error {
 	key = nonNilBytes(key)
-	err := db.db.Delete(db.wo, key)
-	if err != nil {
-		panic(err)
+	if err := db.db.Delete(db.wo, key); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements DB.
-func (db *CLevelDB) DeleteSync(key []byte) {
+func (db *CLevelDB) DeleteSync(key []byte) error {
 	key = nonNilBytes(key)
-	err := db.db.Delete(db.woSync, key)
-	if err != nil {
-		panic(err)
+	if err := db.db.Delete(db.woSync, key); err != nil {
+		return err
 	}
+	return nil
 }
 
 func (db *CLevelDB) DB() *levigo.DB {
@@ -107,22 +112,34 @@ func (db *CLevelDB) DB() *levigo.DB {
 }
 
 // Implements DB.
-func (db *CLevelDB) Close() {
+func (db *CLevelDB) Close() error {
 	db.db.Close()
 	db.ro.Close()
 	db.wo.Close()
 	db.woSync.Close()
+	return nil
 }
 
 // Implements DB.
-func (db *CLevelDB) Print() {
+func (db *CLevelDB) Print() error {
 	itr := db.Iterator(nil, nil)
 	defer itr.Close()
-	for ; itr.Valid(); itr.Next() {
-		key := itr.Key()
-		value := itr.Value()
+	var err error
+	for ; itr.Valid(); err = itr.Next() {
+		if err != nil {
+			return errors.Wrap(err, "next")
+		}
+		key, err := itr.Key()
+		if err != nil {
+			return errors.Wrap(err, "key")
+		}
+		value, err := itr.Value()
+		if err != nil {
+			return errors.Wrap(err, "value")
+		}
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
+	return nil
 }
 
 // Implements DB.
@@ -171,19 +188,19 @@ func (mBatch *cLevelDBBatch) Delete(key []byte) {
 }
 
 // Implements Batch.
-func (mBatch *cLevelDBBatch) Write() {
-	err := mBatch.db.db.Write(mBatch.db.wo, mBatch.batch)
-	if err != nil {
-		panic(err)
+func (mBatch *cLevelDBBatch) Write() error {
+	if err := mBatch.db.db.Write(mBatch.db.wo, mBatch.batch); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements Batch.
-func (mBatch *cLevelDBBatch) WriteSync() {
-	err := mBatch.db.db.Write(mBatch.db.woSync, mBatch.batch)
-	if err != nil {
-		panic(err)
+func (mBatch *cLevelDBBatch) WriteSync() error {
+	if err := mBatch.db.db.Write(mBatch.db.woSync, mBatch.batch); err != nil {
+		return err
 	}
+	return nil
 }
 
 // Implements Batch.
@@ -196,14 +213,14 @@ func (mBatch *cLevelDBBatch) Close() {
 // NOTE This is almost identical to db/go_level_db.Iterator
 // Before creating a third version, refactor.
 
-func (db *CLevelDB) Iterator(start, end []byte) Iterator {
+func (db *CLevelDB) Iterator(start, end []byte) (Iterator, error) {
 	itr := db.db.NewIterator(db.ro)
-	return newCLevelDBIterator(itr, start, end, false)
+	return newCLevelDBIterator(itr, start, end, false), nil
 }
 
-func (db *CLevelDB) ReverseIterator(start, end []byte) Iterator {
+func (db *CLevelDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	itr := db.db.NewIterator(db.ro)
-	return newCLevelDBIterator(itr, start, end, true)
+	return newCLevelDBIterator(itr, start, end, true), nil
 }
 
 var _ Iterator = (*cLevelDBIterator)(nil)
@@ -286,40 +303,55 @@ func (itr cLevelDBIterator) Valid() bool {
 	return true
 }
 
-func (itr cLevelDBIterator) Key() []byte {
-	itr.assertNoError()
-	itr.assertIsValid()
-	return itr.source.Key()
+func (itr cLevelDBIterator) Key() ([]byte, error) {
+	if err := itr.assertNoError(); err != nil {
+		return nil, err
+	}
+	if err = itr.assertIsValid(); err != nil {
+		return nil, err
+	}
+	return itr.source.Key(), nil
 }
 
-func (itr cLevelDBIterator) Value() []byte {
-	itr.assertNoError()
-	itr.assertIsValid()
-	return itr.source.Value()
+func (itr cLevelDBIterator) Value() ([]byte, error) {
+	if err := itr.assertNoError(); err != nil {
+		return nil, err
+	}
+	if err = itr.assertIsValid(); err != nil {
+		return nil, err
+	}
+	return itr.source.Value(), nil
 }
 
-func (itr cLevelDBIterator) Next() {
-	itr.assertNoError()
-	itr.assertIsValid()
+func (itr cLevelDBIterator) Next() error {
+	if err := itr.assertNoError(); err != nil {
+		return err
+	}
+	if err = itr.assertIsValid(); err != nil {
+		return err
+	}
 	if itr.isReverse {
 		itr.source.Prev()
 	} else {
 		itr.source.Next()
 	}
+	return nil
 }
 
 func (itr cLevelDBIterator) Close() {
 	itr.source.Close()
 }
 
-func (itr cLevelDBIterator) assertNoError() {
+func (itr cLevelDBIterator) assertNoError() error {
 	if err := itr.source.GetError(); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (itr cLevelDBIterator) assertIsValid() {
+func (itr cLevelDBIterator) assertIsValid() error {
 	if !itr.Valid() {
-		panic("cLevelDBIterator is invalid")
+		return errors.New("cLevelDBIterator is invalid")
 	}
+	return nil
 }

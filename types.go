@@ -3,27 +3,27 @@ package db
 // DBs are goroutine safe.
 type DB interface {
 
-	// Get returns nil iff key doesn't exist.
+	// Get returns nil if key doesn't exist.
 	// A nil key is interpreted as an empty byteslice.
 	// CONTRACT: key, value readonly []byte
-	Get([]byte) []byte
+	Get([]byte) ([]byte, error)
 
 	// Has checks if a key exists.
 	// A nil key is interpreted as an empty byteslice.
 	// CONTRACT: key, value readonly []byte
-	Has(key []byte) bool
+	Has(key []byte) (bool, error)
 
 	// Set sets the key.
 	// A nil key is interpreted as an empty byteslice.
 	// CONTRACT: key, value readonly []byte
-	Set([]byte, []byte)
-	SetSync([]byte, []byte)
+	Set([]byte, []byte) error
+	SetSync([]byte, []byte) error
 
 	// Delete deletes the key.
 	// A nil key is interpreted as an empty byteslice.
 	// CONTRACT: key readonly []byte
-	Delete([]byte)
-	DeleteSync([]byte)
+	Delete([]byte) error
+	DeleteSync([]byte) error
 
 	// Iterate over a domain of keys in ascending order. End is exclusive.
 	// Start must be less than end, or the Iterator is invalid.
@@ -31,7 +31,7 @@ type DB interface {
 	// If end is nil, iterates up to the last item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
-	Iterator(start, end []byte) Iterator
+	Iterator(start, end []byte) (Iterator, error)
 
 	// Iterate over a domain of keys in descending order. End is exclusive.
 	// Start must be less than end, or the Iterator is invalid.
@@ -39,16 +39,16 @@ type DB interface {
 	// If end is nil, iterates from the last/greatest item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
-	ReverseIterator(start, end []byte) Iterator
+	ReverseIterator(start, end []byte) (Iterator, error)
 
 	// Closes the connection.
-	Close()
+	Close() error
 
 	// Creates a batch for atomic updates.
 	NewBatch() Batch
 
 	// For debugging
-	Print()
+	Print() error
 
 	// Stats returns a map of property values for all keys and the size of the cache.
 	Stats() map[string]string
@@ -60,8 +60,8 @@ type DB interface {
 // Batch Close must be called when the program no longer needs the object.
 type Batch interface {
 	SetDeleter
-	Write()
-	WriteSync()
+	Write() error
+	WriteSync() error
 	Close()
 }
 
@@ -81,7 +81,7 @@ type SetDeleter interface {
 
 	for ; itr.Valid(); itr.Next() {
 		k, v := itr.Key(); itr.Value()
-		// ...
+		...
 	}
 */
 type Iterator interface {
@@ -103,19 +103,15 @@ type Iterator interface {
 
 	// Next moves the iterator to the next sequential key in the database, as
 	// defined by order of iteration.
-	//
-	// If Valid returns false, this method will panic.
-	Next()
+	Next() error
 
 	// Key returns the key of the cursor.
-	// If Valid returns false, this method will panic.
 	// CONTRACT: key readonly []byte
-	Key() (key []byte)
+	Key() (key []byte, err error)
 
 	// Value returns the value of the cursor.
-	// If Valid returns false, this method will panic.
 	// CONTRACT: value readonly []byte
-	Value() (value []byte)
+	Value() (value []byte, err error)
 
 	// Close releases the Iterator.
 	Close()
