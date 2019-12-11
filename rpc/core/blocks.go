@@ -3,9 +3,9 @@ package core
 import (
 	"fmt"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
