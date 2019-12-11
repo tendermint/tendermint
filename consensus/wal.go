@@ -14,6 +14,7 @@ import (
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -78,7 +79,7 @@ type WAL interface {
 // so it's either reading or appending - must read to end to start appending
 // again.
 type baseWAL struct {
-	cmn.BaseService
+	service.BaseService
 
 	group *auto.Group
 
@@ -107,7 +108,7 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
 	}
-	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
+	wal.BaseService = *service.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
 }
 

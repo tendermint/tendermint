@@ -18,6 +18,7 @@ import (
 	"reflect"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -38,7 +39,7 @@ type Client struct {
 	client.EventsClient
 	client.EvidenceClient
 	client.MempoolClient
-	cmn.Service
+	service.Service
 }
 
 var _ client.Client = Client{}

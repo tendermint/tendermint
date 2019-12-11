@@ -7,10 +7,11 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 type GRPCServer struct {
-	cmn.BaseService
+	service.BaseService
 
 	proto    string
 	addr     string
@@ -21,7 +22,7 @@ type GRPCServer struct {
 }
 
 // NewGRPCServer returns a new gRPC ABCI server
-func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) cmn.Service {
+func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) service.Service {
 	proto, addr := cmn.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
 		proto:    proto,
@@ -29,7 +30,7 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) cmn.Servic
 		listener: nil,
 		app:      app,
 	}
-	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
 	return s
 }
 

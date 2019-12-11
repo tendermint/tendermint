@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 //---------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ type MetricHistoryJSON struct {
 // Metric - keeps track of peer reliability
 // See tendermint/docs/architecture/adr-006-trust-metric.md for details
 type Metric struct {
-	cmn.BaseService
+	service.BaseService
 
 	// Mutex that protects the metric from concurrent access
 	mtx sync.Mutex
@@ -104,7 +104,7 @@ func NewMetricWithConfig(tmc MetricConfig) *Metric {
 	// This metric has a perfect history so far
 	tm.historyValue = 1.0
 
-	tm.BaseService = *cmn.NewBaseService(nil, "Metric", tm)
+	tm.BaseService = *service.NewBaseService(nil, "Metric", tm)
 	return tm
 }
 

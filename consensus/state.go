@@ -13,6 +13,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -72,7 +73,7 @@ type evidencePool interface {
 // commits blocks to the chain and executes them against the application.
 // The internal state machine receives input from peers, the internal validator, and from a timer.
 type State struct {
-	cmn.BaseService
+	service.BaseService
 
 	// config details
 	config        *cfg.ConsensusConfig
@@ -174,7 +175,7 @@ func NewState(
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
-	cs.BaseService = *cmn.NewBaseService(nil, "State", cs)
+	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
@@ -275,7 +276,7 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 	return cs.blockStore.LoadBlockCommit(height)
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 // It loads the latest state via the WAL, and starts the timeout and receive routines.
 func (cs *State) OnStart() error {
 	if err := cs.evsw.Start(); err != nil {
@@ -351,7 +352,7 @@ func (cs *State) startRoutines(maxSteps int) {
 	go cs.receiveRoutine(maxSteps)
 }
 
-// OnStop implements cmn.Service.
+// OnStop implements service.Service.
 func (cs *State) OnStop() {
 	cs.evsw.Stop()
 	cs.timeoutTicker.Stop()

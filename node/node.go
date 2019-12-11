@@ -25,9 +25,9 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -169,7 +169,7 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 // Node is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
 type Node struct {
-	cmn.BaseService
+	service.BaseService
 
 	// config
 	config        *cfg.Config
@@ -736,7 +736,7 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
 	}
-	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	for _, option := range options {
 		option(node)
@@ -745,7 +745,7 @@ func NewNode(config *cfg.Config,
 	return node, nil
 }
 
-// OnStart starts the Node. It implements cmn.Service.
+// OnStart starts the Node. It implements service.Service.
 func (n *Node) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
@@ -802,7 +802,7 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
-// OnStop stops the Node. It implements cmn.Service.
+// OnStop stops the Node. It implements service.Service.
 func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
@@ -834,7 +834,7 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(cmn.Service); ok {
+	if pvsc, ok := n.privValidator.(service.Service); ok {
 		pvsc.Stop()
 	}
 

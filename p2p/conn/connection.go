@@ -19,6 +19,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -72,7 +73,7 @@ channel's queue is full.
 Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
-	cmn.BaseService
+	service.BaseService
 
 	conn          net.Conn
 	bufConnReader *bufio.Reader
@@ -197,7 +198,7 @@ func NewMConnectionWithConfig(
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *cmn.NewBaseService(nil, "MConnection", mconn)
+	mconn.BaseService = *service.NewBaseService(nil, "MConnection", mconn)
 
 	// maxPacketMsgSize() is a bit heavy, so call just once
 	mconn._maxPacketMsgSize = mconn.maxPacketMsgSize()

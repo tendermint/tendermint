@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -244,7 +244,7 @@ func sendProposalAndParts(
 // byzantine consensus reactor
 
 type ByzantineReactor struct {
-	cmn.Service
+	service.Service
 	reactor *Reactor
 }
 
