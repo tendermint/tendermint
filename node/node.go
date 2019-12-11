@@ -79,7 +79,7 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 	}
 }
 
-// NodeProvider takes a config and a logger and returns a ready to go Node.
+// Provider takes a config and a logger and returns a ready to go Node.
 type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // DefaultNewNode returns a Tendermint node with default settings for the
