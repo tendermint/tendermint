@@ -63,16 +63,16 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 type SyncInfo struct {
 	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
 	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
-	LatestBlockHeight int64        `json:"latest_block_height"`
-	LatestBlockTime   time.Time    `json:"latest_block_time"`
-	CatchingUp        bool         `json:"catching_up"`
+	LatestBlockHeight int64          `json:"latest_block_height"`
+	LatestBlockTime   time.Time      `json:"latest_block_time"`
+	CatchingUp        bool           `json:"catching_up"`
 }
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	Address     bytes.HexBytes  `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address     bytes.HexBytes `json:"address"`
+	PubKey      crypto.PubKey  `json:"pub_key"`
+	VotingPower int64          `json:"voting_power"`
 }
 
 // Node Status
@@ -148,9 +148,9 @@ type ResultConsensusState struct {
 
 // CheckTx result
 type ResultBroadcastTx struct {
-	Code uint32       `json:"code"`
+	Code uint32         `json:"code"`
 	Data bytes.HexBytes `json:"data"`
-	Log  string       `json:"log"`
+	Log  string         `json:"log"`
 
 	Hash bytes.HexBytes `json:"hash"`
 }
@@ -159,13 +159,13 @@ type ResultBroadcastTx struct {
 type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      bytes.HexBytes           `json:"hash"`
+	Hash      bytes.HexBytes         `json:"hash"`
 	Height    int64                  `json:"height"`
 }
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     bytes.HexBytes           `json:"hash"`
+	Hash     bytes.HexBytes         `json:"hash"`
 	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`

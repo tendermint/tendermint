@@ -18,7 +18,7 @@ type OldFilePV struct {
 	LastRound     int            `json:"last_round"`
 	LastStep      int8           `json:"last_step"`
 	LastSignature []byte         `json:"last_signature,omitempty"`
-	LastSignBytes bytes.HexBytes   `json:"last_signbytes,omitempty"`
+	LastSignBytes bytes.HexBytes `json:"last_signbytes,omitempty"`
 	PrivKey       crypto.PrivKey `json:"priv_key"`
 
 	filePath string
