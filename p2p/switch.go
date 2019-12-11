@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -86,7 +87,7 @@ type Switch struct {
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	rng *cmn.Rand // seed for randomizing dial times and orders
+	rng *rand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
 }
@@ -122,7 +123,7 @@ func NewSwitch(
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = cmn.NewRand()
+	sw.rng = rand.NewRand()
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 
