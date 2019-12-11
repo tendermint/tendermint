@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -283,10 +284,10 @@ func TestProposerSelection3(t *testing.T) {
 
 		// times is usually 1
 		times := 1
-		mod := (cmn.RandInt() % 5) + 1
-		if cmn.RandInt()%mod > 0 {
+		mod := (rand.RandInt() % 5) + 1
+		if rand.RandInt()%mod > 0 {
 			// sometimes its up to 5
-			times = (cmn.RandInt() % 4) + 1
+			times = (rand.RandInt() % 4) + 1
 		}
 		vset.IncrementProposerPriority(times)
 
@@ -300,15 +301,15 @@ func newValidator(address []byte, power int64) *Validator {
 
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
-	copy(pubKey[:], cmn.RandBytes(32))
+	copy(pubKey[:], rand.RandBytes(32))
 	return ed25519.PubKeyEd25519(pubKey)
 }
 
 func randValidator(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), int64(cmn.RandUint64()%uint64((MaxTotalVotingPower-totalVotingPower))))
-	val.ProposerPriority = cmn.RandInt64() % (MaxTotalVotingPower - totalVotingPower)
+	val := NewValidator(randPubKey(), int64(rand.RandUint64()%uint64((MaxTotalVotingPower-totalVotingPower))))
+	val.ProposerPriority = rand.RandInt64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
 
@@ -708,7 +709,7 @@ func permutation(valList []testVal) []testVal {
 		return nil
 	}
 	permList := make([]testVal, len(valList))
-	perm := cmn.RandPerm(len(valList))
+	perm := rand.RandPerm(len(valList))
 	for i, v := range perm {
 		permList[v] = valList[i]
 	}
@@ -1110,14 +1111,14 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	const maxPower = 1000
 	var nOld, nDel, nChanged, nAdd int
 
-	nOld = int(cmn.RandUint()%uint(nBase)) + 1
+	nOld = int(rand.RandUint()%uint(nBase)) + 1
 	if nBase-nOld > 0 {
-		nDel = int(cmn.RandUint() % uint(nBase-nOld))
+		nDel = int(rand.RandUint() % uint(nBase-nOld))
 	}
 	nChanged = nBase - nOld - nDel
 
 	if nAddMax > 0 {
-		nAdd = cmn.RandInt()%nAddMax + 1
+		nAdd = rand.RandInt()%nAddMax + 1
 	}
 
 	cfg := testVSetCfg{}
@@ -1129,12 +1130,12 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	cfg.expectedVals = make([]testVal, nBase-nDel+nAdd)
 
 	for i := 0; i < nBase; i++ {
-		cfg.startVals[i] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+		cfg.startVals[i] = testVal{fmt.Sprintf("v%d", i), int64(rand.RandUint()%maxPower + 1)}
 		if i < nOld {
 			cfg.expectedVals[i] = cfg.startVals[i]
 		}
 		if i >= nOld && i < nOld+nChanged {
-			cfg.updatedVals[i-nOld] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+			cfg.updatedVals[i-nOld] = testVal{fmt.Sprintf("v%d", i), int64(rand.RandUint()%maxPower + 1)}
 			cfg.expectedVals[i] = cfg.updatedVals[i-nOld]
 		}
 		if i >= nOld+nChanged {
@@ -1143,7 +1144,7 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	}
 
 	for i := nBase; i < nBase+nAdd; i++ {
-		cfg.addedVals[i-nBase] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+		cfg.addedVals[i-nBase] = testVal{fmt.Sprintf("v%d", i), int64(rand.RandUint()%maxPower + 1)}
 		cfg.expectedVals[i-nDel] = cfg.addedVals[i-nBase]
 	}
 
@@ -1224,7 +1225,7 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 
 func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 	// Run election up to nMaxElections times, sort validators by priorities
-	valSet.IncrementProposerPriority(cmn.RandInt()%nMaxElections + 1)
+	valSet.IncrementProposerPriority(rand.RandInt()%nMaxElections + 1)
 	origValsPriSorted := validatorListCopy(valSet.Validators)
 	sort.Sort(validatorsByPriority(origValsPriSorted))
 

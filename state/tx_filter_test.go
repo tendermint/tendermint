@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -23,12 +23,12 @@ func TestTxFilter(t *testing.T) {
 		tx    types.Tx
 		isErr bool
 	}{
-		{types.Tx(cmn.RandBytes(250)), false},
-		{types.Tx(cmn.RandBytes(1811)), false},
-		{types.Tx(cmn.RandBytes(1831)), false},
-		{types.Tx(cmn.RandBytes(1838)), true},
-		{types.Tx(cmn.RandBytes(1839)), true},
-		{types.Tx(cmn.RandBytes(3000)), true},
+		{types.Tx(rand.RandBytes(250)), false},
+		{types.Tx(rand.RandBytes(1811)), false},
+		{types.Tx(rand.RandBytes(1831)), false},
+		{types.Tx(rand.RandBytes(1838)), true},
+		{types.Tx(rand.RandBytes(1839)), true},
+		{types.Tx(rand.RandBytes(3000)), true},
 	}
 
 	for i, tc := range testCases {
