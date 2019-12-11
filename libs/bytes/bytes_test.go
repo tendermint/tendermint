@@ -1,4 +1,4 @@
-package common
+package bytes
 
 import (
 	"encoding/json"

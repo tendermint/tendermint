@@ -6,7 +6,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -61,8 +61,8 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 
 // Info about the node's syncing state
 type SyncInfo struct {
-	LatestBlockHash   cmn.HexBytes `json:"latest_block_hash"`
-	LatestAppHash     cmn.HexBytes `json:"latest_app_hash"`
+	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
+	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
 	LatestBlockHeight int64        `json:"latest_block_height"`
 	LatestBlockTime   time.Time    `json:"latest_block_time"`
 	CatchingUp        bool         `json:"catching_up"`
@@ -70,7 +70,7 @@ type SyncInfo struct {
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	Address     cmn.HexBytes  `json:"address"`
+	Address     bytes.HexBytes  `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
 }
@@ -149,23 +149,23 @@ type ResultConsensusState struct {
 // CheckTx result
 type ResultBroadcastTx struct {
 	Code uint32       `json:"code"`
-	Data cmn.HexBytes `json:"data"`
+	Data bytes.HexBytes `json:"data"`
 	Log  string       `json:"log"`
 
-	Hash cmn.HexBytes `json:"hash"`
+	Hash bytes.HexBytes `json:"hash"`
 }
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      cmn.HexBytes           `json:"hash"`
+	Hash      bytes.HexBytes           `json:"hash"`
 	Height    int64                  `json:"height"`
 }
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     cmn.HexBytes           `json:"hash"`
+	Hash     bytes.HexBytes           `json:"hash"`
 	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`

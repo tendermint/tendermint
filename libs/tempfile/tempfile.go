@@ -1,4 +1,4 @@
-package common
+package tempfile
 
 import (
 	fmt "fmt"

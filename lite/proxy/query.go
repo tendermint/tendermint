@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -21,7 +21,7 @@ import (
 // If there is any error in checking, returns an error.
 func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Verifier) (
-	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
+	val bytes.HexBytes, height int64, proof *merkle.Proof, err error) {
 
 	if reqHeight < 0 {
 		err = errors.New("height cannot be negative")

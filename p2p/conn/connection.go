@@ -20,6 +20,7 @@ import (
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const (
@@ -101,8 +102,8 @@ type MConnection struct {
 	// are safe to call concurrently.
 	stopMtx sync.Mutex
 
-	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
-	pingTimer  *time.Ticker       // send pings periodically
+	flushTimer *timer.ThrottleTimer // flush writes as necessary but throttled.
+	pingTimer  *time.Ticker         // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
 	pongTimer     *time.Timer
@@ -218,7 +219,7 @@ func (c *MConnection) OnStart() error {
 	if err := c.BaseService.OnStart(); err != nil {
 		return err
 	}
-	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
+	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = time.NewTicker(c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = time.NewTicker(updateStats)
