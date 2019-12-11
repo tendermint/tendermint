@@ -69,9 +69,11 @@ func NewApplication() *Application {
 
 func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
-		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
-		Version:    version.ABCIVersion,
-		AppVersion: ProtocolVersion.Uint64(),
+		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
+		Version:          version.ABCIVersion,
+		AppVersion:       ProtocolVersion.Uint64(),
+		LastBlockHeight:  app.state.Height,
+		LastBlockAppHash: app.state.AppHash,
 	}
 }
 
