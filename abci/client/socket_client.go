@@ -15,6 +15,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const reqQueueSize = 256 // TODO make configurable
@@ -34,7 +35,7 @@ type socketClient struct {
 	conn        net.Conn
 
 	reqQueue   chan *ReqRes
-	flushTimer *cmn.ThrottleTimer
+	flushTimer *timer.ThrottleTimer
 
 	mtx     sync.Mutex
 	err     error
@@ -46,7 +47,7 @@ type socketClient struct {
 func NewSocketClient(addr string, mustConnect bool) *socketClient {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
+		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,

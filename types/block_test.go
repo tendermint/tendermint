@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/libs/bytes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -252,7 +253,7 @@ func TestHeaderHash(t *testing.T) {
 	testCases := []struct {
 		desc       string
 		header     *Header
-		expectHash cmn.HexBytes
+		expectHash bytes.HexBytes
 	}{
 		{"Generates expected hash", &Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -305,7 +306,7 @@ func TestHeaderHash(t *testing.T) {
 					byteSlices = append(byteSlices, cdcEncode(f.Interface()))
 				}
 				assert.Equal(t,
-					cmn.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
+					bytes.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
 			}
 		})
 	}
@@ -359,12 +360,12 @@ func randCommit() *Commit {
 	return commit
 }
 
-func hexBytesFromString(s string) cmn.HexBytes {
+func hexBytesFromString(s string) bytes.HexBytes {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic(err)
 	}
-	return cmn.HexBytes(b)
+	return bytes.HexBytes(b)
 }
 
 func TestBlockMaxDataBytes(t *testing.T) {
@@ -560,10 +561,10 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
-		Hash: cmn.HexBytes{},
+		Hash: bytes.HexBytes{},
 		PartsHeader: PartSetHeader{
 			Total: 1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
@@ -571,13 +572,13 @@ func TestBlockIDValidateBasic(t *testing.T) {
 		Hash: []byte{0},
 		PartsHeader: PartSetHeader{
 			Total: -1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
 	testCases := []struct {
 		testName           string
-		blockIDHash        cmn.HexBytes
+		blockIDHash        bytes.HexBytes
 		blockIDPartsHeader PartSetHeader
 		expectErr          bool
 	}{

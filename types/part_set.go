@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bits"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 )
@@ -21,7 +22,7 @@ var (
 
 type Part struct {
 	Index int                `json:"index"`
-	Bytes cmn.HexBytes       `json:"bytes"`
+	Bytes tmbytes.HexBytes   `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 }
 
@@ -49,7 +50,7 @@ func (part *Part) StringIndented(indent string) string {
 %s  Proof: %v
 %s}`,
 		part.Index,
-		indent, cmn.Fingerprint(part.Bytes),
+		indent, tmbytes.Fingerprint(part.Bytes),
 		indent, part.Proof.StringIndented(indent+"  "),
 		indent)
 }
@@ -57,12 +58,12 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int          `json:"total"`
-	Hash  cmn.HexBytes `json:"hash"`
+	Total int              `json:"total"`
+	Hash  tmbytes.HexBytes `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("%v:%X", psh.Total, cmn.Fingerprint(psh.Hash))
+	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {

@@ -9,8 +9,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/tempfile"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -57,7 +59,7 @@ func (pvKey FilePVKey) Save() {
 	if err != nil {
 		panic(err)
 	}
-	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
+	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -68,11 +70,11 @@ func (pvKey FilePVKey) Save() {
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
-	Height    int64        `json:"height"`
-	Round     int          `json:"round"`
-	Step      int8         `json:"step"`
-	Signature []byte       `json:"signature,omitempty"`
-	SignBytes cmn.HexBytes `json:"signbytes,omitempty"`
+	Height    int64            `json:"height"`
+	Round     int              `json:"round"`
+	Step      int8             `json:"step"`
+	Signature []byte           `json:"signature,omitempty"`
+	SignBytes tmbytes.HexBytes `json:"signbytes,omitempty"`
 
 	filePath string
 }
@@ -128,7 +130,7 @@ func (lss *FilePVLastSignState) Save() {
 	if err != nil {
 		panic(err)
 	}
-	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
+	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
