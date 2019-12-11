@@ -39,7 +39,7 @@ moniker = "anonymous"
 # and verifying their commits
 fast_sync = true
 
-# Database backend: goleveldb | cleveldb | boltdb
+# Database backend: goleveldb | cleveldb | boltdb | rocksdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
 #   - stable
