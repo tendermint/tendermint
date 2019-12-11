@@ -51,6 +51,10 @@ fast_sync = true
 #   - EXPERIMENTAL
 #   - may be faster is some use-cases (random reads - indexer)
 #   - use boltdb build tag (go build -tags boltdb)
+# * rocksdb (uses github.com/tecbot/gorocksdb)
+#   - EXPERIMENTAL
+#   - requires gcc
+#   - use rocksdb build tag (go build -tags rocksdb)
 db_backend = "goleveldb"
 
 # Database directory
