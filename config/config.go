@@ -160,7 +160,7 @@ type BaseConfig struct { //nolint: maligned
 	// and verifying their commits
 	FastSyncMode bool `mapstructure:"fast_sync"`
 
-	// Database backend: goleveldb | cleveldb | boltdb
+	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 	//   - pure go
 	//   - stable
@@ -172,6 +172,10 @@ type BaseConfig struct { //nolint: maligned
 	//   - EXPERIMENTAL
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
+	// * rocksdb (uses github.com/tecbot/gorocksdb)
+	//   - EXPERIMENTAL
+	//   - requires gcc
+	//   - use rocksdb build tag (go build -tags rocksdb)
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
