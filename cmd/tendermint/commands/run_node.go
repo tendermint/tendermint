@@ -70,11 +70,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(
 		"db_backend",
 		string(config.DBBackend),
-		"The db backend which you want to set (example: goleveldb)")
+		"Database backend: goleveldb | cleveldb | boltdb")
 	cmd.Flags().String(
 		"db_path",
 		string(config.DBPath),
-		"The db path")
+		"Database directory")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
