@@ -65,6 +65,16 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks_interval",
 		string(config.Consensus.CreateEmptyBlocksInterval),
 		"The possible interval between empty blocks")
+
+	// db flags
+	cmd.Flags().String(
+		"db_backend",
+		config.DBBackend,
+		"Database backend: goleveldb | cleveldb | boltdb")
+	cmd.Flags().String(
+		"db_dir",
+		config.DBPath,
+		"Database directory")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
