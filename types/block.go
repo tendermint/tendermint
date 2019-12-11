@@ -13,8 +13,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bits"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/version"
 )
 

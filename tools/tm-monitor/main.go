@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
