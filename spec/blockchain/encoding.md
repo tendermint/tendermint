@@ -62,8 +62,10 @@ You can simply use below table and concatenate Prefix || Length (of raw bytes) |
 | Type                    | Name                               | Prefix     | Length   | Notes |
 | ----------------------- | ---------------------------------- | ---------- | -------- | ----- |
 | PubKeyEd25519           | tendermint/PubKeyEd25519           | 0x1624DE64 | 0x20     |       |
+| PubKeySr25519           | tendermint/PubKeySr25519           | 0x0DFB1005 | 0x20     |       |
 | PubKeySecp256k1         | tendermint/PubKeySecp256k1         | 0xEB5AE987 | 0x21     |       |
 | PrivKeyEd25519          | tendermint/PrivKeyEd25519          | 0xA3288910 | 0x40     |       |
+| PrivKeySr25519          | tendermint/PrivKeySr25519          | 0x2F82D78B | 0x20     |       |
 | PrivKeySecp256k1        | tendermint/PrivKeySecp256k1        | 0xE1B0F79B | 0x20     |       |
 | PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |       |
 
@@ -79,6 +81,18 @@ would be encoded as
 Each type specifies it's own pubkey, address, and signature format.
 
 #### Ed25519
+
+TODO: pubkey
+
+The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
+
+```
+address = SHA256(pubkey)[:20]
+```
+
+The signature is the raw 64-byte ED25519 signature.
+
+#### Sr25519
 
 TODO: pubkey
 
@@ -155,7 +169,9 @@ See details of SimpleProof, below.
 ### MakeParts
 
 Encode an object using Amino and slice it into parts.
-Tendermint uses a part size of 65536 bytes.
+Tendermint uses a part size of 65536 bytes, and allows a maximum of 1601 parts
+(see `types.MaxBlockPartsCount`). This corresponds to the hard-coded block size
+limit of 100MB.
 
 ```go
 func MakeParts(block Block) []Part
@@ -288,9 +304,13 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 }
 ```
 
+The number of aunts is limited to 100 (`MaxAunts`) to protect the node against DOS attacks.
+This limits the tree size to 2^100 leaves, which should be sufficient for any
+conceivable purpose.
+
 ### IAVL+ Tree
 
-Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/master/docs/clients/lite/specification.md)
+Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/ae77f0080a724b159233bd9b289b2e91c0de21b5/docs/interfaces/lite/specification.md)
 
 ## JSON
 

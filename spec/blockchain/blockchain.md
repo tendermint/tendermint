@@ -29,7 +29,7 @@ type Block struct {
 }
 ```
 
-Note the `LastCommit` is the set of votes that committed the last block.
+Note the `LastCommit` is the set of signatures of validators that committed the last block.
 
 ## Header
 
@@ -43,8 +43,6 @@ type Header struct {
 	ChainID  string
 	Height   int64
 	Time     Time
-	NumTxs   int64
-	TotalTxs int64
 
 	// prev block info
 	LastBlockID BlockID
@@ -123,18 +121,47 @@ type Data struct {
 
 ## Commit
 
-Commit is a simple wrapper for a list of votes, with one vote for each
-validator. It also contains the relevant BlockID:
+Commit is a simple wrapper for a list of signatures, with one for each
+validator. It also contains the relevant BlockID, height and round:
 
-```
+```go
 type Commit struct {
-    BlockID     BlockID
-    Precommits  []Vote
+	Height     int64
+	Round      int
+	BlockID    BlockID
+	Signatures []CommitSig
 }
 ```
 
-NOTE: this will likely change to reduce the commit size by eliminating redundant
-information - see [issue #1648](https://github.com/tendermint/tendermint/issues/1648).
+## CommitSig
+
+`CommitSig` represents a signature of a validator, who has voted either for nil,
+a particular `BlockID` or was absent. It's a part of the `Commit` and can be used
+to reconstruct the vote set given the validator set.
+
+```go
+type BlockIDFlag byte
+
+const (
+	// BlockIDFlagAbsent - no vote was received from a validator.
+	BlockIDFlagAbsent BlockIDFlag = 0x01
+	// BlockIDFlagCommit - voted for the Commit.BlockID.
+	BlockIDFlagCommit = 0x02
+	// BlockIDFlagNil - voted for nil.
+	BlockIDFlagNil = 0x03
+)
+
+type CommitSig struct {
+	BlockIDFlag      BlockIDFlag
+	ValidatorAddress Address
+	Timestamp        time.Time
+	Signature        []byte
+}
+```
+
+NOTE: `ValidatorAddress` and `Timestamp` fields may be removed in the future
+(see
+[ADR-25](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-025-commit.md)).
 
 ## Vote
 
@@ -168,7 +195,7 @@ See the [signature spec](./encoding.md#key-types) for more.
 
 EvidenceData is a simple wrapper for a list of evidence:
 
-```go
+```
 type EvidenceData struct {
     Evidence []Evidence
 }
@@ -188,6 +215,8 @@ type DuplicateVoteEvidence struct {
 	VoteB  Vote
 }
 ```
+
+Votes are lexicographically sorted on `BlockID`.
 
 See the [pubkey spec](./encoding.md#key-types) for more.
 
@@ -248,7 +277,7 @@ block.Header.Timestamp == MedianTime(block.LastCommit, state.LastValidators)
 ```
 
 The block timestamp must be monotonic.
-It must equal the weighted median of the timestamps of the valid votes in the block.LastCommit.
+It must equal the weighted median of the timestamps of the valid signatures in the block.LastCommit.
 
 Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
@@ -263,24 +292,6 @@ if block.Header.Height == 1 {
 ```
 
 See the section on [BFT time](../consensus/bft-time.md) for more details.
-
-### NumTxs
-
-```go
-block.Header.NumTxs == len(block.Txs.Txs)
-```
-
-Number of transactions included in the block.
-
-### TotalTxs
-
-```go
-block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
-```
-
-The cumulative sum of all transactions included in this blockchain.
-
-The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
@@ -302,11 +313,12 @@ The first block has `block.Header.LastBlockID == BlockID{}`.
 ### LastCommitHash
 
 ```go
-block.Header.LastCommitHash == MerkleRoot(block.LastCommit.Precommits)
+block.Header.LastCommitHash == MerkleRoot(block.LastCommit.Signatures)
 ```
 
-MerkleRoot of the votes included in the block.
-These are the votes that committed the previous block.
+MerkleRoot of the signatures included in the block.
+These are the commit signatures of the validators that committed the previous
+block.
 
 The first block has `block.Header.LastCommitHash == []byte{}`
 
@@ -394,11 +406,11 @@ Arbitrary length array of arbitrary length byte-arrays.
 
 ## LastCommit
 
-The first height is an exception - it requires the LastCommit to be empty:
+The first height is an exception - it requires the `LastCommit` to be empty:
 
 ```go
 if block.Header.Height == 1 {
-    len(b.LastCommit) == 0
+  len(b.LastCommit) == 0
 }
 ```
 
@@ -406,32 +418,31 @@ Otherwise, we require:
 
 ```go
 len(block.LastCommit) == len(state.LastValidators)
+
 talliedVotingPower := 0
-for i, vote := range block.LastCommit{
-    if vote == nil{
-        continue
-    }
-    vote.Type == 2
-    vote.Height == block.LastCommit.Height()
-    vote.Round == block.LastCommit.Round()
-    vote.BlockID == block.LastBlockID
+for i, commitSig := range block.LastCommit.Signatures {
+  if commitSig.Absent() {
+    continue
+  }
 
-    val := state.LastValidators[i]
-    vote.Verify(block.ChainID, val.PubKey) == true
+  vote.BlockID == block.LastBlockID
 
-    talliedVotingPower += val.VotingPower
+  val := state.LastValidators[i]
+  vote.Verify(block.ChainID, val.PubKey) == true
+
+  talliedVotingPower += val.VotingPower
 }
 
-talliedVotingPower > (2/3) * TotalVotingPower(state.LastValidators)
+talliedVotingPower > (2/3)*TotalVotingPower(state.LastValidators)
 ```
 
-Includes one (possibly nil) vote for every current validator.
-Non-nil votes must be Precommits.
-All votes must be for the same height and round.
-All votes must be for the previous block.
+Includes one vote for every current validator.
+All votes must either be for the previous block, nil or absent.
 All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
 must be greater than 2/3 of the total voting power of the complete validator set.
+
+The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).
 
 ### Vote
 
