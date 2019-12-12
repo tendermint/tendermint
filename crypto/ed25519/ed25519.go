@@ -6,39 +6,13 @@ import (
 	"fmt"
 	"io"
 
-	amino "github.com/tendermint/go-amino"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-//-------------------------------------
-
 var _ crypto.PrivKey = PrivKeyEd25519{}
-
-const (
-	PrivKeyAminoName = "tendermint/PrivKeyEd25519"
-	PubKeyAminoName  = "tendermint/PubKeyEd25519"
-	// Size of an Edwards25519 signature. Namely the size of a compressed
-	// Edwards25519 point, and a field element. Both of which are 32 bytes.
-	SignatureSize = 64
-)
-
-var cdc = amino.NewCodec()
-
-func init() {
-	RegisterCodec(cdc)
-}
-
-// RegisterCodec registers the Ed25519 key types with the provided amino codec.
-func RegisterCodec(c *amino.Codec) {
-	c.RegisterInterface((*crypto.PubKey)(nil), nil)
-	c.RegisterConcrete(PubKeyEd25519{}, PubKeyAminoName, nil)
-
-	c.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	c.RegisterConcrete(PrivKeyEd25519{}, PrivKeyAminoName, nil)
-}
 
 // PrivKeyEd25519 implements crypto.PrivKey.
 type PrivKeyEd25519 [64]byte
@@ -127,7 +101,7 @@ func GenPrivKeyFromSecret(secret []byte) PrivKeyEd25519 {
 	return privKeyEd
 }
 
-//-------------------------------------
+// ----------------------------------------------------------------------------
 
 var _ crypto.PubKey = PubKeyEd25519{}
 
@@ -170,4 +144,26 @@ func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 	}
 
 	return false
+}
+
+// MarshalBinaryBare attempts to marshal a PubKeyEd25519 type that is compatible
+// with Amino. It will return the raw encoded bytes or an error if the type is
+// not registered.
+//
+// NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement.
+// For now, clients must call MarshalBinaryBare directly on the type to get the
+// custom encoding.
+func (pubKey PubKeyEd25519) MarshalBinaryBare() ([]byte, error) {
+	ke, ok := crypto.GetKeyEncoding(TypePubKeyEd25519)
+	if !ok {
+		return nil, fmt.Errorf("no key type '%s' not registered", TypePubKeyEd25519)
+	}
+
+	bz := make([]byte, len(ke.Prefix)+len(ke.Length)+len(pubKey[:]))
+
+	copy(bz[:len(ke.Prefix)], ke.Prefix)
+	copy(bz[len(ke.Prefix):len(ke.Prefix)+len(ke.Length)], ke.Length)
+	copy(bz[len(ke.Prefix)+len(ke.Length):], pubKey[:])
+
+	return bz, nil
 }
