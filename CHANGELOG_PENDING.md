@@ -132,3 +132,4 @@ program](https://hackerone.com/tendermint).
 - [types] \#4164 Prevent temporary power overflows on validator updates (joint
   efforts of @gchaincl and @ancazamfir)
 - [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
+- [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
