@@ -28,6 +28,8 @@
 
 ### IMPROVEMENTS
 
+- [remotedb] [\#34](https://github.com/tendermint/tm-db/pull/34) Add proto file tests and regenerate remotedb.pb.go
+
 ## 0.3
 
 **2019-11-18**

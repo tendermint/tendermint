@@ -2,6 +2,13 @@ syntax = "proto3";
 
 package protodb;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// Generate tests
+option (gogoproto.populate_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.testgen_all) = true;
+
 message Batch {
   repeated Operation ops = 1;
 }

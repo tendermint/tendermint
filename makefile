@@ -1,5 +1,6 @@
 GOTOOLS = github.com/golangci/golangci-lint/cmd/golangci-lint
 PACKAGES=$(shell go list ./...)
+INCLUDE = -I=${GOPATH}/src/github.com/tendermint/tm-db -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
 export GO111MODULE = on
 
@@ -30,4 +31,14 @@ gen_certs: clean_certs
 clean_certs:
 	rm -f db/remotedb/test.crt
 	rm -f db/remotedb/test.key
+
+%.pb.go: %.proto
+	## If you get the following error,
+	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	## See https://stackoverflow.com/a/25518702
+	## Note the $< here is substituted for the %.proto
+	## Note the $@ here is substituted for the %.pb.go
+	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
+
+protoc_remotedb: remotedb/proto/defs.pb.go	
 	
