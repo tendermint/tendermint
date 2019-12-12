@@ -4,13 +4,6 @@ order: 3
 
 # Install Tendermint
 
-The fastest and easiest way to install the `tendermint` binary
-is to run [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_ubuntu.sh) on
-a fresh Ubuntu instance,
-or [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_bsd.sh)
-on a fresh FreeBSD instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script,
-make sure you are okay with the network connections being made).
-
 ## From Binary
 
 To download pre-built binaries, see the [releases page](https://github.com/tendermint/tendermint/releases).
@@ -19,6 +12,7 @@ To download pre-built binaries, see the [releases page](https://github.com/tende
 
 You'll need `go` [installed](https://golang.org/doc/install) and the required
 environment variables set, which can be done with the following commands:
+
 ```bash
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
@@ -54,9 +48,17 @@ make build
 
 to put the binary in `./build`.
 
-_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
+_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF
+symbol table. If you would like to build/install tendermint with the DWARF
+symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
+file.
 
-The latest `tendermint version` is now installed.
+The latest tendermint is now installed. You can verify the installation by
+running:
+
+```
+tendermint version
+```
 
 ## Run
 
