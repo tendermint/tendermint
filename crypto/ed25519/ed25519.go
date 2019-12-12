@@ -156,7 +156,7 @@ func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 func (pubKey PubKeyEd25519) MarshalBinaryBare() ([]byte, error) {
 	ke, ok := crypto.GetKeyEncoding(TypePubKeyEd25519)
 	if !ok {
-		return nil, fmt.Errorf("no key type '%s' not registered", TypePubKeyEd25519)
+		return nil, fmt.Errorf("key type '%s' not registered", TypePubKeyEd25519)
 	}
 
 	bz := make([]byte, len(ke.Prefix)+len(ke.Length)+len(pubKey[:]))
