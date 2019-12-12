@@ -5,6 +5,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -18,9 +19,10 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	vset, _ := types.RandValidatorSet(nval, 1)
 	commitSigs := make([]types.CommitSig, nval)
 	blockID := types.BlockID{
-		Hash: rand.RandBytes(20),
+		Hash: rand.RandBytes(tmhash.Size),
 		PartsHeader: types.PartSetHeader{
-			Hash: rand.RandBytes(20),
+			Hash: rand.RandBytes(tmhash.Size),
+			Total: 1000,
 		},
 	}
 	sig := make([]byte, ed25519.SignatureSize)
