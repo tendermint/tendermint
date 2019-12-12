@@ -2,7 +2,7 @@ package core
 
 import (
 	cm "github.com/tendermint/tendermint/consensus"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -37,7 +37,7 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 
 	skipCount := validateSkipCount(page, perPage)
 
-	v := validators.Validators[skipCount : skipCount+cmn.MinInt(perPage, totalCount-skipCount)]
+	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
 	return &ctypes.ResultValidators{
 		BlockHeight: height,

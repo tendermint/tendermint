@@ -12,8 +12,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -94,7 +94,7 @@ var _ WAL = &baseWAL{}
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
-	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
+	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
 	}

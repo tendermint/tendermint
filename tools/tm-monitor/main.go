@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
@@ -59,7 +59,7 @@ Examples:
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		if !noton {
 			ton.Stop()
 		}

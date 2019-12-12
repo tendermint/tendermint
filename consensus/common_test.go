@@ -23,8 +23,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -50,7 +50,7 @@ var consensusReplayConfig *cfg.Config
 var ensureTimeout = time.Millisecond * 100
 
 func ensureDir(dir string, mode os.FileMode) {
-	if err := cmn.EnsureDir(dir, mode); err != nil {
+	if err := tmos.EnsureDir(dir, mode); err != nil {
 		panic(err)
 	}
 }

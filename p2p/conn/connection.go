@@ -16,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/timer"
 )
@@ -560,7 +560,7 @@ FOR_LOOP:
 		// Peek into bufConnReader for debugging
 		/*
 			if numBytes := c.bufConnReader.Buffered(); numBytes > 0 {
-				bz, err := c.bufConnReader.Peek(cmn.MinInt(numBytes, 100))
+				bz, err := c.bufConnReader.Peek(tmmath.MinInt(numBytes, 100))
 				if err == nil {
 					// return
 				} else {
@@ -818,14 +818,14 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
 	packet.ChannelID = ch.desc.ID
 	maxSize := ch.maxPacketMsgPayloadSize
-	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
+	packet.Bytes = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[cmn.MinInt(maxSize, len(ch.sending)):]
+		ch.sending = ch.sending[tmmath.MinInt(maxSize, len(ch.sending)):]
 	}
 	return packet
 }

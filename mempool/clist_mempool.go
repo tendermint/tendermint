@@ -15,8 +15,9 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -135,7 +136,7 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 // *not thread safe*
 func (mem *CListMempool) InitWAL() {
 	walDir := mem.config.WalDir()
-	err := cmn.EnsureDir(walDir, 0700)
+	err := tmos.EnsureDir(walDir, 0700)
 	if err != nil {
 		panic(errors.Wrap(err, "Error ensuring WAL dir"))
 	}
@@ -480,7 +481,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var totalGas int64
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
-	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
+	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
@@ -517,7 +518,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max))
+	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
 	for e := mem.txs.Front(); e != nil && len(txs) <= max; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)

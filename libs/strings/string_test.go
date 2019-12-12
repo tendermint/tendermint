@@ -1,4 +1,4 @@
-package common
+package strings
 
 import (
 	"testing"

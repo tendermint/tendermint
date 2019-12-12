@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -41,7 +41,7 @@ func NewGRPCClient(addr string, mustConnect bool) *grpcClient {
 }
 
 func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
-	return cmn.Connect(addr)
+	return tmnet.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {

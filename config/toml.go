@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -27,20 +27,20 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := cmn.EnsureDir(rootDir, DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 
 	// Write default config file if missing.
-	if !cmn.FileExists(configFilePath) {
+	if !tmos.FileExists(configFilePath) {
 		writeDefaultConfigFile(configFilePath)
 	}
 }
@@ -59,7 +59,7 @@ func WriteConfigFile(configFilePath string, config *Config) {
 		panic(err)
 	}
 
-	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
+	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
 }
 
 // Note: any changes to the comments/variables/mapstructure
@@ -413,10 +413,10 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		panic(err)
 	}
 	// ensure config and data subdirs are created
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
 
@@ -427,19 +427,19 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
 
 	// Write default config file if missing.
-	if !cmn.FileExists(configFilePath) {
+	if !tmos.FileExists(configFilePath) {
 		writeDefaultConfigFile(configFilePath)
 	}
-	if !cmn.FileExists(genesisFilePath) {
+	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
-	cmn.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	cmn.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config

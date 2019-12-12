@@ -9,8 +9,8 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/tendermint/tendermint/config"
@@ -276,7 +276,7 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 }
 
 func getFreePort() int {
-	port, err := cmn.GetFreePort()
+	port, err := tmnet.GetFreePort()
 	if err != nil {
 		panic(err)
 	}

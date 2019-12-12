@@ -9,8 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
 var (
@@ -92,7 +93,7 @@ type PartSet struct {
 
 	mtx           sync.Mutex
 	parts         []*Part
-	partsBitArray *cmn.BitArray
+	partsBitArray *bits.BitArray
 	count         int
 }
 
@@ -103,11 +104,11 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	partsBytes := make([][]byte, total)
-	partsBitArray := cmn.NewBitArray(total)
+	partsBitArray := bits.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
 			Index: i,
-			Bytes: data[i*partSize : cmn.MinInt(len(data), (i+1)*partSize)],
+			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
 		partsBytes[i] = part.Bytes
@@ -133,7 +134,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		total:         header.Total,
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
-		partsBitArray: cmn.NewBitArray(header.Total),
+		partsBitArray: bits.NewBitArray(header.Total),
 		count:         0,
 	}
 }
@@ -155,7 +156,7 @@ func (ps *PartSet) HasHeader(header PartSetHeader) bool {
 	return ps.Header().Equals(header)
 }
 
-func (ps *PartSet) BitArray() *cmn.BitArray {
+func (ps *PartSet) BitArray() *bits.BitArray {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.partsBitArray.Copy()
@@ -288,8 +289,8 @@ func (ps *PartSet) MarshalJSON() ([]byte, error) {
 	defer ps.mtx.Unlock()
 
 	return cdc.MarshalJSON(struct {
-		CountTotal    string        `json:"count/total"`
-		PartsBitArray *cmn.BitArray `json:"parts_bit_array"`
+		CountTotal    string         `json:"count/total"`
+		PartsBitArray *bits.BitArray `json:"parts_bit_array"`
 	}{
 		fmt.Sprintf("%d/%d", ps.Count(), ps.Total()),
 		ps.partsBitArray,
