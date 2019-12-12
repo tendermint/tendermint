@@ -76,7 +76,7 @@ func zipDir(src, dest string) error {
 // copyFile copies a file from src to dest and returns an error upon failure. The
 // copied file retains the source file's permissions.
 func copyFile(src, dest string) error {
-	if _, err := os.Stat(src); err != nil {
+	if _, err := os.Stat(src); os.IsNotExist(err) {
 		return err
 	}
 
