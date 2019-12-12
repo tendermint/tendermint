@@ -53,7 +53,9 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	}
 
 	if _, err := os.Stat(outDir); os.IsNotExist(err) {
-		os.Mkdir(outDir, os.ModePerm)
+		if err := os.Mkdir(outDir, os.ModePerm); err != nil {
+			return errors.Wrap(err, "failed to create output directory")
+		}
 	}
 
 	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
