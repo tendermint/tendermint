@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
@@ -30,7 +29,7 @@ func TestSignAndValidateEd25519(t *testing.T) {
 	assert.False(t, pubKey.VerifyBytes(msg, sig))
 }
 
-func TestEd25519MarshalBinaryLengthPrefixed(t *testing.T) {
+func TestEd25519MarshalBinaryBare(t *testing.T) {
 	pubkeyStr := "F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A"
 	pubkeyBz, err := hex.DecodeString(pubkeyStr)
 	require.NoError(t, err)
@@ -39,12 +38,7 @@ func TestEd25519MarshalBinaryLengthPrefixed(t *testing.T) {
 	var pubkey ed25519.PubKeyEd25519
 	copy(pubkey[:], pubkeyBz)
 
-	cdc := amino.NewCodec()
-	ed25519.RegisterCodec(cdc)
-
-	bz, err := cdc.MarshalBinaryLengthPrefixed(pubkey)
+	bz, err := pubkey.MarshalBinaryBare()
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf("%X", bz), "251624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A")
-	// => 2A0A041624DE6412220A20F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A
-	// => 251624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A
+	require.Equal(t, "1624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A", fmt.Sprintf("%X", bz))
 }
