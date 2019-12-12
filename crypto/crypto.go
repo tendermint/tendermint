@@ -55,8 +55,8 @@ var keyTypeTable = map[string]KeyEncoding{}
 
 // GetKeyEncoding looks up a KeyEncoding by key type. Not thread-safe.
 func GetKeyEncoding(keyType string) (KeyEncoding, bool) {
-	kID, ok := keyTypeTable[keyType]
-	return kID, ok
+	ke, ok := keyTypeTable[keyType]
+	return ke, ok
 }
 
 // RegisterKeyEncoding attempts to register a KeyEncoding type. If the type is
