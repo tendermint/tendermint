@@ -15,8 +15,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -30,7 +31,7 @@ const (
 // peers to dial.
 // TODO: break this up?
 type AddrBook interface {
-	cmn.Service
+	service.Service
 
 	// Add our own addresses so we don't later add ourselves
 	AddOurAddress(*p2p.NetAddress)
@@ -78,7 +79,7 @@ var _ AddrBook = (*addrBook)(nil)
 // addrBook - concurrency safe peer address manager.
 // Implements AddrBook.
 type addrBook struct {
-	cmn.BaseService
+	service.BaseService
 
 	// accessed concurrently
 	mtx        sync.Mutex
@@ -111,7 +112,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 		routabilityStrict: routabilityStrict,
 	}
 	am.init()
-	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
+	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
 	return am
 }
 
@@ -344,10 +345,10 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 		return nil
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, bookSize),
+	numAddresses := tmmath.MaxInt(
+		tmmath.MinInt(minGetSelection, bookSize),
 		bookSize*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+	numAddresses = tmmath.MinInt(maxGetSelection, numAddresses)
 
 	// XXX: instead of making a list of all addresses, shuffling, and slicing a random chunk,
 	// could we just select a random numAddresses of indexes?
@@ -401,14 +402,14 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 		biasTowardsNewAddrs = 0
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, bookSize),
+	numAddresses := tmmath.MaxInt(
+		tmmath.MinInt(minGetSelection, bookSize),
 		bookSize*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+	numAddresses = tmmath.MinInt(maxGetSelection, numAddresses)
 
 	// number of new addresses that, if possible, should be in the beginning of the selection
 	// if there are no enough old addrs, will choose new addr instead.
-	numRequiredNewAdd := cmn.MaxInt(percentageOfNum(biasTowardsNewAddrs, numAddresses), numAddresses-a.nOld)
+	numRequiredNewAdd := tmmath.MaxInt(percentageOfNum(biasTowardsNewAddrs, numAddresses), numAddresses-a.nOld)
 	selection := a.randomPickAddresses(bucketTypeNew, numRequiredNewAdd)
 	selection = append(selection, a.randomPickAddresses(bucketTypeOld, numAddresses-len(selection))...)
 	return selection

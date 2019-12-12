@@ -13,7 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -1013,7 +1013,7 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 
 		// perform at most 20 permutations on the updates and call UpdateWithChangeSet()
 		n := len(tt.updateVals)
-		maxNumPerms := cmn.MinInt(20, n*n)
+		maxNumPerms := tmmath.MinInt(20, n*n)
 		for j := 0; j < maxNumPerms; j++ {
 			// create a copy of original set and apply a random permutation of updates
 			valSetCopy := valSet.Copy()

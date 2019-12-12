@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -97,9 +97,9 @@ type RoundState struct {
 type RoundStateSimple struct {
 	HeightRoundStep   string          `json:"height/round/step"`
 	StartTime         time.Time       `json:"start_time"`
-	ProposalBlockHash cmn.HexBytes    `json:"proposal_block_hash"`
-	LockedBlockHash   cmn.HexBytes    `json:"locked_block_hash"`
-	ValidBlockHash    cmn.HexBytes    `json:"valid_block_hash"`
+	ProposalBlockHash bytes.HexBytes  `json:"proposal_block_hash"`
+	LockedBlockHash   bytes.HexBytes  `json:"locked_block_hash"`
+	ValidBlockHash    bytes.HexBytes  `json:"valid_block_hash"`
 	Votes             json.RawMessage `json:"height_vote_set"`
 }
 

@@ -19,7 +19,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/async"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -53,7 +54,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 	var barPubKey = barPrvKey.PubKey()
 
 	// Make connections from both sides in parallel.
-	var trs, ok = cmn.Parallel(
+	var trs, ok = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
 			if err != nil {
@@ -178,7 +179,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
-	genNodeRunner := func(id string, nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
+	genNodeRunner := func(id string, nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) async.Task {
 		return func(_ int) (interface{}, bool, error) {
 			// Initiate cryptographic private key and secret connection trhough nodeConn.
 			nodePrvKey := ed25519.GenPrivKey()
@@ -188,7 +189,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 				return nil, true, err
 			}
 			// In parallel, handle some reads and writes.
-			var trs, ok = cmn.Parallel(
+			var trs, ok = async.Parallel(
 				func(_ int) (interface{}, bool, error) {
 					// Node writes:
 					for _, nodeWrite := range nodeWrites {
@@ -241,7 +242,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// Run foo & bar in parallel
-	var trs, ok = cmn.Parallel(
+	var trs, ok = async.Parallel(
 		genNodeRunner("foo", fooConn, fooWrites, &fooReads),
 		genNodeRunner("bar", barConn, barWrites, &barReads),
 	)
@@ -292,7 +293,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	if *update {
 		t.Logf("Updating golden test vector file %s", goldenFilepath)
 		data := createGoldenTestVectors(t)
-		cmn.WriteFile(goldenFilepath, []byte(data), 0644)
+		tmos.WriteFile(goldenFilepath, []byte(data), 0644)
 	}
 	f, err := os.Open(goldenFilepath)
 	if err != nil {

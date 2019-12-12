@@ -22,8 +22,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -49,7 +50,7 @@ var consensusReplayConfig *cfg.Config
 var ensureTimeout = time.Millisecond * 100
 
 func ensureDir(dir string, mode os.FileMode) {
-	if err := cmn.EnsureDir(dir, mode); err != nil {
+	if err := tmos.EnsureDir(dir, mode); err != nil {
 		panic(err)
 	}
 }
@@ -518,7 +519,7 @@ func ensureNewBlock(blockCh <-chan tmpubsub.Message, height int64) {
 	}
 }
 
-func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHash cmn.HexBytes) {
+func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHash tmbytes.HexBytes) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewBlockHeader event")

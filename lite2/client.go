@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
@@ -70,7 +70,7 @@ func SequentialVerification() Option {
 // which must sign the new header in order for us to trust it. NOTE this only
 // applies to non-adjusted headers. For adjusted headers, sequential
 // verification is used.
-func SkippingVerification(trustLevel cmn.Fraction) Option {
+func SkippingVerification(trustLevel tmmath.Fraction) Option {
 	if err := ValidateTrustLevel(trustLevel); err != nil {
 		panic(err)
 	}
@@ -97,7 +97,7 @@ type Client struct {
 	chainID          string
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
-	trustLevel       cmn.Fraction
+	trustLevel       tmmath.Fraction
 
 	// Primary provider of new headers.
 	primary provider.Provider

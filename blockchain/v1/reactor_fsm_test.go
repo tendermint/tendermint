@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -736,7 +736,7 @@ func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPee
 			continue
 		}
 		if randomPeerHeights {
-			peerHeights[i] = int64(cmn.MaxInt(rand.RandIntn(int(numBlocks)), int(startingHeight)+1))
+			peerHeights[i] = int64(tmmath.MaxInt(rand.RandIntn(int(numBlocks)), int(startingHeight)+1))
 		} else {
 			peerHeights[i] = numBlocks
 		}

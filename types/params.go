@@ -5,7 +5,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
 )
 
 const (
@@ -159,7 +159,7 @@ func (params *ConsensusParams) Hash() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
-		cmn.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
+		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.

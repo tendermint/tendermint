@@ -102,13 +102,13 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	return bcR
 }
 
-// SetLogger implements cmn.Service by setting the logger on reactor and pool.
+// SetLogger implements service.Service by setting the logger on reactor and pool.
 func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 	bcR.BaseService.Logger = l
 	bcR.pool.Logger = l
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	if bcR.fastSync {
 		err := bcR.pool.Start()
@@ -120,7 +120,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service.
+// OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	bcR.pool.Stop()
 }

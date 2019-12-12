@@ -12,7 +12,9 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -156,7 +158,7 @@ func (b *Block) fillHeader() {
 
 // Hash computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
-func (b *Block) Hash() cmn.HexBytes {
+func (b *Block) Hash() tmbytes.HexBytes {
 	if b == nil {
 		return nil
 	}
@@ -329,20 +331,20 @@ type Header struct {
 	LastBlockID BlockID `json:"last_block_id"`
 
 	// hashes of block data
-	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
+	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
+	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
+	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
+	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
+	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
+	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
 	// root hash of all results from the txs from the previous block
-	LastResultsHash cmn.HexBytes `json:"last_results_hash"`
+	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
 
 	// consensus info
-	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
 }
 
 // Populate the Header with state-derived data.
@@ -372,7 +374,7 @@ func (h *Header) Populate(
 // Returns nil if ValidatorHash is missing,
 // since a Header is not valid unless there is
 // a ValidatorsHash (corresponding to the validator set).
-func (h *Header) Hash() cmn.HexBytes {
+func (h *Header) Hash() tmbytes.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
@@ -479,8 +481,8 @@ func (cs CommitSig) Absent() bool {
 
 func (cs CommitSig) String() string {
 	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
-		cmn.Fingerprint(cs.Signature),
-		cmn.Fingerprint(cs.ValidatorAddress),
+		tmbytes.Fingerprint(cs.Signature),
+		tmbytes.Fingerprint(cs.ValidatorAddress),
 		cs.BlockIDFlag,
 		CanonicalTime(cs.Timestamp))
 }
@@ -559,8 +561,8 @@ type Commit struct {
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
-	hash     cmn.HexBytes
-	bitArray *cmn.BitArray
+	hash     tmbytes.HexBytes
+	bitArray *bits.BitArray
 }
 
 // NewCommit returns a new Commit.
@@ -644,9 +646,9 @@ func (commit *Commit) Size() int {
 
 // BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
 // Implements VoteSetReader.
-func (commit *Commit) BitArray() *cmn.BitArray {
+func (commit *Commit) BitArray() *bits.BitArray {
 	if commit.bitArray == nil {
-		commit.bitArray = cmn.NewBitArray(len(commit.Signatures))
+		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
@@ -696,7 +698,7 @@ func (commit *Commit) ValidateBasic() error {
 }
 
 // Hash returns the hash of the commit
-func (commit *Commit) Hash() cmn.HexBytes {
+func (commit *Commit) Hash() tmbytes.HexBytes {
 	if commit == nil {
 		return nil
 	}
@@ -809,11 +811,11 @@ type Data struct {
 	Txs Txs `json:"txs"`
 
 	// Volatile
-	hash cmn.HexBytes
+	hash tmbytes.HexBytes
 }
 
 // Hash returns the hash of the data
-func (data *Data) Hash() cmn.HexBytes {
+func (data *Data) Hash() tmbytes.HexBytes {
 	if data == nil {
 		return (Txs{}).Hash()
 	}
@@ -828,7 +830,7 @@ func (data *Data) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Data"
 	}
-	txStrings := make([]string, cmn.MinInt(len(data.Txs), 21))
+	txStrings := make([]string, tmmath.MinInt(len(data.Txs), 21))
 	for i, tx := range data.Txs {
 		if i == 20 {
 			txStrings[i] = fmt.Sprintf("... (%v total)", len(data.Txs))
@@ -850,11 +852,11 @@ type EvidenceData struct {
 	Evidence EvidenceList `json:"evidence"`
 
 	// Volatile
-	hash cmn.HexBytes
+	hash tmbytes.HexBytes
 }
 
 // Hash returns the hash of the data.
-func (data *EvidenceData) Hash() cmn.HexBytes {
+func (data *EvidenceData) Hash() tmbytes.HexBytes {
 	if data.hash == nil {
 		data.hash = data.Evidence.Hash()
 	}
@@ -866,7 +868,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Evidence"
 	}
-	evStrings := make([]string, cmn.MinInt(len(data.Evidence), 21))
+	evStrings := make([]string, tmmath.MinInt(len(data.Evidence), 21))
 	for i, ev := range data.Evidence {
 		if i == 20 {
 			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidence))
@@ -885,8 +887,8 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
 type BlockID struct {
-	Hash        cmn.HexBytes  `json:"hash"`
-	PartsHeader PartSetHeader `json:"parts"`
+	Hash        tmbytes.HexBytes `json:"hash"`
+	PartsHeader PartSetHeader    `json:"parts"`
 }
 
 // Equals returns true if the BlockID matches the given BlockID

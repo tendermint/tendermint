@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const defaultCapacity = 0
@@ -31,7 +31,7 @@ type Subscription interface {
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
 type EventBus struct {
-	cmn.BaseService
+	service.BaseService
 	pubsub *tmpubsub.Server
 }
 
@@ -45,7 +45,7 @@ func NewEventBusWithBufferCapacity(cap int) *EventBus {
 	// capacity could be exposed later if needed
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
 	b := &EventBus{pubsub: pubsub}
-	b.BaseService = *cmn.NewBaseService(nil, "EventBus", b)
+	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
 	return b
 }
 

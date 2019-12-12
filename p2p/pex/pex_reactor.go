@@ -9,8 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -84,8 +86,8 @@ type Reactor struct {
 	ensurePeersPeriod time.Duration // TODO: should go in the config
 
 	// maps to prevent abuse
-	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
-	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
+	requestsSent         *cmap.CMap // ID->struct{}: unanswered send requests
+	lastReceivedRequests *cmap.CMap // ID->time.Time: last time peer requested from us
 
 	seedAddrs []*p2p.NetAddress
 
@@ -130,8 +132,8 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		book:                 b,
 		config:               config,
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
-		requestsSent:         cmn.NewCMap(),
-		lastReceivedRequests: cmn.NewCMap(),
+		requestsSent:         cmap.NewCMap(),
+		lastReceivedRequests: cmap.NewCMap(),
 		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("Reactor", r)
@@ -141,7 +143,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 // OnStart implements BaseService
 func (r *Reactor) OnStart() error {
 	err := r.book.Start()
-	if err != nil && err != cmn.ErrAlreadyStarted {
+	if err != nil && err != service.ErrAlreadyStarted {
 		return err
 	}
 
@@ -451,7 +453,7 @@ func (r *Reactor) ensurePeers() {
 	// bias to prefer more vetted peers when we have fewer connections.
 	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
 	// NOTE: range here is [10, 90]. Too high ?
-	newBias := cmn.MinInt(out, 8)*10 + 10
+	newBias := tmmath.MinInt(out, 8)*10 + 10
 
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial

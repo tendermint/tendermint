@@ -9,8 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -66,15 +67,15 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
 type Switch struct {
-	cmn.BaseService
+	service.BaseService
 
 	config       *config.P2PConfig
 	reactors     map[string]Reactor
 	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
-	dialing      *cmn.CMap
-	reconnecting *cmn.CMap
+	dialing      *cmap.CMap
+	reconnecting *cmap.CMap
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 	addrBook     AddrBook
@@ -113,8 +114,8 @@ func NewSwitch(
 		chDescs:              make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh:         make(map[byte]Reactor),
 		peers:                NewPeerSet(),
-		dialing:              cmn.NewCMap(),
-		reconnecting:         cmn.NewCMap(),
+		dialing:              cmap.NewCMap(),
+		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
 		transport:            transport,
 		filterTimeout:        defaultFilterTimeout,
@@ -125,7 +126,7 @@ func NewSwitch(
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = rand.NewRand()
 
-	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 
 	for _, option := range options {
 		option(sw)

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -483,8 +483,8 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		// There is at least one partition and at most three.
 		var (
 			k      = percentageOfNum(biasToSelectNewPeers, nAddrs)
-			expNew = cmn.MinInt(nNew, cmn.MaxInt(k, nAddrs-nBookOld))
-			expOld = cmn.MinInt(nOld, nAddrs-expNew)
+			expNew = tmmath.MinInt(nNew, tmmath.MaxInt(k, nAddrs-nBookOld))
+			expOld = tmmath.MinInt(nOld, nAddrs-expNew)
 		)
 
 		// Verify that the number of old and new addresses are as expected

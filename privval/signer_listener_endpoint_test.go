@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
@@ -134,7 +134,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 ///////////////////////////////////
 
 func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
-	proto, address := cmn.ProtocolAndAddress(addr)
+	proto, address := tmnet.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
 	logger.Info("SignerListener: Listening", "proto", proto, "address", address)

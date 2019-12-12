@@ -14,8 +14,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -112,7 +112,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 //
 // In case of an error, the connection is stopped.
 type wsConnection struct {
-	cmn.BaseService
+	service.BaseService
 
 	remoteAddr string
 	baseConn   *websocket.Conn
@@ -175,7 +175,7 @@ func NewWSConnection(
 		option(wsc)
 	}
 	wsc.baseConn.SetReadLimit(wsc.readLimit)
-	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
+	wsc.BaseService = *service.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
 
@@ -227,7 +227,7 @@ func ReadLimit(readLimit int64) func(*wsConnection) {
 	}
 }
 
-// OnStart implements cmn.Service by starting the read and write routines. It
+// OnStart implements service.Service by starting the read and write routines. It
 // blocks until there's some error.
 func (wsc *wsConnection) OnStart() error {
 	wsc.writeChan = make(chan types.RPCResponse, wsc.writeChanCapacity)
@@ -240,7 +240,7 @@ func (wsc *wsConnection) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by unsubscribing remoteAddr from all
+// OnStop implements service.Service by unsubscribing remoteAddr from all
 // subscriptions.
 func (wsc *wsConnection) OnStop() {
 	if wsc.onDisconnect != nil {

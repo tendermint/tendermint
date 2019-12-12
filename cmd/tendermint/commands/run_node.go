@@ -1,12 +1,22 @@
 package commands
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
+	"io"
+	"os"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cfg "github.com/tendermint/tendermint/config"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	nm "github.com/tendermint/tendermint/node"
+)
+
+var (
+	genesisHash []byte
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -23,6 +33,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	// node flags
 	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "Fast blockchain syncing")
+	cmd.Flags().BytesHexVar(
+		&genesisHash,
+		"genesis_hash",
+		[]byte{},
+		"Optional SHA-256 hash of the genesis file")
 
 	// abci flags
 	cmd.Flags().String(
@@ -65,6 +80,16 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks_interval",
 		string(config.Consensus.CreateEmptyBlocksInterval),
 		"The possible interval between empty blocks")
+
+	// db flags
+	cmd.Flags().String(
+		"db_backend",
+		config.DBBackend,
+		"Database backend: goleveldb | cleveldb | boltdb | rocksdb")
+	cmd.Flags().String(
+		"db_dir",
+		config.DBPath,
+		"Database directory")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
@@ -80,11 +105,15 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 			}
 
 			// Stop upon receiving SIGTERM or CTRL-C.
-			cmn.TrapSignal(logger, func() {
+			tmos.TrapSignal(logger, func() {
 				if n.IsRunning() {
 					n.Stop()
 				}
 			})
+
+			if err := checkGenesisHash(config); err != nil {
+				return err
+			}
 
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("failed to start node: %v", err)
@@ -98,4 +127,31 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 
 	AddNodeFlags(cmd)
 	return cmd
+}
+
+func checkGenesisHash(config *cfg.Config) error {
+	if len(genesisHash) == 0 || config.Genesis == "" {
+		return nil
+	}
+
+	// Calculate SHA-256 hash of the genesis file.
+	f, err := os.Open(config.GenesisFile())
+	if err != nil {
+		return errors.Wrap(err, "can't open genesis file")
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return errors.Wrap(err, "error when hashing genesis file")
+	}
+	actualHash := h.Sum(nil)
+
+	// Compare with the flag.
+	if !bytes.Equal(genesisHash, actualHash) {
+		return errors.Errorf(
+			"--genesis_hash=%X does not match %s hash: %X",
+			genesisHash, config.GenesisFile(), actualHash)
+	}
+
+	return nil
 }
