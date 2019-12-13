@@ -25,6 +25,7 @@ type ConsensusParams struct {
 	Block     BlockParams     `json:"block"`
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
+	Version   VersionParams   `json:"version"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -56,12 +57,18 @@ type ValidatorParams struct {
 	PubKeyTypes []string `json:"pub_key_types"`
 }
 
+// VersionParams used when app upgrades its version at a certain height
+type VersionParams struct {
+	AppVersion uint64 `json:"app_version"`
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
 		DefaultBlockParams(),
 		DefaultEvidenceParams(),
 		DefaultValidatorParams(),
+		DefaultVersionParams(),
 	}
 }
 
@@ -85,6 +92,12 @@ func DefaultEvidenceParams() EvidenceParams {
 // only ed25519 pubkeys.
 func DefaultValidatorParams() ValidatorParams {
 	return ValidatorParams{[]string{ABCIPubKeyTypeEd25519}}
+}
+
+func DefaultVersionParams() VersionParams {
+	return VersionParams{
+		AppVersion: 0,
+	}
 }
 
 func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
@@ -183,6 +196,9 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
+	}
+	if params2.Version != nil {
+		res.Version.AppVersion = params2.Version.AppVersion
 	}
 	return res
 }
