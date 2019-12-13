@@ -426,7 +426,7 @@ func updateState(
 		lastHeightParamsChanged = header.Height + 1
 	}
 
-	state.Version.Consensus.App = version.Protocol(abciResponses.EndBlock.AppVersion)
+	state.Version.Consensus.App = version.Protocol(abciResponses.EndBlock.ConsensusParamUpdates.Version.AppVersion)
 	nextVersion := state.Version
 
 	// NOTE: the AppHash has not been populated.

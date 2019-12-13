@@ -201,7 +201,6 @@ message ResponseEndBlock {
   repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
   repeated Event events = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
-  uint64 app_version = 4;
 }
 
 message ResponseCommit {
@@ -218,6 +217,7 @@ message ConsensusParams {
   BlockParams block = 1;
   EvidenceParams evidence = 2;
   ValidatorParams validator = 3;
+  VersionParams version = 4;
 }
 
 // BlockParams contains limits on the block size.
@@ -237,6 +237,11 @@ message EvidenceParams {
 // ValidatorParams contains limits on validators.
 message ValidatorParams {
   repeated string pub_key_types = 1;
+}
+
+// VersionParams contains the app version of this height
+message VersionParams {
+  uint64 app_version = 1;
 }
 
 message LastCommitInfo {
