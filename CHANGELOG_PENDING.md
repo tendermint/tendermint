@@ -99,6 +99,7 @@ program](https://hackerone.com/tendermint).
 - [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
+- [abci] [\#4225](https://github.com/tendermint/tendermint/issues/3007) Add VersionParams in ResponseEndBlock to allow the app inform Tendermint its updated version
 
 ### BUG FIXES:
 
