@@ -22,11 +22,11 @@ const (
 )
 
 var (
-	prefixPubKeyEd25519 = []byte{0x16, 0x24, 0xDE, 0x64}
-	lengthPubKeyEd25519 = []byte{0x20}
-
 	prefixPrivKeyEd25519 = []byte{0xA3, 0x28, 0x89, 0x10}
 	lengthPrivKeyEd25519 = []byte{0x40}
+
+	prefixPubKeyEd25519 = []byte{0x16, 0x24, 0xDE, 0x64}
+	lengthPubKeyEd25519 = []byte{0x20}
 )
 
 func init() {
@@ -43,9 +43,55 @@ func RegisterCodec(c *amino.Codec) {
 	c.RegisterConcrete(PrivKeyEd25519{}, PrivKeyAminoName, nil)
 }
 
+// MarshalBinary attempts to marshal a PrivKeyEd25519 type that is backwards
+// compatible with Amino.
+//
+// NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement
+// it. For now, clients must call MarshalBinary directly on the type to get the
+// custom compatible encoding.
+func (privKey PrivKeyEd25519) MarshalBinary() ([]byte, error) {
+	p := len(prefixPrivKeyEd25519)
+	l := len(lengthPrivKeyEd25519)
+	bz := make([]byte, p+l+len(privKey[:]))
+
+	copy(bz[:p], prefixPrivKeyEd25519)
+	copy(bz[p:p+l], lengthPrivKeyEd25519)
+	copy(bz[p+l:], privKey[:])
+
+	return bz, nil
+}
+
+// UnmarshalBinary attempts to unmarshal provided amino compatbile bytes into a
+// PrivKeyEd25519 reference. An error is returned if the encoding is invalid.
+//
+// NOTE: Amino will not delegate UnmarshalBinaryBare calls to types that implement
+// it. For now, clients must call UnmarshalBinary directly on the type to get the
+// custom compatible decoding.
+func (privKey *PrivKeyEd25519) UnmarshalBinary(bz []byte) error {
+	p := len(prefixPrivKeyEd25519)
+	l := len(lengthPrivKeyEd25519)
+
+	if !bytes.Equal(bz[:p], prefixPrivKeyEd25519) {
+		return fmt.Errorf("invalid prefix; expected: %X, got: %X", prefixPrivKeyEd25519, bz[:p])
+	}
+	if !bytes.Equal(bz[p:p+l], lengthPrivKeyEd25519) {
+		return fmt.Errorf("invalid encoding length; expected: %X, got: %X", lengthPrivKeyEd25519, bz[p:p+l])
+	}
+
+	var el byte
+	if err := binary.Read(bytes.NewReader(lengthPrivKeyEd25519), binary.BigEndian, &el); err != nil {
+		return errors.Wrap(err, "failed to read lengthPrivKeyEd25519")
+	}
+	if len(bz[p+l:]) != int(el) {
+		return fmt.Errorf("invalid key length; expected: %X, got: %X", lengthPrivKeyEd25519, bz[p+l:])
+	}
+
+	copy(privKey[:], bz[p+l:])
+	return nil
+}
+
 // MarshalBinary attempts to marshal a PubKeyEd25519 type that is backwards
-// compatible with Amino. It will return the raw encoded bytes or an error if the
-// type is not registered.
+// compatible with Amino.
 //
 // NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement
 // it. For now, clients must call MarshalBinary directly on the type to get the
