@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-var cdc = amino.NewCodec()
-
 const (
 	PrivKeyAminoName = "tendermint/PrivKeyEd25519"
 	PubKeyAminoName  = "tendermint/PubKeyEd25519"
@@ -28,11 +26,6 @@ var (
 	prefixPubKeyEd25519 = []byte{0x16, 0x24, 0xDE, 0x64}
 	lengthPubKeyEd25519 = []byte{0x20}
 )
-
-func init() {
-	RegisterCodec(cdc)
-	cdc.Seal()
-}
 
 // RegisterCodec registers the Ed25519 key types with the provided amino codec.
 func RegisterCodec(c *amino.Codec) {
