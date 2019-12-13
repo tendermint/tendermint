@@ -29,16 +29,75 @@ func TestSignAndValidateEd25519(t *testing.T) {
 	assert.False(t, pubKey.VerifyBytes(msg, sig))
 }
 
-func TestEd25519MarshalBinaryBare(t *testing.T) {
-	pubkeyStr := "F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A"
-	pubkeyBz, err := hex.DecodeString(pubkeyStr)
-	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf("%x", len(pubkeyBz)), "20")
+func TestEd25519MarshalBinary(t *testing.T) {
+	testCases := []struct {
+		in  string
+		out string // amino compatible
+	}{
+		{
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"1624DE64200000000000000000000000000000000000000000000000000000000000000000",
+		},
+		{
+			"F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+			"1624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+		},
+	}
 
-	var pubkey ed25519.PubKeyEd25519
-	copy(pubkey[:], pubkeyBz)
+	for _, tc := range testCases {
+		pubkeyBz, err := hex.DecodeString(tc.in)
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprintf("%X", len(pubkeyBz)), "20")
 
-	bz, err := pubkey.MarshalBinaryBare()
-	require.NoError(t, err)
-	require.Equal(t, "1624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A", fmt.Sprintf("%X", bz))
+		var pubkey ed25519.PubKeyEd25519
+		copy(pubkey[:], pubkeyBz)
+
+		bz, err := pubkey.MarshalBinary()
+		require.NoError(t, err)
+		require.Equal(t, tc.out, fmt.Sprintf("%X", bz))
+	}
+}
+
+func TestEd25519UnmarshalBinary(t *testing.T) {
+	testCases := []struct {
+		in        string // amino compatible encoding
+		out       string
+		expectErr bool
+	}{
+		{
+			"1624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+			"F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+			false,
+		},
+		{
+			"1624DE64200000000000000000000000000000000000000000000000000000000000000000",
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			false,
+		},
+		{
+			"0DFB100520F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			true,
+		},
+		{
+			"1624DE6421F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310A",
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			true,
+		},
+		{
+			"1624DE6420F85678BD3C00EE053F6255B70A4AF2F645151C2884C6189F7646C199B282310AAA",
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		bz, err := hex.DecodeString(tc.in)
+		require.NoError(t, err)
+
+		var pubkey ed25519.PubKeyEd25519
+
+		require.Equal(t, tc.expectErr, pubkey.UnmarshalBinary(bz) != nil)
+		require.Equal(t, tc.out, fmt.Sprintf("%X", pubkey[:]))
+	}
 }

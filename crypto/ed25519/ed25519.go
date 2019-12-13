@@ -118,10 +118,11 @@ func (pubKey PubKeyEd25519) Address() crypto.Address {
 
 // Bytes marshals the PubKey using amino encoding.
 func (pubKey PubKeyEd25519) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
+	bz, err := pubKey.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 
@@ -144,26 +145,4 @@ func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 	}
 
 	return false
-}
-
-// MarshalBinaryBare attempts to marshal a PubKeyEd25519 type that is compatible
-// with Amino. It will return the raw encoded bytes or an error if the type is
-// not registered.
-//
-// NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement.
-// For now, clients must call MarshalBinaryBare directly on the type to get the
-// custom encoding.
-func (pubKey PubKeyEd25519) MarshalBinaryBare() ([]byte, error) {
-	ke, ok := crypto.GetKeyEncoding(TypePubKeyEd25519)
-	if !ok {
-		return nil, fmt.Errorf("key type '%s' not registered", TypePubKeyEd25519)
-	}
-
-	bz := make([]byte, len(ke.Prefix)+len(ke.Length)+len(pubKey[:]))
-
-	copy(bz[:len(ke.Prefix)], ke.Prefix)
-	copy(bz[len(ke.Prefix):len(ke.Prefix)+len(ke.Length)], ke.Length)
-	copy(bz[len(ke.Prefix)+len(ke.Length):], pubKey[:])
-
-	return bz, nil
 }
