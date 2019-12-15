@@ -79,15 +79,15 @@ func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.
 	if err != nil {
 		return nil, err
 	}
-	if status.SyncInfo.LatestBlockHeight < minHeight {
+	if status.SyncInfo.CurrentBlockHeight < minHeight {
 		err = fmt.Errorf("provider is at %v but require minHeight=%v",
-			status.SyncInfo.LatestBlockHeight, minHeight)
+			status.SyncInfo.CurrentBlockHeight, minHeight)
 		return nil, err
 	}
 	if maxHeight == 0 {
-		maxHeight = status.SyncInfo.LatestBlockHeight
-	} else if status.SyncInfo.LatestBlockHeight < maxHeight {
-		maxHeight = status.SyncInfo.LatestBlockHeight
+		maxHeight = status.SyncInfo.CurrentBlockHeight
+	} else if status.SyncInfo.CurrentBlockHeight < maxHeight {
+		maxHeight = status.SyncInfo.CurrentBlockHeight
 	}
 	return p.client.Commit(&maxHeight)
 }

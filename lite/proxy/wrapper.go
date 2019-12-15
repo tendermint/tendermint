@@ -130,7 +130,7 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 		// have here, but we may have to address this at some
 		// point.
 		height = new(int64)
-		*height = resStatus.SyncInfo.LatestBlockHeight
+		*height = resStatus.SyncInfo.CurrentBlockHeight
 	}
 	rpcclient.WaitForHeight(w.Client, *height, nil)
 	res, err := w.Client.Commit(height)

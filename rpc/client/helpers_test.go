@@ -32,7 +32,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// now set current block height to 10
 	m.Call = mock.Call{
-		Response: &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 10}},
+		Response: &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{CurrentBlockHeight: 10}},
 	}
 
 	// we will not wait for more than 10 blocks
@@ -52,7 +52,7 @@ func TestWaitForHeight(t *testing.T) {
 	// we use the callback to update the status height
 	myWaiter := func(delta int64) error {
 		// update the height for the next call
-		m.Call.Response = &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 15}}
+		m.Call.Response = &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{CurrentBlockHeight: 15}}
 		return client.DefaultWaitStrategy(delta)
 	}
 
@@ -66,11 +66,11 @@ func TestWaitForHeight(t *testing.T) {
 	require.Nil(pre.Error)
 	prer, ok := pre.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(int64(10), prer.SyncInfo.LatestBlockHeight)
+	assert.Equal(int64(10), prer.SyncInfo.CurrentBlockHeight)
 
 	post := r.Calls[4]
 	require.Nil(post.Error)
 	postr, ok := post.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(int64(15), postr.SyncInfo.LatestBlockHeight)
+	assert.Equal(int64(15), postr.SyncInfo.CurrentBlockHeight)
 }

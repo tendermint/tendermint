@@ -45,11 +45,12 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	result := &ctypes.ResultStatus{
 		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
-			LatestBlockHash:   latestBlockHash,
-			LatestAppHash:     latestAppHash,
-			LatestBlockHeight: latestHeight,
-			LatestBlockTime:   latestBlockTime,
-			CatchingUp:        consensusReactor.FastSync(),
+			LatestBlockHash:    latestBlockHash,
+			LatestAppHash:      latestAppHash,
+			CurrentBlockHeight: blockStore.Height(),
+			HighestBlockHeight: consensusState.GetLastHeight(),
+			LatestBlockTime:    latestBlockTime,
+			CatchingUp:         consensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),

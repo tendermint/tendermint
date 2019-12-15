@@ -112,6 +112,7 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] [\#3983](https://github.com/tendermint/tendermint/pull/4251) Added `highest_block_height` in `status` RPC method (@princesinha19)
 
 ### IMPROVEMENTS:
 

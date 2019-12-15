@@ -96,7 +96,7 @@ func TestInfo(t *testing.T) {
 		info, err := c.ABCIInfo()
 		require.Nil(t, err, "%d: %+v", i, err)
 		// TODO: this is not correct - fix merkleeyes!
-		// assert.EqualValues(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
+		// assert.EqualValues(t, status.SyncInfo.CurrentBlockHeight, info.Response.LastBlockHeight)
 		assert.True(t, strings.Contains(info.Response.Data, "size"))
 	}
 }
@@ -193,7 +193,7 @@ func TestAppCalls(t *testing.T) {
 		s, err := c.Status()
 		require.Nil(err, "%d: %+v", i, err)
 		// sh is start height or status height
-		sh := s.SyncInfo.LatestBlockHeight
+		sh := s.SyncInfo.CurrentBlockHeight
 
 		// look for the future
 		h := sh + 2
@@ -592,7 +592,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 
 		status, err := c.Status()
 		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+		client.WaitForHeight(c, status.SyncInfo.CurrentBlockHeight+2, nil)
 
 		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]

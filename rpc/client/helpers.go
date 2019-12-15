@@ -41,7 +41,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 		if err != nil {
 			return err
 		}
-		delta = h - s.SyncInfo.LatestBlockHeight
+		delta = h - s.SyncInfo.CurrentBlockHeight
 		// wait for the time, or abort early
 		if err := waiter(delta); err != nil {
 			return err
