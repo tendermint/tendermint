@@ -95,12 +95,13 @@ type RoundState struct {
 
 // Compressed version of the RoundState for use in RPC
 type RoundStateSimple struct {
-	HeightRoundStep   string          `json:"height/round/step"`
-	StartTime         time.Time       `json:"start_time"`
-	ProposalBlockHash bytes.HexBytes  `json:"proposal_block_hash"`
-	LockedBlockHash   bytes.HexBytes  `json:"locked_block_hash"`
-	ValidBlockHash    bytes.HexBytes  `json:"valid_block_hash"`
-	Votes             json.RawMessage `json:"height_vote_set"`
+	HeightRoundStep   string              `json:"height/round/step"`
+	StartTime         time.Time           `json:"start_time"`
+	ProposalBlockHash bytes.HexBytes      `json:"proposal_block_hash"`
+	LockedBlockHash   bytes.HexBytes      `json:"locked_block_hash"`
+	ValidBlockHash    bytes.HexBytes      `json:"valid_block_hash"`
+	Votes             json.RawMessage     `json:"height_vote_set"`
+	Proposer          types.ValidatorInfo `json:"proposer"`
 }
 
 // Compress the RoundState to RoundStateSimple
@@ -109,6 +110,10 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	if err != nil {
 		panic(err)
 	}
+
+	addr := rs.Validators.GetProposer().Address
+	idx, _ := rs.Validators.GetByAddress(addr)
+
 	return RoundStateSimple{
 		HeightRoundStep:   fmt.Sprintf("%d/%d/%d", rs.Height, rs.Round, rs.Step),
 		StartTime:         rs.StartTime,
@@ -116,6 +121,10 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		LockedBlockHash:   rs.LockedBlock.Hash(),
 		ValidBlockHash:    rs.ValidBlock.Hash(),
 		Votes:             votesJSON,
+		Proposer: types.ValidatorInfo{
+			Address: addr,
+			Index:   idx,
+		},
 	}
 }
 
