@@ -2,10 +2,8 @@ package ed25519
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 
-	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 )
@@ -20,11 +18,11 @@ const (
 )
 
 var (
-	prefixPrivKeyEd25519 = []byte{0xA3, 0x28, 0x89, 0x10}
-	lengthPrivKeyEd25519 = []byte{0x40}
+	prefixPrivKeyEd25519      = []byte{0xA3, 0x28, 0x89, 0x10}
+	lengthPrivKeyEd25519 byte = 0x40
 
-	prefixPubKeyEd25519 = []byte{0x16, 0x24, 0xDE, 0x64}
-	lengthPubKeyEd25519 = []byte{0x20}
+	prefixPubKeyEd25519      = []byte{0x16, 0x24, 0xDE, 0x64}
+	lengthPubKeyEd25519 byte = 0x20
 )
 
 // RegisterCodec registers the Ed25519 key types with the provided amino codec.
@@ -43,12 +41,13 @@ func RegisterCodec(c *amino.Codec) {
 // it. For now, clients must call MarshalBinary directly on the type to get the
 // custom compatible encoding.
 func (privKey PrivKeyEd25519) MarshalBinary() ([]byte, error) {
+	lbz := []byte{lengthPrivKeyEd25519}
 	p := len(prefixPrivKeyEd25519)
-	l := len(lengthPrivKeyEd25519)
+	l := len(lbz)
 	bz := make([]byte, p+l+len(privKey[:]))
 
 	copy(bz[:p], prefixPrivKeyEd25519)
-	copy(bz[p:p+l], lengthPrivKeyEd25519)
+	copy(bz[p:p+l], lbz)
 	copy(bz[p+l:], privKey[:])
 
 	return bz, nil
@@ -61,22 +60,18 @@ func (privKey PrivKeyEd25519) MarshalBinary() ([]byte, error) {
 // it. For now, clients must call UnmarshalBinary directly on the type to get the
 // custom compatible decoding.
 func (privKey *PrivKeyEd25519) UnmarshalBinary(bz []byte) error {
+	lbz := []byte{lengthPrivKeyEd25519}
 	p := len(prefixPrivKeyEd25519)
-	l := len(lengthPrivKeyEd25519)
+	l := len(lbz)
 
 	if !bytes.Equal(bz[:p], prefixPrivKeyEd25519) {
 		return fmt.Errorf("invalid prefix; expected: %X, got: %X", prefixPrivKeyEd25519, bz[:p])
 	}
-	if !bytes.Equal(bz[p:p+l], lengthPrivKeyEd25519) {
-		return fmt.Errorf("invalid encoding length; expected: %X, got: %X", lengthPrivKeyEd25519, bz[p:p+l])
+	if !bytes.Equal(bz[p:p+l], lbz) {
+		return fmt.Errorf("invalid encoding length; expected: %X, got: %X", lbz, bz[p:p+l])
 	}
-
-	var el byte
-	if err := binary.Read(bytes.NewReader(lengthPrivKeyEd25519), binary.BigEndian, &el); err != nil {
-		return errors.Wrap(err, "failed to read lengthPrivKeyEd25519")
-	}
-	if len(bz[p+l:]) != int(el) {
-		return fmt.Errorf("invalid key length; expected: %X, got: %X", lengthPrivKeyEd25519, bz[p+l:])
+	if len(bz[p+l:]) != int(lengthPrivKeyEd25519) {
+		return fmt.Errorf("invalid key length; expected: %d, got: %d", int(lengthPrivKeyEd25519), len(bz[p+l:]))
 	}
 
 	copy(privKey[:], bz[p+l:])
@@ -90,12 +85,13 @@ func (privKey *PrivKeyEd25519) UnmarshalBinary(bz []byte) error {
 // it. For now, clients must call MarshalBinary directly on the type to get the
 // custom compatible encoding.
 func (pubKey PubKeyEd25519) MarshalBinary() ([]byte, error) {
+	lbz := []byte{lengthPubKeyEd25519}
 	p := len(prefixPubKeyEd25519)
-	l := len(lengthPubKeyEd25519)
+	l := len(lbz)
 	bz := make([]byte, p+l+len(pubKey[:]))
 
 	copy(bz[:p], prefixPubKeyEd25519)
-	copy(bz[p:p+l], lengthPubKeyEd25519)
+	copy(bz[p:p+l], lbz)
 	copy(bz[p+l:], pubKey[:])
 
 	return bz, nil
@@ -108,22 +104,18 @@ func (pubKey PubKeyEd25519) MarshalBinary() ([]byte, error) {
 // it. For now, clients must call UnmarshalBinary directly on the type to get the
 // custom compatible decoding.
 func (pubKey *PubKeyEd25519) UnmarshalBinary(bz []byte) error {
+	lbz := []byte{lengthPubKeyEd25519}
 	p := len(prefixPubKeyEd25519)
-	l := len(lengthPubKeyEd25519)
+	l := len(lbz)
 
 	if !bytes.Equal(bz[:p], prefixPubKeyEd25519) {
 		return fmt.Errorf("invalid prefix; expected: %X, got: %X", prefixPubKeyEd25519, bz[:p])
 	}
-	if !bytes.Equal(bz[p:p+l], lengthPubKeyEd25519) {
-		return fmt.Errorf("invalid encoding length; expected: %X, got: %X", lengthPubKeyEd25519, bz[p:p+l])
+	if !bytes.Equal(bz[p:p+l], lbz) {
+		return fmt.Errorf("invalid encoding length; expected: %X, got: %X", lbz, bz[p:p+l])
 	}
-
-	var el byte
-	if err := binary.Read(bytes.NewReader(lengthPubKeyEd25519), binary.BigEndian, &el); err != nil {
-		return errors.Wrap(err, "failed to read lengthPubKeyEd25519")
-	}
-	if len(bz[p+l:]) != int(el) {
-		return fmt.Errorf("invalid key length; expected: %X, got: %X", lengthPubKeyEd25519, bz[p+l:])
+	if len(bz[p+l:]) != int(lengthPubKeyEd25519) {
+		return fmt.Errorf("invalid key length; expected: %d, got: %d", int(lengthPubKeyEd25519), len(bz[p+l:]))
 	}
 
 	copy(pubKey[:], bz[p+l:])
