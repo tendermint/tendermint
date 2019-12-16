@@ -125,7 +125,14 @@ program](https://hackerone.com/tendermint).
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
 - [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
 - [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
+<<<<<<< HEAD
 - [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
+=======
+<<<<<<< HEAD
+=======
+- [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
+>>>>>>> rpc: added proposer in consensus_state (#4250)
+>>>>>>> rpc: added proposer in consensus_state (#4250)
 
 ### BUG FIXES:
 
