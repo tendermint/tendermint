@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -59,7 +60,8 @@ func makeParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAgeHeight:   evidenceAge,
+			MaxAgeDuration: time.Duration(evidenceAge),
 		},
 		Validator: ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
@@ -115,7 +117,8 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxGas:   200,
 				},
 				Evidence: &abci.EvidenceParams{
-					MaxAge: 300,
+					MaxAgeHeight:   300,
+					MaxAgeDuration: time.Duration(300),
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,

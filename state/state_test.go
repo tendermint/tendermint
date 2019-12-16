@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -984,7 +985,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 func TestApplyUpdates(t *testing.T) {
 	initParams := makeConsensusParams(1, 2, 3, 4)
-
+	var maxAge int64 = 66
 	cases := [...]struct {
 		init     types.ConsensusParams
 		updates  abci.ConsensusParams
@@ -1003,7 +1004,8 @@ func TestApplyUpdates(t *testing.T) {
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
-					MaxAge: 66,
+					MaxAgeHeight:   maxAge,
+					MaxAgeDuration: time.Duration(66),
 				},
 			},
 			makeConsensusParams(1, 2, 3, 66)},

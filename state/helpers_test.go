@@ -3,6 +3,7 @@ package state_test
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -161,7 +162,8 @@ func makeConsensusParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAgeHeight:   evidenceAge,
+			MaxAgeDuration: time.Duration(evidenceAge),
 		},
 	}
 }

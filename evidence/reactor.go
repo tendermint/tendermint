@@ -93,7 +93,7 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 }
 
-// SetEventSwitch implements events.Eventable.
+// SetEventBus implements events.Eventable.
 func (evR *Reactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
@@ -172,7 +172,7 @@ func (evR Reactor) checkSendEvidenceMessage(
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAge := evR.evpool.State().ConsensusParams.Evidence.MaxAge
+	maxAge := evR.evpool.State().ConsensusParams.Evidence.MaxAgeHeight
 	peerHeight := peerState.GetHeight()
 	if peerHeight < evHeight {
 		// peer is behind. sleep while he catches up

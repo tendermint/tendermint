@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -37,7 +38,8 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
-				MaxAge: 1000000,
+				MaxAgeHeight:   1000000,
+				MaxAgeDuration: 1000000 * time.Second,
 			},
 		},
 	}
@@ -89,6 +91,7 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	// Initialization:
 	valAddr := []byte("validator_address")
 	height := int64(42)
+	lastBlockTime := time.Now()
 	stateDB := initializeValidatorState(valAddr, height)
 	evidenceDB := dbm.NewMemDB()
 	pool := NewPool(stateDB, evidenceDB)
@@ -102,6 +105,6 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, []types.Evidence{evidence})
+	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
 	assert.True(t, pool.IsCommitted(evidence))
 }

@@ -580,13 +580,13 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 
 	ev, fakes := makeEvidences(t, pv, chainID)
-
 	t.Logf("evidence %v", ev)
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
 		result, err := c.BroadcastEvidence(&ev)
+		fmt.Println("here")
 		require.Nil(t, err)
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
 

@@ -3,6 +3,7 @@ package evidence
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -90,7 +91,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.mtx.Unlock()
 
 	// remove evidence from pending and mark committed
-	evpool.MarkEvidenceAsCommitted(block.Height, block.Evidence.Evidence)
+	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
@@ -124,7 +125,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it from the queue.
-func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evidence) {
+func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Time, evidence []types.Evidence) {
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
@@ -133,8 +134,8 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evide
 	}
 
 	// remove committed evidence from the clist
-	maxAge := evpool.State().ConsensusParams.Evidence.MaxAge
-	evpool.removeEvidence(height, maxAge, blockEvidenceMap)
+	evidenceAge := evpool.State().ConsensusParams.Evidence
+	evpool.removeEvidence(height, lastBlockTime, evidenceAge, blockEvidenceMap)
 
 }
 
@@ -144,14 +145,20 @@ func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	return ei.Evidence != nil && ei.Committed
 }
 
-func (evpool *Pool) removeEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
+func (evpool *Pool) removeEvidence(
+	height int64,
+	lastBlockTime time.Time,
+	evidenceAge types.EvidenceParams,
+	blockEvidenceMap map[string]struct{}) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		ev := e.Value.(types.Evidence)
+
+		evAge := lastBlockTime.Sub(ev.Time())
 
 		// Remove the evidence if it's already in a block
 		// or if it's now too old.
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			ev.Height() < height-maxAge {
+			ev.Height() < height-evidenceAge.MaxAgeHeight || evAge > evidenceAge.MaxAgeDuration {
 
 			// remove from clist
 			evpool.evidenceList.Remove(e)

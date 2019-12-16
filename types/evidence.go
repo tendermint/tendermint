@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -55,7 +56,8 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
+	Height() int64 // height of the equivocation
+	Time() time.Time
 	Address() []byte                                   // address of the equivocating validator
 	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
@@ -134,6 +136,11 @@ func (dve *DuplicateVoteEvidence) String() string {
 // Height returns the height this evidence refers to.
 func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
+}
+
+// Time return the time the evidence was created
+func (dve *DuplicateVoteEvidence) Time() time.Time {
+	return dve.VoteA.Timestamp
 }
 
 // Address returns the address of the validator.
@@ -273,6 +280,7 @@ func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence
 }
 
 func (e MockGoodEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockGoodEvidence) Time() time.Time { return time.Now() }
 func (e MockGoodEvidence) Address() []byte { return e.EvidenceAddress }
 func (e MockGoodEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
