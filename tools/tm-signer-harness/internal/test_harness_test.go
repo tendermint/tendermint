@@ -46,7 +46,8 @@ const (
 			"time_iota_ms": "1000"
 		},
 		"evidence": {
-			"max_age": "100000"
+			"max_age_height": "100000",
+			"max_age_duration": "11000"
 		},
 		"validator": {
 			"pub_key_types": [

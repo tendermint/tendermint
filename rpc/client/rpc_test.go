@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -480,6 +481,7 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 		Height:           vote.Height,
 		Round:            vote.Round,
 		Type:             vote.Type,
+		Timestamp:        vote.Timestamp,
 		BlockID: types.BlockID{
 			Hash:        make([]byte, len(vote.BlockID.Hash)),
 			PartsHeader: vote.BlockID.PartsHeader,
@@ -518,6 +520,7 @@ func makeEvidences(
 		Height:           1,
 		Round:            0,
 		Type:             types.PrevoteType,
+		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
 			PartsHeader: types.PartSetHeader{
@@ -530,7 +533,7 @@ func makeEvidences(
 	var err error
 	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
 	require.NoError(t, err)
-
+	fmt.Println(vote.Timestamp)
 	vote2 := deepcpVote(vote)
 	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
 
@@ -586,7 +589,6 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		t.Logf("client %d", i)
 
 		result, err := c.BroadcastEvidence(&ev)
-		fmt.Println("here")
 		require.Nil(t, err)
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
 

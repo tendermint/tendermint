@@ -1005,10 +1005,10 @@ func TestApplyUpdates(t *testing.T) {
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAgeHeight:   maxAge,
-					MaxAgeDuration: time.Duration(66),
+					MaxAgeDuration: time.Duration(maxAge),
 				},
 			},
-			makeConsensusParams(1, 2, 3, 66)},
+			makeConsensusParams(1, 2, 3, maxAge)},
 	}
 
 	for i, tc := range cases {

@@ -49,7 +49,7 @@ type BlockParams struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance.
 type EvidenceParams struct {
-	MaxAgeHeight   int64         `json:"max_age_heights"` // only accept new evidence more recent than this
+	MaxAgeHeight   int64         `json:"max_age_height"` // only accept new evidence more recent than this
 	MaxAgeDuration time.Duration `json:"max_age_duration"`
 }
 
@@ -81,7 +81,7 @@ func DefaultBlockParams() BlockParams {
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
 		MaxAgeHeight:   100000, // 27.8 hrs at 1block/s
-		MaxAgeDuration: 10000 * time.Second,
+		MaxAgeDuration: (48 * time.Hour),
 	}
 }
 
@@ -123,12 +123,12 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	if params.Evidence.MaxAgeHeight <= 0 {
-		return errors.Errorf("evidenceParams.MaxAge must be greater than 0. Got %d",
+		return errors.Errorf("evidenceParams.MaxAgeHeight must be greater than 0. Got %d",
 			params.Evidence.MaxAgeHeight)
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return errors.Errorf("evidenceParams.MaxAgeDuetion must be grater than 0 if provided, Got %d",
+		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %d",
 			params.Evidence.MaxAgeDuration)
 	}
 
