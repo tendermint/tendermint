@@ -5,10 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mrand "math/rand"
-	"sync"
 	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 )
 
