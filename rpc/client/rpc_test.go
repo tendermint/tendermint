@@ -533,7 +533,7 @@ func makeEvidences(
 	var err error
 	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
 	require.NoError(t, err)
-	fmt.Println(vote.Timestamp)
+
 	vote2 := deepcpVote(vote)
 	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
 

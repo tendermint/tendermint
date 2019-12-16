@@ -56,7 +56,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
   - `pub_key`: The first element specifies the `pub_key` type. 1
-  == Ed25519. The second element are the pubkey bytes.
+    == Ed25519. The second element are the pubkey bytes.
   - `power`: The validator's voting power.
   - `name`: Name of the validator (optional).
 - `app_hash`: The expected application hash (as returned by the
@@ -78,7 +78,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
       "time_iota_ms": "1000"
     },
     "evidence": {
-      "max_age": "100000"
+      "max_age_height": "100000"
+      "max_age_duration": "10000"
     },
     "validator": {
       "pub_key_types": [
