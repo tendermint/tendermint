@@ -1,8 +1,6 @@
 package crypto
 
 import (
-	"encoding"
-
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
 )
@@ -26,9 +24,6 @@ type PubKey interface {
 	Bytes() []byte
 	VerifyBytes(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
-
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
 }
 
 type PrivKey interface {
@@ -36,9 +31,6 @@ type PrivKey interface {
 	Sign(msg []byte) ([]byte, error)
 	PubKey() PubKey
 	Equals(PrivKey) bool
-
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
 }
 
 type Symmetric interface {
