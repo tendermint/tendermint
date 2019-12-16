@@ -141,6 +141,19 @@ returns just the votes seen at the current height.
 - [StackOverflow
   questions](https://stackoverflow.com/questions/tagged/tendermint)
 
+### Debug Utility
+
+Tendermint also ships with a `debug` sub-command that allows you to kill a live
+Tendermint process while collecting useful information in a compressed archive
+such as the configuration used, consensus state, network state, the node' status,
+the WAL, and even the stacktrace of the process before exit. These files can be
+useful to examine when debugging a faulty Tendermint process.
+
+In addition, the `debug` sub-command also allows you to dump debugging data into
+compressed archives at a regular interval. These archives contain the goroutine
+and heap profiles in addition to the consensus state, network info, node status,
+and even the WAL.
+
 ## Monitoring Tendermint
 
 Each Tendermint instance has a standard `/health` RPC endpoint, which

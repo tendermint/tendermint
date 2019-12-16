@@ -106,6 +106,9 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 - [p2p] \#4053 Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
+- [tools] [\#4227](https://github.com/tendermint/tendermint/pull/4227) Implement `tendermint debug kill` and
+  `tendermint debug dump` commands for Tendermint node debugging functionality. See `--help` in both
+  commands for further documentation and usage.
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
@@ -119,8 +122,8 @@ program](https://hackerone.com/tendermint).
 - [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
-- [abci] \#4177 kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
-
+- [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
+- [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
 
 ### BUG FIXES:
 

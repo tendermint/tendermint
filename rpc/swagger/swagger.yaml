@@ -2351,6 +2351,7 @@ components:
                 - "locked_block_hash"
                 - "valid_block_hash"
                 - "height_vote_set"
+                - "proposer"
               properties:
                 height/round/step:
                   type: "string"
@@ -2395,6 +2396,15 @@ components:
                       precommits_bit_array:
                         type: "string"
                         example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
+                proposer:
+                  type: "object"
+                  properties:
+                    address:
+                      type: "string"
+                      example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+                    index:
+                      type: "string"
+                      example: "0"
               type: "object"
           type: "object"
     ConsensusParamsResponse:
