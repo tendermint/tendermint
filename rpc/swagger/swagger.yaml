@@ -831,8 +831,8 @@ paths:
             default: 30
             example: 30
         - in: query
-          name: sort_oder
-          description: "Sort order (asc (for ascending) || desc (for descending))"
+          name: order_by
+          description: Order by for sorting the transactions ("asc" (for ascending) || "desc" (for descending)). It sorts the transaction based on height.
           required: false
           schema:
             type: number

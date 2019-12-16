@@ -343,11 +343,11 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, so
 	*ctypes.ResultTxSearch, error) {
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
-		"query":      query,
-		"prove":      prove,
-		"page":       page,
-		"per_page":   perPage,
-		"sort_order": sortOrder,
+		"query":    query,
+		"prove":    prove,
+		"page":     page,
+		"per_page": perPage,
+		"order_by": sortOrder,
 	}
 	_, err := c.caller.Call("tx_search", params, result)
 	if err != nil {
