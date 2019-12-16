@@ -830,6 +830,14 @@ paths:
             type: number
             default: 30
             example: 30
+        - in: query
+          name: sort_oder
+          description: "Sort order (asc (for ascending) || desc (for descending))"
+          required: false
+          schema:
+            type: number
+            default: No order
+            example: "asc"
       tags:
         - Info
       description: |

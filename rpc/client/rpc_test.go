@@ -425,7 +425,7 @@ func TestTxSearch(t *testing.T) {
 
 		// now we query for the tx.
 		// since there's only one tx, we know index=0.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30)
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 1)
 
@@ -442,32 +442,32 @@ func TestTxSearch(t *testing.T) {
 			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 		}
 
-		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
+		// query by height in ascending order
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30, "asc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 1)
 
-		// query for non existing tx
-		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
+		// query for non existing tx in descending order
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "desc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
-		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
+		// query using a compositeKey (see kvstore application) in descending order
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "desc")
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
-		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
+		// query using a compositeKey (see kvstore application) and height in ascending order
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30, "asc")
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
-		// query a non existing tx with page 1 and txsPerPage 1
-		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
+		// query a non existing tx with page 1 and txsPerPage 1 in in ascending order
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "desc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 	}

@@ -308,8 +308,8 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return res, res.Proof.Validate(h.DataHash)
 }
 
-func (c *Client) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-	return c.next.TxSearch(query, prove, page, perPage)
+func (c *Client) TxSearch(query string, prove bool, page, perPage int, sortOrder string) (*ctypes.ResultTxSearch, error) {
+	return c.next.TxSearch(query, prove, page, perPage, sortOrder)
 }
 
 func (c *Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
