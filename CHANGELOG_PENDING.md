@@ -112,7 +112,7 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
-- [config] [\#3333] Added parameter `order_by` in `tx_search` RPC method (@princesinha19)
+- [config] [\#3333] Add `order_by` in `tx_search` RPC method (@princesinha19)
 
 ### IMPROVEMENTS:
 
