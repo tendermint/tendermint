@@ -25,10 +25,11 @@ func (pubKey PubKeySr25519) Address() crypto.Address {
 
 // Bytes marshals the PubKey using amino encoding.
 func (pubKey PubKeySr25519) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
+	bz, err := pubKey.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 
