@@ -9,7 +9,7 @@ import (
 	"math/big"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
-	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160" //nolint: staticcheck
 
 	"github.com/tendermint/tendermint/crypto"
 )
