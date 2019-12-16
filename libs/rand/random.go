@@ -3,7 +3,6 @@ package rand
 import (
 	crand "crypto/rand"
 	mrand "math/rand"
-	"sync"
 	"time"
 )
 
@@ -17,9 +16,8 @@ const (
 // They all utilize math/rand's prng internally.
 //
 // All of the methods here are suitable for concurrent use.
-// This is achieved by using a mutex lock on all of the provided methods.
+// Different randomness each instance
 type Rand struct {
-	sync.Mutex
 	rand *mrand.Rand
 }
 
@@ -141,9 +139,7 @@ func RandPerm(n int) []int {
 // Rand methods
 
 func (r *Rand) Seed(seed int64) {
-	r.Lock()
 	r.reset(seed)
-	r.Unlock()
 }
 
 // Str constructs a random alphanumeric string of given length.
@@ -175,9 +171,7 @@ func (r *Rand) Uint16() uint16 {
 }
 
 func (r *Rand) Uint32() uint32 {
-	r.Lock()
 	u32 := r.rand.Uint32()
-	r.Unlock()
 	return u32
 }
 
@@ -186,9 +180,7 @@ func (r *Rand) Uint64() uint64 {
 }
 
 func (r *Rand) Uint() uint {
-	r.Lock()
 	i := r.rand.Int()
-	r.Unlock()
 	return uint(i)
 }
 
@@ -205,51 +197,37 @@ func (r *Rand) Int64() int64 {
 }
 
 func (r *Rand) Int() int {
-	r.Lock()
 	i := r.rand.Int()
-	r.Unlock()
 	return i
 }
 
 func (r *Rand) Int31() int32 {
-	r.Lock()
 	i31 := r.rand.Int31()
-	r.Unlock()
 	return i31
 }
 
 func (r *Rand) Int31n(n int32) int32 {
-	r.Lock()
 	i31n := r.rand.Int31n(n)
-	r.Unlock()
 	return i31n
 }
 
 func (r *Rand) Int63() int64 {
-	r.Lock()
 	i63 := r.rand.Int63()
-	r.Unlock()
 	return i63
 }
 
 func (r *Rand) Int63n(n int64) int64 {
-	r.Lock()
 	i63n := r.rand.Int63n(n)
-	r.Unlock()
 	return i63n
 }
 
 func (r *Rand) Float32() float32 {
-	r.Lock()
 	f32 := r.rand.Float32()
-	r.Unlock()
 	return f32
 }
 
 func (r *Rand) Float64() float64 {
-	r.Lock()
 	f64 := r.rand.Float64()
-	r.Unlock()
 	return f64
 }
 
@@ -272,9 +250,7 @@ func (r *Rand) Bytes(n int) []byte {
 // Intn returns, as an int, a uniform pseudo-random number in the range [0, n).
 // It panics if n <= 0.
 func (r *Rand) Intn(n int) int {
-	r.Lock()
 	i := r.rand.Intn(n)
-	r.Unlock()
 	return i
 }
 
@@ -287,9 +263,7 @@ func (r *Rand) Bool() bool {
 
 // Perm returns a pseudo-random permutation of n integers in [0, n).
 func (r *Rand) Perm(n int) []int {
-	r.Lock()
 	perm := r.rand.Perm(n)
-	r.Unlock()
 	return perm
 }
 

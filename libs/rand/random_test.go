@@ -5,10 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mrand "math/rand"
-	"sync"
 	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,21 +69,6 @@ func testThemAll() string {
 	fmt.Fprintf(out, "randUint32: %d\n", RandUint32())
 	fmt.Fprintf(out, "randUint64: %d\n", RandUint64())
 	return out.String()
-}
-
-func TestRngConcurrencySafety(t *testing.T) {
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			_ = RandUint64()
-			<-time.After(time.Millisecond * time.Duration(RandIntn(100)))
-			_ = RandPerm(3)
-		}()
-	}
-	wg.Wait()
 }
 
 func BenchmarkRandBytes10B(b *testing.B) {

@@ -123,7 +123,7 @@ program](https://hackerone.com/tendermint).
 - [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
 - [abci] \#4177 kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
-
+- [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
 
 ### BUG FIXES:
 
