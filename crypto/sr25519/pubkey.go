@@ -67,7 +67,6 @@ func (pubKey PubKeySr25519) String() string {
 func (pubKey PubKeySr25519) Equals(other crypto.PubKey) bool {
 	if otherEd, ok := other.(PubKeySr25519); ok {
 		return bytes.Equal(pubKey[:], otherEd[:])
-	} else {
-		return false
 	}
+	return false
 }

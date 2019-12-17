@@ -64,9 +64,8 @@ func (privKey PrivKeySr25519) PubKey() crypto.PubKey {
 func (privKey PrivKeySr25519) Equals(other crypto.PrivKey) bool {
 	if otherEd, ok := other.(PrivKeySr25519); ok {
 		return subtle.ConstantTimeCompare(privKey[:], otherEd[:]) == 1
-	} else {
-		return false
 	}
+	return false
 }
 
 // GenPrivKey generates a new sr25519 private key.

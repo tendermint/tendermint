@@ -13,7 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -185,13 +185,13 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			rand.RandIntn(254)+1,
-			rand.RandIntn(255),
-			rand.RandIntn(255),
-			rand.RandIntn(255),
+			tmrand.Intn(254)+1,
+			tmrand.Intn(255),
+			tmrand.Intn(255),
+			tmrand.Intn(255),
 		)
-		port := rand.RandIntn(65535-1) + 1
-		id := p2p.ID(hex.EncodeToString(rand.RandBytes(p2p.IDByteLength)))
+		port := tmrand.Intn(65535-1) + 1
+		id := p2p.ID(hex.EncodeToString(tmrand.Bytes(p2p.IDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)
 		assert.Nil(t, err, "error generating rand network address")
@@ -538,7 +538,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	ranges := [...][]int{{33, 100}, {100, 175}}
 	bookSizes := make([]int, 0, len(ranges))
 	for _, r := range ranges {
-		bookSizes = append(bookSizes, rand.RandIntn(r[1]-r[0])+r[0])
+		bookSizes = append(bookSizes, tmrand.Intn(r[1]-r[0])+r[0])
 	}
 	t.Logf("Testing address selection for the following book sizes %v\n", bookSizes)
 	for _, bookSize := range bookSizes {
