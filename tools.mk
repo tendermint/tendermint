@@ -42,12 +42,9 @@ TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
-GOX						= $(TOOLS_DESTDIR)/gox
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
-
-tools: certstrap protobuf gox goodman
 
 check: check_tools
 
