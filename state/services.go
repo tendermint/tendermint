@@ -18,7 +18,6 @@ type BlockStoreRPC interface {
 	Height() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta
-	LoadBlockMetaByHash(hash bytes.HexBytes) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
 	LoadBlockByHash(hash bytes.HexBytes) *types.Block
 	LoadBlockPart(height int64, index int) *types.Part

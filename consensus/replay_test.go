@@ -1073,13 +1073,6 @@ func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 		Header:  block.Header,
 	}
 }
-func (bs *mockBlockStore) LoadBlockMetaByHash(hash libBytes.HexBytes) *types.BlockMeta {
-	block := bs.chain[int64(len(bs.chain))-1]
-	return &types.BlockMeta{
-		BlockID: types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
-		Header:  block.Header,
-	}
-}
 func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
 func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }

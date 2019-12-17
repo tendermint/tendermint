@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -77,24 +78,18 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // LoadBlockByHash returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlockByHash(hash bytes.HexBytes) *types.Block {
-	var blockMeta = bs.LoadBlockMetaByHash(hash)
-	if blockMeta == nil {
+	bz := bs.db.Get(calcBlockHashKey(hash))
+	if len(bz) == 0 {
 		return nil
 	}
 
-	var block = new(types.Block)
-	buf := []byte{}
-	for i := 0; i < blockMeta.BlockID.PartsHeader.Total; i++ {
-		part := bs.LoadBlockPartByHash(hash, i)
-		buf = append(buf, part.Bytes...)
-	}
-	err := cdc.UnmarshalBinaryLengthPrefixed(buf, block)
+	s := string(bz)
+	height, err := strconv.ParseInt(s, 10, 64)
+
 	if err != nil {
-		// NOTE: The existence of meta should imply the existence of the
-		// block. So, make sure meta is only saved after blocks are saved.
-		panic(errors.Wrap(err, "Error reading block"))
+		panic(errors.Wrap(err, "Error converting string to int64"))
 	}
-	return block
+	return bs.LoadBlock(height)
 }
 
 // LoadBlockPart returns the Part at the given index
@@ -113,42 +108,11 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	return part
 }
 
-// LoadBlockPartByHash returns the Part at the given index
-// from the block at the given height.
-// If no part is found for the given height and index, it returns nil.
-func (bs *BlockStore) LoadBlockPartByHash(hash bytes.HexBytes, index int) *types.Part {
-	var part = new(types.Part)
-	bz := bs.db.Get(calcBlockPartKeyByHash(hash, index))
-	if len(bz) == 0 {
-		return nil
-	}
-	err := cdc.UnmarshalBinaryBare(bz, part)
-	if err != nil {
-		panic(errors.Wrap(err, "Error reading block part"))
-	}
-	return part
-}
-
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var blockMeta = new(types.BlockMeta)
 	bz := bs.db.Get(calcBlockMetaKey(height))
-	if len(bz) == 0 {
-		return nil
-	}
-	err := cdc.UnmarshalBinaryBare(bz, blockMeta)
-	if err != nil {
-		panic(errors.Wrap(err, "Error reading block meta"))
-	}
-	return blockMeta
-}
-
-// LoadBlockMetaByHash returns the BlockMeta for the given height.
-// If no block is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockMetaByHash(hash bytes.HexBytes) *types.BlockMeta {
-	var blockMeta = new(types.BlockMeta)
-	bz := bs.db.Get(calcBlockMetaKeyByHash(hash))
 	if len(bz) == 0 {
 		return nil
 	}
@@ -217,7 +181,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
-	bs.db.Set(calcBlockMetaKeyByHash(hash), metaBytes)
+	bs.db.Set(calcBlockHashKey(hash), make([]byte, height))
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
@@ -252,7 +216,6 @@ func (bs *BlockStore) saveBlockPart(height int64, hash bytes.HexBytes, index int
 	}
 	partBytes := cdc.MustMarshalBinaryBare(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
-	bs.db.Set(calcBlockPartKeyByHash(hash, index), partBytes)
 }
 
 //-----------------------------------------------------------------------------
@@ -261,16 +224,8 @@ func calcBlockMetaKey(height int64) []byte {
 	return []byte(fmt.Sprintf("H:%v", height))
 }
 
-func calcBlockMetaKeyByHash(hash bytes.HexBytes) []byte {
-	return []byte(fmt.Sprintf("H:%v", hash))
-}
-
 func calcBlockPartKey(height int64, partIndex int) []byte {
 	return []byte(fmt.Sprintf("P:%v:%v", height, partIndex))
-}
-
-func calcBlockPartKeyByHash(hash bytes.HexBytes, partIndex int) []byte {
-	return []byte(fmt.Sprintf("P:%v:%v", hash, partIndex))
 }
 
 func calcBlockCommitKey(height int64) []byte {
@@ -279,6 +234,10 @@ func calcBlockCommitKey(height int64) []byte {
 
 func calcSeenCommitKey(height int64) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
+}
+
+func calcBlockHashKey(hash bytes.HexBytes) []byte {
+	return []byte(fmt.Sprintf("H:%v", hash))
 }
 
 //-----------------------------------------------------------------------------

@@ -552,12 +552,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /block_by_hash:
     get:
-      summary: Get block of specified hash
+      summary: Get block by hash
       operationId: block_by_hash
       parameters:
         - in: query
           name: hash
-          description: block Hash to retrive
+          description: block hash
           required: true
           schema:
             type: string

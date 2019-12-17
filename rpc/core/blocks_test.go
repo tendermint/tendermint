@@ -112,13 +112,12 @@ type mockBlockStore struct {
 	height int64
 }
 
-func (store mockBlockStore) Height() int64                                      { return store.height }
-func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta              { return nil }
-func (mockBlockStore) LoadBlockMetaByHash(hash bytes.HexBytes) *types.BlockMeta { return nil }
-func (mockBlockStore) LoadBlock(height int64) *types.Block                      { return nil }
-func (mockBlockStore) LoadBlockByHash(hash bytes.HexBytes) *types.Block         { return nil }
-func (mockBlockStore) LoadBlockPart(height int64, index int) *types.Part        { return nil }
-func (mockBlockStore) LoadBlockCommit(height int64) *types.Commit               { return nil }
-func (mockBlockStore) LoadSeenCommit(height int64) *types.Commit                { return nil }
+func (store mockBlockStore) Height() int64                               { return store.height }
+func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta       { return nil }
+func (mockBlockStore) LoadBlock(height int64) *types.Block               { return nil }
+func (mockBlockStore) LoadBlockByHash(hash bytes.HexBytes) *types.Block  { return nil }
+func (mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
+func (mockBlockStore) LoadBlockCommit(height int64) *types.Commit        { return nil }
+func (mockBlockStore) LoadSeenCommit(height int64) *types.Commit         { return nil }
 func (mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
