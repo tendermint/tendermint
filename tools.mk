@@ -66,12 +66,6 @@ $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
 
-# used to build tm-monitor binaries
-gox: $(GOX)
-$(GOX):
-	@echo "Get Gox"
-	@go get github.com/mitchellh/gox@v1.0.1
-
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"
