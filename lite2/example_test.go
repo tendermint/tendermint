@@ -125,10 +125,10 @@ func TestExample_AutoClient(t *testing.T) {
 		switch errors.Cause(err).(type) {
 		case ErrOldHeaderExpired:
 			// reobtain trust height and hash
-			fmt.Println("ErrOldHeaderExpired", err)
+			stdlog.Fatal(err)
 		default:
 			// try with another full node
-			fmt.Println(err.Error())
+			stdlog.Fatal(err)
 		}
 	}
 }
