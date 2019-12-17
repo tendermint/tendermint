@@ -18,12 +18,7 @@ type Rand struct {
 	rand *mrand.Rand
 }
 
-var grand *Rand
-
-func init() {
-	grand = NewRand()
-	grand.init()
-}
+// var grand *Rand
 
 func NewRand() *Rand {
 	rand := &Rand{}
@@ -49,9 +44,13 @@ func (r *Rand) reset(seed int64) {
 // Global functions
 
 func Seed(seed int64) {
-	grand.Seed(seed)
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	lrand.Seed(seed)
 }
 
+<<<<<<< HEAD
 func Str(length int) string {
 	return grand.Str(length)
 }
@@ -130,6 +129,146 @@ func Intn(n int) int {
 
 func Perm(n int) []int {
 	return grand.Perm(n)
+=======
+func RandStr(length int) string {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Str(length)
+}
+
+func RandUint16() uint16 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Uint16()
+}
+
+func RandUint32() uint32 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Uint32()
+}
+
+func RandUint64() uint64 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Uint64()
+}
+
+func RandUint() uint {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Uint()
+}
+
+func RandInt16() int16 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int16()
+}
+
+func RandInt32() int32 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int32()
+}
+
+func RandInt64() int64 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int64()
+}
+
+func RandInt() int {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int()
+}
+
+func RandInt31() int32 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int31()
+}
+
+func RandInt31n(n int32) int32 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int31n(n)
+}
+
+func RandInt63() int64 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int63()
+}
+
+func RandInt63n(n int64) int64 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Int63n(n)
+}
+
+func RandBool() bool {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Bool()
+}
+
+func RandFloat32() float32 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Float32()
+}
+
+func RandFloat64() float64 {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Float64()
+}
+
+func RandTime() time.Time {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Time()
+}
+
+func RandBytes(n int) []byte {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Bytes(n)
+}
+
+func RandIntn(n int) int {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Intn(n)
+}
+
+func RandPerm(n int) []int {
+	var lrand *Rand
+	lrand = NewRand()
+	lrand.init()
+	return lrand.Perm(n)
+>>>>>>> removing grand
 }
 
 //----------------------------------------
