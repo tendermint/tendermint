@@ -283,7 +283,8 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(), tmmath.Fraction{Numerator: 2, Denominator: 1})
+	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(),
+		tmmath.Fraction{Numerator: 2, Denominator: 1})
 	assert.Error(t, err)
 }
 
