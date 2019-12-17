@@ -14,9 +14,6 @@ const (
 // The OS randomness is obtained from crypto/rand, however none of the provided
 // methods are suitable for cryptographic usage.
 // They all utilize math/rand's prng internally.
-//
-// All of the methods here are suitable for concurrent use.
-// Different randomness each instance
 type Rand struct {
 	rand *mrand.Rand
 }
