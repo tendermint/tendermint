@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	. "github.com/tendermint/tendermint/libs/test"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -23,7 +23,7 @@ func TestSimpleProof(t *testing.T) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(rand.RandBytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(tmhash.Size))
 	}
 
 	rootHash := SimpleHashFromByteSlices(items)
@@ -47,7 +47,7 @@ func TestSimpleProof(t *testing.T) {
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts
-		proof.Aunts = append(proof.Aunts, rand.RandBytes(32))
+		proof.Aunts = append(proof.Aunts, tmrand.Bytes(32))
 		err = proof.Verify(rootHash, item)
 		require.Error(t, err, "Expected verification to fail for wrong trail length")
 
@@ -76,7 +76,7 @@ func TestSimpleHashAlternatives(t *testing.T) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(rand.RandBytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(tmhash.Size))
 	}
 
 	rootHash1 := SimpleHashFromByteSlicesIterative(items)
@@ -89,7 +89,7 @@ func BenchmarkSimpleHashAlternatives(b *testing.B) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(rand.RandBytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(tmhash.Size))
 	}
 
 	b.ResetTimer()

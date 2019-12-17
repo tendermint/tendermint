@@ -19,7 +19,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
@@ -207,7 +207,7 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
-	val4 := rand.RandIntn(10000)
+	val4 := tmrand.Intn(10000)
 	got4, err := echoIntViaHTTP(cl, val4)
 	require.Nil(t, err)
 	assert.Equal(t, got4, val4)
@@ -371,7 +371,7 @@ func TestWSClientPingPong(t *testing.T) {
 }
 
 func randBytes(t *testing.T) []byte {
-	n := rand.RandIntn(10) + 2
+	n := tmrand.Intn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
 	require.Nil(t, err)

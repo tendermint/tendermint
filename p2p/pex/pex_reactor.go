@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -497,7 +498,7 @@ func (r *Reactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[rand.RandInt()%peersCount]
+			peer := peers[tmrand.Int()%peersCount]
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -534,7 +535,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitterSeconds := time.Duration(rand.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
 		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
 		sinceLastDialed := time.Since(lastDialed)
@@ -600,7 +601,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 
 // randomly dial seeds until we connect to one or exhaust them
 func (r *Reactor) dialSeeds() {
-	perm := rand.RandPerm(len(r.seedAddrs))
+	perm := tmrand.Perm(len(r.seedAddrs))
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
