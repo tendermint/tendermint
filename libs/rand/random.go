@@ -121,7 +121,7 @@ func Float64() float64 {
 	return grand.Float64()
 }
 
-func RandTime() time.Time {
+func Time() time.Time {
 	return grand.Time()
 }
 
