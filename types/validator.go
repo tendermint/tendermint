@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 // Volatile state for each Validator
@@ -103,7 +103,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
-		votePower += int64(rand.RandUint32())
+		votePower += int64(tmrand.Uint32())
 	}
 	pubKey := privVal.GetPubKey()
 	val := NewValidator(pubKey, votePower)
