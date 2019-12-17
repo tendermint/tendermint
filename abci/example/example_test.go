@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -25,7 +25,7 @@ import (
 
 func TestKVStore(t *testing.T) {
 	fmt.Println("### Testing KVStore")
-	testStream(t, kvstore.NewKVStoreApplication())
+	testStream(t, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
@@ -108,7 +108,7 @@ func testStream(t *testing.T, app types.Application) {
 // test grpc
 
 func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
-	return cmn.Connect(addr)
+	return tmnet.Connect(addr)
 }
 
 func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {

@@ -6,14 +6,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
 )
 
 var (
 	// DefaultTrustLevel - new header can be trusted if at least one correct old
 	// validator signed it.
-	DefaultTrustLevel = cmn.Fraction{Numerator: 1, Denominator: 3}
+	DefaultTrustLevel = tmmath.Fraction{Numerator: 1, Denominator: 3}
 )
 
 // Verify verifies the new header (h2) against the old header (h1). It ensures that:
@@ -33,7 +33,7 @@ func Verify(
 	h2Vals *types.ValidatorSet,
 	trustingPeriod time.Duration,
 	now time.Time,
-	trustLevel cmn.Fraction) error {
+	trustLevel tmmath.Fraction) error {
 
 	if err := ValidateTrustLevel(trustLevel); err != nil {
 		return err
@@ -114,7 +114,7 @@ func verifyNewHeaderAndVals(
 // ValidateTrustLevel checks that trustLevel is within the allowed range [1/3,
 // 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
 // which does not break the security model.
-func ValidateTrustLevel(lvl cmn.Fraction) error {
+func ValidateTrustLevel(lvl tmmath.Fraction) error {
 	if lvl.Numerator*3 < lvl.Denominator || // < 1/3
 		lvl.Numerator > lvl.Denominator || // > 1
 		lvl.Denominator == 0 {

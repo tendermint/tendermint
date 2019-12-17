@@ -133,13 +133,13 @@ type bcFsmMessage struct {
 	data  bFsmEventData
 }
 
-// SetLogger implements cmn.Service by setting the logger on reactor and pool.
+// SetLogger implements service.Service by setting the logger on reactor and pool.
 func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 	bcR.BaseService.Logger = l
 	bcR.fsm.SetLogger(l)
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
@@ -148,7 +148,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service.
+// OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	_ = bcR.Stop()
 }

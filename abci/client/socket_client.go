@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const reqQueueSize = 256 // TODO make configurable
@@ -25,14 +27,14 @@ var _ Client = (*socketClient)(nil)
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	cmn.BaseService
+	service.BaseService
 
 	addr        string
 	mustConnect bool
 	conn        net.Conn
 
 	reqQueue   chan *ReqRes
-	flushTimer *cmn.ThrottleTimer
+	flushTimer *timer.ThrottleTimer
 
 	mtx     sync.Mutex
 	err     error
@@ -44,14 +46,14 @@ type socketClient struct {
 func NewSocketClient(addr string, mustConnect bool) *socketClient {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
+		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
 	return cli
 }
 
@@ -60,7 +62,7 @@ func (cli *socketClient) OnStart() error {
 	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err = cmn.Connect(cli.addr)
+		conn, err = tmnet.Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err

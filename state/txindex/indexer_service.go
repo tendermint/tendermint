@@ -3,7 +3,7 @@ package txindex
 import (
 	"context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -15,7 +15,7 @@ const (
 // IndexerService connects event bus and transaction indexer together in order
 // to index transactions coming from event bus.
 type IndexerService struct {
-	cmn.BaseService
+	service.BaseService
 
 	idr      TxIndexer
 	eventBus *types.EventBus
@@ -24,12 +24,12 @@ type IndexerService struct {
 // NewIndexerService returns a new service instance.
 func NewIndexerService(idr TxIndexer, eventBus *types.EventBus) *IndexerService {
 	is := &IndexerService{idr: idr, eventBus: eventBus}
-	is.BaseService = *cmn.NewBaseService(nil, "IndexerService", is)
+	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
 
-// OnStart implements cmn.Service by subscribing for all transactions
-// and indexing them by tags.
+// OnStart implements service.Service by subscribing for all transactions
+// and indexing them by events.
 func (is *IndexerService) OnStart() error {
 	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
 	// cancelled due to not pulling messages fast enough. Cause this might
@@ -74,7 +74,7 @@ func (is *IndexerService) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by unsubscribing from all transactions.
+// OnStop implements service.Service by unsubscribing from all transactions.
 func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)

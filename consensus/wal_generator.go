@@ -13,8 +13,8 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
@@ -74,7 +74,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	mempool := mock.Mempool{}
 	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
-	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
+	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {
@@ -120,7 +120,7 @@ func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	return base + cmn.RandIntn(spread)
+	return base + rand.RandIntn(spread)
 }
 
 func makeAddrs() (string, string, string) {

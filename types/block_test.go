@@ -17,7 +17,9 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/libs/bytes"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
@@ -79,7 +81,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.Data.hash = nil // clear hash or change wont be noticed
 		}, true},
 		{"Tampered DataHash", func(blk *Block) {
-			blk.DataHash = cmn.RandBytes(len(blk.DataHash))
+			blk.DataHash = tmrand.RandBytes(len(blk.DataHash))
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
@@ -219,7 +221,7 @@ func TestCommit(t *testing.T) {
 	}
 
 	require.NotNil(t, commit.BitArray())
-	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
+	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
 
 	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
 	assert.True(t, commit.IsCommit())
@@ -250,7 +252,7 @@ func TestHeaderHash(t *testing.T) {
 	testCases := []struct {
 		desc       string
 		header     *Header
-		expectHash cmn.HexBytes
+		expectHash bytes.HexBytes
 	}{
 		{"Generates expected hash", &Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -303,7 +305,7 @@ func TestHeaderHash(t *testing.T) {
 					byteSlices = append(byteSlices, cdcEncode(f.Interface()))
 				}
 				assert.Equal(t,
-					cmn.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
+					bytes.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
 			}
 		})
 	}
@@ -357,12 +359,12 @@ func randCommit() *Commit {
 	return commit
 }
 
-func hexBytesFromString(s string) cmn.HexBytes {
+func hexBytesFromString(s string) bytes.HexBytes {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic(err)
 	}
-	return cmn.HexBytes(b)
+	return bytes.HexBytes(b)
 }
 
 func TestBlockMaxDataBytes(t *testing.T) {
@@ -558,10 +560,10 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
-		Hash: cmn.HexBytes{},
+		Hash: bytes.HexBytes{},
 		PartsHeader: PartSetHeader{
 			Total: 1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
@@ -569,13 +571,13 @@ func TestBlockIDValidateBasic(t *testing.T) {
 		Hash: []byte{0},
 		PartsHeader: PartSetHeader{
 			Total: -1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
 	testCases := []struct {
 		testName           string
-		blockIDHash        cmn.HexBytes
+		blockIDHash        bytes.HexBytes
 		blockIDPartsHeader PartSetHeader
 		expectErr          bool
 	}{

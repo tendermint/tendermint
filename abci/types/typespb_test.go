@@ -12,7 +12,7 @@ import (
 	golang_proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/tendermint/tendermint/crypto/merkle"
-	_ "github.com/tendermint/tendermint/libs/common"
+	_ "github.com/tendermint/tendermint/libs/kv"
 	math "math"
 	math_rand "math/rand"
 	testing "testing"

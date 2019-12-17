@@ -9,7 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
+	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -65,27 +67,28 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
 type Switch struct {
-	cmn.BaseService
+	service.BaseService
 
 	config       *config.P2PConfig
 	reactors     map[string]Reactor
 	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
-	dialing      *cmn.CMap
-	reconnecting *cmn.CMap
+	dialing      *cmap.CMap
+	reconnecting *cmap.CMap
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
+	unconditionalPeerIDs map[ID]struct{}
 
 	transport Transport
 
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	rng *cmn.Rand // seed for randomizing dial times and orders
+	rng *rand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
 }
@@ -111,18 +114,19 @@ func NewSwitch(
 		chDescs:              make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh:         make(map[byte]Reactor),
 		peers:                NewPeerSet(),
-		dialing:              cmn.NewCMap(),
-		reconnecting:         cmn.NewCMap(),
+		dialing:              cmap.NewCMap(),
+		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
 		transport:            transport,
 		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
+		unconditionalPeerIDs: make(map[ID]struct{}),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = cmn.NewRand()
+	sw.rng = rand.NewRand()
 
-	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 
 	for _, option := range options {
 		option(sw)
@@ -280,17 +284,27 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 }
 
 // NumPeers returns the count of outbound/inbound and outbound-dialing peers.
+// unconditional peers are not counted here.
 func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := sw.peers.List()
 	for _, peer := range peers {
 		if peer.IsOutbound() {
-			outbound++
+			if !sw.IsPeerUnconditional(peer.ID()) {
+				outbound++
+			}
 		} else {
-			inbound++
+			if !sw.IsPeerUnconditional(peer.ID()) {
+				inbound++
+			}
 		}
 	}
 	dialing = sw.dialing.Size()
 	return
+}
+
+func (sw *Switch) IsPeerUnconditional(id ID) bool {
+	_, ok := sw.unconditionalPeerIDs[id]
+	return ok
 }
 
 // MaxNumOutboundPeers returns a maximum number of outbound peers.
@@ -558,15 +572,31 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	return nil
 }
 
+func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
+	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
+	for i, id := range ids {
+		err := validateID(ID(id))
+		if err != nil {
+			return errors.Wrapf(err, "wrong ID #%d", i)
+		}
+		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
+	}
+	return nil
+}
+
 func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
 	return func(na *NetAddress) bool {
-		for _, pa := range sw.persistentPeersAddrs {
-			if pa.Equals(na) {
-				return true
-			}
-		}
-		return false
+		return sw.IsPeerPersistent(na)
 	}
+}
+
+func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
+	for _, pa := range sw.persistentPeersAddrs {
+		if pa.Equals(na) {
+			return true
+		}
+	}
+	return false
 }
 
 func (sw *Switch) acceptRoutine() {
@@ -625,19 +655,22 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
-		// Ignore connection if we already have enough peers.
-		_, in, _ := sw.NumPeers()
-		if in >= sw.config.MaxNumInboundPeers {
-			sw.Logger.Info(
-				"Ignoring inbound connection: already have enough inbound peers",
-				"address", p.SocketAddr(),
-				"have", in,
-				"max", sw.config.MaxNumInboundPeers,
-			)
+		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
+			// Ignore connection if we already have enough peers.
+			_, in, _ := sw.NumPeers()
+			if in >= sw.config.MaxNumInboundPeers {
+				sw.Logger.Info(
+					"Ignoring inbound connection: already have enough inbound peers",
+					"address", p.SocketAddr(),
+					"have", in,
+					"max", sw.config.MaxNumInboundPeers,
+				)
 
-			sw.transport.Cleanup(p)
+				sw.transport.Cleanup(p)
 
-			continue
+				continue
+			}
+
 		}
 
 		if err := sw.addPeer(p); err != nil {

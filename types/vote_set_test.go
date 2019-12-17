@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -15,12 +15,12 @@ import (
 func randVoteSet(
 	height int64,
 	round int,
-	type_ SignedMsgType,
+	signedMsgType SignedMsgType,
 	numValidators int,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 // Convenience: Return new vote with different validator address/index
@@ -46,9 +46,9 @@ func withRound(vote *Vote, round int) *Vote {
 }
 
 // Convenience: Return new vote with different type
-func withType(vote *Vote, type_ byte) *Vote {
+func withType(vote *Vote, signedMsgType byte) *Vote {
 	vote = vote.Copy()
-	vote.Type = SignedMsgType(type_)
+	vote.Type = SignedMsgType(signedMsgType)
 	return vote
 }
 
@@ -142,7 +142,7 @@ func Test2_3Majority(t *testing.T) {
 	{
 		addr := privValidators[6].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 6)
-		_, err := signAddVote(privValidators[6], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
+		_, err := signAddVote(privValidators[6], withBlockHash(vote, rand.RandBytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -247,7 +247,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	{
 		addr := privValidators[69].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 69)
-		_, err := signAddVote(privValidators[69], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
+		_, err := signAddVote(privValidators[69], withBlockHash(vote, rand.RandBytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -300,7 +300,7 @@ func TestBadVotes(t *testing.T) {
 	{
 		addr := privValidators[0].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 0)
-		added, err := signAddVote(privValidators[0], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, rand.RandBytes(32)), voteSet)
 		if added || err == nil {
 			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
 		}
@@ -340,8 +340,8 @@ func TestBadVotes(t *testing.T) {
 func TestConflicts(t *testing.T) {
 	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 4, 1)
-	blockHash1 := cmn.RandBytes(32)
-	blockHash2 := cmn.RandBytes(32)
+	blockHash1 := rand.RandBytes(32)
+	blockHash2 := rand.RandBytes(32)
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
@@ -503,8 +503,8 @@ func TestMakeCommit(t *testing.T) {
 	{
 		addr := privValidators[6].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 6)
-		vote = withBlockHash(vote, cmn.RandBytes(32))
-		vote = withBlockPartsHeader(vote, PartSetHeader{123, cmn.RandBytes(32)})
+		vote = withBlockHash(vote, rand.RandBytes(32))
+		vote = withBlockPartsHeader(vote, PartSetHeader{123, rand.RandBytes(32)})
 
 		_, err := signAddVote(privValidators[6], vote, voteSet)
 		if err != nil {

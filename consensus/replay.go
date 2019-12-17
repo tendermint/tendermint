@@ -42,7 +42,7 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Unmarshal and apply a single message to the consensus state as if it were
 // received in receiveRoutine.  Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running.
-func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error {
+func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error {
 	// Skip meta messages which exist for demarcating boundaries.
 	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
@@ -97,7 +97,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepSub typ
 
 // Replay only those messages since the last block.  `timeoutRoutine` should
 // run concurrently to read off tickChan.
-func (cs *ConsensusState) catchupReplay(csHeight int64) error {
+func (cs *State) catchupReplay(csHeight int64) error {
 
 	// Set replayMode to true so we don't log signing errors.
 	cs.replayMode = true
@@ -105,7 +105,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 
 	// Ensure that #ENDHEIGHT for this height doesn't exist.
 	// NOTE: This is just a sanity check. As far as we know things work fine
-	// without it, and Handshake could reuse ConsensusState if it weren't for
+	// without it, and Handshake could reuse State if it weren't for
 	// this check (since we can crash after writing #ENDHEIGHT).
 	//
 	// Ignore data corruption errors since this is a sanity check.

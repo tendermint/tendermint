@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -17,12 +17,12 @@ const defaultStorePeriodicSaveInterval = 1 * time.Minute
 
 var trustMetricKey = []byte("trustMetricStore")
 
-// TrustMetricStore - Manages all trust metrics for peers
-type TrustMetricStore struct {
-	cmn.BaseService
+// MetricStore - Manages all trust metrics for peers
+type MetricStore struct {
+	service.BaseService
 
 	// Maps a Peer.Key to that peer's TrustMetric
-	peerMetrics map[string]*TrustMetric
+	peerMetrics map[string]*Metric
 
 	// Mutex that protects the map and history data file
 	mtx sync.Mutex
@@ -31,25 +31,25 @@ type TrustMetricStore struct {
 	db dbm.DB
 
 	// This configuration will be used when creating new TrustMetrics
-	config TrustMetricConfig
+	config MetricConfig
 }
 
 // NewTrustMetricStore returns a store that saves data to the DB
 // and uses the config when creating new trust metrics.
 // Use Start to to initialize the trust metric store
-func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
-	tms := &TrustMetricStore{
-		peerMetrics: make(map[string]*TrustMetric),
+func NewTrustMetricStore(db dbm.DB, tmc MetricConfig) *MetricStore {
+	tms := &MetricStore{
+		peerMetrics: make(map[string]*Metric),
 		db:          db,
 		config:      tmc,
 	}
 
-	tms.BaseService = *cmn.NewBaseService(nil, "TrustMetricStore", tms)
+	tms.BaseService = *service.NewBaseService(nil, "MetricStore", tms)
 	return tms
 }
 
 // OnStart implements Service
-func (tms *TrustMetricStore) OnStart() error {
+func (tms *MetricStore) OnStart() error {
 	if err := tms.BaseService.OnStart(); err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (tms *TrustMetricStore) OnStart() error {
 }
 
 // OnStop implements Service
-func (tms *TrustMetricStore) OnStop() {
+func (tms *MetricStore) OnStop() {
 	tms.BaseService.OnStop()
 
 	tms.mtx.Lock()
@@ -79,7 +79,7 @@ func (tms *TrustMetricStore) OnStop() {
 }
 
 // Size returns the number of entries in the trust metric store
-func (tms *TrustMetricStore) Size() int {
+func (tms *MetricStore) Size() int {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -88,7 +88,7 @@ func (tms *TrustMetricStore) Size() int {
 
 // AddPeerTrustMetric takes an existing trust metric and associates it with a peer key.
 // The caller is expected to call Start on the TrustMetric being added
-func (tms *TrustMetricStore) AddPeerTrustMetric(key string, tm *TrustMetric) {
+func (tms *MetricStore) AddPeerTrustMetric(key string, tm *Metric) {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -99,7 +99,7 @@ func (tms *TrustMetricStore) AddPeerTrustMetric(key string, tm *TrustMetric) {
 }
 
 // GetPeerTrustMetric returns a trust metric by peer key
-func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {
+func (tms *MetricStore) GetPeerTrustMetric(key string) *Metric {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -115,7 +115,7 @@ func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {
 }
 
 // PeerDisconnected pauses the trust metric associated with the peer identified by the key
-func (tms *TrustMetricStore) PeerDisconnected(key string) {
+func (tms *MetricStore) PeerDisconnected(key string) {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -127,7 +127,7 @@ func (tms *TrustMetricStore) PeerDisconnected(key string) {
 
 // Saves the history data for all peers to the store DB.
 // This public method acquires the trust metric store lock
-func (tms *TrustMetricStore) SaveToDB() {
+func (tms *MetricStore) SaveToDB() {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -137,7 +137,7 @@ func (tms *TrustMetricStore) SaveToDB() {
 /* Private methods */
 
 // size returns the number of entries in the store without acquiring the mutex
-func (tms *TrustMetricStore) size() int {
+func (tms *MetricStore) size() int {
 	return len(tms.peerMetrics)
 }
 
@@ -146,7 +146,7 @@ func (tms *TrustMetricStore) size() int {
 
 // Loads the history data for all peers from the store DB
 // cmn.Panics if file is corrupt
-func (tms *TrustMetricStore) loadFromDB() bool {
+func (tms *MetricStore) loadFromDB() bool {
 	// Obtain the history data we have so far
 	bytes := tms.db.Get(trustMetricKey)
 	if bytes == nil {
@@ -173,7 +173,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 }
 
 // Saves the history data for all peers to the store DB
-func (tms *TrustMetricStore) saveToDB() {
+func (tms *MetricStore) saveToDB() {
 	tms.Logger.Debug("Saving TrustHistory to DB", "size", tms.size())
 
 	peers := make(map[string]MetricHistoryJSON)
@@ -193,7 +193,7 @@ func (tms *TrustMetricStore) saveToDB() {
 }
 
 // Periodically saves the trust history data to the DB
-func (tms *TrustMetricStore) saveRoutine() {
+func (tms *MetricStore) saveRoutine() {
 	t := time.NewTicker(defaultStorePeriodicSaveInterval)
 	defer t.Stop()
 loop:

@@ -6,8 +6,7 @@ order: 3
 
 Tendermint Core can be configured via a TOML file in
 `$TMHOME/config/config.toml`. Some of these parameters can be overridden by
-command-line flags. For most users, the options in the `##### main base
-configuration options #####` are intended to be modified while config options
+command-line flags. For most users, the options in the `##### main base configuration options #####` are intended to be modified while config options
 further below are intended for advance power users.
 
 ## Options
@@ -40,7 +39,7 @@ moniker = "anonymous"
 # and verifying their commits
 fast_sync = true
 
-# Database backend: goleveldb | cleveldb | boltdb
+# Database backend: goleveldb | cleveldb | boltdb | rocksdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
 #   - stable
@@ -52,6 +51,10 @@ fast_sync = true
 #   - EXPERIMENTAL
 #   - may be faster is some use-cases (random reads - indexer)
 #   - use boltdb build tag (go build -tags boltdb)
+# * rocksdb (uses github.com/tecbot/gorocksdb)
+#   - EXPERIMENTAL
+#   - requires gcc
+#   - use rocksdb build tag (go build -tags rocksdb)
 db_backend = "goleveldb"
 
 # Database directory
@@ -299,22 +302,27 @@ blocktime_iota = "1s"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
-# Comma-separated list of tags to index (by default the only tag is "tx.hash")
+# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
+# Remember that Event has the following structure: type.key
+# type: [
+#  key: value,
+#  ...
+# ]
 #
-# You can also index transactions by height by adding "tx.height" tag here.
+# You can also index transactions by height by adding "tx.height" event here.
 #
-# It's recommended to index only a subset of tags due to possible memory
+# It's recommended to index only a subset of keys due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = ""
+index_keys = ""
 
-# When set to true, tells indexer to index all tags (predefined tags:
-# "tx.hash", "tx.height" and all tags from DeliverTx responses).
+# When set to true, tells indexer to index all compositeKeys (predefined keys:
+# "tx.hash", "tx.height" and all keys from DeliverTx responses).
 #
-# Note this may be not desirable (see the comment above). IndexTags has a
-# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# Note this may be not desirable (see the comment above). IndexEvents has a
+# precedence over IndexAllEvents (i.e. when given both, IndexEvents will be
 # indexed).
-index_all_tags = false
+index_all_keys = false
 
 ##### instrumentation configuration options #####
 [instrumentation]

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -289,23 +289,23 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 
 func TestValidateTrustLevel(t *testing.T) {
 	testCases := []struct {
-		lvl   cmn.Fraction
+		lvl   tmmath.Fraction
 		valid bool
 	}{
 		// valid
-		0: {cmn.Fraction{Numerator: 1, Denominator: 1}, true},
-		1: {cmn.Fraction{Numerator: 1, Denominator: 3}, true},
-		2: {cmn.Fraction{Numerator: 2, Denominator: 3}, true},
-		3: {cmn.Fraction{Numerator: 3, Denominator: 3}, true},
-		4: {cmn.Fraction{Numerator: 4, Denominator: 5}, true},
+		0: {tmmath.Fraction{Numerator: 1, Denominator: 1}, true},
+		1: {tmmath.Fraction{Numerator: 1, Denominator: 3}, true},
+		2: {tmmath.Fraction{Numerator: 2, Denominator: 3}, true},
+		3: {tmmath.Fraction{Numerator: 3, Denominator: 3}, true},
+		4: {tmmath.Fraction{Numerator: 4, Denominator: 5}, true},
 
 		// invalid
-		5:  {cmn.Fraction{Numerator: 6, Denominator: 5}, false},
-		6:  {cmn.Fraction{Numerator: -1, Denominator: 3}, false},
-		7:  {cmn.Fraction{Numerator: 0, Denominator: 1}, false},
-		8:  {cmn.Fraction{Numerator: -1, Denominator: -3}, false},
-		9:  {cmn.Fraction{Numerator: 0, Denominator: 0}, false},
-		10: {cmn.Fraction{Numerator: 1, Denominator: 0}, false},
+		5:  {tmmath.Fraction{Numerator: 6, Denominator: 5}, false},
+		6:  {tmmath.Fraction{Numerator: -1, Denominator: 3}, false},
+		7:  {tmmath.Fraction{Numerator: 0, Denominator: 1}, false},
+		8:  {tmmath.Fraction{Numerator: -1, Denominator: -3}, false},
+		9:  {tmmath.Fraction{Numerator: 0, Denominator: 0}, false},
+		10: {tmmath.Fraction{Numerator: 1, Denominator: 0}, false},
 	}
 
 	for _, tc := range testCases {

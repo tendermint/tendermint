@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -29,7 +31,7 @@ const (
 // peers to dial.
 // TODO: break this up?
 type AddrBook interface {
-	cmn.Service
+	service.Service
 
 	// Add our own addresses so we don't later add ourselves
 	AddOurAddress(*p2p.NetAddress)
@@ -77,11 +79,11 @@ var _ AddrBook = (*addrBook)(nil)
 // addrBook - concurrency safe peer address manager.
 // Implements AddrBook.
 type addrBook struct {
-	cmn.BaseService
+	service.BaseService
 
 	// accessed concurrently
 	mtx        sync.Mutex
-	rand       *cmn.Rand
+	rand       *tmrand.Rand
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
@@ -102,7 +104,7 @@ type addrBook struct {
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
-		rand:              cmn.NewRand(),
+		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
 		privateIDs:        make(map[p2p.ID]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
@@ -110,7 +112,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 		routabilityStrict: routabilityStrict,
 	}
 	am.init()
-	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
+	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
 	return am
 }
 
@@ -343,10 +345,10 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 		return nil
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, bookSize),
+	numAddresses := tmmath.MaxInt(
+		tmmath.MinInt(minGetSelection, bookSize),
 		bookSize*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+	numAddresses = tmmath.MinInt(maxGetSelection, numAddresses)
 
 	// XXX: instead of making a list of all addresses, shuffling, and slicing a random chunk,
 	// could we just select a random numAddresses of indexes?
@@ -361,7 +363,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// `numAddresses' since we are throwing the rest.
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := cmn.RandIntn(len(allAddr)-i) + i
+		j := tmrand.RandIntn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 
@@ -400,14 +402,14 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 		biasTowardsNewAddrs = 0
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, bookSize),
+	numAddresses := tmmath.MaxInt(
+		tmmath.MinInt(minGetSelection, bookSize),
 		bookSize*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+	numAddresses = tmmath.MinInt(maxGetSelection, numAddresses)
 
 	// number of new addresses that, if possible, should be in the beginning of the selection
 	// if there are no enough old addrs, will choose new addr instead.
-	numRequiredNewAdd := cmn.MaxInt(percentageOfNum(biasTowardsNewAddrs, numAddresses), numAddresses-a.nOld)
+	numRequiredNewAdd := tmmath.MaxInt(percentageOfNum(biasTowardsNewAddrs, numAddresses), numAddresses-a.nOld)
 	selection := a.randomPickAddresses(bucketTypeNew, numRequiredNewAdd)
 	selection = append(selection, a.randomPickAddresses(bucketTypeOld, numAddresses-len(selection))...)
 	return selection

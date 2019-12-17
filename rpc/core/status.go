@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -24,8 +24,8 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 	var (
 		latestBlockMeta     *types.BlockMeta
-		latestBlockHash     cmn.HexBytes
-		latestAppHash       cmn.HexBytes
+		latestBlockHash     tmbytes.HexBytes
+		latestAppHash       tmbytes.HexBytes
 		latestBlockTimeNano int64
 	)
 	if latestHeight != 0 {

@@ -10,7 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -39,7 +40,7 @@ type GenesisDoc struct {
 	ChainID         string             `json:"chain_id"`
 	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator `json:"validators,omitempty"`
-	AppHash         cmn.HexBytes       `json:"app_hash"`
+	AppHash         tmbytes.HexBytes   `json:"app_hash"`
 	AppState        json.RawMessage    `json:"app_state,omitempty"`
 }
 
@@ -49,7 +50,7 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 	if err != nil {
 		return err
 	}
-	return cmn.WriteFile(file, genDocBytes, 0644)
+	return tmos.WriteFile(file, genDocBytes, 0644)
 }
 
 // ValidatorHash returns the hash of the validator set contained in the GenesisDoc

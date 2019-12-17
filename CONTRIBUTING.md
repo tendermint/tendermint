@@ -1,21 +1,56 @@
 # Contributing
 
-Thank you for considering making contributions to Tendermint and related repositories! Start by taking a look at the [coding repo](https://github.com/tendermint/coding) for overall information on repository workflow and standards.
+Thank you for your interest in contributing to Tendermint! Before
+contributing, it may be helpful to understand the goal of the project. The goal
+of Tendermint is to develop a BFT consensus engine robust enough to
+support permissionless value-carrying networks. While all contributions are
+welcome, contributors should bear this goal in mind in deciding if they should
+target the main tendermint project or a potential fork. When targeting the
+main Tendermint project, the following process leads to the best chance of
+landing changes in master.
 
-Please follow standard github best practices: fork the repo, branch from the tip of `master`, make some commits, and submit a pull request to `master`.
-See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
+All work on the code base should be motivated by a [Github
+Issue](https://github.com/tendermint/tendermint/issues).
+[Search](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)
+is a good place start when looking for places to contribute.  If you
+would like to work on an issue which already exists, please indicate so
+by leaving a comment.
 
-Before making a pull request, please open an issue describing the
-change you would like to make. If an issue for your change already exists,
-please comment on it that you will submit a pull request. Be sure to reference the issue in the opening
-comment of your pull request. If your change is substantial, you will be asked
-to write a more detailed design document in the form of an
-Architectural Decision Record (ie. see [here](./docs/architecture/)) before submitting code
-changes.
+All new contributions should start with a [Github
+Issue](https://github.com/tendermint/tendermint/issues/new/choose). The
+issue helps capture the problem you're trying to solve and allows for
+early feedback. Once the issue is created the process can proceed in different
+directions depending on how well defined the problem and potential
+solution are. If the change is simple and well understood, maintainers
+will indicate their support with a heartfelt emoji.
 
-Please open a [Draft PR](https://github.blog/2019-02-14-introducing-draft-pull-requests/), even if your contribution is incomplete, this inidicates to the community you're working on something and allows them to provide comments early in the development process. When the code is complete it can be marked as ready-for-review.
+If the issue would benefit from thorough discussion, maintainers may
+request that you create a [Request For
+Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
+at the RFC stage will build collective understanding of the dimensions
+of the problems and help structure conversations around trade-offs.
 
-Please make sure to use `gofmt` before every commit - the easiest way to do this is have your editor run it for you upon saving a file. Additionally please ensure that your code is lint compliant by running `make lint`
+When the problem is well understood but the solution leads to large
+strucural changes to the code base, these changes should be proposed in
+the form of an [Architectural Decision Record
+(ADR)](./docs/architecture/). The ADR will help build consensus on an
+overall strategy to ensure the code base maintains coherence
+in the larger context. If you are not comfortable with writing an ADR,
+you can open a less-formal issue and the maintainers will help you
+turn it into an ADR. ADR numbers can be registered [here](https://github.com/tendermint/tendermint/issues/2313).
+
+When the problem as well as proposed solution are well understood,
+changes should start with a [draft
+pull request](https://github.blog/2019-02-14-introducing-draft-pull-requests/)
+against master. The draft signals that work is underway. When the work
+is ready for feedback, hitting "Ready for Review" will signal to the
+maintainers to take a look.
+
+![Contributing flow](./docs/imgs/contributing.png)
+
+Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
+* Contributors don’t waste their time implementing/proposing features which won’t land in master.
+* Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
 

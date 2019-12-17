@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -50,7 +50,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 }
 
 func TestKVStoreKV(t *testing.T) {
-	kvstore := NewKVStoreApplication()
+	kvstore := NewApplication()
 	key := testKey
 	value := key
 	tx := []byte(key)
@@ -217,7 +217,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -239,7 +239,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -262,7 +262,7 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 
 func TestClientServer(t *testing.T) {
 	// set up socket app
-	kvstore := NewKVStoreApplication()
+	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
 	require.Nil(t, err)
 	defer server.Stop()
@@ -271,7 +271,7 @@ func TestClientServer(t *testing.T) {
 	runClientTests(t, client)
 
 	// set up grpc app
-	kvstore = NewKVStoreApplication()
+	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
 	require.Nil(t, err)
 	defer gserver.Stop()

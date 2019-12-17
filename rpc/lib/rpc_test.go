@@ -17,8 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/rand"
 
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
@@ -50,7 +51,7 @@ type ResultEchoBytes struct {
 }
 
 type ResultEchoDataBytes struct {
-	Value cmn.HexBytes `json:"value"`
+	Value tmbytes.HexBytes `json:"value"`
 }
 
 // Define some routes
@@ -81,7 +82,7 @@ func EchoBytesResult(ctx *types.Context, v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(ctx *types.Context, v cmn.HexBytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(ctx *types.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 
@@ -179,7 +180,7 @@ func echoBytesViaHTTP(cl client.JSONRPCCaller, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func echoDataBytesViaHTTP(cl client.JSONRPCCaller, bytes cmn.HexBytes) (cmn.HexBytes, error) {
+func echoDataBytesViaHTTP(cl client.JSONRPCCaller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -201,12 +202,12 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got2, val2)
 
-	val3 := cmn.HexBytes(randBytes(t))
+	val3 := tmbytes.HexBytes(randBytes(t))
 	got3, err := echoDataBytesViaHTTP(cl, val3)
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
-	val4 := cmn.RandIntn(10000)
+	val4 := rand.RandIntn(10000)
 	got4, err := echoIntViaHTTP(cl, val4)
 	require.Nil(t, err)
 	assert.Equal(t, got4, val4)
@@ -370,7 +371,7 @@ func TestWSClientPingPong(t *testing.T) {
 }
 
 func randBytes(t *testing.T) []byte {
-	n := cmn.RandIntn(10) + 2
+	n := rand.RandIntn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
 	require.Nil(t, err)

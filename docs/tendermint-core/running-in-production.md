@@ -21,10 +21,10 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 - `state.db`: Stores the current blockchain state (ie. height, validators,
   consensus params). Only grows if consensus params or validators change. Also
   used to temporarily store intermediate results during block processing.
-- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
+- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
 
 By default, Tendermint will only index txs by their hash, not by their DeliverTx
-result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
+result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
 There is no current strategy for pruning the databases. Consider reducing
@@ -140,6 +140,19 @@ returns just the votes seen at the current height.
 - [Github Issues](https://github.com/tendermint/tendermint/issues)
 - [StackOverflow
   questions](https://stackoverflow.com/questions/tagged/tendermint)
+
+### Debug Utility
+
+Tendermint also ships with a `debug` sub-command that allows you to kill a live
+Tendermint process while collecting useful information in a compressed archive
+such as the configuration used, consensus state, network state, the node' status,
+the WAL, and even the stacktrace of the process before exit. These files can be
+useful to examine when debugging a faulty Tendermint process.
+
+In addition, the `debug` sub-command also allows you to dump debugging data into
+compressed archives at a regular interval. These archives contain the goroutine
+and heap profiles in addition to the consensus state, network info, node status,
+and even the WAL.
 
 ## Monitoring Tendermint
 

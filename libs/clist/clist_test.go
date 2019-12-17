@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestPanicOnMaxLength(t *testing.T) {
@@ -147,7 +147,7 @@ func _TestGCRandom(t *testing.T) {
 		els = append(els, el)
 	}
 
-	for _, i := range cmn.RandPerm(numElements) {
+	for _, i := range rand.RandPerm(numElements) {
 		el := els[i]
 		l.Remove(el)
 		_ = el.Next()
@@ -205,7 +205,7 @@ func TestScanRightDeleteRandom(t *testing.T) {
 	// Remove an element, push back an element.
 	for i := 0; i < numTimes; i++ {
 		// Pick an element to remove
-		rmElIdx := cmn.RandIntn(len(els))
+		rmElIdx := rand.RandIntn(len(els))
 		rmEl := els[rmElIdx]
 
 		// Remove it
@@ -259,7 +259,7 @@ func TestWaitChan(t *testing.T) {
 		for i := 1; i < 100; i++ {
 			l.PushBack(i)
 			pushed++
-			time.Sleep(time.Duration(cmn.RandIntn(25)) * time.Millisecond)
+			time.Sleep(time.Duration(rand.RandIntn(25)) * time.Millisecond)
 		}
 		// apply a deterministic pause so the counter has time to catch up
 		time.Sleep(25 * time.Millisecond)

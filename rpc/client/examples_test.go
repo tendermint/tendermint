@@ -12,7 +12,7 @@ import (
 
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 	defer rpctest.StopTendermint(node)
 
@@ -62,7 +62,7 @@ func ExampleHTTP_simple() {
 
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 	defer rpctest.StopTendermint(node)
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -37,8 +37,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   abci.ResponseCheckTx{Data: cmn.HexBytes("stand")},
-				DeliverTx: abci.ResponseDeliverTx{Data: cmn.HexBytes("deliver")},
+				CheckTx:   abci.ResponseCheckTx{Data: bytes.HexBytes("stand")},
+				DeliverTx: abci.ResponseDeliverTx{Data: bytes.HexBytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -98,7 +98,7 @@ func TestABCIRecorder(t *testing.T) {
 	_, err := r.ABCIInfo()
 	assert.Nil(err, "expected no err on info")
 
-	_, err = r.ABCIQueryWithOptions("path", cmn.HexBytes("data"), client.ABCIQueryOptions{Prove: false})
+	_, err = r.ABCIQueryWithOptions("path", bytes.HexBytes("data"), client.ABCIQueryOptions{Prove: false})
 	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 
@@ -156,7 +156,7 @@ func TestABCIRecorder(t *testing.T) {
 
 func TestABCIApp(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	m := mock.ABCIApp{app}
 
 	// get some info
@@ -180,7 +180,7 @@ func TestABCIApp(t *testing.T) {
 	}
 
 	// check the key
-	_qres, err := m.ABCIQueryWithOptions("/key", cmn.HexBytes(key), client.ABCIQueryOptions{Prove: true})
+	_qres, err := m.ABCIQueryWithOptions("/key", bytes.HexBytes(key), client.ABCIQueryOptions{Prove: true})
 	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)

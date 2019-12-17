@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const defaultCapacity = 0
@@ -31,7 +31,7 @@ type Subscription interface {
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
 type EventBus struct {
-	cmn.BaseService
+	service.BaseService
 	pubsub *tmpubsub.Server
 }
 
@@ -45,7 +45,7 @@ func NewEventBusWithBufferCapacity(cap int) *EventBus {
 	// capacity could be exposed later if needed
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
 	b := &EventBus{pubsub: pubsub}
-	b.BaseService = *cmn.NewBaseService(nil, "EventBus", b)
+	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
 	return b
 }
 
@@ -164,8 +164,8 @@ func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
 	return b.Publish(EventValidBlock, data)
 }
 
-// PublishEventTx publishes tx event with tags from Result. Note it will add
-// predefined tags (EventTypeKey, TxHashKey). Existing tags with the same names
+// PublishEventTx publishes tx event with events from Result. Note it will add
+// predefined keys (EventTypeKey, TxHashKey). Existing events with the same keys
 // will be overwritten.
 func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
@@ -173,7 +173,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 
 	events := b.validateAndStringifyEvents(data.Result.Events, b.Logger.With("tx", data.Tx))
 
-	// add predefined tags
+	// add predefined compositeKeys
 	events[EventTypeKey] = append(events[EventTypeKey], EventTx)
 	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", data.Tx.Hash()))
 	events[TxHeightKey] = append(events[TxHeightKey], fmt.Sprintf("%d", data.Height))

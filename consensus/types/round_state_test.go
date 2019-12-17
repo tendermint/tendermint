@@ -5,7 +5,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -18,15 +19,16 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	vset, _ := types.RandValidatorSet(nval, 1)
 	commitSigs := make([]types.CommitSig, nval)
 	blockID := types.BlockID{
-		Hash: cmn.RandBytes(20),
+		Hash: rand.RandBytes(tmhash.Size),
 		PartsHeader: types.PartSetHeader{
-			Hash: cmn.RandBytes(20),
+			Hash: rand.RandBytes(tmhash.Size),
+			Total: 1000,
 		},
 	}
 	sig := make([]byte, ed25519.SignatureSize)
 	for i := 0; i < nval; i++ {
 		commitSigs[i] = (&types.Vote{
-			ValidatorAddress: types.Address(cmn.RandBytes(20)),
+			ValidatorAddress: types.Address(rand.RandBytes(20)),
 			Timestamp:        tmtime.Now(),
 			BlockID:          blockID,
 			Signature:        sig,
@@ -34,21 +36,21 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	}
 	txs := make([]types.Tx, ntxs)
 	for i := 0; i < ntxs; i++ {
-		txs[i] = cmn.RandBytes(100)
+		txs[i] = rand.RandBytes(100)
 	}
 	// Random block
 	block := &types.Block{
 		Header: types.Header{
-			ChainID:         cmn.RandStr(12),
+			ChainID:         rand.RandStr(12),
 			Time:            tmtime.Now(),
 			LastBlockID:     blockID,
-			LastCommitHash:  cmn.RandBytes(20),
-			DataHash:        cmn.RandBytes(20),
-			ValidatorsHash:  cmn.RandBytes(20),
-			ConsensusHash:   cmn.RandBytes(20),
-			AppHash:         cmn.RandBytes(20),
-			LastResultsHash: cmn.RandBytes(20),
-			EvidenceHash:    cmn.RandBytes(20),
+			LastCommitHash:  rand.RandBytes(20),
+			DataHash:        rand.RandBytes(20),
+			ValidatorsHash:  rand.RandBytes(20),
+			ConsensusHash:   rand.RandBytes(20),
+			AppHash:         rand.RandBytes(20),
+			LastResultsHash: rand.RandBytes(20),
+			EvidenceHash:    rand.RandBytes(20),
 		},
 		Data: types.Data{
 			Txs: txs,

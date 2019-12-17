@@ -20,7 +20,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -34,18 +35,18 @@ import (
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, n int) (
-	[]*ConsensusReactor,
+func startConsensusNet(t *testing.T, css []*State, n int) (
+	[]*Reactor,
 	[]types.Subscription,
 	[]*types.EventBus,
 ) {
-	reactors := make([]*ConsensusReactor, n)
+	reactors := make([]*Reactor, n)
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, n)
 	for i := 0; i < n; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
-		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
 		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
@@ -78,10 +79,10 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, n int) (
 	return reactors, blocksSubs, eventBuses
 }
 
-func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuses []*types.EventBus) {
+func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*types.EventBus) {
 	logger.Info("stopConsensusNet", "n", len(reactors))
 	for i, r := range reactors {
-		logger.Info("stopConsensusNet: Stopping ConsensusReactor", "i", i)
+		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
 		r.Switch.Stop()
 	}
 	for i, b := range eventBuses {
@@ -119,7 +120,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
-	css := make([]*ConsensusState, nValidators)
+	css := make([]*State, nValidators)
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -133,7 +134,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		pv := privVals[i]
 		// duplicate code from:
-		// css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
+		// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -156,9 +157,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		addr := privVals[vIdx].GetPubKey().Address()
 		evpool := newMockEvidencePool(addr)
 
-		// Make ConsensusState
+		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-		cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)
 
@@ -521,7 +522,7 @@ func waitForAndValidateBlock(
 	n int,
 	activeVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 	txs ...[]byte,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
@@ -543,7 +544,7 @@ func waitForAndValidateBlockWithTx(
 	n int,
 	activeVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 	txs ...[]byte,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
@@ -578,7 +579,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	n int,
 	updatedVals map[string]struct{},
 	blocksSubs []types.Subscription,
-	css []*ConsensusState,
+	css []*State,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
 
@@ -621,7 +622,7 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	return nil
 }
 
-func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
+func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
@@ -711,11 +712,11 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"blockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
-			"Empty BlockParts",
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = bits.NewBitArray(0) },
+			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(types.MaxBlockPartsCount + 1) },
 			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
@@ -729,7 +730,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 				BlockPartsHeader: types.PartSetHeader{
 					Total: 1,
 				},
-				BlockParts: cmn.NewBitArray(1),
+				BlockParts: bits.NewBitArray(1),
 			}
 
 			tc.malleateFn(msg)
@@ -749,8 +750,8 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) {}, ""},
 		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "empty ProposalPOL bit array"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"ProposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
@@ -760,7 +761,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 			msg := &ProposalPOLMessage{
 				Height:           1,
 				ProposalPOLRound: 1,
-				ProposalPOL:      cmn.NewBitArray(1),
+				ProposalPOL:      bits.NewBitArray(1),
 			}
 
 			tc.malleateFn(msg)
@@ -850,10 +851,10 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
-		Hash: cmn.HexBytes{},
+		Hash: bytes.HexBytes{},
 		PartsHeader: types.PartSetHeader{
 			Total: -1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
@@ -898,14 +899,14 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
-				Hash: cmn.HexBytes{},
+				Hash: bytes.HexBytes{},
 				PartsHeader: types.PartSetHeader{
 					Total: -1,
-					Hash:  cmn.HexBytes{},
+					Hash:  bytes.HexBytes{},
 				},
 			}
 		}, "wrong BlockID: wrong PartsHeader: negative Total"},
-		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}
 
@@ -916,7 +917,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 				Height:  1,
 				Round:   0,
 				Type:    0x01,
-				Votes:   cmn.NewBitArray(1),
+				Votes:   bits.NewBitArray(1),
 				BlockID: types.BlockID{},
 			}
 

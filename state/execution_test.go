@@ -26,7 +26,7 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
