@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	dbm "github.com/tendermint/tm-db"
 
@@ -316,17 +317,17 @@ func TestProposerFrequency(t *testing.T) {
 	maxPower := 1000
 	nTestCases := 5
 	for i := 0; i < nTestCases; i++ {
-		N := rand.RandInt()%maxVals + 1
+		N := tmrand.Int()%maxVals + 1
 		vals := make([]*types.Validator, N)
 		totalVotePower := int64(0)
 		for j := 0; j < N; j++ {
 			// make sure votePower > 0
-			votePower := int64(rand.RandInt()%maxPower) + 1
+			votePower := int64(tmrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
 			pubKey := privVal.GetPubKey()
 			val := types.NewValidator(pubKey, votePower)
-			val.ProposerPriority = rand.RandInt64()
+			val.ProposerPriority = tmrand.Int64()
 			vals[j] = val
 		}
 		valSet := types.NewValidatorSet(vals)
@@ -343,7 +344,7 @@ func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	for i := 0; i < size; i++ {
 		totalVotePower += powers[i]
 		val := types.NewValidator(ed25519.GenPrivKey().PubKey(), powers[i])
-		val.ProposerPriority = rand.RandInt64()
+		val.ProposerPriority = rand.Int64()
 		vals[i] = val
 	}
 	valSet := types.NewValidatorSet(vals)

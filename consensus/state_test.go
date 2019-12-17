@@ -13,7 +13,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/types"
 )
@@ -1563,7 +1563,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	peer := p2pmock.NewPeer(nil)
 
 	// 1) new block part
-	parts := types.NewPartSetFromData(rand.RandBytes(100), 10)
+	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
 	msg := &BlockPartMessage{
 		Height: 1,
 		Round:  0,

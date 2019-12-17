@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 // BitArray is a thread-safe implementation of a bit array.
@@ -253,7 +253,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 
-	return trueIndices[rand.RandIntn(len(trueIndices))], true
+	return trueIndices[tmrand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
