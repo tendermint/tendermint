@@ -163,10 +163,6 @@ if something is wrong.
 Other useful endpoints include mentioned earlier `/status`, `/net_info` and
 `/validators`.
 
-We have a small tool, called `tm-monitor`, which outputs information from
-the endpoints above plus some statistics. The tool can be found
-[here](https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor).
-
 Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).
 
