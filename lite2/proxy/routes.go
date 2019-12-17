@@ -122,12 +122,12 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 }
 
 type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
-	page, perPage int, sortOrder string) (*ctypes.ResultTxSearch, error)
+	page, perPage int, orderBy string) (*ctypes.ResultTxSearch, error)
 
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int, sortOrder string) (
+	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
 		*ctypes.ResultTxSearch, error) {
-		return c.TxSearch(query, prove, page, perPage, sortOrder)
+		return c.TxSearch(query, prove, page, perPage, orderBy)
 	}
 }
 

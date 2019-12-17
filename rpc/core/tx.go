@@ -55,7 +55,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://tendermint.com/rpc/#/Info/tx_search
-func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int, sortOrder string) (
+func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
@@ -102,19 +102,19 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 			Proof:    proof,
 		}
 
-		if sortOrder == "asc" {
-			sort.Slice(apiResults, func(i, j int) bool {
-				if results[i].Height == results[j].Height {
-					return results[i].Index < results[j].Index
-				}
-				return results[i].Height < results[j].Height
-			})
-		} else if sortOrder == "desc" {
+		if orderBy == "desc" {
 			sort.Slice(apiResults, func(i, j int) bool {
 				if results[i].Height == results[j].Height {
 					return results[i].Index > results[j].Index
 				}
 				return results[i].Height > results[j].Height
+			})
+		} else {
+			sort.Slice(apiResults, func(i, j int) bool {
+				if results[i].Height == results[j].Height {
+					return results[i].Index < results[j].Index
+				}
+				return results[i].Height < results[j].Height
 			})
 		}
 	}

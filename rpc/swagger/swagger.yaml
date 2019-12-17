@@ -832,11 +832,11 @@ paths:
             example: 30
         - in: query
           name: order_by
-          description: Order by for sorting the transactions ("asc" (for ascending) || "desc" (for descending)). It sorts the transaction based on height.
+          description: Order by for sorting the transactions ("asc" (for ascending) || "desc" (for descending)). It sorts the transaction based on height and index.
           required: false
           schema:
             type: number
-            default: No order
+            default: Sorting by height & index in ascending order.
             example: "asc"
       tags:
         - Info

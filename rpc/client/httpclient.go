@@ -339,7 +339,7 @@ func (c *baseRPCClient) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return result, nil
 }
 
-func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, sortOrder string) (
+func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
@@ -347,7 +347,7 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, so
 		"prove":    prove,
 		"page":     page,
 		"per_page": perPage,
-		"order_by": sortOrder,
+		"order_by": orderBy,
 	}
 	_, err := c.caller.Call("tx_search", params, result)
 	if err != nil {
