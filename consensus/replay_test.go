@@ -21,6 +21,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	libBytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -1062,8 +1063,18 @@ func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBl
 
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
 func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain[height-1] }
+func (bs *mockBlockStore) LoadBlockByHash(hash libBytes.HexBytes) *types.Block {
+	return bs.chain[int64(len(bs.chain))-1]
+}
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
+	return &types.BlockMeta{
+		BlockID: types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
+		Header:  block.Header,
+	}
+}
+func (bs *mockBlockStore) LoadBlockMetaByHash(hash libBytes.HexBytes) *types.BlockMeta {
+	block := bs.chain[int64(len(bs.chain))-1]
 	return &types.BlockMeta{
 		BlockID: types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
 		Header:  block.Header,

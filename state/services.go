@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -17,7 +18,9 @@ type BlockStoreRPC interface {
 	Height() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta
+	LoadBlockMetaByHash(hash bytes.HexBytes) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
+	LoadBlockByHash(hash bytes.HexBytes) *types.Block
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit

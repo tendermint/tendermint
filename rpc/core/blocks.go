@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -78,6 +79,14 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
+	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
+}
+
+// BlockByHash gets block of given hash.
+// More: https://tendermint.com/rpc/#/Info/block_by_hash
+func BlockByHash(ctx *rpctypes.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error) {
+	blockMeta := blockStore.LoadBlockMetaByHash(hash)
+	block := blockStore.LoadBlockByHash(hash)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
