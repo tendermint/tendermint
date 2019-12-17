@@ -9,7 +9,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -77,7 +76,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 // LoadBlockByHash returns the block with the given height.
 // If no block is found for that height, it returns nil.
-func (bs *BlockStore) LoadBlockByHash(hash bytes.HexBytes) *types.Block {
+func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	bz := bs.db.Get(calcBlockHashKey(hash))
 	if len(bz) == 0 {
 		return nil
@@ -181,7 +180,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
-	bs.db.Set(calcBlockHashKey(hash), make([]byte, height))
+	bs.db.Set(calcBlockHashKey(hash), []byte(strconv.FormatInt(height, 10)))
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
@@ -210,7 +209,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.SetSync(nil, nil)
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, hash bytes.HexBytes, index int, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int64, hash []byte, index int, part *types.Part) {
 	if height != bs.Height()+1 {
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
@@ -236,7 +235,7 @@ func calcSeenCommitKey(height int64) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
 }
 
-func calcBlockHashKey(hash bytes.HexBytes) []byte {
+func calcBlockHashKey(hash []byte) []byte {
 	return []byte(fmt.Sprintf("H:%v", hash))
 }
 
