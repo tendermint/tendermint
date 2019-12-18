@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 
 func TestBasicPartSet(t *testing.T) {
 	// Construct random data of size partSize * 100
-	data := rand.RandBytes(testPartSize * 100)
+	data := tmrand.Bytes(testPartSize * 100)
 	partSet := NewPartSetFromData(data, testPartSize)
 
 	assert.NotEmpty(t, partSet.Hash())
@@ -62,7 +62,7 @@ func TestBasicPartSet(t *testing.T) {
 
 func TestWrongProof(t *testing.T) {
 	// Construct random data of size partSize * 100
-	data := rand.RandBytes(testPartSize * 100)
+	data := tmrand.Bytes(testPartSize * 100)
 	partSet := NewPartSetFromData(data, testPartSize)
 
 	// Test adding a part with wrong data.
@@ -98,7 +98,7 @@ func TestPartSetHeaderValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			data := rand.RandBytes(testPartSize * 100)
+			data := tmrand.Bytes(testPartSize * 100)
 			ps := NewPartSetFromData(data, testPartSize)
 			psHeader := ps.Header()
 			tc.malleatePartSetHeader(&psHeader)
@@ -128,7 +128,7 @@ func TestPartValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			data := rand.RandBytes(testPartSize * 100)
+			data := tmrand.Bytes(testPartSize * 100)
 			ps := NewPartSetFromData(data, testPartSize)
 			part := ps.GetPart(0)
 			tc.malleatePart(part)

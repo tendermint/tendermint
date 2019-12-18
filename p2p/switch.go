@@ -585,9 +585,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 }
 
 func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
-	return func(na *NetAddress) bool {
-		return sw.IsPeerPersistent(na)
-	}
+	return sw.IsPeerPersistent
 }
 
 func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
@@ -606,7 +604,7 @@ func (sw *Switch) acceptRoutine() {
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
 			metrics:      sw.metrics,
-			isPersistent: sw.isPeerPersistentFn(),
+			isPersistent: sw.IsPeerPersistent,
 		})
 		if err != nil {
 			switch err := err.(type) {
@@ -707,7 +705,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 		metrics:      sw.metrics,
 	})
@@ -725,7 +723,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 		// retry persistent peers after
 		// any dial error besides IsSelf()
-		if sw.isPeerPersistentFn()(addr) {
+		if sw.IsPeerPersistent(addr) {
 			go sw.reconnectToPeer(addr)
 		}
 

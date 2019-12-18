@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
-	testID := rand.RandStr(12)
+	testID := tmrand.Str(12)
 	testDir := "_test_" + testID
 	err := tmos.EnsureDir(testDir, 0700)
 	require.NoError(t, err, "Error creating dir")
@@ -49,7 +49,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err := g.WriteLine(rand.RandStr(999))
+		err := g.WriteLine(tmrand.Str(999))
 		require.NoError(t, err, "Error appending to head")
 	}
 	g.FlushAndSync()
@@ -60,7 +60,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
-	err := g.WriteLine(rand.RandStr(999))
+	err := g.WriteLine(tmrand.Str(999))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 
@@ -69,7 +69,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1000000, 0)
 
 	// Write 1000 more bytes.
-	err = g.WriteLine(rand.RandStr(999))
+	err = g.WriteLine(tmrand.Str(999))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 
@@ -79,7 +79,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err = g.WriteLine(rand.RandStr(999))
+		err = g.WriteLine(tmrand.Str(999))
 		require.NoError(t, err, "Error appending to head")
 	}
 	g.FlushAndSync()
@@ -90,7 +90,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2000000, 0)
 
 	// Write 1000 more bytes.
-	_, err = g.Head.Write([]byte(rand.RandStr(999) + "\n"))
+	_, err = g.Head.Write([]byte(tmrand.Str(999) + "\n"))
 	require.NoError(t, err, "Error appending to head")
 	g.FlushAndSync()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)

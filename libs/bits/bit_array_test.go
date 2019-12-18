@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func randBitArray(bits int) (*BitArray, []byte) {
-	src := rand.RandBytes((bits + 7) / 8)
+	src := tmrand.Bytes((bits + 7) / 8)
 	bA := NewBitArray(bits)
 	for i := 0; i < len(src); i++ {
 		for j := 0; j < 8; j++ {
