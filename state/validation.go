@@ -160,14 +160,14 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error {
 	height := state.LastBlockHeight
 	var (
-		evidenceAgeBlock    = height - evidence.Height()
+		evidenceAgeNumBlock = height - evidence.Height()
 		evidenceAgeDuration = state.LastBlockTime.Sub(evidence.Time())
 
 		maxAgeNumBlocks = state.ConsensusParams.Evidence.MaxAgeNumBlocks
 		maxAgeDuration  = state.ConsensusParams.Evidence.MaxAgeDuration
 	)
 
-	if evidenceAgeBlock > maxAgeNumBlocks {
+	if evidenceAgeNumBlock > maxAgeNumBlocks {
 		return fmt.Errorf("evidence from height %d is too old. Min height is %d",
 			evidence.Height(), height-maxAgeNumBlocks)
 	}

@@ -153,12 +153,12 @@ func (evpool *Pool) removeEvidence(
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		ev := e.Value.(types.Evidence)
 
-		evAge := lastBlockTime.Sub(ev.Time())
+		evAgeDuration := lastBlockTime.Sub(ev.Time())
 
 		// Remove the evidence if it's already in a block
 		// or if it's now too old.
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			ev.Height() < height-evidenceAge.MaxAgeNumBlocks || evAge > evidenceAge.MaxAgeDuration {
+			height > ev.Height()+evidenceAge.MaxAgeNumBlocks || evAgeDuration > evidenceAge.MaxAgeDuration {
 
 			// remove from clist
 			evpool.evidenceList.Remove(e)

@@ -172,10 +172,13 @@ func (evR Reactor) checkSendEvidenceMessage(
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAgeNumBlocks := evR.evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
-	maxAgeDuration := evR.evpool.State().ConsensusParams.Evidence.MaxAgeDuration
-	evidenceAgeDuration := evR.evpool.State().LastBlockTime.Sub(ev.Time())
-	peerHeight := peerState.GetHeight()
+	var (
+		maxAgeNumBlocks     = evR.evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
+		maxAgeDuration      = evR.evpool.State().ConsensusParams.Evidence.MaxAgeDuration
+		evidenceAgeDuration = evR.evpool.State().LastBlockTime.Sub(ev.Time())
+		peerHeight          = peerState.GetHeight()
+	)
+
 	if peerHeight < evHeight {
 		// peer is behind. sleep while he catches up
 		return nil, true
