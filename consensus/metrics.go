@@ -19,6 +19,9 @@ type Metrics struct {
 	// Height of the chain.
 	Height metrics.Gauge
 
+	// LastSignedHeight of a validator.
+	LastSignedHeight metrics.Gauge
+
 	// Number of rounds.
 	Rounds metrics.Gauge
 
@@ -26,6 +29,8 @@ type Metrics struct {
 	Validators metrics.Gauge
 	// Total power of all validators.
 	ValidatorsPower metrics.Gauge
+	// Power of a validator.
+	ValidatorPower metrics.Gauge
 	// Number of validators who did not sign.
 	MissingValidators metrics.Gauge
 	// Total power of the missing validators.
@@ -81,11 +86,23 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "validators",
 			Help:      "Number of validators.",
 		}, labels).With(labelsAndValues...),
+		LastSignedHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "last_signed_height",
+			Help:      "Last signed height for a validator",
+		}, labels).With(labelsAndValues...),
 		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "validators_power",
 			Help:      "Total power of all validators.",
+		}, labels).With(labelsAndValues...),
+		ValidatorPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_power",
+			Help:      "Power of a validator.",
 		}, labels).With(labelsAndValues...),
 		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -163,10 +180,13 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		Height: discard.NewGauge(),
 
+		LastSignedHeight: discard.NewGauge(),
+
 		Rounds: discard.NewGauge(),
 
 		Validators:               discard.NewGauge(),
 		ValidatorsPower:          discard.NewGauge(),
+		ValidatorPower:           discard.NewGauge(),
 		MissingValidators:        discard.NewGauge(),
 		MissingValidatorsPower:   discard.NewGauge(),
 		ByzantineValidators:      discard.NewGauge(),
