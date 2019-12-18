@@ -319,30 +319,28 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 			panic(err) // shouldn't happen
 		}
 
-		// Sanity check that commit size matches validator set size -
-		// only applies after first block
+		// Sanity check that commit size matches validator set size - only applies
+		// after first block.
 		commitSize := block.LastCommit.Size()
 		valSetLen := len(lastValSet.Validators)
 		if commitSize != valSetLen {
-			// sanity check
 			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators))
 		}
+
+		for i, val := range lastValSet.Validators {
+			commitSig := block.LastCommit.Signatures[i]
+			voteInfos[i] = abci.VoteInfo{
+				Validator:       types.TM2PB.Validator(val),
+				SignedLastBlock: !commitSig.Absent(),
+			}
+		}
 	} else {
 		lastValSet = types.NewValidatorSet(nil)
-	}
 
-	// block.Height=1 -> LastCommitInfo.Votes are empty.
-	// Remember that the first LastCommit is intentionally empty, so it makes
-	// sense for LastCommitInfo.Votes to also be empty.
-	if block.Height > 1 {
-		for i, val := range lastValSet.Validators {
-				commitSig := block.LastCommit.Signatures[i]
-				voteInfos[i] = abci.VoteInfo{
-					Validator:       types.TM2PB.Validator(val),
-					SignedLastBlock: !commitSig.Absent(),
-				}
-		}
+		// block.Height=1 -> LastCommitInfo.Votes are empty.
+		// Remember that the first LastCommit is intentionally empty, so it makes
+		// sense for LastCommitInfo.Votes to also be empty.
 	}
 
 	for i, ev := range block.Evidence.Evidence {

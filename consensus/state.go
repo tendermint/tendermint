@@ -1473,7 +1473,18 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// Remember that the first LastCommit is intentionally empty, so it's not
 	// fair to increment missing validators number.
 	if height > 1 {
-		for i, val := range cs.Validators.Validators {
+		// Sanity check that commit size matches validator set size - only applies
+		// after first block.
+		var (
+			commitSize = block.LastCommit.Size()
+			valSetLen  = len(cs.LastValidators.Validators)
+		)
+		if commitSize != valSetLen {
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
+		}
+
+		for i, val := range cs.LastValidators.Validators {
 			commitSig := block.LastCommit.Signatures[i]
 			if commitSig.Absent() {
 				missingValidators++
