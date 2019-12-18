@@ -42,12 +42,9 @@ TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
-GOX						= $(TOOLS_DESTDIR)/gox
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
-
-tools: certstrap protobuf gox goodman
 
 check: check_tools
 
@@ -65,12 +62,6 @@ protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
-
-# used to build tm-monitor binaries
-gox: $(GOX)
-$(GOX):
-	@echo "Get Gox"
-	@go get github.com/mitchellh/gox@v1.0.1
 
 goodman: $(GOODMAN)
 $(GOODMAN):
