@@ -310,19 +310,21 @@ func execBlockOnProxyApp(
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
-	var lastValSet *types.ValidatorSet
-	var err error
+	// block.Height=1 -> LastCommitInfo.Votes are empty.
+	// Remember that the first LastCommit is intentionally empty, so it makes
+	// sense for LastCommitInfo.Votes to also be empty.
 	if block.Height > 1 {
-		lastValSet, err = LoadValidators(stateDB, block.Height-1)
+		lastValSet, err := LoadValidators(stateDB, block.Height-1)
 		if err != nil {
-			panic(err) // shouldn't happen
+			panic(err)
 		}
 
 		// Sanity check that commit size matches validator set size - only applies
 		// after first block.
-		commitSize := block.LastCommit.Size()
-		valSetLen := len(lastValSet.Validators)
+		var (
+			commitSize = block.LastCommit.Size()
+			valSetLen  = len(lastValSet.Validators)
+		)
 		if commitSize != valSetLen {
 			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators))
@@ -335,31 +337,24 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 				SignedLastBlock: !commitSig.Absent(),
 			}
 		}
-	} else {
-		lastValSet = types.NewValidatorSet(nil)
-
-		// block.Height=1 -> LastCommitInfo.Votes are empty.
-		// Remember that the first LastCommit is intentionally empty, so it makes
-		// sense for LastCommitInfo.Votes to also be empty.
 	}
 
+	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		// We need the validator set. We already did this in validateBlock.
 		// TODO: Should we instead cache the valset in the evidence itself and add
 		// `SetValidatorSet()` and `ToABCI` methods ?
 		valset, err := LoadValidators(stateDB, ev.Height())
 		if err != nil {
-			panic(err) // shouldn't happen
+			panic(err)
 		}
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
-	commitInfo := abci.LastCommitInfo{
+	return abci.LastCommitInfo{
 		Round: int32(block.LastCommit.Round),
 		Votes: voteInfos,
-	}
-	return commitInfo, byzVals
-
+	}, byzVals
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
