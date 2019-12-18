@@ -126,6 +126,7 @@ program](https://hackerone.com/tendermint).
 - [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
 - [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
 <<<<<<< HEAD
+<<<<<<< HEAD
 - [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
 =======
 <<<<<<< HEAD
@@ -133,6 +134,9 @@ program](https://hackerone.com/tendermint).
 - [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
 >>>>>>> rpc: added proposer in consensus_state (#4250)
 >>>>>>> rpc: added proposer in consensus_state (#4250)
+=======
+- [libs] [\#2956](https://github.com/tendermint/tendermint/issues/2956) rands: Removed `mutex` (@pushcodeveryday)
+>>>>>>> resolving conflict
 
 ### BUG FIXES:
 

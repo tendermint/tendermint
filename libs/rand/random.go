@@ -46,185 +46,104 @@ func Seed(seed int64) {
 	lrand.Seed(seed)
 }
 
-<<<<<<< HEAD
 func Str(length int) string {
-	return grand.Str(length)
-}
-
-func Uint16() uint16 {
-	return grand.Uint16()
-}
-
-func Uint32() uint32 {
-	return grand.Uint32()
-}
-
-func Uint64() uint64 {
-	return grand.Uint64()
-}
-
-func Uint() uint {
-	return grand.Uint()
-}
-
-func Int16() int16 {
-	return grand.Int16()
-}
-
-func Int32() int32 {
-	return grand.Int32()
-}
-
-func Int64() int64 {
-	return grand.Int64()
-}
-
-func Int() int {
-	return grand.Int()
-}
-
-func Int31() int32 {
-	return grand.Int31()
-}
-
-func Int31n(n int32) int32 {
-	return grand.Int31n(n)
-}
-
-func Int63() int64 {
-	return grand.Int63()
-}
-
-func Int63n(n int64) int64 {
-	return grand.Int63n(n)
-}
-
-func Bool() bool {
-	return grand.Bool()
-}
-
-func Float32() float32 {
-	return grand.Float32()
-}
-
-func Float64() float64 {
-	return grand.Float64()
-}
-
-func Time() time.Time {
-	return grand.Time()
-}
-
-func Bytes(n int) []byte {
-	return grand.Bytes(n)
-}
-
-func Intn(n int) int {
-	return grand.Intn(n)
-}
-
-func Perm(n int) []int {
-	return grand.Perm(n)
-=======
-func RandStr(length int) string {
 	var lrand = NewRand()
 	return lrand.Str(length)
 }
 
-func RandUint16() uint16 {
+func Uint16() uint16 {
 	var lrand = NewRand()
 	return lrand.Uint16()
 }
 
-func RandUint32() uint32 {
+func Uint32() uint32 {
 	var lrand = NewRand()
 	return lrand.Uint32()
 }
 
-func RandUint64() uint64 {
+func Uint64() uint64 {
 	var lrand = NewRand()
 	return lrand.Uint64()
 }
 
-func RandUint() uint {
+func Uint() uint {
 	var lrand = NewRand()
 	return lrand.Uint()
 }
 
-func RandInt16() int16 {
+func Int16() int16 {
 	var lrand = NewRand()
 	return lrand.Int16()
 }
 
-func RandInt32() int32 {
+func Int32() int32 {
 	var lrand = NewRand()
 	return lrand.Int32()
 }
 
-func RandInt64() int64 {
+func Int64() int64 {
 	var lrand = NewRand()
 	return lrand.Int64()
 }
 
-func RandInt() int {
+func Int() int {
 	var lrand = NewRand()
 	return lrand.Int()
 }
 
-func RandInt31() int32 {
+func Int31() int32 {
 	var lrand = NewRand()
 	return lrand.Int31()
 }
 
-func RandInt31n(n int32) int32 {
+func Int31n(n int32) int32 {
 	var lrand = NewRand()
 	return lrand.Int31n(n)
 }
 
-func RandInt63() int64 {
+func Int63() int64 {
 	var lrand = NewRand()
 	return lrand.Int63()
 }
 
-func RandInt63n(n int64) int64 {
+func Int63n(n int64) int64 {
 	var lrand = NewRand()
 	return lrand.Int63n(n)
 }
 
-func RandBool() bool {
+func Bool() bool {
 	var lrand = NewRand()
 	return lrand.Bool()
 }
 
-func RandFloat32() float32 {
+func Float32() float32 {
 	var lrand = NewRand()
 	return lrand.Float32()
 }
 
-func RandFloat64() float64 {
+func Float64() float64 {
 	var lrand = NewRand()
 	return lrand.Float64()
 }
 
-func RandTime() time.Time {
+func Time() time.Time {
 	var lrand = NewRand()
 	return lrand.Time()
 }
 
-func RandBytes(n int) []byte {
+func Bytes(n int) []byte {
 	var lrand = NewRand()
 	return lrand.Bytes(n)
 }
 
-func RandIntn(n int) int {
+func Intn(n int) int {
 	var lrand = NewRand()
 	return lrand.Intn(n)
 }
 
-func RandPerm(n int) []int {
+func Perm(n int) []int {
 	var lrand = NewRand()
 	return lrand.Perm(n)
->>>>>>> removing grand
 }
 
 //----------------------------------------
