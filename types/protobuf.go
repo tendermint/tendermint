@@ -136,8 +136,8 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
-			MaxAgeHeight:   params.Evidence.MaxAgeHeight,
-			MaxAgeDuration: params.Evidence.MaxAgeDuration,
+			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
+			MaxAgeDuration:  params.Evidence.MaxAgeDuration,
 		},
 		Validator: &abci.ValidatorParams{
 			PubKeyTypes: params.Validator.PubKeyTypes,

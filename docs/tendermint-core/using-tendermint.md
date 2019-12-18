@@ -78,7 +78,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
       "time_iota_ms": "1000"
     },
     "evidence": {
-      "max_age_height": "100000"
+      "max_age_num_blocks": "100000"
       "max_age_duration": "10000"
     },
     "validator": {

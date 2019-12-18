@@ -49,8 +49,8 @@ type BlockParams struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance.
 type EvidenceParams struct {
-	MaxAgeHeight   int64         `json:"max_age_height"` // only accept new evidence more recent than this
-	MaxAgeDuration time.Duration `json:"max_age_duration"`
+	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
+	MaxAgeDuration  time.Duration `json:"max_age_duration"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -80,8 +80,8 @@ func DefaultBlockParams() BlockParams {
 // DefaultEvidenceParams Params returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAgeHeight:   100000, // 27.8 hrs at 1block/s
-		MaxAgeDuration: (48 * time.Hour),
+		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:  48 * time.Hour,
 	}
 }
 
@@ -122,13 +122,13 @@ func (params *ConsensusParams) Validate() error {
 			params.Block.TimeIotaMs)
 	}
 
-	if params.Evidence.MaxAgeHeight <= 0 {
-		return errors.Errorf("evidenceParams.MaxAgeHeight must be greater than 0. Got %d",
-			params.Evidence.MaxAgeHeight)
+	if params.Evidence.MaxAgeNumBlocks <= 0 {
+		return errors.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+			params.Evidence.MaxAgeNumBlocks)
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %d",
+		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
@@ -186,7 +186,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.Block.MaxGas = params2.Block.MaxGas
 	}
 	if params2.Evidence != nil {
-		res.Evidence.MaxAgeHeight = params2.Evidence.MaxAgeHeight
+		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
 		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
 	}
 	if params2.Validator != nil {

@@ -60,8 +60,8 @@ func makeParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: EvidenceParams{
-			MaxAgeHeight:   evidenceAge,
-			MaxAgeDuration: time.Duration(evidenceAge),
+			MaxAgeNumBlocks: evidenceAge,
+			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
 		Validator: ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
@@ -117,8 +117,8 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxGas:   200,
 				},
 				Evidence: &abci.EvidenceParams{
-					MaxAgeHeight:   300,
-					MaxAgeDuration: time.Duration(300),
+					MaxAgeNumBlocks: 300,
+					MaxAgeDuration:  time.Duration(300),
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,

@@ -162,8 +162,8 @@ func makeConsensusParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
-			MaxAgeHeight:   evidenceAge,
-			MaxAgeDuration: time.Duration(evidenceAge),
+			MaxAgeNumBlocks: evidenceAge,
+			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
 	}
 }
