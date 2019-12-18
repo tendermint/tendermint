@@ -86,7 +86,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	height, err := strconv.ParseInt(s, 10, 64)
 
 	if err != nil {
-		panic(errors.Wrap(err, "Error converting string to int64"))
+		panic(errors.Wrapf(err, "failed to extract height from %s", s))
 	}
 	return bs.LoadBlock(height)
 }
@@ -185,7 +185,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
 		part := blockParts.GetPart(i)
-		bs.saveBlockPart(height, hash, i, part)
+		bs.saveBlockPart(height, i, part)
 	}
 
 	// Save block commit (duplicate and separate from the Block)
@@ -209,7 +209,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.SetSync(nil, nil)
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, hash []byte, index int, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	if height != bs.Height()+1 {
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
@@ -236,7 +236,7 @@ func calcSeenCommitKey(height int64) []byte {
 }
 
 func calcBlockHashKey(hash []byte) []byte {
-	return []byte(fmt.Sprintf("H:%v", hash))
+	return []byte(fmt.Sprintf("BH:%v", hash))
 }
 
 //-----------------------------------------------------------------------------
