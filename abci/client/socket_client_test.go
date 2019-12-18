@@ -12,7 +12,7 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -97,7 +97,7 @@ func TestHangingSyncCalls(t *testing.T) {
 func setupClientServer(t *testing.T, app types.Application) (
 	service.Service, abcicli.Client) {
 	// some port between 20k and 30k
-	port := 20000 + rand.RandInt32()%10000
+	port := 20000 + tmrand.Int32()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	s, err := server.NewServer(addr, "socket", app)

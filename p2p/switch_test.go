@@ -229,7 +229,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -274,7 +274,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -300,7 +300,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -346,7 +346,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
