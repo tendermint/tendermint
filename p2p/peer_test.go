@@ -13,7 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
@@ -140,7 +140,7 @@ type remotePeer struct {
 	PrivKey    crypto.PrivKey
 	Config     *config.P2PConfig
 	addr       *NetAddress
-	channels   cmn.HexBytes
+	channels   bytes.HexBytes
 	listenAddr string
 	listener   net.Listener
 }
@@ -220,7 +220,7 @@ func (rp *remotePeer) accept() {
 func (rp *remotePeer) nodeInfo() NodeInfo {
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		ID_:             rp.Addr().ID,
+		DefaultNodeID:   rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
 		Network:         "testing",
 		Version:         "1.2.3-rc0-deadbeef",

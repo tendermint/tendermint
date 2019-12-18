@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -310,14 +310,14 @@ func persistentArgs(line []byte) []string {
 func compose(fs []func() error) error {
 	if len(fs) == 0 {
 		return nil
-	} else {
-		err := fs[0]()
-		if err == nil {
-			return compose(fs[1:])
-		} else {
-			return err
-		}
 	}
+
+	err := fs[0]()
+	if err == nil {
+		return compose(fs[1:])
+	}
+
+	return err
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
@@ -626,7 +626,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
-	app := counter.NewCounterApplication(flagSerial)
+	app := counter.NewApplication(flagSerial)
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
@@ -640,7 +640,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -655,7 +655,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = kvstore.NewKVStoreApplication()
+		app = kvstore.NewApplication()
 	} else {
 		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
 		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
@@ -672,7 +672,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})

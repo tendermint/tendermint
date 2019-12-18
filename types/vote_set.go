@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
 )
 
 const (
@@ -59,14 +59,14 @@ type P2PID string
 	NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 */
 type VoteSet struct {
-	chainID string
-	height  int64
-	round   int
-	type_   SignedMsgType
-	valSet  *ValidatorSet
+	chainID       string
+	height        int64
+	round         int
+	signedMsgType SignedMsgType
+	valSet        *ValidatorSet
 
 	mtx           sync.Mutex
-	votesBitArray *cmn.BitArray
+	votesBitArray *bits.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
@@ -75,7 +75,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, type_ SignedMsgType, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -83,9 +83,9 @@ func NewVoteSet(chainID string, height int64, round int, type_ SignedMsgType, va
 		chainID:       chainID,
 		height:        height,
 		round:         round,
-		type_:         type_,
+		signedMsgType: signedMsgType,
 		valSet:        valSet,
-		votesBitArray: cmn.NewBitArray(valSet.Size()),
+		votesBitArray: bits.NewBitArray(valSet.Size()),
 		votes:         make([]*Vote, valSet.Size()),
 		sum:           0,
 		maj23:         nil,
@@ -119,7 +119,7 @@ func (voteSet *VoteSet) Type() byte {
 	if voteSet == nil {
 		return 0x00
 	}
-	return byte(voteSet.type_)
+	return byte(voteSet.signedMsgType)
 }
 
 // Implements VoteSetReader.
@@ -168,9 +168,9 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Make sure the step matches.
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
-		(vote.Type != voteSet.type_) {
+		(vote.Type != voteSet.signedMsgType) {
 		return false, errors.Wrapf(ErrVoteUnexpectedStep, "Expected %d/%d/%d, but got %d/%d/%d",
-			voteSet.height, voteSet.round, voteSet.type_,
+			voteSet.height, voteSet.round, voteSet.signedMsgType,
 			vote.Height, vote.Round, vote.Type)
 	}
 
@@ -340,7 +340,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) BitArray() *cmn.BitArray {
+func (voteSet *VoteSet) BitArray() *bits.BitArray {
 	if voteSet == nil {
 		return nil
 	}
@@ -349,7 +349,7 @@ func (voteSet *VoteSet) BitArray() *cmn.BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *cmn.BitArray {
+func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 	if voteSet == nil {
 		return nil
 	}
@@ -400,7 +400,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.type_ != PrecommitType {
+	if voteSet.signedMsgType != PrecommitType {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -464,7 +464,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 %s  %v
 %s  %v
 %s}`,
-		indent, voteSet.height, voteSet.round, voteSet.type_,
+		indent, voteSet.height, voteSet.round, voteSet.signedMsgType,
 		indent, strings.Join(voteStrings, "\n"+indent+"  "),
 		indent, voteSet.votesBitArray,
 		indent, voteSet.peerMaj23s,
@@ -472,7 +472,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 }
 
 // Marshal the VoteSet to JSON. Same as String(), just in JSON,
-// and without the height/round/type_ (since its already included in the votes).
+// and without the height/round/signedMsgType (since its already included in the votes).
 func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -534,7 +534,7 @@ func (voteSet *VoteSet) StringShort() string {
 	defer voteSet.mtx.Unlock()
 	_, _, frac := voteSet.sumTotalFrac()
 	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v(%v) %v %v}`,
-		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
+		voteSet.height, voteSet.round, voteSet.signedMsgType, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
 }
 
 // return the power voted, the total, and the fraction
@@ -551,7 +551,7 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Panics if the vote type is not PrecommitType or if
 // there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.type_ != PrecommitType {
+	if voteSet.signedMsgType != PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
@@ -580,16 +580,16 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	2. A peer claims to have a 2/3 majority w/ blockKey (peerMaj23=true)
 */
 type blockVotes struct {
-	peerMaj23 bool          // peer claims to have maj23
-	bitArray  *cmn.BitArray // valIndex -> hasVote?
-	votes     []*Vote       // valIndex -> *Vote
-	sum       int64         // vote sum
+	peerMaj23 bool           // peer claims to have maj23
+	bitArray  *bits.BitArray // valIndex -> hasVote?
+	votes     []*Vote        // valIndex -> *Vote
+	sum       int64          // vote sum
 }
 
 func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 	return &blockVotes{
 		peerMaj23: peerMaj23,
-		bitArray:  cmn.NewBitArray(numValidators),
+		bitArray:  bits.NewBitArray(numValidators),
 		votes:     make([]*Vote, numValidators),
 		sum:       0,
 	}
@@ -619,7 +619,7 @@ type VoteSetReader interface {
 	GetRound() int
 	Type() byte
 	Size() int
-	BitArray() *cmn.BitArray
+	BitArray() *bits.BitArray
 	GetByIndex(int) *Vote
 	IsCommit() bool
 }

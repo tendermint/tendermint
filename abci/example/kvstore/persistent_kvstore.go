@@ -24,7 +24,7 @@ const (
 var _ types.Application = (*PersistentKVStoreApplication)(nil)
 
 type PersistentKVStoreApplication struct {
-	app *KVStoreApplication
+	app *Application
 
 	// validator set
 	ValUpdates []types.ValidatorUpdate
@@ -44,7 +44,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	state := loadState(db)
 
 	return &PersistentKVStoreApplication{
-		app:                &KVStoreApplication{state: state},
+		app:                &Application{state: state},
 		valAddrToPubKeyMap: make(map[string]types.PubKey),
 		logger:             log.NewNopLogger(),
 	}

@@ -7,5 +7,5 @@ import (
 var cdc *amino.Codec = amino.NewCodec()
 
 func init() {
-	RegisterPexMessage(cdc)
+	RegisterMessages(cdc)
 }

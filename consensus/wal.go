@@ -12,8 +12,9 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -78,7 +79,7 @@ type WAL interface {
 // so it's either reading or appending - must read to end to start appending
 // again.
 type baseWAL struct {
-	cmn.BaseService
+	service.BaseService
 
 	group *auto.Group
 
@@ -93,7 +94,7 @@ var _ WAL = &baseWAL{}
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
-	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
+	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
 	}
@@ -107,7 +108,7 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
 	}
-	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
+	wal.BaseService = *service.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
 }
 
@@ -206,7 +207,8 @@ func (wal *baseWAL) WriteSync(msg WALMessage) error {
 	}
 
 	if err := wal.FlushAndSync(); err != nil {
-		wal.Logger.Error("WriteSync failed to flush consensus wal. WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted",
+		wal.Logger.Error(`WriteSync failed to flush consensus wal. 
+		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
 			"err", err)
 		return err
 	}

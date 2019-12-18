@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
@@ -38,12 +38,12 @@ func NewSignerListenerEndpoint(
 		timeoutAccept: defaultTimeoutAcceptSeconds * time.Second,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "SignerListenerEndpoint", sc)
+	sc.BaseService = *service.NewBaseService(logger, "SignerListenerEndpoint", sc)
 	sc.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 	return sc
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
 	sl.connectRequestCh = make(chan struct{})
 	sl.connectionAvailableCh = make(chan net.Conn)
@@ -58,7 +58,7 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service
+// OnStop implements service.Service
 func (sl *SignerListenerEndpoint) OnStop() {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()

@@ -15,8 +15,9 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -135,7 +136,7 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 // *not thread safe*
 func (mem *CListMempool) InitWAL() {
 	walDir := mem.config.WalDir()
-	err := cmn.EnsureDir(walDir, 0700)
+	err := tmos.EnsureDir(walDir, 0700)
 	if err != nil {
 		panic(errors.Wrap(err, "Error ensuring WAL dir"))
 	}
@@ -480,7 +481,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var totalGas int64
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
-	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
+	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
@@ -517,7 +518,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max))
+	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
 	for e := mem.txs.Front(); e != nil && len(txs) <= max; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
@@ -638,10 +639,10 @@ type txCache interface {
 // mapTxCache maintains a LRU cache of transactions. This only stores the hash
 // of the tx, due to memory concerns.
 type mapTxCache struct {
-	mtx  sync.Mutex
-	size int
-	map_ map[[sha256.Size]byte]*list.Element
-	list *list.List
+	mtx      sync.Mutex
+	size     int
+	cacheMap map[[sha256.Size]byte]*list.Element
+	list     *list.List
 }
 
 var _ txCache = (*mapTxCache)(nil)
@@ -649,16 +650,16 @@ var _ txCache = (*mapTxCache)(nil)
 // newMapTxCache returns a new mapTxCache.
 func newMapTxCache(cacheSize int) *mapTxCache {
 	return &mapTxCache{
-		size: cacheSize,
-		map_: make(map[[sha256.Size]byte]*list.Element, cacheSize),
-		list: list.New(),
+		size:     cacheSize,
+		cacheMap: make(map[[sha256.Size]byte]*list.Element, cacheSize),
+		list:     list.New(),
 	}
 }
 
 // Reset resets the cache to an empty state.
 func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[[sha256.Size]byte]*list.Element, cache.size)
+	cache.cacheMap = make(map[[sha256.Size]byte]*list.Element, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
@@ -671,7 +672,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	// Use the tx hash in the cache
 	txHash := txKey(tx)
-	if moved, exists := cache.map_[txHash]; exists {
+	if moved, exists := cache.cacheMap[txHash]; exists {
 		cache.list.MoveToBack(moved)
 		return false
 	}
@@ -679,13 +680,13 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
 		poppedTxHash := popped.Value.([sha256.Size]byte)
-		delete(cache.map_, poppedTxHash)
+		delete(cache.cacheMap, poppedTxHash)
 		if popped != nil {
 			cache.list.Remove(popped)
 		}
 	}
 	e := cache.list.PushBack(txHash)
-	cache.map_[txHash] = e
+	cache.cacheMap[txHash] = e
 	return true
 }
 
@@ -693,8 +694,8 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
 	txHash := txKey(tx)
-	popped := cache.map_[txHash]
-	delete(cache.map_, txHash)
+	popped := cache.cacheMap[txHash]
+	delete(cache.cacheMap, txHash)
 	if popped != nil {
 		cache.list.Remove(popped)
 	}

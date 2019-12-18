@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 // FuzzedConnection wraps any net.Conn and depending on the mode either delays
@@ -103,7 +103,7 @@ func (fc *FuzzedConnection) SetWriteDeadline(t time.Time) error {
 
 func (fc *FuzzedConnection) randomDuration() time.Duration {
 	maxDelayMillis := int(fc.config.MaxDelay.Nanoseconds() / 1000)
-	return time.Millisecond * time.Duration(cmn.RandInt()%maxDelayMillis) // nolint: gas
+	return time.Millisecond * time.Duration(tmrand.Int()%maxDelayMillis) // nolint: gas
 }
 
 // implements the fuzz (delay, kill conn)
@@ -116,7 +116,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 	switch fc.config.Mode {
 	case config.FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
-		r := cmn.RandFloat64()
+		r := tmrand.Float64()
 		switch {
 		case r <= fc.config.ProbDropRW:
 			return true

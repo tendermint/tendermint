@@ -82,5 +82,4 @@
 // Examples
 //
 // - [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-// - [tm-monitor](https://github.com/tendermint/tendermint/blob/master/tools/tm-monitor/rpc.go)
 package rpc

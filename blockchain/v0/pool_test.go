@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -65,8 +65,8 @@ func (ps testPeers) stop() {
 func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 	peers := make(testPeers, numPeers)
 	for i := 0; i < numPeers; i++ {
-		peerID := p2p.ID(cmn.RandStr(12))
-		height := minHeight + cmn.RandInt63n(maxHeight-minHeight)
+		peerID := p2p.ID(tmrand.Str(12))
+		height := minHeight + tmrand.Int63n(maxHeight-minHeight)
 		peers[peerID] = testPeer{peerID, height, make(chan inputData, 10)}
 	}
 	return peers

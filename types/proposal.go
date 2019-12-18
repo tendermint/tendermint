@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -83,7 +83,7 @@ func (p *Proposal) String() string {
 		p.Round,
 		p.BlockID,
 		p.POLRound,
-		cmn.Fingerprint(p.Signature),
+		bytes.Fingerprint(p.Signature),
 		CanonicalTime(p.Timestamp))
 }
 

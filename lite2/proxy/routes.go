@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
@@ -203,10 +203,10 @@ func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
 	}
 }
 
-type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
+type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error)
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
-	return func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQuery(path, data)
 	}
 }

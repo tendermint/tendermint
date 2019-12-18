@@ -47,7 +47,6 @@ type transport interface {
 type peers interface {
 	AddPersistentPeers([]string) error
 	DialPeersAsync([]string) error
-	NumPeers() (outbound, inbound, dialig int)
 	Peers() p2p.IPeerSet
 }
 
@@ -71,7 +70,7 @@ var (
 	pubKey           crypto.PubKey
 	genDoc           *types.GenesisDoc // cache the genesis structure
 	txIndexer        txindex.TxIndexer
-	consensusReactor *consensus.ConsensusReactor
+	consensusReactor *consensus.Reactor
 	eventBus         *types.EventBus // thread safe
 	mempool          mempl.Mempool
 
@@ -124,7 +123,7 @@ func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
 }
 
-func SetConsensusReactor(conR *consensus.ConsensusReactor) {
+func SetConsensusReactor(conR *consensus.Reactor) {
 	consensusReactor = conR
 }
 

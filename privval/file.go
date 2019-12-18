@@ -9,7 +9,9 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/tempfile"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -56,7 +58,7 @@ func (pvKey FilePVKey) Save() {
 	if err != nil {
 		panic(err)
 	}
-	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
+	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -67,11 +69,11 @@ func (pvKey FilePVKey) Save() {
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
-	Height    int64        `json:"height"`
-	Round     int          `json:"round"`
-	Step      int8         `json:"step"`
-	Signature []byte       `json:"signature,omitempty"`
-	SignBytes cmn.HexBytes `json:"signbytes,omitempty"`
+	Height    int64            `json:"height"`
+	Round     int              `json:"round"`
+	Step      int8             `json:"step"`
+	Signature []byte           `json:"signature,omitempty"`
+	SignBytes tmbytes.HexBytes `json:"signbytes,omitempty"`
 
 	filePath string
 }
@@ -127,7 +129,7 @@ func (lss *FilePVLastSignState) Save() {
 	if err != nil {
 		panic(err)
 	}
-	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
+	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -181,12 +183,12 @@ func LoadFilePVEmptyState(keyFilePath, stateFilePath string) *FilePV {
 func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 	pvKey := FilePVKey{}
 	err = cdc.UnmarshalJSON(keyJSONBytes, &pvKey)
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
+		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
 
 	// overwrite pubkey and address for convenience
@@ -198,11 +200,11 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
-			cmn.Exit(err.Error())
+			tmos.Exit(err.Error())
 		}
 		err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
 		if err != nil {
-			cmn.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
 		}
 	}
 
@@ -218,7 +220,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 // or else generates a new one and saves it to the filePaths.
 func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	var pv *FilePV
-	if cmn.FileExists(keyFilePath) {
+	if tmos.FileExists(keyFilePath) {
 		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
 		pv = GenFilePV(keyFilePath, stateFilePath)

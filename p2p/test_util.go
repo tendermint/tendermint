@@ -9,8 +9,9 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -52,11 +53,11 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
 		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
-			cmn.RandBytes(20),
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256)
+			tmrand.Bytes(20),
+			tmrand.Int()%256,
+			tmrand.Int()%256,
+			tmrand.Int()%256,
+			tmrand.Int()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
@@ -261,7 +262,7 @@ func testNodeInfo(id ID, name string) NodeInfo {
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		ID_:             id,
+		DefaultNodeID:   id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
@@ -275,7 +276,7 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 }
 
 func getFreePort() int {
-	port, err := cmn.GetFreePort()
+	port, err := tmnet.GetFreePort()
 	if err != nil {
 		panic(err)
 	}

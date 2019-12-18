@@ -93,7 +93,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -244,7 +244,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })

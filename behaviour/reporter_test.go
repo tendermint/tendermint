@@ -43,11 +43,11 @@ func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 	bHistogram := map[bh.PeerBehaviour]int{}
 
 	for _, behaviour := range a {
-		aHistogram[behaviour] += 1
+		aHistogram[behaviour]++
 	}
 
 	for _, behaviour := range b {
-		bHistogram[behaviour] += 1
+		bHistogram[behaviour]++
 	}
 
 	if len(aHistogram) != len(bHistogram) {

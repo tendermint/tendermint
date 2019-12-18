@@ -10,7 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	service "github.com/tendermint/tendermint/libs/service"
 	lite "github.com/tendermint/tendermint/lite2"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -21,7 +22,7 @@ import (
 // Client is an RPC client, which uses lite#Client to verify data (if it can be
 // proved!).
 type Client struct {
-	cmn.BaseService
+	service.BaseService
 
 	next rpcclient.Client
 	lc   *lite.Client
@@ -37,7 +38,7 @@ func NewClient(next rpcclient.Client, lc *lite.Client) *Client {
 		lc:   lc,
 		prt:  defaultProofRuntime(),
 	}
-	c.BaseService = *cmn.NewBaseService(nil, "Client", c)
+	c.BaseService = *service.NewBaseService(nil, "Client", c)
 	return c
 }
 
@@ -62,13 +63,13 @@ func (c *Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return c.next.ABCIInfo()
 }
 
-func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c *Client) ABCIQuery(path string, data tmbytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
 // XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
-func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes,
+func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 
 	res, err := c.next.ABCIQueryWithOptions(path, data, opts)
