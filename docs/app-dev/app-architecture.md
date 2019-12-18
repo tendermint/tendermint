@@ -13,18 +13,18 @@ The following diagram provides a superb example:
 
 We distinguish here between two forms of "application". The first is the
 end-user application, like a desktop-based wallet app that a user downloads,
-which is where the user actually interacts with the system. The other is the 
+which is where the user actually interacts with the system. The other is the
 ABCI application, which is the logic that actually runs on the blockchain.
 Transactions sent by an end-user application are ultimately processed by the ABCI
 application after being committed by the Tendermint consensus.
 
-The end-user application in this diagram the Cosmos Voyager, at the bottom left.
-Voyager communicates with a REST API exposed by a local Light-Client
+The end-user application in this diagram is the Cosmos Voyager, at the bottom
+left. Voyager communicates with a REST API exposed by a local Light-Client
 Daemon. The Light-Client Daemon is an application specific program that
-communicates with Tendermint nodes and verifies Tendermint light-client
-proofs through the Tendermint Core RPC. The Tendermint Core process
-communicates with a local ABCI application, where the user query or
-transaction is actually processed.
+communicates with Tendermint nodes and verifies Tendermint light-client proofs
+through the Tendermint Core RPC. The Tendermint Core process communicates with
+a local ABCI application, where the user query or transaction is actually
+processed.
 
 The ABCI application must be a deterministic result of the Tendermint
 consensus - any external influence on the application state that didn't
@@ -36,8 +36,8 @@ Tendermint binary. Otherwise, it should use a unix socket to communicate
 with Tendermint. If it's necessary to use TCP, extra care must be taken
 to encrypt and authenticate the connection.
 
-All reads from the ABCI app happen through the Tendermint `/abci_query`
-endpoint. All writes to the ABCI app happen through the Tendermint
+All reads from the ABCI application happen through the Tendermint `/abci_query`
+endpoint. All writes to the ABCI application happen through the Tendermint
 `/broadcast_tx_*` endpoints.
 
 The Light-Client Daemon is what provides light clients (end users) with
