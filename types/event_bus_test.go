@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/kv"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -404,7 +405,7 @@ var events = []string{
 	EventVote}
 
 func randEvent() string {
-	return events[rand.RandIntn(len(events))]
+	return events[tmrand.Intn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
@@ -422,5 +423,5 @@ var queries = []tmpubsub.Query{
 	EventQueryVote}
 
 func randQuery() tmpubsub.Query {
-	return queries[rand.RandIntn(len(queries))]
+	return queries[tmrand.Intn(len(queries))]
 }

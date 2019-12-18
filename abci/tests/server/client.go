@@ -7,15 +7,15 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func InitChain(client abcicli.Client) error {
 	total := 10
 	vals := make([]types.ValidatorUpdate, total)
 	for i := 0; i < total; i++ {
-		pubkey := rand.RandBytes(33)
-		power := rand.RandInt()
+		pubkey := tmrand.Bytes(33)
+		power := tmrand.Int()
 		vals[i] = types.Ed25519ValidatorUpdate(pubkey, int64(power))
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{
