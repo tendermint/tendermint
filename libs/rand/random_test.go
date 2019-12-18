@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	mrand "math/rand"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,9 +32,8 @@ func TestRandIntn(t *testing.T) {
 	}
 }
 
-// Test to make sure that we never call math.rand().
-// We do this by ensuring that outputs are deterministic.
-func TestDeterminism(t *testing.T) {
+// Test to check the randomness
+func TestRandomness(t *testing.T) {
 	var firstOutput string
 
 	// Set math/rand's seed for the sake of debugging this test.
@@ -43,7 +44,7 @@ func TestDeterminism(t *testing.T) {
 		output := testThemAll()
 		if i == 0 {
 			firstOutput = output
-		} else if firstOutput != output {
+		} else if firstOutput == output {
 			t.Errorf("run #%d's output was different from first run.\nfirst: %v\nlast: %v",
 				i, firstOutput, output)
 		}
@@ -51,9 +52,6 @@ func TestDeterminism(t *testing.T) {
 }
 
 func testThemAll() string {
-
-	// Such determinism.
-	grand.reset(1)
 
 	// Use it.
 	out := new(bytes.Buffer)
@@ -70,6 +68,21 @@ func testThemAll() string {
 	fmt.Fprintf(out, "randUint32: %d\n", Uint32())
 	fmt.Fprintf(out, "randUint64: %d\n", Uint64())
 	return out.String()
+}
+
+func TestRngConcurrencySafety(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			_ = Uint64()
+			<-time.After(time.Millisecond * time.Duration(Intn(100)))
+			_ = Perm(3)
+		}()
+	}
+	wg.Wait()
 }
 
 func BenchmarkRandBytes10B(b *testing.B) {
