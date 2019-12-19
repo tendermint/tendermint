@@ -1486,10 +1486,14 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 		for i, val := range cs.LastValidators.Validators {
 			commitSig := block.LastCommit.Signatures[i]
-			if cs.privValidator != nil && bytes.Equal(val.Address, cs.privValidator.GetPubKey().Address()) {
-				cs.metrics.ValidatorPower.Set(float64(val.VotingPower))
+			privValAddress := cs.privValidator.GetPubKey().Address()
+			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
+				label := []string{
+					"address", privValAddress.String(),
+				}
+				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
 				if !commitSig.Absent() {
-					cs.metrics.LastSignedHeight.Set(float64(height))
+					cs.metrics.LastSignedHeight.With(label...).Set(float64(height))
 				}
 			}
 
