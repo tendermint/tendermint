@@ -91,7 +91,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "last_signed_height",
 			Help:      "Last signed height for a validator",
-		}, append(labels, "address")).With(labelsAndValues...),
+		}, append(labels, "validator_address")).With(labelsAndValues...),
 		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -103,7 +103,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "validator_power",
 			Help:      "Power of a validator.",
-		}, append(labels, "address")).With(labelsAndValues...),
+		}, append(labels, "validator_address")).With(labelsAndValues...),
 		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
