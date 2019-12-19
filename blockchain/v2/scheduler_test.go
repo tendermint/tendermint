@@ -542,8 +542,8 @@ func TestScSetPeerHeight(t *testing.T) {
 				allB:  []int64{1, 2, 3, 4}},
 			args: args{peerID: "P1", height: 2},
 			wantFields: scTestParams{
-				peers: map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
-				allB:  []int64{1, 2, 3, 4}},
+				peers: map[string]*scPeer{"P1": {height: 4, state: peerStateRemoved}},
+				allB:  []int64{}},
 			wantErr: true,
 		},
 		{

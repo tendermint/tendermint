@@ -291,6 +291,7 @@ func (sc *scheduler) setPeerHeight(peerID p2p.ID, height int64) error {
 	}
 
 	if height < peer.height {
+		sc.removePeer(peerID)
 		return fmt.Errorf("cannot move peer height lower. from %d to %d", peer.height, height)
 	}
 
