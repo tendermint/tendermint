@@ -116,6 +116,7 @@ program](https://hackerone.com/tendermint).
 - [metrics] \#4263 Add
   - `consensus_validator_power`: track your validators power
   - `last_signed_height`: track at which height the validator last signed
+  - `missed_blocks`: total amount of missed blocks for a validator
   as gauges in prometheus for validator specific metrics
 
 ### IMPROVEMENTS:
