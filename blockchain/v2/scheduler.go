@@ -302,7 +302,7 @@ func (sc *scheduler) setPeerHeight(peerID p2p.ID, height int64) error {
 }
 
 func (sc *scheduler) getStateAtHeight(height int64) blockState {
-	if height <= sc.initHeight {
+	if height < sc.height {
 		return blockStateProcessed
 	} else if state, ok := sc.blockStates[height]; ok {
 		return state

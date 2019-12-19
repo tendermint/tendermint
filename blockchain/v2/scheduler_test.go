@@ -970,8 +970,14 @@ func TestScMarkProcessed(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
+			oldBlockState := sc.getStateAtHeight(tt.args.height)
 			if err := sc.markProcessed(tt.args.height); (err != nil) != tt.wantErr {
 				t.Errorf("markProcessed() wantErr %v, error = %v", tt.wantErr, err)
+			}
+			if tt.wantErr {
+				assert.Equal(t, oldBlockState, sc.getStateAtHeight(tt.args.height))
+			} else {
+				assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(tt.args.height))
 			}
 			wantSc := newTestScheduler(tt.wantFields)
 			checkSameScheduler(t, wantSc, sc)
