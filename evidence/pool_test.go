@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -39,7 +40,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 1000000,
-				MaxAgeDuration:  1000000 * time.Second,
+				MaxAgeDuration:  48 * time.Hour,
 			},
 		},
 	}
@@ -62,7 +63,7 @@ func TestEvidencePool(t *testing.T) {
 	pool := NewPool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
-	badEvidence := types.MockBadEvidence{MockGoodEvidence: goodEvidence}
+	badEvidence := types.NewMockBadEvidence(height, time.Now(), 0, valAddr)
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
@@ -108,5 +109,30 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 
 	// evidence seen and committed:
 	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
+	assert.True(t, pool.IsCommitted(evidence))
+}
+
+func TestEvidencePoolIsNotCommited(t *testing.T) {
+	var (
+		valAddr           = []byte("validator_address")
+		height            = int64(42)
+		evidenceBlockTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		lastBlockTime     = evidenceBlockTime.Add(50 * time.Hour) // default param is 48 hourse
+		stateDB           = initializeValidatorState(valAddr, height)
+		evidenceDB        = dbm.NewMemDB()
+		pool              = NewPool(stateDB, evidenceDB)
+	)
+
+	evidence := types.NewMockBadEvidence(height, evidenceBlockTime, 0, valAddr)
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen but not yet committed:
+	assert.Error(t, pool.AddEvidence(evidence))
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen and committed:
+	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
+	he := pool.IsCommitted(evidence)
+	fmt.Println(he)
 	assert.True(t, pool.IsCommitted(evidence))
 }

@@ -3,6 +3,7 @@ package types
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -169,6 +170,6 @@ func TestMockGoodEvidenceValidateBasic(t *testing.T) {
 }
 
 func TestMockBadEvidenceValidateBasic(t *testing.T) {
-	badEvidence := MockBadEvidence{MockGoodEvidence: NewMockGoodEvidence(int64(1), 1, []byte{1})}
+	badEvidence := NewMockBadEvidence(int64(1), time.Now(), 1, []byte{1})
 	assert.Nil(t, badEvidence.ValidateBasic())
 }

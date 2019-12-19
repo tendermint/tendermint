@@ -56,8 +56,8 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int64 // height of the equivocation
-	Time() time.Time
+	Height() int64                                     // height of the equivocation
+	Time() time.Time                                   // time of the equivocation
 	Address() []byte                                   // address of the equivocating validator
 	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
@@ -296,12 +296,36 @@ func (e MockGoodEvidence) Equal(ev Evidence) bool {
 }
 func (e MockGoodEvidence) ValidateBasic() error { return nil }
 func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
+	return fmt.Sprintf("GoodEvidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
 }
 
 // UNSTABLE
 type MockBadEvidence struct {
-	MockGoodEvidence
+	EvidenceHeight  int64
+	EvidenceTime    time.Time
+	EvidenceAddress []byte
+}
+
+var _ Evidence = &MockBadEvidence{}
+
+func NewMockBadEvidence(height int64, eTime time.Time, idx int, address []byte) MockBadEvidence {
+	return MockBadEvidence{
+		EvidenceHeight:  height,
+		EvidenceTime:    eTime,
+		EvidenceAddress: address,
+	}
+}
+
+func (e MockBadEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockBadEvidence) Time() time.Time { return e.EvidenceTime }
+func (e MockBadEvidence) Address() []byte { return e.EvidenceAddress }
+func (e MockBadEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
+}
+func (e MockBadEvidence) Bytes() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
 
 func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
@@ -310,11 +334,13 @@ func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 func (e MockBadEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockBadEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
+		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress) &&
+		e.Time() == e2.Time()
 }
 func (e MockBadEvidence) ValidateBasic() error { return nil }
 func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
+	return fmt.Sprintf("BadEvidence: %d/%s/%s",
+		e.EvidenceHeight, e.EvidenceTime, e.EvidenceAddress)
 }
 
 //-------------------------------------------
