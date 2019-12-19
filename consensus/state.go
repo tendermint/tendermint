@@ -1489,7 +1489,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 			privValAddress := cs.privValidator.GetPubKey().Address()
 			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
 				label := []string{
-					"address", privValAddress.String(),
+					"validator_address", privValAddress.String(),
 				}
 				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
 				if !commitSig.Absent() {
