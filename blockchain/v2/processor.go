@@ -108,6 +108,10 @@ func (state *pcState) handle(event Event) (Event, error) {
 		state.draining = true
 		return noOp, nil
 
+	case scPeerError:
+		state.purgePeer(event.peerID)
+		return noOp, nil
+
 	case scBlockReceived:
 		if event.block == nil {
 			return noOp, nil

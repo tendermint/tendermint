@@ -101,6 +101,35 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 	}
 }
 
+func TestRProcessPeerError(t *testing.T) {
+	tests := []testFields{
+		{
+			name: "error for existing peer",
+			steps: []pcFsmMakeStateValues{
+				{
+					currentState:  &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}},
+					event:         scPeerError{peerID: "P2"},
+					wantState:     &params{items: []pcBlock{{"P1", 1}}},
+					wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name: "error for unknown peer",
+			steps: []pcFsmMakeStateValues{
+				{
+					currentState:  &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}},
+					event:         scPeerError{peerID: "P3"},
+					wantState:     &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}},
+					wantNextEvent: noOp,
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
+}
+
 func TestPcBlockResponse(t *testing.T) {
 	tests := []testFields{
 		{
@@ -131,7 +160,7 @@ func TestPcBlockResponse(t *testing.T) {
 	executeProcessorTests(t, tests)
 }
 
-func TestrProcessBlockSuccess(t *testing.T) {
+func TestRProcessBlockSuccess(t *testing.T) {
 	tests := []testFields{
 		{
 			name: "noop - no blocks over current height",
