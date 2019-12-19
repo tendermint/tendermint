@@ -89,12 +89,14 @@ func TestEvidencePool(t *testing.T) {
 
 func TestEvidencePoolIsCommitted(t *testing.T) {
 	// Initialization:
-	valAddr := []byte("validator_address")
-	height := int64(42)
-	lastBlockTime := time.Now()
-	stateDB := initializeValidatorState(valAddr, height)
-	evidenceDB := dbm.NewMemDB()
-	pool := NewPool(stateDB, evidenceDB)
+	var (
+		valAddr       = []byte("validator_address")
+		height        = int64(42)
+		lastBlockTime = time.Now()
+		stateDB       = initializeValidatorState(valAddr, height)
+		evidenceDB    = dbm.NewMemDB()
+		pool          = NewPool(stateDB, evidenceDB)
+	)
 
 	// evidence not seen yet:
 	evidence := types.NewMockGoodEvidence(height, 0, valAddr)
