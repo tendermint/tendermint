@@ -448,12 +448,12 @@ func TestTxSearch(t *testing.T) {
 		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
-		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "desc")
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "asc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "desc")
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
@@ -467,9 +467,23 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query a non existing tx with page 1 and txsPerPage 1
-		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "desc")
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "asc")
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
+
+		// Transaction should be in the ascending order
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), true, 1, 30, "asc")
+		require.Nil(t, err, "%+v", err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+		}
+
+		// Transaction should be in the descending order
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), true, 1, 30, "desc")
+		require.Nil(t, err, "%+v", err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+		}
 	}
 }
 

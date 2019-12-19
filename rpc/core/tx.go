@@ -101,20 +101,28 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 			Tx:       r.Tx,
 			Proof:    proof,
 		}
+	}
+
+	if len(apiResults) > 1 {
+		for _, item := range apiResults {
+			if item != nil {
+				apiResults = append(apiResults, item)
+			}
+		}
 
 		if orderBy == "desc" {
 			sort.Slice(apiResults, func(i, j int) bool {
-				if results[i].Height == results[j].Height {
-					return results[i].Index > results[j].Index
+				if apiResults[i].Height == apiResults[j].Height {
+					return apiResults[i].Index > apiResults[j].Index
 				}
-				return results[i].Height > results[j].Height
+				return apiResults[i].Height > apiResults[j].Height
 			})
 		} else {
 			sort.Slice(apiResults, func(i, j int) bool {
-				if results[i].Height == results[j].Height {
-					return results[i].Index < results[j].Index
+				if apiResults[i].Height == apiResults[j].Height {
+					return apiResults[i].Index < apiResults[j].Index
 				}
-				return results[i].Height < results[j].Height
+				return apiResults[i].Height < apiResults[j].Height
 			})
 		}
 	}

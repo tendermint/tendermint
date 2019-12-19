@@ -221,60 +221,6 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
-func TestTxSearchMultipleTxs(t *testing.T) {
-	allowedKeys := []string{"account.number", "account.number.id"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
-
-	// indexed first, but bigger height (to test the order of transactions)
-	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
-	})
-
-	txResult.Tx = types.Tx("Bob's account")
-	txResult.Height = 2
-	txResult.Index = 1
-	err := indexer.Index(txResult)
-	require.NoError(t, err)
-
-	// indexed second, but smaller height (to test the order of transactions)
-	txResult2 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("2")}}},
-	})
-	txResult2.Tx = types.Tx("Alice's account")
-	txResult2.Height = 1
-	txResult2.Index = 2
-
-	err = indexer.Index(txResult2)
-	require.NoError(t, err)
-
-	// indexed third (to test the order of transactions)
-	txResult3 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("3")}}},
-	})
-	txResult3.Tx = types.Tx("Jack's account")
-	txResult3.Height = 1
-	txResult3.Index = 1
-	err = indexer.Index(txResult3)
-	require.NoError(t, err)
-
-	// indexed fourth (to test we don't include txs with similar events)
-	// https://github.com/tendermint/tendermint/issues/2908
-	txResult4 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number.id"), Value: []byte("1")}}},
-	})
-	txResult4.Tx = types.Tx("Mike's account")
-	txResult4.Height = 2
-	txResult4.Index = 2
-	err = indexer.Index(txResult4)
-	require.NoError(t, err)
-
-	results, err := indexer.Search(query.MustParse("account.number >= 1"))
-	assert.NoError(t, err)
-
-	require.Len(t, results, 3)
-	assert.Equal(t, []*types.TxResult{txResult3, txResult2, txResult}, results)
-}
-
 func TestIndexAllTags(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexAllEvents())
 
