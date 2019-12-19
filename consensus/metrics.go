@@ -31,6 +31,8 @@ type Metrics struct {
 	ValidatorsPower metrics.Gauge
 	// Power of a validator.
 	ValidatorPower metrics.Gauge
+	// Amount of blocks missed by a validator.
+	MissedBlocks metrics.Gauge
 	// Number of validators who did not sign.
 	MissingValidators metrics.Gauge
 	// Total power of the missing validators.
@@ -91,6 +93,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "last_signed_height",
 			Help:      "Last signed height for a validator",
+		}, append(labels, "validator_address")).With(labelsAndValues...),
+		MissedBlocks: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "missed_blocks",
+			Help:      "Total missed blocks for a validator",
 		}, append(labels, "validator_address")).With(labelsAndValues...),
 		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -187,6 +195,7 @@ func NopMetrics() *Metrics {
 		Validators:               discard.NewGauge(),
 		ValidatorsPower:          discard.NewGauge(),
 		ValidatorPower:           discard.NewGauge(),
+		MissedBlocks:             discard.NewGauge(),
 		MissingValidators:        discard.NewGauge(),
 		MissingValidatorsPower:   discard.NewGauge(),
 		ByzantineValidators:      discard.NewGauge(),

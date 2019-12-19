@@ -1494,6 +1494,8 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
 				if !commitSig.Absent() {
 					cs.metrics.LastSignedHeight.With(label...).Set(float64(height))
+				} else {
+					cs.metrics.MissedBlocks.With(label...).Add(float64(1))
 				}
 			}
 
