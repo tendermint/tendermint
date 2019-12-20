@@ -14,20 +14,20 @@ import (
 
 func TestRandStr(t *testing.T) {
 	l := 243
-	s := RandStr(l)
+	s := Str(l)
 	assert.Equal(t, l, len(s))
 }
 
 func TestRandBytes(t *testing.T) {
 	l := 243
-	b := RandBytes(l)
+	b := Bytes(l)
 	assert.Equal(t, l, len(b))
 }
 
 func TestRandIntn(t *testing.T) {
 	n := 243
 	for i := 0; i < 100; i++ {
-		x := RandIntn(n)
+		x := Intn(n)
 		assert.True(t, x < n)
 	}
 }
@@ -59,18 +59,18 @@ func testThemAll() string {
 
 	// Use it.
 	out := new(bytes.Buffer)
-	perm := RandPerm(10)
+	perm := Perm(10)
 	blob, _ := json.Marshal(perm)
 	fmt.Fprintf(out, "perm: %s\n", blob)
-	fmt.Fprintf(out, "randInt: %d\n", RandInt())
-	fmt.Fprintf(out, "randUint: %d\n", RandUint())
-	fmt.Fprintf(out, "randIntn: %d\n", RandIntn(97))
-	fmt.Fprintf(out, "randInt31: %d\n", RandInt31())
-	fmt.Fprintf(out, "randInt32: %d\n", RandInt32())
-	fmt.Fprintf(out, "randInt63: %d\n", RandInt63())
-	fmt.Fprintf(out, "randInt64: %d\n", RandInt64())
-	fmt.Fprintf(out, "randUint32: %d\n", RandUint32())
-	fmt.Fprintf(out, "randUint64: %d\n", RandUint64())
+	fmt.Fprintf(out, "randInt: %d\n", Int())
+	fmt.Fprintf(out, "randUint: %d\n", Uint())
+	fmt.Fprintf(out, "randIntn: %d\n", Intn(97))
+	fmt.Fprintf(out, "randInt31: %d\n", Int31())
+	fmt.Fprintf(out, "randInt32: %d\n", Int32())
+	fmt.Fprintf(out, "randInt63: %d\n", Int63())
+	fmt.Fprintf(out, "randInt64: %d\n", Int64())
+	fmt.Fprintf(out, "randUint32: %d\n", Uint32())
+	fmt.Fprintf(out, "randUint64: %d\n", Uint64())
 	return out.String()
 }
 
@@ -81,9 +81,9 @@ func TestRngConcurrencySafety(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_ = RandUint64()
-			<-time.After(time.Millisecond * time.Duration(RandIntn(100)))
-			_ = RandPerm(3)
+			_ = Uint64()
+			<-time.After(time.Millisecond * time.Duration(Intn(100)))
+			_ = Perm(3)
 		}()
 	}
 	wg.Wait()
@@ -110,7 +110,7 @@ func BenchmarkRandBytes1MiB(b *testing.B) {
 
 func benchmarkRandBytes(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
-		_ = RandBytes(n)
+		_ = Bytes(n)
 	}
 	b.ReportAllocs()
 }

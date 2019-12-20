@@ -11,13 +11,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestWriteFileAtomic(t *testing.T) {
 	var (
-		data             = []byte(rand.RandStr(rand.RandIntn(2048)))
-		old              = rand.RandBytes(rand.RandIntn(2048))
+		data             = []byte(tmrand.Str(tmrand.Intn(2048)))
+		old              = tmrand.Bytes(tmrand.Intn(2048))
 		perm os.FileMode = 0600
 	)
 

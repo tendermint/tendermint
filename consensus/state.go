@@ -1464,20 +1464,50 @@ func (cs *State) finalizeCommit(height int64) {
 func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
-	missingValidators := 0
-	missingValidatorsPower := int64(0)
-	for i, val := range cs.Validators.Validators {
-		if i >= len(block.LastCommit.Signatures) {
-			break
+
+	var (
+		missingValidators      int
+		missingValidatorsPower int64
+	)
+	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
+	// Remember that the first LastCommit is intentionally empty, so it's not
+	// fair to increment missing validators number.
+	if height > 1 {
+		// Sanity check that commit size matches validator set size - only applies
+		// after first block.
+		var (
+			commitSize = block.LastCommit.Size()
+			valSetLen  = len(cs.LastValidators.Validators)
+		)
+		if commitSize != valSetLen {
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
 		}
-		commitSig := block.LastCommit.Signatures[i]
-		if commitSig.Absent() {
-			missingValidators++
-			missingValidatorsPower += val.VotingPower
+
+		for i, val := range cs.LastValidators.Validators {
+			commitSig := block.LastCommit.Signatures[i]
+			privValAddress := cs.privValidator.GetPubKey().Address()
+			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
+				label := []string{
+					"validator_address", privValAddress.String(),
+				}
+				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
+				if !commitSig.Absent() {
+					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
+				} else {
+					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
+				}
+			}
+
+			if commitSig.Absent() {
+				missingValidators++
+				missingValidatorsPower += val.VotingPower
+			}
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 	byzantineValidatorsPower := int64(0)
 	for _, ev := range block.Evidence.Evidence {
