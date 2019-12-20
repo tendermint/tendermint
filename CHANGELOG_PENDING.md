@@ -114,6 +114,11 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
 - [rpc] [\#3333] Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (more in the future) (@princesinha19)
+- [metrics] \#4263 Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+  as gauges in prometheus for validator specific metrics
 
 ### IMPROVEMENTS:
 
