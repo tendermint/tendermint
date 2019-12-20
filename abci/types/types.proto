@@ -7,6 +7,7 @@ option go_package = "github.com/tendermint/tendermint/abci/types";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
 import "github.com/tendermint/tendermint/libs/kv/types.proto";
+import "github.com/tendermint/tendermint/crypto/crypto.proto";
 import "google/protobuf/timestamp.proto";
 
 // This file is copied from http://github.com/tendermint/abci
@@ -302,7 +303,7 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  PubKey pub_key = 1 [(gogoproto.nullable)=false];
+  tendermint.crypto.PubKey pub_key = 1 [(gogoproto.nullable)=false];
   int64 power = 2;
 }
 
@@ -310,11 +311,6 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator = 1 [(gogoproto.nullable)=false];
   bool signed_last_block = 2;
-}
-
-message PubKey {
-  string type = 1;
-  bytes  data = 2;
 }
 
 message Evidence {

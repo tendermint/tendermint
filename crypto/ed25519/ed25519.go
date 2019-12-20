@@ -29,12 +29,12 @@ var cdc = amino.NewCodec()
 
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(PubKeyEd25519{},
-		PubKeyAminoName, nil)
+	// cdc.RegisterConcrete(PubKeyEd25519{},
+	// 	PubKeyAminoName, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(PrivKeyEd25519{},
-		PrivKeyAminoName, nil)
+	// cdc.RegisterConcrete(PrivKeyEd25519{},
+	// 	PrivKeyAminoName, nil)
 }
 
 // PrivKeyEd25519 implements crypto.PrivKey.

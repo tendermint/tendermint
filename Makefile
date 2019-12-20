@@ -57,6 +57,8 @@ protoc_abci: abci/types/types.pb.go
 
 protoc_proto3types: types/proto3/block.pb.go
 
+protoc_crypto: crypto/crypto.pb.go
+
 build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
 
