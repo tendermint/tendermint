@@ -529,12 +529,11 @@ func (cs *State) updateToState(state sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic("updateToState(state) called but last Precommit round didn't have +2/3")
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
 	}
 
 	// Next desired block height
@@ -566,7 +565,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
-	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
 
