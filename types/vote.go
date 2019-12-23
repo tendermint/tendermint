@@ -13,7 +13,8 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64 = 223
+	MaxVoteBytes int64  = 223
+	nilVoteStr   string = "nil-Vote"
 )
 
 var (
@@ -87,7 +88,7 @@ func (vote *Vote) Copy() *Vote {
 
 func (vote *Vote) String() string {
 	if vote == nil {
-		return "nil-Vote"
+		return nilVoteStr
 	}
 	var typeString string
 	switch vote.Type {
@@ -96,7 +97,7 @@ func (vote *Vote) String() string {
 	case PrecommitType:
 		typeString = "Precommit"
 	default:
-		cmn.PanicSanity("Unknown vote type")
+		panic("Unknown vote type")
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",

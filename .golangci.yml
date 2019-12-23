@@ -8,19 +8,12 @@ linters:
     - golint
     - maligned
     - errcheck
-    - staticcheck
     - interfacer
-    - unconvert
-    - goconst
     - unparam
-    - nakedret
     - lll
     - gochecknoglobals
-    - gocritic
     - gochecknoinits
-    - scopelint
     - stylecheck
-
 # linters-settings:
 #   govet:
 #     check-shadowing: true
@@ -32,9 +25,6 @@ linters:
 #     suggest-new: true
 #   dupl:
 #     threshold: 100
-#   goconst:
-#     min-len: 2
-#     min-occurrences: 2
 #   depguard:
 #     list-type: blacklist
 #     packages:
@@ -55,3 +45,4 @@ linters:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
+

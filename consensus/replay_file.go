@@ -10,14 +10,15 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	dbm "github.com/tendermint/tm-db"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -230,10 +231,8 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else {
-					if err := pb.replayReset(i, newStepSub); err != nil {
-						pb.cs.Logger.Error("Replay reset error", "err", err)
-					}
+				} else if err := pb.replayReset(i, newStepSub); err != nil {
+					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			}
 
@@ -279,7 +278,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	dbType := dbm.DBBackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
-	blockStore := bc.NewBlockStore(blockStoreDB)
+	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
@@ -312,7 +311,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
-	mempool, evpool := sm.MockMempool{}, sm.MockEvidencePool{}
+	mempool, evpool := mock.Mempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,

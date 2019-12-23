@@ -3,9 +3,9 @@
 ## Overview
 
 The ABCI message types are defined in a [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 
-ABCI methods are split across 3 separate ABCI *connections*:
+ABCI methods are split across 3 separate ABCI _connections_:
 
 - `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
 - `Mempool Connection`: `CheckTx`
@@ -38,20 +38,58 @@ Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
 intended use is to disambiguate `Code` values returned by different domains of the
 application. The `Codespace` is a namespace for the `Code`.
 
-## Tags
+## Events
 
 Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
-include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
-something about what happened during the methods execution.
+include an `Events` field in their `Response*`. Each event contains a type and a
+list of attributes, which are key-value pairs denoting something about what happened
+during the method's execution.
 
-Tags can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of tags returned for a block from
+Events can be used to index transactions and blocks according to what happened
+during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 tag, only the value defined in `EndBlock` is used.
 
-Keys and values in tags must be UTF-8 encoded strings (e.g.
-"account.owner": "Bob", "balance": "100.0",
-"time": "2018-01-02T12:30:00Z")
+Each event has a `type` which is meant to categorize the event for a particular
+`Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
+`type` values, where each distinct entry is meant to categorize attributes for a
+particular event. Every key and value in an event's attributes must be UTF-8
+encoded strings along with the even type itself.
+
+Example:
+
+```go
+ abci.ResponseDeliverTx{
+ 	// ...
+	Events: []abci.Event{
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.slashed",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("reason"), Value: []byte("...")},
+			},
+		},
+		// ...
+	},
+}
+```
 
 ## Determinism
 
@@ -77,19 +115,19 @@ non-determinism must be fixed and the nodes restarted.
 Sources of non-determinism in applications may include:
 
 - Hardware failures
-    - Cosmic rays, overheating, etc.
+  - Cosmic rays, overheating, etc.
 - Node-dependent state
-    - Random numbers
-    - Time
+  - Random numbers
+  - Time
 - Underspecification
-    - Library version changes
-    - Race conditions
-    - Floating point numbers
-    - JSON serialization
-    - Iterating through hash-tables/maps/dictionaries
+  - Library version changes
+  - Race conditions
+  - Floating point numbers
+  - JSON serialization
+  - Iterating through hash-tables/maps/dictionaries
 - External Sources
-    - Filesystem
-    - Network calls (eg. some external REST API service)
+  - Filesystem
+  - Network calls (eg. some external REST API service)
 
 See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
 
@@ -103,7 +141,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 ## Block Execution
 
 The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, the follow sequence of methods is executed for each
+`InitChain`. From then on, the following sequence of methods is executed for each
 block:
 
 `BeginBlock, [DeliverTx], EndBlock, Commit`
@@ -202,9 +240,9 @@ Commit are included in the header of the next block.
   - `Path (string)`: Path of request, like an HTTP GET path. Can be
     used with or in liue of Data.
     - Apps MUST interpret '/store' as a query by key on the
-    underlying store. The key SHOULD be specified in the Data field.
+      underlying store. The key SHOULD be specified in the Data field.
     - Apps SHOULD allow queries over specific types like
-    '/accounts/...' or '/votes/...'
+      '/accounts/...' or '/votes/...'
   - `Height (int64)`: The block height for which you want the query
     (default=0 returns data for the latest committed block). Note
     that this is the height of the block containing the
@@ -231,7 +269,7 @@ Commit are included in the header of the next block.
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
   - Merkle proof includes self-describing `type` field to support many types
-  of Merkle trees and encoding formats.
+    of Merkle trees and encoding formats.
 
 ### BeginBlock
 
@@ -258,6 +296,10 @@ Commit are included in the header of the next block.
 
 - **Request**:
   - `Tx ([]byte)`: The request transaction bytes
+  - `Type (CheckTxType)`: What type of `CheckTx` request is this? At present,
+    there are two possible values: `CheckTx_New` (the default, which says
+    that a full check is required), and `CheckTx_Recheck` (when the mempool is
+    initiating a normal recheck of a transaction).
 - **Response**:
   - `Code (uint32)`: Response code
   - `Data ([]byte)`: Result bytes, if any.
@@ -442,7 +484,7 @@ Commit are included in the header of the next block.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
 
-###  ConsensusParams
+### ConsensusParams
 
 - **Fields**:
   - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
@@ -456,17 +498,17 @@ Commit are included in the header of the next block.
   - `MaxBytes (int64)`: Max size of a block, in bytes.
   - `MaxGas (int64)`: Max sum of `GasWanted` in a proposed block.
     - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
-        It's the application's responsibility to handle this when processing a
-        block!
+      It's the application's responsibility to handle this when processing a
+      block!
 
 ### EvidenceParams
 
 - **Fields**:
   - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
     is considered stale and ignored.
-        - This should correspond with an app's "unbonding period" or other
-          similar mechanism for handling Nothing-At-Stake attacks.
-        - NOTE: this should change to time (instead of blocks)!
+    - This should correspond with an app's "unbonding period" or other
+      similar mechanism for handling Nothing-At-Stake attacks.
+    - NOTE: this should change to time (instead of blocks)!
 
 ### ValidatorParams
 
@@ -488,4 +530,3 @@ Commit are included in the header of the next block.
   - `Type (string)`: Type of Merkle proof and how it's encoded.
   - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
   - `Data ([]byte)`: Encoded Merkle proof for the key.
-

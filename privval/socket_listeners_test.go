@@ -97,7 +97,15 @@ func TestListenerTimeoutAccept(t *testing.T) {
 }
 
 func TestListenerTimeoutReadWrite(t *testing.T) {
-	for _, tc := range listenerTestCases(t, time.Second, time.Millisecond) {
+	const (
+		// This needs to be long enough s.t. the Accept will definitely succeed:
+		timeoutAccept = time.Second
+		// This can be really short but in the TCP case, the accept can
+		// also trigger a timeoutReadWrite. Hence, we need to give it some time.
+		// Note: this controls how long this test actually runs.
+		timeoutReadWrite = 10 * time.Millisecond
+	)
+	for _, tc := range listenerTestCases(t, timeoutAccept, timeoutReadWrite) {
 		go func(dialer SocketDialer) {
 			_, err := dialer()
 			if err != nil {
@@ -110,8 +118,7 @@ func TestListenerTimeoutReadWrite(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		time.Sleep(2 * time.Millisecond)
-
+		// this will timeout because we don't write anything:
 		msg := make([]byte, 200)
 		_, err = c.Read(msg)
 		opErr, ok := err.(*net.OpError)
@@ -121,6 +128,10 @@ func TestListenerTimeoutReadWrite(t *testing.T) {
 
 		if have, want := opErr.Op, "read"; have != want {
 			t.Errorf("for %s listener, have %v, want %v", tc.description, have, want)
+		}
+
+		if !opErr.Timeout() {
+			t.Errorf("for %s listener, got unexpected error: have %v, want Timeout error", tc.description, opErr)
 		}
 	}
 }

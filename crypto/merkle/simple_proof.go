@@ -2,10 +2,14 @@ package merkle
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+)
+
+const (
+	maxAunts = 100
 )
 
 // SimpleProof represents a simple Merkle proof.
@@ -75,11 +79,11 @@ func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
 		return errors.New("Proof index cannot be negative")
 	}
 	if !bytes.Equal(sp.LeafHash, leafHash) {
-		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
+		return errors.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}
 	computedHash := sp.ComputeRootHash()
 	if !bytes.Equal(computedHash, rootHash) {
-		return cmn.NewError("invalid root hash: wanted %X got %X", rootHash, computedHash)
+		return errors.Errorf("invalid root hash: wanted %X got %X", rootHash, computedHash)
 	}
 	return nil
 }
@@ -107,6 +111,30 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 %s}`,
 		indent, sp.Aunts,
 		indent)
+}
+
+// ValidateBasic performs basic validation.
+// NOTE: - it expects LeafHash and Aunts of tmhash.Size size
+//			 - it expects no more than 100 aunts
+func (sp *SimpleProof) ValidateBasic() error {
+	if sp.Total < 0 {
+		return errors.New("negative Total")
+	}
+	if sp.Index < 0 {
+		return errors.New("negative Index")
+	}
+	if len(sp.LeafHash) != tmhash.Size {
+		return errors.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
+	}
+	if len(sp.Aunts) > maxAunts {
+		return errors.Errorf("expected no more than %d aunts, got %d", maxAunts, len(sp.Aunts))
+	}
+	for i, auntHash := range sp.Aunts {
+		if len(auntHash) != tmhash.Size {
+			return errors.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
+		}
+	}
+	return nil
 }
 
 // Use the leafHash and innerHashes to get the root merkle hash.
@@ -162,11 +190,12 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 	// Nonrecursive impl.
 	innerHashes := [][]byte{}
 	for spn != nil {
-		if spn.Left != nil {
+		switch {
+		case spn.Left != nil:
 			innerHashes = append(innerHashes, spn.Left.Hash)
-		} else if spn.Right != nil {
+		case spn.Right != nil:
 			innerHashes = append(innerHashes, spn.Right.Hash)
-		} else {
+		default:
 			break
 		}
 		spn = spn.Parent

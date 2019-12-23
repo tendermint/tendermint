@@ -2,7 +2,8 @@ package conn
 
 import (
 	"bufio"
-	"errors"
+	"runtime/debug"
+
 	"fmt"
 	"io"
 	"math"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -89,6 +92,9 @@ type MConnection struct {
 	// doneSendRoutine is closed when the sendRoutine actually quits.
 	quitSendRoutine chan struct{}
 	doneSendRoutine chan struct{}
+
+	// Closing quitRecvRouting will cause the recvRouting to eventually quit.
+	quitRecvRoutine chan struct{}
 
 	// used to ensure FlushStop and OnStop
 	// are safe to call concurrently.
@@ -206,6 +212,7 @@ func (c *MConnection) OnStart() error {
 	c.chStatsTimer = time.NewTicker(updateStats)
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
+	c.quitRecvRoutine = make(chan struct{})
 	go c.sendRoutine()
 	go c.recvRoutine()
 	return nil
@@ -220,7 +227,14 @@ func (c *MConnection) stopServices() (alreadyStopped bool) {
 
 	select {
 	case <-c.quitSendRoutine:
-		// already quit via FlushStop or OnStop
+		// already quit
+		return true
+	default:
+	}
+
+	select {
+	case <-c.quitRecvRoutine:
+		// already quit
 		return true
 	default:
 	}
@@ -230,6 +244,8 @@ func (c *MConnection) stopServices() (alreadyStopped bool) {
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
 
+	// inform the recvRouting that we are shutting down
+	close(c.quitRecvRoutine)
 	close(c.quitSendRoutine)
 	return false
 }
@@ -250,8 +266,6 @@ func (c *MConnection) FlushStop() {
 		<-c.doneSendRoutine
 
 		// Send and flush all pending msgs.
-		// By now, IsRunning == false,
-		// so any concurrent attempts to send will fail.
 		// Since sendRoutine has exited, we can call this
 		// safely
 		eof := c.sendSomePacketMsgs()
@@ -302,8 +316,8 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		err := cmn.ErrorWrap(r, "recovered panic in MConnection")
-		c.stopForError(err)
+		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
+		c.stopForError(errors.Errorf("recovered from panic: %v", r))
 	}
 }
 
@@ -550,9 +564,22 @@ FOR_LOOP:
 		var err error
 		_n, err = cdc.UnmarshalBinaryLengthPrefixedReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
 		c.recvMonitor.Update(int(_n))
+
 		if err != nil {
+			// stopServices was invoked and we are shutting down
+			// receiving is excpected to fail since we will close the connection
+			select {
+			case <-c.quitRecvRoutine:
+				break FOR_LOOP
+			default:
+			}
+
 			if c.IsRunning() {
-				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+				if err == io.EOF {
+					c.Logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
+				} else {
+					c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+				}
 				c.stopForError(err)
 			}
 			break FOR_LOOP
@@ -707,7 +734,7 @@ type Channel struct {
 func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
-		cmn.PanicSanity("Channel default priority must be a positive integer")
+		panic("Channel default priority must be a positive integer")
 	}
 	return &Channel{
 		conn:                    conn,
@@ -776,7 +803,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
-	packet.ChannelID = byte(ch.desc.ID)
+	packet.ChannelID = ch.desc.ID
 	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {

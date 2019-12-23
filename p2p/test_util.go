@@ -5,6 +5,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -27,7 +29,7 @@ func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, ni
 func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
-func AddPeerToSwitch(sw *Switch, peer Peer) {
+func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
 
@@ -233,7 +235,7 @@ func testPeerConn(
 	// Encrypt connection
 	conn, err = upgradeSecretConn(conn, cfg.HandshakeTimeout, ourNodePrivKey)
 	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
+		return pc, errors.Wrap(err, "Error creating peer")
 	}
 
 	// Only the information we already have

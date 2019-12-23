@@ -85,7 +85,7 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	} else {
 		n.AvgBlockTime = 0.0
 	}
-	n.txThroughputMeter.Mark(int64(b.NumTxs))
+	n.txThroughputMeter.Mark(b.NumTxs)
 	n.AvgTxThroughput = n.txThroughputMeter.Rate1()
 }
 
@@ -163,11 +163,12 @@ func (n *Network) updateHealth() {
 	// TODO: make sure they're all at the same height (within a block)
 	// and all proposing (and possibly validating ) Alternatively, just
 	// check there hasn't been a new round in numValidators rounds
-	if n.NumValidators != 0 && n.NumNodesMonitoredOnline == n.NumValidators {
+	switch {
+	case n.NumValidators != 0 && n.NumNodesMonitoredOnline == n.NumValidators:
 		n.Health = FullHealth
-	} else if n.NumNodesMonitoredOnline > 0 && n.NumNodesMonitoredOnline <= n.NumNodesMonitored {
+	case n.NumNodesMonitoredOnline > 0 && n.NumNodesMonitoredOnline <= n.NumNodesMonitored:
 		n.Health = ModerateHealth
-	} else {
+	default:
 		n.Health = Dead
 	}
 }

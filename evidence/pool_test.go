@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	dbm "github.com/tendermint/tendermint/libs/db"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestMain(m *testing.M) {
@@ -60,7 +60,7 @@ func TestEvidencePool(t *testing.T) {
 	pool := NewEvidencePool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
-	badEvidence := types.MockBadEvidence{goodEvidence}
+	badEvidence := types.MockBadEvidence{MockGoodEvidence: goodEvidence}
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)

@@ -178,11 +178,11 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	return ok
 }
 
-func (a *addrBook) AddPrivateIDs(IDs []string) {
+func (a *addrBook) AddPrivateIDs(ids []string) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	for _, id := range IDs {
+	for _, id := range ids {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
 }
@@ -586,8 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if !addr.HasID() {
-		return ErrAddrBookInvalidAddrNoID{addr}
+	if err := addr.Valid(); err != nil {
+		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -605,10 +605,6 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
-	}
-
-	if !addr.Valid() {
-		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -647,7 +643,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	total := 0
 	for _, bucket := range buckets {
-		total = total + len(bucket)
+		total += len(bucket)
 	}
 	addresses := make([]*knownAddress, 0, total)
 	for _, bucket := range buckets {
@@ -788,12 +784,12 @@ func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 	}
 	if na.RFC6145() || na.RFC6052() {
 		// last four bytes are the ip address
-		ip := net.IP(na.IP[12:16])
+		ip := na.IP[12:16]
 		return (&net.IPNet{IP: ip, Mask: net.CIDRMask(16, 32)}).String()
 	}
 
 	if na.RFC3964() {
-		ip := net.IP(na.IP[2:7])
+		ip := na.IP[2:7]
 		return (&net.IPNet{IP: ip, Mask: net.CIDRMask(16, 32)}).String()
 
 	}

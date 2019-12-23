@@ -41,19 +41,20 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 	if v == nil {
 		return other
 	}
-	if v.ProposerPriority > other.ProposerPriority {
+	switch {
+	case v.ProposerPriority > other.ProposerPriority:
 		return v
-	} else if v.ProposerPriority < other.ProposerPriority {
+	case v.ProposerPriority < other.ProposerPriority:
 		return other
-	} else {
+	default:
 		result := bytes.Compare(v.Address, other.Address)
-		if result < 0 {
+		switch {
+		case result < 0:
 			return v
-		} else if result > 0 {
+		case result > 0:
 			return other
-		} else {
-			cmn.PanicSanity("Cannot compare identical validators")
-			return nil
+		default:
+			panic("Cannot compare identical validators")
 		}
 	}
 }

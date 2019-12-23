@@ -11,10 +11,10 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // evidenceLogger is a TestingLogger which uses a different
@@ -203,6 +203,7 @@ func TestEvidenceListMessageValidationBasic(t *testing.T) {
 		}, true},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			evListMsg := &EvidenceListMessage{}
 			n := 3

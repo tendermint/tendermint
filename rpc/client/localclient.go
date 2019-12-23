@@ -157,6 +157,10 @@ func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.R
 	return core.TxSearch(c.ctx, query, prove, page, perPage)
 }
 
+func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(c.ctx, ev)
+}
+
 func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -182,7 +186,7 @@ func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpub
 	for {
 		select {
 		case msg := <-sub.Out():
-			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Tags: msg.Tags()}
+			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Events: msg.Events()}
 			if cap(outc) == 0 {
 				outc <- result
 			} else {

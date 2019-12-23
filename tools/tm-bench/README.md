@@ -1,4 +1,8 @@
-# tm-bench
+# tm-bench (Deprecated)
+
+> ## **Deprecation Warning**
+
+### This tool will be depreacted in favor of [tm-load-test](https://github.com/interchainio/tm-load-test).
 
 Tendermint blockchain benchmarking tool:
 
@@ -100,6 +104,5 @@ Each of the connections is handled via two separate goroutines.
 ## Development
 
 ```
-make get_vendor_deps
 make test
 ```

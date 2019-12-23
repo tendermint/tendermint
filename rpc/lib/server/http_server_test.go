@@ -1,16 +1,18 @@
 package rpcserver
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -66,18 +68,27 @@ func TestMaxOpenConnections(t *testing.T) {
 }
 
 func TestStartHTTPAndTLSServer(t *testing.T) {
-	config := DefaultConfig()
-	config.MaxOpenConnections = 1
-	// set up fixtures
-	listenerAddr := "tcp://0.0.0.0:0"
-	listener, err := Listen(listenerAddr, config)
+	ln, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
+	defer ln.Close()
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "some body")
+	})
 
-	// test failure
-	err = StartHTTPAndTLSServer(listener, mux, "", "", log.TestingLogger(), config)
-	require.IsType(t, (*os.PathError)(nil), err)
+	go StartHTTPAndTLSServer(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 
-	// TODO: test that starting the server can actually work
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
+	}
+	c := &http.Client{Transport: tr}
+	res, err := c.Get("https://" + ln.Addr().String())
+	require.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("some body"), body)
 }

@@ -1,9 +1,12 @@
 package client_test
 
 import (
+	"bytes"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +14,13 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,6 +40,23 @@ func GetClients() []client.Client {
 		getHTTPClient(),
 		getLocalClient(),
 	}
+}
+
+func TestNilCustomHTTPClient(t *testing.T) {
+	require.Panics(t, func() {
+		client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+	})
+	require.Panics(t, func() {
+		rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+	})
+}
+
+func TestCustomHTTPClient(t *testing.T) {
+	remote := rpctest.GetConfig().RPC.ListenAddress
+	c := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	status, err := c.Status()
+	require.NoError(t, err)
+	require.NotNil(t, status)
 }
 
 func TestCorsEnabled(t *testing.T) {
@@ -249,7 +275,8 @@ func TestAppCalls(t *testing.T) {
 func TestBroadcastTxSync(t *testing.T) {
 	require := require.New(t)
 
-	mempool := node.MempoolReactor().Mempool
+	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
+	mempool := node.Mempool()
 	initMempoolSize := mempool.Size()
 
 	for i, c := range GetClients() {
@@ -269,7 +296,7 @@ func TestBroadcastTxSync(t *testing.T) {
 func TestBroadcastTxCommit(t *testing.T) {
 	require := require.New(t)
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	for i, c := range GetClients() {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
@@ -284,7 +311,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	_ = mempool.CheckTx(tx, nil)
 
 	for i, c := range GetClients() {
@@ -305,7 +332,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	_ = mempool.CheckTx(tx, nil)
 	mempoolSize := mempool.Size()
 
@@ -440,4 +467,240 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 	}
+}
+
+func deepcpVote(vote *types.Vote) (res *types.Vote) {
+	res = &types.Vote{
+		ValidatorAddress: make([]byte, len(vote.ValidatorAddress)),
+		ValidatorIndex:   vote.ValidatorIndex,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		Type:             vote.Type,
+		BlockID: types.BlockID{
+			Hash:        make([]byte, len(vote.BlockID.Hash)),
+			PartsHeader: vote.BlockID.PartsHeader,
+		},
+		Signature: make([]byte, len(vote.Signature)),
+	}
+	copy(res.ValidatorAddress, vote.ValidatorAddress)
+	copy(res.BlockID.Hash, vote.BlockID.Hash)
+	copy(res.Signature, vote.Signature)
+	return
+}
+
+func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
+	var err error
+	vote2_ := deepcpVote(vote2)
+	vote2_.Signature, err = val.Key.PrivKey.Sign(vote2_.SignBytes(chainID))
+	require.NoError(t, err)
+
+	return types.DuplicateVoteEvidence{
+		PubKey: val.Key.PubKey,
+		VoteA:  vote,
+		VoteB:  vote2_,
+	}
+}
+
+func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
+	vote := &types.Vote{
+		ValidatorAddress: val.Key.Address,
+		ValidatorIndex:   0,
+		Height:           1,
+		Round:            0,
+		Type:             types.PrevoteType,
+		BlockID: types.BlockID{
+			Hash: tmhash.Sum([]byte("blockhash")),
+			PartsHeader: types.PartSetHeader{
+				Total: 1000,
+				Hash:  tmhash.Sum([]byte("partset")),
+			},
+		},
+	}
+
+	var err error
+	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
+	require.NoError(t, err)
+
+	vote2 := deepcpVote(vote)
+	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
+
+	ev = newEvidence(t, val, vote, vote2, chainID)
+
+	fakes = make([]types.DuplicateVoteEvidence, 42)
+
+	// different address
+	vote2 = deepcpVote(vote)
+	for i := 0; i < 10; i++ {
+		rand.Read(vote2.ValidatorAddress) // nolint: gosec
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different index
+	vote2 = deepcpVote(vote)
+	for i := 10; i < 20; i++ {
+		vote2.ValidatorIndex = rand.Int()%100 + 1 // nolint: gosec
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different height
+	vote2 = deepcpVote(vote)
+	for i := 20; i < 30; i++ {
+		vote2.Height = rand.Int63()%1000 + 100 // nolint: gosec
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different round
+	vote2 = deepcpVote(vote)
+	for i := 30; i < 40; i++ {
+		vote2.Round = rand.Int()%10 + 1 // nolint: gosec
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different type
+	vote2 = deepcpVote(vote)
+	vote2.Type = types.PrecommitType
+	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
+	// exactly same vote
+	vote2 = deepcpVote(vote)
+	fakes[41] = newEvidence(t, val, vote, vote2, chainID)
+	return ev, fakes
+}
+
+func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
+	config := rpctest.GetConfig()
+	chainID := config.ChainID()
+	pvKeyFile := config.PrivValidatorKeyFile()
+	pvKeyStateFile := config.PrivValidatorStateFile()
+	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
+
+	ev, fakes := makeEvidences(t, pv, chainID)
+
+	t.Logf("evidence %v", ev)
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
+		require.Nil(t, err)
+		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
+
+		status, err := c.Status()
+		require.NoError(t, err)
+		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+
+		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
+		rawpub := ed25519pub[:]
+		result2, err := c.ABCIQuery("/val", rawpub)
+		require.Nil(t, err, "Error querying evidence, err %v", err)
+		qres := result2.Response
+		require.True(t, qres.IsOK(), "Response not OK")
+
+		var v abci.ValidatorUpdate
+		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
+		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
+
+		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
+
+		for _, fake := range fakes {
+			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
+				PubKey: fake.PubKey,
+				VoteA:  fake.VoteA,
+				VoteB:  fake.VoteB})
+			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
+		}
+	}
+}
+
+func TestBatchedJSONRPCCalls(t *testing.T) {
+	c := getHTTPClient()
+	testBatchedJSONRPCCalls(t, c)
+}
+
+func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
+	k1, v1, tx1 := MakeTxKV()
+	k2, v2, tx2 := MakeTxKV()
+
+	batch := c.NewBatch()
+	r1, err := batch.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	r2, err := batch.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	require.Equal(t, 2, batch.Count())
+	bresults, err := batch.Send()
+	require.NoError(t, err)
+	require.Len(t, bresults, 2)
+	require.Equal(t, 0, batch.Count())
+
+	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	require.Equal(t, *bresult1, *r1)
+	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	require.Equal(t, *bresult2, *r2)
+	apph := cmn.MaxInt64(bresult1.Height, bresult2.Height) + 1
+
+	client.WaitForHeight(c, apph, nil)
+
+	q1, err := batch.ABCIQuery("/key", k1)
+	require.NoError(t, err)
+	q2, err := batch.ABCIQuery("/key", k2)
+	require.NoError(t, err)
+	require.Equal(t, 2, batch.Count())
+	qresults, err := batch.Send()
+	require.NoError(t, err)
+	require.Len(t, qresults, 2)
+	require.Equal(t, 0, batch.Count())
+
+	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+	require.Equal(t, *qresult1, *q1)
+	qresult2, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+	require.Equal(t, *qresult2, *q2)
+
+	require.Equal(t, qresult1.Response.Key, k1)
+	require.Equal(t, qresult2.Response.Key, k2)
+	require.Equal(t, qresult1.Response.Value, v1)
+	require.Equal(t, qresult2.Response.Value, v2)
+}
+
+func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
+	c := getHTTPClient()
+	_, _, tx1 := MakeTxKV()
+	_, _, tx2 := MakeTxKV()
+
+	batch := c.NewBatch()
+	_, err := batch.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	_, err = batch.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	// we should have 2 requests waiting
+	require.Equal(t, 2, batch.Count())
+	// we want to make sure we cleared 2 pending requests
+	require.Equal(t, 2, batch.Clear())
+	// now there should be no batched requests
+	require.Equal(t, 0, batch.Count())
+}
+
+func TestSendingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	_, err := batch.Send()
+	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
+}
+
+func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
+}
+
+func TestConcurrentJSONRPCBatching(t *testing.T) {
+	var wg sync.WaitGroup
+	c := getHTTPClient()
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			testBatchedJSONRPCCalls(t, c)
+		}()
+	}
+	wg.Wait()
 }

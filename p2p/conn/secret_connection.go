@@ -2,23 +2,27 @@ package conn
 
 import (
 	"bytes"
+	"crypto/cipher"
 	crand "crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
-	"errors"
 	"io"
+	"math"
 	"net"
 	"sync"
 	"time"
 
+	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/nacl/box"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"golang.org/x/crypto/hkdf"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -46,10 +50,11 @@ var (
 type SecretConnection struct {
 
 	// immutable
-	recvSecret *[aeadKeySize]byte
-	sendSecret *[aeadKeySize]byte
-	remPubKey  crypto.PubKey
-	conn       io.ReadWriteCloser
+	recvAead cipher.AEAD
+	sendAead cipher.AEAD
+
+	remPubKey crypto.PubKey
+	conn      io.ReadWriteCloser
 
 	// net.Conn must be thread safe:
 	// https://golang.org/pkg/net/#Conn.
@@ -101,14 +106,22 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
 	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(dhSecret, locIsLeast)
 
+	sendAead, err := chacha20poly1305.New(sendSecret[:])
+	if err != nil {
+		return nil, errors.New("invalid send SecretConnection Key")
+	}
+	recvAead, err := chacha20poly1305.New(recvSecret[:])
+	if err != nil {
+		return nil, errors.New("invalid receive SecretConnection Key")
+	}
 	// Construct SecretConnection.
 	sc := &SecretConnection{
 		conn:       conn,
 		recvBuffer: nil,
 		recvNonce:  new([aeadNonceSize]byte),
 		sendNonce:  new([aeadNonceSize]byte),
-		recvSecret: recvSecret,
-		sendSecret: sendSecret,
+		recvAead:   recvAead,
+		sendAead:   sendAead,
 	}
 
 	// Sign the challenge bytes for authentication.
@@ -121,8 +134,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
+
+	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
+		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
+	}
+
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
-		return nil, errors.New("Challenge verification failed")
+		return nil, errors.New("challenge verification failed")
 	}
 
 	// We've authorized.
@@ -142,37 +160,41 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	defer sc.sendMtx.Unlock()
 
 	for 0 < len(data) {
-		var frame = make([]byte, totalFrameSize)
-		var chunk []byte
-		if dataMaxSize < len(data) {
-			chunk = data[:dataMaxSize]
-			data = data[dataMaxSize:]
-		} else {
-			chunk = data
-			data = nil
-		}
-		chunkLength := len(chunk)
-		binary.LittleEndian.PutUint32(frame, uint32(chunkLength))
-		copy(frame[dataLenSize:], chunk)
+		if err := func() error {
+			var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
+			var frame = pool.Get(totalFrameSize)
+			defer func() {
+				pool.Put(sealedFrame)
+				pool.Put(frame)
+			}()
+			var chunk []byte
+			if dataMaxSize < len(data) {
+				chunk = data[:dataMaxSize]
+				data = data[dataMaxSize:]
+			} else {
+				chunk = data
+				data = nil
+			}
+			chunkLength := len(chunk)
+			binary.LittleEndian.PutUint32(frame, uint32(chunkLength))
+			copy(frame[dataLenSize:], chunk)
 
-		aead, err := chacha20poly1305.New(sc.sendSecret[:])
-		if err != nil {
-			return n, errors.New("Invalid SecretConnection Key")
-		}
+			// encrypt the frame
+			sc.sendAead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
+			incrNonce(sc.sendNonce)
+			// end encryption
 
-		// encrypt the frame
-		var sealedFrame = make([]byte, aeadSizeOverhead+totalFrameSize)
-		aead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
-		incrNonce(sc.sendNonce)
-		// end encryption
-
-		_, err = sc.conn.Write(sealedFrame)
-		if err != nil {
+			_, err = sc.conn.Write(sealedFrame)
+			if err != nil {
+				return err
+			}
+			n += len(chunk)
+			return nil
+		}(); err != nil {
 			return n, err
 		}
-		n += len(chunk)
 	}
-	return
+	return n, err
 }
 
 // CONTRACT: data smaller than dataMaxSize is read atomically.
@@ -188,23 +210,20 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	}
 
 	// read off the conn
-	sealedFrame := make([]byte, totalFrameSize+aeadSizeOverhead)
+	var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
+	defer pool.Put(sealedFrame)
 	_, err = io.ReadFull(sc.conn, sealedFrame)
 	if err != nil {
 		return
 	}
 
-	aead, err := chacha20poly1305.New(sc.recvSecret[:])
-	if err != nil {
-		return n, errors.New("Invalid SecretConnection Key")
-	}
-
 	// decrypt the frame.
 	// reads and updates the sc.recvNonce
-	var frame = make([]byte, totalFrameSize)
-	_, err = aead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
+	var frame = pool.Get(totalFrameSize)
+	defer pool.Put(frame)
+	_, err = sc.recvAead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("Failed to decrypt SecretConnection")
+		return n, errors.New("failed to decrypt SecretConnection")
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption
@@ -217,8 +236,11 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	}
 	var chunk = frame[dataLenSize : dataLenSize+chunkLength]
 	n = copy(data, chunk)
-	sc.recvBuffer = chunk[n:]
-	return
+	if n < len(chunk) {
+		sc.recvBuffer = make([]byte, len(chunk)-n)
+		copy(sc.recvBuffer, chunk[n:])
+	}
+	return n, err
 }
 
 // Implements net.Conn
@@ -439,6 +461,11 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 // (little-endian in nonce[4:]).
 func incrNonce(nonce *[aeadNonceSize]byte) {
 	counter := binary.LittleEndian.Uint64(nonce[4:])
+	if counter == math.MaxUint64 {
+		// Terminates the session and makes sure the nonce would not re-used.
+		// See https://github.com/tendermint/tendermint/issues/3531
+		panic("can't increase nonce without overflow")
+	}
 	counter++
 	binary.LittleEndian.PutUint64(nonce[4:], counter)
 }

@@ -1,6 +1,8 @@
 package types
 
 import (
+	"github.com/pkg/errors"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -12,6 +14,9 @@ const (
 
 	// BlockPartSizeBytes is the size of one block part.
 	BlockPartSizeBytes = 65536 // 64kB
+
+	// MaxBlockPartsCount is the maximum count of block parts.
+	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
@@ -95,38 +100,38 @@ func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 // allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
 	if params.Block.MaxBytes <= 0 {
-		return cmn.NewError("Block.MaxBytes must be greater than 0. Got %d",
+		return errors.Errorf("Block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
 	}
 	if params.Block.MaxBytes > MaxBlockSizeBytes {
-		return cmn.NewError("Block.MaxBytes is too big. %d > %d",
+		return errors.Errorf("Block.MaxBytes is too big. %d > %d",
 			params.Block.MaxBytes, MaxBlockSizeBytes)
 	}
 
 	if params.Block.MaxGas < -1 {
-		return cmn.NewError("Block.MaxGas must be greater or equal to -1. Got %d",
+		return errors.Errorf("Block.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
 	}
 
 	if params.Block.TimeIotaMs <= 0 {
-		return cmn.NewError("Block.TimeIotaMs must be greater than 0. Got %v",
+		return errors.Errorf("Block.TimeIotaMs must be greater than 0. Got %v",
 			params.Block.TimeIotaMs)
 	}
 
 	if params.Evidence.MaxAge <= 0 {
-		return cmn.NewError("EvidenceParams.MaxAge must be greater than 0. Got %d",
+		return errors.Errorf("EvidenceParams.MaxAge must be greater than 0. Got %d",
 			params.Evidence.MaxAge)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
-		return cmn.NewError("len(Validator.PubKeyTypes) must be greater than 0")
+		return errors.New("len(Validator.PubKeyTypes) must be greater than 0")
 	}
 
 	// Check if keyType is a known ABCIPubKeyType
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
 		if _, ok := ABCIPubKeyTypesToAminoNames[keyType]; !ok {
-			return cmn.NewError("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
+			return errors.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}
 	}

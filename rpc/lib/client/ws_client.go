@@ -78,8 +78,12 @@ type WSClient struct {
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
+// The function panics if the provided address is invalid.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	protocol, addr, dialer := makeHTTPDialer(remoteAddr)
+	protocol, addr, err := toClientAddrAndParse(remoteAddr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
+	}
 	// default to ws protocol, unless wss is explicitly specified
 	if protocol != "wss" {
 		protocol = "ws"
@@ -88,7 +92,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
-		Dialer:               dialer,
+		Dialer:               makeHTTPDialer(remoteAddr),
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
 
@@ -369,10 +373,11 @@ func (c *WSClient) writeRoutine() {
 
 	defer func() {
 		ticker.Stop()
-		if err := c.conn.Close(); err != nil {
-			// ignore error; it will trigger in tests
-			// likely because it's closing an already closed connection
-		}
+		c.conn.Close()
+		// err != nil {
+		// ignore error; it will trigger in tests
+		// likely because it's closing an already closed connection
+		// }
 		c.wg.Done()
 	}()
 
@@ -421,10 +426,11 @@ func (c *WSClient) writeRoutine() {
 // executing all reads from this goroutine.
 func (c *WSClient) readRoutine() {
 	defer func() {
-		if err := c.conn.Close(); err != nil {
-			// ignore error; it will trigger in tests
-			// likely because it's closing an already closed connection
-		}
+		c.conn.Close()
+		// err != nil {
+		// ignore error; it will trigger in tests
+		// likely because it's closing an already closed connection
+		// }
 		c.wg.Done()
 	}()
 

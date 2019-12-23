@@ -1,0 +1,2677 @@
+swagger: "2.0"
+info:
+  version: "Master"
+  title: RPC client for Tendermint
+  description: A REST interface for state queries, transaction generation and broadcasting.
+  license:
+    name: Apache 2.0
+    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+tags:
+  - name: Websocket
+    description: Subscribe/unsubscribe are reserved for websocket events.
+  - name: Info
+    description: Informations about the node APIs
+  - name: Tx
+    description: Transactions broadcast APIs
+  - name: ABCI
+    description: ABCI APIs
+  - name: Evidence
+    description: Evidence APIs
+schemes:
+  - https
+host: stargate.cosmos.network:26657
+securityDefinitions:
+  kms:
+    type: basic
+paths:
+  /broadcast_tx_sync:
+    get:
+      summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      tags:
+        - Tx
+      operationId: broadcast_tx_sync
+      description: |
+        If you want to be sure that the transaction is included in a block, you can
+        subscribe for the result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        If you haven't received anything after a couple of blocks, resend it. If the
+        same happens again, send it to some other node. A few reasons why it could
+        happen:
+
+        1. malicious node can drop or pretend it had committed your tx
+        2. malicious proposer (not necessary the one you're communicating with) can
+        drop transactions, which might become valid in the future
+        (https://github.com/tendermint/tendermint/issues/3322)
+
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: "456"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/BroadcastTxResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /broadcast_tx_async:
+    get:
+      summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
+      tags:
+        - Tx
+      operationId: broadcast_tx_async
+      description: |
+        If you want to be sure that the transaction is included in a block, you can
+        subscribe for the result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        If you haven't received anything after a couple of blocks, resend it. If the
+        same happens again, send it to some other node. A few reasons why it could
+        happen:
+
+        1. malicious node can drop or pretend it had committed your tx
+        2. malicious proposer (not necessary the one you're communicating with) can
+        drop transactions, which might become valid in the future
+        (https://github.com/tendermint/tendermint/issues/3322)
+        3. node can be offline
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: "123"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/BroadcastTxResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /broadcast_tx_commit:
+    get:
+      summary: Returns with the responses from CheckTx and DeliverTx.
+      tags:
+        - Tx
+      operationId: broadcast_tx_commit
+      description: |
+        IMPORTANT: use only for testing and development. In production, use
+        BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
+        result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+
+        CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
+        waiting for tx to commit.
+
+        If CheckTx or DeliverTx fail, no error will be returned, but the returned result
+        will contain a non-OK ABCI code.
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: "785"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/BroadcastTxCommitResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /subscribe:
+    get:
+      summary: Subscribe for events via WebSocket.
+      tags:
+        - Websocket
+      operationId: subscribe
+      description: |
+        To tell which events you want, you need to provide a query. query is a
+        string, which has a form: "condition AND condition ..." (no OR at the
+        moment). condition has a form: "key operation operand". key is a string with
+        a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+        operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+        string (escaped with single quotes), number, date or time.
+
+        Examples:
+              tm.event = 'NewBlock'               # new blocks
+              tm.event = 'CompleteProposal'       # node got a complete proposal
+              tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
+              tm.event = 'Tx' AND tx.height = 5   # all txs of the fifth block
+              tx.height = 5                       # all txs of the fifth block
+
+        Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
+        Note for transactions, you can define additional keys by providing events with
+        DeliverTx response.
+
+        import (
+            abci "github.com/tendermint/tendermint/abci/types"
+            "github.com/tendermint/tendermint/libs/pubsub/query"
+        )
+
+        abci.ResponseDeliverTx{
+          Events: []abci.Event{
+              {
+                  Type: "rewards.withdraw",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
+                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  },
+              },
+              {
+                  Type: "rewards.withdraw",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
+                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  },
+              },
+              {
+                  Type: "transfer",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
+                      cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                  },
+              },
+          },
+        }
+
+        All events are indexed by a composite key of the form {eventType}.{evenAttrKey}.
+        In the above examples, the following keys would be indexed:
+           - rewards.withdraw.address
+           - rewards.withdraw.source
+           - rewards.withdraw.amount
+           - rewards.withdraw.balance
+           - transfer.sender
+           - transfer.recipient
+           - transfer.amount
+
+        Multiple event types with duplicate keys are allowed and are meant to
+        categorize unique and distinct events. In the above example, all events
+        indexed under the key `rewards.withdraw.address` will have the following
+        values stored and queryable:
+
+           - AddrA
+           - AddrB
+
+        To create a query for txs where address AddrA withdrew rewards:
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
+
+        To create a query for txs where address AddrA withdrew rewards from source Y:
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
+
+        To create a query for txs where AddrA transferred funds:
+        query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
+
+        The following queries would return no results:
+        query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
+
+        See list of all possible events here
+        https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
+
+        For complete query syntax, check out
+        https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
+
+        ```go
+        import "github.com/tendermint/tendermint/types"
+
+        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        err := client.Start()
+        if err != nil {
+          handle error
+        }
+        defer client.Stop()
+        ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+        defer cancel()
+        query := "tm.event = 'Tx' AND tx.height = 3"
+        txs, err := client.Subscribe(ctx, "test-client", query)
+        if err != nil {
+          handle error
+        }
+
+        go func() {
+         for e := range txs {
+           fmt.Println("got ", e.Data.(types.EventDataTx))
+           }
+        }()
+        ```
+      parameters:
+        - in: query
+          name: query
+          type: string
+          required: true
+          description: |
+            query is a string, which has a form: "condition AND condition ..." (no OR at the
+            moment). condition has a form: "key operation operand". key is a string with
+            a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+            operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+            string (escaped with single quotes), number, date or time.
+          x-example: tm.event = 'Tx' AND tx.height = 5
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/EmptyResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /unsubscribe:
+    get:
+      summary: Unsubscribe from event on Websocket
+      tags:
+        - Websocket
+      operationId: unsubscribe
+      description: |
+        ```go
+        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        err := client.Start()
+        if err != nil {
+           handle error
+        }
+        defer client.Stop()
+        query := "tm.event = 'Tx' AND tx.height = 3"
+        err = client.Unsubscribe(context.Background(), "test-client", query)
+        if err != nil {
+           handle error
+        }
+        ```
+      parameters:
+        - in: query
+          name: query
+          type: string
+          required: true
+          description: |
+            query is a string, which has a form: "condition AND condition ..." (no OR at the
+            moment). condition has a form: "key operation operand". key is a string with
+            a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+            operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+            string (escaped with single quotes), number, date or time.
+          x-example: tm.event = 'Tx' AND tx.height = 5
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/EmptyResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /unsubscribe_all:
+    get:
+      summary: Unsubscribe from all events via WebSocket
+      tags:
+        - Websocket
+      operationId: unsubscribe_all
+      description: |
+        Unsubscribe from all events via WebSocket
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/EmptyResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /health:
+    get:
+      summary: Node heartbeat
+      tags:
+        - Info
+      operationId: health
+      description: |
+        Get node health. Returns empty result (200 OK) on success, no response - in case of an error.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/EmptyResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /status:
+    get:
+      summary: Node Status
+      operationId: status
+      tags:
+        - Info
+      description: |
+        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height and time.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Status of the node
+          schema:
+            $ref: "#/definitions/StatusResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /net_info:
+    get:
+      summary: Network informations
+      operationId: net_info
+      tags:
+        - Info
+      description: |
+        Get network info.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: "#/definitions/NetInfoResponse"
+        500:
+          description: empty error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /blockchain:
+    get:
+      summary: Get block headers for minHeight <= height <= maxHeight.
+      operationId: blockchain
+      parameters:
+        - in: query
+          name: minHeight
+          type: number
+          description: Minimum block height to return
+          x-example: 1
+        - in: query
+          name: maxHeight
+          type: number
+          description: Maximum block height to return
+          x-example: 2
+      tags:
+        - Info
+      description: |
+        Get Blockchain info.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block headers, returned in descending order (highest first).
+          schema:
+            $ref: "#/definitions/BlockchainResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /block:
+    get:
+      summary: Get block at a specified height
+      operationId: block
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch the latest block. 0 means latest
+          default: 0
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Block.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block informations.
+          schema:
+            $ref: "#/definitions/BlockResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /block_results:
+    get:
+      summary: Get block results at a specified height
+      operationId: block_results
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch informations regarding the latest block. 0 means latest
+          default: 0
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get block_results.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block results.
+          schema:
+            $ref: "#/definitions/BlockResultsResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /commit:
+    get:
+      summary: Get commit results at a specified height
+      operationId: commit
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
+          default: 0
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Commit.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Commit results.
+          schema:
+            $ref: "#/definitions/CommitResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /validators:
+    get:
+      summary: Get validator set at a specified height
+      operationId: validators
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch validato set at the latest block. 0 means latest
+          default: 0
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Validators.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Commit results.
+          schema:
+            $ref: "#/definitions/ValidatorsResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /genesis:
+    get:
+      summary: Get Genesis
+      operationId: genesis
+      tags:
+        - Info
+      description: |
+        Get genesis.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Genesis results.
+          schema:
+            $ref: "#/definitions/GenesisResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /dump_consensus_state:
+    get:
+      summary: Get consensus state
+      operationId: dump_consensus_state
+      tags:
+        - Info
+      description: |
+        Get consensus state.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: consensus state results.
+          schema:
+            $ref: "#/definitions/DumpConsensusResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /consensus_state:
+    get:
+      summary: Get consensus state
+      operationId: consensus_state
+      tags:
+        - Info
+      description: |
+        Get consensus state.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: consensus state results.
+          schema:
+            $ref: "#/definitions/ConsensusStateResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /consensus_params:
+    get:
+      summary: Get consensus parameters
+      operationId: consensus_params
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
+          default: 0
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get consensus parameters.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: consensus parameters results.
+          schema:
+            $ref: "#/definitions/ConsensusParamsResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /unconfirmed_txs:
+    get:
+      summary: Get the list of unconfirmed transactions
+      operationId: unconfirmed_txs
+      parameters:
+        - in: query
+          name: limit
+          type: number
+          description: Maximum number of unconfirmed transactions to return
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get list of unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: List of unconfirmed transactions
+          schema:
+            $ref: "#/definitions/UnconfirmedTransactionsResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /num_unconfirmed_txs:
+    get:
+      summary: Get data about unconfirmed transactions
+      operationId: num_unconfirmed_txs
+      tags:
+        - Info
+      description: |
+        Get data about unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: status about unconfirmed transactions
+          schema:
+            $ref: "#/definitions/NumUnconfirmedTransactionsResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /tx_search:
+    get:
+      summary: Search for transactions
+      operationId: tx_search
+      parameters:
+        - in: query
+          name: query
+          type: string
+          description: Query
+          required: true
+          x-example: "tx.height=1000"
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+        - in: query
+          name: page
+          type: number
+          description: "Page number (1-based)"
+          required: false
+          x-example: 1
+          default: 1
+        - in: query
+          name: per_page
+          type: number
+          description: "Number of entries per page (max: 100)"
+          required: false
+          x-example: 30
+          default: 30
+      tags:
+        - Info
+      description: |
+        Get list of unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: List of unconfirmed transactions
+          schema:
+            $ref: "#/definitions/TxSearchResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /tx:
+    get:
+      summary: Get transactions by hash
+      operationId: tx
+      parameters:
+        - in: query
+          name: hash
+          type: string
+          description: transaction Hash to retrive
+          required: true
+          x-example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+      tags:
+        - Info
+      description: |
+        Get a trasasction
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Get a transaction
+          schema:
+            $ref: "#/definitions/TxResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /abci_info:
+    get:
+      summary: Get some info about the application.
+      operationId: abci_info
+      tags:
+        - ABCI
+      description: |
+        Get some info about the application.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Get some info about the application.
+          schema:
+            $ref: "#/definitions/ABCIInfoResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /abci_query:
+    get:
+      summary: Query the application for some information.
+      operationId: abci_query
+      parameters:
+        - in: query
+          name: path
+          type: string
+          description: Path to the data ("/a/b/c")
+          required: true
+          x-example: "/a/b/c"
+        - in: query
+          name: data
+          type: string
+          description: Data
+          required: true
+          x-example: "IHAVENOIDEA"
+        - in: query
+          name: height
+          type: number
+          description: Height (0 means latest)
+          required: false
+          x-example: 1
+          default: 0
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+      tags:
+        - ABCI
+      description: |
+        Query the application for some information.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Response of the submitted query
+          schema:
+            $ref: "#/definitions/ABCIQueryResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /broadcast_evidence:
+    get:
+      summary: Broadcast evidence of the misbehavior.
+      operationId: broadcast_evidence
+      parameters:
+        - in: query
+          name: evidence
+          type: string
+          description: Amino-encoded JSON evidence
+          required: true
+          x-example: "JSON_EVIDENCE_Amino_encoded"
+      tags:
+        - Info
+      description: |
+        Broadcast evidence of the misbehavior.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Broadcast evidence of the misbehavior.
+          schema:
+            $ref: "#/definitions/BroadcastEvidenceResponse"
+        500:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+definitions:
+  JSONRPC:
+    type: object
+    properties:
+      id:
+        type: string
+        x-example: ""
+      jsonrpc:
+        type: string
+        x-example: "2.0"
+  EmptyResponse:
+    description: Empty Response
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          result:
+            type: object
+            additionalProperties: {}
+  ErrorResponse:
+    description: Error Response
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          error:
+            type: string
+            x-example: "Description of failure"
+  ProtocolVersion:
+    type: object
+    properties:
+      p2p:
+        type: string
+        x-example: "7"
+      block:
+        type: string
+        x-example: "10"
+      app:
+        type: string
+        x-example: "0"
+  PubKey:
+    type: object
+    properties:
+      type:
+        type: string
+        x-example: "tendermint/PubKeyEd25519"
+      value:
+        type: string
+        x-example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
+  NodeInfo:
+    type: object
+    properties:
+      protocol_version:
+        $ref: "#/definitions/ProtocolVersion"
+      id:
+        type: string
+        x-example: "5576458aef205977e18fd50b274e9b5d9014525a"
+      listen_addr:
+        type: string
+        x-example: "tcp:0.0.0.0:26656"
+      network:
+        type: string
+        x-example: "cosmoshub-2"
+      version:
+        type: string
+        x-example: "0.32.1"
+      channels:
+        type: string
+        x-example: "4020212223303800"
+      moniker:
+        type: string
+        x-example: "moniker-node"
+      other:
+        type: object
+        properties:
+          tx_index:
+            type: string
+            x-example: "on"
+          rpc_address:
+            type: string
+            x-example: "tcp:0.0.0.0:26657"
+        x-example: "moniker-node"
+  SyncInfo:
+    type: object
+    properties:
+      latest_block_hash:
+        type: string
+        x-example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+      latest_app_hash:
+        type: string
+        x-example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+      latest_block_height:
+        type: string
+        x-example: "1262196"
+      latest_block_time:
+        type: string
+        x-example: "2019-08-01T11:52:22.818762194Z"
+      catching_up:
+        type: boolean
+        x-example: false
+  ValidatorInfo:
+    type: object
+    properties:
+      address:
+        type: string
+        x-example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
+      pub_key:
+        $ref: "#/definitions/PubKey"
+      voting_power:
+        type: string
+        x-example: "0"
+  Status:
+    description: Status Response
+    type: object
+    properties:
+      node_info:
+        $ref: "#/definitions/NodeInfo"
+      sync_info:
+        $ref: "#/definitions/SyncInfo"
+      validator_info:
+        $ref: "#/definitions/ValidatorInfo"
+  StatusResponse:
+    description: Status Response
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          result:
+            $ref: "#/definitions/Status"
+  Monitor:
+    type: object
+    properties:
+      Active:
+        type: boolean
+        x-example: true
+      Start:
+        type: string
+        x-example: "2019-07-31T14:31:28.66Z"
+      Duration:
+        type: string
+        x-example: "168901060000000"
+      Idle:
+        type: string
+        x-example: "168901040000000"
+      Bytes:
+        type: string
+        x-example: "5"
+      Samples:
+        type: string
+        x-example: "1"
+      InstRate:
+        type: string
+        x-example: "0"
+      CurRate:
+        type: string
+        x-example: "0"
+      AvgRate:
+        type: string
+        x-example: "0"
+      PeakRate:
+        type: string
+        x-example: "0"
+      BytesRem:
+        type: string
+        x-example: "0"
+      TimeRem:
+        type: string
+        x-example: "0"
+      Progress:
+        type: number
+        x-example: 0
+  Channel:
+    type: object
+    properties:
+      ID:
+        type: number
+        x-example: 48
+      SendQueueCapacity:
+        type: string
+        x-example: "1"
+      SendQueueSize:
+        type: string
+        x-example: "0"
+      Priority:
+        type: string
+        x-example: "5"
+      RecentlySent:
+        type: string
+        x-example: "0"
+  ConnectionStatus:
+    type: object
+    properties:
+      Duration:
+        type: string
+        x-example: "168901057956119"
+      SendMonitor:
+        $ref: "#/definitions/Monitor"
+      RecvMonitor:
+        $ref: "#/definitions/Monitor"
+      Channels:
+        type: array
+        items:
+          $ref: "#/definitions/Channel"
+  Peer:
+    type: object
+    properties:
+      node_info:
+        $ref: "#/definitions/NodeInfo"
+      is_outbound:
+        type: boolean
+        x-example: true
+      connection_status:
+        $ref: "#/definitions/ConnectionStatus"
+      remote_ip:
+        type: string
+        x-example: "95.179.155.35"
+  NetInfo:
+    type: object
+    properties:
+      listening:
+        type: boolean
+        x-example: true
+      listeners:
+        type: array
+        items:
+          type: string
+          x-example: "Listener(@)"
+      n_peers:
+        type: number
+        x-example: "1"
+      peers:
+        type: array
+        items:
+          $ref: "#/definitions/Peer"
+  NetInfoResponse:
+    description: NetInfo Response
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          result:
+            $ref: "#/definitions/NetInfo"
+  BlockID:
+    required:
+      - "hash"
+      - "parts"
+    properties:
+      hash:
+        type: string
+        x-example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
+      parts:
+        required:
+          - "total"
+          - "hash"
+        properties:
+          total:
+            type: string
+            x-example: "1"
+          hash:
+            type: string
+            x-example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
+        type: object
+    type: object
+  BlockMetaHeader:
+    required:
+      - "version"
+      - "chain_id"
+      - "height"
+      - "time"
+      - "num_txs"
+      - "total_txs"
+      - "last_block_id"
+      - "last_commit_hash"
+      - "data_hash"
+      - "validators_hash"
+      - "next_validators_hash"
+      - "consensus_hash"
+      - "app_hash"
+      - "last_results_hash"
+      - "evidence_hash"
+      - "proposer_address"
+    properties:
+      version:
+        required:
+          - "block"
+          - "app"
+        properties:
+          block:
+            type: string
+            x-example: "10"
+          app:
+            type: string
+            x-example: "0"
+        type: object
+      chain_id:
+        type: string
+        x-example: "cosmoshub-2"
+      height:
+        type: string
+        x-example: "12"
+      time:
+        type: string
+        x-example: "2019-04-22T17:01:51.701356223Z"
+      num_txs:
+        type: string
+        x-example: "2"
+      total_txs:
+        type: string
+        x-example: "3"
+      last_block_id:
+        $ref: "#/definitions/BlockID"
+      last_commit_hash:
+        type: string
+        x-example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+      data_hash:
+        type: string
+        x-example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+      validators_hash:
+        type: string
+        x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+      next_validators_hash:
+        type: string
+        x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+      consensus_hash:
+        type: string
+        x-example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+      app_hash:
+        type: string
+        x-example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+      last_results_hash:
+        type: string
+        x-example: ""
+      evidence_hash:
+        type: string
+        x-example: ""
+      proposer_address:
+        type: string
+        x-example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+    type: object
+  BlockMetaId:
+    required:
+      - "hash"
+      - "parts"
+    properties:
+      hash:
+        type: string
+        x-example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+      parts:
+        required:
+          - "total"
+          - "hash"
+        properties:
+          total:
+            type: string
+            x-example: "1"
+          hash:
+            type: string
+            x-example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+        type: object
+    type: object
+  BlockMeta:
+    type: object
+    properties:
+      block_id:
+        $ref: "#/definitions/BlockMetaId"
+      header:
+        $ref: "#/definitions/BlockMetaHeader"
+  Blockchain:
+    type: object
+    required:
+      - "last_height"
+      - "block_metas"
+    properties:
+      last_height:
+        type: string
+        x-example: "1276718"
+      block_metas:
+        type: "array"
+        items:
+          $ref: "#/definitions/BlockMeta"
+  BlockchainResponse:
+    description: Blockchain info
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          result:
+            $ref: "#/definitions/Blockchain"
+  Commit:
+    required:
+      - "type"
+      - "height"
+      - "round"
+      - "block_id"
+      - "timestamp"
+      - "validator_address"
+      - "validator_index"
+      - "signature"
+    properties:
+      type:
+        type: number
+        x-example: 2
+      height:
+        type: string
+        x-example: "1262085"
+      round:
+        type: string
+        x-example: "0"
+      block_id:
+        $ref: "#/definitions/BlockID"
+      timestamp:
+        type: string
+        x-example: "2019-08-01T11:39:38.867269833Z"
+      validator_address:
+        type: string
+        x-example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+      validator_index:
+        type: string
+        x-example: "0"
+      signature:
+        type: string
+        x-example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
+  Block:
+    type: object
+    properties:
+      header:
+        $ref: "#/definitions/BlockMetaHeader"
+      data:
+        type: array
+        items:
+          type: string
+          x-example: "yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0="
+      evidence:
+        type: array
+        items:
+          $ref: "#/definitions/Evidence"
+      last_commit:
+        type: object
+        properties:
+          block_id:
+            $ref: "#/definitions/BlockID"
+          precommits:
+            type: array
+            items:
+              $ref: "#/definitions/Commit"
+  Validator:
+    type: object
+    properties:
+      pub_key:
+        $ref: "#/definitions/PubKey"
+      voting_power:
+        type: number
+      address:
+        type: string
+  Evidence:
+    type: object
+    properties:
+      type:
+        type: string
+      height:
+        type: number
+      time:
+        type: number
+      total_voting_power:
+        type: number
+      validator:
+        $ref: "#/definitions/Validator"
+  BlockComplete:
+    type: object
+    properties:
+      block_meta:
+        $ref: "#/definitions/BlockMeta"
+      block:
+        $ref: "#/definitions/Block"
+  BlockResponse:
+    description: Blockc info
+    allOf:
+      - $ref: "#/definitions/JSONRPC"
+      - type: object
+        properties:
+          result:
+            $ref: "#/definitions/BlockComplete"
+  Tag:
+    type: object
+    properties:
+      key:
+        type: string
+        example: "YWN0aW9u"
+      value:
+        type: string
+        example: "c2VuZA=="
+  ################## FROM NOW ON NEEDS REFACTOR ##################
+  BlockResultsResponse:
+    type: "object"
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "height"
+          - "results"
+        properties:
+          height:
+            type: "string"
+            example: "12"
+          results:
+            required:
+              - "deliver_tx"
+              - "end_block"
+              - "begin_block"
+            properties:
+              deliver_tx:
+                type: "array"
+                x-nullable: true
+                items:
+                  type: "object"
+                  properties:
+                    log:
+                      type: "string"
+                      example: '[{"msg_index":"0","success":true,"log":""}]'
+                    gasWanted:
+                      type: "string"
+                      example: "25629"
+                    gasUsed:
+                      type: "string"
+                      example: "25629"
+                    tags:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          key:
+                            type: "string"
+                            example: "YWN0aW9u"
+                          value:
+                            type: "string"
+                            example: "c2VuZA=="
+              end_block:
+                required:
+                  - "validator_updates"
+                properties: {}
+                type: "object"
+              begin_block:
+                properties: {}
+                type: "object"
+            type: "object"
+        type: "object"
+  CommitResponse:
+    type: "object"
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "signed_header"
+          - "canonical"
+        properties:
+          signed_header:
+            required:
+              - "header"
+              - "commit"
+            properties:
+              header:
+                required:
+                  - "version"
+                  - "chain_id"
+                  - "height"
+                  - "time"
+                  - "num_txs"
+                  - "total_txs"
+                  - "last_block_id"
+                  - "last_commit_hash"
+                  - "data_hash"
+                  - "validators_hash"
+                  - "next_validators_hash"
+                  - "consensus_hash"
+                  - "app_hash"
+                  - "last_results_hash"
+                  - "evidence_hash"
+                  - "proposer_address"
+                properties:
+                  version:
+                    required:
+                      - "block"
+                      - "app"
+                    properties:
+                      block:
+                        type: "string"
+                        example: "10"
+                      app:
+                        type: "string"
+                        example: "0"
+                    type: "object"
+                  chain_id:
+                    type: "string"
+                    example: "cosmoshub-2"
+                  height:
+                    type: "string"
+                    example: "12"
+                  time:
+                    type: "string"
+                    example: "2019-04-22T17:01:51.701356223Z"
+                  num_txs:
+                    type: "string"
+                    example: "2"
+                  total_txs:
+                    type: "string"
+                    example: "3"
+                  last_block_id:
+                    required:
+                      - "hash"
+                      - "parts"
+                    properties:
+                      hash:
+                        type: "string"
+                        example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
+                      parts:
+                        required:
+                          - "total"
+                          - "hash"
+                        properties:
+                          total:
+                            type: "string"
+                            example: "1"
+                          hash:
+                            type: "string"
+                            example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
+                        type: "object"
+                    type: "object"
+                  last_commit_hash:
+                    type: "string"
+                    example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+                  data_hash:
+                    type: "string"
+                    example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+                  validators_hash:
+                    type: "string"
+                    example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+                  next_validators_hash:
+                    type: "string"
+                    example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+                  consensus_hash:
+                    type: "string"
+                    example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+                  app_hash:
+                    type: "string"
+                    example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+                  last_results_hash:
+                    type: "string"
+                    example: ""
+                  evidence_hash:
+                    type: "string"
+                    example: ""
+                  proposer_address:
+                    type: "string"
+                    example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+                type: "object"
+              commit:
+                required:
+                  - "block_id"
+                  - "precommits"
+                properties:
+                  block_id:
+                    required:
+                      - "hash"
+                      - "parts"
+                    properties:
+                      hash:
+                        type: "string"
+                        example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+                      parts:
+                        required:
+                          - "total"
+                          - "hash"
+                        properties:
+                          total:
+                            type: "string"
+                            example: "1"
+                          hash:
+                            type: "string"
+                            example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+                        type: "object"
+                    type: "object"
+                  precommits:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        type:
+                          type: "number"
+                          example: 2
+                        height:
+                          type: "string"
+                          example: "12"
+                        round:
+                          type: "string"
+                          example: "0"
+                        block_id:
+                          required:
+                            - "hash"
+                            - "parts"
+                          properties:
+                            hash:
+                              type: "string"
+                              example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+                            parts:
+                              required:
+                                - "total"
+                                - "hash"
+                              properties:
+                                total:
+                                  type: "string"
+                                  example: "1"
+                                hash:
+                                  type: "string"
+                                  example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+                              type: "object"
+                          type: "object"
+                        timestamp:
+                          type: "string"
+                          example: "2019-04-22T17:01:58.376629719Z"
+                        validator_address:
+                          type: "string"
+                          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                        validator_index:
+                          type: "string"
+                          example: "0"
+                        signature:
+                          type: "string"
+                          example: "14jaTQXYRt8kbLKEhdHq7AXycrFImiLuZx50uOjs2+Zv+2i7RTG/jnObD07Jo2ubZ8xd7bNBJMqkgtkd0oQHAw=="
+                type: "object"
+            type: "object"
+          canonical:
+            type: "boolean"
+            example: true
+        type: "object"
+  ValidatorsResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "block_height"
+          - "validators"
+        properties:
+          block_height:
+            type: "string"
+            example: "55"
+          validators:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                address:
+                  type: "string"
+                  example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                pub_key:
+                  required:
+                    - "type"
+                    - "value"
+                  properties:
+                    type:
+                      type: "string"
+                      example: "tendermint/PubKeyEd25519"
+                    value:
+                      type: "string"
+                      example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+                  type: "object"
+                voting_power:
+                  type: "string"
+                  example: "250353"
+                proposer_priority:
+                  type: "string"
+                  example: "13769415"
+        type: "object"
+  GenesisResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "genesis"
+        properties:
+          genesis:
+            required:
+              - "genesis_time"
+              - "chain_id"
+              - "consensus_params"
+              - "validators"
+              - "app_hash"
+            properties:
+              genesis_time:
+                type: "string"
+                example: "2019-04-22T17:00:00Z"
+              chain_id:
+                type: "string"
+                example: "cosmoshub-2"
+              consensus_params:
+                required:
+                  - "block"
+                  - "evidence"
+                  - "validator"
+                properties:
+                  block:
+                    required:
+                      - "max_bytes"
+                      - "max_gas"
+                      - "time_iota_ms"
+                    properties:
+                      max_bytes:
+                        type: "string"
+                        example: "200000"
+                      max_gas:
+                        type: "string"
+                        example: "2000000"
+                      time_iota_ms:
+                        type: "string"
+                        example: "1000"
+                    type: "object"
+                  evidence:
+                    required:
+                      - "max_age"
+                    properties:
+                      max_age:
+                        type: "string"
+                        example: "1000000"
+                    type: "object"
+                  validator:
+                    required:
+                      - "pub_key_types"
+                    properties:
+                      pub_key_types:
+                        type: "array"
+                        items:
+                          type: "string"
+                        example:
+                          - "ed25519"
+                    type: "object"
+                type: "object"
+              validators:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    address:
+                      type: "string"
+                      example: "B00A6323737F321EB0B8D59C6FD497A14B60938A"
+                    pub_key:
+                      required:
+                        - "type"
+                        - "value"
+                      properties:
+                        type:
+                          type: "string"
+                          example: "tendermint/PubKeyEd25519"
+                        value:
+                          type: "string"
+                          example: "cOQZvh/h9ZioSeUMZB/1Vy1Xo5x2sjrVjlE/qHnYifM="
+                      type: "object"
+                    power:
+                      type: "string"
+                      example: "9328525"
+                    name:
+                      type: "string"
+                      example: "Certus One"
+              app_hash:
+                type: "string"
+                example: ""
+              app_state:
+                properties: {}
+                type: "object"
+            type: "object"
+        type: "object"
+  DumpConsensusResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "round_state"
+          - "peers"
+        properties:
+          round_state:
+            required:
+              - "height"
+              - "round"
+              - "step"
+              - "start_time"
+              - "commit_time"
+              - "validators"
+              - "proposal"
+              - "proposal_block"
+              - "proposal_block_parts"
+              - "locked_round"
+              - "locked_block"
+              - "locked_block_parts"
+              - "valid_round"
+              - "valid_block"
+              - "valid_block_parts"
+              - "votes"
+              - "commit_round"
+              - "last_commit"
+              - "last_validators"
+              - "triggered_timeout_precommit"
+            properties:
+              height:
+                type: "string"
+                example: "1311801"
+              round:
+                type: "string"
+                example: "0"
+              step:
+                type: "number"
+                example: 3
+              start_time:
+                type: "string"
+                example: "2019-08-05T11:28:49.064658805Z"
+              commit_time:
+                type: "string"
+                example: "2019-08-05T11:28:44.064658805Z"
+              validators:
+                required:
+                  - "validators"
+                  - "proposer"
+                properties:
+                  validators:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        address:
+                          type: "string"
+                          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                        pub_key:
+                          required:
+                            - "type"
+                            - "value"
+                          properties:
+                            type:
+                              type: "string"
+                              example: "tendermint/PubKeyEd25519"
+                            value:
+                              type: "string"
+                              example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+                          type: "object"
+                        voting_power:
+                          type: "string"
+                          example: "239727"
+                        proposer_priority:
+                          type: "string"
+                          example: "-11896414"
+                  proposer:
+                    required:
+                      - "address"
+                      - "pub_key"
+                      - "voting_power"
+                      - "proposer_priority"
+                    properties:
+                      address:
+                        type: "string"
+                        example: "708FDDCE121CDADA502F2B0252FEF13FDAA31E50"
+                      pub_key:
+                        required:
+                          - "type"
+                          - "value"
+                        properties:
+                          type:
+                            type: "string"
+                            example: "tendermint/PubKeyEd25519"
+                          value:
+                            type: "string"
+                            example: "VNMNfw7mrQBSpEvCtA9ykOe6BoR00RM9b/a9v3vXZhY="
+                        type: "object"
+                      voting_power:
+                        type: "string"
+                        example: "295360"
+                      proposer_priority:
+                        type: "string"
+                        example: "-88886833"
+                    type: "object"
+                type: "object"
+              locked_round:
+                type: "string"
+                example: "-1"
+              valid_round:
+                type: "string"
+                example: "-1"
+              votes:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    round:
+                      type: "string"
+                      example: "0"
+                    prevotes:
+                      type: "array"
+                      x-nullable: true
+                      items:
+                        type: "string"
+                      example:
+                        - "nil-Vote"
+                        - "Vote{19:46A3F8B8393B 1311801/00/1(Prevote) 000000000000 64CE682305CB @ 2019-08-05T11:28:47.374703444Z}"
+                    prevotes_bit_array:
+                      type: "string"
+                      example: "BA{100:___________________x________________________________________________________________________________} 209706/170220253 = 0.00"
+                    precommits:
+                      type: "array"
+                      x-nullable: true
+                      items:
+                        type: "string"
+                      example:
+                        - "nil-Vote"
+                    precommits_bit_array:
+                      type: "string"
+                      example: "BA{100:____________________________________________________________________________________________________} 0/170220253 = 0.00"
+              commit_round:
+                type: "string"
+                example: "-1"
+              last_commit:
+                x-nullable: true
+                required:
+                  - "votes"
+                  - "votes_bit_array"
+                  - "peer_maj_23s"
+                properties:
+                  votes:
+                    type: "array"
+                    items:
+                      type: "string"
+                    example:
+                      - "Vote{0:000001E443FD 1311800/00/2(Precommit) 3071ADB27D1A 77EE1B6B6847 @ 2019-08-05T11:28:43.810128139Z}"
+                  votes_bit_array:
+                    type: "string"
+                    example: "BA{100:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 170220253/170220253 = 1.00"
+                  peer_maj_23s:
+                    properties: {}
+                    type: "object"
+                type: "object"
+              last_validators:
+                required:
+                  - "validators"
+                  - "proposer"
+                properties:
+                  validators:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        address:
+                          type: "string"
+                          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                        pub_key:
+                          required:
+                            - "type"
+                            - "value"
+                          properties:
+                            type:
+                              type: "string"
+                              example: "tendermint/PubKeyEd25519"
+                            value:
+                              type: "string"
+                              example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+                          type: "object"
+                        voting_power:
+                          type: "string"
+                          example: "239727"
+                        proposer_priority:
+                          type: "string"
+                          example: "-12136141"
+                  proposer:
+                    required:
+                      - "address"
+                      - "pub_key"
+                      - "voting_power"
+                      - "proposer_priority"
+                    properties:
+                      address:
+                        type: "string"
+                        example: "B00A6323737F321EB0B8D59C6FD497A14B60938A"
+                      pub_key:
+                        required:
+                          - "type"
+                          - "value"
+                        properties:
+                          type:
+                            type: "string"
+                            example: "tendermint/PubKeyEd25519"
+                          value:
+                            type: "string"
+                            example: "cOQZvh/h9ZioSeUMZB/1Vy1Xo5x2sjrVjlE/qHnYifM="
+                        type: "object"
+                      voting_power:
+                        type: "string"
+                        example: "8590153"
+                      proposer_priority:
+                        type: "string"
+                        example: "-79515145"
+                    type: "object"
+                type: "object"
+              triggered_timeout_precommit:
+                type: "boolean"
+                example: false
+            type: "object"
+          peers:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                node_address:
+                  type: "string"
+                  example: "357f6a6c1d27414579a8185060aa8adf9815c43c@68.183.41.207:26656"
+                peer_state:
+                  required:
+                    - "round_state"
+                    - "stats"
+                  properties:
+                    round_state:
+                      required:
+                        - "height"
+                        - "round"
+                        - "step"
+                        - "start_time"
+                        - "proposal"
+                        - "proposal_block_parts_header"
+                        - "proposal_block_parts"
+                        - "proposal_pol_round"
+                        - "proposal_pol"
+                        - "prevotes"
+                        - "precommits"
+                        - "last_commit_round"
+                        - "last_commit"
+                        - "catchup_commit_round"
+                        - "catchup_commit"
+                      properties:
+                        height:
+                          type: "string"
+                          example: "1311801"
+                        round:
+                          type: "string"
+                          example: "0"
+                        step:
+                          type: "number"
+                          example: 3
+                        start_time:
+                          type: "string"
+                          example: "2019-08-05T11:28:49.21730864Z"
+                        proposal:
+                          type: "boolean"
+                          example: false
+                        proposal_block_parts_header:
+                          required:
+                            - "total"
+                            - "hash"
+                          properties:
+                            total:
+                              type: "string"
+                              example: "0"
+                            hash:
+                              type: "string"
+                              example: ""
+                          type: "object"
+                        proposal_pol_round:
+                          x-nullable: true
+                          type: "string"
+                          example: "-1"
+                        proposal_pol:
+                          x-nullable: true
+                          type: "string"
+                          example: "____________________________________________________________________________________________________"
+                        prevotes:
+                          x-nullable: true
+                          type: "string"
+                          example: "___________________x________________________________________________________________________________"
+                        precommits:
+                          x-nullable: true
+                          type: "string"
+                          example: "____________________________________________________________________________________________________"
+                        last_commit_round:
+                          x-nullable: true
+                          type: "string"
+                          example: "0"
+                        last_commit:
+                          x-nullable: true
+                          type: "string"
+                          example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        catchup_commit_round:
+                          type: "string"
+                          x-nullable: true
+                          example: "-1"
+                        catchup_commit:
+                          x-nullable: true
+                          type: "string"
+                          example: "____________________________________________________________________________________________________"
+                      type: "object"
+                    stats:
+                      required:
+                        - "votes"
+                        - "block_parts"
+                      properties:
+                        votes:
+                          type: "string"
+                          example: "1159558"
+                        block_parts:
+                          type: "string"
+                          example: "4786"
+                      type: "object"
+                  type: "object"
+        type: "object"
+  ConsensusStateResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "round_state"
+        properties:
+          round_state:
+            required:
+              - "height/round/step"
+              - "start_time"
+              - "proposal_block_hash"
+              - "locked_block_hash"
+              - "valid_block_hash"
+              - "height_vote_set"
+            properties:
+              height/round/step:
+                type: "string"
+                example: "1262197/0/8"
+              start_time:
+                type: "string"
+                example: "2019-08-01T11:52:38.962730289Z"
+              proposal_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              locked_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              valid_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              height_vote_set:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    round:
+                      type: "string"
+                      example: "0"
+                    prevotes:
+                      type: "array"
+                      items:
+                        type: "string"
+                      example:
+                        - "Vote{0:000001E443FD 1262197/00/1(Prevote) 634ADAF1F402 7BB974E1BA40 @ 2019-08-01T11:52:35.513572509Z}"
+                        - "nil-Vote"
+                    prevotes_bit_array:
+                      type: "string"
+                      example: "BA{100:xxxxxxxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 169753436/170151262 = 1.00"
+                    precommits:
+                      type: "array"
+                      items:
+                        type: "string"
+                      example:
+                        - "Vote{5:18C78D135C9D 1262197/00/2(Precommit) 634ADAF1F402 8B5EFFFEABCD @ 2019-08-01T11:52:36.25600005Z}"
+                        - "nil-Vote"
+                    precommits_bit_array:
+                      type: "string"
+                      example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
+            type: "object"
+        type: "object"
+  ConsensusParamsResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "block_height"
+          - "consensus_params"
+        properties:
+          block_height:
+            type: "string"
+            example: "1313448"
+          consensus_params:
+            required:
+              - "block"
+              - "evidence"
+              - "validator"
+            properties:
+              block:
+                required:
+                  - "max_bytes"
+                  - "max_gas"
+                  - "time_iota_ms"
+                properties:
+                  max_bytes:
+                    type: "string"
+                    example: "200000"
+                  max_gas:
+                    type: "string"
+                    example: "2000000"
+                  time_iota_ms:
+                    type: "string"
+                    example: "1000"
+                type: "object"
+              evidence:
+                required:
+                  - "max_age"
+                properties:
+                  max_age:
+                    type: "string"
+                    example: "1000000"
+                type: "object"
+              validator:
+                required:
+                  - "pub_key_types"
+                properties:
+                  pub_key_types:
+                    type: "array"
+                    items:
+                      type: "string"
+                    example:
+                      - "ed25519"
+                type: "object"
+            type: "object"
+        type: "object"
+  NumUnconfirmedTransactionsResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "n_txs"
+          - "total"
+          - "total_bytes"
+        properties:
+          n_txs:
+            type: "string"
+            example: "31"
+          total:
+            type: "string"
+            example: "82"
+          total_bytes:
+            type: "string"
+            example: "19974"
+        #          txs:
+        #            type: "array"
+        #            x-nullable: true
+        #            items:
+        #              type: "string"
+        #              x-nullable: true
+        #            example:
+        #              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
+        type: "object"
+  UnconfirmedTransactionsResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "n_txs"
+          - "total"
+          - "total_bytes"
+          - "txs"
+        properties:
+          n_txs:
+            type: "string"
+            example: "82"
+          total:
+            type: "string"
+            example: "82"
+          total_bytes:
+            type: "string"
+            example: "19974"
+          txs:
+            type: array
+            x-nullable: true
+            items:
+              type: string
+              x-nullable: true
+            example:
+              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
+        type: "object"
+  TxSearchResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "txs"
+          - "total_count"
+        properties:
+          txs:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                hash:
+                  type: "string"
+                  example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+                height:
+                  type: "string"
+                  example: "1000"
+                index:
+                  type: "number"
+                  example: 0
+                tx_result:
+                  required:
+                    - "log"
+                    - "gasWanted"
+                    - "gasUsed"
+                    - "tags"
+                  properties:
+                    log:
+                      type: "string"
+                      example: '[{"msg_index":"0","success":true,"log":""}]'
+                    gasWanted:
+                      type: "string"
+                      example: "200000"
+                    gasUsed:
+                      type: "string"
+                      example: "28596"
+                    tags:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          key:
+                            type: "string"
+                            example: "YWN0aW9u"
+                          value:
+                            type: "string"
+                            example: "c2VuZA=="
+                  type: "object"
+                tx:
+                  type: "string"
+                  example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+                proof:
+                  required:
+                    - "RootHash"
+                    - "Data"
+                    - "Proof"
+                  properties:
+                    RootHash:
+                      type: "string"
+                      example: "72FE6BF6D4109105357AECE0A82E99D0F6288854D16D8767C5E72C57F876A14D"
+                    Data:
+                      type: "string"
+                      example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+                    Proof:
+                      required:
+                        - "total"
+                        - "index"
+                        - "leaf_hash"
+                        - "aunts"
+                      properties:
+                        total:
+                          type: "string"
+                          example: "2"
+                        index:
+                          type: "string"
+                          example: "0"
+                        leaf_hash:
+                          type: "string"
+                          example: "eoJxKCzF3m72Xiwb/Q43vJ37/2Sx8sfNS9JKJohlsYI="
+                        aunts:
+                          type: "array"
+                          items:
+                            type: "string"
+                          example:
+                            - "eWb+HG/eMmukrQj4vNGyFYb3nKQncAWacq4HF5eFzDY="
+                      type: "object"
+                  type: "object"
+          total_count:
+            type: "string"
+            example: "2"
+        type: "object"
+  TxResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "hash"
+          - "height"
+          - "index"
+          - "tx_result"
+          - "tx"
+        properties:
+          hash:
+            type: "string"
+            example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+          height:
+            type: "string"
+            example: "1000"
+          index:
+            type: "number"
+            example: 0
+          tx_result:
+            required:
+              - "log"
+              - "gasWanted"
+              - "gasUsed"
+              - "tags"
+            properties:
+              log:
+                type: "string"
+                example: '[{"msg_index":"0","success":true,"log":""}]'
+              gasWanted:
+                type: "string"
+                example: "200000"
+              gasUsed:
+                type: "string"
+                example: "28596"
+              tags:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    key:
+                      type: "string"
+                      example: "YWN0aW9u"
+                    value:
+                      type: "string"
+                      example: "c2VuZA=="
+            type: "object"
+          tx:
+            type: "string"
+            example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+        type: "object"
+  ABCIInfoResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "response"
+        properties:
+          response:
+            required:
+              - "data"
+              - "app_version"
+              - "version"
+            properties:
+              data:
+                type: "string"
+                example: '{"size":0}'
+              version:
+                type: string
+                example: "0.16.1"
+              app_version:
+                type: "string"
+                example: "1314126"
+            type: "object"
+        type: "object"
+  ABCIQueryResponse:
+    type: object
+    required:
+      - "error"
+      - "result"
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "response"
+        properties:
+          response:
+            required:
+              - "log"
+              - "height"
+              - "proof"
+              - "value"
+              - "key"
+              - "index"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: "exists"
+              height:
+                type: "string"
+                example: "0"
+              proof:
+                type: "string"
+                example: "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C"
+              value:
+                type: "string"
+                example: "61626364"
+              key:
+                type: "string"
+                example: "61626364"
+              index:
+                type: "string"
+                example: "-1"
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+        type: "object"
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+  BroadcastEvidenceResponse:
+    type: object
+    required:
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        type: "string"
+        example: ""
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+  BroadcastTxCommitResponse:
+    type: object
+    required:
+      - "error"
+      - "result"
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "height"
+          - "hash"
+          - "deliver_tx"
+          - "check_tx"
+        properties:
+          height:
+            type: "string"
+            example: "26682"
+          hash:
+            type: "string"
+            example: "75CA0F856A4DA078FC4911580360E70CEFB2EBEE"
+          deliver_tx:
+            required:
+              - "log"
+              - "data"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: ""
+              data:
+                type: "string"
+                example: ""
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+          check_tx:
+            required:
+              - "log"
+              - "data"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: ""
+              data:
+                type: "string"
+                example: ""
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+        type: "object"
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+  BroadcastTxResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+      - "error"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "code"
+          - "data"
+          - "log"
+          - "hash"
+        properties:
+          code:
+            type: "string"
+            example: "0"
+          data:
+            type: "string"
+            example: ""
+          log:
+            type: "string"
+            example: ""
+          hash:
+            type: "string"
+            example: "0D33F2F03A5234F38706E43004489E061AC40A2E"
+        type: "object"
+      error:
+        type: "string"
+        example: ""
