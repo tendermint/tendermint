@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/maticnetwork/bor/rlp"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )

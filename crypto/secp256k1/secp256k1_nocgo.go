@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
-	ethCrypto "github.com/ethereum/go-ethereum/crypto"
+	ethCrypto "github.com/maticnetwork/bor/crypto"
 )
 
 // used to reject malleable signatures
