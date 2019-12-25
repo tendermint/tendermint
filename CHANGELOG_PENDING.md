@@ -18,7 +18,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 Special thanks to external contributors on this release:
-@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev
+@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev, @princesinha19, @Stumble
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -55,6 +55,7 @@ program](https://hackerone.com/tendermint).
     ```
     - ID is unique for each request;
     - Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
+
   - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
     - You will have to generate a new config for your Tendermint node(s)
 
@@ -68,6 +69,23 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
   - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
+  - [libs/common] \#4230 Move `KV` out of common to its own pkg
+  - [libs/common] \#4230 Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
+  - [libs/common] \#4232 Move `Service` & `BaseService` from `libs/common` to `libs/service`
+  - [libs/common] \#4232 Move `common/nil.go` to `types/utils.go` & make the functions private
+  - [libs/common] \#4231 Move random functions from `libs/common` into pkg `rand`
+  - [libs/common] \#4237 Move byte functions from `libs/common` into pkg `bytes`
+  - [libs/common] \#4237 Move throttletimer functions from `libs/common` into pkg `timer`
+  - [libs/common] \#4237 Move tempfile functions from `libs/common` into pkg `tempfile`
+  - [libs/common] \#4240 Move os functions from `libs/common` into pkg `os`
+  - [libs/common] \#4240 Move net functions from `libs/common` into pkg `net`
+  - [libs/common] \#4240 Move mathematical functions and types out of `libs/common` to `math` pkg
+  - [libs/common] \#4240 Move string functions out of `libs/common` to `strings` pkg
+  - [libs/common] \#4240 Move async functions out of `libs/common` to `async` pkg
+  - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
+  - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
+  - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
+
 
 - Blockchain Protocol
 
@@ -89,6 +107,18 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 - [p2p] \#4053 Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
+- [tools] [\#4227](https://github.com/tendermint/tendermint/pull/4227) Implement `tendermint debug kill` and
+  `tendermint debug dump` commands for Tendermint node debugging functionality. See `--help` in both
+  commands for further documentation and usage.
+- [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
+- [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
+- [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [metrics] \#4263 Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+  as gauges in prometheus for validator specific metrics
+- [abci] [\#4225](https://github.com/tendermint/tendermint/issues/3007) Add VersionParams in ResponseEndBlock to allow the app inform Tendermint its updated version
 
 ### IMPROVEMENTS:
 
@@ -99,7 +129,8 @@ program](https://hackerone.com/tendermint).
 - [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
-- [abci] [\#4225](https://github.com/tendermint/tendermint/issues/3007) Add VersionParams in ResponseEndBlock to allow the app inform Tendermint its updated version
+- [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
+- [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
 
 ### BUG FIXES:
 
@@ -111,3 +142,4 @@ program](https://hackerone.com/tendermint).
 - [types] \#4164 Prevent temporary power overflows on validator updates (joint
   efforts of @gchaincl and @ancazamfir)
 - [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
+- [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)

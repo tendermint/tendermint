@@ -6,7 +6,7 @@ option go_package = "github.com/tendermint/tendermint/abci/types";
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
-import "github.com/tendermint/tendermint/libs/common/types.proto";
+import "github.com/tendermint/tendermint/libs/kv/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // This file is copied from http://github.com/tendermint/abci
@@ -251,7 +251,7 @@ message LastCommitInfo {
 
 message Event {
   string type = 1;
-  repeated tendermint.libs.common.KVPair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
+  repeated tendermint.libs.kv.Pair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
 }
 
 //----------------------------------------

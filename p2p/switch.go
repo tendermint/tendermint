@@ -9,7 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
+	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -65,15 +67,15 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
 type Switch struct {
-	cmn.BaseService
+	service.BaseService
 
 	config       *config.P2PConfig
 	reactors     map[string]Reactor
 	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
-	dialing      *cmn.CMap
-	reconnecting *cmn.CMap
+	dialing      *cmap.CMap
+	reconnecting *cmap.CMap
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 	addrBook     AddrBook
@@ -86,7 +88,7 @@ type Switch struct {
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	rng *cmn.Rand // seed for randomizing dial times and orders
+	rng *rand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
 }
@@ -112,8 +114,8 @@ func NewSwitch(
 		chDescs:              make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh:         make(map[byte]Reactor),
 		peers:                NewPeerSet(),
-		dialing:              cmn.NewCMap(),
-		reconnecting:         cmn.NewCMap(),
+		dialing:              cmap.NewCMap(),
+		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
 		transport:            transport,
 		filterTimeout:        defaultFilterTimeout,
@@ -122,9 +124,9 @@ func NewSwitch(
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = cmn.NewRand()
+	sw.rng = rand.NewRand()
 
-	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 
 	for _, option := range options {
 		option(sw)
@@ -583,9 +585,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 }
 
 func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
-	return func(na *NetAddress) bool {
-		return sw.IsPeerPersistent(na)
-	}
+	return sw.IsPeerPersistent
 }
 
 func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
@@ -604,7 +604,7 @@ func (sw *Switch) acceptRoutine() {
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
 			metrics:      sw.metrics,
-			isPersistent: sw.isPeerPersistentFn(),
+			isPersistent: sw.IsPeerPersistent,
 		})
 		if err != nil {
 			switch err := err.(type) {
@@ -705,7 +705,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 		metrics:      sw.metrics,
 	})
@@ -723,7 +723,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 		// retry persistent peers after
 		// any dial error besides IsSelf()
-		if sw.isPeerPersistentFn()(addr) {
+		if sw.IsPeerPersistent(addr) {
 			go sw.reconnectToPeer(addr)
 		}
 

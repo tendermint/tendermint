@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cli"
 
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 )
@@ -26,7 +27,9 @@ func main() {
 		cmd.TestnetFilesCmd,
 		cmd.ShowNodeIDCmd,
 		cmd.GenNodeKeyCmd,
-		cmd.VersionCmd)
+		cmd.VersionCmd,
+		debug.DebugCmd,
+	)
 
 	// NOTE:
 	// Users wishing to:

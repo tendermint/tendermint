@@ -1,9 +1,3 @@
-GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/square/certstrap
-GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
@@ -95,7 +89,7 @@ get_deps_bin_size:
 ########################################
 ### Libs
 
-protoc_libs: libs/common/types.pb.go
+protoc_libs: libs/kv/types.pb.go
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs

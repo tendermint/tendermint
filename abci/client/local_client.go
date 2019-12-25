@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 var _ Client = (*localClient)(nil)
@@ -14,7 +14,7 @@ var _ Client = (*localClient)(nil)
 // methods like CheckTx (/broadcast_tx_* RPC endpoint) or Query (/abci_query
 // RPC endpoint), but defers are used everywhere for the sake of consistency.
 type localClient struct {
-	cmn.BaseService
+	service.BaseService
 
 	mtx *sync.Mutex
 	types.Application
@@ -29,7 +29,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "localClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
 	return cli
 }
 

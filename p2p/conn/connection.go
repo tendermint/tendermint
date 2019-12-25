@@ -16,9 +16,11 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const (
@@ -72,7 +74,7 @@ channel's queue is full.
 Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
-	cmn.BaseService
+	service.BaseService
 
 	conn          net.Conn
 	bufConnReader *bufio.Reader
@@ -100,8 +102,8 @@ type MConnection struct {
 	// are safe to call concurrently.
 	stopMtx sync.Mutex
 
-	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
-	pingTimer  *time.Ticker       // send pings periodically
+	flushTimer *timer.ThrottleTimer // flush writes as necessary but throttled.
+	pingTimer  *time.Ticker         // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
 	pongTimer     *time.Timer
@@ -197,7 +199,7 @@ func NewMConnectionWithConfig(
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *cmn.NewBaseService(nil, "MConnection", mconn)
+	mconn.BaseService = *service.NewBaseService(nil, "MConnection", mconn)
 
 	// maxPacketMsgSize() is a bit heavy, so call just once
 	mconn._maxPacketMsgSize = mconn.maxPacketMsgSize()
@@ -217,7 +219,7 @@ func (c *MConnection) OnStart() error {
 	if err := c.BaseService.OnStart(); err != nil {
 		return err
 	}
-	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
+	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = time.NewTicker(c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = time.NewTicker(updateStats)
@@ -558,7 +560,7 @@ FOR_LOOP:
 		// Peek into bufConnReader for debugging
 		/*
 			if numBytes := c.bufConnReader.Buffered(); numBytes > 0 {
-				bz, err := c.bufConnReader.Peek(cmn.MinInt(numBytes, 100))
+				bz, err := c.bufConnReader.Peek(tmmath.MinInt(numBytes, 100))
 				if err == nil {
 					// return
 				} else {
@@ -816,14 +818,14 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
 	packet.ChannelID = ch.desc.ID
 	maxSize := ch.maxPacketMsgPayloadSize
-	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
+	packet.Bytes = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[cmn.MinInt(maxSize, len(ch.sending)):]
+		ch.sending = ch.sending[tmmath.MinInt(maxSize, len(ch.sending)):]
 	}
 	return packet
 }

@@ -23,7 +23,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/async"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -296,7 +296,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 
 	// Send our pubkey and receive theirs in tandem.
-	var trs, _ = cmn.Parallel(
+	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
 			if err1 != nil {
@@ -401,7 +401,7 @@ type authSigMessage struct {
 func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
-	var trs, _ = cmn.Parallel(
+	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
 			if err1 != nil {

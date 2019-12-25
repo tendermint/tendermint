@@ -13,8 +13,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	tmstring "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
@@ -91,7 +91,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		txi.indexEvents(result, hash, storeBatch)
 
 		// index tx by height
-		if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
+		if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
 			storeBatch.Set(keyForHeight(result), hash)
 		}
 
@@ -121,7 +121,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	txi.indexEvents(result, hash, b)
 
 	// index tx by height
-	if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
+	if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
 		b.Set(keyForHeight(result), hash)
 	}
 
@@ -150,7 +150,7 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 			}
 
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if txi.indexAllEvents || cmn.StringInSlice(compositeTag, txi.compositeKeysToIndex) {
+			if txi.indexAllEvents || tmstring.StringInSlice(compositeTag, txi.compositeKeysToIndex) {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
 		}
@@ -220,7 +220,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 	// for all other conditions
 	for i, c := range conditions {
-		if cmn.IntInSlice(i, skipIndexes) {
+		if intInSlice(i, skipIndexes) {
 			continue
 		}
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -73,13 +73,13 @@ func (c *Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo(c.ctx)
 }
 
-func (c *Local) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c *Local) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
 func (c *Local) ABCIQueryWithOptions(
 	path string,
-	data cmn.HexBytes,
+	data bytes.HexBytes,
 	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(c.ctx, path, data, opts.Height, opts.Prove)
 }

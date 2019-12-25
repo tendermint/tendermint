@@ -2,7 +2,7 @@ package core
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -13,7 +13,7 @@ import (
 func ABCIQuery(
 	ctx *rpctypes.Context,
 	path string,
-	data cmn.HexBytes,
+	data bytes.HexBytes,
 	height int64,
 	prove bool,
 ) (*ctypes.ResultABCIQuery, error) {

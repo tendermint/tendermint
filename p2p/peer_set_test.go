@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 // mockPeer for testing the PeerSet
 type mockPeer struct {
-	cmn.BaseService
+	service.BaseService
 	ip net.IP
 	id ID
 }

@@ -16,8 +16,8 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -644,7 +644,7 @@ func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
 	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult2, *r2)
-	apph := cmn.MaxInt64(bresult1.Height, bresult2.Height) + 1
+	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
 
 	client.WaitForHeight(c, apph, nil)
 

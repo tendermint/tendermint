@@ -10,9 +10,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -72,7 +73,7 @@ type evidencePool interface {
 // commits blocks to the chain and executes them against the application.
 // The internal state machine receives input from peers, the internal validator, and from a timer.
 type State struct {
-	cmn.BaseService
+	service.BaseService
 
 	// config details
 	config        *cfg.ConsensusConfig
@@ -174,7 +175,7 @@ func NewState(
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
-	cs.BaseService = *cmn.NewBaseService(nil, "State", cs)
+	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
@@ -275,7 +276,7 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 	return cs.blockStore.LoadBlockCommit(height)
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 // It loads the latest state via the WAL, and starts the timeout and receive routines.
 func (cs *State) OnStart() error {
 	if err := cs.evsw.Start(); err != nil {
@@ -351,7 +352,7 @@ func (cs *State) startRoutines(maxSteps int) {
 	go cs.receiveRoutine(maxSteps)
 }
 
-// OnStop implements cmn.Service.
+// OnStop implements service.Service.
 func (cs *State) OnStop() {
 	cs.evsw.Stop()
 	cs.timeoutTicker.Stop()
@@ -1433,7 +1434,7 @@ func (cs *State) finalizeCommit(height int64) {
 		block)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
-		err := cmn.Kill()
+		err := tmos.Kill()
 		if err != nil {
 			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
 		}
@@ -1463,20 +1464,50 @@ func (cs *State) finalizeCommit(height int64) {
 func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
-	missingValidators := 0
-	missingValidatorsPower := int64(0)
-	for i, val := range cs.Validators.Validators {
-		if i >= len(block.LastCommit.Signatures) {
-			break
+
+	var (
+		missingValidators      int
+		missingValidatorsPower int64
+	)
+	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
+	// Remember that the first LastCommit is intentionally empty, so it's not
+	// fair to increment missing validators number.
+	if height > 1 {
+		// Sanity check that commit size matches validator set size - only applies
+		// after first block.
+		var (
+			commitSize = block.LastCommit.Size()
+			valSetLen  = len(cs.LastValidators.Validators)
+		)
+		if commitSize != valSetLen {
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
 		}
-		commitSig := block.LastCommit.Signatures[i]
-		if commitSig.Absent() {
-			missingValidators++
-			missingValidatorsPower += val.VotingPower
+
+		for i, val := range cs.LastValidators.Validators {
+			commitSig := block.LastCommit.Signatures[i]
+			privValAddress := cs.privValidator.GetPubKey().Address()
+			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
+				label := []string{
+					"validator_address", privValAddress.String(),
+				}
+				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
+				if !commitSig.Absent() {
+					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
+				} else {
+					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
+				}
+			}
+
+			if commitSig.Absent() {
+				missingValidators++
+				missingValidatorsPower += val.VotingPower
+			}
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 	byzantineValidatorsPower := int64(0)
 	for _, ev := range block.Evidence.Evidence {
