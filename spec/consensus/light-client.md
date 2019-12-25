@@ -27,13 +27,16 @@ The correctness of the protocol is based on the assumption that *inithead* was g
 In the following, only the details of the data structures needed for this specification are given.
 
   * header fields
-    - *height*
-    - *bfttime*: the chain time when the header (block) was generated
-    - *V*: validator set containing validators for this block.
-    - *NextV*: validator set for next block.
-    - *commit*: evidence that block with height *height* - 1 was committed by a set of validators (canonical commit). We will use ```signers(commit)``` to refer to the set of validators that committed the block.
+    - *Height*
+    - *Time*: the chain time when the header (block) was generated
+    - *ValidatorsHash*: hash of the validators for the current block
+    - *NextValidatorsHash*: hash of the validators for the next block
+    - *LastCommitHash*: hash commit from validators from the last block
+    - *commit*: evidence that block with height *height* - 1 was committed by a set of validators (canonical commit).
+    We will use ```signers(commit)``` to refer to the set of validators that committed the block.
 
-  * signed header fields: contains a header and a  *commit* for the current header; a "seen commit". In the Tendermint consensus the "canonical commit" is stored in header *height* + 1.
+  * signed header fields: contains a header and a  *commit* for the current header; a "seen commit".
+  In Tendermint consensus the "canonical commit" is stored in header *height* + 1.
 
   * For each header *h* it has locally stored, the lite client stores whether
     it trusts *h*. We write *trust(h) = true*, if this is the case.
@@ -45,19 +48,41 @@ In the following, only the details of the data structures needed for this specif
 
 ### Functions
 
-For the purpose of this lite client specification, we assume that the Tendermint Full Node exposes the following function over Tendermint RPC:
+For the purpose of this lite client specification, we assume that the Tendermint Full Node exposes the following functions over Tendermint RPC:
 ```go
+    // returns signed header: header (with the fields from above) with Commit
+    // that include signatures of validators that signed the header
     func Commit(height int64) (SignedHeader, error)
-      // returns signed header: header (with the fields from
-      // above) with Commit that include signatures of
-      // validators that signed the header
 
+    // returns validator set for the given height
+    func Validators(height int64) (ValidatorSet, error)
 
     type SignedHeader struct {
       Header        Header
       Commit        Commit
     }
+
+    type ValidatorSet struct {
+      Validators    []Validator
+    }
+
+    type Validator struct {
+      Address       Address
+      VotingPower   int64
+    }
 ```
+
+Furthermore, we assume the following auxiliary functions:
+```go
+
+    // returns the validator set for the given validator hash
+    func validators(validatorsHash []byte) ValidatorSet
+
+    // TODO: define precisely what this functions is supposed to be doing
+    func signers(commit) []Validator
+
+```
+
 
 ### Definitions
 
@@ -70,7 +95,9 @@ For the purpose of this lite client specification, we assume that the Tendermint
 
 ### Tendermint Failure Model
 
-If a block *h* is generated at time *bfttime* (and this time is stored in the block), then a set of validators that hold more than 2/3 of the voting power in h.Header.NextV is correct until time h.Header.bfttime + TRUSTED_PERIOD.
+If a block *b* is generated at time *Time* (and this time is stored in the block), then a set of validators that
+hold more than 2/3 of the voting power in ```validators(b.Header.NextValidatorsHash)``` is correct until time
+```b.Header.Time + TRUSTED_PERIOD```.
 
 Formally,
 \[
@@ -82,8 +109,12 @@ Formally,
 
 *Remark*: This failure model might change to a hybrid version that takes heights into account in the future.
 
-The specification in this document considers an implementation of the lite client under this assumption. Issues like *counter-factual signing* and *fork accountability* and *evidence submission* are mechanisms that justify this assumption by incentivizing validators to follow the protocol.
-If they don't, and we have more that 1/3 faults, safety may be violated. Our approach then is to *detect* these cases (after the fact), and take suitable repair actions (automatic and social). This is discussed in an upcoming document on "Fork accountability". (These safety violations include the lite client wrongly trusting a header, a fork in the blockchain, etc.)
+The specification in this document considers an implementation of the lite client under the Tendermint Failure Model. Issues
+like *counter-factual signing* and *fork accountability* and *evidence submission* are mechanisms that justify this assumption by
+incentivizing validators to follow the protocol. If they don't, and we have more that 1/3 faults, safety may be violated.
+Our approach then is to *detect* these cases (after the fact), and take suitable repair actions (automatic and social).
+This is discussed in an upcoming document on "Fork accountability". (These safety violations include the lite client wrongly
+trusting a header, a fork in the blockchain, etc.)
 
 
 ## Lite Client Trusting Spec
@@ -148,6 +179,8 @@ We consider the following use case:
 This can be used in several settings:
   - someone tells the lite client that application data that is relevant for it can be read in the block of height *k*.
   - the lite clients wants the latest state. It asks a full nude for the current height, and uses the response for *k*.
+  - in case of inter-blockchain communication protocol (IBC) the light client runs on a chain and someone feeds it
+  signed headers as input and it computes whether it can trust it.
 
 
 ## Details
@@ -155,20 +188,21 @@ This can be used in several settings:
 **Observation 1.** If *h.Header.bfttime + tp > now*, we trust the old
 validator set *h.Header.NextV*.
 
-When we say we trust *h.Header.NextV* we do *not* trust that each individual validator in *h.Header.NextV* is correct, but we only trust the fact that at most 1/3 of them are faulty (more precisely, the faulty ones have at most 1/3 of the total voting power).
+When we say we trust *h.Header.NextV* we do *not* trust that each individual validator in *h.Header.NextV* is correct,
+but we only trust the fact that less than 1/3 of them are faulty (more precisely, the faulty ones have less than 1/3 of the total voting power).
 
 
 ### Functions
 
-The function *CanTrust* checks whether to trust header *h2* based on the trusted header *h1*. It does so by (potentially)
-building transitive trust relation between *h1* and *h2*, over some intermediate headers. For example, in case we cannot trust
-header *h2* based on the trusted header *h1*, the function *CanTrust* will try to find headers such that we can transition trust
-from *h1* over intermediate headers to *h2*. We will give two implementations of *CanTrust*, the one based
+The function *CanTrust* checks whether to trust header *untrusted_h* based on the trusted header *trusted_h*. It does so by (potentially)
+building transitive trust relation between *trusted_h* and *untrusted_h*, over some intermediate headers. For example, in case we cannot trust
+header *untrusted_h* based on the trusted header *trusted_h*, the function *CanTrust* will try to find headers such that we can transition trust
+from *trusted_h* over intermediate headers to *untrusted_h*. We will give two implementations of *CanTrust*, the one based
 on bisection that is recursive and the other that is non-recursive. We give two implementations as recursive version might be easier
 to understand but non-recursive version might be simpler to formally express and verify using TLA+/TLC.
 
 Both implementations of *CanTrust* function are based on *CheckSupport* function that implements the skipping conditions under which we can trust a
-header *h2* given the trust in the header *h1* as a single step,
+header *untrusted_h* given the trust in the header *trusted_h* as a single step,
 i.e., it does not assume ensuring transitive trust relation between headers through some intermediate headers.
 
 In order to incentivize correct behavior of validators that run Tendermint consensus protocol, fork detection protocol (it will be explained in different document) is executed in case of a fork (conflicting
@@ -180,29 +214,30 @@ holds:
 ```LITE_CLIENT_TRUSTED_PERIOD + FORK_PROCESSING_PERIOD < TRUSTED_PERIOD```, where TRUSTED_PERIOD comes from the Tendermint Failure Model.
 
 
-*Assumption*: In the following, we assume that *h2.Header.height > h1.Header.height*. We will quickly discuss the other case in the next section.
+*Assumption*: In the following, we assume that *untrusted_h.Header.height > trusted_h.Header.height*. We will quickly discuss the other case in the next section.
 
 We consider the following set-up:
 - the lite client communicates with one full node
-- the lite client locally stores all the headers that has passed basic verification and that are within lite client trust period. In the pseudo code below we write *Store(header)* for this. If a header failed to verify, then
-the full node we are talking to is faulty and we should disconnect from it and reinitialise lite client.
+- the lite client locally stores all the headers that has passed basic verification and that are within lite client trust period. In the pseudo code below we
+write *Store.Add(header)* for this. If a header failed to verify, then
+the full node we are talking to is faulty and we should disconnect from it and reinitialise with new peer.
 - If *CanTrust* returns *error*, then the lite client has seen a forged header or the trusted header has expired (it is outside its trusted period).
-  * In case of forged header, the full node is faulty so lite client should disconnect and reinitialise with new trusted header. If the trusted header has expired,
+  * In case of forged header, the full node is faulty so lite client should disconnect and reinitialise with new peer. If the trusted header has expired,
   we need to reinitialise lite client with new trusted header (that is within its trusted period), but we don't necessarily need to disconnect from the full node
   we are talking to (as we haven't observed full node misbehavior in this case).
 
-**Auxiliary Functions.** We will use the  function ```votingpower_in(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
-we will write ```totalVotingPower(V)``` for ```votingpower_in(V,V)```, which returns the total voting power in V.
+**Auxiliary Functions.** We will use the  function ```votingPowerIn(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
+we will write ```totalVotingPower(V)``` for ```votingPowerIn(V,V)```, which returns the total voting power in V.
 We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
 
-**CheckSupport.** The following function defines skipping condition under the Tendermint Failure model, i.e., it defines when we can trust the header h2 based on header h1.
-Time validity of a header is captured by the ```isWithinTrustedPeriodWithin``` function that depends on lite client trusted period (`LITE_CLIENT_TRUSTED_PERIOD`) and it returns
+**CheckSupport.** The following function defines skipping condition under the Tendermint Failure model, i.e., it defines when we can trust the header untrusted_h based on header trusted_h.
+Time validity of a header is captured by the ```isWithinTrustedPeriod``` function that depends on lite client trusted period (`LITE_CLIENT_TRUSTED_PERIOD`) and it returns
 true in case the header is within its lite client trusted period.
 ```verify``` function is capturing basic header verification, i.e., it ensures that the header is signed by more than 2/3 of the voting power of the corresponding validator set.
 
 ```go
   // return true if header is within its lite client trusted period; otherwise it returns false
-  func isWithinTrustedPeriod(h) bool {
+  func isWithinTrustedPeriod(h, now) bool {
      return h.Header.bfttime + LITE_CLIENT_TRUSTED_PERIOD > now
   }
 
@@ -211,63 +246,63 @@ true in case the header is within its lite client trusted period.
   // to ensure header is well formed.
   func verify(h) bool {
     vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
-    return votingpower_in(signers(h.Commit),h.Header.V) > 2/3 * vp_all
+    return votingPowerIn(signers(h.Commit),h.Header.V) > 2/3 * vp_all
   }
 
-  // Captures skipping condition. h1 and h2 have already passed basic validation
+  // Captures skipping condition. trusted_h and untrusted_h have already passed basic validation
   // (function `verify`).
-  // Returns nil in case h2 can be trusted based on h1, otherwise returns error.
-  // ErrHeaderExpired is used when h1 has expired with respect to lite client trusted period,
+  // Returns nil in case untrusted_h can be trusted based on trusted_h, otherwise returns error.
+  // ErrHeaderNotWithinTrustedPeriod is used when trusted_h has expired with respect to lite client trusted period,
   // ErrInvalidAdjacentHeaders when that adjacent headers are not consistent and
   // ErrTooMuchChange when there is not enough intersection between validator sets to have
   // skipping condition true.
-  func CheckSupport(h1,h2,trustThreshold) error {
-    assume h1.Header.Height < h2.header.Height and
-           h1.Header.bfttime < h2.Header.bfttime and
-           h2.Header.bfttime < now
+  func CheckSupport(trusted_h,untrusted_h,trustThreshold) error {
+    assert trusted_h.Header.Height < untrusted_h.header.Height and
+           trusted_h.Header.bfttime < untrusted_h.Header.bfttime and
+           untrusted_h.Header.bfttime < now
 
-    if !isWithinTrustedPeriod(h1) return ErrHeaderNotWithinTrustedPeriod(h1)
+    if !isWithinTrustedPeriod(trusted_h) return ErrHeaderNotWithinTrustedPeriod(trusted_h)
 
-    // Although while executing the rest of CheckSupport function, h1 can expiry based
+    // Although while executing the rest of CheckSupport function, trusted_h can expire based
     // on the lite client trusted period, this is not problem as lite client trusted
     // period is smaller than trusted period of the header based on Tendermint Failure
     // model, i.e., there is a significant time period (measure in days) during which
-    // validator set that has signed h1 can be trusted. Furthermore, CheckSupport function
+    // validator set that has signed trusted_h can be trusted. Furthermore, CheckSupport function
     // is not doing expensive operation (neither rpc nor signature verification), so it
     // should execute fast.
 
-      // total sum of voting power of validators in h1.NextV
-      vp_all := totalVotingPower(h1.Header.NextV)
+    // check for adjacent headers
+    if untrusted_h.Header.height == trusted_h.Header.height + 1 {
+        if trusted_h.Header.NextV == untrusted_h.Header.V
+            return nil
+        return ErrInvalidAdjacentHeaders
+    }
 
-      // check for adjacent headers
-      if (h2.Header.height == h1.Header.height + 1) {
-            if h1.Header.NextV == h2.Header.V 
-                return nil
-            return ErrInvalidAdjacentHeaders
-      }
-      // check for non-adjacent headers
-      if votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustThreshold) * vp_all {
+    // total sum of voting power of validators in trusted_h.NextV
+    vp_all := totalVotingPower(trusted_h.Header.NextV)
+
+    // check for non-adjacent headers
+    if votingPowerIn(signers(untrusted_h.Commit),trusted_h.Header.NextV) > max(1/3,trustThreshold) * vp_all {
         return nil
-      }
-      return ErrTooMuchChange
-
+    }
+    return ErrTooMuchChange
   }
 ```
 
 *Correctness arguments*
 
 Towards Lite Client Accuracy:
-- Assume by contradiction that *h2* was not generated correctly and the lite client sets trust to true because *CheckSupport* returns true.
-- h1 is trusted and sufficiently new
-- by Tendermint Fault Model, less than 1/3 of voting power held by faulty validators => at least one correct validator *v* has signed *h2*.
-- as *v* is correct up to now, it followed the Tendermint consensus protocol at least up to signing *h2* => *h2* was correctly generated, we arrive at the required contradiction.
+- Assume by contradiction that *untrusted_h* was not generated correctly and the lite client sets trust to true because *CheckSupport* returns true.
+- trusted_h is trusted and sufficiently new
+- by Tendermint Fault Model, less than 1/3 of voting power held by faulty validators => at least one correct validator *v* has signed *untrusted_h*.
+- as *v* is correct up to now, it followed the Tendermint consensus protocol at least up to signing *untrusted_h* => *untrusted_h* was correctly generated, we arrive at the required contradiction.
 
 
 Towards Lite Client Completeness:
-- The check is successful if sufficiently many validators of *h1* are still validators in *h2* and signed *h2*.
-- If *h2.Header.height = h1.Header.height + 1*, and both headers were generated correctly, the test passes
+- The check is successful if sufficiently many validators of *trusted_h* are still validators in *untrusted_h* and signed *untrusted_h*.
+- If *untrusted_h.Header.height = trusted_h.Header.height + 1*, and both headers were generated correctly, the test passes
 
-*Verification Condition:* We may need a Tendermint invariant stating that if *h2.Header.height = h1.Header.height + 1* then *signers(h2.Commit) \subseteq h1.Header.NextV*.
+*Verification Condition:* We may need a Tendermint invariant stating that if *untrusted_h.Header.height = trusted_h.Header.height + 1* then *signers(untrusted_h.Commit) \subseteq trusted_h.Header.NextV*.
 
 *Remark*: The variable *trustThreshold* can be used if the user believes that relying on one correct validator is not sufficient. However, in case of (frequent) changes in the validator set, the higher the *trustThreshold* is chosen, the more unlikely it becomes that CheckSupport returns true for non-adjacent headers.
 
@@ -278,39 +313,41 @@ by relying on *CheckSupport* function.
 
 ```go
 func VerifyHeader(height, trustThreshold) error {
-  if h2, exists := Store.Get(height); exists {
-    if isWithinTrustedPeriod(h2) { return nil }
-    return ErrHeaderNotWithinTrustedPeriod(h2)
+  if untrusted_h, exists := Store.Get(height); exists {
+    if isWithinTrustedPeriod(untrusted_h) return nil
+    return ErrHeaderNotWithinTrustedPeriod(untrusted_h)
   }
 
-  h2 := Commit(height)
-  if !verify(h2) { return ErrInvalidHeader(h2) }
-  if !isWithinTrustedPeriod(h2) { return ErrHeaderNotWithinTrustedPeriod(h2) }
+  untrusted_h := Commit(height)
+  if !verify(untrusted_h) { return ErrInvalidHeader(untrusted_h) }
+  if !isWithinTrustedPeriod(untrusted_h) { return ErrHeaderNotWithinTrustedPeriod(untrusted_h) }
 
-  // get the highest trusted headers lower than h2
-  h1 = Store.HighestTrustedSmallerThan(height)
-  if h1 == nil { return ErrNoTrustedHeader }
+  // get the highest trusted headers lower than untrusted_h
+  trusted_h = Store.HighestTrustedSmallerThan(height)
+  if trusted_h == nil { return ErrNoTrustedHeader }
 
-  err = CanTrust(h1, h2, trustThreshold)  // or CanTrustBisection((h1, h2, trustThreshold)
+  err = CanTrust(trusted_h, untrusted_h, trustThreshold)  // or CanTrustBisection((trusted_h, untrusted_h, trustThreshold)
   if err != nil { return err }
 
-  if isWithinTrustedPeriod(h2) {
-    Store.add(h2)
+  if isWithinTrustedPeriod(untrusted_h) {
+    Store.add(untrusted_h)
     // we store only trusted headers, as we assume that only trusted headers
     // are influencing end user business decisions.
     return nil
   }
-  return ErrHeaderNotTrusted(h2)
+  return ErrHeaderNotTrusted(untrusted_h)
 }
 
 
-// return nil in case we can trust header h2 based on header h1; otherwise return error
+// return nil in case we can trust header untrusted_h based on header trusted_h; otherwise return error
 // where error captures the nature of the error.
-func CanTrust(h1,h2,trustThreshold) error {
-  assume h1.Header.Height < h2.header.Height
+// Note that untrusted_h must have been verified by the caller, i.e. verify(untrusted_h) was successful.
+func CanTrust(trusted_h,untrusted_h,trustThreshold) error {
+  assume trusted_h.Header.Height < untrusted_h.header.Height
 
-  th := h1 // th is trusted header
-  untrustedHeaders := [h2]
+  th := trusted_h // th is trusted header
+  // untrustedHeader is a list of verified headers that have not passed CheckSupport()
+  untrustedHeaders := [untrusted_h]
 
   while true {
     for h in untrustedHeaders {
@@ -320,7 +357,7 @@ func CanTrust(h1,h2,trustThreshold) error {
             th = h
             Store.Add(h)
             untrustedHeaders.RemoveHeadersSmallerOrEqual(h.Header.Height)
-            if th == h2 { return nil }
+            if th == untrusted_h { return nil }
         }
         if (err != ErrTooMuchChange) { return err }
     }
@@ -348,26 +385,26 @@ func CanTrust(h1,h2,trustThreshold) error {
 ```
 
 ```go
-func CanTrustBisection(h1,h2,trustThreshold) error {
-  assume h1.Header.Height < h2.header.Height
+func CanTrustBisection(trusted_h,untrusted_h,trustThreshold) error {
+  assume trusted_h.Header.Height < untrusted_h.header.Height
 
-  err = CheckSupport(h1,h2,trustThreshold)
+  err = CheckSupport(trusted_h,untrusted_h,trustThreshold)
   if err == nil {
-    Store.Add(h2)
+    Store.Add(untrusted_h)
     return nil
   }
   if err != ErrTooMuchChange return err
 
-  pivot := (h1.Header.height + h2.Header.height) / 2
+  pivot := (trusted_h.Header.height + untrusted_h.Header.height) / 2
   hp := Commit(pivot)
   if !verify(hp) return ErrInvalidHeader(hp)
 
-  err = CanTrustBisection(h1,hp,trustThreshold)
+  err = CanTrustBisection(trusted_h,hp,trustThreshold)
   if err == nil {
       Store.Add(hp)
-      err2 = CanTrustBisection(hp,h2,trustThreshold)
+      err2 = CanTrustBisection(hp,untrusted_h,trustThreshold)
       if err2 == nil {
-        Store.Add(h2)
+        Store.Add(untrusted_h)
         return nil
       }
       return err2
@@ -382,7 +419,7 @@ func CanTrustBisection(h1,h2,trustThreshold) error {
 *Correctness arguments (sketch)*
 
 Lite Client Accuracy:
-- Assume by contradiction that *h2* was not generated correctly and the lite client sets trust to true because CanTrustBisection returns nil.
+- Assume by contradiction that *untrusted_h* was not generated correctly and the lite client sets trust to true because CanTrustBisection returns nil.
 - CanTrustBisection returns true only if all calls to CheckSupport in the recursion return nil.
 - Thus we have a sequence of headers that all satisfied the CheckSupport
 - again a contradiction
@@ -399,27 +436,27 @@ With CanTrustBisection, a faulty full node could stall a lite client by creating
 * We may set a timeout how long bisection may take.
 
 
-### The case *h2.Header.height < h1.Header.height*
+### The case *untrusted_h.Header.height < trusted_h.Header.height*
 
 In the use case where someone tells the lite client that application data that is relevant for it can be read in the block of height *k* and the lite client trusts a more recent header, we can use the hashes to verify headers "down the chain." That is, we iterate down the heights and check the hashes in each step.
 
 *Remark.* For the case were the lite client trusts two headers *i* and *j* with *i < k < j*, we should discuss/experiment whether the forward or the backward method is more effective.
 
 ```go
-func Backwards(h1,h2) error {
-  assert (h2.Header.height < h1.Header.height)
-  if !isWithinTrustedPeriod(h1) return ErrHeaderNotTrusted(h1)
+func Backwards(trusted_h,untrusted_h) error {
+  assert (untrusted_h.Header.height < trusted_h.Header.height)
+  if !isWithinTrustedPeriod(trusted_h) return ErrHeaderNotTrusted(trusted_h)
 
-  old := h1
-  for i := h1.Header.height - 1; i > h2.Header.height; i-- {
+  old := trusted_h
+  for i := trusted_h.Header.height - 1; i > untrusted_h.Header.height; i-- {
     new := Commit(i)
     if (hash(new) != old.Header.hash) {
       return ErrInvalidAdjacentHeaders
     }
     old := new
-    if !isWithinTrustedPeriod(h1) return ErrHeaderNotTrusted(h1)
+    if !isWithinTrustedPeriod(trusted_h) return ErrHeaderNotTrusted(trusted_h)
   }
-  if hash(h2) != old.Header.hash return ErrInvalidAdjacentHeaders
+  if hash(untrusted_h) != old.Header.hash return ErrInvalidAdjacentHeaders
   return nil
  }
 ```
