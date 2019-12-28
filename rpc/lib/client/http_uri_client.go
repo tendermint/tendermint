@@ -1,7 +1,6 @@
 package rpcclient
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -33,17 +32,26 @@ type URIClient struct {
 var _ HTTPClient = (*URIClient)(nil)
 
 // NewURIClient returns a new client.
-// The function panics if the provided remote is invalid.
-func NewURIClient(remote string) *URIClient {
+// An error is returned on invalid remote.
+// The function panics when remote is nil.
+func NewURIClient(remote string) (*URIClient, error) {
 	clientAddress, err := toClientAddress(remote)
 	if err != nil {
-		panic(fmt.Sprintf("invalid remote %s: %s", remote, err))
+		return nil, err
 	}
-	return &URIClient{
+
+	httpClient, err := DefaultHTTPClient(remote)
+	if err != nil {
+		return nil, err
+	}
+
+	uriClient := &URIClient{
 		address: clientAddress,
-		client:  DefaultHTTPClient(remote),
+		client:  httpClient,
 		cdc:     amino.NewCodec(),
 	}
+
+	return uriClient, nil
 }
 
 // Call issues a POST form HTTP request.
