@@ -29,7 +29,6 @@ In the following, only the details of the data structures needed for this specif
 
         // hashes of block data
        	LastCommitHash []byte            // hash of the commit from validators from the last block
-        ...
    }
 
    type SignedHeader struct {
@@ -38,12 +37,18 @@ In the following, only the details of the data structures needed for this specif
    }
 
    type ValidatorSet struct {
-        Validators    []Validator
+        Validators         []Validator
+        TotalVotingPower   int64
    }
 
    type Validator struct {
          Address       Address           // validator address (we assume validator's addresses are unique)
          VotingPower   int64             // validator's voting power
+   }
+
+   type TrustedState {
+        SignedHeader   SignedHeader
+        ValidatorSet   ValidatorSet
    }
  ```
 
@@ -66,6 +71,16 @@ Furthermore, we assume the following auxiliary functions:
     // returns the set of validators from the given validator set that committed the block
     func signers(commit Commit, validatorSet ValidatorSet) []Validator
 
+    // return the voting power the validators in v1 have according to their voting power in set V2
+    func votingPowerIn(v1 []Validator, v2 ValidatorSet) int64
+
+    // add this state as trusted to the store
+    func add(store Store, trustedState TrustedState) error
+
+    // retrieve the trusted state at given height if it exists (error = nil)
+    // return an error if there are no trusted state for the given height
+    // if height = 0, return the latest trusted state
+    func get(store Store, height int64) (TrustedState, error)
 ```
 
 ### Tendermint Failure Model
@@ -91,37 +106,184 @@ This is discussed in document on [Fork accountability](fork-accountability.md).
 
 ### Functions
 
-**VerifyHeader.** The function `VerifyHeader` captures high level logic, i.e., application call to the lite client module to (optionally download) and
-verify header for some height. The core verification logic is captured by `CanTrust` function that iteratively try to establish trust in given header
-by relying on `CheckSupport` function.
+**VerifyAndUpdateSingle.** The function `VerifyAndUpdateSingle` attempts to update
+the (trusted) store with the given untrusted header and the corresponding validator sets.
+It ensures that the last trusted header from the store hasn't expired yet (it is still within its trusted period),
+and that the untrusted header can be verified using the latest trusted state from the store.
+Note that this function is not making external (RPC) calls to the full node; the whole logic is
+based on the local (given) state. This function is supposed to be used by the IBC handlers.
 
 ```go
-func VerifyHeader(height, trustThreshold) error {
-  if untrusted_h, exists := Store.Get(height); exists {
-    if isWithinTrustedPeriod(untrusted_h) return nil
-    return ErrHeaderNotWithinTrustedPeriod(untrusted_h)
+func VerifyAndUpdateSingle(untrustedSh SignedHeader,
+                           untrustedVs ValidatorSet,
+                           untrustedNextVs ValidatorSet,
+                           trustThreshold TrustThreshold,
+                           trustingPeriod Duration,
+                           now Time,
+                           store Store) error {
+
+    // fetch the latest state and ensure it hasn't expired
+    trustedState, error = get(store, 0)
+    if error != nil return error
+
+    trustedSh = trustedState.SignedHeader
+    if !isWithinTrustedPeriod(trustedSh.Header, trustingPeriod, now) {
+        return ErrHeaderNotWithinTrustedPeriod
+    }
+
+    error = verifySingle(
+            trustedState,
+            untrustedSh,
+            untrustedVs,
+            untrustedNextVs,
+            trustThreshold)
+
+    if error != nil return error
+
+    // the untrusted header is now trusted. update the store
+    newTrustedState = TrustedState(untrustedSh, untrustedNextVs)
+    return add(store, newTrustedState)
+}
+
+```
+
+**VerifyAndUpdateBisection.** The function `VerifyAndUpdateBisection` captures high level logic, i.e., application call
+to the lite client module to (optionally download) and verify header for some height. The core verification logic is
+captured by `CanTrust` function that iteratively try to establish trust in given header by relying on `CheckSupport` function.
+
+```go
+func VerifyAndUpdateBisection(height int64,
+                              trustThreshold TrustThreshold,
+                              trustingPeriod Duration,
+                              now Time,
+                              store Store) error {
+
+  // fetch the latest state and ensure it hasn't expired
+  trustedState, error = get(store, 0)
+  if error != nil return error
+
+  trustedSh = trustedState.SignedHeader
+  assert trustedSh.Header.Height < height
+
+  if !isWithinTrustedPeriod(trustedSh.Header, trustingPeriod, now) {
+    return ErrHeaderNotWithinTrustedPeriod
   }
 
-  untrusted_h := Commit(height)
-  if !verify(untrusted_h) { return ErrInvalidHeader(untrusted_h) }
-  if !isWithinTrustedPeriod(untrusted_h) { return ErrHeaderNotWithinTrustedPeriod(untrusted_h) }
+  untrustedSh, error := Commit(height)
+  if error != nil return error
 
-  // get the highest trusted headers lower than untrusted_h
-  trusted_h = Store.HighestTrustedSmallerThan(height)
-  if trusted_h == nil { return ErrNoTrustedHeader }
+  untrustedH = untrustedSh.Header
 
-  err = CanTrust(trusted_h, untrusted_h, trustThreshold)  // or CanTrustBisection((trusted_h, untrusted_h, trustThreshold)
-  if err != nil { return err }
+  untrustedVs, error := Validators(untrustedH.Height)
+  if error != nil return error
 
-  if isWithinTrustedPeriod(untrusted_h) {
-    Store.add(untrusted_h)
-    // we store only trusted headers, as we assume that only trusted headers
-    // are influencing end user business decisions.
-    return nil
+  untrustedNextVs, error := Validators(untrustedH.Height + 1)
+  if error != nil return error
+
+  error = verifySingle(
+            trustedState,
+            untrustedSh,
+            untrustedVs,
+            untrustedNextVs,
+            trustThreshold)
+
+  if fatalCheckSupportError(error) return error
+
+  if error == nil {
+    // the untrusted header is now trusted. update the store
+    newTrustedState = TrustedState(untrustedSh, untrustedNextVs)
+    return add(store, newTrustedState)
   }
-  return ErrHeaderNotTrusted(untrusted_h)
+
+  // at this point in time we need to do bisection
+  pivotHeight := ceil((trustedSh.Header.Height + untrustedH.Height) / 2)
+
+  error = VerifyAndUpdateBisection(pivotHeight, trustThreshold, trustingPeriod, now, store)
+  if error != nil return error
+
+  error = VerifyAndUpdateBisection(untrustedH.Height, trustThreshold, trustingPeriod, now, store)
+  if error != nil return error
+  return nil
 }
 ```
+
+```go
+func verifySingle(trustedState TrustedState,
+                  untrustedSh SignedHeader,
+                  untrustedVs ValidatorSet,
+                  untrustedNextVs ValidatorSet,
+                  trustThreshold TrustThreshold) error {
+
+  // ensure the new height is higher
+  untrustedHeight = untrustedSh.Header.Height
+  trustedHeight = trustedState.SignedHeader.Header.Height
+  assert untrustedHeight > trustedHeight
+
+  // validate the untrusted header against its commit, vals, and next_vals
+  untrustedHeader = untrustedSh.Header
+  untrustedCommit = untrustedSh.Commit
+
+  error = validateHeaderAndVals(untrustedSh, untrustedVs, untrustedNextVs)
+  if error != nil return error
+
+  trustedHeader = trustedState.SignedHeader.Header
+  trustedVs = trustedState.ValidatorSet
+
+  // check for adjacent headers
+  if untrustedHeight == trustedHeight + 1 {
+    if trustedHeader.NextValidatorsHash != untrustedHeader.ValidatorsHash {
+      return ErrInvalidAdjacentHeaders
+    }
+  } else {
+    error = verifyCommitTrusting(trustedVs, untrustedCommit, trustThreshold)
+    if error != nil return error
+  }
+
+  // verify the untrusted commit
+  return verifyCommitFull(untrustedVs, untrustedCommit)
+}
+
+func validateHeaderAndVals(signedHeader SignedHeader, vs ValidatorSet, nextVs ValidatorSet) error {
+  if hash(nextVs) != signedHeader.Header.NextValidatorsHash or
+     hash(vs) != signedHeader.Header.ValidatorsHash or
+     !matchingCommit(signedHeader) { // commit corresponds to the header
+        return error
+     }
+}
+
+func verifyCommitFull(vs ValidatorSet, commit Commit) error {
+  totalPower := vs.TotalVotingPower;
+  signed_power := votingPowerIn(signers(commit, vs), vs)
+
+  // check the signers account for +2/3 of the voting power
+  if signed_power * 3 <= total_power * 2 return error
+  return nil
+}
+
+func verifyCommitTrusting(vs ValidatorSet, commit Commit, trustLevel TrustThreshold) error {
+  totalPower := vs.TotalVotingPower;
+  signed_power := votingPowerIn(signers(commit, vs), vs)
+
+  // check the signers account for more than max(1/3, trustLevel) of the voting power
+  if signed_power <= max(1/3, trustLevel) * totalPower return error
+  return nil
+}
+
+
+// return true if header is within its lite client trusted period; otherwise it returns false
+func isWithinTrustedPeriod(header Header,
+                           trustingPeriod Duration,
+                           now Time) bool {
+
+  return header.Time + trustedPeriod > now
+}
+
+func fatalCheckSupportError(err) bool {
+    return err == ErrHeaderNotWithinTrustedPeriod or err == ErrInvalidAdjacentHeaders
+}
+```
+
+
 
 The function `CanTrust` checks whether to trust header `untrusted_h` based on the trusted header `trusted_h` It does so by (potentially)
 building transitive trust relation between `trusted_h` and `untrusted_h`, over some intermediate headers. For example, in case we cannot trust
@@ -140,10 +302,10 @@ i.e., it does not assume ensuring transitive trust relation between headers thro
 // where error captures the nature of the error.
 // Note that untrusted_h must have been verified by the caller, i.e. verify(untrusted_h) was successful.
 func CanTrust(trusted_h,untrusted_h,trustThreshold) error {
-  assume trusted_h.Header.Height < untrusted_h.header.Height
+  assert trusted_h.Header.Height < untrusted_h.header.Height
 
   th := trusted_h // th is trusted header
-  // untrustedHeader is a list of verified headers that have not passed CheckSupport()
+  // untrustedHeader is a list of (?) verified headers that have not passed CheckSupport()
   untrustedHeaders := [untrusted_h]
 
   while true {
@@ -151,27 +313,27 @@ func CanTrust(trusted_h,untrusted_h,trustThreshold) error {
         // we assume here that iteration is done in the order of header heights
         err = CheckSupport(th,h,trustThreshold)
         if err == nil {
+            if !verify(h) { return ErrInvalidHeader(h) }
             th = h
             Store.Add(h)
             untrustedHeaders.RemoveHeadersSmallerOrEqual(h.Header.Height)
             if th == untrusted_h { return nil }
         }
-        if (err != ErrTooMuchChange) { return err }
+        if fatalCheckSupportError(err) { return err }
     }
 
     endHeight = min(untrustedHeaders)
-    foundPivot = false
-    while(!foundPivot) {
-        pivot := (th.Header.height + endHeight) / 2
+    while true {
+        pivot := ceil((th.Header.height + endHeight) / 2)
         hp := Commit(pivot)
-        if !verify(hp) { return ErrInvalidHeader(hp) }
         // try to move trusted header forward to hp
         err = CheckSupport(th,hp,trustThreshold)
-        if (err != nil and err != ErrTooMuchChange) return err
+        if fatalCheckSupportError(err) return err
         if err == nil {
+            if !verify(hp) { return ErrInvalidHeader(hp) }
             th = hp
-            Store.Add(hp)
-            foundPivot = true
+            Store.Add(th)
+            break
         }
         untrustedHeaders.add(hp)
         endHeight = pivot
@@ -179,6 +341,41 @@ func CanTrust(trusted_h,untrusted_h,trustThreshold) error {
   }
   return nil // this line should never be reached
 }
+
+func CheckSupport(trusted_h,untrusted_h,trustThreshold) error {
+    assert trusted_h.Header.Height < untrusted_h.header.Height and
+           trusted_h.Header.bfttime < untrusted_h.Header.bfttime and
+           untrusted_h.Header.bfttime < now
+
+    if !isWithinTrustedPeriod(trusted_h) return ErrHeaderNotWithinTrustedPeriod(trusted_h)
+
+    // Although while executing the rest of CheckSupport function, trusted_h can expire based
+    // on the lite client trusted period, this is not problem as lite client trusted
+    // period is smaller than trusted period of the header based on Tendermint Failure
+    // model, i.e., there is a significant time period (measure in days) during which
+    // validator set that has signed trusted_h can be trusted. Furthermore, CheckSupport function
+    // is not doing expensive operation (neither rpc nor signature verification), so it
+    // should execute fast.
+
+    // check for adjacent headers
+    if untrusted_h.Header.height == trusted_h.Header.height + 1 {
+        if trusted_h.Header.NextV == untrusted_h.Header.V
+            return nil
+        return ErrInvalidAdjacentHeaders
+    }
+
+    // total sum of voting power of validators in trusted_h.NextV
+    vp_all := totalVotingPower(trusted_h.Header.NextV)
+
+    // check for non-adjacent headers
+    if votingPowerIn(signers(untrusted_h.Commit),trusted_h.Header.NextV) > max(1/3,trustThreshold) * vp_all {
+        return nil
+    }
+    return ErrTooMuchChange
+}
+
+func fatalCheckSupportError(err) bool {
+    return err == ErrHeaderNotWithinTrustedPeriod or err == ErrInvalidAdjacentHeaders
 ```
 
 ```go
@@ -210,29 +407,12 @@ func CanTrustBisection(trusted_h,untrusted_h,trustThreshold) error {
 }
 ```
 
-**Auxiliary Functions.** We will use the  function ```votingPowerIn(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
-we will write ```totalVotingPower(V)``` for ```votingPowerIn(V,V)```, which returns the total voting power in V.
-We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
-
 **CheckSupport.** The following function defines skipping condition under the Tendermint Failure model, i.e., it defines when we can trust the header untrusted_h based on header trusted_h.
 Time validity of a header is captured by the ```isWithinTrustedPeriod``` function that depends on lite client trusted period (`LITE_CLIENT_TRUSTED_PERIOD`) and it returns
 true in case the header is within its lite client trusted period.
 ```verify``` function is capturing basic header verification, i.e., it ensures that the header is signed by more than 2/3 of the voting power of the corresponding validator set.
 
 ```go
-  // return true if header is within its lite client trusted period; otherwise it returns false
-  func isWithinTrustedPeriod(h, now) bool {
-     return h.Header.bfttime + LITE_CLIENT_TRUSTED_PERIOD > now
-  }
-
-  // return true if header is correctly signed by 2/3+ voting power in the corresponding
-  // validator set; otherwise false. Additional checks should be done in the implementation
-  // to ensure header is well formed.
-  func verify(h) bool {
-    vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
-    return votingPowerIn(signers(h.Commit),h.Header.V) > 2/3 * vp_all
-  }
-
   // Captures skipping condition. trusted_h and untrusted_h have already passed basic validation
   // (function `verify`).
   // Returns nil in case untrusted_h can be trusted based on trusted_h, otherwise returns error.
