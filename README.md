@@ -20,7 +20,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For protocol details, see [the specification](/docs/spec).
+For protocol details, see [the specification](https://github.com/tendermint/spec).
 
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
 see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
@@ -78,7 +78,7 @@ Sessions](/docs/DEV_SESSIONS.md) and read some [Architectural Decision
 Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 Learn more by reading the code and comparing it to the
-[specification](https://github.com/tendermint/tendermint/tree/master/docs/spec).
+[specification](https://github.com/tendermint/spec).
 
 ## Versioning
 
@@ -136,8 +136,8 @@ hosted at: https://docs.tendermint.com/master/
 
 ### Tools
 
-Benchmarking and monitoring is provided by `tm-load-test` and `tm-monitor`, respectively.
-The code for `tm-monitor` can be found [here](/tools) and the code for `tm-load-test` can be found [here](https://github.com/interchainio/tm-load-test) these binaries need to be built seperately.
+Benchmarking is provided by `tm-load-test`.
+The code for `tm-load-test` can be found [here](https://github.com/interchainio/tm-load-test) this binary needs to be built separately.
 Additional documentation is found [here](/docs/tools).
 
 ### Sub-projects
@@ -145,7 +145,7 @@ Additional documentation is found [here](/docs/tools).
 - [Amino](http://github.com/tendermint/go-amino), reflection-based proto3, with
   interfaces
 - [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
-- [Tm-cmn](http://github.com/tendermint/tm-cmn), Commonly used libs across Tendermint & Cosmos repos
+- [Tm-db](http://github.com/tendermint/tm-db), Data Base abstractions to be used in applications.
 
 ### Applications
 
