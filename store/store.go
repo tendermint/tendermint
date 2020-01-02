@@ -180,7 +180,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
-	bs.db.Set(calcBlockHashKey(hash), []byte(strconv.FormatInt(height, 10)))
+	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
