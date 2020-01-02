@@ -16,5 +16,5 @@ require (
 	github.com/tecbot/gorocksdb v0.0.0-20191017175515-d217d93fd4c5
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
-	google.golang.org/grpc v1.25.1
+	google.golang.org/grpc v1.26.0
 )
