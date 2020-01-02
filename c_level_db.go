@@ -122,21 +122,14 @@ func (db *CLevelDB) Close() error {
 
 // Implements DB.
 func (db *CLevelDB) Print() error {
-	itr := db.Iterator(nil, nil)
+	itr, err := db.Iterator(nil, nil)
+	if err != nil {
+		return err
+	}
 	defer itr.Close()
-	var err error
-	for ; itr.Valid(); err = itr.Next() {
-		if err != nil {
-			return errors.Wrap(err, "next")
-		}
-		key, err := itr.Key()
-		if err != nil {
-			return errors.Wrap(err, "key")
-		}
-		value, err := itr.Value()
-		if err != nil {
-			return errors.Wrap(err, "value")
-		}
+	for ; itr.Valid(); itr.Next() {
+		key := itr.Key()
+		value := itr.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
 	return nil
@@ -303,55 +296,45 @@ func (itr cLevelDBIterator) Valid() bool {
 	return true
 }
 
-func (itr cLevelDBIterator) Key() ([]byte, error) {
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
-	if err = itr.assertIsValid(); err != nil {
-		return nil, err
-	}
-	return itr.source.Key(), nil
+func (itr cLevelDBIterator) Key() []byte {
+	itr.assertNoError()
+	itr.assertIsValid()
+	return itr.source.Key()
 }
 
-func (itr cLevelDBIterator) Value() ([]byte, error) {
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
-	if err = itr.assertIsValid(); err != nil {
-		return nil, err
-	}
-	return itr.source.Value(), nil
+func (itr cLevelDBIterator) Value() []byte {
+	itr.assertNoError()
+	itr.assertIsValid()
+	return itr.source.Value()
 }
 
-func (itr cLevelDBIterator) Next() error {
-	if err := itr.assertNoError(); err != nil {
-		return err
-	}
-	if err = itr.assertIsValid(); err != nil {
-		return err
-	}
+func (itr cLevelDBIterator) Next() {
+	itr.assertNoError()
+	itr.assertIsValid()
 	if itr.isReverse {
 		itr.source.Prev()
 	} else {
 		itr.source.Next()
 	}
-	return nil
+}
+
+func (itr cLevelDBIterator) Error() error {
+	return itr.source.GetError()
 }
 
 func (itr cLevelDBIterator) Close() {
 	itr.source.Close()
 }
 
-func (itr cLevelDBIterator) assertNoError() error {
-	if err := itr.source.GetError(); err != nil {
-		return err
+func (itr cLevelDBIterator) assertNoError() {
+	err := itr.source.GetError()
+	if err != nil {
+		panic(err)
 	}
-	return nil
 }
 
-func (itr cLevelDBIterator) assertIsValid() error {
+func (itr cLevelDBIterator) assertIsValid() {
 	if !itr.Valid() {
-		return errors.New("cLevelDBIterator is invalid")
+		panic("cLevelDBIterator is invalid")
 	}
-	return nil
 }

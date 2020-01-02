@@ -335,11 +335,9 @@ func testDBIterator(t *testing.T, backend BackendType) {
 func verifyIterator(t *testing.T, itr Iterator, expected []int64, msg string) {
 	var list []int64
 	for itr.Valid() {
-		key, err := itr.Key()
-		assert.NoError(t, err)
+		key := itr.Key()
 		list = append(list, bytes2Int64(key))
-		err = itr.Next()
-		assert.NoError(t, err)
+		itr.Next()
 	}
 	assert.Equal(t, expected, list, msg)
 }

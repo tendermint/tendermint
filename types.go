@@ -103,15 +103,20 @@ type Iterator interface {
 
 	// Next moves the iterator to the next sequential key in the database, as
 	// defined by order of iteration.
-	Next() error
+	// If Valid returns false, this method will panic.
+	Next()
 
 	// Key returns the key of the cursor.
+	// If Valid returns false, this method will panic.
 	// CONTRACT: key readonly []byte
-	Key() (key []byte, err error)
+	Key() (key []byte)
 
 	// Value returns the value of the cursor.
+	// If Valid returns false, this method will panic.
 	// CONTRACT: value readonly []byte
-	Value() (value []byte, err error)
+	Value() (value []byte)
+
+	Error() error
 
 	// Close releases the Iterator.
 	Close()

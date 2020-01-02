@@ -9,7 +9,6 @@ import (
 	"runtime"
 
 	"github.com/tecbot/gorocksdb"
-	"github.com/pkg/errors"
 )
 
 func init() {
@@ -76,12 +75,11 @@ func (db *RocksDB) Get(key []byte) ([]byte, error) {
 
 // Implements DB.
 func (db *RocksDB) Has(key []byte) (bool, error) {
-		bytes, err := db.Get(key)
-		if err != nil {
-			return false, err
-		}
-		return bytes != nil, nil
+	bytes, err := db.Get(key)
+	if err != nil {
+		return false, err
 	}
+	return bytes != nil, nil
 }
 
 // Implements DB.
@@ -96,7 +94,7 @@ func (db *RocksDB) Set(key []byte, value []byte) error {
 }
 
 // Implements DB.
-func (db *RocksDB) SetSync(key []byte, value []byte)  error{
+func (db *RocksDB) SetSync(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
 	err := db.db.Put(db.woSync, key, value)
@@ -123,6 +121,7 @@ func (db *RocksDB) DeleteSync(key []byte) error {
 	if err != nil {
 		return nil
 	}
+	return nil
 }
 
 func (db *RocksDB) DB() *gorocksdb.DB {
@@ -130,16 +129,20 @@ func (db *RocksDB) DB() *gorocksdb.DB {
 }
 
 // Implements DB.
-func (db *RocksDB) Close() {
+func (db *RocksDB) Close() error {
 	db.ro.Destroy()
 	db.wo.Destroy()
 	db.woSync.Destroy()
 	db.db.Close()
+	return nil
 }
 
 // Implements DB.
-func (db *RocksDB) Print() error{
-	itr := db.Iterator(nil, nil)
+func (db *RocksDB) Print() error {
+	itr, err := db.Iterator(nil, nil)
+	if err != nil {
+		return err
+	}
 	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
@@ -265,7 +268,7 @@ func (itr rocksDBIterator) Domain() ([]byte, []byte) {
 	return itr.start, itr.end
 }
 
-func (itr rocksDBIterator) Valid() (bool, error) {
+func (itr rocksDBIterator) Valid() bool {
 
 	// Once invalid, forever invalid.
 	if itr.isInvalid {
@@ -273,14 +276,12 @@ func (itr rocksDBIterator) Valid() (bool, error) {
 	}
 
 	// Panic on DB error.  No way to recover.
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
+	itr.assertNoError()
 
 	// If source is invalid, invalid.
 	if !itr.source.Valid() {
 		itr.isInvalid = true
-		return false, nil 
+		return false
 	}
 
 	// If key is end or past it, invalid.
@@ -303,57 +304,46 @@ func (itr rocksDBIterator) Valid() (bool, error) {
 	return true
 }
 
-func (itr rocksDBIterator) Key() ([]byte, error) {
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
-	if err := itr.assertIsValid(); err != nil {
-		return nil, err
-	}
-	return moveSliceToBytes(itr.source.Key()), nil
+func (itr rocksDBIterator) Key() []byte {
+	itr.assertNoError()
+	itr.assertIsValid()
+	return moveSliceToBytes(itr.source.Key())
 }
 
 func (itr rocksDBIterator) Value() []byte {
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
-	if err := itr.assertIsValid(); err != nil {
-		return nil, err
-	}
-	return moveSliceToBytes(itr.source.Value()), nil
+	itr.assertNoError()
+	itr.assertIsValid()
+	return moveSliceToBytes(itr.source.Value())
 }
 
-func (itr rocksDBIterator) Next() error {
-	if err := itr.assertNoError(); err != nil {
-		return nil, err
-	}
-	if err := itr.assertIsValid(); err != nil {
-		return nil, err
-	}
+func (itr rocksDBIterator) Next() {
+	itr.assertNoError()
+	itr.assertIsValid()
 	if itr.isReverse {
 		itr.source.Prev()
 	} else {
 		itr.source.Next()
 	}
-	return nil
+}
+
+func (itr rocksDBIterator) Error() error {
+	return itr.source.Err()
 }
 
 func (itr rocksDBIterator) Close() {
 	itr.source.Close()
 }
 
-func (itr rocksDBIterator) assertNoError() error {
+func (itr rocksDBIterator) assertNoError() {
 	if err := itr.source.Err(); err != nil {
-		return err
+		panic(err)
 	}
-	return nil
 }
 
-func (itr rocksDBIterator) assertIsValid() error {
+func (itr rocksDBIterator) assertIsValid() {
 	if !itr.Valid() {
-		return errors.New("rocksDBIterator is invalid")
+		panic("rocksDBIterator is invalid")
 	}
-	return nil
 }
 
 // moveSliceToBytes will free the slice and copy out a go []byte

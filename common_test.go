@@ -34,8 +34,8 @@ func checkNext(t *testing.T, itr Iterator, expected bool) {
 	require.Equal(t, expected, valid)
 }
 
-func checkNextErrors(t *testing.T, itr Iterator) {
-	assert.Error(t, itr.Next(), "checkNextErrors expected an error but didn't")
+func checkNextPanics(t *testing.T, itr Iterator) {
+	assert.Panics(t, func() { itr.Next() }, "checkNextPanics expected an error but didn't")
 }
 
 func checkDomain(t *testing.T, itr Iterator, start, end []byte) {
@@ -45,11 +45,9 @@ func checkDomain(t *testing.T, itr Iterator, start, end []byte) {
 }
 
 func checkItem(t *testing.T, itr Iterator, key []byte, value []byte) {
-	v, err := itr.Value()
-	assert.NoError(t, err)
+	v := itr.Value()
 
-	k, err := itr.Key()
-	assert.NoError(t, err)
+	k := itr.Key()
 
 	assert.Exactly(t, key, k)
 	assert.Exactly(t, value, v)
@@ -57,21 +55,17 @@ func checkItem(t *testing.T, itr Iterator, key []byte, value []byte) {
 
 func checkInvalid(t *testing.T, itr Iterator) {
 	checkValid(t, itr, false)
-	checkKeyErrors(t, itr)
-	checkValueErrors(t, itr)
-	checkNextErrors(t, itr)
+	checkKeyPanics(t, itr)
+	checkValuePanics(t, itr)
+	checkNextPanics(t, itr)
 }
 
-func checkKeyErrors(t *testing.T, itr Iterator) {
-	key, err := itr.Key()
-	assert.Empty(t, key)
-	assert.Error(t, err, "checkKeyErrors expected an error but didn't")
+func checkKeyPanics(t *testing.T, itr Iterator) {
+	assert.Panics(t, func() { itr.Key() }, "checkKeyPanics expected panic but didn't")
 }
 
-func checkValueErrors(t *testing.T, itr Iterator) {
-	value, err := itr.Value()
-	assert.Empty(t, value)
-	assert.Error(t, err, "checkValueErrors expected an error but didn't")
+func checkValuePanics(t *testing.T, itr Iterator) {
+	assert.Panics(t, func() { itr.Value() })
 }
 
 func newTempDB(t *testing.T, backend BackendType) (db DB, dbDir string) {
@@ -190,16 +184,18 @@ func (mockIterator) Valid() bool {
 	return false
 }
 
-func (mockIterator) Next() error {
+func (mockIterator) Next() {}
+
+func (mockIterator) Key() []byte {
 	return nil
 }
 
-func (mockIterator) Key() ([]byte, error) {
-	return nil, nil
+func (mockIterator) Value() []byte {
+	return nil
 }
 
-func (mockIterator) Value() ([]byte, error) {
-	return nil, nil
+func (mockIterator) Error() error {
+	return nil
 }
 
 func (mockIterator) Close() {

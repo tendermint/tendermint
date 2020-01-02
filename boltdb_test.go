@@ -20,8 +20,6 @@ func TestBoltDBNewBoltDB(t *testing.T) {
 	db.Close()
 }
 
-//TODO: ADD TESTS!!!
-
 func BenchmarkBoltDBRandomReadsWrites(b *testing.B) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	db, err := NewBoltDB(name, "")

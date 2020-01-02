@@ -22,7 +22,7 @@ func TestDBIteratorSingleKey(t *testing.T) {
 			checkValid(t, itr, true)
 			checkNext(t, itr, false)
 			checkValid(t, itr, false)
-			checkNextErrors(t, itr)
+			checkNextPanics(t, itr)
 
 			// Once invalid...
 			checkInvalid(t, itr)
@@ -53,7 +53,7 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 				checkNext(t, itr, false)
 				checkValid(t, itr, false)
 
-				checkNextErrors(t, itr)
+				checkNextPanics(t, itr)
 
 				// Once invalid...
 				checkInvalid(t, itr)
@@ -83,12 +83,9 @@ func TestDBIteratorMany(t *testing.T) {
 			assert.NoError(t, err)
 
 			defer itr.Close()
-			for ; itr.Valid(); err = itr.Next() {
-				assert.NoError(t, err)
-				key, err := itr.Key()
-				assert.NoError(t, err)
-				value, err = itr.Value()
-				assert.NoError(t, err)
+			for ; itr.Valid(); itr.Next() {
+				key := itr.Key()
+				value = itr.Value()
 				value1, err := db.Get(key)
 				assert.NoError(t, err)
 				assert.Equal(t, value1, value)

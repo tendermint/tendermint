@@ -135,6 +135,7 @@ func (bdb *BoltDB) Print() error {
 	if err != nil {
 		return err
 	}
+	return nil
 }
 
 func (bdb *BoltDB) Stats() map[string]string {
@@ -310,34 +311,31 @@ func (itr *boltDBIterator) Valid() bool {
 	return true
 }
 
-func (itr *boltDBIterator) Next() error {
-	if err := itr.assertIsValid(); err != nil {
-		return err
-	}
+func (itr *boltDBIterator) Next() {
+	itr.assertIsValid()
 	if itr.isReverse {
 		itr.currentKey, itr.currentValue = itr.itr.Prev()
 	} else {
 		itr.currentKey, itr.currentValue = itr.itr.Next()
 	}
-	return nil
 }
 
-func (itr *boltDBIterator) Key() ([]byte, error) {
-	if err := itr.assertIsValid(); err != nil {
-		return nil, err
-	}
-	return append([]byte{}, itr.currentKey...), nil
+func (itr *boltDBIterator) Key() []byte {
+	itr.assertIsValid()
+	return append([]byte{}, itr.currentKey...)
 }
 
-func (itr *boltDBIterator) Value() ([]byte, error) {
-	if err := itr.assertIsValid(); err != nil {
-		return nil, err
-	}
+func (itr *boltDBIterator) Value() []byte {
+	itr.assertIsValid()
 	var value []byte
 	if itr.currentValue != nil {
 		value = append([]byte{}, itr.currentValue...)
 	}
-	return value, nil
+	return value
+}
+
+func (itr *boltDBIterator) Error() error {
+	return nil
 }
 
 func (itr *boltDBIterator) Close() {
@@ -347,11 +345,10 @@ func (itr *boltDBIterator) Close() {
 	}
 }
 
-func (itr *boltDBIterator) assertIsValid() error {
+func (itr *boltDBIterator) assertIsValid() {
 	if !itr.Valid() {
-		return errors.New("boltdb-iterator is invalid")
+		panic("boltdb-iterator is invalid")
 	}
-	return nil
 }
 
 // nonEmptyKey returns a []byte("nil") if key is empty.

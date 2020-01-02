@@ -52,18 +52,13 @@ func TestRemoteDB(t *testing.T) {
 	itr, err := client.Iterator(nil, nil)
 	require.NoError(t, err)
 
-	err = itr.Next()
-	require.NoError(t, err)
+	itr.Next()
 
-	key1, err := itr.Key()
-	require.NoError(t, err)
-
-	value, err := itr.Value()
-	require.NoError(t, err)
+	key1 := itr.Key()
+	value := itr.Value()
 
 	require.Equal(t, key1, []byte("key-1"))
 	require.Equal(t, value, []byte("value-1"))
-	require.Error(t, itr.Next())
 	itr.Close()
 
 	// Set some more keys
@@ -82,28 +77,21 @@ func TestRemoteDB(t *testing.T) {
 	itr, err = client.Iterator(nil, nil)
 	require.NoError(t, err)
 
-	err = itr.Next()
-	require.NoError(t, err)
+	itr.Next()
 
-	key1, err = itr.Key()
-	require.NoError(t, err)
+	key1 = itr.Key()
 
-	value, err = itr.Value()
-	require.NoError(t, err)
+	value = itr.Value()
 
 	require.Equal(t, key1, []byte("key-1"))
 	require.Equal(t, value, []byte("value-1"))
-	err = itr.Next()
-	require.NoError(t, err)
+	itr.Next()
 
-	key1, err = itr.Key()
-	require.NoError(t, err)
+	key1 = itr.Key()
 
-	value, err = itr.Value()
-	require.NoError(t, err)
+	value = itr.Value()
 	require.Equal(t, key1, []byte("key-2"))
 	require.Equal(t, value, []byte("value-2"))
-	require.Error(t, itr.Next())
 	itr.Close()
 
 	// Deletion

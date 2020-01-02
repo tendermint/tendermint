@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 // IteratePrefix is a convenience function for iterating over a key domain
@@ -135,12 +133,8 @@ func (pdb *PrefixDB) Iterator(start, end []byte) (Iterator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newPrefixIterator(
-		pdb.prefix,
-		start,
-		end,
-		itr,
-	), nil
+
+	return newPrefixIterator(pdb.prefix, start, end, itr)
 }
 
 // Implements DB.
@@ -159,12 +153,8 @@ func (pdb *PrefixDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newPrefixIterator(
-		pdb.prefix,
-		start,
-		end,
-		ritr,
-	), nil
+
+	return newPrefixIterator(pdb.prefix, start, end, ritr)
 }
 
 // Implements DB.
@@ -216,18 +206,9 @@ func (pdb *PrefixDB) Print() error {
 		return err
 	}
 	defer itr.Close()
-	for ; itr.Valid(); err = itr.Next() {
-		if err != nil {
-			return errors.Wrap(err, "next")
-		}
-		key, err := itr.Key()
-		if err != nil {
-			return errors.Wrap(err, "key")
-		}
-		value, err := itr.Value()
-		if err != nil {
-			return errors.Wrap(err, "value")
-		}
+	for ; itr.Valid(); itr.Next() {
+		key := itr.Key()
+		value := itr.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
 	return nil
@@ -300,19 +281,23 @@ type prefixIterator struct {
 	valid  bool
 }
 
-func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterator {
-	// Ignoring the error here as the iterator is invalid
-	// but this is being conveyed in the below if statement
-	key, _ := source.Key() //nolint:errcheck
+func newPrefixIterator(prefix, start, end []byte, source Iterator) (*prefixIterator, error) {
 
-	if !source.Valid() || !bytes.HasPrefix(key, prefix) {
-		return &prefixIterator{
-			prefix: prefix,
-			start:  start,
-			end:    end,
-			source: source,
-			valid:  false,
-		}
+	pitrInvalid := &prefixIterator{
+		prefix: prefix,
+		start:  start,
+		end:    end,
+		source: source,
+		valid:  false,
+	}
+
+	if !source.Valid() {
+		return pitrInvalid, nil
+	}
+	key := source.Key()
+
+	if !bytes.HasPrefix(key, prefix) {
+		return pitrInvalid, nil
 	}
 	return &prefixIterator{
 		prefix: prefix,
@@ -320,7 +305,7 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterat
 		end:    end,
 		source: source,
 		valid:  true,
-	}
+	}, nil
 }
 
 func (itr *prefixIterator) Domain() (start []byte, end []byte) {
@@ -331,45 +316,35 @@ func (itr *prefixIterator) Valid() bool {
 	return itr.valid && itr.source.Valid()
 }
 
-func (itr *prefixIterator) Next() error {
+func (itr *prefixIterator) Next() {
 	if !itr.valid {
-		return errors.New("prefixIterator invalid; cannot call Next()")
+		panic("prefixIterator invalid; cannot call Next()")
 	}
-	err := itr.source.Next()
-	if err != nil {
-		return err
-	}
-	key, err := itr.source.Key()
-	if err != nil {
-		return err
-	}
-	if !itr.source.Valid() || !bytes.HasPrefix(key, itr.prefix) {
+	itr.source.Next()
+
+	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
 		itr.valid = false
-		return nil
 	}
-	return nil
 }
 
-func (itr *prefixIterator) Key() (key []byte, err error) {
+func (itr *prefixIterator) Key() (key []byte) {
 	if !itr.valid {
-		return nil, errors.New("prefixIterator invalid; cannot call Key()")
+		panic("prefixIterator invalid; cannot call Key()")
 	}
-	key, err = itr.source.Key()
-	if err != nil {
-		return nil, err
-	}
-	return stripPrefix(key, itr.prefix), nil
+	key = itr.source.Key()
+	return stripPrefix(key, itr.prefix)
 }
 
-func (itr *prefixIterator) Value() (value []byte, err error) {
+func (itr *prefixIterator) Value() (value []byte) {
 	if !itr.valid {
-		return nil, errors.New("prefixIterator invalid; cannot call Value()")
+		panic("prefixIterator invalid; cannot call Value()")
 	}
-	value, err = itr.source.Value()
-	if err != nil {
-		return nil, err
-	}
-	return value, nil
+	value = itr.source.Value()
+	return value
+}
+
+func (itr *prefixIterator) Error() error {
+	return itr.source.Error()
 }
 
 func (itr *prefixIterator) Close() {
@@ -383,7 +358,7 @@ func stripPrefix(key []byte, prefix []byte) (stripped []byte) {
 		panic("should not happen")
 	}
 	if !bytes.Equal(key[:len(prefix)], prefix) {
-		panic("should not happn")
+		panic("should not happen")
 	}
 	return key[len(prefix):]
 }
