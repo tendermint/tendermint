@@ -185,7 +185,7 @@ func (c *Local) Subscribe(
 
 	var sub types.Subscription
 	if outCap > 0 {
-		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCapacity...)
+		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
