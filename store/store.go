@@ -74,7 +74,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	return block
 }
 
-// LoadBlockByHash returns the block with the given height.
+// LoadBlockByHash returns the block with the given hash.
 // If no block is found for that hash, it returns nil.
 // Panics if it fails to parse height associated with the given hash.
 func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
