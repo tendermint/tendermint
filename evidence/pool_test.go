@@ -64,8 +64,8 @@ func TestEvidencePool(t *testing.T) {
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
-	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
-	badEvidence := types.NewMockBadEvidence(height, evidenceTime, 0, valAddr)
+	goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	badEvidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
@@ -102,7 +102,7 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	)
 
 	// evidence not seen yet:
-	evidence := types.NewMockGoodEvidence(height, 0, valAddr)
+	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
