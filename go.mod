@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.12
 
 require (
-	github.com/ChainSafe/go-schnorrkel v0.0.0-20191204112926-74e22bf42a85
+	github.com/ChainSafe/go-schnorrkel v0.0.0-20200102211924-4bcbc698314f
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/Workiva/go-datastructures v1.0.50
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
@@ -32,7 +32,7 @@ require (
 	github.com/stumble/gorocksdb v0.0.3 // indirect
 	github.com/tendermint/go-amino v0.14.1
 	github.com/tendermint/tm-db v0.3.0
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
 	google.golang.org/grpc v1.26.0
