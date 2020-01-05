@@ -1315,13 +1315,6 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 		// but may differ from the LastCommit included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
-		for _, precommit := range seenCommit.Precommits {
-			if precommit != nil {
-				// [peppermint] collect non-nil votes
-				block.Header.Votes = append(block.Header.Votes, precommit)
-				cs.Logger.Info(fmt.Sprintf("[peppermint] Committed vote:: Height: %v, Round: %v, VoteData %v, Sig %v", precommit.Height, precommit.Round, precommit.Data, hex.EncodeToString(precommit.Signature)))
-			}
-		}
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
