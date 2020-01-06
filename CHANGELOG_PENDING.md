@@ -143,3 +143,4 @@ program](https://hackerone.com/tendermint).
   efforts of @gchaincl and @ancazamfir)
 - [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
 - [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
+- [rpc] \#4256 Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
