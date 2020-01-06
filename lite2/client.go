@@ -206,16 +206,21 @@ func (c *Client) restoreTrustedHeaderAndNextVals() error {
 
 // if options.Height:
 //
-//     1) ahead of trustedHeader.Height => fetch header from primary provider
-//     and check it matches trustedHeader (if not, remove trustedHeader and all
-//     the headers before)
-//     2) equals trustedHeader.Height => check Hash is the same (if not, remove
-//     trustedHeader and all the headers before)
-//     3) behind trustedHeader.Height => remove all the headers between
-//     options.Height and trustedHeader.Height, then check the Hash is the same
-//     (if not, remove trustedHeader and all the headers before)
+//     1) ahead of trustedHeader.Height => fetch header (same height as
+//     trustedHeader) from primary provider and check it's hash matches the
+//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     before)
 //
-// The intuition here is the user always right. I.e. if she decides to reset
+//     2) equals trustedHeader.Height => check options.Hash matches the
+//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     before)
+//
+//     3) behind trustedHeader.Height => remove all the headers between
+//     options.Height and trustedHeader.Height, update trustedHeader, then
+//     check options.Hash matches the trustedHeader's hash (if not, remove
+//     trustedHeader and all the headers before)
+//
+// The intuition here is the user is always right. I.e. if she decides to reset
 // the light client with an older header, there must be a reason for it.
 func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	var primaryHash []byte
