@@ -38,7 +38,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
-				MaxAgeNumBlocks: 1,
+				MaxAgeNumBlocks: 10000,
 				MaxAgeDuration:  48 * time.Hour,
 			},
 		},
@@ -119,7 +119,7 @@ func TestAddEvidence(t *testing.T) {
 
 	var (
 		valAddr      = []byte("val1")
-		height       = int64(5)
+		height       = int64(100002)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		pool         = NewPool(stateDB, evidenceDB)
