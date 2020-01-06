@@ -479,8 +479,13 @@ func (cs CommitSig) Absent() bool {
 	return cs.BlockIDFlag == BlockIDFlagAbsent
 }
 
-func (cs CommitSig) Nil() bool {
-	return cs.BlockIDFlag == BlockIDFlagNil
+func (cs CommitSig) ForBlock() bool {
+	switch cs.BlockIDFlag {
+	case BlockIDFlagAbsent, BlockIDFlagNil:
+		return true
+	default:
+		return false
+	}
 }
 
 func (cs CommitSig) String() string {
