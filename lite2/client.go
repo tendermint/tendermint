@@ -647,9 +647,8 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 		return
 	}
 
-	// 3) Remove all headers (except the very last one) that are outside of
-	// the trusting period.
-	for height := oldestHeight; height < latestHeight; height++ {
+	// 3) Remove all headers that are outside of the trusting period.
+	for height := oldestHeight; height <= latestHeight; height++ {
 		h, err := c.trustedStore.SignedHeader(height)
 		if err != nil {
 			c.logger.Error("can't get a trusted header", "err", err, "height", height)
