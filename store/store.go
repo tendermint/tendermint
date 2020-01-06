@@ -237,7 +237,7 @@ func calcSeenCommitKey(height int64) []byte {
 }
 
 func calcBlockHashKey(hash []byte) []byte {
-	return []byte(fmt.Sprintf("BH:%v", hash))
+	return []byte(fmt.Sprintf("BH:%x", hash))
 }
 
 //-----------------------------------------------------------------------------
