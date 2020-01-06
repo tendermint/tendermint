@@ -1,9 +1,3 @@
-GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/square/certstrap
-GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 

@@ -124,8 +124,7 @@ func killProc(pid uint64, dir string) error {
 		p, err := os.FindProcess(os.Getpid())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
-		}
-		if err = p.Signal(syscall.SIGABRT); err != nil {
+		} else if err = p.Signal(syscall.SIGABRT); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process: %s", err)
 		}
 
