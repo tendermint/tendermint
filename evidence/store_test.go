@@ -18,7 +18,7 @@ func TestStoreAddDuplicate(t *testing.T) {
 	store := NewStore(db)
 
 	priority := int64(10)
-	ev := types.NewMockEvidence(2, time.Now(), 1, []byte("val1"))
+	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
 
 	added := store.AddNewEvidence(ev, priority)
 	assert.True(added)
@@ -35,7 +35,7 @@ func TestStoreCommitDuplicate(t *testing.T) {
 	store := NewStore(db)
 
 	priority := int64(10)
-	ev := types.NewMockEvidence(2, time.Now(), 1, []byte("val1"))
+	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
 
 	store.MarkEvidenceAsCommitted(ev)
 

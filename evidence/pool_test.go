@@ -70,6 +70,7 @@ func TestEvidencePool(t *testing.T) {
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
 	assert.NotNil(t, err)
+	// err: evidence created at 2019-01-01 00:00:00 +0000 UTC has expired. Evidence can not be older than: ...
 
 	var wg sync.WaitGroup
 	wg.Add(1)
