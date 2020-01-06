@@ -38,7 +38,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
-				MaxAgeNumBlocks: 1000000,
+				MaxAgeNumBlocks: 1,
 				MaxAgeDuration:  48 * time.Hour,
 			},
 		},
@@ -113,4 +113,34 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	// evidence seen and committed:
 	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
 	assert.True(t, pool.IsCommitted(evidence))
+}
+
+func TestAddEvidence(t *testing.T) {
+
+	var (
+		valAddr      = []byte("val1")
+		height       = int64(5)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		pool         = NewPool(stateDB, evidenceDB)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	testCases := []struct {
+		height int64
+		time   time.Time
+		Error  bool
+	}{
+		{height, time.Now(), false},
+		{height, evidenceTime, true},
+		{int64(1), time.Now(), true},
+		{int64(1), evidenceTime, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		ev := types.NewMockEvidence(tc.height, tc.time, 0, valAddr)
+		err := pool.AddEvidence(ev)
+		assert.Equal(t, tc.Error, err != nil)
+	}
 }
