@@ -87,6 +87,7 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
   - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
   - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
+  - [types] \#2565 Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
 
 
 - Blockchain Protocol
