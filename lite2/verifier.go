@@ -19,10 +19,10 @@ var (
 // Verify verifies the new header (h2) against the old header (h1). It ensures that:
 //
 //	a) h1 can still be trusted (if not, ErrOldHeaderExpired is returned);
-//	b) h2 is valid;
+//	b) h2 is valid (if not, ErrInvalidNewHeader is returned);
 //	c) either h2.ValidatorsHash equals h1NextVals.Hash()
 //		 OR trustLevel ([1/3, 1]) of last trusted validators (h1NextVals) signed
-//		 correctly  (if not, ErrNotEnoughVotingPowerSigned is returned);
+//		 correctly  (if not, ErrNewValSetCantBeTrusted is returned);
 //	c) more than 2/3 of new validators (h2Vals) have signed h2 (if not,
 //	   ErrNotEnoughVotingPowerSigned is returned).
 func Verify(
@@ -45,28 +45,29 @@ func Verify(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
-		return err
+		return ErrInvalidNewHeader{err}
 	}
 
 	if h2.Height == h1.Height+1 {
 		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) {
-			return errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
+			err := errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
 				h1NextVals.Hash(),
 				h2.ValidatorsHash,
 			)
+			return ErrNewValSetCantBeTrusted{err}
 		}
 	} else {
 		// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
 		err := h1NextVals.VerifyCommitTrusting(chainID, h2.Commit.BlockID, h2.Height, h2.Commit, trustLevel)
 		if err != nil {
-			return err
+			return ErrNewValSetCantBeTrusted{err}
 		}
 	}
 
 	// Ensure that +2/3 of new validators signed correctly.
 	err := h2Vals.VerifyCommit(chainID, h2.Commit.BlockID, h2.Height, h2.Commit)
 	if err != nil {
-		return err
+		return ErrNewHeaderCantBeTrusted{err}
 	}
 
 	return nil
