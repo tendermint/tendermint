@@ -113,6 +113,7 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] \#3985 Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
 - [metrics] \#4263 Add
   - `consensus_validator_power`: track your validators power
   - `consensus_validator_last_signed_height`: track at which height the validator last signed
