@@ -479,6 +479,10 @@ func (cs CommitSig) Absent() bool {
 	return cs.BlockIDFlag == BlockIDFlagAbsent
 }
 
+func (cs CommitSig) Nil() bool {
+	return cs.BlockIDFlag == BlockIDFlagNil
+}
+
 func (cs CommitSig) String() string {
 	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
 		tmbytes.Fingerprint(cs.Signature),
