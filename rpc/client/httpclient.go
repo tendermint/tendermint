@@ -87,29 +87,38 @@ var _ rpcClient = (*baseRPCClient)(nil)
 
 // NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
-// The function panics if the provided remote is invalid.<Paste>
-func NewHTTP(remote, wsEndpoint string) *HTTP {
-	httpClient := rpcclient.DefaultHTTPClient(remote)
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewHTTP(remote, wsEndpoint string) (*HTTP, error) {
+	httpClient, err := rpcclient.DefaultHTTPClient(remote)
+	if err != nil {
+		return nil, err
+	}
 	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
 }
 
-// NewHTTPWithClient allows for setting a custom http client. See NewHTTP
-// The function panics if the provided client is nil or remote is invalid.
-func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) *HTTP {
+// NewHTTPWithClient allows for setting a custom http client (See NewHTTP).
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
 	if client == nil {
 		panic("nil http.Client provided")
 	}
-	rc := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
+
+	rc, err := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
+	if err != nil {
+		return nil, err
+	}
 	cdc := rc.Codec()
 	ctypes.RegisterAmino(cdc)
 	rc.SetCodec(cdc)
 
-	return &HTTP{
+	httpClient := &HTTP{
 		rpc:           rc,
 		remote:        remote,
 		baseRPCClient: &baseRPCClient{caller: rc},
 		WSEvents:      newWSEvents(cdc, remote, wsEndpoint),
 	}
+
+	return httpClient, nil
 }
 
 var _ Client = (*HTTP)(nil)
@@ -404,15 +413,18 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 }
 
 // OnStart implements service.Service by starting WSClient and event loop.
-func (w *WSEvents) OnStart() error {
-	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+func (w *WSEvents) OnStart() (err error) {
+	w.ws, err = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
+	if err != nil {
+		return err
+	}
 	w.ws.SetCodec(w.cdc)
 	w.ws.SetLogger(w.Logger)
 
-	err := w.ws.Start()
+	err = w.ws.Start()
 	if err != nil {
 		return err
 	}

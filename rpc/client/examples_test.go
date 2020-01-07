@@ -18,7 +18,10 @@ func ExampleHTTP_simple() {
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 
 	// Create a transaction
 	k := []byte("name")
@@ -68,7 +71,10 @@ func ExampleHTTP_batching() {
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 
 	// Create our two transactions
 	k1 := []byte("firstName")

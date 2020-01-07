@@ -65,6 +65,7 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+  - [rpc] \#3953 Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
   - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
