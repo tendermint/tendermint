@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -143,6 +142,8 @@ func TestAddEvidence(t *testing.T) {
 		tc := tc
 		ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
 		err := pool.AddEvidence(ev)
-		if tc.expErr { assert.Error(t, err) }
+		if tc.expErr {
+			assert.Error(t, err)
+		}
 	}
 }
