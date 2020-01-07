@@ -135,7 +135,8 @@ func TestAddEvidence(t *testing.T) {
 		{height, time.Now(), false, "valid evidence"},
 		{height, evidenceTime, true, "evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
 		{int64(1), time.Now(), true, "evidence from height 1 is too old"},
-		{int64(1), evidenceTime, true, "evidence from height 1 is too old & evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
+		{int64(1), evidenceTime, true,
+			"evidence from height 1 is too old & evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
 	}
 
 	for _, tc := range testCases {
