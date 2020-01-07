@@ -466,6 +466,11 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 	}
 }
 
+// ForBlock returns true if CommitSig is for the block.
+func (cs CommitSig) ForBlock() bool {
+	return cs.BlockIDFlag == BlockIDFlagCommit
+}
+
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
 // fields are all empty.
 func NewCommitSigAbsent() CommitSig {
@@ -477,15 +482,6 @@ func NewCommitSigAbsent() CommitSig {
 // Absent returns true if CommitSig is absent.
 func (cs CommitSig) Absent() bool {
 	return cs.BlockIDFlag == BlockIDFlagAbsent
-}
-
-func (cs CommitSig) ForBlock() bool {
-	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent, BlockIDFlagNil:
-		return true
-	default:
-		return false
-	}
 }
 
 func (cs CommitSig) String() string {
