@@ -20,3 +20,4 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
