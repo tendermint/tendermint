@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -127,20 +128,22 @@ func TestAddEvidence(t *testing.T) {
 	)
 
 	testCases := []struct {
-		height int64
-		time   time.Time
-		Error  bool
+		evHeight      int64
+		evTime        time.Time
+		expErr        bool
+		evDescription string
 	}{
-		{height, time.Now(), false},
-		{height, evidenceTime, true},
-		{int64(1), time.Now(), true},
-		{int64(1), evidenceTime, true},
+		{height, time.Now(), false, "valid evidence"},
+		{height, evidenceTime, true, "evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
+		{int64(1), time.Now(), true, "evidence from height 1 is too old"},
+		{int64(1), evidenceTime, true, "evidence from height 1 is too old & evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
-		ev := types.NewMockEvidence(tc.height, tc.time, 0, valAddr)
+		ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
 		err := pool.AddEvidence(ev)
-		assert.Equal(t, tc.Error, err != nil)
+		fmt.Println(err)
+		assert.Equal(t, tc.expErr, err != nil)
 	}
 }
