@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -71,6 +72,24 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		panic(errors.Wrap(err, "Error reading block"))
 	}
 	return block
+}
+
+// LoadBlockByHash returns the block with the given hash.
+// If no block is found for that hash, it returns nil.
+// Panics if it fails to parse height associated with the given hash.
+func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
+	bz := bs.db.Get(calcBlockHashKey(hash))
+	if len(bz) == 0 {
+		return nil
+	}
+
+	s := string(bz)
+	height, err := strconv.ParseInt(s, 10, 64)
+
+	if err != nil {
+		panic(errors.Wrapf(err, "failed to extract height from %s", s))
+	}
+	return bs.LoadBlock(height)
 }
 
 // LoadBlockPart returns the Part at the given index
@@ -147,7 +166,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
+
 	height := block.Height
+	hash := block.Hash()
+
 	if g, w := height, bs.Height()+1; g != w {
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
 	}
@@ -159,6 +181,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
+	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
@@ -211,6 +234,10 @@ func calcBlockCommitKey(height int64) []byte {
 
 func calcSeenCommitKey(height int64) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
+}
+
+func calcBlockHashKey(hash []byte) []byte {
+	return []byte(fmt.Sprintf("BH:%x", hash))
 }
 
 //-----------------------------------------------------------------------------
