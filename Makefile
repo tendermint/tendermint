@@ -43,6 +43,14 @@ protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 	## Note the $@ here is substituted for the %.pb.go
 	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
 
+# Linting of proto files
+proto-lint:
+	@buf check lint
+
+# check that the current branch does not introduce breaking changes
+proto-check-breaking:
+	@buf check breaking --against-input '.git#branch=master'
+
 ########################################
 ### Build ABCI
 

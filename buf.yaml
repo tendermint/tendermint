@@ -1,0 +1,21 @@
+build:
+  roots:
+    - .
+    # - vendor/github.com/gogo/protobuf
+lint:
+  use:
+    - DEFAULT
+    - COMMENTS
+    # - FILE_LOWER_SNAKE_CASE
+  except:
+    - UNARY_RPC
+    - COMMENT_FIELD
+    - PACKAGE_DIRECTORY_MATCH
+    - FIELD_LOWER_SNAKE_CASE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+  ignore:
+    - vendor
+breaking:
+  use:
+    - FILE
