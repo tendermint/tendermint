@@ -33,7 +33,7 @@ type parsedURL struct {
 	url.URL
 }
 
-// Parse URL and set defaults (a flexible implementation for 'parseRemoteAddr')
+// Parse URL and set defaults
 func newParsedURL(remoteAddr string) (*parsedURL, error) {
 	u, err := url.Parse(remoteAddr)
 	if err != nil {
@@ -48,7 +48,7 @@ func newParsedURL(remoteAddr string) (*parsedURL, error) {
 	return &parsedURL{*u}, nil
 }
 
-// Change protocol to HTTP for unknown protocols and TCP protocol (flexible HTTPS downgrade fix) - useful for RPC connections
+// Change protocol to HTTP for unknown protocols and TCP protocol - useful for RPC connections
 func (u *parsedURL) SetDefaultSchemeHTTP() {
 	// protocol to use for http operations, to support both http and https
 	switch u.Scheme {
@@ -66,13 +66,13 @@ func (u parsedURL) GetHostWithPath() string {
 	return u.Host + u.EscapedPath()
 }
 
-// Get a trimmed address (Implements previous 'toClientAddrAndParse') - useful for WS connections
+// Get a trimmed address - useful for WS connections
 func (u parsedURL) GetTrimmedHostWithPath() string {
 	// replace / with . for http requests (kvstore domain)
 	return strings.Replace(u.GetHostWithPath(), "/", ".", -1)
 }
 
-// Get a trimmed address with protocol (implements previous 'toClientAddress') - useful as address in RPC connections
+// Get a trimmed address with protocol - useful as address in RPC connections
 func (u parsedURL) GetTrimmedURL() string {
 	return u.Scheme + "://" + u.GetTrimmedHostWithPath()
 }

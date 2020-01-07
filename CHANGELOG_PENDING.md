@@ -22,3 +22,4 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 - [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
