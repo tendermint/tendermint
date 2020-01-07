@@ -143,7 +143,7 @@ func TestAddEvidence(t *testing.T) {
 		tc := tc
 		ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
 		err := pool.AddEvidence(ev)
-		fmt.Println(err)
+		if tc.expErr { assert.Error(t, err) }
 		assert.Equal(t, tc.expErr, err != nil)
 	}
 }
