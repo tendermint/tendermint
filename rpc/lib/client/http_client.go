@@ -82,12 +82,6 @@ func parseRemoteAddr(remoteAddr string) (network string, s string, err error) {
 		return "", "", fmt.Errorf("invalid addr: %s", remoteAddr)
 	}
 
-	// accept http(s) as an alias for tcp
-	switch protocol {
-	case protoHTTP, protoHTTPS:
-		protocol = protoTCP
-	}
-
 	return protocol, address, nil
 }
 
@@ -101,6 +95,12 @@ func makeHTTPDialer(remoteAddr string) func(string, string) (net.Conn, error) {
 	protocol, address, err := parseRemoteAddr(remoteAddr)
 	if err != nil {
 		return makeErrorDialer(err)
+	}
+
+	// accept http(s) as an alias for tcp
+	switch protocol {
+	case protoHTTP, protoHTTPS:
+		protocol = protoTCP
 	}
 
 	return func(proto, addr string) (net.Conn, error) {
