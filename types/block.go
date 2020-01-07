@@ -459,12 +459,48 @@ func (h *Header) StringIndented(indent string) string {
 
 //-------------------------------------
 
-// CommitSig is a vote included in a Commit.
-// For now, it is identical to a vote,
-// but in the future it will contain fewer fields
-// to eliminate the redundancy in commits.
-// See https://github.com/tendermint/tendermint/issues/1648.
-type CommitSig Vote
+// BlockIDFlag indicates which BlockID the signature is for.
+type BlockIDFlag byte
+
+const (
+	// BlockIDFlagAbsent - no vote was received from a validator.
+	BlockIDFlagAbsent BlockIDFlag = iota + 1
+	// BlockIDFlagCommit - voted for the Commit.BlockID.
+	BlockIDFlagCommit
+	// BlockIDFlagNil - voted for nil.
+	BlockIDFlagNil
+)
+
+// CommitSig is a part of the Vote included in a Commit.
+type CommitSig struct {
+	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
+	ValidatorAddress Address     `json:"validator_address"`
+	Timestamp        time.Time   `json:"timestamp"`
+	Signature        []byte      `json:"signature"`
+}
+
+// NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
+func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
+	return CommitSig{
+		BlockIDFlag:      BlockIDFlagCommit,
+		ValidatorAddress: valAddr,
+		Timestamp:        ts,
+		Signature:        signature,
+	}
+}
+
+// ForBlock returns true if CommitSig is for the block.
+func (cs CommitSig) ForBlock() bool {
+	return cs.BlockIDFlag == BlockIDFlagCommit
+}
+
+// NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
+// fields are all empty.
+func NewCommitSigAbsent() CommitSig {
+	return CommitSig{
+		BlockIDFlag: BlockIDFlagAbsent,
+	}
+}
 
 // String returns the underlying Vote.String()
 func (cs *CommitSig) String() string {
