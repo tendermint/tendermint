@@ -56,32 +56,41 @@ func (s *dbs) SaveValidatorSet(valSet *types.ValidatorSet, height int64) error {
 }
 
 func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
-	bz := s.db.Get(s.shKey(height))
+	bz, err := s.db.Get(s.shKey(height))
+	if err != nil {
+		return nil, err
+	}
 	if bz == nil {
 		return nil, nil
 	}
 
 	var signedHeader *types.SignedHeader
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(bz, &signedHeader)
+	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &signedHeader)
 	return signedHeader, err
 }
 
 func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	bz := s.db.Get(s.vsKey(height))
+	bz, err := s.db.Get(s.vsKey(height))
+	if err != nil {
+		return nil, err
+	}
 	if bz == nil {
 		return nil, nil
 	}
 
 	var valSet *types.ValidatorSet
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(bz, &valSet)
+	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &valSet)
 	return valSet, err
 }
 
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
-	itr := s.db.ReverseIterator(
+	itr, err := s.db.ReverseIterator(
 		s.shKey(1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
+	if err != nil {
+		return -1, err
+	}
 	defer itr.Close()
 
 	for itr.Valid() {

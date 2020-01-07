@@ -97,7 +97,10 @@ func (store *Store) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
 // If maxNum is -1, there's no cap on the size of returned evidence.
 func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []types.Evidence) {
 	var count int64
-	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	iter, err := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	if err != nil {
+		// TODO: what to do with this err
+	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()

@@ -62,13 +62,13 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, txindex.ErrorEmptyHash
 	}
 
-	rawBytes := txi.store.Get(hash)
-	if rawBytes == nil {
-		return nil, nil
+	rawBytes, err := txi.store.Get(hash)
+	if err != nil {
+		return nil, err
 	}
 
 	txResult := new(types.TxResult)
-	err := cdc.UnmarshalBinaryBare(rawBytes, &txResult)
+	err = cdc.UnmarshalBinaryBare(rawBytes, &txResult)
 	if err != nil {
 		return nil, fmt.Errorf("error reading TxResult: %v", err)
 	}

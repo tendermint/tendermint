@@ -28,7 +28,10 @@ type State struct {
 }
 
 func loadState(db dbm.DB) State {
-	stateBytes := db.Get(stateKey)
+	stateBytes, err := db.Get(stateKey)
+	if err != nil {
+		// TODO: figure out to handle this error
+	}
 	var state State
 	if len(stateBytes) != 0 {
 		err := json.Unmarshal(stateBytes, &state)
@@ -120,7 +123,10 @@ func (app *Application) Commit() types.ResponseCommit {
 // Returns an associated value or nil if missing.
 func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+		if err != nil {
+			return //TODO: here
+		}
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
@@ -134,7 +140,10 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 	}
 
 	resQuery.Key = reqQuery.Data
-	value := app.state.db.Get(prefixKey(reqQuery.Data))
+	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+	if err != nil {
+		return //TODO: here
+	}
 	resQuery.Value = value
 	if value != nil {
 		resQuery.Log = "exists"
@@ -142,5 +151,5 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 		resQuery.Log = "does not exist"
 	}
 
-	return
+	return resQuery
 }

@@ -148,13 +148,13 @@ func (tms *MetricStore) size() int {
 // cmn.Panics if file is corrupt
 func (tms *MetricStore) loadFromDB() bool {
 	// Obtain the history data we have so far
-	bytes := tms.db.Get(trustMetricKey)
-	if bytes == nil {
+	bytes, err := tms.db.Get(trustMetricKey)
+	if err != nil {
 		return false
 	}
 
 	peers := make(map[string]MetricHistoryJSON)
-	err := json.Unmarshal(bytes, &peers)
+	err = json.Unmarshal(bytes, &peers)
 	if err != nil {
 		panic(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
 	}
