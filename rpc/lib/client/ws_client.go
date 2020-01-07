@@ -84,21 +84,26 @@ type WSClient struct { // nolint: maligned
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
-// The function panics if the provided address is invalid.
-func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
 	protocol, addr, err := toClientAddrAndParse(remoteAddr)
 	if err != nil {
-		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
+		return nil, err
 	}
 	// default to ws protocol, unless wss is explicitly specified
 	if protocol != "wss" {
 		protocol = "ws"
 	}
 
+	dialFn, err := makeHTTPDialer(remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
-		Dialer:               makeHTTPDialer(remoteAddr),
+		Dialer:               dialFn,
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
 
@@ -114,7 +119,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	for _, option := range options {
 		option(c)
 	}
-	return c
+	return c, nil
 }
 
 // MaxReconnectAttempts sets the maximum number of reconnect attempts before returning an error.

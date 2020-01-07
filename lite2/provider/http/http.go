@@ -23,8 +23,12 @@ type http struct {
 
 // New creates a HTTP provider, which is using the rpcclient.HTTP
 // client under the hood.
-func New(chainID, remote string) provider.Provider {
-	return NewWithClient(chainID, rpcclient.NewHTTP(remote, "/websocket"))
+func New(chainID, remote string) (provider.Provider, error) {
+	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	if err != nil {
+		return nil, err
+	}
+	return NewWithClient(chainID, httpClient), nil
 }
 
 // NewWithClient allows you to provide custom SignStatusClient.
