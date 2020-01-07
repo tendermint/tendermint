@@ -44,7 +44,10 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	if err != nil {
+		return errors.Wrap(err, "failed to create new http client")
+	}
 
 	home := viper.GetString(cli.HomeFlag)
 	conf := cfg.DefaultConfig()

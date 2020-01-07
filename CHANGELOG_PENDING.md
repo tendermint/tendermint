@@ -67,6 +67,7 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+  - [rpc] \#3953 Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
   - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
@@ -116,6 +117,7 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] \#3985 Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
 - [metrics] \#4263 Add
   - `consensus_validator_power`: track your validators power
   - `consensus_validator_last_signed_height`: track at which height the validator last signed

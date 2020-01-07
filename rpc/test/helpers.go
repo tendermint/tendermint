@@ -37,7 +37,10 @@ var defaultOptions = Options{
 
 func waitForRPC() {
 	laddr := GetConfig().RPC.ListenAddress
-	client := rpcclient.NewJSONRPCClient(laddr)
+	client, err := rpcclient.NewJSONRPCClient(laddr)
+	if err != nil {
+		panic(err)
+	}
 	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
