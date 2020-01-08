@@ -1471,19 +1471,18 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			missingValidatorsPower += val.VotingPower
 		}
 
-		for _, val := range cs.LastValidators.Validators {
-			privValAddress := cs.privValidator.GetPubKey().Address()
-			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
-				label := []string{
-					"validator_address", privValAddress.String(),
-				}
-				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
-				if vote != nil {
-					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
-				} else {
-					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
-				}
+		_, privVal := cs.LastValidators.GetByAddress(cs.privValidator.GetPubKey().Address())
+		if privVal != nil && bytes.Equal(val.Address, privVal.Address) {
+			label := []string{
+				"validator_address", privVal.Address.String(),
 			}
+			cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
+			if vote != nil {
+				cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
+			} else {
+				cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
+			}
+			break
 		}
 	}
 
