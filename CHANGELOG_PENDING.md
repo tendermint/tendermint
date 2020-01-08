@@ -16,6 +16,7 @@ program](https://hackerone.com/tendermint).
 - Go API
 
 ### FEATURES:
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
 
 ### IMPROVEMENTS:
 
