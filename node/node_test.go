@@ -257,7 +257,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomGoodEvidence(1, proposerAddr, tmrand.Bytes(minEvSize))
+		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
 		assert.NoError(t, err)
 	}
