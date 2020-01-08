@@ -80,18 +80,18 @@ type WSClient struct {
 // pong wait time. The endpoint argument must begin with a `/`.
 // The function panics if the provided address is invalid.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	protocol, addr, err := toClientAddrAndParse(remoteAddr)
+	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
 	}
 	// default to ws protocol, unless wss is explicitly specified
-	if protocol != "wss" {
-		protocol = "ws"
+	if parsedURL.Scheme != protoWSS {
+		parsedURL.Scheme = protoWS
 	}
 
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
-		Address:              addr,
+		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               makeHTTPDialer(remoteAddr),
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
@@ -100,7 +100,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		readWait:             defaultReadWait,
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
-		protocol:             protocol,
+		protocol:             parsedURL.Scheme,
 	}
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
