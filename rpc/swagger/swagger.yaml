@@ -1114,6 +1114,9 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+        max_peer_height:
+          type: string
+          example: "1262202"
         catching_up:
           type: boolean
           example: false
