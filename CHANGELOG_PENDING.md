@@ -58,6 +58,8 @@ program](https://hackerone.com/tendermint).
 
   - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
     - You will have to generate a new config for your Tendermint node(s)
+  - [genesis] \#2565 Add `consensus_params.evidence.max_age_duration`. Rename
+    `consensus_params.evidence.max_age` to `max_age_num_blocks`.
 
 - Apps
 
@@ -86,6 +88,7 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
   - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
   - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
+  - [types] \#2565 Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
 
 
 - Blockchain Protocol

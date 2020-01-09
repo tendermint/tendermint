@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -484,6 +485,7 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 		Height:           vote.Height,
 		Round:            vote.Round,
 		Type:             vote.Type,
+		Timestamp:        vote.Timestamp,
 		BlockID: types.BlockID{
 			Hash:        make([]byte, len(vote.BlockID.Hash)),
 			PartsHeader: vote.BlockID.PartsHeader,
@@ -522,6 +524,7 @@ func makeEvidences(
 		Height:           1,
 		Round:            0,
 		Type:             types.PrevoteType,
+		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
 			PartsHeader: types.PartSetHeader{
@@ -584,7 +587,6 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 
 	ev, fakes := makeEvidences(t, pv, chainID)
-
 	t.Logf("evidence %v", ev)
 
 	for i, c := range GetClients() {
