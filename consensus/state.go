@@ -1459,8 +1459,11 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
-	missingValidators := 0
-	missingValidatorsPower := int64(0)
+
+	var (
+		missingValidators      = 0
+		missingValidatorsPower int64
+	)
 	for i, val := range cs.Validators.Validators {
 		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
@@ -1471,10 +1474,9 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			missingValidatorsPower += val.VotingPower
 		}
 
-		_, privVal := cs.LastValidators.GetByAddress(cs.privValidator.GetPubKey().Address())
-		if privVal != nil && bytes.Equal(val.Address, privVal.Address) {
+		if cs.privValidator != nil && bytes.Equal(val.Address, cs.privValidator.GetPubKey().Address()) {
 			label := []string{
-				"validator_address", privVal.Address.String(),
+				"validator_address", val.Address.String(),
 			}
 			cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
 			if vote != nil {
@@ -1482,12 +1484,11 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			} else {
 				cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
 			}
-			break
 		}
 	}
-
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 	byzantineValidatorsPower := int64(0)
 	for _, ev := range block.Evidence.Evidence {
@@ -1508,7 +1509,6 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
 	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
 	cs.metrics.CommittedHeight.Set(float64(block.Height))
-
 }
 
 //-----------------------------------------------------------------------------
