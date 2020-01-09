@@ -86,13 +86,13 @@ type WSClient struct { // nolint: maligned
 // pong wait time. The endpoint argument must begin with a `/`.
 // An error is returned on invalid remote. The function panics when remote is nil.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
-	protocol, addr, err := toClientAddrAndParse(remoteAddr)
+	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		return nil, err
 	}
 	// default to ws protocol, unless wss is explicitly specified
-	if protocol != "wss" {
-		protocol = "ws"
+	if parsedURL.Scheme != protoWSS {
+		parsedURL.Scheme = protoWS
 	}
 
 	dialFn, err := makeHTTPDialer(remoteAddr)
@@ -102,7 +102,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSCl
 
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
-		Address:              addr,
+		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
@@ -111,7 +111,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSCl
 		readWait:             defaultReadWait,
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
-		protocol:             protocol,
+		protocol:             parsedURL.Scheme,
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}

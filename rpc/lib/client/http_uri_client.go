@@ -35,7 +35,7 @@ var _ HTTPClient = (*URIClient)(nil)
 // An error is returned on invalid remote.
 // The function panics when remote is nil.
 func NewURIClient(remote string) (*URIClient, error) {
-	clientAddress, err := toClientAddress(remote)
+	parsedURL, err := newParsedURL(remote)
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +45,10 @@ func NewURIClient(remote string) (*URIClient, error) {
 		return nil, err
 	}
 
+	parsedURL.SetDefaultSchemeHTTP()
+
 	uriClient := &URIClient{
-		address: clientAddress,
+		address: parsedURL.GetTrimmedURL(),
 		client:  httpClient,
 		cdc:     amino.NewCodec(),
 	}
