@@ -103,12 +103,12 @@ type JSONRPCCaller interface {
 //
 // JSONRPCClient is safe for concurrent use by multiple goroutines.
 type JSONRPCClient struct {
-	address string
+	address  string
 	username string
 	password string
 
-	client  *http.Client
-	cdc     *amino.Codec
+	client *http.Client
+	cdc    *amino.Codec
 
 	mtx       sync.Mutex
 	nextReqID int
@@ -151,11 +151,11 @@ func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) (*JSONRP
 	password, _ := parsedURL.User.Password()
 
 	rpcClient := &JSONRPCClient{
-		address: address,
+		address:  address,
 		username: username,
 		password: password,
-		client:  client,
-		cdc:     amino.NewCodec(),
+		client:   client,
+		cdc:      amino.NewCodec(),
 	}
 
 	return rpcClient, nil
