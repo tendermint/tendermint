@@ -27,6 +27,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		latestBlockHash     tmbytes.HexBytes
 		latestAppHash       tmbytes.HexBytes
 		latestBlockTimeNano int64
+		maxPeerHeight       int64
 	)
 	if latestHeight != 0 {
 		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
@@ -36,7 +37,10 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)
-	maxPeerHeight := bcState.GetMaxPeerHeight()
+
+	if bcState != nil {
+		maxPeerHeight = bcState.GetMaxPeerHeight()
+	}
 
 	var votingPower int64
 	if val := validatorAtHeight(latestHeight); val != nil {
