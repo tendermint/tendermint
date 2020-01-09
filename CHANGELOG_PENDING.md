@@ -123,6 +123,7 @@ program](https://hackerone.com/tendermint).
   - `consensus_validator_last_signed_height`: track at which height the validator last signed
   - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
   as gauges in prometheus for validator specific metrics
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
 
 ### IMPROVEMENTS:
 
