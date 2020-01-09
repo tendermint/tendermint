@@ -124,13 +124,15 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 // If not found, ei.Evidence is nil.
 func (store *Store) GetInfo(height int64, hash []byte) Info {
 	key := keyLookupFromHeightAndHash(height, hash)
-	val := store.db.Get(key)
-
+	val, err := store.db.Get(key)
 	if len(val) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return Info{}
 	}
 	var ei Info
-	err := cdc.UnmarshalBinaryBare(val, &ei)
+	err = cdc.UnmarshalBinaryBare(val, &ei)
 	if err != nil {
 		panic(err)
 	}

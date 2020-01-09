@@ -154,10 +154,10 @@ func (dbp *DBProvider) ValidatorSet(chainID string, height int64) (valset *types
 
 func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
 	vsBz, err := dbp.db.Get(validatorSetKey(chainID, height))
-	if err != nil {
-		return nil, err
-	}
 	if vsBz == nil {
+		if err != nil {
+			return nil, err
+		}
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}

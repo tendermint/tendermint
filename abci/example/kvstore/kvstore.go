@@ -31,11 +31,11 @@ func loadState(db dbm.DB) State {
 	var state State
 	state.db = db
 	stateBytes, err := db.Get(stateKey)
-	if err != nil {
-		if stateBytes == nil {
-			return state
+	if stateBytes == nil {
+		if err != nil {
+			panic(err)
 		}
-		panic(err)
+		return state
 	}
 	err = json.Unmarshal(stateBytes, &state)
 	if err != nil {
@@ -127,10 +127,10 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
 		if value == nil {
 			resQuery.Log = "does not exist"
-		} else {
 			if err != nil {
 				panic(err)
 			}
+		} else {
 			resQuery.Log = "exists"
 		}
 		resQuery.Index = -1 // TODO make Proof return index
@@ -144,10 +144,10 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
 	if value == nil {
 		resQuery.Log = "does not exist"
-	} else {
 		if err != nil {
 			panic(err)
 		}
+	} else {
 		resQuery.Log = "exists"
 	}
 	resQuery.Value = value

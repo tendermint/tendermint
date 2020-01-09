@@ -3,7 +3,6 @@ package state
 import (
 	"fmt"
 
-	"github.com/syndtr/goleveldb/leveldb/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -227,18 +226,15 @@ func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 // CONTRACT: Returned ValidatorsInfo can be mutated.
 func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	buf, err := db.Get(calcValidatorsKey(height))
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil
-		}
-		panic(err)
-	}
 	if len(buf) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 
 	v := new(ValidatorsInfo)
-	err := cdc.UnmarshalBinaryBare(buf, v)
+	err = cdc.UnmarshalBinaryBare(buf, v)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
@@ -309,13 +305,16 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 }
 
 func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
-	buf := db.Get(calcConsensusParamsKey(height))
+	buf, err := db.Get(calcConsensusParamsKey(height))
 	if len(buf) == 0 {
+		if err != nil {
+			return nil
+		}
 		return nil
 	}
 
 	paramsInfo := new(ConsensusParamsInfo)
-	err := cdc.UnmarshalBinaryBare(buf, paramsInfo)
+	err = cdc.UnmarshalBinaryBare(buf, paramsInfo)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:

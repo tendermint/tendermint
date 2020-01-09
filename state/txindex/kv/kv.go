@@ -63,8 +63,11 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	}
 
 	rawBytes, err := txi.store.Get(hash)
-	if rawBytes == nil && err != nil {
-		return nil, err
+	if rawBytes == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
 	}
 
 	txResult := new(types.TxResult)

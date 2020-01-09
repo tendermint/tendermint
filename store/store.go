@@ -119,7 +119,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var blockMeta = new(types.BlockMeta)
 	bz, err := bs.db.Get(calcBlockMetaKey(height))
-	if len(bz) == 0 {
+	if bz == nil {
 		if err != nil {
 			panic(err)
 		}
