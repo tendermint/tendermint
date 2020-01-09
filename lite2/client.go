@@ -99,6 +99,15 @@ func RemoveNoLongerTrustedHeadersPeriod(d time.Duration) Option {
 	}
 }
 
+// ConfirmationFunction option can be used to prompt to confirm an action. For
+// example, remove newer headers if the light client is being reset with an
+// older header. No confirmation is required by default!
+func ConfirmationFunction(fn func(action string) bool) Option {
+	return func(c *Client) {
+		c.confirmationFn = fn
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -126,6 +135,8 @@ type Client struct {
 
 	removeNoLongerTrustedHeadersPeriod time.Duration
 
+	confirmationFn func(action string) bool
+
 	quit chan struct{}
 
 	logger log.Logger
@@ -151,6 +162,7 @@ func NewClient(
 		primary:                            primary,
 		trustedStore:                       trustedStore,
 		removeNoLongerTrustedHeadersPeriod: defaultRemoveNoLongerTrustedHeadersPeriod,
+		confirmationFn:                     func(action string) bool { return true },
 		quit:                               make(chan struct{}),
 		logger:                             log.NewNopLogger(),
 	}
@@ -234,19 +246,34 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height == c.trustedHeader.Height:
 		primaryHash = options.Hash
 	case options.Height < c.trustedHeader.Height:
-		// remove all the headers ( options.Height, trustedHeader.Height ]
-		c.cleanup(options.Height + 1)
-		// set c.trustedHeader to one at options.Height
-		c.restoreTrustedHeaderAndNextVals()
+		action := fmt.Sprintf(
+			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
+			options.Height, options.Hash,
+			c.trustedHeader.Height, c.trustedHeader.Hash())
+		if c.confirmationFn(action) {
+			// remove all the headers ( options.Height, trustedHeader.Height ]
+			c.cleanup(options.Height + 1)
+			// set c.trustedHeader to one at options.Height
+			c.restoreTrustedHeaderAndNextVals()
+		} else {
+			return errors.New("rollback aborted")
+		}
+
 		primaryHash = options.Hash
 	}
 
 	if !bytes.Equal(primaryHash, c.trustedHeader.Hash()) {
 		c.logger.Info("Prev. trusted header's hash %X doesn't match hash %X from primary provider",
 			c.trustedHeader.Hash(), primaryHash)
-		err := c.Cleanup()
-		if err != nil {
-			return errors.Wrap(err, "failed to cleanup")
+
+		action := fmt.Sprintf(
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored headers?",
+			c.trustedHeader.Hash(), primaryHash)
+		if c.confirmationFn(action) {
+			err := c.Cleanup()
+			if err != nil {
+				return errors.Wrap(err, "failed to cleanup")
+			}
 		}
 	}
 
