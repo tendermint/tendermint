@@ -58,6 +58,8 @@ type BlockchainReactor struct {
 
 	fastSync bool
 
+	bcStateProvider *BlockchainStateProvider
+
 	fsm          *BcReactorFSM
 	blocksSynced int
 
@@ -77,7 +79,7 @@ type BlockchainReactor struct {
 
 // NewBlockchainReactor returns new reactor instance.
 func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	fastSync bool) *BlockchainReactor {
+	fastSync bool) (*BlockchainReactor, *BlockchainStateProvider) {
 
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
@@ -104,8 +106,9 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	//bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+	bcStateProvider := bcR.NewBlockchainStateProvider()
 
-	return bcR
+	return bcR, bcStateProvider
 }
 
 // bcReactorMessage is used by the reactor to send messages to the FSM.
@@ -508,6 +511,24 @@ func (bcR *BlockchainReactor) resetStateTimer(name string, timer **time.Timer, t
 	} else {
 		(*timer).Reset(timeout)
 	}
+}
+
+// BlockchainStateProvider exposes variables inside the BlockchainReactor
+// implements BlockchainState
+type BlockchainStateProvider struct {
+	pool *BlockPool
+}
+
+// GetMaxPeerHeight returns maxPeerHeight
+// implements BlockchainState
+func (bcStateProvider *BlockchainStateProvider) GetMaxPeerHeight() int64 {
+	return bcStateProvider.pool.MaxPeerHeight
+}
+
+// NewBlockchainStateProvider returns a new BlockchainStateProvider
+func (bcR *BlockchainReactor) NewBlockchainStateProvider() *BlockchainStateProvider {
+	bcR.bcStateProvider = &BlockchainStateProvider{bcR.fsm.pool}
+	return bcR.bcStateProvider
 }
 
 //-----------------------------------------------------------------------------

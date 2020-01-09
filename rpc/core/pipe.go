@@ -65,6 +65,7 @@ var (
 	consensusState Consensus
 	p2pPeers       peers
 	p2pTransport   transport
+	bcState        types.BlockchainState
 
 	// objects
 	pubKey           crypto.PubKey
@@ -105,6 +106,10 @@ func SetP2PPeers(p peers) {
 
 func SetP2PTransport(t transport) {
 	p2pTransport = t
+}
+
+func SetBlockchainState(s types.BlockchainState) {
+	bcState = s
 }
 
 func SetPubKey(pk crypto.PubKey) {

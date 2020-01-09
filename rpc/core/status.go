@@ -36,6 +36,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)
+	maxPeerHeight := bcState.GetMaxPeerHeight()
 
 	var votingPower int64
 	if val := validatorAtHeight(latestHeight); val != nil {
@@ -49,6 +50,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash,
 			LatestBlockHeight: latestHeight,
 			LatestBlockTime:   latestBlockTime,
+			MaxPeerHeight:     maxPeerHeight,
 			CatchingUp:        consensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{

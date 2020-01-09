@@ -65,6 +65,7 @@ type SyncInfo struct {
 	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
 	LatestBlockHeight int64          `json:"latest_block_height"`
 	LatestBlockTime   time.Time      `json:"latest_block_time"`
+	MaxPeerHeight     int64          `json:"max_peer_height"`
 	CatchingUp        bool           `json:"catching_up"`
 }
 

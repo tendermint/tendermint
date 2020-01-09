@@ -187,9 +187,10 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *store.BlockStore // store the blockchain to disk
-	bcReactor        p2p.Reactor       // for fast-syncing
-	mempoolReactor   *mempl.Reactor    // for gossipping transactions
+	blockStore       *store.BlockStore     // store the blockchain to disk
+	bcReactor        p2p.Reactor           // for fast-syncing
+	bcState          types.BlockchainState // Blockchain and sync state
+	mempoolReactor   *mempl.Reactor        // for gossipping transactions
 	mempool          mempl.Mempool
 	consensusState   *cs.State      // latest consensus state
 	consensusReactor *cs.Reactor    // for participating in the consensus
@@ -358,19 +359,19 @@ func createBlockchainReactor(config *cfg.Config,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
 	fastSync bool,
-	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+	logger log.Logger) (bcReactor p2p.Reactor, bcStateProvider types.BlockchainState, err error) {
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor, bcStateProvider = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
-		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor, bcStateProvider = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
-	return bcReactor, nil
+	return bcReactor, bcStateProvider, nil
 }
 
 func createConsensusReactor(config *cfg.Config,
@@ -647,7 +648,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
+	bcReactor, bcState, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create blockchain reactor")
 	}
@@ -725,6 +726,7 @@ func NewNode(config *cfg.Config,
 		stateDB:          stateDB,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
+		bcState:          bcState,
 		mempoolReactor:   mempoolReactor,
 		mempool:          mempool,
 		consensusState:   consensusState,
