@@ -79,10 +79,10 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // Panics if it fails to parse height associated with the given hash.
 func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	bz, err := bs.db.Get(calcBlockHashKey(hash))
-	if err != nil {
-		panic(err)
-	}
 	if len(bz) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 
@@ -101,10 +101,10 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var part = new(types.Part)
 	bz, err := bs.db.Get(calcBlockPartKey(height, index))
-	if err != nil {
-		panic(err)
-	}
 	if len(bz) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 	err = cdc.UnmarshalBinaryBare(bz, part)
@@ -119,10 +119,10 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var blockMeta = new(types.BlockMeta)
 	bz, err := bs.db.Get(calcBlockMetaKey(height))
-	if err != nil {
-		panic(err)
-	}
 	if len(bz) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
@@ -139,10 +139,10 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var commit = new(types.Commit)
 	bz, err := bs.db.Get(calcBlockCommitKey(height))
-	if err != nil {
-		panic(err)
-	}
 	if len(bz) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
@@ -158,10 +158,10 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var commit = new(types.Commit)
 	bz, err := bs.db.Get(calcSeenCommitKey(height))
-	if err != nil {
-		panic(err)
-	}
 	if len(bz) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
@@ -277,10 +277,10 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes, err := db.Get(blockStoreKey)
-	if err != nil {
-		panic(err)
-	}
 	if len(bytes) == 0 {
+		if err != nil {
+			panic(err)
+		}
 		return BlockStoreStateJSON{
 			Height: 0,
 		}

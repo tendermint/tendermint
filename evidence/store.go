@@ -99,7 +99,7 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 	var count int64
 	iter, err := dbm.IteratePrefix(store.db, []byte(prefixKey))
 	if err != nil {
-		// TODO: what to do with this err
+		panic(err)
 	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {

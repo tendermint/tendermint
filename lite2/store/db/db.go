@@ -58,10 +58,10 @@ func (s *dbs) SaveValidatorSet(valSet *types.ValidatorSet, height int64) error {
 func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	bz, err := s.db.Get(s.shKey(height))
 	if err != nil {
+		if bz == nil {
+			return nil, nil
+		}
 		return nil, err
-	}
-	if bz == nil {
-		return nil, nil
 	}
 
 	var signedHeader *types.SignedHeader
@@ -71,10 +71,11 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	bz, err := s.db.Get(s.vsKey(height))
-	if err != nil {
-		return nil, err
-	}
 	if bz == nil {
+		// if bz is not found, err will be nil as well
+		if err != nil {
+			return nil, err
+		}
 		return nil, nil
 	}
 

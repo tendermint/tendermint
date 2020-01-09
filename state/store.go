@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -73,10 +74,10 @@ func LoadState(db dbm.DB) State {
 
 func loadState(db dbm.DB, key []byte) (state State) {
 	buf, err := db.Get(key)
-	if err != nil {
-		panic(err) // TODO: should not always panic here
-	}
 	if len(buf) == 0 {
+		if err != nil {
+			panic(err) // TODO: should not always panic here
+		}
 		return state
 	}
 
@@ -151,15 +152,15 @@ func (arz *ABCIResponses) ResultsHash() []byte {
 // s.Save(). It can also be used to produce Merkle proofs of the result of txs.
 func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	buf, err := db.Get(calcABCIResponsesKey(height))
-	if err != nil {
-		panic(err)
-	}
 	if len(buf) == 0 {
+		if err != nil {
+			return nil, err
+		}
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
 	abciResponses := new(ABCIResponses)
-	err := cdc.UnmarshalBinaryBare(buf, abciResponses)
+	err = cdc.UnmarshalBinaryBare(buf, abciResponses)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
