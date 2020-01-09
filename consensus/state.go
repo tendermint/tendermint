@@ -1486,10 +1486,14 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 		for i, val := range cs.LastValidators.Validators {
 			commitSig := block.LastCommit.Signatures[i]
-			privValAddress := cs.privValidator.GetPubKey().Address()
-			if cs.privValidator != nil && bytes.Equal(val.Address, privValAddress) {
+			if commitSig.Absent() {
+				missingValidators++
+				missingValidatorsPower += val.VotingPower
+			}
+
+			if cs.privValidator != nil && bytes.Equal(val.Address, cs.privValidator.GetPubKey().Address()) {
 				label := []string{
-					"validator_address", privValAddress.String(),
+					"validator_address", val.Address.String(),
 				}
 				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
 				if commitSig.ForBlock() {
@@ -1497,11 +1501,6 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 				} else {
 					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
 				}
-			}
-
-			if commitSig.Absent() {
-				missingValidators++
-				missingValidatorsPower += val.VotingPower
 			}
 		}
 	}
