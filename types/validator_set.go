@@ -759,7 +759,11 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		return err
 	}
 
-	talliedVotingPower := int64(0)
+	var (
+		talliedVotingPower int64
+		seenVals           = make(map[int]int, len(commit.Signatures)) // validator index -> commit index
+	)
+
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some signatures can be absent.
@@ -767,8 +771,16 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
-		_, val := vals.GetByAddress(commitSig.ValidatorAddress)
+		valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
+
+		if firstIndex, ok := seenVals[valIdx]; ok { // double vote
+			secondIndex := idx
+			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+		}
+
 		if val != nil {
+			seenVals[valIdx] = idx
+
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, idx)
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
