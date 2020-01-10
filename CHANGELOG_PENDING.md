@@ -58,6 +58,8 @@ program](https://hackerone.com/tendermint).
 
   - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
     - You will have to generate a new config for your Tendermint node(s)
+  - [genesis] \#2565 Add `consensus_params.evidence.max_age_duration`. Rename
+    `consensus_params.evidence.max_age` to `max_age_num_blocks`.
 
 - Apps
 
@@ -65,6 +67,7 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+  - [rpc] \#3953 Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
   - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
@@ -85,6 +88,7 @@ program](https://hackerone.com/tendermint).
   - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
   - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
   - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
+  - [types] \#2565 Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
 
 
 - Blockchain Protocol
@@ -113,11 +117,13 @@ program](https://hackerone.com/tendermint).
 - [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
 - [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
 - [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] \#3985 Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
 - [metrics] \#4263 Add
   - `consensus_validator_power`: track your validators power
   - `consensus_validator_last_signed_height`: track at which height the validator last signed
   - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
   as gauges in prometheus for validator specific metrics
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
 
 ### IMPROVEMENTS:
 
@@ -142,3 +148,4 @@ program](https://hackerone.com/tendermint).
   efforts of @gchaincl and @ancazamfir)
 - [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
 - [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
+- [rpc] \#4256 Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
