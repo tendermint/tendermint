@@ -92,7 +92,8 @@ func AlternativeSources(providers []provider.Provider) Option {
 
 // RemoveNoLongerTrustedHeadersPeriod option can be used to define how often
 // the routine, which cleans up no longer trusted headers (outside of trusting
-// period), is run. Default: once a day.
+// period), is run. Default: once a day. When set to zero, the routine won't be
+// started.
 func RemoveNoLongerTrustedHeadersPeriod(d time.Duration) Option {
 	return func(c *Client) {
 		c.removeNoLongerTrustedHeadersPeriod = d
@@ -186,7 +187,9 @@ func NewClient(
 		}
 	}
 
-	go c.removeNoLongerTrustedHeadersRoutine()
+	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		go c.removeNoLongerTrustedHeadersRoutine()
+	}
 
 	return c, nil
 }
