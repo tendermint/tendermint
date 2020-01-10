@@ -30,10 +30,14 @@ func TestExample_Client(t *testing.T) {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config   = rpctest.GetConfig()
-		chainID  = config.ChainID()
-		provider = httpp.New(chainID, config.RPC.ListenAddress)
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
 	)
+
+	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
 	header, err := provider.SignedHeader(2)
 	if err != nil {
@@ -85,10 +89,15 @@ func TestExample_AutoClient(t *testing.T) {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config   = rpctest.GetConfig()
-		chainID  = config.ChainID()
-		provider = httpp.New(chainID, config.RPC.ListenAddress)
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
 	)
+
+	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
 	header, err := provider.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
