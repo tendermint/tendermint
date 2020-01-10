@@ -631,7 +631,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
-	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+	if err := verifyCommitBasic(commit, height, blockID); err != nil {
 		return err
 	}
 
@@ -755,7 +755,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
 	}
 
-	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+	if err := verifyCommitBasic(commit, height, blockID); err != nil {
 		return err
 	}
 
@@ -807,7 +807,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	return nil
 }
 
-func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
+func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
 	if err := commit.ValidateBasic(); err != nil {
 		return err
 	}
