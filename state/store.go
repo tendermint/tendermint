@@ -75,7 +75,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 	buf, err := db.Get(key)
 	if len(buf) == 0 {
 		if err != nil {
-			panic(err) // TODO: should not always panic here
+			panic(err)
 		}
 		return state
 	}
