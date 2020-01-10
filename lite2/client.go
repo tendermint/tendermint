@@ -277,6 +277,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			if err != nil {
 				return errors.Wrap(err, "failed to cleanup")
 			}
+		} else {
+			return errors.New("refused to remove the stored headers despite hashes mismatch")
 		}
 	}
 
