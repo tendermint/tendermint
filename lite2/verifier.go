@@ -45,7 +45,7 @@ func Verify(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
-		return ErrInvalidNewHeader{err}
+		return err
 	}
 
 	if h2.Height == h1.Height+1 {
@@ -54,20 +54,25 @@ func Verify(
 				h1NextVals.Hash(),
 				h2.ValidatorsHash,
 			)
-			return ErrNewValSetCantBeTrusted{err}
+			return err
 		}
 	} else {
 		// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
 		err := h1NextVals.VerifyCommitTrusting(chainID, h2.Commit.BlockID, h2.Height, h2.Commit, trustLevel)
 		if err != nil {
-			return ErrNewValSetCantBeTrusted{err}
+			switch e := err.(type) {
+			case types.ErrNotEnoughVotingPowerSigned:
+				return ErrNewValSetCantBeTrusted{e}
+			default:
+				return e
+			}
 		}
 	}
 
 	// Ensure that +2/3 of new validators signed correctly.
 	err := h2Vals.VerifyCommit(chainID, h2.Commit.BlockID, h2.Height, h2.Commit)
 	if err != nil {
-		return ErrNewHeaderCantBeTrusted{err}
+		return err
 	}
 
 	return nil

@@ -547,7 +547,7 @@ func (c *Client) bisection(
 	case ErrNewValSetCantBeTrusted:
 		// continue bisection
 	default:
-		return errors.Wrapf(err, "failed to verify the header #%d ", newHeader.Height)
+		return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
 	}
 
 	if newHeader.Height == lastHeader.Height+1 {
