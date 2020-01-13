@@ -19,7 +19,7 @@ var (
 // Verify verifies the new header (h2) against the old header (h1). It ensures that:
 //
 //	a) h1 can still be trusted (if not, ErrOldHeaderExpired is returned);
-//	b) h2 is valid (if not, ErrInvalidNewHeader is returned);
+//	b) h2 is valid;
 //	c) either h2.ValidatorsHash equals h1NextVals.Hash()
 //		 OR trustLevel ([1/3, 1]) of last trusted validators (h1NextVals) signed
 //		 correctly  (if not, ErrNewValSetCantBeTrusted is returned);

@@ -1,15 +1,23 @@
 package commands
 
 import (
-	"fmt"
-	"net/url"
+	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	amino "github.com/tendermint/go-amino"
+	dbm "github.com/tendermint/tm-db"
+
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/lite/proxy"
+	lite "github.com/tendermint/tendermint/lite2"
+	httpp "github.com/tendermint/tendermint/lite2/provider/http"
+	lproxy "github.com/tendermint/tendermint/lite2/proxy"
+	lrpc "github.com/tendermint/tendermint/lite2/rpc"
+	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 )
 
 // LiteCmd represents the base command when called without any subcommands
@@ -32,7 +40,10 @@ var (
 	chainID            string
 	home               string
 	maxOpenConnections int
-	cacheSize          int
+
+	trustingPeriod time.Duration
+	trustedHeight  int64
+	trustedHash    []byte
 )
 
 func init() {
@@ -45,60 +56,59 @@ func init() {
 		"max-open-connections",
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
-	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
-}
 
-func EnsureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return "", err
-	}
-	switch u.Scheme {
-	case "tcp", "unix":
-	case "":
-		u.Scheme = "tcp"
-	default:
-		return "", fmt.Errorf("unknown scheme %q, use either tcp or unix", u.Scheme)
-	}
-	return u.String(), nil
+	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour, "Trusting period. Should be significantly less than the unbonding period")
+	LiteCmd.Flags().Int64Var(&trustedHeight, "trusted-height", 1, "Trusted header's height")
+	LiteCmd.Flags().BytesHexVar(&trustedHash, "trusted-hash", []byte{}, "Trusted header's hash")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
-		// TODO: close up shop
-	})
+	liteLogger := logger.With("module", "lite")
 
-	nodeAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(nodeAddr)
-	if err != nil {
-		return err
-	}
-	listenAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(listenAddr)
-	if err != nil {
-		return err
-	}
-
+	logger.Info("Connecting to Tendermint node...")
 	// First, connect a client
-	logger.Info("Connecting to source HTTP client...")
 	node, err := rpcclient.NewHTTP(nodeAddr, "/websocket")
 	if err != nil {
 		return errors.Wrap(err, "new HTTP client")
 	}
 
-	logger.Info("Constructing Verifier...")
-	cert, err := proxy.NewVerifier(chainID, home, node, logger, cacheSize)
+	logger.Info("Creating client...")
+	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
-		return errors.Wrap(err, "constructing Verifier")
+		return err
 	}
-	cert.SetLogger(logger)
-	sc := proxy.SecureClient(node, cert)
+	c, err := lite.NewClient(
+		chainID,
+		lite.TrustOptions{
+			Period: trustingPeriod,
+			Height: trustedHeight,
+			Hash:   trustedHash,
+		},
+		httpp.NewWithClient(chainID, node),
+		dbs.New(db, chainID),
+	)
+	if err != nil {
+		return err
+	}
+	c.SetLogger(liteLogger)
+
+	p := lproxy.Proxy{
+		Addr:   listenAddr,
+		Config: &rpcserver.Config{MaxOpenConnections: maxOpenConnections},
+		Codec:  amino.NewCodec(),
+		Client: lrpc.NewClient(node, c),
+		Logger: liteLogger,
+	}
+	// Stop upon receiving SIGTERM or CTRL-C.
+	tmos.TrapSignal(liteLogger, func() {
+		p.Listener.Close()
+	})
 
 	logger.Info("Starting proxy...")
-	err = proxy.StartProxy(sc, listenAddr, logger, maxOpenConnections)
-	if err != nil {
-		return errors.Wrap(err, "starting proxy")
+	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+		// Error starting or closing listener:
+		logger.Error("proxy ListenAndServe", "err", err)
 	}
 
-	// Run forever
-	select {}
+	return nil
 }

@@ -214,6 +214,8 @@ func (c *Client) restoreTrustedHeaderAndNextVals() error {
 
 		c.trustedHeader = trustedHeader
 		c.trustedNextVals = trustedNextVals
+
+		c.logger.Debug("Restored trusted header and next vals", lastHeight)
 	}
 
 	return nil
@@ -249,6 +251,10 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height == c.trustedHeader.Height:
 		primaryHash = options.Hash
 	case options.Height < c.trustedHeader.Height:
+		c.logger.Info("Client initialized with old header (trusted is more recent)",
+			"old", options.Height,
+			"trusted", c.trustedHeader.Height)
+
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
 			options.Height, options.Hash,
@@ -258,6 +264,9 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			c.cleanup(options.Height + 1)
 			// set c.trustedHeader to one at options.Height
 			c.restoreTrustedHeaderAndNextVals()
+
+			c.logger.Info("Rolled back to older header (newer headers were removed)",
+				"old", options.Height)
 		} else {
 			return errors.New("rollback aborted")
 		}
@@ -266,8 +275,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	}
 
 	if !bytes.Equal(primaryHash, c.trustedHeader.Hash()) {
-		c.logger.Info("Prev. trusted header's hash %X doesn't match hash %X from primary provider",
-			c.trustedHeader.Hash(), primaryHash)
+		c.logger.Info("Prev. trusted header's hash (h1) doesn't match hash from primary provider (h2)",
+			"h1", c.trustedHeader.Hash(), "h1", primaryHash)
 
 		action := fmt.Sprintf(
 			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored headers?",
@@ -398,6 +407,8 @@ func (c *Client) ChainID() string {
 //
 // If the trusted header is more recent than one here, an error is returned.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
+	c.logger.Info("VerifyHeaderAtHeight", "height", height)
+
 	if c.trustedHeader.Height >= height {
 		return nil, errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
@@ -425,6 +436,8 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 //
 // If the trusted header is more recent than one here, an error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
+	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", newVals.Hash())
+
 	if c.trustedHeader.Height >= newHeader.Height {
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
@@ -458,6 +471,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 // Cleanup removes all the data (headers and validator sets) stored.
 func (c *Client) Cleanup() error {
+	c.logger.Info("Cleanup everything")
 	return c.cleanup(0)
 }
 
@@ -507,6 +521,11 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
 
+		c.logger.Debug("Verify newHeader against lastHeader",
+			"lastHeight", c.trustedHeader.Height,
+			"lastHash", c.trustedHeader.Hash(),
+			"newHeight", interimHeader.Height,
+			"newHash", interimHeader.Hash())
 		err = Verify(c.chainID, c.trustedHeader, c.trustedNextVals, interimHeader, c.trustedNextVals,
 			c.trustingPeriod, now, c.trustLevel)
 		if err != nil {
@@ -540,6 +559,11 @@ func (c *Client) bisection(
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
+	c.logger.Debug("Verify newHeader against lastHeader",
+		"lastHeight", lastHeader.Height,
+		"lastHash", lastHeader.Hash(),
+		"newHeight", newHeader.Height,
+		"newHash", newHeader.Hash())
 	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 	switch err.(type) {
 	case nil:
