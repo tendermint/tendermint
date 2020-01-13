@@ -39,10 +39,13 @@ func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
 	}
 }
 
+// ChainID returns a chainID this provider was configured with.
 func (p *http) ChainID() string {
 	return p.chainID
 }
 
+// SignedHeader fetches a SignedHeader at the given height and checks the
+// chainID matches.
 func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 	h, err := validateHeight(height)
 	if err != nil {
@@ -62,6 +65,8 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 	return &commit.SignedHeader, nil
 }
 
+// ValidatorSet fetches a ValidatorSet at the given height. Multiple HTTP
+// requests might be required if the validator set size is over 100.
 func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	h, err := validateHeight(height)
 	if err != nil {

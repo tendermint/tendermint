@@ -17,6 +17,11 @@ information in `Block#LastCommit`. `Commit` now mainly consists of a signature
 and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
+`lite2` package has been added to solve `lite` issues and introduce weak
+subjectivity interface
+https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md).
+`lite` package is now deprecated and will be removed in v0.34 release.
+
 Special thanks to external contributors on this release:
 @erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev, @princesinha19, @Stumble
 
@@ -60,6 +65,9 @@ program](https://hackerone.com/tendermint).
     - You will have to generate a new config for your Tendermint node(s)
   - [genesis] \#2565 Add `consensus_params.evidence.max_age_duration`. Rename
     `consensus_params.evidence.max_age` to `max_age_num_blocks`.
+  - [cli] \#1771 `tendermint lite` now uses new light client package (`lite2`)
+    and has 3 more flags: `--trusting-period`, `--trusted-height` and
+    `--trusted-hash`
 
 - Apps
 
@@ -124,6 +132,7 @@ program](https://hackerone.com/tendermint).
   - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
   as gauges in prometheus for validator specific metrics
 - [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
+- [lite2] \#1771 Light client with weak subjectivity
 
 ### IMPROVEMENTS:
 

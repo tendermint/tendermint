@@ -1,4 +1,6 @@
 /*
+Package lite is deprecated and will be removed in v0.34!
+
 Package lite allows you to securely validate headers without a full node.
 
 This library pulls together all the crypto and algorithms, so given a

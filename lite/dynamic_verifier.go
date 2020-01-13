@@ -185,7 +185,7 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 
 // verifyAndSave will verify if this is a valid source full commit given the
 // best match trusted full commit, and if good, persist to dv.trusted.
-// Returns ErrTooMuchChange when >2/3 of trustedFC did not sign sourceFC.
+// Returns ErrNotEnoughVotingPowerSigned when >2/3 of trustedFC did not sign sourceFC.
 // Panics if trustedFC.Height() >= sourceFC.Height().
 func (dv *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 	if trustedFC.Height() >= sourceFC.Height() {
@@ -247,8 +247,8 @@ FOR_LOOP:
 			return sourceFC, nil
 		}
 
-		// Handle special case when err is ErrTooMuchChange.
-		if types.IsErrTooMuchChange(err) {
+		// Handle special case when err is ErrNotEnoughVotingPowerSigned.
+		if types.IsErrNotEnoughVotingPowerSigned(err) {
 			// Divide and conquer.
 			start, end := trustedFC.Height(), sourceFC.Height()
 			if !(start < end) {
