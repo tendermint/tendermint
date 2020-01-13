@@ -73,10 +73,10 @@ func LoadState(db dbm.DB) State {
 
 func loadState(db dbm.DB, key []byte) (state State) {
 	buf, err := db.Get(key)
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
-		if err != nil {
-			panic(err)
-		}
 		return state
 	}
 
@@ -306,10 +306,10 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 
 func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	buf, err := db.Get(calcConsensusParamsKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
-		if err != nil {
-			panic(err)
-		}
 		return nil
 	}
 

@@ -113,7 +113,7 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 		append(signedHeaderKey(chainID, maxHeight), byte(0x00)),
 	)
 	if err != nil {
-		return FullCommit{}, err
+		panic(err)
 	}
 	defer itr.Close()
 
@@ -205,7 +205,7 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 		append(signedHeaderKey(chainID, 1<<63-1), byte(0x00)),
 	)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	defer itr.Close()
 
