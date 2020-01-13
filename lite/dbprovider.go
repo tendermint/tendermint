@@ -157,7 +157,7 @@ func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *ty
 	if err != nil {
 		return nil, err
 	}
-	if vsBz == nil {
+	if len(vsBz) == 0 {
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}

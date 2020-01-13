@@ -77,7 +77,7 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	if err != nil {
 		panic(err)
 	}
-	if bz == nil {
+	if len(bz) == 0 {
 		return nil, nil
 	}
 
@@ -96,7 +96,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	if err != nil {
 		panic(err)
 	}
-	if bz == nil {
+	if len(bz) == 0 {
 		return nil, nil
 	}
 

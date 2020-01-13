@@ -122,7 +122,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	if err != nil {
 		panic(err)
 	}
-	if bz == nil {
+	if len(bz) == 0 {
 		return nil
 	}
 	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
