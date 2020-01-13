@@ -47,14 +47,16 @@ type mode byte
 const (
 	sequential mode = iota + 1
 	skipping
+
+	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
 )
 
 // Option sets a parameter for the light client.
 type Option func(*Client)
 
 // SequentialVerification option configures the light client to sequentially
-// check the headers. Note this is much slower than SkippingVerification,
-// albeit more secure.
+// check the headers (every header, in ascending height order). Note this is
+// much slower than SkippingVerification, albeit more secure.
 func SequentialVerification() Option {
 	return func(c *Client) {
 		c.verificationMode = sequential
@@ -68,7 +70,7 @@ func SequentialVerification() Option {
 //
 // trustLevel - fraction of the old validator set (in terms of voting power),
 // which must sign the new header in order for us to trust it. NOTE this only
-// applies to non-adjusted headers. For adjusted headers, sequential
+// applies to non-adjacent headers. For adjacent headers, sequential
 // verification is used.
 func SkippingVerification(trustLevel tmmath.Fraction) Option {
 	if err := ValidateTrustLevel(trustLevel); err != nil {
@@ -85,6 +87,25 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 func AlternativeSources(providers []provider.Provider) Option {
 	return func(c *Client) {
 		c.alternatives = providers
+	}
+}
+
+// RemoveNoLongerTrustedHeadersPeriod option can be used to define how often
+// the routine, which cleans up no longer trusted headers (outside of trusting
+// period), is run. Default: once a day. When set to zero, the routine won't be
+// started.
+func RemoveNoLongerTrustedHeadersPeriod(d time.Duration) Option {
+	return func(c *Client) {
+		c.removeNoLongerTrustedHeadersPeriod = d
+	}
+}
+
+// ConfirmationFunction option can be used to prompt to confirm an action. For
+// example, remove newer headers if the light client is being reset with an
+// older header. No confirmation is required by default!
+func ConfirmationFunction(fn func(action string) bool) Option {
+	return func(c *Client) {
+		c.confirmationFn = fn
 	}
 }
 
@@ -113,6 +134,12 @@ type Client struct {
 	// Highest next validator set from the store (height=H+1).
 	trustedNextVals *types.ValidatorSet
 
+	removeNoLongerTrustedHeadersPeriod time.Duration
+
+	confirmationFn func(action string) bool
+
+	quit chan struct{}
+
 	logger log.Logger
 }
 
@@ -129,26 +156,136 @@ func NewClient(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:          chainID,
-		trustingPeriod:   trustOptions.Period,
-		verificationMode: skipping,
-		trustLevel:       DefaultTrustLevel,
-		primary:          primary,
-		trustedStore:     trustedStore,
-		logger:           log.NewNopLogger(),
+		chainID:                            chainID,
+		trustingPeriod:                     trustOptions.Period,
+		verificationMode:                   skipping,
+		trustLevel:                         DefaultTrustLevel,
+		primary:                            primary,
+		trustedStore:                       trustedStore,
+		removeNoLongerTrustedHeadersPeriod: defaultRemoveNoLongerTrustedHeadersPeriod,
+		confirmationFn:                     func(action string) bool { return true },
+		quit:                               make(chan struct{}),
+		logger:                             log.NewNopLogger(),
 	}
 
 	for _, o := range options {
 		o(c)
 	}
 
-	if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
 		return nil, err
+	}
+	if c.trustedHeader != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		go c.removeNoLongerTrustedHeadersRoutine()
 	}
 
 	return c, nil
 }
 
+// Load trustedHeader and trustedNextVals from trustedStore.
+func (c *Client) restoreTrustedHeaderAndNextVals() error {
+	lastHeight, err := c.trustedStore.LastSignedHeaderHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get last trusted header height")
+	}
+
+	if lastHeight > 0 {
+		trustedHeader, err := c.trustedStore.SignedHeader(lastHeight)
+		if err != nil {
+			return errors.Wrap(err, "can't get last trusted header")
+		}
+
+		trustedNextVals, err := c.trustedStore.ValidatorSet(lastHeight + 1)
+		if err != nil {
+			return errors.Wrap(err, "can't get last trusted next validators")
+		}
+
+		c.trustedHeader = trustedHeader
+		c.trustedNextVals = trustedNextVals
+	}
+
+	return nil
+}
+
+// if options.Height:
+//
+//     1) ahead of trustedHeader.Height => fetch header (same height as
+//     trustedHeader) from primary provider and check it's hash matches the
+//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     before)
+//
+//     2) equals trustedHeader.Height => check options.Hash matches the
+//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     before)
+//
+//     3) behind trustedHeader.Height => remove all the headers between
+//     options.Height and trustedHeader.Height, update trustedHeader, then
+//     check options.Hash matches the trustedHeader's hash (if not, remove
+//     trustedHeader and all the headers before)
+//
+// The intuition here is the user is always right. I.e. if she decides to reset
+// the light client with an older header, there must be a reason for it.
+func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
+	var primaryHash []byte
+	switch {
+	case options.Height > c.trustedHeader.Height:
+		h, err := c.primary.SignedHeader(c.trustedHeader.Height)
+		if err != nil {
+			return err
+		}
+		primaryHash = h.Hash()
+	case options.Height == c.trustedHeader.Height:
+		primaryHash = options.Hash
+	case options.Height < c.trustedHeader.Height:
+		action := fmt.Sprintf(
+			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
+			options.Height, options.Hash,
+			c.trustedHeader.Height, c.trustedHeader.Hash())
+		if c.confirmationFn(action) {
+			// remove all the headers ( options.Height, trustedHeader.Height ]
+			c.cleanup(options.Height + 1)
+			// set c.trustedHeader to one at options.Height
+			c.restoreTrustedHeaderAndNextVals()
+		} else {
+			return errors.New("rollback aborted")
+		}
+
+		primaryHash = options.Hash
+	}
+
+	if !bytes.Equal(primaryHash, c.trustedHeader.Hash()) {
+		c.logger.Info("Prev. trusted header's hash %X doesn't match hash %X from primary provider",
+			c.trustedHeader.Hash(), primaryHash)
+
+		action := fmt.Sprintf(
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored headers?",
+			c.trustedHeader.Hash(), primaryHash)
+		if c.confirmationFn(action) {
+			err := c.Cleanup()
+			if err != nil {
+				return errors.Wrap(err, "failed to cleanup")
+			}
+		} else {
+			return errors.New("refused to remove the stored headers despite hashes mismatch")
+		}
+	}
+
+	return nil
+}
+
+// Fetch trustedHeader and trustedNextVals from primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
 	h, err := c.primary.SignedHeader(options.Height)
@@ -158,21 +295,44 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// NOTE: Verify func will check if it's expired or not.
 	if err := h.ValidateBasic(c.chainID); err != nil {
-		return errors.Wrap(err, "ValidateBasic failed")
+		return err
 	}
 
 	if !bytes.Equal(h.Hash(), options.Hash) {
 		return errors.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
 	}
 
-	// 2) Fetch and verify the next vals.
-	vals, err := c.primary.ValidatorSet(options.Height + 1)
+	// 2) Fetch and verify the vals.
+	vals, err := c.primary.ValidatorSet(options.Height)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(h.ValidatorsHash, vals.Hash()) {
+		return errors.Errorf("expected header's validators (%X) to match those that were supplied (%X)",
+			h.ValidatorsHash,
+			vals.Hash(),
+		)
+	}
+	// Ensure that +2/3 of validators signed correctly.
+	err = vals.VerifyCommit(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
+	if err != nil {
+		return errors.Wrap(err, "invalid commit")
+	}
+
+	// 3) Fetch and verify the next vals (verification happens in
+	// updateTrustedHeaderAndVals).
+	nextVals, err := c.primary.ValidatorSet(options.Height + 1)
 	if err != nil {
 		return err
 	}
 
-	// 3) Persist both of them and continue.
-	return c.updateTrustedHeaderAndVals(h, vals)
+	// 4) Persist both of them and continue.
+	return c.updateTrustedHeaderAndVals(h, nextVals)
+}
+
+// Stop stops the light client.
+func (c *Client) Stop() {
+	close(c.quit)
 }
 
 // SetLogger sets a logger.
@@ -182,15 +342,17 @@ func (c *Client) SetLogger(l log.Logger) {
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest)
 // or nil if no such header exist.
-// TODO: mention how many headers will be kept by the light client.
+//
+// Headers, which can't be trusted anymore, are removed once a day (can be
+// changed with RemoveNoLongerTrustedHeadersPeriod option).
 // .
 // height must be >= 0.
 //
 // It returns an error if:
-//		- the header expired (ErrOldHeaderExpired). In that case, update your
-//		client to more recent height;
-//		- there are some issues with the trusted store, although that should not
-//		happen normally.
+//  - header expired, therefore can't be trusted (ErrOldHeaderExpired);
+//  - there are some issues with the trusted store, although that should not
+//  happen normally;
+//  - negative height is passed.
 func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height < 0 {
 		return nil, errors.New("negative height")
@@ -208,22 +370,25 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	if err != nil {
 		return nil, err
 	}
+	if h == nil {
+		return nil, nil
+	}
 
 	// Ensure header can still be trusted.
-	expirationTime := h.Time.Add(c.trustingPeriod)
-	if !expirationTime.After(now) {
-		return nil, ErrOldHeaderExpired{expirationTime, now}
+	if HeaderExpired(h, c.trustingPeriod, now) {
+		return nil, ErrOldHeaderExpired{h.Time.Add(c.trustingPeriod), now}
 	}
 
 	return h, nil
 }
 
-// LastTrustedHeight returns a last trusted height.
+// LastTrustedHeight returns a last trusted height. -1 and nil are returned if
+// there are no trusted headers.
 func (c *Client) LastTrustedHeight() (int64, error) {
 	return c.trustedStore.LastSignedHeaderHeight()
 }
 
-// ChainID returns the chain ID.
+// ChainID returns the chain ID the light client was configured with.
 func (c *Client) ChainID() string {
 	return c.chainID
 }
@@ -232,18 +397,18 @@ func (c *Client) ChainID() string {
 // and calls VerifyHeader.
 //
 // If the trusted header is more recent than one here, an error is returned.
-func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
+func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if c.trustedHeader.Height >= height {
-		return errors.Errorf("height #%d is already trusted (last: #%d)", height, c.trustedHeader.Height)
+		return nil, errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
 	// Request the header and the vals.
 	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.VerifyHeader(newHeader, newVals, now)
+	return newHeader, c.VerifyHeader(newHeader, newVals, now)
 }
 
 // VerifyHeader verifies new header against the trusted state.
@@ -255,13 +420,13 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 // SkippingVerification(trustLevel): verifies that {trustLevel} of the trusted
 // validator set has signed the new header. If it's not the case and the
 // headers are not adjacent, bisection is performed and necessary (not all)
-// intermediate headers will be requested. See the specification for the
-// algorithm.
+// intermediate headers will be requested. See the specification for details.
+// https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
 //
 // If the trusted header is more recent than one here, an error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	if c.trustedHeader.Height >= newHeader.Height {
-		return errors.Errorf("height #%d is already trusted (last: #%d)", newHeader.Height, c.trustedHeader.Height)
+		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
 	if len(c.alternatives) > 0 {
@@ -291,6 +456,44 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
+// Cleanup removes all the data (headers and validator sets) stored.
+func (c *Client) Cleanup() error {
+	return c.cleanup(0)
+}
+
+// stopHeight=0 -> remove all data
+func (c *Client) cleanup(stopHeight int64) error {
+	// 1) Get the oldest height.
+	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get first trusted height")
+	}
+
+	// 2) Get the latest height.
+	latestHeight, err := c.trustedStore.LastSignedHeaderHeight()
+	if err != nil {
+		return errors.Wrap(err, "can't get last trusted height")
+	}
+
+	// 3) Remove all headers and validator sets.
+	if stopHeight == 0 {
+		stopHeight = oldestHeight
+	}
+	for height := stopHeight; height <= latestHeight; height++ {
+		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
+		if err != nil {
+			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
+			continue
+		}
+	}
+
+	c.trustedHeader = nil
+	c.trustedNextVals = nil
+
+	return nil
+}
+
+// see VerifyHeader
 func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	// 1) Verify any intermediate headers.
 	var (
@@ -329,6 +532,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 	return Verify(c.chainID, c.trustedHeader, c.trustedNextVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 }
 
+// see VerifyHeader
 func (c *Client) bisection(
 	lastHeader *types.SignedHeader,
 	lastVals *types.ValidatorSet,
@@ -340,15 +544,10 @@ func (c *Client) bisection(
 	switch err.(type) {
 	case nil:
 		return nil
-	case types.ErrTooMuchChange:
+	case ErrNewValSetCantBeTrusted:
 		// continue bisection
 	default:
-		return errors.Wrapf(err, "failed to verify the header #%d ", newHeader.Height)
-	}
-
-	if newHeader.Height == c.trustedHeader.Height+1 {
-		// TODO: submit evidence here
-		return errors.Errorf("adjacent headers (#%d and #%d) that are not matching", lastHeader.Height, newHeader.Height)
+		return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
 	}
 
 	pivot := (c.trustedHeader.Height + newHeader.Header.Height) / 2
@@ -392,22 +591,23 @@ func (c *Client) bisection(
 	return nil
 }
 
-func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
-	if !bytes.Equal(h.NextValidatorsHash, vals.Hash()) {
-		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
+// persist header and next validators to trustedStore.
+func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *types.ValidatorSet) error {
+	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
+		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, nextVals.Hash())
 	}
 
-	if err := c.trustedStore.SaveSignedHeader(h); err != nil {
+	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(h, nextVals); err != nil {
 		return errors.Wrap(err, "failed to save trusted header")
 	}
-	if err := c.trustedStore.SaveValidatorSet(vals, h.Height+1); err != nil {
-		return errors.Wrap(err, "failed to save trusted vals")
-	}
+
 	c.trustedHeader = h
-	c.trustedNextVals = vals
+	c.trustedNextVals = nextVals
+
 	return nil
 }
 
+// fetch header and validators for the given height from primary provider.
 func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
 	h, err := c.primary.SignedHeader(height)
 	if err != nil {
@@ -420,6 +620,7 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 	return h, vals, nil
 }
 
+// compare header with one from a random alternative provider.
 func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) error {
 	// 1. Pick an alternative provider.
 	p := c.alternatives[tmrand.Intn(len(c.alternatives))]
@@ -441,4 +642,62 @@ func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) er
 	}
 
 	return nil
+}
+
+func (c *Client) removeNoLongerTrustedHeadersRoutine() {
+	ticker := time.NewTicker(c.removeNoLongerTrustedHeadersPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.RemoveNoLongerTrustedHeaders(time.Now())
+		case <-c.quit:
+			return
+		}
+	}
+}
+
+// RemoveNoLongerTrustedHeaders removes no longer trusted headers (due to
+// expiration).
+//
+// Exposed for testing.
+func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
+	// 1) Get the oldest height.
+	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	if err != nil {
+		c.logger.Error("can't get first trusted height", "err", err)
+		return
+	}
+
+	// 2) Get the latest height.
+	latestHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		c.logger.Error("can't get last trusted height", "err", err)
+		return
+	}
+
+	// 3) Remove all headers that are outside of the trusting period.
+	for height := oldestHeight; height <= latestHeight; height++ {
+		h, err := c.trustedStore.SignedHeader(height)
+		if err != nil {
+			c.logger.Error("can't get a trusted header", "err", err, "height", height)
+			continue
+		}
+		if h == nil {
+			c.logger.Debug("attempted to remove non-existing header", "height", height)
+			continue
+		}
+
+		// Stop if the header is within the trusting period.
+		if !HeaderExpired(h, c.trustingPeriod, now) {
+			break
+		}
+
+		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
+		if err != nil {
+			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
+			continue
+		}
+	}
 }

@@ -4,15 +4,17 @@ import "github.com/tendermint/tendermint/types"
 
 // Store is anything that can persistenly store headers.
 type Store interface {
-	// SaveSignedHeader saves a SignedHeader.
+	// SaveSignedHeaderAndNextValidatorSet saves a SignedHeader (h: sh.Height)
+	// and a ValidatorSet (h: sh.Height+1).
 	//
 	// height must be > 0.
-	SaveSignedHeader(sh *types.SignedHeader) error
+	SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error
 
-	// SaveValidatorSet saves a ValidatorSet.
+	// DeleteSignedHeaderAndNextValidatorSet deletes SignedHeader (h: height) and
+	// ValidatorSet (h: height+1).
 	//
 	// height must be > 0.
-	SaveValidatorSet(valSet *types.ValidatorSet, height int64) error
+	DeleteSignedHeaderAndNextValidatorSet(height int64) error
 
 	// SignedHeader returns the SignedHeader that corresponds to the given
 	// height.
@@ -31,8 +33,13 @@ type Store interface {
 	// is returned.
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
 
-	// LastSignedHeaderHeight returns the last SignedHeader height.
+	// LastSignedHeaderHeight returns the last (newest) SignedHeader height.
 	//
-	// If the store is empty, an error is returned.
+	// If the store is empty, -1 and nil error are returned.
 	LastSignedHeaderHeight() (int64, error)
+
+	// FirstSignedHeaderHeight returns the first (oldest) SignedHeader height.
+	//
+	// If the store is empty, -1 and nil error are returned.
+	FirstSignedHeaderHeight() (int64, error)
 }

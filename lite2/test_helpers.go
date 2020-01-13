@@ -5,7 +5,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -29,34 +28,34 @@ func genPrivKeys(n int) privKeys {
 	return res
 }
 
-// Change replaces the key at index i.
-func (pkz privKeys) Change(i int) privKeys {
-	res := make(privKeys, len(pkz))
-	copy(res, pkz)
-	res[i] = ed25519.GenPrivKey()
-	return res
-}
+// // Change replaces the key at index i.
+// func (pkz privKeys) Change(i int) privKeys {
+// 	res := make(privKeys, len(pkz))
+// 	copy(res, pkz)
+// 	res[i] = ed25519.GenPrivKey()
+// 	return res
+// }
 
-// Extend adds n more keys (to remove, just take a slice).
-func (pkz privKeys) Extend(n int) privKeys {
-	extra := genPrivKeys(n)
-	return append(pkz, extra...)
-}
+// // Extend adds n more keys (to remove, just take a slice).
+// func (pkz privKeys) Extend(n int) privKeys {
+// 	extra := genPrivKeys(n)
+// 	return append(pkz, extra...)
+// }
 
-// GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
-func GenSecpPrivKeys(n int) privKeys {
-	res := make(privKeys, n)
-	for i := range res {
-		res[i] = secp256k1.GenPrivKey()
-	}
-	return res
-}
+// // GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
+// func GenSecpPrivKeys(n int) privKeys {
+// 	res := make(privKeys, n)
+// 	for i := range res {
+// 		res[i] = secp256k1.GenPrivKey()
+// 	}
+// 	return res
+// }
 
-// ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
-func (pkz privKeys) ExtendSecp(n int) privKeys {
-	extra := GenSecpPrivKeys(n)
-	return append(pkz, extra...)
-}
+// // ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
+// func (pkz privKeys) ExtendSecp(n int) privKeys {
+// 	extra := GenSecpPrivKeys(n)
+// 	return append(pkz, extra...)
+// }
 
 // ToValidators produces a valset from the set of keys.
 // The first key has weight `init` and it increases by `inc` every step
