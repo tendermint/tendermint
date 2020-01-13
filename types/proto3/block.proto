@@ -1,51 +1,51 @@
 syntax = "proto3";
 
-package tendermint.types.proto3;
+package types.proto3;
 option go_package = "github.com/tendermint/tendermint/types/proto3";
 
 // PartsetHeader
 message PartSetHeader {
-  int32 Total = 1;
-  bytes Hash = 2;
+  int32 total = 1;
+  bytes hash = 2;
 }
 
 // BlockID
 message BlockID {
-  bytes Hash = 1;
-  PartSetHeader PartsHeader = 2;
+  bytes hash = 1;
+  PartSetHeader parts_header = 2;
 }
 
 // Block Header
 message Header {
   // basic block info
-  Version Version = 1;
-  string ChainID = 2;
-  int64 Height = 3;
-  Timestamp Time = 4;
+  Version version = 1;
+  string chain_id = 2;
+  int64 height = 3;
+  Timestamp time = 4;
 
   // prev block info
-  BlockID LastBlockID = 5;
+  BlockID last_block_ID = 5;
 
   // hashes of block data
-  bytes LastCommitHash = 6; // commit from validators from the last block
-  bytes DataHash = 7; // transactions
+  bytes last_commit_hash = 6; // commit from validators from the last block
+  bytes data_hash = 7; // transactions
 
   // hashes from the app output from the prev block
-  bytes ValidatorsHash = 8; // validators for the current block
-  bytes NextValidatorsHash = 9; // validators for the next block
-  bytes ConsensusHash = 10; // consensus params for current block
-  bytes AppHash = 11; // state after txs from the previous block
-  bytes LastResultsHash = 12; // root hash of all results from the txs from the previous block
+  bytes validators_hash = 8; // validators for the current block
+  bytes next_validators_hash = 9; // validators for the next block
+  bytes consensus_hash = 10; // consensus params for current block
+  bytes app_hash = 11; // state after txs from the previous block
+  bytes last_results_hash = 12; // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes EvidenceHash = 13; // evidence included in the block
-  bytes ProposerAddress = 14; // original proposer of the block
+  bytes evidence_hash = 13; // evidence included in the block
+  bytes proposer_address = 14; // original proposer of the block
 }
 
 // Block & app version
 message Version {
-  uint64 Block = 1;
-  uint64 App = 2;
+  uint64 block = 1;
+  uint64 app = 2;
 }
 
 // Timestamp wraps how amino encodes time.

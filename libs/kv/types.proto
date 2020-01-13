@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.libs.kv;
+package libs.kv;
 option go_package = "github.com/tendermint/tendermint/libs/kv";
 
 import "vendor/github.com/gogo/protobuf/gogoproto/gogo.proto";
