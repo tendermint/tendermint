@@ -64,7 +64,7 @@ We would like to suggest a simple Tendermint mode abstraction with a double sign
     - When the node is validator ( with privValidator )
     - When `cs.config.DoubleSignCheckHeight > 0`
 - How to check
-    1. When a validator is transformed from syncing status to fully synced status, the state machine check recent N blocks to find out whether there exists consensus votes using the validator's consensus key
+    1. When a validator is transformed from syncing status to fully synced status, the state machine check recent N blocks (`latest_height - double_sign_check_height`) to find out whether there exists consensus votes using the validator's consensus key
     2. If there exists votes from the validator's consensus key, exit state machine program
 - Configuration
     - We would like to suggest by introducing `double_sign_check_height` parameter in `config.toml` and cli, how many blocks state machine looks back to check votes
