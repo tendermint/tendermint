@@ -125,10 +125,10 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 func (store *Store) GetInfo(height int64, hash []byte) Info {
 	key := keyLookupFromHeightAndHash(height, hash)
 	val, err := store.db.Get(key)
+	if err != nil {
+		panic(err)
+	}
 	if len(val) == 0 {
-		if err != nil {
-			panic(err)
-		}
 		return Info{}
 	}
 	var ei Info

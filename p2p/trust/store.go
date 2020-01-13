@@ -149,11 +149,10 @@ func (tms *MetricStore) size() int {
 func (tms *MetricStore) loadFromDB() bool {
 	// Obtain the history data we have so far
 	bytes, err := tms.db.Get(trustMetricKey)
-	// if this errors it will return the bytes as nil
+	if err != nil {
+		panic(err)
+	}
 	if bytes == nil {
-		if err != nil {
-			panic(err)
-		}
 		return false
 	}
 

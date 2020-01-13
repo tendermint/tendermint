@@ -151,10 +151,10 @@ func (arz *ABCIResponses) ResultsHash() []byte {
 // s.Save(). It can also be used to produce Merkle proofs of the result of txs.
 func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	buf, err := db.Get(calcABCIResponsesKey(height))
+	if err != nil {
+		return nil, err
+	}
 	if len(buf) == 0 {
-		if err != nil {
-			return nil, err
-		}
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
@@ -226,10 +226,10 @@ func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 // CONTRACT: Returned ValidatorsInfo can be mutated.
 func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	buf, err := db.Get(calcValidatorsKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
-		if err != nil {
-			panic(err)
-		}
 		return nil
 	}
 

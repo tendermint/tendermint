@@ -1159,10 +1159,10 @@ func LoadStateFromDBOrGenesisDocProvider(
 // panics if failed to unmarshal bytes
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	b, err := db.Get(genesisDocKey)
+	if err != nil {
+		panic(err)
+	}
 	if len(b) == 0 {
-		if err != nil {
-			panic(err)
-		}
 		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
