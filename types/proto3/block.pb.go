@@ -20,6 +20,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// PartsetHeader
 type PartSetHeader struct {
 	Total                int32    `protobuf:"varint,1,opt,name=Total,proto3" json:"Total,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=Hash,proto3" json:"Hash,omitempty"`
@@ -66,6 +67,7 @@ func (m *PartSetHeader) GetHash() []byte {
 	return nil
 }
 
+// BlockID
 type BlockID struct {
 	Hash                 []byte         `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
 	PartsHeader          *PartSetHeader `protobuf:"bytes,2,opt,name=PartsHeader,proto3" json:"PartsHeader,omitempty"`
@@ -112,6 +114,7 @@ func (m *BlockID) GetPartsHeader() *PartSetHeader {
 	return nil
 }
 
+// Block Header
 type Header struct {
 	// basic block info
 	Version *Version   `protobuf:"bytes,1,opt,name=Version,proto3" json:"Version,omitempty"`
@@ -259,6 +262,7 @@ func (m *Header) GetProposerAddress() []byte {
 	return nil
 }
 
+// Block & app version
 type Version struct {
 	Block                uint64   `protobuf:"varint,1,opt,name=Block,proto3" json:"Block,omitempty"`
 	App                  uint64   `protobuf:"varint,2,opt,name=App,proto3" json:"App,omitempty"`

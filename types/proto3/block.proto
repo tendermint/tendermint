@@ -3,16 +3,19 @@ syntax = "proto3";
 package tendermint.types.proto3;
 option  go_package = "github.com/tendermint/tendermint/types/proto3";
 
+// PartsetHeader
 message PartSetHeader {
   int32 Total = 1;
   bytes Hash  = 2;
 }
 
+// BlockID
 message BlockID {
   bytes         Hash        = 1;
   PartSetHeader PartsHeader = 2;
 }
 
+// Block Header
 message Header {
   // basic block info
   Version   Version = 1;
@@ -39,6 +42,7 @@ message Header {
   bytes ProposerAddress = 14;  // original proposer of the block
 }
 
+// Block & app version
 message Version {
   uint64 Block = 1;
   uint64 App   = 2;
