@@ -125,13 +125,13 @@ func (app *Application) Commit() types.ResponseCommit {
 func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+		if err != nil {
+			panic(err)
+		}
 		if value == nil {
 			resQuery.Log = "does not exist"
 		} else {
 			resQuery.Log = "exists"
-		}
-		if err != nil {
-			panic(err)
 		}
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
@@ -142,13 +142,13 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 
 	resQuery.Key = reqQuery.Data
 	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+	if err != nil {
+		panic(err)
+	}
 	if value == nil {
 		resQuery.Log = "does not exist"
 	} else {
 		resQuery.Log = "exists"
-	}
-	if err != nil {
-		panic(err)
 	}
 	resQuery.Value = value
 
