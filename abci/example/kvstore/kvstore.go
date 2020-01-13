@@ -34,7 +34,7 @@ func loadState(db dbm.DB) State {
 	if err != nil {
 		panic(err)
 	}
-	if stateBytes == nil {
+	if len(stateBytes) == 0 {
 		return state
 	}
 	err = json.Unmarshal(stateBytes, &state)
