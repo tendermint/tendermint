@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.32.9
+
+_January, 9, 2020_
+
+Special thanks to external contributors on this release: @greg-szabo, @gregzaitsev, @yenkhoon
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+
+### FEATURES:
+
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
+
+- [metrics] [\#4294](https://github.com/tendermint/tendermint/pull/4294) Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+    as gauges in prometheus for validator specific metrics
+
+
+### BUG FIXES:
+
+- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
+
 ## v0.32.8
 
 *November 19, 2019*
