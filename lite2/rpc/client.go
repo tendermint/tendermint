@@ -90,14 +90,10 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 	}
 
 	// Update the light client if we're behind.
-	if err := c.updateLiteClientIfNeededTo(resp.Height + 1); err != nil {
-		return nil, err
-	}
-
-	// AppHash for height H is in header H+1.
-	h, err := c.lc.TrustedHeader(resp.Height+1, time.Now())
+	// NOTE: AppHash for height H is in header H+1.
+	h, err := c.updateLiteClientIfNeededTo(resp.Height + 1)
 	if err != nil {
-		return nil, errors.Wrapf(err, "TrustedHeader(%d)", resp.Height+1)
+		return nil, err
 	}
 
 	// Validate the value proof against the trusted header.
@@ -188,7 +184,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 	// Update the light client if we're behind.
 	if len(res.BlockMetas) > 0 {
 		lastHeight := res.BlockMetas[len(res.BlockMetas)-1].Header.Height
-		if err := c.updateLiteClientIfNeededTo(lastHeight); err != nil {
+		if _, err := c.updateLiteClientIfNeededTo(lastHeight); err != nil {
 			return nil, err
 		}
 	}
@@ -232,15 +228,12 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 
 	// Update the light client if we're behind.
-	if err := c.updateLiteClientIfNeededTo(res.Block.Height); err != nil {
+	h, err := c.updateLiteClientIfNeededTo(res.Block.Height)
+	if err != nil {
 		return nil, err
 	}
 
 	// Verify block.
-	h, err := c.lc.TrustedHeader(res.Block.Height, time.Now())
-	if err != nil {
-		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Block.Height)
-	}
 	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
 		return nil, errors.Errorf("Block#Header %X does not match with trusted header %X",
 			bH, tH)
@@ -265,15 +258,12 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	}
 
 	// Update the light client if we're behind.
-	if err := c.updateLiteClientIfNeededTo(res.Height); err != nil {
+	h, err := c.updateLiteClientIfNeededTo(res.Height)
+	if err != nil {
 		return nil, err
 	}
 
 	// Verify commit.
-	h, err := c.lc.TrustedHeader(res.Height, time.Now())
-	if err != nil {
-		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
-	}
 	if rH, tH := res.Hash(), h.Hash(); !bytes.Equal(rH, tH) {
 		return nil, errors.Errorf("header %X does not match with trusted header %X",
 			rH, tH)
@@ -296,15 +286,12 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	// Update the light client if we're behind.
-	if err := c.updateLiteClientIfNeededTo(res.Height); err != nil {
+	h, err := c.updateLiteClientIfNeededTo(res.Height)
+	if err != nil {
 		return nil, err
 	}
 
 	// Validate the proof.
-	h, err := c.lc.TrustedHeader(res.Height, time.Now())
-	if err != nil {
-		return res, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
-	}
 	return res, res.Proof.Validate(h.DataHash)
 }
 
@@ -333,17 +320,21 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.next.UnsubscribeAll(ctx, subscriber)
 }
 
-func (c *Client) updateLiteClientIfNeededTo(height int64) error {
+func (c *Client) updateLiteClientIfNeededTo(height int64) (*types.SignedHeader, error) {
 	lastTrustedHeight, err := c.lc.LastTrustedHeight()
 	if err != nil {
-		return errors.Wrap(err, "LastTrustedHeight")
+		return nil, errors.Wrap(err, "LastTrustedHeight")
 	}
+
 	if lastTrustedHeight < height {
-		if err := c.lc.VerifyHeaderAtHeight(height, time.Now()); err != nil {
-			return errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", height)
-		}
+		return c.lc.VerifyHeaderAtHeight(height, time.Now())
 	}
-	return nil
+
+	h, err := c.lc.TrustedHeader(height, time.Now())
+	if err != nil {
+		return nil, errors.Wrapf(err, "TrustedHeader(#%d)", height)
+	}
+	return h, nil
 }
 
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {

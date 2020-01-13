@@ -17,7 +17,7 @@ import (
 
 const (
 	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-	ABCIEvidenceTypeMockGood      = "mock/good"
+	ABCIEvidenceTypeMock          = "mock/evidence"
 )
 
 const (
@@ -136,7 +136,8 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
-			MaxAge: params.Evidence.MaxAge,
+			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
+			MaxAgeDuration:  params.Evidence.MaxAgeDuration,
 		},
 		Validator: &abci.ValidatorParams{
 			PubKeyTypes: params.Validator.PubKeyTypes,
@@ -159,9 +160,9 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case MockGoodEvidence:
+	case MockEvidence:
 		// XXX: not great to have test types in production paths ...
-		evType = ABCIEvidenceTypeMockGood
+		evType = ABCIEvidenceTypeMock
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
