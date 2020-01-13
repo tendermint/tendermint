@@ -95,7 +95,7 @@ func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (res
 	case "/val":
 		key := []byte("val:" + string(reqQuery.Data))
 		value, err := app.app.state.db.Get(key)
-		if value == nil && err != nil {
+		if err != nil {
 			panic(err)
 		}
 
@@ -216,7 +216,10 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 
 	if v.Power == 0 {
 		// remove validator
-		hasKey, _ := app.app.state.db.Has(key)
+		hasKey, err := app.app.state.db.Has(key)
+		if err != nil {
+			panic(err)
+		}
 		if !hasKey {
 			pubStr := base64.StdEncoding.EncodeToString(v.PubKey.Data)
 			return types.ResponseDeliverTx{

@@ -308,7 +308,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	buf, err := db.Get(calcConsensusParamsKey(height))
 	if len(buf) == 0 {
 		if err != nil {
-			return nil
+			panic(err)
 		}
 		return nil
 	}
