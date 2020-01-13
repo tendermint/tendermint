@@ -1,7 +1,7 @@
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-INCLUDE = -I=${GOPATH}/src/github.com/tendermint/tendermint -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
+INCLUDE = -I=.
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
@@ -34,6 +34,16 @@ install_c:
 ### Protobuf
 
 protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
+
+proto-gen:
+	@go mod vendor
+	@sh scripts/protocgen.sh
+
+proto-lint:
+	@buf check lint
+
+proto-check-breaking:
+	@buf check breaking --against-input '.git#branch=master'
 
 %.pb.go: %.proto
 	## If you get the following error,
