@@ -436,7 +436,9 @@ This should build the binary.
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
-guide](https://docs.tendermint.com/master/introduction/install.html).
+guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+installing from source, don't forget to checkout the latest release (`git
+checkout vX.Y.Z`).
 
 ```sh
 $ rm -rf /tmp/example
