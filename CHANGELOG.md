@@ -29,18 +29,12 @@ subjectivity interface
 https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md).
 `lite` package is now deprecated and will be removed in v0.34 release.
 
-Special thanks to external contributors on this release:
-@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev, @princesinha19, @Stumble
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
 
-  - [rpc] \#3471 Paginate `/validators` response (default: 30 vals per page)
-  - [rpc] \#3188 Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
+  - [rpc] [\#3471](https://github.com/tendermint/tendermint/issues/3471) Paginate `/validators` response (default: 30 vals per page)
+  - [rpc] [\#3188](https://github.com/tendermint/tendermint/issues/3188) Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
   - [rpc] `/block_results` response format updated (see RPC docs for details)
     ```
     {
@@ -68,11 +62,11 @@ program](https://hackerone.com/tendermint).
     - ID is unique for each request;
     - Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
 
-  - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
+  - [config] [\#4046](https://github.com/tendermint/tendermint/issues/4046) Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
     - You will have to generate a new config for your Tendermint node(s)
-  - [genesis] \#2565 Add `consensus_params.evidence.max_age_duration`. Rename
+  - [genesis] [\#2565](https://github.com/tendermint/tendermint/issues/2565) Add `consensus_params.evidence.max_age_duration`. Rename
     `consensus_params.evidence.max_age` to `max_age_num_blocks`.
-  - [cli] \#1771 `tendermint lite` now uses new light client package (`lite2`)
+  - [cli] [\#1771](https://github.com/tendermint/tendermint/issues/1771) `tendermint lite` now uses new light client package (`lite2`)
     and has 3 more flags: `--trusting-period`, `--trusted-height` and
     `--trusted-hash`
 
@@ -82,35 +76,35 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
-  - [rpc] \#3953 Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
-  - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
-  - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
-  - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
-  - [libs/common] \#3862 Remove `errors.go` from `libs/common`
-  - [libs/common] \#4230 Move `KV` out of common to its own pkg
-  - [libs/common] \#4230 Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
-  - [libs/common] \#4232 Move `Service` & `BaseService` from `libs/common` to `libs/service`
-  - [libs/common] \#4232 Move `common/nil.go` to `types/utils.go` & make the functions private
-  - [libs/common] \#4231 Move random functions from `libs/common` into pkg `rand`
-  - [libs/common] \#4237 Move byte functions from `libs/common` into pkg `bytes`
-  - [libs/common] \#4237 Move throttletimer functions from `libs/common` into pkg `timer`
-  - [libs/common] \#4237 Move tempfile functions from `libs/common` into pkg `tempfile`
-  - [libs/common] \#4240 Move os functions from `libs/common` into pkg `os`
-  - [libs/common] \#4240 Move net functions from `libs/common` into pkg `net`
-  - [libs/common] \#4240 Move mathematical functions and types out of `libs/common` to `math` pkg
-  - [libs/common] \#4240 Move string functions out of `libs/common` to `strings` pkg
-  - [libs/common] \#4240 Move async functions out of `libs/common` to `async` pkg
-  - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
-  - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
-  - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
-  - [types] \#2565 Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
+  - [rpc] [\#3953](https://github.com/tendermint/tendermint/issues/3953) Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
+  - [rpc/client] [\#3471](https://github.com/tendermint/tendermint/issues/3471) `Validators` now requires two more args: `page` and `perPage`
+  - [libs/common] [\#3262](https://github.com/tendermint/tendermint/issues/3262) Make error the last parameter of `Task` (@PSalant726)
+  - [cs/types] [\#3262](https://github.com/tendermint/tendermint/issues/3262) Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
+  - [libs/common] [\#3862](https://github.com/tendermint/tendermint/issues/3862) Remove `errors.go` from `libs/common`
+  - [libs/common] [\#4230](https://github.com/tendermint/tendermint/issues/4230) Move `KV` out of common to its own pkg
+  - [libs/common] [\#4230](https://github.com/tendermint/tendermint/issues/4230) Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
+  - [libs/common] [\#4232](https://github.com/tendermint/tendermint/issues/4232) Move `Service` & `BaseService` from `libs/common` to `libs/service`
+  - [libs/common] [\#4232](https://github.com/tendermint/tendermint/issues/4232) Move `common/nil.go` to `types/utils.go` & make the functions private
+  - [libs/common] [\#4231](https://github.com/tendermint/tendermint/issues/4231) Move random functions from `libs/common` into pkg `rand`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move byte functions from `libs/common` into pkg `bytes`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move throttletimer functions from `libs/common` into pkg `timer`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move tempfile functions from `libs/common` into pkg `tempfile`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move os functions from `libs/common` into pkg `os`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move net functions from `libs/common` into pkg `net`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move mathematical functions and types out of `libs/common` to `math` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move string functions out of `libs/common` to `strings` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move async functions out of `libs/common` to `async` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move bit functions out of `libs/common` to `bits` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move cmap functions out of `libs/common` to `cmap` pkg
+  - [libs/common] [\#4258](https://github.com/tendermint/tendermint/issues/4258) Remove `Rand` from all `rand` pkg functions
+  - [types] [\#2565](https://github.com/tendermint/tendermint/issues/2565) Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
 
 
 - Blockchain Protocol
 
-  - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
+  - [abci] [\#2521](https://github.com/tendermint/tendermint/issues/2521) Remove `TotalTxs` and `NumTxs` from `Header`
   - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
-  - [types] \#1648 Change `Commit` to consist of just signatures
+  - [types] [\#1648](https://github.com/tendermint/tendermint/issues/1648) Change `Commit` to consist of just signatures
 
 - P2P Protocol
 
@@ -125,26 +119,26 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [p2p] \#4053 Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
+- [p2p] [\#4053](https://github.com/tendermint/tendermint/issues/4053) Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
 - [tools] [\#4227](https://github.com/tendermint/tendermint/pull/4227) Implement `tendermint debug kill` and
   `tendermint debug dump` commands for Tendermint node debugging functionality. See `--help` in both
   commands for further documentation and usage.
-- [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
-- [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
-- [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
-- [rpc] \#3985 Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
-- [metrics] \#4263 Add
+- [cli] [\#4234](https://github.com/tendermint/tendermint/issues/4234) Add `--db_backend and --db_dir` flags (@princesinha19)
+- [cli] [\#4113](https://github.com/tendermint/tendermint/issues/4113) Add optional `--genesis_hash` flag to check genesis hash upon startup
+- [config] [\#3831](https://github.com/tendermint/tendermint/issues/3831) Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] [\#3985](https://github.com/tendermint/tendermint/issues/3985) Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
+- [metrics] [\#4263](https://github.com/tendermint/tendermint/issues/4263) Add
   - `consensus_validator_power`: track your validators power
   - `consensus_validator_last_signed_height`: track at which height the validator last signed
   - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
   as gauges in prometheus for validator specific metrics
 - [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
-- [lite2] \#1771 Light client with weak subjectivity
+- [lite2] [\#1771](https://github.com/tendermint/tendermint/issues/1771) Light client with weak subjectivity
 
 ### IMPROVEMENTS:
 
-- [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
-- [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
+- [rpc] [\#3188](https://github.com/tendermint/tendermint/issues/3188) Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
+- [types] [\#2521](https://github.com/tendermint/tendermint/issues/2521) Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
 - [docs] [\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
 - [p2p] [\#4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
 - [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
@@ -152,7 +146,7 @@ program](https://hackerone.com/tendermint).
 - [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
 - [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
 - [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
-- [deps] [\#4289](https://github.com/tendermint/tendermint/pull/4289) Update tm-db to 0.4.0, this includes major breaking changes in the dep that change how errors are handled. 
+- [deps] [\#4289](https://github.com/tendermint/tendermint/pull/4289) Update tm-db to 0.4.0, this includes major breaking changes in the dep that change how errors are handled.
 
 ### BUG FIXES:
 
@@ -160,12 +154,39 @@ program](https://hackerone.com/tendermint).
 - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
 - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
 - [types] [\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
-- [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
-- [types] \#4164 Prevent temporary power overflows on validator updates (joint
+- [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
+- [types] [\#4164](https://github.com/tendermint/tendermint/issues/4164) Prevent temporary power overflows on validator updates (joint
   efforts of @gchaincl and @ancazamfir)
-- [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
-- [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
-- [rpc] \#4256 Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
+- [p2p] [\#4140](https://github.com/tendermint/tendermint/issues/4140) `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
+- [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
+- [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
+
+Special thanks to external contributors on this release:
+@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev, @princesinha19, @Stumble
+
+## v0.32.9
+
+_January, 9, 2020_
+
+Special thanks to external contributors on this release: @greg-szabo, @gregzaitsev, @yenkhoon
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
+
+- [metrics] [\#4294](https://github.com/tendermint/tendermint/pull/4294) Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+    as gauges in prometheus for validator specific metrics
+
+### BUG FIXES:
+
+- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
 
 ## v0.32.8
 
