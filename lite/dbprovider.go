@@ -108,10 +108,13 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 		maxHeight = 1<<63 - 1
 	}
 
-	itr := dbp.db.ReverseIterator(
+	itr, err := dbp.db.ReverseIterator(
 		signedHeaderKey(chainID, minHeight),
 		append(signedHeaderKey(chainID, maxHeight), byte(0x00)),
 	)
+	if err != nil {
+		panic(err)
+	}
 	defer itr.Close()
 
 	for itr.Valid() {
@@ -150,8 +153,11 @@ func (dbp *DBProvider) ValidatorSet(chainID string, height int64) (valset *types
 }
 
 func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
-	vsBz := dbp.db.Get(validatorSetKey(chainID, height))
-	if vsBz == nil {
+	vsBz, err := dbp.db.Get(validatorSetKey(chainID, height))
+	if err != nil {
+		return nil, err
+	}
+	if len(vsBz) == 0 {
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}
@@ -194,10 +200,13 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 
 	dbp.logger.Info("DBProvider.deleteAfterN()...", "chainID", chainID, "after", after)
 
-	itr := dbp.db.ReverseIterator(
+	itr, err := dbp.db.ReverseIterator(
 		signedHeaderKey(chainID, 1),
 		append(signedHeaderKey(chainID, 1<<63-1), byte(0x00)),
 	)
+	if err != nil {
+		panic(err)
+	}
 	defer itr.Close()
 
 	var lastHeight int64 = 1<<63 - 1
