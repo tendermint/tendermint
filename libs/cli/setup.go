@@ -91,7 +91,7 @@ func (e Executor) Execute() error {
 		if viper.GetBool(TraceFlag) {
 			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
 		} else {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n* Have you forgotten to execute tendermint init?\n", err)
 		}
 
 		// return error code 1 by default, can override it with a special error type

@@ -19,6 +19,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [cli] \#4312 Show useful error when tendermint has not been initialised (@somemoosery)
+
 ### BUG FIXES:
 
 
