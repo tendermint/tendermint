@@ -14,6 +14,9 @@ executors:
       - image: tendermintdev/docker-website-deployment
     environment:
       AWS_REGION: us-east-1
+  protoc:
+    docker:
+      - image: tendermintdev/docker-protoc
 
 commands:
   run_test:
@@ -36,7 +39,6 @@ commands:
           name: "Running test"
           command: |
             bash << parameters.script_path >>
-
 jobs:
   setup_dependencies:
     executor: golang
@@ -72,6 +74,12 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
+  proto:
+    executor: protoc
+    steps:
+      - make:
+          target: proto-gen proto-lint proto-check-breaking
+          description: "Lint and verify Protocol Buffer definitions"
 
   test_abci_apps:
     executor: golang
@@ -128,6 +136,19 @@ jobs:
             - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
+
+  proto-lint:
+    executor: protoc
+    steps:
+      - make:
+        target: proto-lint
+
+
+  proto-breakage:
+    executor: protoc
+    steps:
+      - make:
+        target: proto-breakage
 
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
@@ -400,6 +421,12 @@ workflows:
           requires:
             - setup_dependencies
       - test_cover:
+          requires:
+            - setup_dependencies
+      - proto-breakage:
+          requires:
+            - setup_dependencies
+      - proto-lint:
           requires:
             - setup_dependencies
       - test_persistence:
