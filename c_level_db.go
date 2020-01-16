@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/jmhodges/levigo"
-	"github.com/pkg/errors"
 )
 
 func init() {
