@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- [fsdb] [\#43](https://github.com/tendermint/tm-db/pull/43#event-2954801205) Remove FSDB
+
 ## 0.4
 
 **2020-1-7**
