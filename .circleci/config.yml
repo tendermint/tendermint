@@ -134,12 +134,14 @@ jobs:
   proto-lint:
     executor: protoc
     steps:
+      - checkout
       - run:
           command: make proto-lint
 
   proto-breakage:
     executor: protoc
     steps:
+      - checkout
       - run:
           command: make proto-check-breaking
 
