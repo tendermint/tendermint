@@ -416,8 +416,8 @@ workflows:
       - test_cover:
           requires:
             - setup_dependencies
-      - proto-breakage:
-      - proto-lint:
+      - proto-breakage
+      - proto-lint
       - test_persistence:
           requires:
             - setup_dependencies
