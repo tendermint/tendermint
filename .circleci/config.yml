@@ -419,11 +419,7 @@ workflows:
           requires:
             - setup_dependencies
       - proto-breakage:
-          requires:
-            - setup_dependencies
       - proto-lint:
-          requires:
-            - setup_dependencies
       - test_persistence:
           requires:
             - setup_dependencies
