@@ -135,13 +135,13 @@ jobs:
     executor: protoc
     steps:
       - run:
-        command: make proto-lint
+          command: make proto-lint
 
   proto-breakage:
     executor: protoc
     steps:
       - run:
-        command: make proto-check-breaking
+          command: make proto-check-breaking
 
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
