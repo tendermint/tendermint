@@ -148,8 +148,7 @@ jobs:
     executor: protoc
     steps:
       - make:
-        target: proto-breakage
-
+        target: proto-check-breaking
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
     machine:
