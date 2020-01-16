@@ -74,12 +74,6 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
-  proto:
-    executor: protoc
-    steps:
-      - make:
-          target: proto-gen proto-lint proto-check-breaking
-          description: "Lint and verify Protocol Buffer definitions"
 
   test_abci_apps:
     executor: golang
