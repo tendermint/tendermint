@@ -40,9 +40,11 @@ proto-gen:
 	@sh scripts/protocgen.sh
 
 proto-lint:
+	@go mod vendor
 	@buf check lint
 
 proto-check-breaking:
+	@go mod vendor
 	@buf check breaking --against-input '.git#branch=master'
 
 %.pb.go: %.proto
