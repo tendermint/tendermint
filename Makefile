@@ -40,7 +40,7 @@ proto-gen:
 	@sh scripts/protocgen.sh
 
 proto-lint:
-	@go mod vendor
+	# @go mod vendor
 	@buf check lint
 
 proto-check-breaking:
