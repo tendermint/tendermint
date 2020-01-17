@@ -693,7 +693,18 @@ func (commit *Commit) ValidateBasic() error {
 	if len(commit.Signatures) == 0 {
 		return errors.New("no signatures in commit")
 	}
+
+	seenSignatures := make([][]byte, 0)
+
 	for i, commitSig := range commit.Signatures {
+
+		for _, seenSig := range seenSignatures {
+			if bytes.Equal(commitSig.Signature, seenSig) { // check no two signatures in the commit are the same
+				return errors.Errorf("double vote from %v", commitSig.ValidatorAddress)
+			}
+		}
+		seenSignatures = append(seenSignatures, commitSig.Signature)
+
 		if err := commitSig.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
 		}
