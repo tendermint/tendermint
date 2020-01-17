@@ -8,11 +8,7 @@ lint:
     - UNARY_RPC
   except:
     - PACKAGE_DIRECTORY_MATCH
-  ignore:
-    - vendor
 breaking:
   use:
     - FILE
     - PACKAGE
-  ignore: 
-    - vendor

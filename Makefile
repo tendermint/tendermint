@@ -36,15 +36,12 @@ install_c:
 protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 
 proto-gen:
-	@go mod vendor
 	@sh scripts/protocgen.sh
 
 proto-lint:
-	@go mod vendor
 	@buf check lint
 
 proto-check-breaking:
-	@go mod vendor
 	@buf check breaking --against-input '.git#branch=master'
 
 %.pb.go: %.proto
