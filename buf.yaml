@@ -1,6 +1,7 @@
 build:
   roots:
     - .
+lint:
   use:
     - MINIMAL
     - FILE_LOWER_SNAKE_CASE
