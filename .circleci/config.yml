@@ -136,7 +136,7 @@ jobs:
     steps:
       - checkout
       - run:
-          command: make proto-lint
+          command: make proto-gen proto-lint
 
   proto-breakage:
     executor: protoc
