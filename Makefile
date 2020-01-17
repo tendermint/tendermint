@@ -1,7 +1,6 @@
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-INCLUDE = -I=.
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
