@@ -1,13 +1,6 @@
 build:
   roots:
     - .
-  excludes:
-    - vendor/github.com/gogo/protobuf/conformance
-    - vendor/github.com/gogo/protobuf/jsonpb
-    - vendor/github.com/gogo/protobuf/proto
-    - vendor/github.com/gogo/protobuf/test
-    - vendor/github.com/gogo/protobuf/vanity
-lint:
   use:
     - MINIMAL
     - FILE_LOWER_SNAKE_CASE
