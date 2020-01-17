@@ -41,7 +41,7 @@ proto-gen:
 
 proto-lint:
 	@go mod vendor
-	@buf check lint
+	# @buf check lint
 
 proto-check-breaking:
 	@go mod vendor
