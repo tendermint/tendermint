@@ -28,7 +28,8 @@ func TestWSClientReconnectWithJitter(t *testing.T) {
 	buf := new(bytes.Buffer)
 	logger := log.NewTMLogger(buf)
 	for i := 0; i < n; i++ {
-		c := NewWSClient("tcp://foo", "/websocket")
+		c, err := NewWSClient("tcp://foo", "/websocket")
+		require.Nil(t, err)
 		c.Dialer = func(string, string) (net.Conn, error) {
 			return nil, errNotConnected
 		}
@@ -47,7 +48,7 @@ func TestWSClientReconnectWithJitter(t *testing.T) {
 	for key, c := range clientMap {
 		if !c.IsActive() {
 			delete(clientMap, key)
-			stopCount += 1
+			stopCount++
 		}
 	}
 	require.Equal(t, stopCount, n, "expecting all clients to have been stopped")
@@ -58,7 +59,7 @@ func TestWSClientReconnectWithJitter(t *testing.T) {
 	seenMap := make(map[string]int)
 	for i, match := range matches {
 		if origIndex, seen := seenMap[string(match)]; seen {
-			t.Errorf("Match #%d (%q) was seen originally at log entry #%d", i, match, origIndex)
+			t.Errorf("match #%d (%q) was seen originally at log entry #%d", i, match, origIndex)
 		} else {
 			seenMap[string(match)] = i
 		}

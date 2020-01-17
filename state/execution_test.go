@@ -26,7 +26,7 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -62,22 +62,31 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
-	now := tmtime.Now()
-	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
+	var (
+		now        = tmtime.Now()
+		commitSig0 = types.NewCommitSigForBlock(
+			[]byte("Signature1"),
+			state.Validators.Validators[0].Address,
+			now)
+		commitSig1 = types.NewCommitSigForBlock(
+			[]byte("Signature2"),
+			state.Validators.Validators[1].Address,
+			now)
+		absentSig = types.NewCommitSigAbsent()
+	)
 
 	testCases := []struct {
 		desc                     string
-		lastCommitPrecommits     []*types.CommitSig
+		lastCommitSigs           []types.CommitSig
 		expectedAbsentValidators []int
 	}{
-		{"none absent", []*types.CommitSig{commitSig0, commitSig1}, []int{}},
-		{"one absent", []*types.CommitSig{commitSig0, nil}, []int{1}},
-		{"multiple absent", []*types.CommitSig{nil, nil}, []int{0, 1}},
+		{"none absent", []types.CommitSig{commitSig0, commitSig1}, []int{}},
+		{"one absent", []types.CommitSig{commitSig0, absentSig}, []int{1}},
+		{"multiple absent", []types.CommitSig{absentSig, absentSig}, []int{0, 1}},
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewCommit(prevBlockID, tc.lastCommitPrecommits)
+		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
@@ -117,8 +126,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
 	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
-	ev1 := types.NewMockGoodEvidence(height1, idx1, val1)
-	ev2 := types.NewMockGoodEvidence(height2, idx2, val2)
+	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
+	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
 
 	now := tmtime.Now()
 	valSet := state.Validators
@@ -134,10 +143,18 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
-	commitSigs := []*types.CommitSig{commitSig0, commitSig1}
-	lastCommit := types.NewCommit(prevBlockID, commitSigs)
+	var (
+		commitSig0 = types.NewCommitSigForBlock(
+			[]byte("Signature1"),
+			state.Validators.Validators[0].Address,
+			now)
+		commitSig1 = types.NewCommitSigForBlock(
+			[]byte("Signature2"),
+			state.Validators.Validators[1].Address,
+			now)
+	)
+	commitSigs := []types.CommitSig{commitSig0, commitSig1}
+	lastCommit := types.NewCommit(9, 0, prevBlockID, commitSigs)
 	for _, tc := range testCases {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
@@ -210,6 +227,7 @@ func TestValidateValidatorUpdates(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := sm.ValidateValidatorUpdates(tc.abciUpdates, tc.validatorParams)
 			if tc.shouldErr {
@@ -275,6 +293,7 @@ func TestUpdateValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			updates, err := types.PB2TM.ValidatorUpdates(tc.abciUpdates)
 			assert.NoError(t, err)
@@ -307,7 +326,13 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(
+		stateDB,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		mock.Mempool{},
+		sm.MockEvidencePool{},
+	)
 
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
@@ -315,7 +340,11 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer eventBus.Stop()
 	blockExec.SetEventBus(eventBus)
 
-	updatesSub, err := eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates)
+	updatesSub, err := eventBus.Subscribe(
+		context.Background(),
+		"TestEndBlockValidatorUpdates",
+		types.EventQueryValidatorSetUpdates,
+	)
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
@@ -364,7 +393,13 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state, stateDB, _ := makeState(1, 1)
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(
+		stateDB,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		mock.Mempool{},
+		sm.MockEvidencePool{},
+	)
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}

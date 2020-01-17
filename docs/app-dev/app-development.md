@@ -1,3 +1,7 @@
+---
+order: 4
+---
+
 # Application Development Guide
 
 ## XXX
@@ -48,9 +52,9 @@ open ABCI connection with the application, which hosts an ABCI server.
 Shown are the request and response types sent on each connection.
 
 Most of the examples below are from [kvstore
-application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/kvstore.go),
+application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
-application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/persistent_kvstore.go)
+application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/persistent_kvstore.go)
 is used to show `BeginBlock`, `EndBlock` and `InitChain` example
 implementations.
 
@@ -183,7 +187,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []cmn.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},
@@ -294,7 +298,6 @@ ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
     Header header = req.getHeader();
     byte[] prevAppHash = header.getAppHash().toByteArray();
     long prevHeight = header.getHeight();
-    long numTxs = header.getNumTxs();
 
     // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
 

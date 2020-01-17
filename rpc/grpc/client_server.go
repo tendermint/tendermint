@@ -1,12 +1,12 @@
-package core_grpc
+package coregrpc
 
 import (
 	"net"
-	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 )
 
 // Config is an gRPC server configuration.
@@ -26,13 +26,13 @@ func StartGRPCServer(ln net.Listener) error {
 // StartGRPCClient dials the gRPC server using protoAddr and returns a new
 // BroadcastAPIClient.
 func StartGRPCClient(protoAddr string) BroadcastAPIClient {
-	conn, err := grpc.Dial(protoAddr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+	conn, err := grpc.Dial(protoAddr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 	if err != nil {
 		panic(err)
 	}
 	return NewBroadcastAPIClient(conn)
 }
 
-func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return cmn.Connect(addr)
+func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
+	return tmnet.Connect(addr)
 }

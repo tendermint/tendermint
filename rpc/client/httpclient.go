@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -10,8 +11,10 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
@@ -84,21 +87,45 @@ var _ rpcClient = (*baseRPCClient)(nil)
 
 // NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
-func NewHTTP(remote, wsEndpoint string) *HTTP {
-	rc := rpcclient.NewJSONRPCClient(remote)
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewHTTP(remote, wsEndpoint string) (*HTTP, error) {
+	httpClient, err := rpcclient.DefaultHTTPClient(remote)
+	if err != nil {
+		return nil, err
+	}
+	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
+}
+
+// NewHTTPWithClient allows for setting a custom http client (See NewHTTP).
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
+	if client == nil {
+		panic("nil http.Client provided")
+	}
+
+	rc, err := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
+	if err != nil {
+		return nil, err
+	}
 	cdc := rc.Codec()
 	ctypes.RegisterAmino(cdc)
 	rc.SetCodec(cdc)
 
-	return &HTTP{
+	httpClient := &HTTP{
 		rpc:           rc,
 		remote:        remote,
 		baseRPCClient: &baseRPCClient{caller: rc},
 		WSEvents:      newWSEvents(cdc, remote, wsEndpoint),
 	}
+
+	return httpClient, nil
 }
 
 var _ Client = (*HTTP)(nil)
+
+func (c *HTTP) SetLogger(l log.Logger) {
+	c.WSEvents.SetLogger(l)
+}
 
 // NewBatch creates a new batch client for this HTTP client.
 func (c *HTTP) NewBatch() *BatchHTTP {
@@ -154,11 +181,14 @@ func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return result, nil
 }
 
-func (c *baseRPCClient) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
-func (c *baseRPCClient) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQueryWithOptions(
+	path string,
+	data bytes.HexBytes,
+	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.caller.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "prove": opts.Prove},
@@ -236,6 +266,15 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	_, err := c.caller.Call("consensus_state", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ConsensusState")
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	result := new(ctypes.ResultConsensusParams)
+	_, err := c.caller.Call("consensus_params", map[string]interface{}{"height": height}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "ConsensusParams")
 	}
 	return result, nil
 }
@@ -324,11 +363,24 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int) (*
 	return result, nil
 }
 
-func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, error) {
+func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.caller.Call("validators", map[string]interface{}{"height": height}, result)
+	_, err := c.caller.Call("validators", map[string]interface{}{
+		"height":   height,
+		"page":     page,
+		"per_page": perPage,
+	}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	result := new(ctypes.ResultBroadcastEvidence)
+	_, err := c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": ev}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "BroadcastEvidence")
 	}
 	return result, nil
 }
@@ -337,7 +389,7 @@ func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, err
 // WSEvents
 
 type WSEvents struct {
-	cmn.BaseService
+	service.BaseService
 	cdc      *amino.Codec
 	remote   string
 	endpoint string
@@ -356,19 +408,23 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
 	}
 
-	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
+	wsEvents.BaseService = *service.NewBaseService(nil, "WSEvents", wsEvents)
 	return wsEvents
 }
 
-// OnStart implements cmn.Service by starting WSClient and event loop.
-func (w *WSEvents) OnStart() error {
-	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+// OnStart implements service.Service by starting WSClient and event loop.
+func (w *WSEvents) OnStart() (err error) {
+	w.ws, err = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
+	if err != nil {
+		return err
+	}
 	w.ws.SetCodec(w.cdc)
+	w.ws.SetLogger(w.Logger)
 
-	err := w.ws.Start()
+	err = w.ws.Start()
 	if err != nil {
 		return err
 	}
@@ -377,7 +433,7 @@ func (w *WSEvents) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by stopping WSClient.
+// OnStop implements service.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
 	_ = w.ws.Stop()
 }
@@ -444,6 +500,8 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
 	for q := range w.subscriptions {
 		err := w.ws.Subscribe(context.Background(), q)
 		if err != nil {

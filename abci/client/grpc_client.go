@@ -6,11 +6,12 @@ import (
 	"sync"
 	"time"
 
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 var _ Client = (*grpcClient)(nil)
@@ -18,7 +19,7 @@ var _ Client = (*grpcClient)(nil)
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	cmn.BaseService
+	service.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -35,12 +36,12 @@ func NewGRPCClient(addr string, mustConnect bool) *grpcClient {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
 	return cli
 }
 
-func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return cmn.Connect(addr)
+func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
+	return tmnet.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {
@@ -49,7 +50,7 @@ func (cli *grpcClient) OnStart() error {
 	}
 RETRY_LOOP:
 	for {
-		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 		if err != nil {
 			if cli.mustConnect {
 				return err
@@ -65,7 +66,7 @@ RETRY_LOOP:
 
 	ENSURE_CONNECTED:
 		for {
-			_, err := client.Echo(context.Background(), &types.RequestEcho{Message: "hello"}, grpc.FailFast(true))
+			_, err := client.Echo(context.Background(), &types.RequestEcho{Message: "hello"}, grpc.WaitForReady(true))
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
@@ -125,7 +126,7 @@ func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 
 func (cli *grpcClient) EchoAsync(msg string) *ReqRes {
 	req := types.ToRequestEcho(msg)
-	res, err := cli.client.Echo(context.Background(), req.GetEcho(), grpc.FailFast(true))
+	res, err := cli.client.Echo(context.Background(), req.GetEcho(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -134,7 +135,7 @@ func (cli *grpcClient) EchoAsync(msg string) *ReqRes {
 
 func (cli *grpcClient) FlushAsync() *ReqRes {
 	req := types.ToRequestFlush()
-	res, err := cli.client.Flush(context.Background(), req.GetFlush(), grpc.FailFast(true))
+	res, err := cli.client.Flush(context.Background(), req.GetFlush(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -143,7 +144,7 @@ func (cli *grpcClient) FlushAsync() *ReqRes {
 
 func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
 	req := types.ToRequestInfo(params)
-	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.FailFast(true))
+	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -152,7 +153,7 @@ func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
 
 func (cli *grpcClient) SetOptionAsync(params types.RequestSetOption) *ReqRes {
 	req := types.ToRequestSetOption(params)
-	res, err := cli.client.SetOption(context.Background(), req.GetSetOption(), grpc.FailFast(true))
+	res, err := cli.client.SetOption(context.Background(), req.GetSetOption(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -161,7 +162,7 @@ func (cli *grpcClient) SetOptionAsync(params types.RequestSetOption) *ReqRes {
 
 func (cli *grpcClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 	req := types.ToRequestDeliverTx(params)
-	res, err := cli.client.DeliverTx(context.Background(), req.GetDeliverTx(), grpc.FailFast(true))
+	res, err := cli.client.DeliverTx(context.Background(), req.GetDeliverTx(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -170,7 +171,7 @@ func (cli *grpcClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 
 func (cli *grpcClient) CheckTxAsync(params types.RequestCheckTx) *ReqRes {
 	req := types.ToRequestCheckTx(params)
-	res, err := cli.client.CheckTx(context.Background(), req.GetCheckTx(), grpc.FailFast(true))
+	res, err := cli.client.CheckTx(context.Background(), req.GetCheckTx(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -179,7 +180,7 @@ func (cli *grpcClient) CheckTxAsync(params types.RequestCheckTx) *ReqRes {
 
 func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 	req := types.ToRequestQuery(params)
-	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
+	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -188,7 +189,7 @@ func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 
 func (cli *grpcClient) CommitAsync() *ReqRes {
 	req := types.ToRequestCommit()
-	res, err := cli.client.Commit(context.Background(), req.GetCommit(), grpc.FailFast(true))
+	res, err := cli.client.Commit(context.Background(), req.GetCommit(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -197,7 +198,7 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 
 func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 	req := types.ToRequestInitChain(params)
-	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.FailFast(true))
+	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -206,7 +207,7 @@ func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 
 func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 	req := types.ToRequestBeginBlock(params)
-	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
+	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -215,7 +216,7 @@ func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 
 func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	req := types.ToRequestEndBlock(params)
-	res, err := cli.client.EndBlock(context.Background(), req.GetEndBlock(), grpc.FailFast(true))
+	res, err := cli.client.EndBlock(context.Background(), req.GetEndBlock(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
@@ -228,18 +229,22 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	reqres.Done()         // Release waiters
 	reqres.SetDone()      // so reqRes.SetCallback will run the callback
 
-	// go routine for callbacks
+	// goroutine for callbacks
 	go func() {
-		// Notify reqRes listener if set
-		if cb := reqres.GetCallback(); cb != nil {
-			cb(res)
-		}
+		cli.mtx.Lock()
+		defer cli.mtx.Unlock()
 
 		// Notify client listener if set
 		if cli.resCb != nil {
 			cli.resCb(reqres.Request, res)
 		}
+
+		// Notify reqRes listener if set
+		if cb := reqres.GetCallback(); cb != nil {
+			cb(res)
+		}
 	}()
+
 	return reqres
 }
 

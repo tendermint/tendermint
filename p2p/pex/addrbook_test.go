@@ -11,8 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -184,13 +185,13 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			cmn.RandIntn(254)+1,
-			cmn.RandIntn(255),
-			cmn.RandIntn(255),
-			cmn.RandIntn(255),
+			tmrand.Intn(254)+1,
+			tmrand.Intn(255),
+			tmrand.Intn(255),
+			tmrand.Intn(255),
 		)
-		port := cmn.RandIntn(65535-1) + 1
-		id := p2p.ID(hex.EncodeToString(cmn.RandBytes(p2p.IDByteLength)))
+		port := tmrand.Intn(65535-1) + 1
+		id := p2p.ID(hex.EncodeToString(tmrand.Bytes(p2p.IDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)
 		assert.Nil(t, err, "error generating rand network address")
@@ -349,10 +350,22 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
 	if got > expected+slack {
-		t.Fatalf("got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+		t.Fatalf(
+			"got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)",
+			got,
+			expected,
+			good,
+			len(selection),
+		)
 	}
 	if got < expected-slack {
-		t.Fatalf("got fewer good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+		t.Fatalf(
+			"got fewer good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)",
+			got,
+			expected,
+			good,
+			len(selection),
+		)
 	}
 }
 
@@ -470,8 +483,8 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		// There is at least one partition and at most three.
 		var (
 			k      = percentageOfNum(biasToSelectNewPeers, nAddrs)
-			expNew = cmn.MinInt(nNew, cmn.MaxInt(k, nAddrs-nBookOld))
-			expOld = cmn.MinInt(nOld, nAddrs-expNew)
+			expNew = tmmath.MinInt(nNew, tmmath.MaxInt(k, nAddrs-nBookOld))
+			expOld = tmmath.MinInt(nOld, nAddrs-expNew)
 		)
 
 		// Verify that the number of old and new addresses are as expected
@@ -525,7 +538,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	ranges := [...][]int{{33, 100}, {100, 175}}
 	bookSizes := make([]int, 0, len(ranges))
 	for _, r := range ranges {
-		bookSizes = append(bookSizes, cmn.RandIntn(r[1]-r[0])+r[0])
+		bookSizes = append(bookSizes, tmrand.Intn(r[1]-r[0])+r[0])
 	}
 	t.Logf("Testing address selection for the following book sizes %v\n", bookSizes)
 	for _, bookSize := range bookSizes {

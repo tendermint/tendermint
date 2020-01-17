@@ -1,4 +1,4 @@
-package core_grpc
+package coregrpc
 
 import (
 	"context"

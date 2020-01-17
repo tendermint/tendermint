@@ -3,22 +3,23 @@ package evidence
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-db"
 
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-// EvidencePool maintains a pool of valid evidence
-// in an EvidenceStore.
-type EvidencePool struct {
+// Pool maintains a pool of valid evidence
+// in an Store.
+type Pool struct {
 	logger log.Logger
 
-	evidenceStore *EvidenceStore
-	evidenceList  *clist.CList // concurrent linked-list of evidence
+	store        *Store
+	evidenceList *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
 	stateDB dbm.DB
@@ -28,55 +29,60 @@ type EvidencePool struct {
 	state sm.State
 }
 
-func NewEvidencePool(stateDB, evidenceDB dbm.DB) *EvidencePool {
-	evidenceStore := NewEvidenceStore(evidenceDB)
-	evpool := &EvidencePool{
-		stateDB:       stateDB,
-		state:         sm.LoadState(stateDB),
-		logger:        log.NewNopLogger(),
-		evidenceStore: evidenceStore,
-		evidenceList:  clist.New(),
+func NewPool(stateDB, evidenceDB dbm.DB) *Pool {
+	store := NewStore(evidenceDB)
+	evpool := &Pool{
+		stateDB:      stateDB,
+		state:        sm.LoadState(stateDB),
+		logger:       log.NewNopLogger(),
+		store:        store,
+		evidenceList: clist.New(),
 	}
 	return evpool
 }
 
-func (evpool *EvidencePool) EvidenceFront() *clist.CElement {
+func (evpool *Pool) EvidenceFront() *clist.CElement {
 	return evpool.evidenceList.Front()
 }
 
-func (evpool *EvidencePool) EvidenceWaitChan() <-chan struct{} {
+func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 	return evpool.evidenceList.WaitChan()
 }
 
 // SetLogger sets the Logger.
-func (evpool *EvidencePool) SetLogger(l log.Logger) {
+func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
 // PriorityEvidence returns the priority evidence.
-func (evpool *EvidencePool) PriorityEvidence() []types.Evidence {
-	return evpool.evidenceStore.PriorityEvidence()
+func (evpool *Pool) PriorityEvidence() []types.Evidence {
+	return evpool.store.PriorityEvidence()
 }
 
 // PendingEvidence returns up to maxNum uncommitted evidence.
 // If maxNum is -1, all evidence is returned.
-func (evpool *EvidencePool) PendingEvidence(maxNum int64) []types.Evidence {
-	return evpool.evidenceStore.PendingEvidence(maxNum)
+func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
+	return evpool.store.PendingEvidence(maxNum)
 }
 
 // State returns the current state of the evpool.
-func (evpool *EvidencePool) State() sm.State {
+func (evpool *Pool) State() sm.State {
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	return evpool.state
 }
 
 // Update loads the latest
-func (evpool *EvidencePool) Update(block *types.Block, state sm.State) {
+func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 	// sanity check
 	if state.LastBlockHeight != block.Height {
-		panic(fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d", state.LastBlockHeight, block.Height))
+		panic(
+			fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d",
+				state.LastBlockHeight,
+				block.Height,
+			),
+		)
 	}
 
 	// update the state
@@ -85,11 +91,11 @@ func (evpool *EvidencePool) Update(block *types.Block, state sm.State) {
 	evpool.mtx.Unlock()
 
 	// remove evidence from pending and mark committed
-	evpool.MarkEvidenceAsCommitted(block.Height, block.Evidence.Evidence)
+	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
+func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
 
 	// TODO: check if we already have evidence for this
 	// validator at this height so we dont get spammed
@@ -104,7 +110,7 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	_, val := valset.GetByAddress(evidence.Address())
 	priority := val.VotingPower
 
-	added := evpool.evidenceStore.AddNewEvidence(evidence, priority)
+	added := evpool.store.AddNewEvidence(evidence, priority)
 	if !added {
 		// evidence already known, just ignore
 		return
@@ -119,35 +125,42 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it from the queue.
-func (evpool *EvidencePool) MarkEvidenceAsCommitted(height int64, evidence []types.Evidence) {
+func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Time, evidence []types.Evidence) {
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
-		evpool.evidenceStore.MarkEvidenceAsCommitted(ev)
+		evpool.store.MarkEvidenceAsCommitted(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
 
 	// remove committed evidence from the clist
-	maxAge := evpool.State().ConsensusParams.Evidence.MaxAge
-	evpool.removeEvidence(height, maxAge, blockEvidenceMap)
-
+	evidenceParams := evpool.State().ConsensusParams.Evidence
+	evpool.removeEvidence(height, lastBlockTime, evidenceParams, blockEvidenceMap)
 }
 
 // IsCommitted returns true if we have already seen this exact evidence and it is already marked as committed.
-func (evpool *EvidencePool) IsCommitted(evidence types.Evidence) bool {
-	ei := evpool.evidenceStore.getEvidenceInfo(evidence)
+func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
+	ei := evpool.store.getInfo(evidence)
 	return ei.Evidence != nil && ei.Committed
 }
 
-func (evpool *EvidencePool) removeEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
+func (evpool *Pool) removeEvidence(
+	height int64,
+	lastBlockTime time.Time,
+	params types.EvidenceParams,
+	blockEvidenceMap map[string]struct{}) {
+
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
-		ev := e.Value.(types.Evidence)
+		var (
+			ev           = e.Value.(types.Evidence)
+			ageDuration  = lastBlockTime.Sub(ev.Time())
+			ageNumBlocks = height - ev.Height()
+		)
 
-		// Remove the evidence if it's already in a block
-		// or if it's now too old.
+		// Remove the evidence if it's already in a block or if it's now too old.
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			ev.Height() < height-maxAge {
-
+			ageNumBlocks > params.MaxAgeNumBlocks ||
+			ageDuration > params.MaxAgeDuration {
 			// remove from clist
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()

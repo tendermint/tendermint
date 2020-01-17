@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
@@ -80,7 +80,7 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 func TestTrustMetricStoreConfig(t *testing.T) {
 	historyDB := dbm.NewDB("", "memdb", "")
 
-	config := TrustMetricConfig{
+	config := MetricConfig{
 		ProportionalWeight: 0.5,
 		IntegralWeight:     0.5,
 	}
@@ -141,7 +141,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	second := tm.TrustScore()
 
 	if second > first {
-		t.Errorf("A greater number of bad events should lower the trust score")
+		t.Errorf("a greater number of bad events should lower the trust score")
 	}
 	store.PeerDisconnected(key)
 

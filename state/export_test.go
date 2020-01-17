@@ -2,8 +2,8 @@ package state
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //
@@ -35,18 +35,6 @@ func UpdateState(
 // from execution.go, exclusively and explicitly for testing.
 func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
-}
-
-// CalcValidatorsKey is an alias for the private calcValidatorsKey method in
-// store.go, exported exclusively and explicitly for testing.
-func CalcValidatorsKey(height int64) []byte {
-	return calcValidatorsKey(height)
-}
-
-// SaveABCIResponses is an alias for the private saveABCIResponses method in
-// store.go, exported exclusively and explicitly for testing.
-func SaveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
-	saveABCIResponses(db, height, abciResponses)
 }
 
 // SaveConsensusParamsInfo is an alias for the private saveConsensusParamsInfo

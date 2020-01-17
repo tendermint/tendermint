@@ -6,6 +6,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -85,7 +87,7 @@ func ConnDuplicateIPFilter() ConnFilterFunc {
 			if cs.HasIP(ip) {
 				return ErrRejected{
 					conn:        c,
-					err:         fmt.Errorf("IP<%v> already connected", ip),
+					err:         fmt.Errorf("ip<%v> already connected", ip),
 					isDuplicate: true,
 				}
 			}
@@ -277,6 +279,23 @@ func (mt *MultiplexTransport) acceptPeers() {
 		//
 		// [0] https://en.wikipedia.org/wiki/Head-of-line_blocking
 		go func(c net.Conn) {
+			defer func() {
+				if r := recover(); r != nil {
+					err := ErrRejected{
+						conn:          c,
+						err:           errors.Errorf("recovered from panic: %v", r),
+						isAuthFailure: true,
+					}
+					select {
+					case mt.acceptc <- accept{err: err}:
+					case <-mt.closec:
+						// Give up if the transport was closed.
+						_ = c.Close()
+						return
+					}
+				}
+			}()
+
 			var (
 				nodeInfo   NodeInfo
 				secretConn *conn.SecretConnection

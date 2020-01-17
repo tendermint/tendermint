@@ -176,7 +176,7 @@ func (bA *CompactBitArray) UnmarshalJSON(bz []byte) error {
 	// Validate 'b'.
 	match := bitArrayJSONRegexp.FindStringSubmatch(b)
 	if match == nil {
-		return fmt.Errorf("BitArray in JSON should be a string of format %q but got %s", bitArrayJSONRegexp.String(), b)
+		return fmt.Errorf("bitArray in JSON should be a string of format %q but got %s", bitArrayJSONRegexp.String(), b)
 	}
 	bits := match[1]
 

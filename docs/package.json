@@ -1,0 +1,22 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Welcome to the Tendermint Core documentation!",
+  "main": "index.js",
+  "dependencies": {
+    "vuepress-theme-cosmos": "^1.0.73"
+  },
+  "devDependencies": {
+    "@vuepress/plugin-google-analytics": "^1.2.0"
+  },
+  "scripts": {
+    "preserve": "./pre.sh",
+    "serve": "trap 'exit 0' SIGINT; vuepress dev",
+    "postserve": "./post.sh",
+    "prebuild": "./pre.sh",
+    "build": "trap 'exit 0' SIGINT; vuepress build",
+    "postbuild": "./post.sh"
+  },
+  "author": "",
+  "license": "ISC"
+}

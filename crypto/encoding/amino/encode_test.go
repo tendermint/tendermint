@@ -1,15 +1,19 @@
-package cryptoAmino
+package cryptoamino
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
 type byter interface {
@@ -54,9 +58,11 @@ func ExamplePrintRegisteredTypes() {
 	// Output: | Type | Name | Prefix | Length | Notes |
 	//| ---- | ---- | ------ | ----- | ------ |
 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
 	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
 }
 
@@ -68,6 +74,12 @@ func TestKeyEncodings(t *testing.T) {
 		{
 			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
+			pubSize:  37,
+			sigSize:  65,
+		},
+		{
+			privKey:  sr25519.GenPrivKey(),
+			privSize: 37,
 			pubSize:  37,
 			sigSize:  65,
 		},
@@ -136,6 +148,7 @@ func TestPubkeyAminoName(t *testing.T) {
 		found bool
 	}{
 		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
+		{sr25519.PubKeySr25519{}, sr25519.PubKeyAminoName, true},
 		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
 		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
@@ -146,4 +159,77 @@ func TestPubkeyAminoName(t *testing.T) {
 			require.Equal(t, tc.want, got, "not equal on tc %d", i)
 		}
 	}
+}
+
+var _ crypto.PrivKey = testPriv{}
+var _ crypto.PubKey = testPub{}
+var testCdc = amino.NewCodec()
+
+type testPriv []byte
+
+func (privkey testPriv) PubKey() crypto.PubKey { return testPub{} }
+func (privkey testPriv) Bytes() []byte {
+	return testCdc.MustMarshalBinaryBare(privkey)
+}
+func (privkey testPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
+func (privkey testPriv) Equals(other crypto.PrivKey) bool { return true }
+
+type testPub []byte
+
+func (key testPub) Address() crypto.Address { return crypto.Address{} }
+func (key testPub) Bytes() []byte {
+	return testCdc.MustMarshalBinaryBare(key)
+}
+func (key testPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
+func (key testPub) Equals(other crypto.PubKey) bool         { return true }
+
+var (
+	privAminoName = "registerTest/Priv"
+	pubAminoName  = "registerTest/Pub"
+)
+
+func TestRegisterKeyType(t *testing.T) {
+	RegisterAmino(testCdc)
+	testCdc.RegisterConcrete(testPriv{}, privAminoName, nil)
+	testCdc.RegisterConcrete(testPub{}, pubAminoName, nil)
+
+	pub := testPub{0x1}
+	priv := testPriv{0x2}
+
+	// Check to make sure key cannot be decoded before registering
+	_, err := PrivKeyFromBytes(priv.Bytes())
+	require.Error(t, err)
+	_, err = PubKeyFromBytes(pub.Bytes())
+	require.Error(t, err)
+
+	// Check that name is not registered
+	_, found := PubkeyAminoName(testCdc, pub)
+	require.False(t, found)
+
+	// Register key types
+	RegisterKeyType(testPriv{}, privAminoName)
+	RegisterKeyType(testPub{}, pubAminoName)
+
+	// Name should exist after registering
+	name, found := PubkeyAminoName(testCdc, pub)
+	require.True(t, found)
+	require.Equal(t, name, pubAminoName)
+
+	// Decode keys using the encoded bytes from encoding with the other codec
+	decodedPriv, err := PrivKeyFromBytes(priv.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, priv, decodedPriv)
+
+	decodedPub, err := PubKeyFromBytes(pub.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, pub, decodedPub)
+
+	// Reset module codec after testing
+	cdc = amino.NewCodec()
+	nameTable = make(map[reflect.Type]string, 3)
+	RegisterAmino(cdc)
+	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(sr25519.PubKeySr25519{})] = sr25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
+	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }

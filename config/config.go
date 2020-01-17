@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -64,6 +65,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -76,6 +78,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -89,6 +92,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -120,6 +124,9 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [mempool] section")
 	}
+	if err := cfg.FastSync.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [fastsync] section")
+	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
 	}
@@ -133,7 +140,7 @@ func (cfg *Config) ValidateBasic() error {
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -151,9 +158,9 @@ type BaseConfig struct {
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSync bool `mapstructure:"fast_sync"`
+	FastSyncMode bool `mapstructure:"fast_sync"`
 
-	// Database backend: goleveldb | cleveldb | boltdb
+	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 	//   - pure go
 	//   - stable
@@ -165,6 +172,10 @@ type BaseConfig struct {
 	//   - EXPERIMENTAL
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
+	// * rocksdb (uses github.com/tecbot/gorocksdb)
+	//   - EXPERIMENTAL
+	//   - requires gcc
+	//   - use rocksdb build tag (go build -tags rocksdb)
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
@@ -216,7 +227,7 @@ func DefaultBaseConfig() BaseConfig {
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
 		ProfListenAddress:  "",
-		FastSync:           true,
+		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -228,7 +239,7 @@ func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSync = false
+	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -351,6 +362,12 @@ type RPCConfig struct {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
+	// Maximum size of request body, in bytes
+	MaxBodyBytes int64 `mapstructure:"max_body_bytes"`
+
+	// Maximum size of request header, in bytes
+	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
+
 	// The path to a file containing certificate that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
@@ -358,13 +375,15 @@ type RPCConfig struct {
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
 	// and the CA's certificate.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
@@ -373,7 +392,7 @@ func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:          "tcp://127.0.0.1:26657",
 		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
@@ -384,6 +403,9 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
+
+		MaxBodyBytes:   int64(1000000), // 1MB
+		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
 		TLSCertFile: "",
 		TLSKeyFile:  "",
@@ -417,6 +439,12 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
 	}
+	if cfg.MaxBodyBytes < 0 {
+		return errors.New("max_body_bytes can't be negative")
+	}
+	if cfg.MaxHeaderBytes < 0 {
+		return errors.New("max_header_bytes can't be negative")
+	}
 	return nil
 }
 
@@ -449,7 +477,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections
@@ -480,6 +508,12 @@ type P2PConfig struct {
 
 	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
+
+	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
+	UnconditionalPeerIDs string `mapstructure:"unconditional_peer_ids"`
+
+	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent_peers_max_dial_period"`
 
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush_throttle_timeout"`
@@ -524,25 +558,26 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:26656",
-		ExternalAddress:         "",
-		UPNP:                    false,
-		AddrBook:                defaultAddrBookPath,
-		AddrBookStrict:          true,
-		MaxNumInboundPeers:      40,
-		MaxNumOutboundPeers:     10,
-		FlushThrottleTimeout:    100 * time.Millisecond,
-		MaxPacketMsgPayloadSize: 1024,    // 1 kB
-		SendRate:                5120000, // 5 mB/s
-		RecvRate:                5120000, // 5 mB/s
-		PexReactor:              true,
-		SeedMode:                false,
-		AllowDuplicateIP:        false,
-		HandshakeTimeout:        20 * time.Second,
-		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		TestFuzz:                false,
-		TestFuzzConfig:          DefaultFuzzConnConfig(),
+		ListenAddress:                "tcp://0.0.0.0:26656",
+		ExternalAddress:              "",
+		UPNP:                         false,
+		AddrBook:                     defaultAddrBookPath,
+		AddrBookStrict:               true,
+		MaxNumInboundPeers:           40,
+		MaxNumOutboundPeers:          10,
+		PersistentPeersMaxDialPeriod: 0 * time.Second,
+		FlushThrottleTimeout:         100 * time.Millisecond,
+		MaxPacketMsgPayloadSize:      1024,    // 1 kB
+		SendRate:                     5120000, // 5 mB/s
+		RecvRate:                     5120000, // 5 mB/s
+		PexReactor:                   true,
+		SeedMode:                     false,
+		AllowDuplicateIP:             false,
+		HandshakeTimeout:             20 * time.Second,
+		DialTimeout:                  3 * time.Second,
+		TestDialFail:                 false,
+		TestFuzz:                     false,
+		TestFuzzConfig:               DefaultFuzzConnConfig(),
 	}
 }
 
@@ -571,6 +606,9 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	}
 	if cfg.FlushThrottleTimeout < 0 {
 		return errors.New("flush_throttle_timeout can't be negative")
+	}
+	if cfg.PersistentPeersMaxDialPeriod < 0 {
+		return errors.New("persistent_peers_max_dial_period can't be negative")
 	}
 	if cfg.MaxPacketMsgPayloadSize < 0 {
 		return errors.New("max_packet_msg_payload_size can't be negative")
@@ -616,6 +654,7 @@ type MempoolConfig struct {
 	Size        int    `mapstructure:"size"`
 	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
 	CacheSize   int    `mapstructure:"cache_size"`
+	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -629,6 +668,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Size:        5000,
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:   10000,
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -661,7 +701,42 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
 	}
+	if cfg.MaxTxBytes < 0 {
+		return errors.New("max_tx_bytes can't be negative")
+	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// FastSyncConfig
+
+// FastSyncConfig defines the configuration for the Tendermint fast sync service
+type FastSyncConfig struct {
+	Version string `mapstructure:"version"`
+}
+
+// DefaultFastSyncConfig returns a default configuration for the fast sync service
+func DefaultFastSyncConfig() *FastSyncConfig {
+	return &FastSyncConfig{
+		Version: "v0",
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the fast sync.
+func TestFastSyncConfig() *FastSyncConfig {
+	return DefaultFastSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *FastSyncConfig) ValidateBasic() error {
+	switch cfg.Version {
+	case "v0":
+		return nil
+	case "v1":
+		return nil
+	default:
+		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -755,7 +830,8 @@ func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
 	) * time.Nanosecond
 }
 
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
+// for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(cfg.TimeoutCommit)
 }
@@ -811,41 +887,48 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 
 //-----------------------------------------------------------------------------
 // TxIndexConfig
-
+// Remember that Event has the following structure:
+// type: [
+//  key: value,
+//  ...
+// ]
+//
+// CompositeKeys are constructed by `type.key`
 // TxIndexConfig defines the configuration for the transaction indexer,
-// including tags to index.
+// including composite keys to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   2) "kv" (default) - the simplest possible indexer,
+	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
-	// Comma-separated list of tags to index (by default the only tag is "tx.hash")
+	// Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
 	//
-	// You can also index transactions by height by adding "tx.height" tag here.
+	// You can also index transactions by height by adding "tx.height" key here.
 	//
-	// It's recommended to index only a subset of tags due to possible memory
+	// It's recommended to index only a subset of keys due to possible memory
 	// bloat. This is, of course, depends on the indexer's DB and the volume of
 	// transactions.
-	IndexTags string `mapstructure:"index_tags"`
+	IndexKeys string `mapstructure:"index_keys"`
 
-	// When set to true, tells indexer to index all tags (predefined tags:
-	// "tx.hash", "tx.height" and all tags from DeliverTx responses).
+	// When set to true, tells indexer to index all compositeKeys (predefined keys:
+	// "tx.hash", "tx.height" and all keys from DeliverTx responses).
 	//
-	// Note this may be not desirable (see the comment above). IndexTags has a
-	// precedence over IndexAllTags (i.e. when given both, IndexTags will be
+	// Note this may be not desirable (see the comment above). IndexKeys has a
+	// precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
 	// indexed).
-	IndexAllTags bool `mapstructure:"index_all_tags"`
+	IndexAllKeys bool `mapstructure:"index_all_keys"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
 		Indexer:      "kv",
-		IndexTags:    "",
-		IndexAllTags: false,
+		IndexKeys:    "",
+		IndexAllKeys: false,
 	}
 }
 

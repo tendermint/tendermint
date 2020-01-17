@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/types"
+	db "github.com/tendermint/tm-db"
 )
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
@@ -25,7 +25,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// tx indexer
 	store := db.NewMemDB()
-	txIndexer := kv.NewTxIndex(store, kv.IndexAllTags())
+	txIndexer := kv.NewTxIndex(store, kv.IndexAllEvents())
 
 	service := txindex.NewIndexerService(txIndexer, eventBus)
 	service.SetLogger(log.TestingLogger())
@@ -35,7 +35,8 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// publish block with txs
 	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1, NumTxs: 2},
+		Header: types.Header{Height: 1},
+		NumTxs: int64(2),
 	})
 	txResult1 := &types.TxResult{
 		Height: 1,

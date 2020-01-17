@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 // Note these are client errors, eg. ABCI socket connectivity issues.
 // Application-related errors are reflected in response via ABCI error codes and logs.
 type Client interface {
-	cmn.Service
+	service.Service
 
 	SetResponseCallback(Callback)
 	Error() error
@@ -60,7 +60,7 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 	case "grpc":
 		client = NewGRPCClient(addr, mustConnect)
 	default:
-		err = fmt.Errorf("Unknown abci transport %s", transport)
+		err = fmt.Errorf("unknown abci transport %s", transport)
 	}
 	return
 }

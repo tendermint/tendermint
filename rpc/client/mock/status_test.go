@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -18,8 +18,8 @@ func TestStatus(t *testing.T) {
 		Call: mock.Call{
 			Response: &ctypes.ResultStatus{
 				SyncInfo: ctypes.SyncInfo{
-					LatestBlockHash:   cmn.HexBytes("block"),
-					LatestAppHash:     cmn.HexBytes("app"),
+					LatestBlockHash:   bytes.HexBytes("block"),
+					LatestAppHash:     bytes.HexBytes("app"),
 					LatestBlockHeight: 10,
 				},
 			}},

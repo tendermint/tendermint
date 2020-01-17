@@ -11,9 +11,13 @@ import (
 func TestNewNetAddress(t *testing.T) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.Nil(t, err)
-	addr := NewNetAddress("", tcpAddr)
 
-	assert.Equal(t, "127.0.0.1:8080", addr.String())
+	assert.Panics(t, func() {
+		NewNetAddress("", tcpAddr)
+	})
+
+	addr := NewNetAddress("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", tcpAddr)
+	assert.Equal(t, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", addr.String())
 
 	assert.NotPanics(t, func() {
 		NewNetAddress("", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8000})
@@ -31,9 +35,24 @@ func TestNewNetAddressString(t *testing.T) {
 		{"no node id w/ tcp input", "tcp://127.0.0.1:8080", "", false},
 		{"no node id w/ udp input", "udp://127.0.0.1:8080", "", false},
 
-		{"no protocol", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
-		{"tcp input", "tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
-		{"udp input", "udp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+		{
+			"no protocol",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"tcp input",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"udp input",
+			"udp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
 		{"malformed tcp input", "tcp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
 		{"malformed udp input", "udp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
 
@@ -51,7 +70,12 @@ func TestNewNetAddressString(t *testing.T) {
 		{"too short nodeId w/tcp", "tcp://deadbeef@127.0.0.1:8080", "", false},
 		{"too short notHex nodeId w/tcp", "tcp://this-isnot-hex@127.0.0.1:8080", "", false},
 		{"notHex nodeId w/tcp", "tcp://xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
-		{"correct nodeId w/tcp", "tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+		{
+			"correct nodeId w/tcp",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
 
 		{"no node id", "tcp://@127.0.0.1:8080", "", false},
 		{"no node id or IP", "tcp://@", "", false},
@@ -63,6 +87,7 @@ func TestNewNetAddressString(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			addr, err := NewNetAddressString(tc.addr)
 			if tc.correct {
@@ -106,7 +131,12 @@ func TestNetAddressProperties(t *testing.T) {
 		addr, err := NewNetAddressString(tc.addr)
 		require.Nil(t, err)
 
-		assert.Equal(t, tc.valid, addr.Valid())
+		err = addr.Valid()
+		if tc.valid {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
 		assert.Equal(t, tc.local, addr.Local())
 		assert.Equal(t, tc.routable, addr.Routable())
 	}
@@ -119,7 +149,11 @@ func TestNetAddressReachabilityTo(t *testing.T) {
 		other        string
 		reachability int
 	}{
-		{"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8081", 0},
+		{
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8081",
+			0,
+		},
 		{"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@ya.ru:80", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", 1},
 	}
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 // Volatile state for each Validator
@@ -41,17 +41,19 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 	if v == nil {
 		return other
 	}
-	if v.ProposerPriority > other.ProposerPriority {
+	switch {
+	case v.ProposerPriority > other.ProposerPriority:
 		return v
-	} else if v.ProposerPriority < other.ProposerPriority {
+	case v.ProposerPriority < other.ProposerPriority:
 		return other
-	} else {
+	default:
 		result := bytes.Compare(v.Address, other.Address)
-		if result < 0 {
+		switch {
+		case result < 0:
 			return v
-		} else if result > 0 {
+		case result > 0:
 			return other
-		} else {
+		default:
 			panic("Cannot compare identical validators")
 		}
 	}
@@ -101,7 +103,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
-		votePower += int64(cmn.RandUint32())
+		votePower += int64(tmrand.Uint32())
 	}
 	pubKey := privVal.GetPubKey()
 	val := NewValidator(pubKey, votePower)

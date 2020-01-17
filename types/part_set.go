@@ -9,27 +9,32 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
 var (
-	ErrPartSetUnexpectedIndex = errors.New("Error part set unexpected index")
-	ErrPartSetInvalidProof    = errors.New("Error part set invalid proof")
+	ErrPartSetUnexpectedIndex = errors.New("error part set unexpected index")
+	ErrPartSetInvalidProof    = errors.New("error part set invalid proof")
 )
 
 type Part struct {
 	Index int                `json:"index"`
-	Bytes cmn.HexBytes       `json:"bytes"`
+	Bytes tmbytes.HexBytes   `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 }
 
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
 	if part.Index < 0 {
-		return errors.New("Negative Index")
+		return errors.New("negative Index")
 	}
 	if len(part.Bytes) > BlockPartSizeBytes {
-		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
+	}
+	if err := part.Proof.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "wrong Proof")
 	}
 	return nil
 }
@@ -44,7 +49,7 @@ func (part *Part) StringIndented(indent string) string {
 %s  Proof: %v
 %s}`,
 		part.Index,
-		indent, cmn.Fingerprint(part.Bytes),
+		indent, tmbytes.Fingerprint(part.Bytes),
 		indent, part.Proof.StringIndented(indent+"  "),
 		indent)
 }
@@ -52,12 +57,12 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int          `json:"total"`
-	Hash  cmn.HexBytes `json:"hash"`
+	Total int              `json:"total"`
+	Hash  tmbytes.HexBytes `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("%v:%X", psh.Total, cmn.Fingerprint(psh.Hash))
+	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {
@@ -71,7 +76,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 // ValidateBasic performs basic validation.
 func (psh PartSetHeader) ValidateBasic() error {
 	if psh.Total < 0 {
-		return errors.New("Negative Total")
+		return errors.New("negative Total")
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
@@ -88,7 +93,7 @@ type PartSet struct {
 
 	mtx           sync.Mutex
 	parts         []*Part
-	partsBitArray *cmn.BitArray
+	partsBitArray *bits.BitArray
 	count         int
 }
 
@@ -99,11 +104,11 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	partsBytes := make([][]byte, total)
-	partsBitArray := cmn.NewBitArray(total)
+	partsBitArray := bits.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
 			Index: i,
-			Bytes: data[i*partSize : cmn.MinInt(len(data), (i+1)*partSize)],
+			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
 		partsBytes[i] = part.Bytes
@@ -129,7 +134,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		total:         header.Total,
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
-		partsBitArray: cmn.NewBitArray(header.Total),
+		partsBitArray: bits.NewBitArray(header.Total),
 		count:         0,
 	}
 }
@@ -151,7 +156,7 @@ func (ps *PartSet) HasHeader(header PartSetHeader) bool {
 	return ps.Header().Equals(header)
 }
 
-func (ps *PartSet) BitArray() *cmn.BitArray {
+func (ps *PartSet) BitArray() *bits.BitArray {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.partsBitArray.Copy()
@@ -284,8 +289,8 @@ func (ps *PartSet) MarshalJSON() ([]byte, error) {
 	defer ps.mtx.Unlock()
 
 	return cdc.MarshalJSON(struct {
-		CountTotal    string        `json:"count/total"`
-		PartsBitArray *cmn.BitArray `json:"parts_bit_array"`
+		CountTotal    string         `json:"count/total"`
+		PartsBitArray *bits.BitArray `json:"parts_bit_array"`
 	}{
 		fmt.Sprintf("%d/%d", ps.Count(), ps.Total()),
 		ps.partsBitArray,

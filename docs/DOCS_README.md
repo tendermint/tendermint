@@ -2,18 +2,16 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- https://tendermint.com/docs/ and
+- https://docs.tendermint.com/master/ and
 - https://tendermint-staging.interblock.io/docs/
 
 built from the files in this (`/docs`) directory for
-[master](https://github.com/tendermint/tendermint/tree/master/docs)
-and [develop](https://github.com/tendermint/tendermint/tree/develop/docs),
-respectively.
+[master](https://github.com/tendermint/tendermint/tree/master/docs) respectively.
 
 ## How It Works
 
 There is a CircleCI job listening for changes in the `/docs` directory, on both
-the  `master` and `develop` branches. Any updates to files in this directory
+the `master` branch. Any updates to files in this directory
 on those branches will automatically trigger a website deployment. Under the hood,
 the private website repository has a `make build-docs` target consumed by a CircleCI job in that repo.
 
@@ -35,7 +33,7 @@ of the sidebar.
 **NOTE:** Strongly consider the existing links - both within this directory
 and to the website docs - when moving or deleting files.
 
-Links to directories *MUST* end in a `/`.
+Links to directories _MUST_ end in a `/`.
 
 Relative links should be used nearly everywhere, having discovered and weighed the following:
 
@@ -62,37 +60,27 @@ to send users to the GitHub.
 
 ## Building Locally
 
-To build and serve the documentation locally, run:
+Make sure you are in the `docs` directory and run the following commands:
 
-```
-# from this directory
-npm install -g vuepress
-```
-
-NOTE: the command may require `sudo`.
-
-then change the following line in the `.vuepress/config.js`:
-
-```
-base: "/docs/",
+```sh
+rm -rf node_modules
 ```
 
-to:
+This command will remove old version of the visual theme and required packages. This step is optional.
 
-```
-base: "/",
-```
-
-Finally, go up one directory to the root of the repo and run:
-
-```
-# from root of repo
-vuepress build docs
-cd dist/docs
-python -m SimpleHTTPServer 8080
+```sh
+npm install
 ```
 
-then navigate to localhost:8080 in your browser.
+Install the theme and all dependencies.
+
+```sh
+npm run serve
+```
+
+Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often https://localhost:8080).
+
+To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist`  directory.
 
 ## Search
 
@@ -101,4 +89,4 @@ We are using [Algolia](https://www.algolia.com) to power full-text search. This 
 ## Consistency
 
 Because the build processes are identical (as is the information contained herein), this file should be kept in sync as
-much as possible with its [counterpart in the Cosmos SDK repo](https://github.com/cosmos/cosmos-sdk/blob/develop/docs/DOCS_README.md).
+much as possible with its [counterpart in the Cosmos SDK repo](https://github.com/cosmos/cosmos-sdk/blob/master/docs/DOCS_README.md).
