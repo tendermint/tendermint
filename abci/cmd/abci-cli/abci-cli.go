@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -111,16 +111,28 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:26658", "address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress,
+		"address",
+		"",
+		"tcp://0.0.0.0:26658",
+		"address of application socket")
 	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose,
+		"verbose",
+		"v",
+		false,
+		"print the command and results as if it were a console session")
 	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
 func addQueryFlags() {
 	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
 	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve,
+		"prove",
+		"",
+		false,
+		"whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {
@@ -174,9 +186,7 @@ where example.file looks something like:
     info
 `,
 	Args: cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdBatch(cmd, args)
-	},
+	RunE: cmdBatch,
 }
 
 var consoleCmd = &cobra.Command{
@@ -189,9 +199,7 @@ without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
 	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdConsole(cmd, args)
-	},
+	RunE:      cmdConsole,
 }
 
 var echoCmd = &cobra.Command{
@@ -199,27 +207,21 @@ var echoCmd = &cobra.Command{
 	Short: "have the application echo a message",
 	Long:  "have the application echo a message",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdEcho(cmd, args)
-	},
+	RunE:  cmdEcho,
 }
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "get some info about the application",
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdInfo(cmd, args)
-	},
+	RunE:  cmdInfo,
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
 	Short: "set an option on the application",
 	Long:  "set an option on the application",
 	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdSetOption(cmd, args)
-	},
+	RunE:  cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -227,9 +229,7 @@ var deliverTxCmd = &cobra.Command{
 	Short: "deliver a new transaction to the application",
 	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdDeliverTx(cmd, args)
-	},
+	RunE:  cmdDeliverTx,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -237,9 +237,7 @@ var checkTxCmd = &cobra.Command{
 	Short: "validate a transaction",
 	Long:  "validate a transaction",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCheckTx(cmd, args)
-	},
+	RunE:  cmdCheckTx,
 }
 
 var commitCmd = &cobra.Command{
@@ -247,9 +245,7 @@ var commitCmd = &cobra.Command{
 	Short: "commit the application state and return the Merkle root hash",
 	Long:  "commit the application state and return the Merkle root hash",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCommit(cmd, args)
-	},
+	RunE:  cmdCommit,
 }
 
 var versionCmd = &cobra.Command{
@@ -268,9 +264,7 @@ var queryCmd = &cobra.Command{
 	Short: "query the application state",
 	Long:  "query the application state",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdQuery(cmd, args)
-	},
+	RunE:  cmdQuery,
 }
 
 var counterCmd = &cobra.Command{
@@ -278,9 +272,7 @@ var counterCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCounter(cmd, args)
-	},
+	RunE:  cmdCounter,
 }
 
 var kvstoreCmd = &cobra.Command{
@@ -288,9 +280,7 @@ var kvstoreCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdKVStore(cmd, args)
-	},
+	RunE:  cmdKVStore,
 }
 
 var testCmd = &cobra.Command{
@@ -298,9 +288,7 @@ var testCmd = &cobra.Command{
 	Short: "run integration tests",
 	Long:  "run integration tests",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdTest(cmd, args)
-	},
+	RunE:  cmdTest,
 }
 
 // Generates new Args array based off of previous call args to maintain flag persistence
@@ -322,14 +310,14 @@ func persistentArgs(line []byte) []string {
 func compose(fs []func() error) error {
 	if len(fs) == 0 {
 		return nil
-	} else {
-		err := fs[0]()
-		if err == nil {
-			return compose(fs[1:])
-		} else {
-			return err
-		}
 	}
+
+	err := fs[0]()
+	if err == nil {
+		return compose(fs[1:])
+	}
+
+	return err
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
@@ -356,16 +344,18 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
+LOOP:
 	for {
 
 		line, more, err := bufReader.ReadLine()
-		if more {
-			return errors.New("Input line is too long")
-		} else if err == io.EOF {
-			break
-		} else if len(line) == 0 {
+		switch {
+		case more:
+			return errors.New("input line is too long")
+		case err == io.EOF:
+			break LOOP
+		case len(line) == 0:
 			continue
-		} else if err != nil {
+		case err != nil:
 			return err
 		}
 
@@ -384,7 +374,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			return errors.New("Input is too long")
+			return errors.New("input is too long")
 		} else if err != nil {
 			return err
 		}
@@ -419,7 +409,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 			}
 
 			// otherwise, we need to skip the next one too
-			i += 1
+			i++
 			continue
 		}
 
@@ -546,7 +536,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(txBytes)
+	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -572,7 +562,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(txBytes)
+	res, err := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -636,7 +626,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
-	app := counter.NewCounterApplication(flagSerial)
+	app := counter.NewApplication(flagSerial)
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
@@ -650,7 +640,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -665,7 +655,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = kvstore.NewKVStoreApplication()
+		app = kvstore.NewApplication()
 	} else {
 		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
 		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
@@ -682,7 +672,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -740,14 +730,14 @@ func stringOrHexToBytes(s string) ([]byte, error) {
 	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
-			err = fmt.Errorf("Error decoding hex argument: %s", err.Error())
+			err = fmt.Errorf("error decoding hex argument: %s", err.Error())
 			return nil, err
 		}
 		return b, nil
 	}
 
 	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
-		err := fmt.Errorf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
+		err := fmt.Errorf("invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
 		return nil, err
 	}
 

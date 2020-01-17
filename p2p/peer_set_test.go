@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 // mockPeer for testing the PeerSet
 type mockPeer struct {
-	cmn.BaseService
+	service.BaseService
 	ip net.IP
 	id ID
 }
@@ -101,10 +101,10 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	for i := 0; i < N; i++ {
 		peer := newMockPeer(net.IP{127, 0, 0, byte(i)})
 		if err := peerSet.Add(peer); err != nil {
-			t.Errorf("Failed to add new peer")
+			t.Errorf("failed to add new peer")
 		}
 		if peerSet.Size() != i+1 {
-			t.Errorf("Failed to add new peer and increment size")
+			t.Errorf("failed to add new peer and increment size")
 		}
 		peers = append(peers, peer)
 	}
@@ -113,10 +113,10 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 		removed := peerSet.Remove(peer)
 		assert.True(t, removed)
 		if peerSet.Has(peer.ID()) {
-			t.Errorf("Failed to remove peer")
+			t.Errorf("failed to remove peer")
 		}
 		if peerSet.Size() != len(peers)-i-1 {
-			t.Errorf("Failed to remove peer and decrement size")
+			t.Errorf("failed to remove peer and decrement size")
 		}
 	}
 }

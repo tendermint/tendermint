@@ -24,7 +24,6 @@ func TestProto3Compatibility(t *testing.T) {
 		ChainID: "cosmos",
 		Height:  150,
 		Time:    &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
-		NumTxs:  7,
 		LastBlockID: &proto3.BlockID{
 			Hash: []byte("some serious hashing"),
 			PartsHeader: &proto3.PartSetHeader{
@@ -32,7 +31,6 @@ func TestProto3Compatibility(t *testing.T) {
 				Hash:  []byte("some more serious hashing"),
 			},
 		},
-		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),
@@ -41,7 +39,6 @@ func TestProto3Compatibility(t *testing.T) {
 		ChainID: "cosmos",
 		Height:  150,
 		Time:    tm,
-		NumTxs:  7,
 		LastBlockID: BlockID{
 			Hash: []byte("some serious hashing"),
 			PartsHeader: PartSetHeader{
@@ -49,7 +46,6 @@ func TestProto3Compatibility(t *testing.T) {
 				Hash:  []byte("some more serious hashing"),
 			},
 		},
-		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),
@@ -66,8 +62,6 @@ func TestProto3Compatibility(t *testing.T) {
 		ChainID:        "cosmos",
 		Height:         150,
 		Time:           &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
-		NumTxs:         7,
-		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),
@@ -76,8 +70,6 @@ func TestProto3Compatibility(t *testing.T) {
 		ChainID:        "cosmos",
 		Height:         150,
 		Time:           tm,
-		NumTxs:         7,
-		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),

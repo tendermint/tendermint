@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -70,7 +70,7 @@ func TestByzantine(t *testing.T) {
 		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we don't start the consensus states
+		conR := NewReactor(css[i], true) // so we don't start the consensus states
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
@@ -90,7 +90,7 @@ func TestByzantine(t *testing.T) {
 			if rr, ok := r.(*ByzantineReactor); ok {
 				rr.reactor.Switch.Stop()
 			} else {
-				r.(*ConsensusReactor).Switch.Stop()
+				r.(*Reactor).Switch.Stop()
 			}
 		}
 	}()
@@ -110,7 +110,7 @@ func TestByzantine(t *testing.T) {
 	// start the non-byz state machines.
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
-		cr := reactors[i].(*ConsensusReactor)
+		cr := reactors[i].(*Reactor)
 		cr.SwitchToConsensus(cr.conS.GetState(), 0)
 	}
 
@@ -171,13 +171,13 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *ConsensusState, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
 	// Create a new proposal block from state/txs from the mempool.
 	block1, blockParts1 := cs.createProposalBlock()
-	polRound, propBlockID := cs.ValidRound, types.BlockID{block1.Hash(), blockParts1.Header()}
+	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartsHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, round, polRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal1); err != nil {
 		t.Error(err)
@@ -185,7 +185,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
-	polRound, propBlockID = cs.ValidRound, types.BlockID{block2.Hash(), blockParts2.Header()}
+	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartsHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, round, polRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal2); err != nil {
 		t.Error(err)
@@ -206,7 +206,15 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 	}
 }
 
-func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+func sendProposalAndParts(
+	height int64,
+	round int,
+	cs *State,
+	peer p2p.Peer,
+	proposal *types.Proposal,
+	blockHash []byte,
+	parts *types.PartSet,
+) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
@@ -236,11 +244,11 @@ func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.
 // byzantine consensus reactor
 
 type ByzantineReactor struct {
-	cmn.Service
-	reactor *ConsensusReactor
+	service.Service
+	reactor *Reactor
 }
 
-func NewByzantineReactor(conR *ConsensusReactor) *ByzantineReactor {
+func NewByzantineReactor(conR *Reactor) *ByzantineReactor {
 	return &ByzantineReactor{
 		Service: conR,
 		reactor: conR,

@@ -1,0 +1,28 @@
+FROM amazonlinux:2
+
+RUN yum -y update && \
+    yum -y install wget
+
+RUN wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    rpm -ivh epel-release-latest-7.noarch.rpm
+
+RUN yum -y groupinstall "Development Tools"
+RUN yum -y install leveldb-devel which
+
+ENV GOVERSION=1.12.9
+
+RUN cd /tmp && \
+    wget https://dl.google.com/go/go${GOVERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xf go${GOVERSION}.linux-amd64.tar.gz && \
+    mkdir -p /go/src && \
+    mkdir -p /go/bin
+
+ENV PATH=$PATH:/usr/local/go/bin:/go/bin
+ENV GOBIN=/go/bin
+ENV GOPATH=/go/src
+
+RUN mkdir -p /tendermint
+WORKDIR /tendermint
+
+CMD ["/usr/bin/make", "build_c"]
+

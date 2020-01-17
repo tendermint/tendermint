@@ -12,13 +12,16 @@ import (
 
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 
 	// Create a transaction
 	k := []byte("name")
@@ -62,13 +65,16 @@ func ExampleHTTP_simple() {
 
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 
 	// Create our two transactions
 	k1 := []byte("firstName")

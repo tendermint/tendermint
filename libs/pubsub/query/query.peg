@@ -11,6 +11,7 @@ condition <- tag ' '* (le ' '* (number / time / date)
                       / g ' '* (number / time / date)
                       / equal ' '* (number / time / date / value)
                       / contains ' '* value
+                      / exists
                       )
 
 tag <- < (![ \t\n\r\\()"'=><] .)+ >
@@ -27,6 +28,7 @@ and <- "AND"
 
 equal <- "="
 contains <- "CONTAINS"
+exists <- "EXISTS"
 le <- "<="
 ge <- ">="
 l <- "<"

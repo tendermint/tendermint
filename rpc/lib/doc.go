@@ -1,4 +1,5 @@
-// HTTP RPC server supporting calls via uri params, jsonrpc, and jsonrpc over websockets
+// HTTP RPC server supporting calls via uri params, jsonrpc over HTTP, and jsonrpc over
+// websockets
 //
 // Client Requests
 //
@@ -81,5 +82,4 @@
 // Examples
 //
 // - [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-// - [tm-monitor](https://github.com/tendermint/tendermint/blob/master/tools/tm-monitor/rpc.go)
 package rpc

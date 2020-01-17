@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 // Note these are client errors, eg. ABCI socket connectivity issues.
 // Application-related errors are reflected in response via ABCI error codes and logs.
 type Client interface {
-	cmn.Service
+	service.Service
 
 	SetResponseCallback(Callback)
 	Error() error
@@ -28,8 +28,8 @@ type Client interface {
 	EchoAsync(msg string) *ReqRes
 	InfoAsync(types.RequestInfo) *ReqRes
 	SetOptionAsync(types.RequestSetOption) *ReqRes
-	DeliverTxAsync(tx []byte) *ReqRes
-	CheckTxAsync(tx []byte) *ReqRes
+	DeliverTxAsync(types.RequestDeliverTx) *ReqRes
+	CheckTxAsync(types.RequestCheckTx) *ReqRes
 	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 	InitChainAsync(types.RequestInitChain) *ReqRes
@@ -40,8 +40,8 @@ type Client interface {
 	EchoSync(msg string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	SetOptionSync(types.RequestSetOption) (*types.ResponseSetOption, error)
-	DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error)
-	CheckTxSync(tx []byte) (*types.ResponseCheckTx, error)
+	DeliverTxSync(types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
+	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -60,7 +60,7 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 	case "grpc":
 		client = NewGRPCClient(addr, mustConnect)
 	default:
-		err = fmt.Errorf("Unknown abci transport %s", transport)
+		err = fmt.Errorf("unknown abci transport %s", transport)
 	}
 	return
 }

@@ -26,7 +26,7 @@
 //     for {
 //         select {
 //         case msg <- subscription.Out():
-//             // handle msg.Data() and msg.Tags()
+//             // handle msg.Data() and msg.Events()
 //         case <-subscription.Cancelled():
 //             return subscription.Err()
 //         }
@@ -36,10 +36,10 @@ package pubsub
 
 import (
 	"context"
-	"errors"
 	"sync"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 type operation int
@@ -61,9 +61,14 @@ var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-// Query defines an interface for a query to be used for subscribing.
+// Query defines an interface for a query to be used for subscribing. A query
+// matches against a map of events. Each key in this map is a composite of the
+// even type and an attribute key (e.g. "{eventType}.{eventAttrKey}") and the
+// values are the event values that are contained under that relationship. This
+// allows event types to repeat themselves with the same set of keys and
+// different values.
 type Query interface {
-	Matches(tags map[string]string) bool
+	Matches(events map[string][]string) (bool, error)
 	String() string
 }
 
@@ -76,14 +81,14 @@ type cmd struct {
 	clientID     string
 
 	// publish
-	msg  interface{}
-	tags map[string]string
+	msg    interface{}
+	events map[string][]string
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
-// messages with or without tags, and manages internal state.
+// messages with or without events, and manages internal state.
 type Server struct {
-	cmn.BaseService
+	service.BaseService
 
 	cmds    chan cmd
 	cmdsCap int
@@ -104,7 +109,7 @@ func NewServer(options ...Option) *Server {
 	s := &Server{
 		subscriptions: make(map[string]map[string]struct{}),
 	}
-	s.BaseService = *cmn.NewBaseService(nil, "PubSub", s)
+	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
 
 	for _, option := range options {
 		option(s)
@@ -141,7 +146,11 @@ func (s *Server) BufferCapacity() int {
 // outCapacity can be used to set a capacity for Subscription#Out channel (1 by
 // default). Panics if outCapacity is less than or equal to zero. If you want
 // an unbuffered channel, use SubscribeUnbuffered.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity ...int) (*Subscription, error) {
+func (s *Server) Subscribe(
+	ctx context.Context,
+	clientID string,
+	query Query,
+	outCapacity ...int) (*Subscription, error) {
 	outCap := 1
 	if len(outCapacity) > 0 {
 		if outCapacity[0] <= 0 {
@@ -258,15 +267,15 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithTags(ctx, msg, make(map[string]string))
+	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
 }
 
-// PublishWithTags publishes the given message with the set of tags. The set is
-// matched with clients queries. If there is a match, the message is sent to
+// PublishWithEvents publishes the given message with the set of events. The set
+// is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags map[string]string) error {
+func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
 	select {
-	case s.cmds <- cmd{op: pub, msg: msg, tags: tags}:
+	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -325,7 +334,9 @@ loop:
 		case sub:
 			state.add(cmd.clientID, cmd.query, cmd.subscription)
 		case pub:
-			state.send(cmd.msg, cmd.tags)
+			if err := state.send(cmd.msg, cmd.events); err != nil {
+				s.Logger.Error("Error querying for events", "err", err)
+			}
 		}
 	}
 }
@@ -392,18 +403,24 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, tags map[string]string) {
+func (state *state) send(msg interface{}, events map[string][]string) error {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		q := state.queries[qStr].q
-		if q.Matches(tags) {
+
+		match, err := q.Matches(events)
+		if err != nil {
+			return errors.Wrapf(err, "failed to match against query %s", q.String())
+		}
+
+		if match {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- Message{msg, tags}
+					subscription.out <- NewMessage(msg, events)
 				} else {
 					// don't block on buffered channels
 					select {
-					case subscription.out <- Message{msg, tags}:
+					case subscription.out <- NewMessage(msg, events):
 					default:
 						state.remove(clientID, qStr, ErrOutOfCapacity)
 					}
@@ -411,4 +428,6 @@ func (state *state) send(msg interface{}, tags map[string]string) {
 			}
 		}
 	}
+
+	return nil
 }

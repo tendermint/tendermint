@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"errors"
+	"github.com/pkg/errors"
 )
 
 // NetAddress defines information about a peer on the network
@@ -40,7 +40,7 @@ func IDAddressString(id ID, protocolHostPort string) string {
 // NewNetAddress returns a new NetAddress using the provided TCP
 // address. When testing, other net.Addr (except TCP) will result in
 // using 0.0.0.0:0. When normal run, other net.Addr (except TCP) will
-// panic.
+// panic. Panics if ID is invalid.
 // TODO: socks proxies?
 func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
@@ -53,6 +53,11 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 			return netAddr
 		}
 	}
+
+	if err := validateID(id); err != nil {
+		panic(fmt.Sprintf("Invalid ID %v: %v (addr: %v)", id, err, addr))
+	}
+
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
 	na := NewNetAddressIPPort(ip, port)
@@ -65,36 +70,20 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 // Also resolves the host if host is not an IP.
 // Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
 func NewNetAddressString(addr string) (*NetAddress, error) {
-	spl := strings.Split(addr, "@")
-	if len(spl) < 2 {
+	addrWithoutProtocol := removeProtocolIfDefined(addr)
+	spl := strings.Split(addrWithoutProtocol, "@")
+	if len(spl) != 2 {
 		return nil, ErrNetAddressNoID{addr}
 	}
-	return NewNetAddressStringWithOptionalID(addr)
-}
 
-// NewNetAddressStringWithOptionalID returns a new NetAddress using the
-// provided address in the form of "ID@IP:Port", where the ID is optional.
-// Also resolves the host if host is not an IP.
-func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
-	addrWithoutProtocol := removeProtocolIfDefined(addr)
-
-	var id ID
-	spl := strings.Split(addrWithoutProtocol, "@")
-	if len(spl) == 2 {
-		idStr := spl[0]
-		idBytes, err := hex.DecodeString(idStr)
-		if err != nil {
-			return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-		}
-		if len(idBytes) != IDByteLength {
-			return nil, ErrNetAddressInvalid{
-				addrWithoutProtocol,
-				fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)}
-		}
-
-		id, addrWithoutProtocol = ID(idStr), spl[1]
+	// get ID
+	if err := validateID(ID(spl[0])); err != nil {
+		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
+	var id ID
+	id, addrWithoutProtocol = ID(spl[0]), spl[1]
 
+	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
 	if err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
@@ -216,22 +205,28 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 
 // Routable returns true if the address is routable.
 func (na *NetAddress) Routable() bool {
+	if err := na.Valid(); err != nil {
+		return false
+	}
 	// TODO(oga) bitcoind doesn't include RFC3849 here, but should we?
-	return na.Valid() && !(na.RFC1918() || na.RFC3927() || na.RFC4862() ||
+	return !(na.RFC1918() || na.RFC3927() || na.RFC4862() ||
 		na.RFC4193() || na.RFC4843() || na.Local())
 }
 
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
-func (na *NetAddress) Valid() bool {
-	if string(na.ID) != "" {
-		data, err := hex.DecodeString(string(na.ID))
-		if err != nil || len(data) != IDByteLength {
-			return false
-		}
+func (na *NetAddress) Valid() error {
+	if err := validateID(na.ID); err != nil {
+		return errors.Wrap(err, "invalid ID")
 	}
-	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
-		na.IP.Equal(net.IPv4bcast))
+
+	if na.IP == nil {
+		return errors.New("no IP")
+	}
+	if na.IP.IsUnspecified() || na.RFC3849() || na.IP.Equal(net.IPv4bcast) {
+		return errors.New("invalid IP")
+	}
+	return nil
 }
 
 // HasID returns true if the address has an ID.
@@ -251,44 +246,47 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		Unreachable = 0
 		Default     = iota
 		Teredo
-		Ipv6_weak
+		Ipv6Weak
 		Ipv4
-		Ipv6_strong
+		Ipv6Strong
 	)
-	if !na.Routable() {
+	switch {
+	case !na.Routable():
 		return Unreachable
-	} else if na.RFC4380() {
-		if !o.Routable() {
+	case na.RFC4380():
+		switch {
+		case !o.Routable():
 			return Default
-		} else if o.RFC4380() {
+		case o.RFC4380():
 			return Teredo
-		} else if o.IP.To4() != nil {
+		case o.IP.To4() != nil:
 			return Ipv4
-		} else { // ipv6
-			return Ipv6_weak
+		default: // ipv6
+			return Ipv6Weak
 		}
-	} else if na.IP.To4() != nil {
+	case na.IP.To4() != nil:
 		if o.Routable() && o.IP.To4() != nil {
 			return Ipv4
 		}
 		return Default
-	} else /* ipv6 */ {
+	default: /* ipv6 */
 		var tunnelled bool
 		// Is our v6 is tunnelled?
 		if o.RFC3964() || o.RFC6052() || o.RFC6145() {
 			tunnelled = true
 		}
-		if !o.Routable() {
+		switch {
+		case !o.Routable():
 			return Default
-		} else if o.RFC4380() {
+		case o.RFC4380():
 			return Teredo
-		} else if o.IP.To4() != nil {
+		case o.IP.To4() != nil:
 			return Ipv4
-		} else if tunnelled {
+		case tunnelled:
 			// only prioritise ipv6 if we aren't tunnelling it.
-			return Ipv6_weak
+			return Ipv6Weak
 		}
-		return Ipv6_strong
+		return Ipv6Strong
 	}
 }
 
@@ -337,4 +335,18 @@ func removeProtocolIfDefined(addr string) string {
 	}
 	return addr
 
+}
+
+func validateID(id ID) error {
+	if len(id) == 0 {
+		return errors.New("no ID")
+	}
+	idBytes, err := hex.DecodeString(string(id))
+	if err != nil {
+		return err
+	}
+	if len(idBytes) != IDByteLength {
+		return fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)
+	}
+	return nil
 }

@@ -10,15 +10,15 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	dbm "github.com/tendermint/tm-db"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -35,12 +35,12 @@ func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
-		cmn.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
+		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
 	}
 }
 
 // Replay msgs in file or start the console
-func (cs *ConsensusState) ReplayFile(file string, console bool) error {
+func (cs *State) ReplayFile(file string, console bool) error {
 
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
@@ -98,7 +98,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 // playback manager
 
 type playback struct {
-	cs *ConsensusState
+	cs *State
 
 	fp    *os.File
 	dec   *WALDecoder
@@ -109,7 +109,7 @@ type playback struct {
 	genesisState sm.State // so the replay session knows where to restart from
 }
 
-func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState sm.State) *playback {
+func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *playback {
 	return &playback{
 		cs:           cs,
 		fp:           fp,
@@ -124,7 +124,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	pb.cs.Stop()
 	pb.cs.Wait()
 
-	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -158,7 +158,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	return nil
 }
 
-func (cs *ConsensusState) startForReplay() {
+func (cs *State) startForReplay() {
 	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
 	/* TODO:!
 	// since we replay tocks we just ignore ticks
@@ -180,9 +180,9 @@ func (pb *playback) replayConsoleLoop() int {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			cmn.Exit("input is too long")
+			tmos.Exit("input is too long")
 		} else if err != nil {
-			cmn.Exit(err.Error())
+			tmos.Exit(err.Error())
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -217,7 +217,7 @@ func (pb *playback) replayConsoleLoop() int {
 
 			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 			if err != nil {
-				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
 			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
@@ -231,10 +231,8 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else {
-					if err := pb.replayReset(i, newStepSub); err != nil {
-						pb.cs.Logger.Error("Replay reset error", "err", err)
-					}
+				} else if err := pb.replayReset(i, newStepSub); err != nil {
+					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			}
 
@@ -276,21 +274,21 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
-	dbType := dbm.DBBackendType(config.DBBackend)
+func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
+	dbType := dbm.BackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
-	blockStore := bc.NewBlockStore(blockStoreDB)
+	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 	state, err := sm.MakeGenesisState(gdoc)
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
@@ -298,25 +296,25 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err = proxyApp.Start()
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
+		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
 	}
 
 	eventBus := types.NewEventBus()
 	if err := eventBus.Start(); err != nil {
-		cmn.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
+		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}
 
 	handshaker := NewHandshaker(stateDB, state, blockStore, gdoc)
 	handshaker.SetEventBus(eventBus)
 	err = handshaker.Handshake(proxyApp)
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
+		tmos.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
 	mempool, evpool := mock.Mempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
-	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,
+	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)

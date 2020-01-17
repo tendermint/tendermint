@@ -18,6 +18,7 @@ type BlockStoreRPC interface {
 
 	LoadBlockMeta(height int64) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
+	LoadBlockByHash(hash []byte) *types.Block
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit
@@ -43,7 +44,7 @@ type EvidencePool interface {
 	IsCommitted(types.Evidence) bool
 }
 
-// MockEvidencePool is an empty implementation of a Mempool, useful for testing.
+// MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
 type MockEvidencePool struct{}
 
 func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }

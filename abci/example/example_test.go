@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -25,7 +25,7 @@ import (
 
 func TestKVStore(t *testing.T) {
 	fmt.Println("### Testing KVStore")
-	testStream(t, kvstore.NewKVStoreApplication())
+	testStream(t, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
@@ -87,7 +87,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes := client.DeliverTxAsync([]byte("test"))
+		reqRes := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
 		_ = reqRes
 		// check err ?
 
@@ -107,11 +107,11 @@ func testStream(t *testing.T, app types.Application) {
 //-------------------------
 // test grpc
 
-func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return cmn.Connect(addr)
+func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
+	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
+func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	numDeliverTxs := 2000
 
 	// Start the listener
@@ -123,7 +123,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	defer server.Stop()
 
 	// Connect to the socket
-	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 	if err != nil {
 		t.Fatalf("Error dialing GRPC server: %v", err.Error())
 	}

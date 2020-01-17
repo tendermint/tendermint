@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // ID is a hex-encoded crypto.Address
@@ -47,7 +47,7 @@ func PubKeyToID(pubKey crypto.PubKey) ID {
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath.
 // If the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
-	if cmn.FileExists(filePath) {
+	if tmos.FileExists(filePath) {
 		nodeKey, err := LoadNodeKey(filePath)
 		if err != nil {
 			return nil, err
@@ -65,7 +65,7 @@ func LoadNodeKey(filePath string) (*NodeKey, error) {
 	nodeKey := new(NodeKey)
 	err = cdc.UnmarshalJSON(jsonBytes, nodeKey)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading NodeKey from %v: %v", filePath, err)
+		return nil, fmt.Errorf("error reading NodeKey from %v: %v", filePath, err)
 	}
 	return nodeKey, nil
 }

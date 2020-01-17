@@ -54,7 +54,7 @@ func (privKey PrivKeyEd25519) Bytes() []byte {
 // incorrect signature.
 func (privKey PrivKeyEd25519) Sign(msg []byte) ([]byte, error) {
 	signatureBytes := ed25519.Sign(privKey[:], msg)
-	return signatureBytes[:], nil
+	return signatureBytes, nil
 }
 
 // PubKey gets the corresponding public key from the private key.
@@ -85,9 +85,9 @@ func (privKey PrivKeyEd25519) PubKey() crypto.PubKey {
 func (privKey PrivKeyEd25519) Equals(other crypto.PrivKey) bool {
 	if otherEd, ok := other.(PrivKeyEd25519); ok {
 		return subtle.ConstantTimeCompare(privKey[:], otherEd[:]) == 1
-	} else {
-		return false
 	}
+
+	return false
 }
 
 // GenPrivKey generates a new ed25519 private key.
@@ -100,7 +100,7 @@ func GenPrivKey() PrivKeyEd25519 {
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKeyEd25519 {
 	seed := make([]byte, 32)
-	_, err := io.ReadFull(rand, seed[:])
+	_, err := io.ReadFull(rand, seed)
 	if err != nil {
 		panic(err)
 	}
@@ -164,7 +164,7 @@ func (pubKey PubKeyEd25519) String() string {
 func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 	if otherEd, ok := other.(PubKeyEd25519); ok {
 		return bytes.Equal(pubKey[:], otherEd[:])
-	} else {
-		return false
 	}
+
+	return false
 }

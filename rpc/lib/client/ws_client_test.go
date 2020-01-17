@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -36,9 +35,15 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close() // nolint: errcheck
 	for {
-		messageType, _, err := conn.ReadMessage()
+		messageType, in, err := conn.ReadMessage()
 		if err != nil {
 			return
+		}
+
+		var req types.RPCRequest
+		err = json.Unmarshal(in, &req)
+		if err != nil {
+			panic(err)
 		}
 
 		h.mtx.RLock()
@@ -50,7 +55,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.mtx.RUnlock()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res})
+		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res, ID: req.ID})
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}
@@ -65,7 +70,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	c := startClient(t, s.Listener.Addr())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	wg.Add(1)
@@ -97,7 +102,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 
-	c := startClient(t, s.Listener.Addr())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	wg.Add(2)
@@ -125,7 +130,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 
-	c := startClient(t, s.Listener.Addr())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	go func() {
@@ -174,7 +179,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 func TestNotBlockingOnStop(t *testing.T) {
 	timeout := 2 * time.Second
 	s := httptest.NewServer(&myHandler{})
-	c := startClient(t, s.Listener.Addr())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	c.Call(context.Background(), "a", make(map[string]interface{}))
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
@@ -194,9 +199,10 @@ func TestNotBlockingOnStop(t *testing.T) {
 	}
 }
 
-func startClient(t *testing.T, addr net.Addr) *WSClient {
-	c := NewWSClient(addr.String(), "/websocket")
-	err := c.Start()
+func startClient(t *testing.T, addr string) *WSClient {
+	c, err := NewWSClient(addr, "/websocket")
+	require.Nil(t, err)
+	err = c.Start()
 	require.Nil(t, err)
 	c.SetLogger(log.TestingLogger())
 	return c
@@ -212,7 +218,8 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 		select {
 		case resp := <-c.ResponsesCh:
 			if resp.Error != nil {
-				t.Fatalf("unexpected error: %v", resp.Error)
+				t.Errorf("unexpected error: %v", resp.Error)
+				return
 			}
 			if resp.Result != nil {
 				wg.Done()

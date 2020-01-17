@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -27,20 +27,20 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := cmn.EnsureDir(rootDir, DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 
 	// Write default config file if missing.
-	if !cmn.FileExists(configFilePath) {
+	if !tmos.FileExists(configFilePath) {
 		writeDefaultConfigFile(configFilePath)
 	}
 }
@@ -59,13 +59,18 @@ func WriteConfigFile(configFilePath string, config *Config) {
 		panic(err)
 	}
 
-	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
+	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
 }
 
 // Note: any changes to the comments/variables/mapstructure
 // must be reflected in the appropriate struct in config/config.go
 const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
+
+# NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
+# relative to the home directory (e.g. "data"). The home directory is
+# "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
+# or --home cmd flag.
 
 ##### main base config options #####
 
@@ -79,9 +84,9 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = {{ .BaseConfig.FastSync }}
+fast_sync = {{ .BaseConfig.FastSyncMode }}
 
-# Database backend: goleveldb | cleveldb | boltdb
+# Database backend: goleveldb | cleveldb | boltdb | rocksdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
 #   - stable
@@ -93,6 +98,10 @@ fast_sync = {{ .BaseConfig.FastSync }}
 #   - EXPERIMENTAL
 #   - may be faster is some use-cases (random reads - indexer)
 #   - use boltdb build tag (go build -tags boltdb)
+# * rocksdb (uses github.com/tecbot/gorocksdb)
+#   - EXPERIMENTAL
+#   - requires gcc
+#   - use rocksdb build tag (go build -tags rocksdb)
 db_backend = "{{ .BaseConfig.DBBackend }}"
 
 # Database directory
@@ -192,15 +201,25 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
-# The name of a file containing certificate that is used to create the HTTPS server.
+# Maximum size of request body, in bytes
+max_body_bytes = {{ .RPC.MaxBodyBytes }}
+
+# Maximum size of request header, in bytes
+max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+
+# The path to a file containing certificate that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_cert_file = "{{ .RPC.TLSCertFile }}"
 
-# The name of a file containing matching private key that is used to create the HTTPS server.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# The path to a file containing matching private key that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
 ##### peer to peer configuration options #####
@@ -236,6 +255,12 @@ max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
+
+# List of node IDs, to which a connection will be (re)established ignoring any existing limits
+unconditional_peer_ids = "{{ .P2P.UnconditionalPeerIDs }}"
+
+# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+persistent_peers_max_dial_period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
 
 # Time to wait before flushing messages out on the connection
 flush_throttle_timeout = "{{ .P2P.FlushThrottleTimeout }}"
@@ -286,6 +311,18 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
+# Maximum size of a single transaction.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+max_tx_bytes = {{ .Mempool.MaxTxBytes }}
+
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v1" - refactor of v0 version for better testability
+version = "{{ .FastSync.Version }}"
+
 ##### consensus configuration options #####
 [consensus]
 
@@ -320,22 +357,27 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
-# Comma-separated list of tags to index (by default the only tag is "tx.hash")
+# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
+# Remember that Event has the following structure: type.key
+# type: [
+#  key: value,
+#  ...
+# ]
 #
-# You can also index transactions by height by adding "tx.height" tag here.
+# You can also index transactions by height by adding "tx.height" key here.
 #
-# It's recommended to index only a subset of tags due to possible memory
+# It's recommended to index only a subset of keys due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = "{{ .TxIndex.IndexTags }}"
+index_keys = "{{ .TxIndex.IndexKeys }}"
 
-# When set to true, tells indexer to index all tags (predefined tags:
-# "tx.hash", "tx.height" and all tags from DeliverTx responses).
+# When set to true, tells indexer to index all compositeKeys (predefined keys:
+# "tx.hash", "tx.height" and all keys from DeliverTx responses).
 #
-# Note this may be not desirable (see the comment above). IndexTags has a
-# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# Note this may be not desirable (see the comment above). IndexKeys has a
+# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
 # indexed).
-index_all_tags = {{ .TxIndex.IndexAllTags }}
+index_all_keys = {{ .TxIndex.IndexAllKeys }}
 
 ##### instrumentation configuration options #####
 [instrumentation]
@@ -371,10 +413,10 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		panic(err)
 	}
 	// ensure config and data subdirs are created
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
 
@@ -385,19 +427,19 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
 
 	// Write default config file if missing.
-	if !cmn.FileExists(configFilePath) {
+	if !tmos.FileExists(configFilePath) {
 		writeDefaultConfigFile(configFilePath)
 	}
-	if !cmn.FileExists(genesisFilePath) {
+	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
-	cmn.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	cmn.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config

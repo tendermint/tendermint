@@ -3,7 +3,7 @@ package types
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 )
 
 //-----------------------------------------------------------------------------
@@ -12,8 +12,8 @@ import (
 // TODO: add tags and other fields
 // https://github.com/tendermint/tendermint/issues/1007
 type ABCIResult struct {
-	Code uint32       `json:"code"`
-	Data cmn.HexBytes `json:"data"`
+	Code uint32         `json:"code"`
+	Data bytes.HexBytes `json:"data"`
 }
 
 // Bytes returns the amino encoded ABCIResult
@@ -41,7 +41,7 @@ func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 	}
 }
 
-// Bytes serializes the ABCIResponse using wire
+// Bytes serializes the ABCIResponse using amino
 func (a ABCIResults) Bytes() []byte {
 	bz, err := cdc.MarshalBinaryLengthPrefixed(a)
 	if err != nil {

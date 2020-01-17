@@ -19,8 +19,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	maxMsgSize = 1048576        // 1MB TODO make it configurable
-	maxTxSize  = maxMsgSize - 8 // account for amino overhead of TxMessage
+	aminoOverheadForTxMessage = 8
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 
@@ -156,7 +155,7 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
+	msg, err := memR.decodeMsg(msgBytes)
 	if err != nil {
 		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		memR.Switch.StopPeerForError(src, err)
@@ -166,8 +165,11 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		peerID := memR.ids.GetForPeer(src)
-		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{SenderID: peerID})
+		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+		if src != nil {
+			txInfo.SenderP2PID = src.ID()
+		}
+		err := memR.mempool.CheckTx(msg.Tx, nil, txInfo)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
 		}
@@ -255,17 +257,18 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-// MempoolMessage is a message sent or received by the Reactor.
-type MempoolMessage interface{}
+// Message is a message sent or received by the Reactor.
+type Message interface{}
 
-func RegisterMempoolMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*MempoolMessage)(nil), nil)
+func RegisterMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Message)(nil), nil)
 	cdc.RegisterConcrete(&TxMessage{}, "tendermint/mempool/TxMessage", nil)
 }
 
-func decodeMsg(bz []byte) (msg MempoolMessage, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
+	if l := len(bz); l > maxMsgSize {
+		return msg, ErrTxTooLarge{maxMsgSize, l}
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -273,7 +276,7 @@ func decodeMsg(bz []byte) (msg MempoolMessage, err error) {
 
 //-------------------------------------
 
-// TxMessage is a MempoolMessage containing a transaction.
+// TxMessage is a Message containing a transaction.
 type TxMessage struct {
 	Tx types.Tx
 }
@@ -281,4 +284,10 @@ type TxMessage struct {
 // String returns a string representation of the TxMessage.
 func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)
+}
+
+// calcMaxMsgSize returns the max size of TxMessage
+// account for amino overhead of TxMessage
+func calcMaxMsgSize(maxTxSize int) int {
+	return maxTxSize + aminoOverheadForTxMessage
 }

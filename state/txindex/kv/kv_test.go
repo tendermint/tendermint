@@ -8,11 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	db "github.com/tendermint/tendermint/libs/db"
 
+	db "github.com/tendermint/tm-db"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,7 +23,15 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -36,7 +46,15 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult2 := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
@@ -48,13 +66,13 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	allowedTags := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	allowedKeys := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
-		{Key: []byte("account.owner"), Value: []byte("Ivan")},
-		{Key: []byte("not_allowed"), Value: []byte("Vlad")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
 	hash := txResult.Tx.Hash()
 
@@ -67,12 +85,17 @@ func TestTxSearch(t *testing.T) {
 	}{
 		// search by hash
 		{fmt.Sprintf("tx.hash = '%X'", hash), 1},
-		// search by exact match (one tag)
+		// search by exact match (one key)
 		{"account.number = 1", 1},
-		// search by exact match (two tags)
+		// search by exact match (two keys)
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
-		// search by exact match (two tags)
+		// search by exact match (two keys)
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
+		{"account.owner = 'Vlad' AND account.number = 1", 0},
+		{"account.number >= 1 AND account.owner = 'Vlad'", 0},
+		{"account.owner = 'Vlad' AND account.number >= 1", 0},
+		{"account.number <= 0", 0},
+		{"account.number <= 0 AND account.owner = 'Ivan'", 0},
 		// search using a prefix of the stored value
 		{"account.owner = 'Iv'", 0},
 		// search by range
@@ -81,21 +104,22 @@ func TestTxSearch(t *testing.T) {
 		{"account.number >= 1", 1},
 		// search by range (upper bound)
 		{"account.number <= 5", 1},
-		// search using not allowed tag
+		// search using not allowed key
 		{"not_allowed = 'boom'", 0},
 		// search for not existing tx result
 		{"account.number >= 2 AND account.number <= 5", 0},
-		// search using not existing tag
+		// search using not existing key
 		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
 		// search using CONTAINS
 		{"account.owner CONTAINS 'an'", 1},
 		// search for non existing value using CONTAINS
 		{"account.owner CONTAINS 'Vlad'", 0},
-		// search using the wrong tag (of numeric type) using CONTAINS
+		// search using the wrong key (of numeric type) using CONTAINS
 		{"account.number CONTAINS 'Iv'", 0},
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
 			results, err := indexer.Search(query.MustParse(tc.q))
 			assert.NoError(t, err)
@@ -108,13 +132,83 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
-func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	allowedTags := []string{"account.number"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+func TestTxSearchDeprecatedIndexing(t *testing.T) {
+	allowedKeys := []string{"account.number", "sender"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
-		{Key: []byte("account.number"), Value: []byte("2")},
+	// index tx using events indexing (composite key)
+	txResult1 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+	})
+	hash1 := txResult1.Tx.Hash()
+
+	err := indexer.Index(txResult1)
+	require.NoError(t, err)
+
+	// index tx also using deprecated indexing (event as key)
+	txResult2 := txResultWithEvents(nil)
+	txResult2.Tx = types.Tx("HELLO WORLD 2")
+
+	hash2 := txResult2.Tx.Hash()
+	b := indexer.store.NewBatch()
+
+	rawBytes, err := cdc.MarshalBinaryBare(txResult2)
+	require.NoError(t, err)
+
+	depKey := []byte(fmt.Sprintf("%s/%s/%d/%d",
+		"sender",
+		"addr1",
+		txResult2.Height,
+		txResult2.Index,
+	))
+
+	b.Set(depKey, hash2)
+	b.Set(keyForHeight(txResult2), hash2)
+	b.Set(hash2, rawBytes)
+	b.Write()
+
+	testCases := []struct {
+		q       string
+		results []*types.TxResult
+	}{
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
+		// search by exact match (one key)
+		{"account.number = 1", []*types.TxResult{txResult1}},
+		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
+		// search by range (lower bound)
+		{"account.number >= 1", []*types.TxResult{txResult1}},
+		// search by range (upper bound)
+		{"account.number <= 5", []*types.TxResult{txResult1}},
+		// search using not allowed key
+		{"not_allowed = 'boom'", []*types.TxResult{}},
+		// search for not existing tx result
+		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
+		// search using not existing key
+		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
+		// search by deprecated key
+		{"sender = 'addr1'", []*types.TxResult{txResult2}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.q, func(t *testing.T) {
+			results, err := indexer.Search(query.MustParse(tc.q))
+			require.NoError(t, err)
+			require.Equal(t, results, tc.results)
+		})
+	}
+}
+
+func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
+	allowedKeys := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
+
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 
 	err := indexer.Index(txResult)
@@ -128,13 +222,14 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	allowedTags := []string{"account.number", "account.number.id"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	allowedKeys := []string{"account.number", "account.number.id"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	// indexed first, but bigger height (to test the order of transactions)
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
 	})
+
 	txResult.Tx = types.Tx("Bob's account")
 	txResult.Height = 2
 	txResult.Index = 1
@@ -142,8 +237,8 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.NoError(t, err)
 
 	// indexed second, but smaller height (to test the order of transactions)
-	txResult2 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("2")},
+	txResult2 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 	txResult2.Tx = types.Tx("Alice's account")
 	txResult2.Height = 1
@@ -153,8 +248,8 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.NoError(t, err)
 
 	// indexed third (to test the order of transactions)
-	txResult3 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("3")},
+	txResult3 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("3")}}},
 	})
 	txResult3.Tx = types.Tx("Jack's account")
 	txResult3.Height = 1
@@ -162,10 +257,10 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	err = indexer.Index(txResult3)
 	require.NoError(t, err)
 
-	// indexed fourth (to test we don't include txs with similar tags)
+	// indexed fourth (to test we don't include txs with similar events)
 	// https://github.com/tendermint/tendermint/issues/2908
-	txResult4 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number.id"), Value: []byte("1")},
+	txResult4 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number.id"), Value: []byte("1")}}},
 	})
 	txResult4.Tx = types.Tx("Mike's account")
 	txResult4.Height = 2
@@ -181,11 +276,11 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 }
 
 func TestIndexAllTags(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
+	indexer := NewTxIndex(db.NewMemDB(), IndexAllEvents())
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.owner"), Value: []byte("Ivan")},
-		{Key: []byte("account.number"), Value: []byte("1")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
 	})
 
 	err := indexer.Index(txResult)
@@ -202,17 +297,17 @@ func TestIndexAllTags(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
-func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
+func txResultWithEvents(events []abci.Event) *types.TxResult {
 	tx := types.Tx("HELLO WORLD")
 	return &types.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
 		Result: abci.ResponseDeliverTx{
-			Data: []byte{0},
-			Code: abci.CodeTypeOK,
-			Log:  "",
-			Tags: tags,
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
+			Events: events,
 		},
 	}
 }
@@ -224,22 +319,22 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	}
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	store := db.NewDB("tx_index", "leveldb", dir)
+	store := db.NewDB("tx_index", "goleveldb", dir)
 	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount)
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
-		tx := cmn.RandBytes(250)
+		tx := tmrand.Bytes(250)
 		txResult := &types.TxResult{
 			Height: 1,
 			Index:  txIndex,
 			Tx:     tx,
 			Result: abci.ResponseDeliverTx{
-				Data: []byte{0},
-				Code: abci.CodeTypeOK,
-				Log:  "",
-				Tags: []cmn.KVPair{},
+				Data:   []byte{0},
+				Code:   abci.CodeTypeOK,
+				Log:    "",
+				Events: []abci.Event{},
 			},
 		}
 		if err := batch.Add(txResult); err != nil {

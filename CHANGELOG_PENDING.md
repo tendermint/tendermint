@@ -1,24 +1,24 @@
-## v0.31.8
+## v0.33.1
 
-**
+\*\*
+
+Special thanks to external contributors on this release:
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
-* CLI/RPC/Config
+- CLI/RPC/Config
 
-* Apps
+- Apps
 
-* Go API
-- [libs/db] Removed deprecated `LevelDBBackend` const
-  * If you have `db_backend` set to `leveldb` in your config file, please
-    change it to `goleveldb` or `cleveldb`.
-
-* Blockchain Protocol
-
-* P2P Protocol
+- Go API
 
 ### FEATURES:
 
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+

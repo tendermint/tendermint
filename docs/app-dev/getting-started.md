@@ -1,3 +1,7 @@
+---
+order: 1
+---
+
 # Getting Started
 
 ## First Tendermint App
@@ -17,18 +21,20 @@ using Tendermint.
 ### Install
 
 The first apps we will work with are written in Go. To install them, you
-need to [install Go](https://golang.org/doc/install) and put
-`$GOPATH/bin` in your `$PATH`; see
-[here](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH) for
-more info.
+need to [install Go](https://golang.org/doc/install), put
+`$GOPATH/bin` in your `$PATH` and enable go modules with these instructions:
+```bash
+echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
+echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
+echo export GO111MODULE=on >> ~/.bash_profile
+```
 
 Then run
 
 ```
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
-make get_tools
-make get_vendor_deps
+make tools
 make install_abci
 ```
 
@@ -52,8 +58,10 @@ Let's start a kvstore application.
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. If you have never run
-Tendermint before, use:
+In another terminal, we can start Tendermint. You should already have the 
+Tendermint binary installed. If not, follow the steps from 
+[here](../introduction/install.md). If you have never run Tendermint 
+before, use:
 
 ```
 tendermint init
@@ -138,7 +146,7 @@ The result should look like:
 Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
 of the ASCII of `abcd`. You can verify this in a python 2 shell by
 running `"YWJjZA==".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode("YWJjZA==", 'base64').decode('ascii')`.
+`import codecs; codecs.decode(b"YWJjZA==", 'base64').decode('ascii')`.
 Stay tuned for a future release that [makes this output more
 human-readable](https://github.com/tendermint/tendermint/issues/1794).
 

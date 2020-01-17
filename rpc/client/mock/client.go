@@ -17,7 +17,8 @@ want to directly call a tendermint node in process, you can use the
 import (
 	"reflect"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -36,7 +37,9 @@ type Client struct {
 	client.HistoryClient
 	client.StatusClient
 	client.EventsClient
-	cmn.Service
+	client.EvidenceClient
+	client.MempoolClient
+	service.Service
 }
 
 var _ client.Client = Client{}
@@ -84,11 +87,14 @@ func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo(&rpctypes.Context{})
 }
 
-func (c Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c Client) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (c Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c Client) ABCIQueryWithOptions(
+	path string,
+	data bytes.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 
@@ -114,6 +120,10 @@ func (c Client) ConsensusState() (*ctypes.ResultConsensusState, error) {
 
 func (c Client) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState(&rpctypes.Context{})
+}
+
+func (c Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	return core.ConsensusParams(&rpctypes.Context{}, height)
 }
 
 func (c Client) Health() (*ctypes.ResultHealth, error) {
@@ -144,6 +154,10 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(&rpctypes.Context{}, height)
+func (c Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return core.Validators(&rpctypes.Context{}, height, page, perPage)
+}
+
+func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(&rpctypes.Context{}, ev)
 }

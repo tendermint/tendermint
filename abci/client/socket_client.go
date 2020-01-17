@@ -5,13 +5,16 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const reqQueueSize = 256 // TODO make configurable
@@ -24,14 +27,14 @@ var _ Client = (*socketClient)(nil)
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	cmn.BaseService
+	service.BaseService
 
 	addr        string
 	mustConnect bool
 	conn        net.Conn
 
 	reqQueue   chan *ReqRes
-	flushTimer *cmn.ThrottleTimer
+	flushTimer *timer.ThrottleTimer
 
 	mtx     sync.Mutex
 	err     error
@@ -43,27 +46,23 @@ type socketClient struct {
 func NewSocketClient(addr string, mustConnect bool) *socketClient {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
+		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
 	return cli
 }
 
 func (cli *socketClient) OnStart() error {
-	if err := cli.BaseService.OnStart(); err != nil {
-		return err
-	}
-
 	var err error
 	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err = cmn.Connect(cli.addr)
+		conn, err = tmnet.Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err
@@ -82,15 +81,12 @@ RETRY_LOOP:
 }
 
 func (cli *socketClient) OnStop() {
-	cli.BaseService.OnStop()
-
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	if cli.conn != nil {
-		// does this really need a mutex?
 		cli.conn.Close()
 	}
 
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.flushQueue()
 }
 
@@ -126,7 +122,7 @@ func (cli *socketClient) SetResponseCallback(resCb Callback) {
 
 //----------------------------------------
 
-func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
+func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
 
 	w := bufio.NewWriter(conn)
 	for {
@@ -143,14 +139,14 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			cli.willSendReq(reqres)
 			err := types.WriteMessage(reqres.Request, w)
 			if err != nil {
-				cli.StopForError(fmt.Errorf("Error writing msg: %v", err))
+				cli.StopForError(fmt.Errorf("error writing msg: %v", err))
 				return
 			}
 			// cli.Logger.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
-					cli.StopForError(fmt.Errorf("Error flushing writer: %v", err))
+					cli.StopForError(fmt.Errorf("error flushing writer: %v", err))
 					return
 				}
 			}
@@ -158,7 +154,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 	}
 }
 
-func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
+func (cli *socketClient) recvResponseRoutine(conn io.Reader) {
 
 	r := bufio.NewReader(conn) // Buffer reads
 	for {
@@ -197,11 +193,11 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	// Get the first ReqRes
 	next := cli.reqSent.Front()
 	if next == nil {
-		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res.Value))
+		return fmt.Errorf("unexpected result type %v when nothing expected", reflect.TypeOf(res.Value))
 	}
 	reqres := next.Value.(*ReqRes)
 	if !resMatchesReq(reqres.Request, res) {
-		return fmt.Errorf("Unexpected result type %v when response to %v expected",
+		return fmt.Errorf("unexpected result type %v when response to %v expected",
 			reflect.TypeOf(res.Value), reflect.TypeOf(reqres.Request.Value))
 	}
 
@@ -209,17 +205,16 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	reqres.Done()            // Release waiters
 	cli.reqSent.Remove(next) // Pop first item from linked list
 
-	// Notify reqRes listener if set (request specific callback).
-	// NOTE: it is possible this callback isn't set on the reqres object.
-	// at this point, in which case it will be called after, when it is set.
-	// TODO: should we move this after the resCb call so the order is always consistent?
-	if cb := reqres.GetCallback(); cb != nil {
-		cb(res)
-	}
-
 	// Notify client listener if set (global callback).
 	if cli.resCb != nil {
 		cli.resCb(reqres.Request, res)
+	}
+
+	// Notify reqRes listener if set (request specific callback).
+	// NOTE: it is possible this callback isn't set on the reqres object.
+	// at this point, in which case it will be called after, when it is set.
+	if cb := reqres.GetCallback(); cb != nil {
+		cb(res)
 	}
 
 	return nil
@@ -243,12 +238,12 @@ func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverTx(req))
 }
 
-func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestCheckTx(req))
 }
 
 func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
@@ -300,14 +295,14 @@ func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.Respo
 	return reqres.Response.GetSetOption(), cli.Error()
 }
 
-func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
-	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+	reqres := cli.queueRequest(types.ToRequestDeliverTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetDeliverTx(), cli.Error()
 }
 
-func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
-	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetCheckTx(), cli.Error()
 }

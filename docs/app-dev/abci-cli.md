@@ -1,3 +1,7 @@
+---
+order: 2
+---
+
 # Using ABCI-CLI
 
 To facilitate testing and debugging of ABCI servers and simple apps, we
@@ -15,8 +19,7 @@ mkdir -p $GOPATH/src/github.com/tendermint
 cd $GOPATH/src/github.com/tendermint
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
-make get_tools
-make get_vendor_deps
+make tools
 make install_abci
 ```
 
@@ -63,7 +66,7 @@ as `abci-cli` above. The kvstore just stores transactions in a merkle
 tree.
 
 Its code can be found
-[here](https://github.com/tendermint/tendermint/blob/develop/abci/cmd/abci-cli/abci-cli.go)
+[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
 ```
@@ -90,7 +93,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -138,7 +141,7 @@ response.
 
 The server may be generic for a particular language, and we provide a
 [reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/develop/abci/server). See the
+Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
 [list of other ABCI implementations](./ecosystem.md) for servers in
 other languages.
 
@@ -241,7 +244,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -325,12 +328,20 @@ But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
 We have implemented the counter in a number of languages [see the
-example directory](https://github.com/tendermint/tendermint/tree/develop/abci/example).
+example directory](https://github.com/tendermint/tendermint/tree/master/abci/example).
 
-To run the Node JS version, `cd` to `example/js` and run
+To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
 
 ```
-node app.js
+git clone https://github.com/tendermint/js-abci.git
+cd js-abci
+npm install abci
+```
+
+Now you can start the app:
+
+```bash
+node example/counter.js
 ```
 
 (you'll have to kill the other counter application process). In another
@@ -340,9 +351,9 @@ the same results as for the Go version.
 ## Bounties
 
 Want to write the counter app in your favorite language?! We'd be happy
-to add you to our [ecosystem](https://tendermint.com/ecosystem)! We're
-also offering [bounties](https://hackerone.com/tendermint/) for
-implementations in new languages!
+to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)!
+See [funding](https://github.com/interchainio/funding) opportunities from the
+[Interchain Foundation](https://interchain.io/) for implementations in new languages and more.
 
 The `abci-cli` is designed strictly for testing and debugging. In a real
 deployment, the role of sending messages is taken by Tendermint, which

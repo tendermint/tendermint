@@ -29,10 +29,7 @@ XC_OS=${XC_OS:-"solaris darwin freebsd linux windows"}
 XC_EXCLUDE=${XC_EXCLUDE:-" darwin/arm solaris/amd64 solaris/386 solaris/arm freebsd/amd64 windows/arm "}
 
 # Make sure build tools are available.
-make get_tools
-
-# Get VENDORED dependencies
-make get_vendor_deps
+make tools
 
 # Build!
 # ldflags: -s Omit the symbol table and debug information.
