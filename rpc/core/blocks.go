@@ -76,8 +76,11 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 		return nil, err
 	}
 
-	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
+	blockMeta := blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+	}
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
@@ -88,6 +91,9 @@ func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error
 	height := block.Height
 
 	blockMeta := blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+	}
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 

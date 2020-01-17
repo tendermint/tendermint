@@ -21,4 +21,6 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [rpc] [#\4319] Check BlockMeta is not nil in Blocks & BlockByHash
+
 
