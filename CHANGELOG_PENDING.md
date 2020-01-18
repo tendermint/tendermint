@@ -19,8 +19,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [tests] [#\4322](https://github.com/tendermint/tendermint/pull/4322) Bind test servers to 127.0.0.1 (@erikgrinaker)
-
 ### BUG FIXES:
 
 - [rpc] [#\4319] Check BlockMeta is not nil in Blocks & BlockByHash
