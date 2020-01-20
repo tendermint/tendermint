@@ -215,7 +215,7 @@ build/generated/
 |               |   `-- google
 |               |       `-- protobuf
 |               |           `-- GoGoProtos.java
-|               |-- common
+|               |-- kv
 |               |   `-- Types.java
 |               |-- merkle
 |               |   `-- Merkle.java
