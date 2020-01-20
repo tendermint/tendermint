@@ -13,7 +13,7 @@ import (
 // If no height is provided, it will fetch the current validator set.
 // Note the validators are sorted by their address - this is the canonical
 // order for the validators in the set as used in computing their Merkle root.
-// More: https://tendermint.com/rpc/#/Info/validators
+// More: https://docs.tendermint.com/master/rpc/#/Info/validators
 func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
@@ -46,7 +46,7 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 
 // DumpConsensusState dumps consensus state.
 // UNSTABLE
-// More: https://tendermint.com/rpc/#/Info/dump_consensus_state
+// More: https://docs.tendermint.com/master/rpc/#/Info/dump_consensus_state
 func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 	peers := p2pPeers.Peers().List()
@@ -88,7 +88,7 @@ func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
 
 // ConsensusParams gets the consensus parameters  at the given block height.
 // If no height is provided, it will fetch the current consensus params.
-// More: https://tendermint.com/rpc/#/Info/consensus_params
+// More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
 func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	height := consensusState.GetState().LastBlockHeight + 1
 	height, err := getHeight(height, heightPtr)
