@@ -3,6 +3,14 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## Unreleased
+
+> Overview Section
+
+### Proto Changes
+
+If you are fetching the proto files for use in your application then you must also fetch the third_party/proto/gogoproto/gogo.proto directory as we have phased out GOPATH and included linting and breakage checking.
+
 ## v0.33.0
 
 This release is not compatible with previous blockchains due to commit becoming signatures only and fields in the header have been removed.
