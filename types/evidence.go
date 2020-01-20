@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -56,6 +57,7 @@ func (err *ErrEvidenceOverflow) Error() string {
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
 	Height() int64                                     // height of the equivocation
+	Time() time.Time                                   // time of the equivocation
 	Address() []byte                                   // address of the equivocating validator
 	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
@@ -72,9 +74,8 @@ func RegisterEvidences(cdc *amino.Codec) {
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
-	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
-	cdc.RegisterConcrete(MockRandomGoodEvidence{}, "tendermint/MockRandomGoodEvidence", nil)
-	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
+	cdc.RegisterConcrete(MockEvidence{}, "tendermint/MockEvidence", nil)
+	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
 }
 
 const (
@@ -134,6 +135,11 @@ func (dve *DuplicateVoteEvidence) String() string {
 // Height returns the height this evidence refers to.
 func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
+}
+
+// Time return the time the evidence was created
+func (dve *DuplicateVoteEvidence) Time() time.Time {
+	return dve.VoteA.Timestamp
 }
 
 // Address returns the address of the validator.
@@ -241,72 +247,64 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 //-----------------------------------------------------------------
 
 // UNSTABLE
-type MockRandomGoodEvidence struct {
-	MockGoodEvidence
+type MockRandomEvidence struct {
+	MockEvidence
 	randBytes []byte
 }
 
-var _ Evidence = &MockRandomGoodEvidence{}
+var _ Evidence = &MockRandomEvidence{}
 
 // UNSTABLE
-func NewMockRandomGoodEvidence(height int64, address []byte, randBytes []byte) MockRandomGoodEvidence {
-	return MockRandomGoodEvidence{
-		MockGoodEvidence{height, address}, randBytes,
+func NewMockRandomEvidence(height int64, eTime time.Time, address []byte, randBytes []byte) MockRandomEvidence {
+	return MockRandomEvidence{
+		MockEvidence{
+			EvidenceHeight:  height,
+			EvidenceTime:    eTime,
+			EvidenceAddress: address}, randBytes,
 	}
 }
 
-func (e MockRandomGoodEvidence) Hash() []byte {
+func (e MockRandomEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
 }
 
 // UNSTABLE
-type MockGoodEvidence struct {
+type MockEvidence struct {
 	EvidenceHeight  int64
+	EvidenceTime    time.Time
 	EvidenceAddress []byte
 }
 
-var _ Evidence = &MockGoodEvidence{}
+var _ Evidence = &MockEvidence{}
 
 // UNSTABLE
-func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence {
-	return MockGoodEvidence{height, address}
+func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) MockEvidence {
+	return MockEvidence{
+		EvidenceHeight:  height,
+		EvidenceTime:    eTime,
+		EvidenceAddress: address}
 }
 
-func (e MockGoodEvidence) Height() int64   { return e.EvidenceHeight }
-func (e MockGoodEvidence) Address() []byte { return e.EvidenceAddress }
-func (e MockGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
+func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockEvidence) Time() time.Time { return e.EvidenceTime }
+func (e MockEvidence) Address() []byte { return e.EvidenceAddress }
+func (e MockEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
-func (e MockGoodEvidence) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
+func (e MockEvidence) Bytes() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
-func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
-func (e MockGoodEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockGoodEvidence)
+func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
+func (e MockEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(MockEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
 		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
 }
-func (e MockGoodEvidence) ValidateBasic() error { return nil }
-func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
-}
-
-// UNSTABLE
-type MockBadEvidence struct {
-	MockGoodEvidence
-}
-
-func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	return fmt.Errorf("mockBadEvidence")
-}
-func (e MockBadEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockBadEvidence)
-	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
-}
-func (e MockBadEvidence) ValidateBasic() error { return nil }
-func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
+func (e MockEvidence) ValidateBasic() error { return nil }
+func (e MockEvidence) String() string {
+	return fmt.Sprintf("Evidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
 }
 
 //-------------------------------------------

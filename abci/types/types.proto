@@ -8,6 +8,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
 import "github.com/tendermint/tendermint/libs/kv/types.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
@@ -228,10 +229,10 @@ message BlockParams {
   int64 max_gas = 2;
 }
 
-// EvidenceParams contains limits on the evidence.
 message EvidenceParams {
   // Note: must be greater than 0
-  int64 max_age = 1;
+  int64 max_age_num_blocks = 1;
+  google.protobuf.Duration max_age_duration = 2 [(gogoproto.nullable)=false, (gogoproto.stdduration)=true];
 }
 
 // ValidatorParams contains limits on validators.
