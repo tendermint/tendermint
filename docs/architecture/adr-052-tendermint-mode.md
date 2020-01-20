@@ -21,19 +21,25 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
         - reactors
           - mempool
           - consensus
-          - ...
-        - mempool, state
+          - evidence
+          - blockchain
+          - p2p/pex
         - rpc (safe connections only)
         - *~~no privValidator(priv_validator_key.json, priv_validator_state.json)~~*
     - validator
         - switch, transport
-        - all reactors
-        - mempool, state
-        - rpc
+        - reactors
+          - mempool
+          - consensus
+          - evidence
+          - blockchain
+          - p2p/pex
+        - rpc (safe connections only)
         - with privValidator(priv_validator_key.json, priv_validator_state.json)
     - seed
         - switch, transport
-        - only pexReactor
+        - reactor
+           - p2p/pex
 - Configuration, cli command
     - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
     - `mode = "{{ .BaseConfig.Mode }}"` in `config.toml`
