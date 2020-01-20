@@ -48,7 +48,6 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
 - RPC modification
     - `host:26657/status`
         - return empty `validator_info` when fullnode mode
-        - add return `mode` of this node
     - no rpc server in seed mode
 - Where to modify in codebase
     - Add  switch for `config.Mode` on `node/node.go:DefaultNewNode`
