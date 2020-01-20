@@ -87,12 +87,11 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_by_hash
 func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
 	block := blockStore.LoadBlockByHash(hash)
-	height := block.Height
-
-	blockMeta := blockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+	if block == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
+	// If block is not nil, then blockMeta can't be nil.
+	blockMeta := blockStore.LoadBlockMeta(block.Height)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
@@ -106,7 +105,11 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 		return nil, err
 	}
 
-	header := blockStore.LoadBlockMeta(height).Header
+	blockMeta := blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return nil, nil
+	}
+	header := blockMeta.Header
 
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
