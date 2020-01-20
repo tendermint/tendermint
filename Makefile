@@ -45,21 +45,8 @@ proto-lint:
 proto-check-breaking:
 	@buf check breaking --against-input '.git#branch=master'
 
-%.pb.go: %.proto
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	## Note the $< here is substituted for the %.proto
-	## Note the $@ here is substituted for the %.pb.go
-	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc:../../..
-
 ########################################
 ### Build ABCI
-
-# see protobuf section above
-protoc_abci: abci/types/types.pb.go
-
-protoc_proto3types: types/proto3/block.pb.go
 
 build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
@@ -116,20 +103,8 @@ gen_certs: clean_certs
 
 # deletes generated certificates
 clean_certs:
-	rm -f libs/db/remotedb/test.crt
-	rm -f libs/db/remotedb/test.key
 	rm -f rpc/lib/server/test.crt
 	rm -f rpc/lib/server/test.key
-
-test_libs:
-	go test -tags clevedb boltdb $(PACKAGES)
-
-grpc_dbserver:
-	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
-
-protoc_grpc: rpc/grpc/types.pb.go
-
-protoc_merkle: crypto/merkle/merkle.pb.go
 
 
 ########################################
@@ -238,7 +213,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
- 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
+ 	proto-lint proto-gen proto-check-breakage gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux

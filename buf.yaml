@@ -6,9 +6,6 @@ lint:
     - BASIC
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
-  except:
-  ignore:
-    - vendor
 breaking:
   use:
     - FILE

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package types.types;
+option go_package = "github.com/tendermint/tendermint/types";
+
+enum BlockIDFlag {
+  BlockIDFlag_UNSPECIFIED = 0;
+  BlockIDFlagAbsent = 1;
+  BlockIDFlagCommit = 2;
+  BlockIDFlagNil = 3;
+}
