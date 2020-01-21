@@ -783,12 +783,12 @@ func (c *Client) AutoUpdate(now time.Time) error {
 
 	var (
 		h *types.SignedHeader
-		i int64 = 1
+		i int64
 	)
 	// Advance the client to the latest state (exponential increment: 1, 2, 4, 8,
 	// 16, ...)
 	for err == nil {
-		height := lastTrustedHeight + (1 << i)
+		height := lastTrustedHeight + int64(1<<uint(i))
 		h, err = c.VerifyHeaderAtHeight(height, now)
 		if err != nil {
 			if errors.Is(err, provider.ErrSignedHeaderNotFound) {

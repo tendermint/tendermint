@@ -668,9 +668,9 @@ func TestClient_AutoUpdate(t *testing.T) {
 	var (
 		keys = genPrivKeys(4)
 		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals   = keys.ToValidators(20, 10)
-		bTime  = time.Now().Add(-1 * time.Hour)
-		header = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
@@ -706,15 +706,16 @@ func TestClient_AutoUpdate(t *testing.T) {
 	c.SetLogger(log.TestingLogger())
 	defer c.Stop()
 
-	err = c.AutoUpdate(bTime.Add(1 * time.Hour))
-	require.NoError(t, err)
-	h, err := c.TrustedHeader(2, bTime.Add(1*time.Hour))
-	assert.NoError(t, err)
-	assert.EqualValues(t, 2, h.Height)
-
 	err = c.AutoUpdate(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
+
+	h, err := c.TrustedHeader(2, bTime.Add(2*time.Hour))
+	assert.NoError(t, err)
+	require.NotNil(t, h)
+	assert.EqualValues(t, 2, h.Height)
+
 	h, err = c.TrustedHeader(3, bTime.Add(2*time.Hour))
 	assert.NoError(t, err)
+	require.NotNil(t, h)
 	assert.EqualValues(t, 3, h.Height)
 }
