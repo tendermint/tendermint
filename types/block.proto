@@ -3,17 +3,7 @@ syntax = "proto3";
 package types;
 option go_package = "github.com/tendermint/tendermint/types";
 
-// PartsetHeader
-message ProtoPartSetHeader {
-  int32 total = 1;
-  bytes hash = 2;
-}
-
-// BlockID
-message ProtoBlockID {
-  bytes hash = 1;
-  ProtoPartSetHeader parts_header = 2;
-}
+import "types/types.proto";
 
 // Block Header
 message ProtoHeader {
@@ -24,7 +14,7 @@ message ProtoHeader {
   ProtoTimestamp time = 4;
 
   // prev block info
-  ProtoBlockID last_block_id = 5;
+  types.BlockID last_block_id = 5;
 
   // hashes of block data
   bytes last_commit_hash = 6; // commit from validators from the last block

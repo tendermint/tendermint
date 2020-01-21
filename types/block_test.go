@@ -188,7 +188,7 @@ func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
 	return BlockID{
 		Hash: h,
 		PartsHeader: PartSetHeader{
-			Total: partSetSize,
+			Total: int64(partSetSize),
 			Hash:  psH,
 		},
 	}

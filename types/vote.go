@@ -8,7 +8,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	
 )
 
 const (
@@ -48,13 +47,13 @@ type Address = crypto.Address
 // consensus.
 type Vote struct {
 	Type             SignedMsgType `json:"type"`
-	Height           int64               `json:"height"`
-	Round            int                 `json:"round"`
-	BlockID          BlockID             `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time           `json:"timestamp"`
-	ValidatorAddress Address             `json:"validator_address"`
-	ValidatorIndex   int                 `json:"validator_index"`
-	Signature        []byte              `json:"signature"`
+	Height           int64         `json:"height"`
+	Round            int           `json:"round"`
+	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time     `json:"timestamp"`
+	ValidatorAddress Address       `json:"validator_address"`
+	ValidatorIndex   int           `json:"validator_index"`
+	Signature        []byte        `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.

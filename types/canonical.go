@@ -19,14 +19,14 @@ type CanonicalBlockID struct {
 
 type CanonicalPartSetHeader struct {
 	Hash  bytes.HexBytes
-	Total int
+	Total int64
 }
 
 type CanonicalProposal struct {
 	Type      SignedMsgType // type alias for byte
-	Height    int64               `binary:"fixed64"`
-	Round     int64               `binary:"fixed64"`
-	POLRound  int64               `binary:"fixed64"`
+	Height    int64         `binary:"fixed64"`
+	Round     int64         `binary:"fixed64"`
+	POLRound  int64         `binary:"fixed64"`
 	BlockID   CanonicalBlockID
 	Timestamp time.Time
 	ChainID   string
@@ -34,8 +34,8 @@ type CanonicalProposal struct {
 
 type CanonicalVote struct {
 	Type      SignedMsgType // type alias for byte
-	Height    int64               `binary:"fixed64"`
-	Round     int64               `binary:"fixed64"`
+	Height    int64         `binary:"fixed64"`
+	Round     int64         `binary:"fixed64"`
 	BlockID   CanonicalBlockID
 	Timestamp time.Time
 	ChainID   string

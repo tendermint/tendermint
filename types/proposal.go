@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	
+
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 

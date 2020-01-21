@@ -56,14 +56,14 @@ func (part *Part) StringIndented(indent string) string {
 
 //-------------------------------------
 
-type PartSetHeader struct {
-	Total int              `json:"total"`
-	Hash  tmbytes.HexBytes `json:"hash"`
-}
+// type PartSetHeader struct {
+// 	Total int              `json:"total"`
+// 	Hash  tmbytes.HexBytes `json:"hash"`
+// }
 
-func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
-}
+// func (psh PartSetHeader) String() string {
+// 	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
+// }
 
 func (psh PartSetHeader) IsZero() bool {
 	return psh.Total == 0 && len(psh.Hash) == 0
@@ -131,10 +131,10 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 // Returns an empty PartSet ready to be populated.
 func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
-		total:         header.Total,
+		total:         int(header.Total),
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
-		partsBitArray: bits.NewBitArray(header.Total),
+		partsBitArray: bits.NewBitArray(int(header.Total)),
 		count:         0,
 	}
 }
@@ -144,7 +144,7 @@ func (ps *PartSet) Header() PartSetHeader {
 		return PartSetHeader{}
 	}
 	return PartSetHeader{
-		Total: ps.total,
+		Total: int64(ps.total),
 		Hash:  ps.hash,
 	}
 }

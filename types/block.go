@@ -439,9 +439,9 @@ func (h *Header) StringIndented(indent string) string {
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
 	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress Address           `json:"validator_address"`
-	Timestamp        time.Time         `json:"timestamp"`
-	Signature        []byte            `json:"signature"`
+	ValidatorAddress Address     `json:"validator_address"`
+	Timestamp        time.Time   `json:"timestamp"`
+	Signature        []byte      `json:"signature"`
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
@@ -879,15 +879,15 @@ func (data *EvidenceData) StringIndented(indent string) string {
 //--------------------------------------------------------------------------------
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
-type BlockID struct {
-	Hash        tmbytes.HexBytes `json:"hash"`
-	PartsHeader PartSetHeader    `json:"parts"`
-}
+// type BlockID struct {
+// 	Hash        tmbytes.HexBytes `json:"hash"`
+// 	PartsHeader PartSetHeader    `json:"parts"`
+// }
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader)
+		blockID.PartsHeader.Equal(other.PartsHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -922,9 +922,4 @@ func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
 		blockID.PartsHeader.Total > 0 &&
 		len(blockID.PartsHeader.Hash) == tmhash.Size
-}
-
-// String returns a human readable string representation of the BlockID
-func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }

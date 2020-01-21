@@ -3,6 +3,8 @@ syntax = "proto3";
 package types;
 option go_package = "github.com/tendermint/tendermint/types";
 
+import "third_party/proto/gogoproto/gogo.proto";
+
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
   BLOCK_ID_FLAG_UNSPECIFIED = 0;
@@ -17,4 +19,16 @@ enum SignedMsgType {
   SIGNED_MSG_TYPE_PREVOTE_TYPE = 1;
   SIGNED_MSG_TYPE_PRECOMMIT_TYPE = 2;
   SIGNED_MSG_TYPE_PRPOSAL_TYPE = 3;
+}
+
+// PartsetHeader
+message PartSetHeader {
+  int64 total = 1;
+  bytes hash = 2;
+}
+
+// BlockID
+message BlockID {
+  bytes hash = 1;
+  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
 }

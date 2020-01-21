@@ -61,7 +61,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 	var block = new(types.Block)
 	buf := []byte{}
-	for i := 0; i < blockMeta.BlockID.PartsHeader.Total; i++ {
+	for i := 0; i < int(blockMeta.BlockID.PartsHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
