@@ -1,8 +1,6 @@
 package mock
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/types"
 )
@@ -32,12 +30,12 @@ func (p *mock) SignedHeader(height int64) (*types.SignedHeader, error) {
 	if _, ok := p.headers[height]; ok {
 		return p.headers[height], nil
 	}
-	return nil, errors.Errorf("no header at height %d", height)
+	return nil, provider.ErrSignedHeaderNotFound
 }
 
 func (p *mock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	if _, ok := p.vals[height]; ok {
 		return p.vals[height], nil
 	}
-	return nil, errors.Errorf("no vals for height %d", height)
+	return nil, provider.ErrValidatorSetNotFound
 }

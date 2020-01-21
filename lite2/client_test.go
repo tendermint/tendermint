@@ -303,7 +303,7 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 
 	// Check expired headers are no longer available.
 	h, err := c.TrustedHeader(1, now)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, h)
 
 	// Check not expired headers are available.
@@ -353,7 +353,7 @@ func TestClient_Cleanup(t *testing.T) {
 
 	// Check no headers exist after Cleanup.
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, h)
 }
 
@@ -542,7 +542,7 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 
 		// Check we no longer have the invalid 1st header (+header+).
 		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
 }
@@ -605,7 +605,7 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 
 		// Check we no longer have 2nd header (+header2+).
 		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
 
@@ -655,7 +655,66 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 
 		// Check we no longer have invalid 2nd header (+header2+).
 		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
+}
+
+func TestClient_AutoUpdate(t *testing.T) {
+	const (
+		chainID = "TestClient_AutoUpdate"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals   = keys.ToValidators(20, 10)
+		bTime  = time.Now().Add(-1 * time.Hour)
+		header = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   header.Hash(),
+		},
+		mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+				// interim header (3/3 signed)
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				// last header (3/3 signed)
+				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		),
+		dbs.New(dbm.NewMemDB(), chainID),
+	)
+	require.NoError(t, err)
+	c.SetLogger(log.TestingLogger())
+	defer c.Stop()
+
+	err = c.AutoUpdate(bTime.Add(1 * time.Hour))
+	require.NoError(t, err)
+	h, err := c.TrustedHeader(2, bTime.Add(1*time.Hour))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, h.Height)
+
+	err = c.AutoUpdate(bTime.Add(2 * time.Hour))
+	require.NoError(t, err)
+	h, err = c.TrustedHeader(3, bTime.Add(2*time.Hour))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 3, h.Height)
 }
