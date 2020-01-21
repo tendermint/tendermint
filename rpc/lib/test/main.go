@@ -37,7 +37,7 @@ func main() {
 
 	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
 	config := rpcserver.DefaultConfig()
-	listener, err := rpcserver.Listen("0.0.0.0:8008", config)
+	listener, err := rpcserver.Listen("tcp://127.0.0.1:8008", config)
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
