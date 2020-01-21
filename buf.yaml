@@ -1,8 +1,6 @@
 build:
   roots:
     - .
-  excludes:
-    - third_party
 lint:
   use:
     - BASIC
