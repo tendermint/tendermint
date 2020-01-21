@@ -17,7 +17,8 @@ import (
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func TestExample_Client(t *testing.T) {
+// Automatically getting new headers and verifying them.
+func TestExample_Client_AutoUpdate(t *testing.T) {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -56,10 +57,71 @@ func TestExample_Client(t *testing.T) {
 		},
 		provider,
 		dbs.New(db, chainID),
+		UpdatePeriod(1*time.Second),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
+	defer c.Stop()
+	c.SetLogger(log.TestingLogger())
+
+	time.Sleep(2 * time.Second)
+
+	h, err := c.TrustedHeader(3, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	fmt.Println("got header", h.Height)
+	// Output: got header 3
+}
+
+// Manually getting headers and verifying them.
+func TestExample_Client_ManualUpdate(t *testing.T) {
+	// give Tendermint time to generate some blocks
+	time.Sleep(5 * time.Second)
+
+	dbDir, err := ioutil.TempDir("", "lite-client-example")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer os.RemoveAll(dbDir)
+
+	var (
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
+	)
+
+	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	header, err := provider.SignedHeader(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 2,
+			Hash:   header.Hash(),
+		},
+		provider,
+		dbs.New(db, chainID),
+		UpdatePeriod(0),
+	)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer c.Stop()
 	c.SetLogger(log.TestingLogger())
 
 	_, err = c.VerifyHeaderAtHeight(3, time.Now())
@@ -74,17 +136,6 @@ func TestExample_Client(t *testing.T) {
 
 	fmt.Println("got header", h.Height)
 	// Output: got header 3
-
-	// test auto update feature
-	time.Sleep(6 * time.Second)
-
-	h, err = c.TrustedHeader(4, time.Now())
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-
-	fmt.Println("got header", h.Height)
-	// Output: got header 4
 }
 
 func TestMain(m *testing.M) {
