@@ -1,7 +1,5 @@
 package types
 
-import "github.com/tendermint/tendermint/types/proto"
-
 // // SignedMsgType is a type of signed message in the consensus.
 // type SignedMsgType byte
 
@@ -15,9 +13,9 @@ import "github.com/tendermint/tendermint/types/proto"
 // )
 
 // IsVoteTypeValid returns true if t is a valid vote type.
-func IsVoteTypeValid(t proto.SignedMsgType) bool {
+func IsVoteTypeValid(t SignedMsgType) bool {
 	switch t {
-	case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE, proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
+	case SIGNED_MSG_TYPE_PREVOTE_TYPE, SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 		return true
 	default:
 		return false

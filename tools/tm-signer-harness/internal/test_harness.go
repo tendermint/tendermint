@@ -17,7 +17,6 @@ import (
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/proto"
 )
 
 // Test harness error codes (which act as exit codes when the test harness fails).
@@ -35,7 +34,7 @@ const (
 	ErrTestSignVoteFailed                 // 10
 )
 
-var voteTypes = []proto.SignedMsgType{proto.SIGNED_MSG_TYPE_PREVOTE_TYPE, proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE}
+var voteTypes = []types.SignedMsgType{types.SIGNED_MSG_TYPE_PREVOTE_TYPE, types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE}
 
 // TestHarnessError allows us to keep track of which exit code should be used
 // when exiting the main program.
@@ -207,7 +206,7 @@ func (th *TestHarness) TestSignProposal() error {
 	// sha256 hash of "hash"
 	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
-		Type:     proto.SIGNED_MSG_TYPE_PRPOSAL_TYPE,
+		Type:     types.SIGNED_MSG_TYPE_PRPOSAL_TYPE,
 		Height:   100,
 		Round:    0,
 		POLRound: -1,

@@ -1,30 +1,30 @@
 syntax = "proto3";
 
-package types.proto;
-option go_package = "github.com/tendermint/tendermint/types/proto";
+package types;
+option go_package = "github.com/tendermint/tendermint/types";
 
 // PartsetHeader
-message PartSetHeader {
+message ProtoPartSetHeader {
   int32 total = 1;
   bytes hash = 2;
 }
 
 // BlockID
-message BlockID {
+message ProtoBlockID {
   bytes hash = 1;
-  PartSetHeader parts_header = 2;
+  ProtoPartSetHeader parts_header = 2;
 }
 
 // Block Header
-message Header {
+message ProtoHeader {
   // basic block info
-  Version version = 1;
+  ProtoVersion version = 1;
   string chain_id = 2;
   int64 height = 3;
-  Timestamp time = 4;
+  ProtoTimestamp time = 4;
 
   // prev block info
-  BlockID last_block_id = 5;
+  ProtoBlockID last_block_id = 5;
 
   // hashes of block data
   bytes last_commit_hash = 6; // commit from validators from the last block
@@ -43,7 +43,7 @@ message Header {
 }
 
 // Block & app version
-message Version {
+message ProtoVersion {
   uint64 block = 1;
   uint64 app = 2;
 }
@@ -53,7 +53,7 @@ message Version {
 // See:
 // https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
 // NOTE/XXX: nanos do not get skipped if they are zero in amino.
-message Timestamp {
+message ProtoTimestamp {
   int64 seconds = 1;
   int32 nanos = 2;
 }

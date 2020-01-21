@@ -6,7 +6,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -102,7 +101,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		Type:             types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 		BlockID:          blockID,
 	}
 	// Sign it

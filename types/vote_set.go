@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/bits"
-	"github.com/tendermint/tendermint/types/proto"
+	
 )
 
 const (
@@ -63,7 +63,7 @@ type VoteSet struct {
 	chainID       string
 	height        int64
 	round         int
-	signedMsgType proto.SignedMsgType
+	signedMsgType SignedMsgType
 	valSet        *ValidatorSet
 
 	mtx           sync.Mutex
@@ -76,7 +76,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, signedMsgType proto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -401,7 +401,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.signedMsgType != proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE {
+	if voteSet.signedMsgType != SIGNED_MSG_TYPE_PRECOMMIT_TYPE {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -552,7 +552,7 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Panics if the vote type is not PrecommitType or if
 // there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.signedMsgType != proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE {
+	if voteSet.signedMsgType != SIGNED_MSG_TYPE_PRECOMMIT_TYPE {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()

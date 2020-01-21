@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/types/proto"
+	
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -22,7 +22,7 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type      proto.SignedMsgType
+	Type      SignedMsgType
 	Height    int64     `json:"height"`
 	Round     int       `json:"round"`
 	POLRound  int       `json:"pol_round"` // -1 if null.
@@ -35,7 +35,7 @@ type Proposal struct {
 // If there is no POLRound, polRound should be -1.
 func NewProposal(height int64, round int, polRound int, blockID BlockID) *Proposal {
 	return &Proposal{
-		Type:      proto.SIGNED_MSG_TYPE_PRPOSAL_TYPE,
+		Type:      SIGNED_MSG_TYPE_PRPOSAL_TYPE,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
@@ -46,7 +46,7 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
-	if p.Type != proto.SIGNED_MSG_TYPE_PRPOSAL_TYPE {
+	if p.Type != SIGNED_MSG_TYPE_PRPOSAL_TYPE {
 		return errors.New("invalid Type")
 	}
 	if p.Height < 0 {

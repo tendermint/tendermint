@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -171,7 +170,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			Height:           height,
 			Round:            0,
 			Timestamp:        tmtime.Now(),
-			Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+			Type:             types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 			BlockID:          blockID,
 		}
 		err = badPrivVal.SignVote(chainID, goodVote)

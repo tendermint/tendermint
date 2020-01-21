@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/types/proto"
+	
 )
 
 const (
@@ -47,7 +47,7 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             proto.SignedMsgType `json:"type"`
+	Type             SignedMsgType `json:"type"`
 	Height           int64               `json:"height"`
 	Round            int                 `json:"round"`
 	BlockID          BlockID             `json:"block_id"` // zero if vote is nil.
@@ -63,12 +63,12 @@ func (vote *Vote) CommitSig() CommitSig {
 		return NewCommitSigAbsent()
 	}
 
-	var blockIDFlag proto.BlockIDFlag
+	var blockIDFlag BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = proto.BLOCK_ID_FLAG_COMMIT
+		blockIDFlag = BLOCK_ID_FLAG_COMMIT
 	case vote.BlockID.IsZero():
-		blockIDFlag = proto.BLOCK_ID_FLAG_NIL
+		blockIDFlag = BLOCK_ID_FLAG_NIL
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -101,9 +101,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
+	case SIGNED_MSG_TYPE_PREVOTE_TYPE:
 		typeString = "Prevote"
-	case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
+	case SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")

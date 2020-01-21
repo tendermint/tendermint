@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/types/proto"
+	
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -16,7 +16,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			ValidatorIndex:   i,
 			Height:           height,
 			Round:            round,
-			Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+			Type:             SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 			BlockID:          blockID,
 			Timestamp:        tmtime.Now(),
 		}
@@ -53,7 +53,7 @@ func MakeVote(
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		Type:             SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 		BlockID:          blockID,
 	}
 	if err := privVal.SignVote(chainID, vote); err != nil {

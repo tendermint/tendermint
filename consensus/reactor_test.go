@@ -29,7 +29,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/proto"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -259,7 +258,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: proto.SIGNED_MSG_TYPE_PREVOTE_TYPE})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.SIGNED_MSG_TYPE_PREVOTE_TYPE})
 	)
 
 	reactor.InitPeer(peer)
@@ -281,7 +280,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: proto.SIGNED_MSG_TYPE_PREVOTE_TYPE})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.SIGNED_MSG_TYPE_PREVOTE_TYPE})
 	)
 
 	// we should call InitPeer here
@@ -810,8 +809,8 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 
 func TestHasVoteMessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   proto.SignedMsgType = 0x01
-		invalidSignedMsgType proto.SignedMsgType = 0x03
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
 	)
 
 	testCases := []struct { // nolint: maligned
@@ -820,7 +819,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		messageIndex  int
 		messageHeight int64
 		testName      string
-		messageType   proto.SignedMsgType
+		messageType   types.SignedMsgType
 	}{
 		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
@@ -846,8 +845,8 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 
 func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   proto.SignedMsgType = 0x01
-		invalidSignedMsgType proto.SignedMsgType = 0x03
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
 	)
 
 	validBlockID := types.BlockID{}
@@ -864,7 +863,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		messageRound   int
 		messageHeight  int64
 		testName       string
-		messageType    proto.SignedMsgType
+		messageType    types.SignedMsgType
 		messageBlockID types.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},

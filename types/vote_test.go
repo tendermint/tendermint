@@ -11,15 +11,15 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/types/proto"
+	
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(byte(proto.SIGNED_MSG_TYPE_PREVOTE_TYPE))
+	return exampleVote(byte(SIGNED_MSG_TYPE_PREVOTE_TYPE))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(byte(proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE))
+	return exampleVote(byte(SIGNED_MSG_TYPE_PRECOMMIT_TYPE))
 }
 
 func exampleVote(t byte) *Vote {
@@ -29,7 +29,7 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		Type:      proto.SignedMsgType(t),
+		Type:      SignedMsgType(t),
 		Height:    12345,
 		Round:     2,
 		Timestamp: stamp,
@@ -69,7 +69,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		1: {
-			"", &Vote{Height: 1, Round: 1, Type: proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE},
+			"", &Vote{Height: 1, Round: 1, Type: SIGNED_MSG_TYPE_PRECOMMIT_TYPE},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -84,7 +84,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		2: {
-			"", &Vote{Height: 1, Round: 1, Type: proto.SIGNED_MSG_TYPE_PREVOTE_TYPE},
+			"", &Vote{Height: 1, Round: 1, Type: SIGNED_MSG_TYPE_PREVOTE_TYPE},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -174,12 +174,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   proto.SignedMsgType
+		in   SignedMsgType
 		out  bool
 	}{
-		{"Prevote", proto.SIGNED_MSG_TYPE_PREVOTE_TYPE, true},
-		{"Precommit", proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, true},
-		{"InvalidType", proto.SignedMsgType(0x3), false},
+		{"Prevote", SIGNED_MSG_TYPE_PREVOTE_TYPE, true},
+		{"Precommit", SIGNED_MSG_TYPE_PRECOMMIT_TYPE, true},
+		{"InvalidType", SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -221,7 +221,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
 		Timestamp:        timestamp,
-		Type:             proto.SIGNED_MSG_TYPE_PREVOTE_TYPE,
+		Type:             SIGNED_MSG_TYPE_PREVOTE_TYPE,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{

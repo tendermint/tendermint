@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -24,7 +23,7 @@ type CanonicalPartSetHeader struct {
 }
 
 type CanonicalProposal struct {
-	Type      proto.SignedMsgType // type alias for byte
+	Type      SignedMsgType // type alias for byte
 	Height    int64               `binary:"fixed64"`
 	Round     int64               `binary:"fixed64"`
 	POLRound  int64               `binary:"fixed64"`
@@ -34,7 +33,7 @@ type CanonicalProposal struct {
 }
 
 type CanonicalVote struct {
-	Type      proto.SignedMsgType // type alias for byte
+	Type      SignedMsgType // type alias for byte
 	Height    int64               `binary:"fixed64"`
 	Round     int64               `binary:"fixed64"`
 	BlockID   CanonicalBlockID
@@ -61,7 +60,7 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		Type:      proto.SIGNED_MSG_TYPE_PRPOSAL_TYPE,
+		Type:      SIGNED_MSG_TYPE_PRPOSAL_TYPE,
 		Height:    proposal.Height,
 		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		POLRound:  int64(proposal.POLRound),

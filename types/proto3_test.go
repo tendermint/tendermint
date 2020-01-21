@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-
-	tmproto "github.com/tendermint/tendermint/types/proto"
 )
 
 func TestProtoCompatibility(t *testing.T) {
@@ -20,13 +18,13 @@ func TestProtoCompatibility(t *testing.T) {
 	t.Log("seconds", seconds)
 	t.Log("nanos", nanos)
 
-	pbHeader := tmproto.Header{
+	pbHeader := ProtoHeader{
 		ChainId: "cosmos",
 		Height:  150,
-		Time:    &tmproto.Timestamp{Seconds: seconds, Nanos: nanos},
-		LastBlockId: &tmproto.BlockID{
+		Time:    &ProtoTimestamp{Seconds: seconds, Nanos: nanos},
+		LastBlockId: &ProtoBlockID{
 			Hash: []byte("some serious hashing"),
-			PartsHeader: &tmproto.PartSetHeader{
+			PartsHeader: &ProtoPartSetHeader{
 				Total: 8,
 				Hash:  []byte("some more serious hashing"),
 			},
@@ -58,10 +56,10 @@ func TestProtoCompatibility(t *testing.T) {
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
 
-	emptyLastBlockPb := tmproto.Header{
+	emptyLastBlockPb := ProtoHeader{
 		ChainId:        "cosmos",
 		Height:         150,
-		Time:           &tmproto.Timestamp{Seconds: seconds, Nanos: nanos},
+		Time:           &ProtoTimestamp{Seconds: seconds, Nanos: nanos},
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),
@@ -83,7 +81,7 @@ func TestProtoCompatibility(t *testing.T) {
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
 
-	pb, err = proto.Marshal(&tmproto.Header{})
+	pb, err = proto.Marshal(&ProtoHeader{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
 
@@ -92,7 +90,7 @@ func TestProtoCompatibility(t *testing.T) {
 	assert.NoError(t, err, "unexpected error")
 	t.Log(ab)
 
-	pb, err = proto.Marshal(&tmproto.Timestamp{})
+	pb, err = proto.Marshal(&ProtoTimestamp{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
 
