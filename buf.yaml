@@ -1,8 +1,8 @@
 build:
   roots:
     - .
-  excludes: 
-    - types/proto
+  excludes:
+    - third_party
 lint:
   use:
     - BASIC

@@ -1,7 +1,6 @@
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-INCLUDE = -I=.
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
@@ -33,7 +32,7 @@ install_c:
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
+protoc_all: proto-gen proto-lint proto-check-breakage
 
 proto-gen:
 	@sh scripts/protocgen.sh
@@ -84,8 +83,6 @@ get_deps_bin_size:
 
 ########################################
 ### Libs
-
-protoc_libs: libs/kv/types.pb.go
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
@@ -212,7 +209,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	proto-lint proto-gen proto-check-breakage gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	protoc-gen proto-lint proto-check-breakage gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
  	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux
