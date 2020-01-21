@@ -781,14 +781,25 @@ func (c *Client) AutoUpdate(now time.Time) error {
 		return nil
 	}
 
-	h, err := c.VerifyHeaderAtHeight(lastTrustedHeight+1, now)
-	if err != nil {
-		if errors.Is(err, provider.ErrSignedHeaderNotFound) {
-			c.logger.Debug("No header yet", "at", lastTrustedHeight+1)
-			return nil
+	var (
+		h *types.SignedHeader
+		i int64 = 1
+	)
+	// Advance the client to the latest state (exponential increment: 1, 2, 4, 8,
+	// 16, ...)
+	for err == nil {
+		height := lastTrustedHeight + (1 << i)
+		h, err = c.VerifyHeaderAtHeight(height, now)
+		if err != nil {
+			if errors.Is(err, provider.ErrSignedHeaderNotFound) {
+				c.logger.Debug("No header yet", "at", height)
+				return nil
+			}
+			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}
-		return errors.Wrapf(err, "failed to verify the header #%d", lastTrustedHeight+1)
+		i++
 	}
+
 	c.logger.Info("Advanced to new state", "height", h.Height, "hash", h.Hash())
 
 	return nil
