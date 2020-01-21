@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -264,9 +265,9 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			// (and consequently shows which we don't have)
 			var ourVotes *bits.BitArray
 			switch msg.Type {
-			case types.PrevoteType:
+			case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 				ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-			case types.PrecommitType:
+			case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
@@ -338,9 +339,9 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			if height == msg.Height {
 				var ourVotes *bits.BitArray
 				switch msg.Type {
-				case types.PrevoteType:
+				case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 					ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-				case types.PrecommitType:
+				case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 					ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 				default:
 					panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
@@ -754,7 +755,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.PrevoteType,
+						Type:    proto.SIGNED_MSG_TYPE_PREVOTE_TYPE,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -771,7 +772,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.PrecommitType,
+						Type:    proto.SIGNED_MSG_TYPE_PREVOTE_TYPE,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -788,7 +789,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
-						Type:    types.PrevoteType,
+						Type:    proto.SIGNED_MSG_TYPE_PREVOTE_TYPE,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -807,7 +808,7 @@ OUTER_LOOP:
 				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 					Height:  prs.Height,
 					Round:   commit.Round,
-					Type:    types.PrecommitType,
+					Type:    proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 					BlockID: commit.BlockID,
 				}))
 				time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -1054,7 +1055,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, votesType, size := votes.GetHeight(), votes.GetRound(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, votesType, size := votes.GetHeight(), votes.GetRound(), proto.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1072,7 +1073,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.SignedMsgType) *bits.BitArray {
+func (ps *PeerState) getVoteBitArray(height int64, round int, votesType proto.SignedMsgType) *bits.BitArray {
 	if !types.IsVoteTypeValid(votesType) {
 		return nil
 	}
@@ -1080,25 +1081,25 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.Si
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
 			switch votesType {
-			case types.PrevoteType:
+			case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 				return ps.PRS.Prevotes
-			case types.PrecommitType:
+			case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 				return ps.PRS.Precommits
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 				return nil
-			case types.PrecommitType:
+			case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 				return ps.PRS.CatchupCommit
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 				return ps.PRS.ProposalPOL
-			case types.PrecommitType:
+			case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 				return nil
 			}
 		}
@@ -1107,9 +1108,9 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.Si
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 				return nil
-			case types.PrecommitType:
+			case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 				return ps.PRS.LastCommit
 			}
 		}
@@ -1224,7 +1225,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int, voteType types.SignedMsgType, index int) {
+func (ps *PeerState) setHasVote(height int64, round int, voteType proto.SignedMsgType, index int) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1590,7 +1591,7 @@ func (m *VoteMessage) String() string {
 type HasVoteMessage struct {
 	Height int64
 	Round  int
-	Type   types.SignedMsgType
+	Type   proto.SignedMsgType
 	Index  int
 }
 
@@ -1622,7 +1623,7 @@ func (m *HasVoteMessage) String() string {
 type VoteSetMaj23Message struct {
 	Height  int64
 	Round   int
-	Type    types.SignedMsgType
+	Type    proto.SignedMsgType
 	BlockID types.BlockID
 }
 
@@ -1654,7 +1655,7 @@ func (m *VoteSetMaj23Message) String() string {
 type VoteSetBitsMessage struct {
 	Height  int64
 	Round   int
-	Type    types.SignedMsgType
+	Type    proto.SignedMsgType
 	BlockID types.BlockID
 	Votes   *bits.BitArray
 }

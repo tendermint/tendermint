@@ -19,6 +19,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	dbm "github.com/tendermint/tm-db"
 )
@@ -58,7 +59,7 @@ func makeVote(
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
+		Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 		BlockID:          blockID,
 	}
 

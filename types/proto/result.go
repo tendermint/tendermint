@@ -1,4 +1,4 @@
-package proto3
+package proto
 
 import (
 	"bytes"

@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/types/proto"
 )
 
 const (
@@ -46,14 +47,14 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int           `json:"round"`
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int           `json:"validator_index"`
-	Signature        []byte        `json:"signature"`
+	Type             proto.SignedMsgType `json:"type"`
+	Height           int64               `json:"height"`
+	Round            int                 `json:"round"`
+	BlockID          BlockID             `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time           `json:"timestamp"`
+	ValidatorAddress Address             `json:"validator_address"`
+	ValidatorIndex   int                 `json:"validator_index"`
+	Signature        []byte              `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -62,12 +63,12 @@ func (vote *Vote) CommitSig() CommitSig {
 		return NewCommitSigAbsent()
 	}
 
-	var blockIDFlag BlockIDFlag
+	var blockIDFlag proto.BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
+		blockIDFlag = proto.BLOCK_ID_FLAG_COMMIT
 	case vote.BlockID.IsZero():
-		blockIDFlag = BlockIDFlagNil
+		blockIDFlag = proto.BLOCK_ID_FLAG_NIL
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -100,9 +101,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case proto.SIGNED_MSG_TYPE_PREVOTE_TYPE:
 		typeString = "Prevote"
-	case PrecommitType:
+	case proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")

@@ -1,11 +1,20 @@
 syntax = "proto3";
 
-package types.types;
+package types;
 option go_package = "github.com/tendermint/tendermint/types";
 
+// BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
-  BlockIDFlag_UNSPECIFIED = 0;
-  BlockIDFlagAbsent = 1;
-  BlockIDFlagCommit = 2;
-  BlockIDFlagNil = 3;
+  BLOCK_ID_FLAG_UNSPECIFIED = 0;
+  BLOCK_ID_FLAG_ABSENT = 1;
+  BLOCK_ID_FLAG_COMMIT = 2;
+  BLOCK_ID_FLAG_NIL = 3;
+}
+
+// SignedMsgType is a type of signed message in the consensus.
+enum SignedMsgType {
+  SIGNED_MSG_TYPE_UNSPECIFIED = 0;
+  SIGNED_MSG_TYPE_PREVOTE_TYPE = 1;
+  SIGNED_MSG_TYPE_PRECOMMIT_TYPE = 2;
+  SIGNED_MSG_TYPE_PRPOSAL_TYPE = 3;
 }

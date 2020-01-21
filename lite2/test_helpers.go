@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -104,7 +105,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
+		Type:             proto.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
 		BlockID:          blockID,
 	}
 	// Sign it

@@ -20,6 +20,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/proto"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -30,7 +31,7 @@ type cleanupFunc func()
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
+		BlockIDFlag:      proto.BLOCK_ID_FLAG_COMMIT,
 		ValidatorAddress: []byte("ValidatorAddress"),
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),

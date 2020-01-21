@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/types/proto"
 )
 
 type voteData struct {
@@ -24,7 +25,7 @@ func makeVote(val PrivValidator, chainID string, valIndex int, height int64, rou
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             SignedMsgType(step),
+		Type:             proto.SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err := val.SignVote(chainID, v)
@@ -103,8 +104,8 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
 		PubKey: secp256k1.GenPrivKey().PubKey(), // use secp because it's pubkey is longer
-		VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID),
-		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+		VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 1, blockID),
+		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 1, blockID2),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
