@@ -28,6 +28,8 @@ transactions from "IBC relayers", who make RPC requests to full nodes on behalf 
 
 ## Structure
 
+### Components
+
 The Tendermint Light Client consists of three primary components:  
 
 - [Core Verification](./verification.md): verifying hashes, signatures, and validator set changes
@@ -40,8 +42,17 @@ be done by full nodes and validators, and is thus more accurately a component of
 the full node consensus protocol, though it is included here since it is
 primarily concerned with providing security to light clients.
 
+A schematic of the core verification and fork detection components in
+a Light Node are depicted below. The schematic is quite similar for other use cases.
+Note fork accountability is not depicted, as it is the responsibility of the
+full nodes.
+
+![Light Client Diagram](assets/light-node-image.png).
+
+### Synchrony
+
 Light clients are fundamentally synchronous protocols, 
-where security is grounded ultimately in the interval during which a validator can be punished
+where security is restricted by the interval during which a validator can be punished
 for byzantine behaviour. We assume here that such intervals have fixed and known minima
 referred to commonly as a blockchain's Unbonding Period.
 
@@ -49,4 +60,7 @@ A secure light client must guarantee that all three components -
 core verification, fork detection, and fork accountability - 
 each with their own synchrony assumptions and fault model, can execute
 sequentially and to completion within the given Unbonding Period.
+
+TODO: define all the synchrony parameters used in the protocol and their
+relation to the Unbonding Period.
 
