@@ -717,7 +717,8 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlock.Hash())
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(types.SIGNED_MSG_TYPE_PREVOTE_TYPE, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
+	prevotes := signVotes(types.SIGNED_MSG_TYPE_PREVOTE_TYPE,
+		propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	t.Logf("old prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
 
@@ -927,7 +928,8 @@ func TestProposeValidBlock(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
 	// the others sign a polka
-	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PREVOTE_TYPE, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PREVOTE_TYPE,
+		propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// we should have precommitted
