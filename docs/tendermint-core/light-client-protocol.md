@@ -18,7 +18,7 @@ commit for a recent block
 hash where the commit includes a
 majority of signatures from the last known validator set. From there,
 all the application state is verifiable with [merkle
-proofs](../spec/blockchain/encoding.md#iavl-tree).
+proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
 
 ## Properties
 
