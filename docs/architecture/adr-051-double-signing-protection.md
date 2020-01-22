@@ -1,20 +1,21 @@
-# ADR 051: Double Signing Protection
+# ADR 051: Double Signing Risk Reduction
 
 ## Changelog
 
 * 27-11-2019: Initial draft
 * 13-01-2020: Separate into 2 ADR, This ADR will only cover Double signing Protection and ADR-052 handle Tendermint Mode
+* 22-01-2020: change the title from "Double signing Protection" to "Double Signing Risk Reduction"
 
 ## Context
 
-To provide a prevention method for double signing incidents mistakenly executed by validators
+To provide a risk reduction method for double signing incidents mistakenly executed by validators
 - Validators often mistakenly run duplicated validators to cause double-signing incident
 - This proposed feature is to reduce the risk of mistaken double-signing incident by checking recent N blocks before voting begins
-- When we think of such serious impact on double-signing incident, it is very reasonable to have multiple protection algorithm built in node daemon
+- When we think of such serious impact on double-signing incident, it is very reasonable to have multiple risk reduction algorithm built in node daemon
 
 ## Decision
 
-We would like to suggest a double signing prevention method.
+We would like to suggest a double signing risk reduction method.
 
 - Methodology : query recent consensus results to find out whether node's consensus key is used on consensus recently or not
 - When to check
@@ -43,8 +44,7 @@ Proposed
 
 ### Negative
 
-Double signing prevention method
-- When the prevention method is on, restarting a validator node will panic because the node itself voted on consensus with the same consensus key. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic stop.
+- When the risk reduction method is on, restarting a validator node will panic because the node itself voted on consensus with the same consensus key. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic stop.
 
 ### Neutral
 
