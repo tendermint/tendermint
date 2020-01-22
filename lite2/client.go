@@ -777,8 +777,8 @@ func (c *Client) autoUpdate() {
 	}
 }
 
-// AutoUpdate attempts to advance the light client to the LastTrustedHeight + 1
-// height.
+// AutoUpdate attempts to advance the state making exponential steps when
+// mode=skipping, incremental steps when mode=sequential.
 //
 // Exposed for testing.
 func (c *Client) AutoUpdate(now time.Time) error {
@@ -792,15 +792,26 @@ func (c *Client) AutoUpdate(now time.Time) error {
 		return nil
 	}
 
-	var (
-		h *types.SignedHeader
-		i int64
-	)
-	// Advance the client to the latest state (exponential increment: 1, 2, 4, 8,
-	// 16, ...)
+	var nextHeightFn func(i int64) int64
+	switch c.verificationMode {
+	case sequential:
+		// sequential increment: 1, 2, 3, 4, 5, ...
+		nextHeightFn = func(i int64) int64 {
+			return lastTrustedHeight + i
+		}
+	case skipping:
+		// exponential increment: 1, 2, 4, 8, 16, ...
+		nextHeightFn = func(i int64) int64 {
+			return lastTrustedHeight + int64(1<<uint(i))
+		}
+	default:
+		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
+	}
+
+	var i int64
 	for err == nil {
-		height := lastTrustedHeight + int64(1<<uint(i))
-		h, err = c.VerifyHeaderAtHeight(height, now)
+		height := nextHeightFn(i)
+		h, err := c.VerifyHeaderAtHeight(height, now)
 		if err != nil {
 			if errors.Is(err, provider.ErrSignedHeaderNotFound) {
 				c.logger.Debug("No header yet", "at", height)
@@ -808,10 +819,9 @@ func (c *Client) AutoUpdate(now time.Time) error {
 			}
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}
+		c.logger.Info("Advanced to new state", "height", h.Height, "hash", h.Hash())
 		i++
 	}
-
-	c.logger.Info("Advanced to new state", "height", h.Height, "hash", h.Hash())
 
 	return nil
 }

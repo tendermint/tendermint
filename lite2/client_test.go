@@ -707,6 +707,7 @@ func TestClient_AutoUpdate(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Stop()
 
+	// should result in downloading & verifying headers #2 and #3
 	err = c.AutoUpdate(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
