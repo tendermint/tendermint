@@ -95,6 +95,12 @@ func AddNodeFlags(cmd *cobra.Command) {
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
 // It can be used with a custom PrivValidator and in-process ABCI application.
 func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
+	// Check to ensure that tendermint init was called
+	if InitFlag == 0 {
+		fmt.Println("tendermint init has not been called!")
+		os.Exit(1)
+	}
+
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",

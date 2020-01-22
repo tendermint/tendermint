@@ -20,7 +20,10 @@ var InitFilesCmd = &cobra.Command{
 	RunE:  initFiles,
 }
 
+var InitFlag = 0
+
 func initFiles(cmd *cobra.Command, args []string) error {
+	InitFlag = 1
 	return initFilesWithConfig(config)
 }
 
