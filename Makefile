@@ -41,7 +41,9 @@ proto-lint:
 	@buf check lint
 
 proto-check-breaking:
-	@buf check breaking --against-input '.git#branch=master'
+	# TODO:Change branch to master when it is merged
+	@buf check breaking --against-input '.git#branch=proto-breakage' 
+
 
 ########################################
 ### Build ABCI
