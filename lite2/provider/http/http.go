@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -54,6 +55,10 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 	commit, err := p.client.Commit(h)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrSignedHeaderNotFound
+		}
 		return nil, err
 	}
 
@@ -76,6 +81,10 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	const maxPerPage = 100
 	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrValidatorSetNotFound
+		}
 		return nil, err
 	}
 

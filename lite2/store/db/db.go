@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -78,7 +79,7 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, nil
+		return nil, errors.New("signed header not found")
 	}
 
 	var signedHeader *types.SignedHeader
@@ -97,7 +98,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, nil
+		return nil, errors.New("validator set not found")
 	}
 
 	var valSet *types.ValidatorSet
