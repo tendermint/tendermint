@@ -74,7 +74,8 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	rs := cs1.GetRoundState()
-	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:]...)
+	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:]...)
 
 	// Wait for new round so next validator is set.
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -223,7 +224,8 @@ func TestStateBadProposal(t *testing.T) {
 	// wait for precommit
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
-	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 }
 
 //----------------------------------------------------------------------------------------------------

@@ -242,13 +242,13 @@ func TestMaxVoteBytes(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT_TYPE(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT_TYPE(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE_TYPE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE_TYPE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}

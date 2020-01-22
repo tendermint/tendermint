@@ -338,7 +338,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 	rs := css[0].GetRoundState()
-	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	//height 2
@@ -363,7 +364,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	//height 3
@@ -388,7 +390,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	//height 4
@@ -438,7 +441,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -452,7 +456,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -489,7 +494,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(css[0], types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 

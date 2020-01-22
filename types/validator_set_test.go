@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 

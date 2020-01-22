@@ -1,7 +1,6 @@
 package types
 
 import (
-	
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
