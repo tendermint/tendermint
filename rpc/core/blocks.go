@@ -12,9 +12,8 @@ import (
 
 // BlockchainInfo gets block headers for minHeight <= height <= maxHeight.
 // Block headers are returned in descending order (highest first).
-// More: https://tendermint.com/rpc/#/Info/blockchain
+// More: https://docs.tendermint.com/master/rpc/#/Info/blockchain
 func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-
 	// maximum 20 block metas
 	const limit int64 = 20
 	var err error
@@ -68,7 +67,7 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 
 // Block gets block at a given height.
 // If no height is provided, it will fetch the latest block.
-// More: https://tendermint.com/rpc/#/Info/block
+// More: https://docs.tendermint.com/master/rpc/#/Info/block
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -85,21 +84,20 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 }
 
 // BlockByHash gets block by hash.
-// More: https://tendermint.com/rpc/#/Info/block_by_hash
+// More: https://docs.tendermint.com/master/rpc/#/Info/block_by_hash
 func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
 	block := blockStore.LoadBlockByHash(hash)
-	height := block.Height
-
-	blockMeta := blockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+	if block == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
+	// If block is not nil, then blockMeta can't be nil.
+	blockMeta := blockStore.LoadBlockMeta(block.Height)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
 // Commit gets block commit at a given height.
 // If no height is provided, it will fetch the commit for the latest block.
-// More: https://tendermint.com/rpc/#/Info/commit
+// More: https://docs.tendermint.com/master/rpc/#/Info/commit
 func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -107,7 +105,11 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 		return nil, err
 	}
 
-	header := blockStore.LoadBlockMeta(height).Header
+	blockMeta := blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return nil, nil
+	}
+	header := blockMeta.Header
 
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
@@ -127,7 +129,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // Results are for the height of the block containing the txs.
 // Thus response.results.deliver_tx[5] is the results of executing
 // getBlock(h).Txs[5]
-// More: https://tendermint.com/rpc/#/Info/block_results
+// More: https://docs.tendermint.com/master/rpc/#/Info/block_results
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
