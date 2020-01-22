@@ -1,5 +1,8 @@
 # Tendermint Light Client Protocol
 
+NOTE: This specification is under heavy development and is not yet complete nor
+accurate. 
+
 ## Contents
 
 - [Motivation](#motivation)

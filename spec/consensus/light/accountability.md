@@ -1,4 +1,4 @@
-# Fork accountability -- Problem statement and attacks
+# Fork accountability 
 
 ## Problem Statement
 

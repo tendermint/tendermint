@@ -1,4 +1,4 @@
-# Lite client
+# Core Verification
 
 A lite client is a process that connects to Tendermint full node(s) and then tries to verify application
 data using the Merkle proofs.
