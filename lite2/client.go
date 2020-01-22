@@ -212,7 +212,7 @@ func NewClient(
 	}
 
 	if c.updatePeriod > 0 {
-		go c.autoUpdate()
+		go c.autoUpdateRoutine()
 	}
 
 	return c, nil
@@ -760,14 +760,14 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	}
 }
 
-func (c *Client) autoUpdate() {
+func (c *Client) autoUpdateRoutine() {
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			err := c.AutoUpdate(time.Now())
+			err := c.Update(time.Now())
 			if err != nil {
 				c.logger.Error("Error during auto update", "err", err)
 			}
@@ -777,12 +777,12 @@ func (c *Client) autoUpdate() {
 	}
 }
 
-// AutoUpdate attempts to advance the state making exponential steps (note:
+// Update attempts to advance the state making exponential steps (note:
 // when SequentialVerification is being used, the client will still be
 // downloading all intermediate headers).
 //
 // Exposed for testing.
-func (c *Client) AutoUpdate(now time.Time) error {
+func (c *Client) Update(now time.Time) error {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return errors.Wrap(err, "can't get last trusted height")
@@ -793,21 +793,17 @@ func (c *Client) AutoUpdate(now time.Time) error {
 		return nil
 	}
 
-	var i int64
-	for err == nil {
-		// exponential increment: 1, 2, 4, 8, 16, ...
-		height := lastTrustedHeight + int64(1<<uint(i))
-		h, err := c.VerifyHeaderAtHeight(height, now)
-		if err != nil {
-			if errors.Is(err, provider.ErrSignedHeaderNotFound) {
-				c.logger.Debug("No header yet", "at", height)
-				return nil
-			}
-			return errors.Wrapf(err, "failed to verify the header #%d", height)
-		}
-		c.logger.Info("Advanced to new state", "height", h.Height, "hash", h.Hash())
-		i++
+	latestHeader, latestVals, err := c.fetchHeaderAndValsAtHeight(0)
+	if err != nil {
+		return errors.Wrapf(err, "can't get latest header and vals")
 	}
+
+	err = c.VerifyHeader(latestHeader, latestVals, now)
+	if err != nil {
+		return errors.Wrapf(err, "failed to verify the header #%d", latestHeader.Height)
+	}
+
+	c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", latestHeader.Hash())
 
 	return nil
 }
