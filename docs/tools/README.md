@@ -16,7 +16,7 @@ Tendermint has some tools that are associated with it for:
 
 ## Benchmarking
 
-Benchmarking is done tm-load-test, for information on how to use the tool please visit the docs: https://github.com/interchainio/tm-load-test
+Benchmarking is done with tm-load-test, for information on how to use the tool please visit the docs: https://github.com/interchainio/tm-load-test
 
 
 ## Testnets
