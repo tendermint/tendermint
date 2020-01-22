@@ -29,7 +29,7 @@ It is possible that this will change in the future, if it is deemed that
 requiring amino for interacting with Tendermint cryptography is unnecessary.
 
 The arguments for space efficiency here are refuted on the basis that there are
-far more egregious wastage's of space in the SDK.
+far more egregious wastages of space in the SDK.
 The space requirement of the public keys doesn't cause many problems beyond
 increasing the space attached to each validator / account.
 

@@ -21,4 +21,4 @@ Benchmarking is done with tm-load-test, for information on how to use the tool p
 
 ## Testnets
 
-Tendermint Test Networks is aimed at testing Tendermint with different configurations. For more information please visit: https://github.com/interchainio/testnets.
+The testnets tool is aimed at testing Tendermint with different configurations. For more information please visit: https://github.com/interchainio/testnets.
