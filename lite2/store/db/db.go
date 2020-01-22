@@ -73,13 +73,16 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 		panic("negative or zero height")
 	}
 
-	bz := s.db.Get(s.shKey(height))
-	if bz == nil {
+	bz, err := s.db.Get(s.shKey(height))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
 		return nil, nil
 	}
 
 	var signedHeader *types.SignedHeader
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(bz, &signedHeader)
+	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &signedHeader)
 	return signedHeader, err
 }
 
@@ -89,22 +92,28 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		panic("negative or zero height")
 	}
 
-	bz := s.db.Get(s.vsKey(height))
-	if bz == nil {
+	bz, err := s.db.Get(s.vsKey(height))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
 		return nil, nil
 	}
 
 	var valSet *types.ValidatorSet
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(bz, &valSet)
+	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &valSet)
 	return valSet, err
 }
 
 // LastSignedHeaderHeight returns the last SignedHeader height stored.
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
-	itr := s.db.ReverseIterator(
+	itr, err := s.db.ReverseIterator(
 		s.shKey(1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
+	if err != nil {
+		panic(err)
+	}
 	defer itr.Close()
 
 	for itr.Valid() {
@@ -121,10 +130,13 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 
 // FirstSignedHeaderHeight returns the first SignedHeader height stored.
 func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
-	itr := s.db.Iterator(
+	itr, err := s.db.Iterator(
 		s.shKey(1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
+	if err != nil {
+		panic(err)
+	}
 	defer itr.Close()
 
 	for itr.Valid() {

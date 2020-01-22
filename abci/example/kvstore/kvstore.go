@@ -28,15 +28,19 @@ type State struct {
 }
 
 func loadState(db dbm.DB) State {
-	stateBytes := db.Get(stateKey)
 	var state State
-	if len(stateBytes) != 0 {
-		err := json.Unmarshal(stateBytes, &state)
-		if err != nil {
-			panic(err)
-		}
-	}
 	state.db = db
+	stateBytes, err := db.Get(stateKey)
+	if err != nil {
+		panic(err)
+	}
+	if len(stateBytes) == 0 {
+		return state
+	}
+	err = json.Unmarshal(stateBytes, &state)
+	if err != nil {
+		panic(err)
+	}
 	return state
 }
 
@@ -120,27 +124,33 @@ func (app *Application) Commit() types.ResponseCommit {
 // Returns an associated value or nil if missing.
 func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+		if err != nil {
+			panic(err)
+		}
+		if value == nil {
+			resQuery.Log = "does not exist"
+		} else {
+			resQuery.Log = "exists"
+		}
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
 
 		return
 	}
 
 	resQuery.Key = reqQuery.Data
-	value := app.state.db.Get(prefixKey(reqQuery.Data))
-	resQuery.Value = value
-	if value != nil {
-		resQuery.Log = "exists"
-	} else {
-		resQuery.Log = "does not exist"
+	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+	if err != nil {
+		panic(err)
 	}
+	if value == nil {
+		resQuery.Log = "does not exist"
+	} else {
+		resQuery.Log = "exists"
+	}
+	resQuery.Value = value
 
-	return
+	return resQuery
 }
