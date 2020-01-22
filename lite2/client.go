@@ -777,8 +777,9 @@ func (c *Client) autoUpdate() {
 	}
 }
 
-// AutoUpdate attempts to advance the state making exponential steps when
-// mode=skipping, incremental steps when mode=sequential.
+// AutoUpdate attempts to advance the state making exponential steps (note:
+// when SequentialVerification is being used, the client will still be
+// downloading all intermediate headers).
 //
 // Exposed for testing.
 func (c *Client) AutoUpdate(now time.Time) error {
