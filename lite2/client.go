@@ -792,25 +792,10 @@ func (c *Client) AutoUpdate(now time.Time) error {
 		return nil
 	}
 
-	var nextHeightFn func(i int64) int64
-	switch c.verificationMode {
-	case sequential:
-		// sequential increment: 1, 2, 3, 4, 5, ...
-		nextHeightFn = func(i int64) int64 {
-			return lastTrustedHeight + i
-		}
-	case skipping:
-		// exponential increment: 1, 2, 4, 8, 16, ...
-		nextHeightFn = func(i int64) int64 {
-			return lastTrustedHeight + int64(1<<uint(i))
-		}
-	default:
-		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
-	}
-
 	var i int64
 	for err == nil {
-		height := nextHeightFn(i)
+		// exponential increment: 1, 2, 4, 8, 16, ...
+		height := lastTrustedHeight + int64(1<<uint(i))
 		h, err := c.VerifyHeaderAtHeight(height, now)
 		if err != nil {
 			if errors.Is(err, provider.ErrSignedHeaderNotFound) {
