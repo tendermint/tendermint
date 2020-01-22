@@ -383,6 +383,8 @@ func (c *Client) Stop() {
 //  happen normally;
 //  - negative height is passed;
 //  - header is not found.
+//
+// Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height < 0 {
 		return nil, errors.New("negative height")
@@ -411,17 +413,23 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
 // there are no trusted headers.
+//
+// Safe for concurrent use by multiple goroutines.
 func (c *Client) LastTrustedHeight() (int64, error) {
 	return c.trustedStore.LastSignedHeaderHeight()
 }
 
 // FirstTrustedHeight returns a first trusted height. -1 and nil are returned if
 // there are no trusted headers.
+//
+// Safe for concurrent use by multiple goroutines.
 func (c *Client) FirstTrustedHeight() (int64, error) {
 	return c.trustedStore.FirstSignedHeaderHeight()
 }
 
 // ChainID returns the chain ID the light client was configured with.
+//
+// Safe for concurrent use by multiple goroutines.
 func (c *Client) ChainID() string {
 	return c.chainID
 }
