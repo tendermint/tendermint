@@ -117,6 +117,13 @@ func ConfirmationFunction(fn func(action string) bool) Option {
 	}
 }
 
+// Logger option can be used to set a logger for the client.
+func Logger(l log.Logger) Option {
+	return func(c *Client) {
+		c.logger = l
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -356,14 +363,10 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	return c.updateTrustedHeaderAndVals(h, nextVals)
 }
 
-// Stop stops the light client.
+// Stop stops all the goroutines. If you wish to remove all the data, call
+// Cleanup.
 func (c *Client) Stop() {
 	close(c.quit)
-}
-
-// SetLogger sets a logger.
-func (c *Client) SetLogger(l log.Logger) {
-	c.logger = l
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest)

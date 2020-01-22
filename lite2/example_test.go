@@ -58,12 +58,12 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 		provider,
 		dbs.New(db, chainID),
 		UpdatePeriod(1*time.Second),
+		Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	defer c.Stop()
-	c.SetLogger(log.TestingLogger())
 
 	time.Sleep(2 * time.Second)
 
@@ -117,12 +117,12 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 		provider,
 		dbs.New(db, chainID),
 		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	defer c.Stop()
-	c.SetLogger(log.TestingLogger())
 
 	_, err = c.VerifyHeaderAtHeight(3, time.Now())
 	if err != nil {
