@@ -17,7 +17,7 @@ type Provider interface {
 	// If the provider fails to fetch the SignedHeader due to the IO or other
 	// issues, an error will be returned.
 	// If there's no SignedHeader for the given height, ErrSignedHeaderNotFound
-	// will be returned.
+	// error is returned.
 	SignedHeader(height int64) (*types.SignedHeader, error)
 
 	// ValidatorSet returns the ValidatorSet that corresponds to height.
@@ -28,6 +28,6 @@ type Provider interface {
 	// If the provider fails to fetch the ValidatorSet due to the IO or other
 	// issues, an error will be returned.
 	// If there's no ValidatorSet for the given height, ErrValidatorSetNotFound
-	// will be returned.
+	// error is returned.
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
 }
