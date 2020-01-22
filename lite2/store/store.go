@@ -21,16 +21,14 @@ type Store interface {
 	//
 	// height must be > 0.
 	//
-	// If the store is empty and the latest SignedHeader is requested, an error
-	// is returned.
+	// If SignedHeader is not found, an error is returned.
 	SignedHeader(height int64) (*types.SignedHeader, error)
 
 	// ValidatorSet returns the ValidatorSet that corresponds to height.
 	//
 	// height must be > 0.
 	//
-	// If the store is empty and the latest ValidatorSet is requested, an error
-	// is returned.
+	// If ValidatorSet is not found, an error is returned.
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
 
 	// LastSignedHeaderHeight returns the last (newest) SignedHeader height.
