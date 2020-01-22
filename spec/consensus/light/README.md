@@ -47,7 +47,7 @@ a Light Node are depicted below. The schematic is quite similar for other use ca
 Note fork accountability is not depicted, as it is the responsibility of the
 full nodes.
 
-![Light Client Diagram](assets/light-node-image.png).
+![Light Client Diagram](./assets/light-node-image.png).
 
 ### Synchrony
 
