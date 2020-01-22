@@ -63,11 +63,14 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	defer c.Stop()
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
 
 	time.Sleep(2 * time.Second)
 
-	h, err := c.TrustedHeader(3, time.Now())
+	h, err := c.TrustedHeader(0, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -122,7 +125,10 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	defer c.Stop()
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
 
 	_, err = c.VerifyHeaderAtHeight(3, time.Now())
 	if err != nil {

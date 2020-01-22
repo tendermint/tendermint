@@ -350,6 +350,7 @@ func TestClient_Cleanup(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	c.Stop()
 	c.Cleanup()
 
 	// Check no headers exist after Cleanup.

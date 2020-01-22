@@ -3,6 +3,7 @@ package lite
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -154,6 +155,7 @@ type Client struct {
 
 	updatePeriod                       time.Duration
 	removeNoLongerTrustedHeadersPeriod time.Duration
+	routinesWaitGroup                  sync.WaitGroup
 
 	confirmationFn func(action string) bool
 
@@ -208,10 +210,12 @@ func NewClient(
 	}
 
 	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		c.routinesWaitGroup.Add(1)
 		go c.removeNoLongerTrustedHeadersRoutine()
 	}
 
 	if c.updatePeriod > 0 {
+		c.routinesWaitGroup.Add(1)
 		go c.autoUpdateRoutine()
 	}
 
@@ -474,7 +478,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", newVals.Hash())
+	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", fmt.Sprintf("%X", newVals.Hash()))
 
 	if c.trustedHeader.Height >= newHeader.Height {
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
@@ -507,8 +511,11 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
-// Cleanup removes all the data (headers and validator sets) stored.
+// Cleanup removes all the data (headers and validator sets) stored. It blocks
+// until internal routines are finished. Note: the client must be stopped at
+// this point.
 func (c *Client) Cleanup() error {
+	c.routinesWaitGroup.Wait()
 	c.logger.Info("Cleanup everything")
 	return c.cleanup(0)
 }
@@ -707,6 +714,8 @@ func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) er
 }
 
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {
+	defer c.routinesWaitGroup.Done()
+
 	ticker := time.NewTicker(c.removeNoLongerTrustedHeadersPeriod)
 	defer ticker.Stop()
 
@@ -761,6 +770,8 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 }
 
 func (c *Client) autoUpdateRoutine() {
+	defer c.routinesWaitGroup.Done()
+
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
@@ -798,12 +809,14 @@ func (c *Client) Update(now time.Time) error {
 		return errors.Wrapf(err, "can't get latest header and vals")
 	}
 
-	err = c.VerifyHeader(latestHeader, latestVals, now)
-	if err != nil {
-		return errors.Wrapf(err, "failed to verify the header #%d", latestHeader.Height)
-	}
+	if latestHeader.Height > lastTrustedHeight {
+		err = c.VerifyHeader(latestHeader, latestVals, now)
+		if err != nil {
+			return err
+		}
 
-	c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", latestHeader.Hash())
+		c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", latestHeader.Hash())
+	}
 
 	return nil
 }
