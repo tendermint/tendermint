@@ -350,6 +350,7 @@ func TestClient_Cleanup(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	c.Stop()
 	c.Cleanup()
 
 	// Check no headers exist after Cleanup.
@@ -661,9 +662,9 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 	}
 }
 
-func TestClient_AutoUpdate(t *testing.T) {
+func TestClient_Update(t *testing.T) {
 	const (
-		chainID = "TestClient_AutoUpdate"
+		chainID = "TestClient_Update"
 	)
 
 	var (
@@ -707,16 +708,11 @@ func TestClient_AutoUpdate(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Stop()
 
-	// should result in downloading & verifying headers #2 and #3
-	err = c.AutoUpdate(bTime.Add(2 * time.Hour))
+	// should result in downloading & verifying header #3
+	err = c.Update(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
-	h, err := c.TrustedHeader(2, bTime.Add(2*time.Hour))
-	assert.NoError(t, err)
-	require.NotNil(t, h)
-	assert.EqualValues(t, 2, h.Height)
-
-	h, err = c.TrustedHeader(3, bTime.Add(2*time.Hour))
+	h, err := c.TrustedHeader(3, bTime.Add(2*time.Hour))
 	assert.NoError(t, err)
 	require.NotNil(t, h)
 	assert.EqualValues(t, 3, h.Height)

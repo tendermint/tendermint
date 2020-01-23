@@ -3,6 +3,7 @@ package lite
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -154,6 +155,7 @@ type Client struct {
 
 	updatePeriod                       time.Duration
 	removeNoLongerTrustedHeadersPeriod time.Duration
+	routinesWaitGroup                  sync.WaitGroup
 
 	confirmationFn func(action string) bool
 
@@ -208,11 +210,13 @@ func NewClient(
 	}
 
 	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		c.routinesWaitGroup.Add(1)
 		go c.removeNoLongerTrustedHeadersRoutine()
 	}
 
 	if c.updatePeriod > 0 {
-		go c.autoUpdate()
+		c.routinesWaitGroup.Add(1)
+		go c.autoUpdateRoutine()
 	}
 
 	return c, nil
@@ -474,7 +478,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", newVals.Hash())
+	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", fmt.Sprintf("%X", newVals.Hash()))
 
 	if c.trustedHeader.Height >= newHeader.Height {
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
@@ -507,8 +511,11 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
-// Cleanup removes all the data (headers and validator sets) stored.
+// Cleanup removes all the data (headers and validator sets) stored. It blocks
+// until internal routines are finished. Note: the client must be stopped at
+// this point.
 func (c *Client) Cleanup() error {
+	c.routinesWaitGroup.Wait()
 	c.logger.Info("Cleanup everything")
 	return c.cleanup(0)
 }
@@ -707,6 +714,8 @@ func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) er
 }
 
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {
+	defer c.routinesWaitGroup.Done()
+
 	ticker := time.NewTicker(c.removeNoLongerTrustedHeadersPeriod)
 	defer ticker.Stop()
 
@@ -760,14 +769,16 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	}
 }
 
-func (c *Client) autoUpdate() {
+func (c *Client) autoUpdateRoutine() {
+	defer c.routinesWaitGroup.Done()
+
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			err := c.AutoUpdate(time.Now())
+			err := c.Update(time.Now())
 			if err != nil {
 				c.logger.Error("Error during auto update", "err", err)
 			}
@@ -777,12 +788,12 @@ func (c *Client) autoUpdate() {
 	}
 }
 
-// AutoUpdate attempts to advance the state making exponential steps (note:
+// Update attempts to advance the state making exponential steps (note:
 // when SequentialVerification is being used, the client will still be
 // downloading all intermediate headers).
 //
 // Exposed for testing.
-func (c *Client) AutoUpdate(now time.Time) error {
+func (c *Client) Update(now time.Time) error {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return errors.Wrap(err, "can't get last trusted height")
@@ -793,20 +804,18 @@ func (c *Client) AutoUpdate(now time.Time) error {
 		return nil
 	}
 
-	var i int64
-	for err == nil {
-		// exponential increment: 1, 2, 4, 8, 16, ...
-		height := lastTrustedHeight + int64(1<<uint(i))
-		h, err := c.VerifyHeaderAtHeight(height, now)
+	latestHeader, latestVals, err := c.fetchHeaderAndValsAtHeight(0)
+	if err != nil {
+		return errors.Wrapf(err, "can't get latest header and vals")
+	}
+
+	if latestHeader.Height > lastTrustedHeight {
+		err = c.VerifyHeader(latestHeader, latestVals, now)
 		if err != nil {
-			if errors.Is(err, provider.ErrSignedHeaderNotFound) {
-				c.logger.Debug("No header yet", "at", height)
-				return nil
-			}
-			return errors.Wrapf(err, "failed to verify the header #%d", height)
+			return err
 		}
-		c.logger.Info("Advanced to new state", "height", h.Height, "hash", h.Hash())
-		i++
+
+		c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", latestHeader.Hash())
 	}
 
 	return nil
