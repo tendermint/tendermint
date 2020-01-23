@@ -15,9 +15,9 @@ accurate.
 
 The Tendermint Light Client is motivated by the need for a light weight protocol
 to sync with a Tendermint blockchain, with the least processing necessary to
-securely verify a recent state. The protocol consists
-primarily of checking hashes and verifying Tendermint commit signatures to
-update trusted validator sets and committed block headers from the chain.
+securely verify a recent state. The protocol consists of managing trusted validator
+sets and trusted block headers, and is based primarily on checking hashes
+and verifying Tendermint commit signatures.
 
 Motivating use cases include:
 
@@ -33,8 +33,8 @@ transactions from "IBC relayers", who make RPC requests to full nodes on behalf 
 The Tendermint Light Client consists of three primary components:  
 
 - [Core Verification](./verification.md): verifying hashes, signatures, and validator set changes
-- [Fork Detection](./detection.md): talking to multiple peers to detect byzantine behaviour
-- [Fork Accountability](./accountability.md): analyzing byzantine behaviour to hold validators accountable.
+- [Fork Detection](./detection.md): talking to multiple peers to detect Byzantine behaviour
+- [Fork Accountability](./accountability.md): analyzing Byzantine behaviour to hold validators accountable.
 
 While every light client must perform core verification and fork detection
 to achieve their prescribed security level, fork accountability is expected to
@@ -44,7 +44,7 @@ primarily concerned with providing security to light clients.
 
 A schematic of the core verification and fork detection components in
 a Light Node are depicted below. The schematic is quite similar for other use cases.
-Note fork accountability is not depicted, as it is the responsibility of the
+Note that fork accountability is not depicted, as it is the responsibility of the
 full nodes.
 
 ![Light Client Diagram](./assets/light-node-image.png).
@@ -53,7 +53,7 @@ full nodes.
 
 Light clients are fundamentally synchronous protocols, 
 where security is restricted by the interval during which a validator can be punished
-for byzantine behaviour. We assume here that such intervals have fixed and known minima
+for Byzantine behaviour. We assume here that such intervals have fixed and known minimal duration
 referred to commonly as a blockchain's Unbonding Period.
 
 A secure light client must guarantee that all three components - 
