@@ -15,7 +15,7 @@ package types
 // IsVoteTypeValid returns true if t is a valid vote type.
 func IsVoteTypeValid(t SignedMsgType) bool {
 	switch t {
-	case SIGNED_MSG_TYPE_PREVOTE_TYPE, SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
+	case SIGNED_MSG_TYPE_PREVOTE, SIGNED_MSG_TYPE_PRECOMMIT:
 		return true
 	default:
 		return false

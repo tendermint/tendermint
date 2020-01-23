@@ -100,9 +100,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case SIGNED_MSG_TYPE_PREVOTE_TYPE:
+	case SIGNED_MSG_TYPE_PREVOTE:
 		typeString = "Prevote"
-	case SIGNED_MSG_TYPE_PRECOMMIT_TYPE:
+	case SIGNED_MSG_TYPE_PRECOMMIT:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")

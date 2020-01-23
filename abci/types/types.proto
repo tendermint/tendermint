@@ -1,5 +1,5 @@
 syntax = "proto3";
-package abci.types;
+package tendermint.abci.types;
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
 // For more information on gogo.proto, see:
@@ -167,7 +167,7 @@ message ResponseQuery {
   int64 index = 5;
   bytes key = 6;
   bytes value = 7;
-  crypto.merkle.Proof proof = 8;
+  tendermint.crypto.merkle.Proof proof = 8;
   int64 height = 9;
   string codespace = 10;
 }
@@ -246,7 +246,7 @@ message LastCommitInfo {
 
 message Event {
   string type = 1;
-  repeated libs.kv.Pair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
+  repeated tendermint.libs.kv.Pair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
 }
 
 //----------------------------------------

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package types;
+package tendermint.types;
 option go_package = "github.com/tendermint/tendermint/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
@@ -16,9 +16,9 @@ enum BlockIDFlag {
 // SignedMsgType is a type of signed message in the consensus.
 enum SignedMsgType {
   SIGNED_MSG_TYPE_UNSPECIFIED = 0;
-  SIGNED_MSG_TYPE_PREVOTE_TYPE = 1;
-  SIGNED_MSG_TYPE_PRECOMMIT_TYPE = 2;
-  SIGNED_MSG_TYPE_PRPOSAL_TYPE = 3;
+  SIGNED_MSG_TYPE_PREVOTE = 1;
+  SIGNED_MSG_TYPE_PRECOMMIT = 2;
+  SIGNED_MSG_TYPE_PRPOSAL = 3;
 }
 
 // PartsetHeader

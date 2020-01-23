@@ -572,7 +572,7 @@ func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig)
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, SIGNED_MSG_TYPE_PRECOMMIT_TYPE, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, SIGNED_MSG_TYPE_PRECOMMIT, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
@@ -591,7 +591,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 func (commit *Commit) GetVote(valIdx int) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		Type:             SIGNED_MSG_TYPE_PRECOMMIT,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -613,7 +613,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(SIGNED_MSG_TYPE_PRECOMMIT_TYPE)
+	return byte(SIGNED_MSG_TYPE_PRECOMMIT)
 }
 
 // GetHeight returns height of the commit.

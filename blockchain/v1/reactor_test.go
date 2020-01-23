@@ -58,7 +58,7 @@ func makeVote(
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             types.SIGNED_MSG_TYPE_PRECOMMIT_TYPE,
+		Type:             types.SIGNED_MSG_TYPE_PRECOMMIT,
 		BlockID:          blockID,
 	}
 
