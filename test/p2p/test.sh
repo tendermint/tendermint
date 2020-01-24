@@ -6,8 +6,6 @@ NETWORK_NAME=local_testnet
 N=4
 PROXY_APP=persistent_kvstore
 
-cd "$GOPATH/src/github.com/tendermint/tendermint"
-
 # stop the existing testnet and remove local network
 set +e
 bash test/p2p/local_testnet_stop.sh "$NETWORK_NAME" "$N"

@@ -4,7 +4,7 @@ These scripts facilitate setting up and testing a local testnet using docker con
 
 Setup your own local testnet as follows.
 
-For consistency, we assume all commands are run from the Tendermint repository root (ie. $GOPATH/src/github.com/tendermint/tendermint).
+For consistency, we assume all commands are run from the Tendermint repository root.
 
 First, build the docker image:
 

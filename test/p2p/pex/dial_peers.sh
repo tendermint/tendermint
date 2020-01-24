@@ -4,8 +4,6 @@ set -u
 N=$1
 PEERS=$2
 
-cd "$GOPATH/src/github.com/tendermint/tendermint"
-
 echo "Waiting for nodes to come online"
 for i in $(seq 1 "$N"); do
 	addr=$(test/p2p/ip.sh "$i"):26657

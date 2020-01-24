@@ -6,8 +6,6 @@ NETWORK_NAME=$2
 NUM_OF_PEERS=$3
 NUM_OF_CRASHES=$4
 
-cd "$GOPATH/src/github.com/tendermint/tendermint"
-
 ###############################################################
 # NUM_OF_CRASHES times:
 # 	restart all peers
