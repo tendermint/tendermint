@@ -15,7 +15,7 @@ Specification of the Tendermint consensus protocol.
   block header is computed in a Byzantine Fault Tolerant manner
 - [Creating Proposal](./creating-proposal.md) - How a proposer
   creates a block proposal for consensus
-- [Light Client Protocol](./light) - A protocol for light weight consensus
+- [Light Client Protocol](./light-client) - A protocol for light weight consensus
   verification and syncing to the latest state
 - [Signing](./signing.md) - Rules for cryptographic signatures
   produced by validators.
