@@ -795,6 +795,9 @@ func TestClient_Concurrency(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Stop()
 
+	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour))
+	require.NoError(t, err)
+
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
@@ -815,6 +818,10 @@ func TestClient_Concurrency(t *testing.T) {
 			h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour))
 			assert.NoError(t, err)
 			assert.NotNil(t, h)
+
+			vals, err := c.TrustedValidatorSet(2, bTime.Add(2*time.Hour))
+			assert.NoError(t, err)
+			assert.NotNil(t, vals)
 		}()
 	}
 

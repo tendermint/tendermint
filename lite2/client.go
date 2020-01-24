@@ -425,6 +425,30 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	return h, nil
 }
 
+// TrustedValidatorSet returns a trusted validator set at the given height (0 -
+// the latest) or nil if no such validator set exist. The second return
+// parameter is height validator set corresponds to (useful when you pass 0).
+//
+// height must be >= 0.
+//
+// It returns an error if:
+//	- header signed by that validator set expired (ErrOldHeaderExpired)
+//  - there are some issues with the trusted store, although that should not
+//  happen normally;
+//  - negative height is passed;
+//  - validator set is not found.
+//
+// Safe for concurrent use by multiple goroutines.
+func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
+	// Checks height is positive and header is not expired.
+	_, err := c.TrustedHeader(height, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.trustedStore.ValidatorSet(height)
+}
+
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
 // there are no trusted headers.
 //
