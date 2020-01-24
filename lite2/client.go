@@ -357,8 +357,10 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	return c.updateTrustedHeaderAndVals(h, nextVals)
 }
 
-// Start starts all the goroutines.
+// Start starts two processes: 1) auto updating 2) removing outdated headers.
 func (c *Client) Start() error {
+	c.logger.Info("Starting light client")
+
 	if c.removeNoLongerTrustedHeadersPeriod > 0 {
 		c.routinesWaitGroup.Add(1)
 		go c.removeNoLongerTrustedHeadersRoutine()
@@ -372,10 +374,13 @@ func (c *Client) Start() error {
 	return nil
 }
 
-// Stop stops all the goroutines. If you wish to remove all the data, call
-// Cleanup.
+// Stop stops two processes: 1) auto updating 2) removing outdated headers.
+// Stop only returns after both of them are finished running. If you wish to
+// remove all the data, call Cleanup.
 func (c *Client) Stop() {
+	c.logger.Info("Stopping light client")
 	close(c.quit)
+	c.routinesWaitGroup.Wait()
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest)
@@ -516,12 +521,10 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
-// Cleanup removes all the data (headers and validator sets) stored. It blocks
-// until internal routines are finished. Note: the client must be stopped at
-// this point.
+// Cleanup removes all the data (headers and validator sets) stored. Note: the
+// client must be stopped at this point.
 func (c *Client) Cleanup() error {
-	c.routinesWaitGroup.Wait()
-	c.logger.Info("Cleanup everything")
+	c.logger.Info("Removing all the data")
 	return c.cleanup(0)
 }
 
