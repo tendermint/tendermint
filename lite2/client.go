@@ -209,16 +209,6 @@ func NewClient(
 		}
 	}
 
-	if c.removeNoLongerTrustedHeadersPeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.removeNoLongerTrustedHeadersRoutine()
-	}
-
-	if c.updatePeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.autoUpdateRoutine()
-	}
-
 	return c, nil
 }
 
@@ -365,6 +355,21 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// 4) Persist both of them and continue.
 	return c.updateTrustedHeaderAndVals(h, nextVals)
+}
+
+// Start starts all the goroutines.
+func (c *Client) Start() error {
+	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		c.routinesWaitGroup.Add(1)
+		go c.removeNoLongerTrustedHeadersRoutine()
+	}
+
+	if c.updatePeriod > 0 {
+		c.routinesWaitGroup.Add(1)
+		go c.autoUpdateRoutine()
+	}
+
+	return nil
 }
 
 // Stop stops all the goroutines. If you wish to remove all the data, call
