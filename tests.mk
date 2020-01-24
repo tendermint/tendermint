@@ -49,6 +49,19 @@ test_p2p:
 	#
 	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
 
+test_p2p_ipv6:
+	docker rm -f rsyslog || true
+	rm -rf test/logs || true
+	mkdir test/logs
+	cd test/
+	docker run -d -v "logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+	cd ..
+	# requires 'tester' the image from above
+	bash test/p2p/test.sh tester 6
+	# the `docker cp` takes a really long time; uncomment for debugging
+	#
+	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
+
 test_integrations:
 	make build_docker_test_image
 	make tools

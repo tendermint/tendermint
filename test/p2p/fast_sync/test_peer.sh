@@ -3,9 +3,10 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
-ID=$3
-N=$4
-PROXY_APP=$5
+IPV=$3
+ID=$4
+N=$5
+PROXY_APP=$6
 
 ###############################################################
 # this runs on each peer:
@@ -30,7 +31,7 @@ set +e # circle sigh :(
 	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
 
 	# wait for peer to sync and check the app hash
-	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME fs_$ID "test/p2p/fast_sync/check_peer.sh $ID"
+	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV fs_$ID "test/p2p/fast_sync/check_peer.sh $ID"
 
 	echo ""
 	echo "PASS"
