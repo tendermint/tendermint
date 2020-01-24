@@ -25,11 +25,11 @@ bash test/p2p/local_testnet_start.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N"
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" basic "test/p2p/basic/test.sh $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" basic "test/p2p/basic/test.sh $IPV $N"
 
 # test atomic broadcast:
 # start client container and test sending a tx to each node
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" ab "test/p2p/atomic_broadcast/test.sh $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" ab "test/p2p/atomic_broadcast/test.sh $IPV $N"
 
 # test fast sync (from current state of network):
 # for each node, kill it and readd via fast sync

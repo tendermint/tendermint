@@ -11,7 +11,7 @@ if [[ "$IPV" == 6 ]]; then
 else
     IP="172.57.0."
 fi
-IP="$IP((100+$ID))"
+IP="$IP$((100+$ID))"
 
 if [[ -n "$PORT" ]]; then
     if [[ "$IP" =~ ':' ]]; then
@@ -24,3 +24,5 @@ if [[ -n "$DOCKER_IMAGE" ]]; then
     NODEID="$(docker run --rm -e TMHOME=/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1)) $DOCKER_IMAGE tendermint show_node_id)"
     IP="$NODEID@$IP"
 fi
+
+echo $IP

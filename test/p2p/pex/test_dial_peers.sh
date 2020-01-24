@@ -30,9 +30,9 @@ echo "$PERSISTENT_PEERS"
 
 # dial peers from one node
 CLIENT_NAME="dial_peers"
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $CLIENT_NAME "test/p2p/pex/dial_peers.sh $N $PERSISTENT_PEERS"
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $CLIENT_NAME "test/p2p/pex/dial_peers.sh $IPV $N $PERSISTENT_PEERS"
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes
 CLIENT_NAME="dial_peers_basic"
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $CLIENT_NAME "test/p2p/basic/test.sh $N"
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $CLIENT_NAME "test/p2p/basic/test.sh $IPV $N"

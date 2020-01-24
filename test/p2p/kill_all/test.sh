@@ -23,7 +23,7 @@ for i in $(seq 1 "$NUM_OF_CRASHES"); do
     docker start "local_testnet_$j"
   done
 
-  bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" kill_all_$i "test/p2p/kill_all/check_peers.sh $NUM_OF_PEERS"
+  bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" kill_all_$i "test/p2p/kill_all/check_peers.sh $IPV $NUM_OF_PEERS"
 done
 
 echo ""
