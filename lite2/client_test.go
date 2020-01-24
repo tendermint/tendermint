@@ -1,6 +1,7 @@
 package lite
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -286,10 +287,10 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 			},
 		),
 		dbs.New(dbm.NewMemDB(), chainID),
+		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
 	defer c.Stop()
-	c.SetLogger(log.TestingLogger())
 
 	// Verify new headers.
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
@@ -303,7 +304,7 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 
 	// Check expired headers are no longer available.
 	h, err := c.TrustedHeader(1, now)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, h)
 
 	// Check not expired headers are available.
@@ -345,15 +346,16 @@ func TestClient_Cleanup(t *testing.T) {
 			},
 		),
 		dbs.New(dbm.NewMemDB(), chainID),
+		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	c.SetLogger(log.TestingLogger())
 
+	c.Stop()
 	c.Cleanup()
 
 	// Check no headers exist after Cleanup.
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, h)
 }
 
@@ -397,9 +399,9 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
 		assert.NoError(t, err)
@@ -436,9 +438,9 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
 		assert.NoError(t, err)
@@ -491,9 +493,9 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		// Check we still have the 1st header (+header+).
 		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
@@ -536,13 +538,13 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		// Check we no longer have the invalid 1st header (+header+).
 		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
 }
@@ -593,9 +595,9 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		// Check we still have the 1st header (+header+).
 		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
@@ -605,7 +607,7 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 
 		// Check we no longer have 2nd header (+header2+).
 		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
 
@@ -643,9 +645,9 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 				},
 			),
 			trustedStore,
+			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		c.SetLogger(log.TestingLogger())
 
 		// Check we have swapped invalid 1st header (+header+) with correct one (+header1+).
 		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
@@ -655,7 +657,134 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 
 		// Check we no longer have invalid 2nd header (+header2+).
 		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
+}
+
+func TestClient_Update(t *testing.T) {
+	const (
+		chainID = "TestClient_Update"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   header.Hash(),
+		},
+		mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+				// interim header (3/3 signed)
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				// last header (3/3 signed)
+				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		),
+		dbs.New(dbm.NewMemDB(), chainID),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+	defer c.Stop()
+
+	// should result in downloading & verifying header #3
+	err = c.Update(bTime.Add(2 * time.Hour))
+	require.NoError(t, err)
+
+	h, err := c.TrustedHeader(3, bTime.Add(2*time.Hour))
+	assert.NoError(t, err)
+	require.NotNil(t, h)
+	assert.EqualValues(t, 3, h.Height)
+}
+
+func TestClient_Concurrency(t *testing.T) {
+	const (
+		chainID = "TestClient_Concurrency"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   header.Hash(),
+		},
+		mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+				// interim header (3/3 signed)
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				// last header (3/3 signed)
+				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		),
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// NOTE: Cleanup, Stop, VerifyHeaderAtHeight and Verify are not supposed
+			// to be concurrenly safe.
+
+			assert.Equal(t, chainID, c.ChainID())
+
+			_, err := c.LastTrustedHeight()
+			assert.NoError(t, err)
+
+			_, err = c.FirstTrustedHeight()
+			assert.NoError(t, err)
+
+			h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour))
+			assert.NoError(t, err)
+			assert.NotNil(t, h)
+		}()
+	}
+
+	wg.Wait()
 }

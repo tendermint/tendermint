@@ -86,11 +86,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		},
 		httpp.NewWithClient(chainID, node),
 		dbs.New(db, chainID),
+		lite.Logger(liteLogger),
 	)
 	if err != nil {
 		return err
 	}
-	c.SetLogger(liteLogger)
 
 	p := lproxy.Proxy{
 		Addr:   listenAddr,

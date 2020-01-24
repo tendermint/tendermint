@@ -42,11 +42,11 @@ func Test_SaveSignedHeaderAndNextValidatorSet(t *testing.T) {
 
 	// Empty store
 	h, err := dbStore.SignedHeader(1)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, h)
 
 	valSet, err := dbStore.ValidatorSet(2)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, valSet)
 
 	// 1 key
@@ -67,10 +67,10 @@ func Test_SaveSignedHeaderAndNextValidatorSet(t *testing.T) {
 	require.NoError(t, err)
 
 	h, err = dbStore.SignedHeader(1)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, h)
 
 	valSet, err = dbStore.ValidatorSet(2)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, valSet)
 }
