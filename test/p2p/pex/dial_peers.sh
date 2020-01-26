@@ -18,5 +18,5 @@ for i in $(seq 1 "$N"); do
 	echo "... node $i is up"
 done
 
-IP=$(test/p2p/address.sh $IPV 1)
-curl "$IP:26657/dial_peers?persistent=true&peers=\\[$PEERS\\]"
+ADDR=$(test/p2p/address.sh $IPV 1 26657)
+curl "$ADDR/dial_peers?persistent=true&peers=\\[$PEERS\\]"
