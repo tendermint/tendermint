@@ -49,3 +49,18 @@ We can confirm they are making blocks by checking the `/status` message using `c
 ```
 curl 172.57.0.101:26657/status | jq .
 ```
+
+## IPv6 tests
+
+IPv6 tests require a Docker daemon with IPv6 enabled, by setting the following in `daemon.json`:
+
+```json
+{
+  "ipv6": true,
+  "fixed-cidr-v6": "2001:db8:1::/64"
+}
+```
+
+In Docker for Mac, this is done via Preferences → Docker Engine.
+
+Once set, run IPv6 tests via `make test_p2p_ipv6`.
