@@ -20,7 +20,7 @@ echo "starting test client container with CMD=$CMD"
 docker run -t --rm \
 	-v "$PWD/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p" \
 	--net="$NETWORK_NAME" \
-	$IP_SWITCH=$(test/p2p/ip_new.sh $IPV -1) \
+	$IP_SWITCH=$(test/p2p/address.sh $IPV -1) \
 	--name "$NAME" \
 	--entrypoint bash \
 	"$DOCKER_IMAGE" $CMD

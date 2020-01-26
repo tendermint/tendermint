@@ -27,7 +27,7 @@ echo "starting tendermint peer ID=$ID"
 if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 	docker run \
 		--net="$NETWORK_NAME" \
-		$IP_SWITCH=$(test/p2p/ip_new.sh $IPV $ID) \
+		$IP_SWITCH=$(test/p2p/address.sh $IPV $ID) \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
 		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
@@ -40,7 +40,7 @@ if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 else
 	docker run -d \
 		--net="$NETWORK_NAME" \
-		$IP_SWITCH=$(test/p2p/ip_new.sh $IPV $ID) \
+		$IP_SWITCH=$(test/p2p/address.sh $IPV $ID) \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
 		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
