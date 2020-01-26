@@ -24,9 +24,9 @@ set +e # circle sigh :(
 	set -e
 
 	# restart peer - should have an empty blockchain
-	PERSISTENT_PEERS="$(test/p2p/ip_plus_id.sh 1 $DOCKER_IMAGE):26656"
+	PERSISTENT_PEERS="$(test/p2p/ip_new.sh $IPV 1 26656 $DOCKER_IMAGE)"
 	for j in `seq 2 $N`; do
-		PERSISTENT_PEERS="$PERSISTENT_PEERS,$(test/p2p/ip_plus_id.sh $j $DOCKER_IMAGE):26656"
+		PERSISTENT_PEERS="$PERSISTENT_PEERS,$(test/p2p/ip_new.sh $IPV $j 26656 $DOCKER_IMAGE)"
 	done
 	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
 

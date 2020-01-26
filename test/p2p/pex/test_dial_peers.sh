@@ -22,9 +22,9 @@ set -e
 # NOTE we re-use the same network for all tests
 bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $N $PROXY_APP ""
 
-PERSISTENT_PEERS="\"$(test/p2p/ip_plus_id.sh 1 $DOCKER_IMAGE):26656\""
+PERSISTENT_PEERS="\"$(test/p2p/ip_new.sh $IPV 1 26656 $DOCKER_IMAGE)\""
 for i in $(seq 2 $N); do
-	PERSISTENT_PEERS="$PERSISTENT_PEERS,\"$(test/p2p/ip_plus_id.sh $i $DOCKER_IMAGE):26656\""
+	PERSISTENT_PEERS="$PERSISTENT_PEERS,\"$(test/p2p/ip_new.sh $IPV $i 26656 $DOCKER_IMAGE)\""
 done
 echo "$PERSISTENT_PEERS"
 
