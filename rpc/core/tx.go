@@ -112,9 +112,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 				}
 				return apiResults[i].Height > apiResults[j].Height
 			})
-		case "": // defaults to asc
-			fallthrough
-		case "asc":
+		case "asc", "":
 			sort.Slice(apiResults, func(i, j int) bool {
 				if apiResults[i].Height == apiResults[j].Height {
 					return apiResults[i].Index < apiResults[j].Index
