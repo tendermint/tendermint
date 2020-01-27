@@ -234,6 +234,10 @@ func (c *Client) restoreTrustedHeaderAndNextVals() error {
 		c.trustedNextVals = trustedNextVals
 
 		c.logger.Debug("Restored trusted header and next vals", lastHeight)
+	} else {
+		c.trustedHeader = nil
+		c.trustedNextVals = nil
+		c.logger.Debug("Height is negative, assume empty trustedStore and reset trustedHeader and NextVals")
 	}
 
 	return nil
@@ -281,7 +285,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			// remove all the headers ( options.Height, trustedHeader.Height ]
 			c.cleanup(options.Height + 1)
 			// set c.trustedHeader to one at options.Height
-			c.restoreTrustedHeaderAndNextVals()
+			//c.restoreTrustedHeaderAndNextVals()
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
 				"old", options.Height)
@@ -552,7 +556,7 @@ func (c *Client) Cleanup() error {
 	return c.cleanup(0)
 }
 
-// cleanup removes data from the stop height upwards to the latest signed header height
+// cleanup removes data from
 func (c *Client) cleanup(stopHeight int64) error {
 	// 1) Get the oldest height.
 	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
