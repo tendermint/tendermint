@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/pkg/errors"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -58,7 +59,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 	*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("transaction indexing is disabled")
+		return nil, errors.New("transaction indexing is disabled")
 	}
 
 	q, err := tmquery.New(query)
@@ -111,13 +112,17 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 				}
 				return apiResults[i].Height > apiResults[j].Height
 			})
-		default: // asc
+		case "": // defaults to asc
+			fallthrough
+		case "asc":
 			sort.Slice(apiResults, func(i, j int) bool {
 				if apiResults[i].Height == apiResults[j].Height {
 					return apiResults[i].Index < apiResults[j].Index
 				}
 				return apiResults[i].Height < apiResults[j].Height
 			})
+		default:
+			return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 		}
 	}
 
