@@ -23,12 +23,12 @@ func TestTxFilter(t *testing.T) {
 		tx    types.Tx
 		isErr bool
 	}{
-		{types.Tx(tmrand.Bytes(250)), false},
-		{types.Tx(tmrand.Bytes(1811)), false},
-		{types.Tx(tmrand.Bytes(1831)), false},
-		{types.Tx(tmrand.Bytes(1838)), true},
-		{types.Tx(tmrand.Bytes(1839)), true},
-		{types.Tx(tmrand.Bytes(3000)), true},
+		{types.Tx(tmrand.NewRand().Bytes(250)), false},
+		{types.Tx(tmrand.NewRand().Bytes(1811)), false},
+		{types.Tx(tmrand.NewRand().Bytes(1831)), false},
+		{types.Tx(tmrand.NewRand().Bytes(1838)), true},
+		{types.Tx(tmrand.NewRand().Bytes(1839)), true},
+		{types.Tx(tmrand.NewRand().Bytes(3000)), true},
 	}
 
 	for i, tc := range testCases {

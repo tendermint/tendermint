@@ -363,7 +363,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// `numAddresses' since we are throwing the rest.
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := tmrand.Intn(len(allAddr)-i) + i
+		j := tmrand.NewRand().Intn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 

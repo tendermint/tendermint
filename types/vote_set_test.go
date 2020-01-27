@@ -142,7 +142,7 @@ func Test2_3Majority(t *testing.T) {
 	{
 		addr := privValidators[6].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 6)
-		_, err := signAddVote(privValidators[6], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		_, err := signAddVote(privValidators[6], withBlockHash(vote, tmrand.NewRand().Bytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -247,7 +247,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	{
 		addr := privValidators[69].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 69)
-		_, err := signAddVote(privValidators[69], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		_, err := signAddVote(privValidators[69], withBlockHash(vote, tmrand.NewRand().Bytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -300,7 +300,7 @@ func TestBadVotes(t *testing.T) {
 	{
 		addr := privValidators[0].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 0)
-		added, err := signAddVote(privValidators[0], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, tmrand.NewRand().Bytes(32)), voteSet)
 		if added || err == nil {
 			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
 		}
@@ -340,8 +340,8 @@ func TestBadVotes(t *testing.T) {
 func TestConflicts(t *testing.T) {
 	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 4, 1)
-	blockHash1 := tmrand.Bytes(32)
-	blockHash2 := tmrand.Bytes(32)
+	blockHash1 := tmrand.NewRand().Bytes(32)
+	blockHash2 := tmrand.NewRand().Bytes(32)
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
@@ -503,8 +503,8 @@ func TestMakeCommit(t *testing.T) {
 	{
 		addr := privValidators[6].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 6)
-		vote = withBlockHash(vote, tmrand.Bytes(32))
-		vote = withBlockPartsHeader(vote, PartSetHeader{123, tmrand.Bytes(32)})
+		vote = withBlockHash(vote, tmrand.NewRand().Bytes(32))
+		vote = withBlockPartsHeader(vote, PartSetHeader{123, tmrand.NewRand().Bytes(32)})
 
 		_, err := signAddVote(privValidators[6], vote, voteSet)
 		if err != nil {

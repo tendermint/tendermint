@@ -168,7 +168,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 	// Generate genesis doc from generated validators
 	genDoc := &types.GenesisDoc{
-		ChainID:         "chain-" + tmrand.Str(6),
+		ChainID:         "chain-" + tmrand.NewRand().Str(6),
 		ConsensusParams: types.DefaultConsensusParams(),
 		GenesisTime:     tmtime.Now(),
 		Validators:      genVals,
@@ -262,5 +262,5 @@ func moniker(i int) string {
 }
 
 func randomMoniker() string {
-	return bytes.HexBytes(tmrand.Bytes(8)).String()
+	return bytes.HexBytes(tmrand.NewRand().Bytes(8)).String()
 }

@@ -692,7 +692,7 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 // compare header with one from a random alternative provider.
 func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) error {
 	// 1. Pick an alternative provider.
-	p := c.alternatives[tmrand.Intn(len(c.alternatives))]
+	p := c.alternatives[tmrand.NewRand().Intn(len(c.alternatives))]
 
 	// 2. Fetch the header.
 	altHeader, err := p.SignedHeader(h.Height)

@@ -325,7 +325,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	batch := txindex.NewBatch(txsCount)
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
-		tx := tmrand.Bytes(250)
+		tx := tmrand.NewRand().Bytes(250)
 		txResult := &types.TxResult{
 			Height: 1,
 			Index:  txIndex,

@@ -185,13 +185,13 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			tmrand.Intn(254)+1,
-			tmrand.Intn(255),
-			tmrand.Intn(255),
-			tmrand.Intn(255),
+			tmrand.NewRand().Intn(254)+1,
+			tmrand.NewRand().Intn(255),
+			tmrand.NewRand().Intn(255),
+			tmrand.NewRand().Intn(255),
 		)
-		port := tmrand.Intn(65535-1) + 1
-		id := p2p.ID(hex.EncodeToString(tmrand.Bytes(p2p.IDByteLength)))
+		port := tmrand.NewRand().Intn(65535-1) + 1
+		id := p2p.ID(hex.EncodeToString(tmrand.NewRand().Bytes(p2p.IDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)
 		assert.Nil(t, err, "error generating rand network address")
@@ -538,7 +538,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	ranges := [...][]int{{33, 100}, {100, 175}}
 	bookSizes := make([]int, 0, len(ranges))
 	for _, r := range ranges {
-		bookSizes = append(bookSizes, tmrand.Intn(r[1]-r[0])+r[0])
+		bookSizes = append(bookSizes, tmrand.NewRand().Intn(r[1]-r[0])+r[0])
 	}
 	t.Logf("Testing address selection for the following book sizes %v\n", bookSizes)
 	for _, bookSize := range bookSizes {

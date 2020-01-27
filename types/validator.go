@@ -103,7 +103,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
-		votePower += int64(tmrand.Uint32())
+		votePower += int64(tmrand.NewRand().Uint32())
 	}
 	pubKey := privVal.GetPubKey()
 	val := NewValidator(pubKey, votePower)

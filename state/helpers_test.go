@@ -65,7 +65,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
-		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
+		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.NewRand().Bytes(32)}}
 	state, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err

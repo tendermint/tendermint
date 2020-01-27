@@ -24,7 +24,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
 	for _, dtc := range getDialerTestCases(t) {
-		chainID := tmrand.Str(12)
+		chainID := tmrand.NewRand().Str(12)
 		mockPV := types.NewMockPV()
 
 		// get a pair of signer listener, signer dialer endpoints

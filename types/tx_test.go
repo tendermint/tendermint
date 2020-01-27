@@ -13,13 +13,13 @@ import (
 func makeTxs(cnt, size int) Txs {
 	txs := make(Txs, cnt)
 	for i := 0; i < cnt; i++ {
-		txs[i] = tmrand.Bytes(size)
+		txs[i] = tmrand.NewRand().Bytes(size)
 	}
 	return txs
 }
 
 func randInt(low, high int) int {
-	off := tmrand.Int() % (high - low)
+	off := tmrand.NewRand().Int() % (high - low)
 	return low + off
 }
 

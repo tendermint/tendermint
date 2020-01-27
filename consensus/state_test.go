@@ -1563,7 +1563,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	peer := p2pmock.NewPeer(nil)
 
 	// 1) new block part
-	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
+	parts := types.NewPartSetFromData(tmrand.NewRand().Bytes(100), 10)
 	msg := &BlockPartMessage{
 		Height: 1,
 		Round:  0,

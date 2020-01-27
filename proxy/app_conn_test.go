@@ -46,7 +46,7 @@ func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, er
 var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.NewRand().Str(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -80,7 +80,7 @@ func TestEcho(t *testing.T) {
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.NewRand().Str(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -119,7 +119,7 @@ func BenchmarkEcho(b *testing.B) {
 }
 
 func TestInfo(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.NewRand().Str(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server

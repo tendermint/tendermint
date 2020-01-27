@@ -405,7 +405,7 @@ var events = []string{
 	EventVote}
 
 func randEvent() string {
-	return events[tmrand.Intn(len(events))]
+	return events[tmrand.NewRand().Intn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
@@ -423,5 +423,5 @@ var queries = []tmpubsub.Query{
 	EventQueryVote}
 
 func randQuery() tmpubsub.Query {
-	return queries[tmrand.Intn(len(queries))]
+	return queries[tmrand.NewRand().Intn(len(queries))]
 }

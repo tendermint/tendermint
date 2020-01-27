@@ -19,16 +19,16 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	vset, _ := types.RandValidatorSet(nval, 1)
 	commitSigs := make([]types.CommitSig, nval)
 	blockID := types.BlockID{
-		Hash: tmrand.Bytes(tmhash.Size),
+		Hash: tmrand.NewRand().Bytes(tmhash.Size),
 		PartsHeader: types.PartSetHeader{
-			Hash:  tmrand.Bytes(tmhash.Size),
+			Hash:  tmrand.NewRand().Bytes(tmhash.Size),
 			Total: 1000,
 		},
 	}
 	sig := make([]byte, ed25519.SignatureSize)
 	for i := 0; i < nval; i++ {
 		commitSigs[i] = (&types.Vote{
-			ValidatorAddress: types.Address(tmrand.Bytes(20)),
+			ValidatorAddress: types.Address(tmrand.NewRand().Bytes(20)),
 			Timestamp:        tmtime.Now(),
 			BlockID:          blockID,
 			Signature:        sig,
@@ -36,21 +36,21 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	}
 	txs := make([]types.Tx, ntxs)
 	for i := 0; i < ntxs; i++ {
-		txs[i] = tmrand.Bytes(100)
+		txs[i] = tmrand.NewRand().Bytes(100)
 	}
 	// Random block
 	block := &types.Block{
 		Header: types.Header{
-			ChainID:         tmrand.Str(12),
+			ChainID:         tmrand.NewRand().Str(12),
 			Time:            tmtime.Now(),
 			LastBlockID:     blockID,
-			LastCommitHash:  tmrand.Bytes(20),
-			DataHash:        tmrand.Bytes(20),
-			ValidatorsHash:  tmrand.Bytes(20),
-			ConsensusHash:   tmrand.Bytes(20),
-			AppHash:         tmrand.Bytes(20),
-			LastResultsHash: tmrand.Bytes(20),
-			EvidenceHash:    tmrand.Bytes(20),
+			LastCommitHash:  tmrand.NewRand().Bytes(20),
+			DataHash:        tmrand.NewRand().Bytes(20),
+			ValidatorsHash:  tmrand.NewRand().Bytes(20),
+			ConsensusHash:   tmrand.NewRand().Bytes(20),
+			AppHash:         tmrand.NewRand().Bytes(20),
+			LastResultsHash: tmrand.NewRand().Bytes(20),
+			EvidenceHash:    tmrand.NewRand().Bytes(20),
 		},
 		Data: types.Data{
 			Txs: txs,

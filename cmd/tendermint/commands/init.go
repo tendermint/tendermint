@@ -56,7 +56,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.NewRand().Str(6)),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}

@@ -174,7 +174,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
-	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
+	tmpfile := "/tmp/kms." + tmrand.NewRand().Str(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
@@ -257,7 +257,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
+		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.NewRand().Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
 		assert.NoError(t, err)
 	}
@@ -266,7 +266,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	txLength := 1000
 	for i := 0; i < maxBytes/txLength; i++ {
-		tx := tmrand.Bytes(txLength)
+		tx := tmrand.NewRand().Bytes(txLength)
 		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
 	}

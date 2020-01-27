@@ -912,11 +912,11 @@ func (app *badApp) Commit() abci.ResponseCommit {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
-			return abci.ResponseCommit{Data: tmrand.Bytes(8)}
+			return abci.ResponseCommit{Data: tmrand.NewRand().Bytes(8)}
 		}
 		return abci.ResponseCommit{Data: []byte{app.height}}
 	} else if app.allHashesAreWrong {
-		return abci.ResponseCommit{Data: tmrand.Bytes(8)}
+		return abci.ResponseCommit{Data: tmrand.NewRand().Bytes(8)}
 	}
 
 	panic("either allHashesAreWrong or onlyLastHashIsWrong must be set")
