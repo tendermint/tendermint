@@ -552,7 +552,7 @@ func (c *Client) Cleanup() error {
 	return c.cleanup(0)
 }
 
-// stopHeight=0 -> remove all data
+// cleanup removes data from the stop height upwards to the latest signed header height
 func (c *Client) cleanup(stopHeight int64) error {
 	// 1) Get the oldest height.
 	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
@@ -567,7 +567,7 @@ func (c *Client) cleanup(stopHeight int64) error {
 	}
 
 	// 3) Remove all headers and validator sets.
-	if stopHeight == 0 {
+	if stopHeight < oldestHeight {
 		stopHeight = oldestHeight
 	}
 	for height := stopHeight; height <= latestHeight; height++ {
@@ -578,8 +578,10 @@ func (c *Client) cleanup(stopHeight int64) error {
 		}
 	}
 
-	c.trustedHeader = nil
-	c.trustedNextVals = nil
+	err = c.restoreTrustedHeaderAndNextVals()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
