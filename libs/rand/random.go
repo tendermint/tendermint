@@ -38,113 +38,113 @@ func (r *Rand) reset(seed int64) {
 	r.rand = mrand.New(mrand.NewSource(seed))
 }
 
-//----------------------------------------
-// Global functions
+// //----------------------------------------
+// // Global functions
 
-func Seed(seed int64) {
-	var lrand = NewRand()
-	lrand.Seed(seed)
-}
+// func Seed(seed int64) {
+// 	var lrand = NewRand()
+// 	lrand.Seed(seed)
+// }
 
-func Str(length int) string {
-	var lrand = NewRand()
-	return lrand.Str(length)
-}
+// func Str(length int) string {
+// 	var lrand = NewRand()
+// 	return lrand.Str(length)
+// }
 
-func Uint16() uint16 {
-	var lrand = NewRand()
-	return lrand.Uint16()
-}
+// func Uint16() uint16 {
+// 	var lrand = NewRand()
+// 	return lrand.Uint16()
+// }
 
-func Uint32() uint32 {
-	var lrand = NewRand()
-	return lrand.Uint32()
-}
+// func Uint32() uint32 {
+// 	var lrand = NewRand()
+// 	return lrand.Uint32()
+// }
 
-func Uint64() uint64 {
-	var lrand = NewRand()
-	return lrand.Uint64()
-}
+// func Uint64() uint64 {
+// 	var lrand = NewRand()
+// 	return lrand.Uint64()
+// }
 
-func Uint() uint {
-	var lrand = NewRand()
-	return lrand.Uint()
-}
+// func Uint() uint {
+// 	var lrand = NewRand()
+// 	return lrand.Uint()
+// }
 
-func Int16() int16 {
-	var lrand = NewRand()
-	return lrand.Int16()
-}
+// func Int16() int16 {
+// 	var lrand = NewRand()
+// 	return lrand.Int16()
+// }
 
-func Int32() int32 {
-	var lrand = NewRand()
-	return lrand.Int32()
-}
+// func Int32() int32 {
+// 	var lrand = NewRand()
+// 	return lrand.Int32()
+// }
 
-func Int64() int64 {
-	var lrand = NewRand()
-	return lrand.Int64()
-}
+// func Int64() int64 {
+// 	var lrand = NewRand()
+// 	return lrand.Int64()
+// }
 
-func Int() int {
-	var lrand = NewRand()
-	return lrand.Int()
-}
+// func Int() int {
+// 	var lrand = NewRand()
+// 	return lrand.Int()
+// }
 
-func Int31() int32 {
-	var lrand = NewRand()
-	return lrand.Int31()
-}
+// func Int31() int32 {
+// 	var lrand = NewRand()
+// 	return lrand.Int31()
+// }
 
-func Int31n(n int32) int32 {
-	var lrand = NewRand()
-	return lrand.Int31n(n)
-}
+// func Int31n(n int32) int32 {
+// 	var lrand = NewRand()
+// 	return lrand.Int31n(n)
+// }
 
-func Int63() int64 {
-	var lrand = NewRand()
-	return lrand.Int63()
-}
+// func Int63() int64 {
+// 	var lrand = NewRand()
+// 	return lrand.Int63()
+// }
 
-func Int63n(n int64) int64 {
-	var lrand = NewRand()
-	return lrand.Int63n(n)
-}
+// func Int63n(n int64) int64 {
+// 	var lrand = NewRand()
+// 	return lrand.Int63n(n)
+// }
 
-func Bool() bool {
-	var lrand = NewRand()
-	return lrand.Bool()
-}
+// func Bool() bool {
+// 	var lrand = NewRand()
+// 	return lrand.Bool()
+// }
 
-func Float32() float32 {
-	var lrand = NewRand()
-	return lrand.Float32()
-}
+// func Float32() float32 {
+// 	var lrand = NewRand()
+// 	return lrand.Float32()
+// }
 
-func Float64() float64 {
-	var lrand = NewRand()
-	return lrand.Float64()
-}
+// func Float64() float64 {
+// 	var lrand = NewRand()
+// 	return lrand.Float64()
+// }
 
-func Time() time.Time {
-	var lrand = NewRand()
-	return lrand.Time()
-}
+// func Time() time.Time {
+// 	var lrand = NewRand()
+// 	return lrand.Time()
+// }
 
-func Bytes(n int) []byte {
-	var lrand = NewRand()
-	return lrand.Bytes(n)
-}
+// func Bytes(n int) []byte {
+// 	var lrand = NewRand()
+// 	return lrand.Bytes(n)
+// }
 
-func Intn(n int) int {
-	var lrand = NewRand()
-	return lrand.Intn(n)
-}
+// func Intn(n int) int {
+// 	var lrand = NewRand()
+// 	return lrand.Intn(n)
+// }
 
-func Perm(n int) []int {
-	var lrand = NewRand()
-	return lrand.Perm(n)
-}
+// func Perm(n int) []int {
+// 	var lrand = NewRand()
+// 	return lrand.Perm(n)
+// }
 
 //----------------------------------------
 // Rand methods

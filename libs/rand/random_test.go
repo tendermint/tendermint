@@ -12,22 +12,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var rand = NewRand()
+
 func TestRandStr(t *testing.T) {
 	l := 243
-	s := Str(l)
+	s := rand.Str(l)
 	assert.Equal(t, l, len(s))
 }
 
 func TestRandBytes(t *testing.T) {
 	l := 243
-	b := Bytes(l)
+	b := rand.Bytes(l)
 	assert.Equal(t, l, len(b))
 }
 
 func TestRandIntn(t *testing.T) {
 	n := 243
 	for i := 0; i < 100; i++ {
-		x := Intn(n)
+		x := rand.Intn(n)
 		assert.True(t, x < n)
 	}
 }
@@ -55,18 +57,18 @@ func testThemAll() string {
 
 	// Use it.
 	out := new(bytes.Buffer)
-	perm := Perm(10)
+	perm := rand.Perm(10)
 	blob, _ := json.Marshal(perm)
 	fmt.Fprintf(out, "perm: %s\n", blob)
-	fmt.Fprintf(out, "randInt: %d\n", Int())
-	fmt.Fprintf(out, "randUint: %d\n", Uint())
-	fmt.Fprintf(out, "randIntn: %d\n", Intn(97))
-	fmt.Fprintf(out, "randInt31: %d\n", Int31())
-	fmt.Fprintf(out, "randInt32: %d\n", Int32())
-	fmt.Fprintf(out, "randInt63: %d\n", Int63())
-	fmt.Fprintf(out, "randInt64: %d\n", Int64())
-	fmt.Fprintf(out, "randUint32: %d\n", Uint32())
-	fmt.Fprintf(out, "randUint64: %d\n", Uint64())
+	fmt.Fprintf(out, "randInt: %d\n", rand.Int())
+	fmt.Fprintf(out, "randUint: %d\n", rand.Uint())
+	fmt.Fprintf(out, "randIntn: %d\n", rand.Intn(97))
+	fmt.Fprintf(out, "randInt31: %d\n", rand.Int31())
+	fmt.Fprintf(out, "randInt32: %d\n", rand.Int32())
+	fmt.Fprintf(out, "randInt63: %d\n", rand.Int63())
+	fmt.Fprintf(out, "randInt64: %d\n", rand.Int64())
+	fmt.Fprintf(out, "randUint32: %d\n", rand.Uint32())
+	fmt.Fprintf(out, "randUint64: %d\n", rand.Uint64())
 	return out.String()
 }
 
@@ -77,9 +79,9 @@ func TestRngConcurrencySafety(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_ = Uint64()
-			<-time.After(time.Millisecond * time.Duration(Intn(100)))
-			_ = Perm(3)
+			_ = rand.Uint64()
+			<-time.After(time.Millisecond * time.Duration(rand.Intn(100)))
+			_ = rand.Perm(3)
 		}()
 	}
 	wg.Wait()
@@ -106,7 +108,7 @@ func BenchmarkRandBytes1MiB(b *testing.B) {
 
 func benchmarkRandBytes(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
-		_ = Bytes(n)
+		_ = rand.Bytes(n)
 	}
 	b.ReportAllocs()
 }
