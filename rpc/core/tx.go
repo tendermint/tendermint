@@ -103,20 +103,15 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 	}
 
 	if len(apiResults) > 1 {
-		for _, item := range apiResults {
-			if item != nil {
-				apiResults = append(apiResults, item)
-			}
-		}
-
-		if orderBy == "desc" {
+		switch orderBy {
+		case "desc":
 			sort.Slice(apiResults, func(i, j int) bool {
 				if apiResults[i].Height == apiResults[j].Height {
 					return apiResults[i].Index > apiResults[j].Index
 				}
 				return apiResults[i].Height > apiResults[j].Height
 			})
-		} else {
+		default: // asc
 			sort.Slice(apiResults, func(i, j int) bool {
 				if apiResults[i].Height == apiResults[j].Height {
 					return apiResults[i].Index < apiResults[j].Index

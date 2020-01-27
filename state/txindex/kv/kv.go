@@ -159,12 +159,14 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 	}
 }
 
-// Search performs a search using the given query. It breaks the query into
-// conditions (like "tx.height > 5"). For each condition, it queries the DB
-// index. One special use cases here: (1) if "tx.hash" is found, it returns tx
-// result for it (2) for range queries it is better for the client to provide
-// both lower and upper bounds, so we are not performing a full scan. Results
-// from querying indexes are then intersected and returned to the caller.
+// Search performs a search using the given query. 
+//
+// It breaks the query into conditions (like "tx.height > 5"). For each
+// condition, it queries the DB index. One special use cases here: (1) if
+// "tx.hash" is found, it returns tx result for it (2) for range queries it is
+// better for the client to provide both lower and upper bounds, so we are not
+// performing a full scan. Results from querying indexes are then intersected
+// and returned to the caller, in no particular order.
 func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	var hashesInitialized bool
 	filteredHashes := make(map[string][]byte)
