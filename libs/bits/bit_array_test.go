@@ -13,7 +13,7 @@ import (
 )
 
 func randBitArray(bits int) (*BitArray, []byte) {
-	src := tmrand.Bytes((bits + 7) / 8)
+	src := tmrand.NewRand().Bytes((bits + 7) / 8)
 	bA := NewBitArray(bits)
 	for i := 0; i < len(src); i++ {
 		for j := 0; j < 8; j++ {

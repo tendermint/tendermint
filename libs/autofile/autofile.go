@@ -58,7 +58,7 @@ type AutoFile struct {
 // permissions got changed (should be 0600)).
 func OpenAutoFile(path string) (*AutoFile, error) {
 	af := &AutoFile{
-		ID:               tmrand.Str(12) + ":" + path,
+		ID:               tmrand.NewRand().Str(12) + ":" + path,
 		Path:             path,
 		closeTicker:      time.NewTicker(autoFileClosePeriod),
 		closeTickerStopc: make(chan struct{}),

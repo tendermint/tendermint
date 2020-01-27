@@ -294,7 +294,7 @@ func (c *WSClient) reconnect() error {
 	}()
 
 	for {
-		jitterSeconds := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(tmrand.NewRand().Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)

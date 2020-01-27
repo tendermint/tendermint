@@ -16,8 +16,8 @@ import (
 
 func TestWriteFileAtomic(t *testing.T) {
 	var (
-		data             = []byte(tmrand.Str(tmrand.Intn(2048)))
-		old              = tmrand.Bytes(tmrand.Intn(2048))
+		data             = []byte(tmrand.NewRand().Str(tmrand.NewRand().Intn(2048)))
+		old              = tmrand.NewRand().Bytes(tmrand.NewRand().Intn(2048))
 		perm os.FileMode = 0600
 	)
 

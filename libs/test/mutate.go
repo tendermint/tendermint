@@ -17,11 +17,11 @@ func MutateByteSlice(bytez []byte) []byte {
 	bytez = mBytez
 
 	// Try a random mutation
-	switch tmrand.Int() % 2 {
+	switch tmrand.NewRand().Int() % 2 {
 	case 0: // Mutate a single byte
-		bytez[tmrand.Int()%len(bytez)] += byte(tmrand.Int()%255 + 1)
+		bytez[tmrand.NewRand().Int()%len(bytez)] += byte(tmrand.NewRand().Int()%255 + 1)
 	case 1: // Remove an arbitrary byte
-		pos := tmrand.Int() % len(bytez)
+		pos := tmrand.NewRand().Int() % len(bytez)
 		bytez = append(bytez[:pos], bytez[pos+1:]...)
 	}
 	return bytez

@@ -253,7 +253,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 
-	return trueIndices[tmrand.Intn(len(trueIndices))], true
+	return trueIndices[tmrand.NewRand().Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {

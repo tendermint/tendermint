@@ -14,8 +14,8 @@ func InitChain(client abcicli.Client) error {
 	total := 10
 	vals := make([]types.ValidatorUpdate, total)
 	for i := 0; i < total; i++ {
-		pubkey := tmrand.Bytes(33)
-		power := tmrand.Int()
+		pubkey := tmrand.NewRand().Bytes(33)
+		power := tmrand.NewRand().Int()
 		vals[i] = types.Ed25519ValidatorUpdate(pubkey, int64(power))
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{

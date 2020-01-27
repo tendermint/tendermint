@@ -105,7 +105,7 @@ func TestSecretConnectionHandshake(t *testing.T) {
 
 func TestConcurrentWrite(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
-	fooWriteText := tmrand.Str(dataMaxSize)
+	fooWriteText := tmrand.NewRand().Str(dataMaxSize)
 
 	// write from two routines.
 	// should be safe from race according to net.Conn:
@@ -127,7 +127,7 @@ func TestConcurrentWrite(t *testing.T) {
 
 func TestConcurrentRead(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
-	fooWriteText := tmrand.Str(dataMaxSize)
+	fooWriteText := tmrand.NewRand().Str(dataMaxSize)
 	n := 100
 
 	// read from two routines.
@@ -174,8 +174,8 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 	// Pre-generate the things to write (for foo & bar)
 	for i := 0; i < 100; i++ {
-		fooWrites = append(fooWrites, tmrand.Str((tmrand.Int()%(dataMaxSize*5))+1))
-		barWrites = append(barWrites, tmrand.Str((tmrand.Int()%(dataMaxSize*5))+1))
+		fooWrites = append(fooWrites, tmrand.NewRand().Str((tmrand.NewRand().Int()%(dataMaxSize*5))+1))
+		barWrites = append(barWrites, tmrand.NewRand().Str((tmrand.NewRand().Int()%(dataMaxSize*5))+1))
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
@@ -372,11 +372,11 @@ func TestNonEd25519Pubkey(t *testing.T) {
 func createGoldenTestVectors(t *testing.T) string {
 	data := ""
 	for i := 0; i < 32; i++ {
-		randSecretVector := tmrand.Bytes(32)
+		randSecretVector := tmrand.NewRand().Bytes(32)
 		randSecret := new([32]byte)
 		copy((*randSecret)[:], randSecretVector)
 		data += hex.EncodeToString((*randSecret)[:]) + ","
-		locIsLeast := tmrand.Bool()
+		locIsLeast := tmrand.NewRand().Bool()
 		data += strconv.FormatBool(locIsLeast) + ","
 		recvSecret, sendSecret := deriveSecrets(randSecret, locIsLeast)
 		data += hex.EncodeToString((*recvSecret)[:]) + ","
@@ -400,7 +400,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 	}
 	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
 	for _, size := range randomMsgSizes {
-		fooWriteBytes = append(fooWriteBytes, tmrand.Bytes(size))
+		fooWriteBytes = append(fooWriteBytes, tmrand.NewRand().Bytes(size))
 	}
 	// Consume reads from bar's reader
 	go func() {
@@ -418,7 +418,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		idx := tmrand.Intn(len(fooWriteBytes))
+		idx := tmrand.NewRand().Intn(len(fooWriteBytes))
 		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
 			b.Errorf("failed to write to fooSecConn: %v", err)
@@ -448,11 +448,11 @@ func BenchmarkReadSecretConnection(b *testing.B) {
 	}
 	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
 	for _, size := range randomMsgSizes {
-		fooWriteBytes = append(fooWriteBytes, tmrand.Bytes(size))
+		fooWriteBytes = append(fooWriteBytes, tmrand.NewRand().Bytes(size))
 	}
 	go func() {
 		for i := 0; i < b.N; i++ {
-			idx := tmrand.Intn(len(fooWriteBytes))
+			idx := tmrand.NewRand().Intn(len(fooWriteBytes))
 			_, err := fooSecConn.Write(fooWriteBytes[idx])
 			if err != nil {
 				b.Errorf("failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
