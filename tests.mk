@@ -38,13 +38,28 @@ test_persistence:
 
 test_p2p:
 	docker rm -f rsyslog || true
-	rm -rf test/logs || true
-	mkdir test/logs
-	cd test/
-	docker run -d -v "logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
-	cd ..
+	rm -rf test/logs && mkdir -p test/logs
+	docker run -d -v "$(CURDIR)/test/logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
+	# the `docker cp` takes a really long time; uncomment for debugging
+	#
+	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
+
+test_p2p_ipv6:
+	# IPv6 tests require Docker daemon with IPv6 enabled, e.g. in daemon.json:
+	#
+	# {
+	#	"ipv6": true,
+	#   "fixed-cidr-v6": "2001:db8:1::/64"
+	# }
+	#
+	# Docker for Mac can set this via Preferences -> Docker Engine.
+	docker rm -f rsyslog || true
+	rm -rf test/logs && mkdir -p test/logs
+	docker run -d -v "$(CURDIR)/test/logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+	# requires 'tester' the image from above
+	bash test/p2p/test.sh tester 6
 	# the `docker cp` takes a really long time; uncomment for debugging
 	#
 	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
@@ -60,6 +75,8 @@ test_integrations:
 	make test_libs
 	make test_persistence
 	make test_p2p
+	# Disabled by default since it requires Docker daemon with IPv6 enabled
+	#make test_p2p_ipv6
 
 test_release:
 	@go test -tags release $(PACKAGES)
