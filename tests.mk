@@ -56,7 +56,7 @@ test_p2p_ipv6:
 	#
 	# Docker for Mac can set this via Preferences -> Docker Engine.
 	docker rm -f rsyslog || true
-	rm -rf test/logs && mkdir test/logs
+	rm -rf test/logs && mkdir -p test/logs
 	docker run -d -v "$(CURDIR)/test/logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester 6
