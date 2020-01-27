@@ -28,22 +28,33 @@ Both handshakes have configurable timeouts (they should complete quickly).
 
 Tendermint implements the Station-to-Station protocol
 using X25519 keys for Diffie-Helman key-exchange and chacha20poly1305 for encryption.
+
+Previous versions of this protocol suffered from malleability attacks whereas an active man 
+in the middle attacker could compromise confidentiality as decribed in [Prime, Order Please!
+Revisiting Small Subgroup and Invalid Curve Attacks on
+Protocols using Diffie-Hellman](https://eprint.iacr.org/2019/526.pdf). 
+
+We have added dependency on the Merlin a keccak based transcript hashing protocol to ensure non-malleability.
+
 It goes as follows:
 
 - generate an ephemeral X25519 keypair
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
+- create a new Merlin Transcript with the string "TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"
+- Sort the ephemeral keys and add the high labeled "EPHEMERAL_UPPER_PUBLIC_KEY" and the low keys labeled "EPHEMERAL_LOWER_PUBLIC_KEY" to the Merlin transcript.
 - compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
+- add the DH secret to the transcript labeled DH_SECRET.
 - generate two keys to use for encryption (sending and receiving) and a challenge for authentication as follows:
   - create a hkdf-sha256 instance with the key being the diffie hellman shared secret, and info parameter as
     `TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN`
-  - get 96 bytes of output from hkdf-sha256
-  - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite
-  - use the last 32 bytes of output for the challenge
+  - get 64 bytes of output from hkdf-sha256
+  - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite.
 - use a separate nonce for receiving and sending. Both nonces start at 0, and should support the full 96 bit nonce range
 - all communications from now on are encrypted in 1024 byte frames,
   using the respective secret and nonce. Each nonce is incremented by one after each use.
 - we now have an encrypted channel, but still need to authenticate
+- extract a 32 bytes challenge from merlin transcript with the label "SECRET_CONNECTION_MAC"
 - sign the common challenge obtained from the hkdf with our persistent private key
 - send the amino encoded persistent pubkey and signature to the peer
 - wait to receive the persistent public key and signature from the peer
