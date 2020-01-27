@@ -64,4 +64,5 @@ Note the context/background should be written in the present tense.
 - [ADR-039-Peer-Behaviour](./adr-039-peer-behaviour.md)
 - [ADR-041-Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
 - [ADR-043-Blockchain-RiRi-Org](./adr-043-blockchain-riri-org.md)
+- [ADR-051-Double-Signing-Risk-Reduction](./adr-051-double-signing-risk-reduction.md)
 - [ADR-052-Tendermint-Mode](./adr-052-tendermint-mode.md)
