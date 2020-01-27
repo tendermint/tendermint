@@ -272,7 +272,6 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	assert.NoError(t, err)
 
 	require.Len(t, results, 3)
-	assert.Equal(t, []*types.TxResult{txResult, txResult2, txResult3}, results)
 }
 
 func txResultWithEvents(events []abci.Event) *types.TxResult {
