@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -73,16 +74,40 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	return block
 }
 
+// LoadBlockByHash returns the block with the given hash.
+// If no block is found for that hash, it returns nil.
+// Panics if it fails to parse height associated with the given hash.
+func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
+	bz, err := bs.db.Get(calcBlockHashKey(hash))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+
+	s := string(bz)
+	height, err := strconv.ParseInt(s, 10, 64)
+
+	if err != nil {
+		panic(errors.Wrapf(err, "failed to extract height from %s", s))
+	}
+	return bs.LoadBlock(height)
+}
+
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var part = new(types.Part)
-	bz := bs.db.Get(calcBlockPartKey(height, index))
+	bz, err := bs.db.Get(calcBlockPartKey(height, index))
+	if err != nil {
+		panic(err)
+	}
 	if len(bz) == 0 {
 		return nil
 	}
-	err := cdc.UnmarshalBinaryBare(bz, part)
+	err = cdc.UnmarshalBinaryBare(bz, part)
 	if err != nil {
 		panic(errors.Wrap(err, "Error reading block part"))
 	}
@@ -93,11 +118,14 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var blockMeta = new(types.BlockMeta)
-	bz := bs.db.Get(calcBlockMetaKey(height))
+	bz, err := bs.db.Get(calcBlockMetaKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(bz) == 0 {
 		return nil
 	}
-	err := cdc.UnmarshalBinaryBare(bz, blockMeta)
+	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
 		panic(errors.Wrap(err, "Error reading block meta"))
 	}
@@ -110,11 +138,14 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var commit = new(types.Commit)
-	bz := bs.db.Get(calcBlockCommitKey(height))
+	bz, err := bs.db.Get(calcBlockCommitKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(bz) == 0 {
 		return nil
 	}
-	err := cdc.UnmarshalBinaryBare(bz, commit)
+	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(errors.Wrap(err, "Error reading block commit"))
 	}
@@ -126,11 +157,14 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var commit = new(types.Commit)
-	bz := bs.db.Get(calcSeenCommitKey(height))
+	bz, err := bs.db.Get(calcSeenCommitKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(bz) == 0 {
 		return nil
 	}
-	err := cdc.UnmarshalBinaryBare(bz, commit)
+	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(errors.Wrap(err, "Error reading block seen commit"))
 	}
@@ -147,7 +181,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
+
 	height := block.Height
+	hash := block.Hash()
+
 	if g, w := height, bs.Height()+1; g != w {
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
 	}
@@ -159,6 +196,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
+	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
@@ -213,6 +251,10 @@ func calcSeenCommitKey(height int64) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
 }
 
+func calcBlockHashKey(hash []byte) []byte {
+	return []byte(fmt.Sprintf("BH:%x", hash))
+}
+
 //-----------------------------------------------------------------------------
 
 var blockStoreKey = []byte("blockStore")
@@ -234,14 +276,17 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 // LoadBlockStoreStateJSON returns the BlockStoreStateJSON as loaded from disk.
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
-	bytes := db.Get(blockStoreKey)
+	bytes, err := db.Get(blockStoreKey)
+	if err != nil {
+		panic(err)
+	}
 	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
 			Height: 0,
 		}
 	}
 	bsj := BlockStoreStateJSON{}
-	err := cdc.UnmarshalJSON(bytes, &bsj)
+	err = cdc.UnmarshalJSON(bytes, &bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
 	}

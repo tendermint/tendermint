@@ -4,7 +4,7 @@
   "description": "Welcome to the Tendermint Core documentation!",
   "main": "index.js",
   "dependencies": {
-    "vuepress-theme-cosmos": "^1.0.73"
+    "vuepress-theme-cosmos": "^1.0.135"
   },
   "devDependencies": {
     "@vuepress/plugin-google-analytics": "^1.2.0"

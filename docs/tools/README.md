@@ -7,8 +7,18 @@ parent:
 
 # Overview
 
-Tendermint comes with some tools for:
+Tendermint has some tools that are associated with it for:
 
-- [Benchmarking](./benchmarking.md)
-- [Monitoring](./monitoring.md)
+- [Benchmarking](#benchmarking)
 - [Validation of remote signers](./remote-signer-validation.md)
+- [Testnets](#testnets)
+
+
+## Benchmarking
+
+Benchmarking is done with tm-load-test, for information on how to use the tool please visit the docs: https://github.com/interchainio/tm-load-test
+
+
+## Testnets
+
+The testnets tool is aimed at testing Tendermint with different configurations. For more information please visit: https://github.com/interchainio/testnets.

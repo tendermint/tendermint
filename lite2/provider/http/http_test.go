@@ -33,7 +33,8 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p := New(chainID, rpcAddr)
+	p, err := New(chainID, rpcAddr)
+	require.Nil(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks

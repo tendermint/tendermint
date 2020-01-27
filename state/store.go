@@ -72,12 +72,15 @@ func LoadState(db dbm.DB) State {
 }
 
 func loadState(db dbm.DB, key []byte) (state State) {
-	buf := db.Get(key)
+	buf, err := db.Get(key)
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
 		return state
 	}
 
-	err := cdc.UnmarshalBinaryBare(buf, &state)
+	err = cdc.UnmarshalBinaryBare(buf, &state)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
@@ -147,13 +150,16 @@ func (arz *ABCIResponses) ResultsHash() []byte {
 // This is useful for recovering from crashes where we called app.Commit and before we called
 // s.Save(). It can also be used to produce Merkle proofs of the result of txs.
 func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
-	buf := db.Get(calcABCIResponsesKey(height))
+	buf, err := db.Get(calcABCIResponsesKey(height))
+	if err != nil {
+		return nil, err
+	}
 	if len(buf) == 0 {
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
 	abciResponses := new(ABCIResponses)
-	err := cdc.UnmarshalBinaryBare(buf, abciResponses)
+	err = cdc.UnmarshalBinaryBare(buf, abciResponses)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
@@ -219,13 +225,16 @@ func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
 func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
-	buf := db.Get(calcValidatorsKey(height))
+	buf, err := db.Get(calcValidatorsKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
 		return nil
 	}
 
 	v := new(ValidatorsInfo)
-	err := cdc.UnmarshalBinaryBare(buf, v)
+	err = cdc.UnmarshalBinaryBare(buf, v)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
@@ -296,13 +305,16 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 }
 
 func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
-	buf := db.Get(calcConsensusParamsKey(height))
+	buf, err := db.Get(calcConsensusParamsKey(height))
+	if err != nil {
+		panic(err)
+	}
 	if len(buf) == 0 {
 		return nil
 	}
 
 	paramsInfo := new(ConsensusParamsInfo)
-	err := cdc.UnmarshalBinaryBare(buf, paramsInfo)
+	err = cdc.UnmarshalBinaryBare(buf, paramsInfo)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:

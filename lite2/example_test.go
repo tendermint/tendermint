@@ -1,95 +1,157 @@
 package lite
 
-//func TestExample_Client(t *testing.T) {
-//	const (
-//		chainID = "my-awesome-chain"
-//	)
-//	dbDir, err := ioutil.TempDir("", "lite-client-example")
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer os.RemoveAll(dbDir)
+import (
+	"fmt"
+	"io/ioutil"
+	stdlog "log"
+	"os"
+	"testing"
+	"time"
 
-//	// TODO: fetch the "trusted" header from a node
-//	header := (*types.SignedHeader)(nil)
+	dbm "github.com/tendermint/tm-db"
 
-//	/////////////////////////////////////////////////////////////////////////////
+	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/libs/log"
+	httpp "github.com/tendermint/tendermint/lite2/provider/http"
+	dbs "github.com/tendermint/tendermint/lite2/store/db"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
+)
 
-//	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
-//	if err != nil {
-//		// return err
-//		t.Fatal(err)
-//	}
-//	c, err := NewClient(
-//		chainID,
-//		TrustOptions{
-//			Period: 504 * time.Hour, // 21 days
-//			Height: 100,
-//			Hash:   header.Hash(),
-//		},
-//		httpp.New(chainID, "tcp://localhost:26657"),
-//		dbs.New(db, chainID),
-//	)
+// Automatically getting new headers and verifying them.
+func TestExample_Client_AutoUpdate(t *testing.T) {
+	// give Tendermint time to generate some blocks
+	time.Sleep(5 * time.Second)
 
-//	err = c.VerifyHeaderAtHeight(101, time.Now())
-//	if err != nil {
-//		fmt.Println("retry?")
-//	}
+	dbDir, err := ioutil.TempDir("", "lite-client-example")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer os.RemoveAll(dbDir)
 
-//	h, err := c.TrustedHeader(101)
-//	if err != nil {
-//		fmt.Println("retry?")
-//	}
-//	fmt.Println("got header", h)
-//	// verify some data
-//}
+	var (
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
+	)
 
-//func TestExample_AutoClient(t *testing.T) {
-//	const (
-//		chainID = "my-awesome-chain"
-//	)
-//	dbDir, err := ioutil.TempDir("", "lite-client-example")
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer os.RemoveAll(dbDir)
+	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
-//	// TODO: fetch the "trusted" header from a node
-//	header := (*types.SignedHeader)(nil)
+	header, err := provider.SignedHeader(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
-//	/////////////////////////////////////////////////////////////////////////////
+	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
-//	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
-//	if err != nil {
-//		// return err
-//		t.Fatal(err)
-//	}
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 2,
+			Hash:   header.Hash(),
+		},
+		provider,
+		dbs.New(db, chainID),
+		UpdatePeriod(1*time.Second),
+		Logger(log.TestingLogger()),
+	)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
 
-//	base, err := NewClient(
-//		chainID,
-//		TrustOptions{
-//			Period: 504 * time.Hour, // 21 days
-//			Height: 100,
-//			Hash:   header.Hash(),
-//		},
-//		httpp.New(chainID, "tcp://localhost:26657"),
-//		dbs.New(db, chainID),
-//	)
+	time.Sleep(2 * time.Second)
 
-//	c := NewAutoClient(base, 1*time.Second)
-//	defer c.Stop()
+	h, err := c.TrustedHeader(0, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
-//	select {
-//	case h := <-c.TrustedHeaders():
-//		fmt.Println("got header", h)
-//		// verify some data
-//	case err := <-c.Err():
-//		switch errors.Cause(err).(type) {
-//		case ErrOldHeaderExpired:
-//			// reobtain trust height and hash
-//		default:
-//			// try with another full node
-//			fmt.Println("got error", err)
-//		}
-//	}
-//}
+	fmt.Println("got header", h.Height)
+	// Output: got header 3
+}
+
+// Manually getting headers and verifying them.
+func TestExample_Client_ManualUpdate(t *testing.T) {
+	// give Tendermint time to generate some blocks
+	time.Sleep(5 * time.Second)
+
+	dbDir, err := ioutil.TempDir("", "lite-client-example")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer os.RemoveAll(dbDir)
+
+	var (
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
+	)
+
+	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	header, err := provider.SignedHeader(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 2,
+			Hash:   header.Hash(),
+		},
+		provider,
+		dbs.New(db, chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
+
+	_, err = c.VerifyHeaderAtHeight(3, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	h, err := c.TrustedHeader(3, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	fmt.Println("got header", h.Height)
+	// Output: got header 3
+}
+
+func TestMain(m *testing.M) {
+	// start a tendermint node (and kvstore) in the background to test against
+	app := kvstore.NewApplication()
+	node := rpctest.StartTendermint(app)
+
+	code := m.Run()
+
+	// and shut down proper at the end
+	rpctest.StopTendermint(node)
+	os.Exit(code)
+}

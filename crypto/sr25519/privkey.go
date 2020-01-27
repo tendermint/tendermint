@@ -23,11 +23,11 @@ func (privKey PrivKeySr25519) Bytes() []byte {
 
 // Sign produces a signature on the provided message.
 func (privKey PrivKeySr25519) Sign(msg []byte) ([]byte, error) {
-	secretKey := &(schnorrkel.SecretKey{})
-	err := secretKey.Decode(privKey)
+	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
 	if err != nil {
 		return []byte{}, err
 	}
+	secretKey := miniSecretKey.ExpandEd25519()
 
 	signingContext := schnorrkel.NewSigningContext([]byte{}, msg)
 
@@ -42,14 +42,16 @@ func (privKey PrivKeySr25519) Sign(msg []byte) ([]byte, error) {
 
 // PubKey gets the corresponding public key from the private key.
 func (privKey PrivKeySr25519) PubKey() crypto.PubKey {
-
-	secretKey := &(schnorrkel.SecretKey{})
-	err := secretKey.Decode(privKey)
+	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid private key: %v", err))
 	}
+	secretKey := miniSecretKey.ExpandEd25519()
 
-	pubkey, _ := secretKey.Public()
+	pubkey, err := secretKey.Public()
+	if err != nil {
+		panic(fmt.Sprintf("Could not generate public key: %v", err))
+	}
 
 	return PubKeySr25519(pubkey.Encode())
 }

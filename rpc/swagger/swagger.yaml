@@ -550,6 +550,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /block_by_hash:
+    get:
+      summary: Get block by hash
+      operationId: block_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: block hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Get Block By Hash.
+      responses:
+        200:
+          description: Block informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResponse"
+        500:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /block_results:
     get:
       summary: Get block results at a specified height
