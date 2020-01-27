@@ -221,28 +221,6 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
-func TestIndexAllTags(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB(), IndexAllEvents())
-
-	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
-	})
-
-	err := indexer.Index(txResult)
-	require.NoError(t, err)
-
-	results, err := indexer.Search(query.MustParse("account.number >= 1"))
-	assert.NoError(t, err)
-	assert.Len(t, results, 1)
-	assert.Equal(t, []*types.TxResult{txResult}, results)
-
-	results, err = indexer.Search(query.MustParse("account.owner = 'Ivan'"))
-	assert.NoError(t, err)
-	assert.Len(t, results, 1)
-	assert.Equal(t, []*types.TxResult{txResult}, results)
-}
-
 func TestTxSearchMultipleTxs(t *testing.T) {
 	allowedKeys := []string{"account.number", "account.number.id"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
