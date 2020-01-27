@@ -209,16 +209,6 @@ func NewClient(
 		}
 	}
 
-	if c.removeNoLongerTrustedHeadersPeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.removeNoLongerTrustedHeadersRoutine()
-	}
-
-	if c.updatePeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.autoUpdateRoutine()
-	}
-
 	return c, nil
 }
 
@@ -367,10 +357,30 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	return c.updateTrustedHeaderAndVals(h, nextVals)
 }
 
-// Stop stops all the goroutines. If you wish to remove all the data, call
-// Cleanup.
+// Start starts two processes: 1) auto updating 2) removing outdated headers.
+func (c *Client) Start() error {
+	c.logger.Info("Starting light client")
+
+	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+		c.routinesWaitGroup.Add(1)
+		go c.removeNoLongerTrustedHeadersRoutine()
+	}
+
+	if c.updatePeriod > 0 {
+		c.routinesWaitGroup.Add(1)
+		go c.autoUpdateRoutine()
+	}
+
+	return nil
+}
+
+// Stop stops two processes: 1) auto updating 2) removing outdated headers.
+// Stop only returns after both of them are finished running. If you wish to
+// remove all the data, call Cleanup.
 func (c *Client) Stop() {
+	c.logger.Info("Stopping light client")
 	close(c.quit)
+	c.routinesWaitGroup.Wait()
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest)
@@ -413,6 +423,30 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	}
 
 	return h, nil
+}
+
+// TrustedValidatorSet returns a trusted validator set at the given height (0 -
+// the latest) or nil if no such validator set exist. The second return
+// parameter is height validator set corresponds to (useful when you pass 0).
+//
+// height must be >= 0.
+//
+// It returns an error if:
+//	- header signed by that validator set expired (ErrOldHeaderExpired)
+//  - there are some issues with the trusted store, although that should not
+//  happen normally;
+//  - negative height is passed;
+//  - validator set is not found.
+//
+// Safe for concurrent use by multiple goroutines.
+func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
+	// Checks height is positive and header is not expired.
+	_, err := c.TrustedHeader(height, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.trustedStore.ValidatorSet(height)
 }
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
@@ -511,12 +545,10 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
-// Cleanup removes all the data (headers and validator sets) stored. It blocks
-// until internal routines are finished. Note: the client must be stopped at
-// this point.
+// Cleanup removes all the data (headers and validator sets) stored. Note: the
+// client must be stopped at this point.
 func (c *Client) Cleanup() error {
-	c.routinesWaitGroup.Wait()
-	c.logger.Info("Cleanup everything")
+	c.logger.Info("Removing all the data")
 	return c.cleanup(0)
 }
 

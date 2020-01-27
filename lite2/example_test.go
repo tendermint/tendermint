@@ -63,6 +63,10 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
+	err = c.Start()
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 	defer func() {
 		c.Stop()
 		c.Cleanup()
@@ -122,6 +126,10 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	err = c.Start()
 	if err != nil {
 		stdlog.Fatal(err)
 	}
