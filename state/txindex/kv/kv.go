@@ -159,7 +159,7 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 	}
 }
 
-// Search performs a search using the given query. 
+// Search performs a search using the given query.
 //
 // It breaks the query into conditions (like "tx.height > 5"). For each
 // condition, it queries the DB index. One special use cases here: (1) if
