@@ -136,7 +136,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 ## Gaia Proposal
 
-This describes the snapshot process seen from Gaia's side, using format version `1`. The serialization format is unspecified, but likely to be compressed Amino or Protobuf.
+This describes the snapshot process seen from Gaia, using format version `1`. The serialization format is unspecified, but likely to be compressed Amino or Protobuf.
 
 ### Snapshot Metadata
 
