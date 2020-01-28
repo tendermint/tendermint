@@ -1,6 +1,6 @@
 # ADR 053: State Sync Prototype
 
-This ADR describes an initial state sync prototype, and is subject to change as we gain feedback and experience.
+This ADR describes an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see there for background information.
 
 ## Changelog
 
@@ -28,23 +28,23 @@ This describes the snapshot/restore process seen from Tendermint. The interface 
 
 ### Snapshot Data Structure
 
+A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. JSON as format `1` and Protobuf as format `2`, or similarly with schema versioning). Each snapshot consists of multiple chunks containing the actual state data, allowing parallel downloads and reduced memory usage during restores.
+
 ```proto
 message Snapshot {
     uint64 height = 1;   // The height at which the snapshot was taken
-    uint64 format = 2;   // The application-specific snapshot format version
+    uint64 format = 2;   // The application-specific snapshot format
     uint64 chunks = 3;   // The number of chunks in the snapshot
     bytes metadata = 4;  // Arbitrary application metadata
 }
 
 message SnapshotChunk {
     uint64 height = 1;   // The height of the corresponding snapshot
-    uint64 format = 2;   // The snapshot format version
+    uint64 format = 2;   // The application-specific snapshot format
     uint64 chunk = 3;    // The chunk index (zero-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
 }
 ```
-
-A node can have multiple snapshots taken at various heights, in different application-specific format versions. Each snapshot consists of multiple chunks containing the actual state data.
 
 Chunk verification data must be encoded along with the state data in the `data` field.
 
