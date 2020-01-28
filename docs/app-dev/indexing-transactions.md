@@ -106,7 +106,7 @@ You can query the transaction results by calling `/tx_search` RPC endpoint:
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#txsearch) for more information
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search) for more information
 on query syntax and other options.
 
 ## Subscribing to Transactions
