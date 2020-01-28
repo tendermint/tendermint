@@ -31,7 +31,7 @@ This describes the snapshot/restore process seen from Tendermint. The interface 
 ```proto
 message Snapshot {
     uint64 height = 1;   // The height at which the snapshot was taken
-    uint64 format = 2;   // The application-specific snapshot format
+    uint64 format = 2;   // The application-specific snapshot format version
     uint64 chunks = 3;   // The number of chunks in the snapshot
     bytes metadata = 4;  // Arbitrary application metadata
 }
@@ -44,7 +44,7 @@ message SnapshotChunk {
 }
 ```
 
-A node can have multiple snapshots taken at various heights, in different application-specific formats (e.g. for format versioning). Each snapshot consists of multiple chunks containing the actual state data.
+A node can have multiple snapshots taken at various heights, in different application-specific format versions. Each snapshot consists of multiple chunks containing the actual state data.
 
 Chunk verification data must be encoded along with the state data in the `data` field.
 
@@ -92,7 +92,7 @@ message ResponseApplySnapshotChunk {}
 
 Tendermint is not aware of the snapshotting process at all, it is entirely an application concern. The following guarantees must be provided:
 
-* **Periodic:** snapshots must be taken periodically, not on-demand - for faster restores, lower load, and less DoS risk.
+* **Periodic:** snapshots must be taken periodically, not on-demand, for faster restores, lower load, and less DoS risk.
 
 * **Deterministic:** snapshots must be deterministic, and identical across all nodes - typically by taking a snapshot at given height intervals.
 
@@ -106,7 +106,7 @@ Tendermint is not aware of the snapshotting process at all, it is entirely an ap
 
 ### Restoring Snapshots
 
-Nodes should have options for enabling state sync and/or fast sync, and a way to provide a trusted header hash for the light client.
+Nodes should have options for enabling state sync and/or fast sync, and be provided a trusted header hash for the light client.
 
 When starting an empty node with state sync and fast sync enabled, snapshots are restored as follows:
 
@@ -118,13 +118,13 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 4. The node requests available snapshots via `RequestListSnapshots`.
 
-5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies the following conditions (otherwise error out or switch to fast sync):
+5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies the following conditions:
 
-  * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
+    * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
-  * The application accepts the `RequestOfferSnapshot` call.
+    * The application accepts the `RequestOfferSnapshot` call.
 
-6. The node downloads chunks in parallel from multiple peers, via `RequestGetSnapshotChunk`.
+6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`.
 
 7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk. The final chunk has `final: true`.
 
@@ -156,14 +156,10 @@ A chunk corresponds to a subtree key range within an IAVL tree, in insertion ord
 
 ```go
 struct SnapshotChunk {
-    // Store is the name (key) of the IAVL store in the surrounding MultiStore
-    Store   string
-    // Keys contains snapshotted keys in insertion order
-    Keys    [][]byte
-    // Values contains snapshotted values corresponding to Keys
-    Values  [][]byte
-    // Proof is the Merkle proof from the subtree root up to the MultiStore root
-    Proof   []merkle.ProofOp
+    Store   string            // Name (key) of IAVL store in outer MultiStore
+    Keys    [][]byte          // Snapshotted keys in insertion order
+    Values  [][]byte          // Snapshotted values corresponding to Keys
+    Proof   []merkle.ProofOp  // Merkle proof from subtree root to MultiStore root
 }
 ```
 
@@ -171,13 +167,13 @@ This chunk structure is believed to be sufficient to reconstruct an identical IA
 
 We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-Chunks should be built greedily by collecting key/value pairs constituting a complete subtree in order up until some size limit, e.g. 16 MB, then serialized and stored in the file system as `snapshots/<height>/<format>/<chunk>/data` and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 16 MB), then serialized and stored in the file system as `snapshots/<height>/<format>/<chunk>/data` and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
 Snapshots should be taken at some configurable height interval, e.g. every 1000 blocks. All nodes should preferably have the same snapshot schedule, such that all nodes can serve chunks for a given snapshot.
 
-Taking consistent snapshots of IAVL trees is greatly simplified by IAVL trees being versioned: we simply snapshot the version that corresponds to the snapshot height, while concurrent writes can continue creating new versions. IAVL pruning must make sure it does not prune a version that is being snapshotted.
+Taking consistent snapshots of IAVL trees is greatly simplified by them being versioned: simply snapshot the version that corresponds to the snapshot height, while concurrent writes create new versions. IAVL pruning must not prune a version that is being snapshotted.
 
 Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
 
