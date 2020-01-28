@@ -79,7 +79,7 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 
 // ConsensusState returns a concise summary of the consensus state.
 // UNSTABLE
-// More: https://tendermint.com/rpc/#/Info/consensus_state
+// More: https://docs.tendermint.com/master/rpc/#/Info/consensus_state
 func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := consensusState.GetRoundStateSimpleJSON()
