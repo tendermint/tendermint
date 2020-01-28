@@ -263,7 +263,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	var primaryHash []byte
 	switch {
 	case options.Height > c.trustedHeader.Height:
-		h, err := c.primary.SignedHeader(c.trustedHeader.Height)
+		h, err := c.signedHeaderFromPrimary(c.trustedHeader.Height)
 		if err != nil {
 			return err
 		}
@@ -317,7 +317,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 // Fetch trustedHeader and trustedNextVals from primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
-	h, err := c.primary.SignedHeader(options.Height)
+	h, err := c.signedHeaderFromPrimary(options.Height)
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// 2) Fetch and verify the vals.
-	vals, err := c.primary.ValidatorSet(options.Height)
+	vals, err := c.validatorSetFromPrimary(options.Height)
 	if err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// 3) Fetch and verify the next vals (verification happens in
 	// updateTrustedHeaderAndVals).
-	nextVals, err := c.primary.ValidatorSet(options.Height + 1)
+	nextVals, err := c.validatorSetFromPrimary(options.Height + 1)
 	if err != nil {
 		return err
 	}
@@ -520,11 +520,13 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
+	c.providerMutex.Lock()
 	if len(c.alternatives) > 0 {
 		if err := c.compareNewHeaderWithRandomAlternative(newHeader); err != nil {
 			return err
 		}
 	}
+	c.providerMutex.Unlock()
 
 	var err error
 	switch c.verificationMode {
@@ -540,7 +542,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	}
 
 	// Update trusted header and vals.
-	nextVals, err := c.primary.ValidatorSet(newHeader.Height + 1)
+	nextVals, err := c.validatorSetFromPrimary(newHeader.Height + 1)
 	if err != nil {
 		return err
 	}
@@ -595,7 +597,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 		err           error
 	)
 	for height := c.trustedHeader.Height + 1; height < newHeader.Height; height++ {
-		interimHeader, err = c.primary.SignedHeader(height)
+		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
@@ -615,7 +617,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 		if height == newHeader.Height-1 {
 			nextVals = newVals
 		} else {
-			nextVals, err = c.primary.ValidatorSet(height + 1)
+			nextVals, err = c.validatorSetFromPrimary(height + 1)
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
@@ -669,7 +671,7 @@ func (c *Client) bisection(
 
 	// right branch
 	{
-		nextVals, err := c.primary.ValidatorSet(pivot + 1)
+		nextVals, err := c.validatorSetFromPrimary(pivot + 1)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
 		}
@@ -712,11 +714,11 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *typ
 
 // fetch header and validators for the given height from primary provider.
 func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
-	h, err := c.primary.SignedHeader(height)
+	h, err := c.signedHeaderFromPrimary(height)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to obtain the header #%d", height)
 	}
-	vals, err := c.primary.ValidatorSet(height)
+	vals, err := c.validatorSetFromPrimary(height)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
 	}
@@ -856,14 +858,53 @@ func (c *Client) Update(now time.Time) error {
 }
 
 // replaceProvider takes the first alternative provider and promotes it as the primary provider
-func (c *Client) replaceProvider() error {
+func (c *Client) replacePrimaryProvider() error {
+	c.providerMutex.Lock()
 	if len(c.alternatives) == 0 {
 		return errors.Errorf("unable to replace provider. No other alternatives exist.")
 	}
-	c.providerMutex.Lock()
 	c.primary = c.alternatives[0]
 	c.alternatives = c.alternatives[1:]
 	c.providerMutex.Unlock()
 	return nil
+}
+
+// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
+// Handles dropout by the primary provider by swapping with an alternative provider
+func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
+	for attempts := 0; attempts < 5; attempts++ {
+		c.providerMutex.Lock()
+		h, err := c.primary.SignedHeader(height)
+		c.providerMutex.Unlock()
+		if err == nil || err == provider.ErrSignedHeaderNotFound {
+			return h, err
+		}
+	}
+	c.logger.Info("Unable to communicate with primary provider. Replacing with an alternative.")
+	err := c.replacePrimaryProvider()
+	if err != nil {
+		return nil, err
+	}
+	return c.signedHeaderFromPrimary(height)
+
+}
+
+// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
+// Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
+func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
+	for attempts := 0; attempts < 5; attempts++ {
+		c.providerMutex.Lock()
+		h, err := c.primary.ValidatorSet(height)
+		c.providerMutex.Unlock()
+		if err == nil || err == provider.ErrValidatorSetNotFound {
+			return h, err
+		}
+	}
+	c.logger.Info("Unable to communicate with primary provider. Replacing with an alternative.")
+	err := c.replacePrimaryProvider()
+	if err != nil {
+		return nil, err
+	}
+	return c.validatorSetFromPrimary(height)
 
 }
