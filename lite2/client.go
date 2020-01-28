@@ -84,11 +84,12 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 	}
 }
 
-// AlternativeSources option can be used to supply alternative providers, which
-// will be used for cross-checking the primary provider.
-func AlternativeSources(providers []provider.Provider) Option {
+// Witnesses option can be used to supply providers, which will be used for
+// cross-checking the primary provider. A witness can become a primary iff the
+// current primary is unavailable.
+func Witnesses(providers []provider.Provider) Option {
 	return func(c *Client) {
-		c.alternatives = providers
+		c.witnesses = providers
 	}
 }
 
@@ -142,9 +143,8 @@ type Client struct {
 	// Primary provider of new headers.
 	primary provider.Provider
 
-	// Alternative providers for checking the primary for misbehavior by
-	// comparing data.
-	alternatives []provider.Provider
+	// See Witnesses option
+	witnesses []provider.Provider
 
 	// Where trusted headers are stored.
 	trustedStore store.Store
@@ -153,13 +153,15 @@ type Client struct {
 	// Highest next validator set from the store (height=H+1).
 	trustedNextVals *types.ValidatorSet
 
-	updatePeriod                       time.Duration
+	// See UpdatePeriod option
+	updatePeriod time.Duration
+	// See RemoveNoLongerTrustedHeadersPeriod option
 	removeNoLongerTrustedHeadersPeriod time.Duration
-	routinesWaitGroup                  sync.WaitGroup
-
+	// See ConfirmationFunction option
 	confirmationFn func(action string) bool
 
-	quit chan struct{}
+	routinesWaitGroup sync.WaitGroup
+	quit              chan struct{}
 
 	logger log.Logger
 }
@@ -518,8 +520,9 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if len(c.alternatives) > 0 {
-		if err := c.compareNewHeaderWithRandomAlternative(newHeader); err != nil {
+	if len(c.witnesses) > 0 {
+		if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
+			c.logger.Error("Error when comparing new header with one from a witness", "err", err)
 			return err
 		}
 	}
@@ -721,25 +724,25 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 	return h, vals, nil
 }
 
-// compare header with one from a random alternative provider.
-func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) error {
-	// 1. Pick an alternative provider.
-	p := c.alternatives[tmrand.Intn(len(c.alternatives))]
+// compare header with one from a random witness.
+func (c *Client) compareNewHeaderWithRandomWitness(h *types.SignedHeader) error {
+	// 1. Pick a witness.
+	witness := c.witnesses[tmrand.Intn(len(c.witnesses))]
 
 	// 2. Fetch the header.
-	altHeader, err := p.SignedHeader(h.Height)
+	altH, err := witness.SignedHeader(h.Height)
 	if err != nil {
 		return errors.Wrapf(err,
-			"failed to obtain header #%d from alternative provider %v", h.Height, p)
+			"failed to obtain header #%d from the witness %v", h.Height, witness)
 	}
 
 	// 3. Compare hashes.
-	if !bytes.Equal(h.Hash(), altHeader.Hash()) {
+	if !bytes.Equal(h.Hash(), altH.Hash()) {
 		// TODO: One of the providers is lying. Send the evidence to fork
 		// accountability server.
 		return errors.Errorf(
-			"new header hash %X does not match one from alternative provider %X",
-			h.Hash(), altHeader.Hash())
+			"header hash %X does not match one %X from the witness %v",
+			h.Hash(), altH.Hash(), witness)
 	}
 
 	return nil
