@@ -859,6 +859,14 @@ paths:
             type: number
             default: 30
             example: 30
+        - in: query
+          name: order_by
+          description: Order in which transactions are sorted ("asc" or "desc"), by height & index. If empty, default sorting will be still applied.
+          required: false
+          schema:
+            type: string
+            default: "asc"
+            example: "asc"
       tags:
         - Info
       description: |
