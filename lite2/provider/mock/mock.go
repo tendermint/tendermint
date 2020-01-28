@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/types"
 )
@@ -44,4 +45,24 @@ func (p *mock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		return p.vals[height], nil
 	}
 	return nil, provider.ErrValidatorSetNotFound
+}
+
+type deadMock struct {
+	chainID string
+}
+
+func NewDeadMock(chainID string) provider.Provider {
+	return &deadMock{chainID: chainID}
+}
+
+func (p *deadMock) ChainID() string {
+	return p.chainID
+}
+
+func (p *deadMock) SignedHeader(height int64) (*types.SignedHeader, error) {
+	return nil, errors.New("No response from provider")
+}
+
+func (p *deadMock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
+	return nil, errors.New("No response from provider")
 }
