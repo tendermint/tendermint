@@ -160,7 +160,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 ::: tip
-Find the RPC Documentation [here](https://tendermint.com/rpc/)
+Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
 :::
 
 ### Formatting
