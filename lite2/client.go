@@ -855,9 +855,8 @@ func (c *Client) Update(now time.Time) error {
 	return nil
 }
 
-// swapProvider takes the first alternative provider and promotes it as the primary provider
-func (c *Client) swapProvider() error {
-	//TODO: Use Mutex to lock and unlock the variable
+// replaceProvider takes the first alternative provider and promotes it as the primary provider
+func (c *Client) replaceProvider() error {
 	if len(c.alternatives) == 0 {
 		return errors.Errorf("unable to replace provider. No other alternatives exist.")
 	}
