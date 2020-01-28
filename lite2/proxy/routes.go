@@ -26,7 +26,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
 		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
 		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page"),
+		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
 		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page"),
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
 		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
@@ -122,11 +122,12 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 }
 
 type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
-	page, perPage int) (*ctypes.ResultTxSearch, error)
+	page, perPage int, orderBy string) (*ctypes.ResultTxSearch, error)
 
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-		return c.TxSearch(query, prove, page, perPage)
+	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
+		*ctypes.ResultTxSearch, error) {
+		return c.TxSearch(query, prove, page, perPage, orderBy)
 	}
 }
 

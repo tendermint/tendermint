@@ -24,7 +24,7 @@ method via Websocket.
 }
 ```
 
-Check out [API docs](https://tendermint.com/rpc/) for
+Check out [API docs](https://docs.tendermint.com/master/rpc/) for
 more information on query syntax and other options.
 
 You can also use tags, given you had included them into DeliverTx
