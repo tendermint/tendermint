@@ -6,15 +6,15 @@
 
 ## Context
 
-This ADR outlines the initial approach for a state sync prototype, and is subject to change as we receive feedback and gain experience.
+This ADR describes an initial state sync prototype, and is subject to change as we gain feedback and experience.
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node much faster than the current fast sync, which replays all historical blocks.
 
-Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md), and can be summarized as:
+Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md), summarized as:
 
 * The application periodically takes full state snapshots (i.e. eager snapshots).
 
-* The application divides snapshots into a set of smaller chunks that can be separately verified against a chain Merkle root.
+* The application splits snapshots into a set of smaller chunks that can be separately verified against a chain Merkle root.
 
 * Tendermint uses the light client to obtain a chain Merkle root for verification.
 
@@ -32,27 +32,35 @@ Tendermint has minimal knowledge about snapshots and snapshot chunks:
 
 ```proto
 message Snapshot {
+    // The height at which the snapshot was taken
     uint64 height = 1;
-    uint64 chunks = 2;
-    bytes metadata = 3;
+    // The application-specific snapshot format
+    uint64 format = 2;
+    // The number of chunks in the snapshot
+    uint64 chunks = 3;
+    // Arbitrary application metadata
+    bytes metadata = 4;
 }
 
 message SnapshotChunk {
+    // The height of the corresponding snapshot
     uint64 height = 1;
-    uint64 chunk = 2;
-    bytes data = 3;
+    // The snapshot format version
+    uint64 format = 2;
+    // The chunk index (zero-based)
+    uint64 chunk = 3;
+    // Serialized application state
+    bytes data = 4;
 }
 ```
 
-A node can have multiple snapshots (taken at multiple heights), and each snapshot can have multiple chunks containing the actual state data.
+A node can have multiple snapshots taken at various heights, in different application-specific formats (e.g. for format versioning). Each snapshot consists of multiple chunks containing the actual state data.
 
-The snapshot `metadata` field can be used for application-specific metadata, such as snapshot format versioning.
-
-Data for chunk verification must be encoded along with the state in the `data` field, giving applications maximum flexibility in implementing this.
+Chunk verification data must be encoded along with the state data in the `data` field, giving  applications maximum flexibility in implementing this.
 
 ### ABCI Interface
 
-Tendermint will have minimal interfaces for listing snapshots, offering snapshots, fetching snapshot chunks, and applying snapshot chunks:
+Tendermint will have minimal interfaces for managing snapshots:
 
 ```proto
 // List available snapshots
@@ -74,7 +82,8 @@ message ResponseOfferSnapshot {
 // Fetch a snapshot chunk
 message RequestGetSnapshotChunk {
     uint64 height = 1;
-    uint64 chunk = 2;
+    uint64 format = 2;
+    uint64 chunk = 3;
 }
 
 message ResponseGetSnapshotChunk {
@@ -113,21 +122,23 @@ When starting an empty node, there should be options for enabling state sync and
 
 When starting an empty node with state sync and fast sync enabled, snapshots are restored as follows:
 
-1. The node contacts the given seeds to discover peers.
+1. The node checks that the local node is empty, i.e. that it has no state nor blocks.
 
-2. The node checks that the local node is empty, i.e. that it has no state nor blocks.
+2. The node contacts the given seeds to discover peers.
 
-3. The node contacts a full node, and verifies the trusted block header using the given hash.
+3. The node contacts a set of full nodes, and verifies the trusted block header using the given hash via the light client.
 
 4. The node requests available snapshots via `RequestListSnapshots`.
 
-5. The node picks the latest valid snapshot, which must have height > trusted header and be within the unbonding period of the latest trustworthy height (as determined by the light client), and offers it to the application via `RequestOfferSnapshot`. If no valid snapshot is found, either try other peers, error out, or fall back to fast sync.
+5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies these conditions (otherwise either error out or switch to full sync):
 
-6. The node begins downloading chunks in parallel from multiple peers, via `RequestGetSnapshotChunk`.
+  * The block at the snapshot height is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
-7. The node passes chunks sequentially to the app, via `RequestApplySnapshotChunk`, along with the root chain hash (at the snapshot height) for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk. The final chunk to be applied has `final: true`.
+  * The application accepts the `RequestOfferSnapshot` call.
 
->>> Do we need error codes to be able to differentiate between invalid block, phony block, or internal error on apply?
+6. The node downloads chunks in parallel from multiple peers, via `RequestGetSnapshotChunk`.
+
+7. The node passes chunks sequentially to the app, via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk. The final chunk to be applied has `final: true`.
 
 8. Once all chunks have been applied, the node compares the app hash to the chain hash, and if they do not match it either errors or discards the state and starts over.
 
@@ -137,44 +148,42 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 ## Gaia Proposal
 
-This describes the snapshot process seen from Gaia's side. The serialization format is unspecified, but likely to be Amino or Protobuf.
+This describes the snapshot process seen from Gaia's side, and has format version `1`. The serialization format is unspecified, but likely to be Amino or Protobuf.
 
 ### Snapshot Metadata
 
-To allow changes to the snapshot format, the snapshot metadata contains a version which is initially set to `1`:
+In the initial version there is no snapshot metadata, so it is set to an empty byte buffer.
 
-```go
-struct SnapshotMetadata {
-    Version uint64 // 1
-}
-```
-
-Once all chunks have been successfully built, snapshot metadata should be serialized and stored in the file system as e.g. `snapshots/<height>/metadata`, and served via `RequestListSnapshots`.
+Once all chunks have been successfully built, snapshot metadata should be serialized and stored in the file system as e.g. `snapshots/<height>/<format>/metadata`, and served via `RequestListSnapshots`.
 
 ### Snapshot Chunk Format
 
 The Gaia data structure consists of a set of named IAVL trees. A root hash is constructed by taking the root hashes of each of the IAVL trees, then constructing a Merkle tree of the sorted name/hash map.
 
-IAVL trees are insertion-order dependent, so key/value pairs must be stored in insertion order to produce the same tree branching structure and thus the same Merkle hashes.
+IAVL trees are versioned, but a snapshot only contains the version relevant for the snapshot height. All historical versions are ignored.
 
-A chunk corresponds to a key range within a named Gaia store, in insertion order, along with the Merkle proof from the root of the subtree all the way up to the root of the multistore (which involves generating the Merkle proof for the containing multistore as well). Chunks only contain the relevant IAVL version, not any historical data.
+IAVL trees are insertion-order dependent, so key/value pairs must be stored in an appropriate insertion order to produce the same tree branching structure and thus the same Merkle hashes.
+
+A chunk corresponds to a key range within an IAVL tree, in insertion order, along with the Merkle proof from the root of the subtree all the way up to the root of the multistore (including the Merkle proof for the surrounding multistore.
 
 ```go
 struct SnapshotChunk {
-    // Store is the name (key) of the containing MultiStore store
+    // Store is the name (key) of the IAVL store in the surrounding MultiStore
     Store   string
-    // Keys are snapshotted keys in insertion order
+    // Keys contains snapshotted keys in insertion order
     Keys    [][]byte
-    // Values are snapshotted values corresponding to Keys
+    // Values contains snapshotted values corresponding to Keys
     Values  [][]byte
     // Proof is the Merkle proof from the subtree root up to the MultiStore root
     Proof   []merkle.ProofOp
 }
 ```
 
-This chunk structure is believed to be sufficient to reconstruct an identical tree from separate subtrees/chunks, but this must be confirmed. We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes.
+This chunk structure is believed to be sufficient to reconstruct an identical tree from separate subtrees/chunks, but this may require the chunks to be ordered in a certain way; further research is needed.
 
-Chunks should be built greedily by collecting key/value pairs in order up until some size limit, e.g. 16 MB, then serialized and stored in the file system as `snapshots/<height>/<chunk>/data` and served via `RequestGetSnapshotChunk`.
+We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes.
+
+Chunks should be built greedily by collecting key/value pairs in order up until some size limit, e.g. 16 MB, then serialized and stored in the file system as `snapshots/<height>/<format>/<chunk>/data` and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
@@ -182,21 +191,19 @@ Snapshots should be taken at some configurable height interval, e.g. every 1000 
 
 Taking consistent snapshots of IAVL trees is greatly simplified by IAVL trees being versioned: we simply snapshot the version that corresponds to the snapshot height, while concurrent writes can continue creating new versions. IAVL pruning must make sure it does not prune a version that is being snapshotted.
 
-Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest n snapshots.
+Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
 
 ## Open Questions
+
+* Is it possible to reconstruct an identical IAVL tree given separate subtrees in an appropriate order, or is more data needed about the branch structure?
+
+* Should `ResponseOfferSnapshot` and `ResponseApplySnapshotChunk` return specific codes for e.g. invalid heights, unknown formats, and so on?
+
+* Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
 ## Status
 
 Proposed
-
-## Consequences
-
-### Positive
-
-### Negative
-
-### Neutral
 
 ## References
 
