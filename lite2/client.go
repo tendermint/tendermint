@@ -852,3 +852,18 @@ func (c *Client) Update(now time.Time) error {
 
 	return nil
 }
+
+func (c *Client) swapProvider() error {
+	switch x := len(c.alternatives); {
+	case x == 1: // straight swap
+		c.primary, c.alternatives[0] = c.alternatives[0], c.primary
+		return nil
+	case x > 1: // implement queue system
+		temp := c.primary
+		c.primary, c.alternatives = c.alternatives[0], c.alternatives[1:]
+		c.alternatives = append(c.alternatives, temp)
+		return nil
+	default:
+		return errors.Errorf("unable to replace provider. It is likely that no alternatives have been declared.")
+	}
+}
