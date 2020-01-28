@@ -1,6 +1,6 @@
 # ADR 053: State Sync Prototype
 
-This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see it for background information.
+This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see that for background information.
 
 ## Changelog
 
@@ -10,7 +10,7 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
 
-Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md). Its recommendation can be summarized as:
+Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md). Its recommendations can be summarized as:
 
 * The application periodically takes full state snapshots (i.e. eager snapshots).
 
@@ -28,7 +28,7 @@ This describes the snapshot/restore process seen from Tendermint. The interface 
 
 ### Snapshot Data Structure
 
-A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. JSON as format `1` and Protobuf as format `2`, or similarly with schema versioning). Each snapshot consists of multiple chunks containing the actual state data, allowing parallel downloads and reduced memory usage during restores.
+A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. MessagePack as format `1` and Protobuf as format `2`, or similarly for schema versioning). Each snapshot consists of multiple chunks containing the actual state data, allowing parallel downloads and reduced memory usage.
 
 ```proto
 message Snapshot {
