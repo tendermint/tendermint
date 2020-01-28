@@ -51,14 +51,14 @@ Chunk verification data must be encoded along with the state data in the `data` 
 ### ABCI Interface
 
 ```proto
-// List available snapshots
+// Lists available snapshots
 message RequestListSnapshots {}
 
 message ResponseListSnapshots {
     repeated Snapshot snapshots = 1;
 }
 
-// Offer a snapshot to the application
+// Offers a snapshot to the application
 message RequestOfferSnapshot {
     Snapshot snapshot = 1;
 }
@@ -67,7 +67,7 @@ message ResponseOfferSnapshot {
     bool accepted = 1;
 }
 
-// Fetch a snapshot chunk
+// Fetches a snapshot chunk
 message RequestGetSnapshotChunk {
     uint64 height = 1;
     uint64 format = 2;
@@ -78,7 +78,7 @@ message ResponseGetSnapshotChunk {
     SnapshotChunk chunk = 1;
 }
 
-// Apply a snapshot chunk
+// Applies a snapshot chunk
 message RequestApplySnapshotChunk {
     SnapshotChunk chunk = 1;
     bytes chain_hash = 2;
