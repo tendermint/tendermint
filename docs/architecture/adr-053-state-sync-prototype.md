@@ -4,7 +4,7 @@ This ADR describes an initial state sync prototype, and is subject to change as 
 
 ## Changelog
 
-* 2020-01-27: Initial draft (@erikgrinaker)
+* 2020-01-28: Initial draft (@erikgrinaker)
 
 ## Context
 
