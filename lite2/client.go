@@ -145,6 +145,8 @@ type Client struct {
 	// Alternative providers for checking the primary for misbehavior by
 	// comparing data.
 	alternatives []provider.Provider
+	// Mutex for locking during changes of the lite clients providers
+	providerMutex sync.Mutex
 
 	// Where trusted headers are stored.
 	trustedStore store.Store
@@ -853,17 +855,16 @@ func (c *Client) Update(now time.Time) error {
 	return nil
 }
 
+// swapProvider takes the first alternative provider and promotes it as the primary provider
 func (c *Client) swapProvider() error {
-	switch x := len(c.alternatives); {
-	case x == 1: // straight swap
-		c.primary, c.alternatives[0] = c.alternatives[0], c.primary
-		return nil
-	case x > 1: // implement queue system
-		temp := c.primary
-		c.primary, c.alternatives = c.alternatives[0], c.alternatives[1:]
-		c.alternatives = append(c.alternatives, temp)
-		return nil
-	default:
-		return errors.Errorf("unable to replace provider. It is likely that no alternatives have been declared.")
+	//TODO: Use Mutex to lock and unlock the variable
+	if len(c.alternatives) == 0 {
+		return errors.Errorf("unable to replace provider. No other alternatives exist.")
 	}
+	c.providerMutex.Lock()
+	c.primary = c.alternatives[0]
+	c.alternatives = c.alternatives[1:]
+	c.providerMutex.Unlock()
+	return nil
+
 }
