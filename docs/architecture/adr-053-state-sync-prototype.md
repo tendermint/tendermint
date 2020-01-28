@@ -1,6 +1,6 @@
 # ADR 053: State Sync Prototype
 
-This ADR describes an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see there for background information.
+This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see it for background information.
 
 ## Changelog
 
@@ -10,7 +10,7 @@ This ADR describes an initial state sync prototype, and is subject to change as 
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
 
-Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md), which can be summarized as:
+Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md). Its recommendation can be summarized as:
 
 * The application periodically takes full state snapshots (i.e. eager snapshots).
 
@@ -118,7 +118,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 4. The node requests available snapshots via `RequestListSnapshots`.
 
-5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies the following conditions:
+5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies both of the following conditions:
 
     * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
@@ -180,6 +180,8 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 ## Open Questions
 
 * Is it possible to reconstruct an identical IAVL tree given separate subtrees in an appropriate order, or is more data needed about the branch structure?
+
+* Should we punish nodes that provide invalid snapshots?
 
 * Should `ResponseOfferSnapshot` and `ResponseApplySnapshotChunk` return specific codes for e.g. invalid heights, unknown formats, and so on?
 
