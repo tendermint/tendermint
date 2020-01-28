@@ -1,7 +1,8 @@
 #! /bin/bash
 set -u
 
-N=$1
+IPV=$1
+N=$2
 
 ###################################################################
 # assumes peers are already synced up
@@ -14,7 +15,7 @@ N=$1
 echo ""
 # run the test on each of them
 for i in $(seq 1 "$N"); do
-    addr=$(test/p2p/ip.sh "$i"):26657
+    addr=$(test/p2p/address.sh $IPV $i 26657)
 
     # current state
     HASH1=$(curl -s "$addr/status" | jq .result.sync_info.latest_app_hash)
@@ -37,7 +38,7 @@ for i in $(seq 1 "$N"); do
     minHeight=$h2
     for j in $(seq 1 "$N"); do
         if [[ "$i" != "$j" ]]; then
-            addrJ=$(test/p2p/ip.sh "$j"):26657
+            addrJ=$(test/p2p/address.sh $IPV $j 26657)
 
             h=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_block_height | jq fromjson)
             while [ "$h" -lt "$minHeight" ]; do
@@ -57,7 +58,7 @@ for i in $(seq 1 "$N"); do
     # check we get the same new hash on all other nodes
     for j in $(seq 1 "$N"); do
         if [[ "$i" != "$j" ]]; then
-            addrJ=$(test/p2p/ip.sh "$j"):26657
+            addrJ=$(test/p2p/address.sh $IPV $j 26657)
             HASH3=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_app_hash)
 
             if [[ "$HASH2" != "$HASH3" ]]; then

@@ -160,8 +160,9 @@ func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(c.ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-	return core.TxSearch(c.ctx, query, prove, page, perPage)
+func (c *Local) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+	*ctypes.ResultTxSearch, error) {
+	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

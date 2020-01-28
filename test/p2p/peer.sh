@@ -3,12 +3,19 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
-ID=$3
-APP_PROXY=$4
+IPV=$3
+ID=$4
+APP_PROXY=$5
 
 set +u
-NODE_FLAGS=$5
+NODE_FLAGS=$6
 set -u
+
+if [[ "$IPV" == 6 ]]; then
+	IP_SWITCH="--ip6"
+else
+	IP_SWITCH="--ip"
+fi
 
 echo "starting tendermint peer ID=$ID"
 # start tendermint container on the network
@@ -20,7 +27,7 @@ echo "starting tendermint peer ID=$ID"
 if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 	docker run \
 		--net="$NETWORK_NAME" \
-		--ip=$(test/p2p/ip.sh "$ID") \
+		$IP_SWITCH=$(test/p2p/address.sh $IPV $ID) \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
 		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
@@ -33,7 +40,7 @@ if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 else
 	docker run -d \
 		--net="$NETWORK_NAME" \
-		--ip=$(test/p2p/ip.sh "$ID") \
+		$IP_SWITCH=$(test/p2p/address.sh $IPV $ID) \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
 		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \

@@ -3,6 +3,7 @@
 \*\*
 
 Special thanks to external contributors on this release:
+@princesinha19
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -16,6 +17,8 @@ program](https://hackerone.com/tendermint).
 - Go API
 
 ### FEATURES:
+
+- [rpc] [\#3333] Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (more in the future) (@princesinha19)
 
 ### IMPROVEMENTS:
 
