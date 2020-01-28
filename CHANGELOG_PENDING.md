@@ -3,7 +3,7 @@
 \*\*
 
 Special thanks to external contributors on this release:
-@princesinha19
+@princesinha19 @mdyring
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -25,5 +25,5 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 
 - [rpc] [#\4319] Check BlockMeta is not nil in Blocks & BlockByHash
-
+- [state] [#\4351] Ensure block time can't move backwards
 

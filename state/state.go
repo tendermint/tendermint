@@ -145,6 +145,11 @@ func (state State) MakeBlock(
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
+
+		// Ensure block time can't move backwards.
+		if timestamp.Before(state.LastBlockTime) {
+			timestamp = state.LastBlockTime
+		}
 	}
 
 	// Fill rest of header with state data.
