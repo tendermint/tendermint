@@ -67,12 +67,11 @@ message RequestOfferSnapshot {
 }
 
 message ResponseOfferSnapshot {
-    enum status {
-        unknown = 0;
-        accepted = 1;         // Snapshot is accepted
-        rejected = 2;         // Snapshot is rejected for a generic reason
-        rejected_height = 3;  // Snapshot height is rejected: avoid this height
-        rejected_format = 4;  // Snapshot format is rejected: avoid this format
+    bool accepted = 1;
+    enum reason {             // Reason why snapshot was rejected
+        unknown = 0;          // Unknown or generic reason
+        invalid_height = 1;   // Height is rejected: avoid this height
+        invalid_format = 2;   // Format is rejected: avoid this format
     }
 }
 
@@ -94,11 +93,10 @@ message RequestApplySnapshotChunk {
 }
 
 message ResponseApplySnapshotChunk {
-    enum status {
-        unknown = 0;
-        applied = 1;          // Chunk was successfully applied
-        rejected = 2;         // Chunk was rejected for a generic reason
-        rejected_verify = 3;  // Chunk was rejected because verification failed
+    bool applied = 1;
+    enum reason {           // Reason why chunk failed
+        unknown = 0;        // Unknown or generic reason
+        verify_failed = 1;  // Chunk verification failed
     }
 }
 ```
@@ -137,13 +135,13 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
     * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
-    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOffsetSnapshot` call (via `rejected_height` or `rejected_format`).
+    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOffsetSnapshot` call (via `invalid_height` or `invalid_format`).
 
     * The application accepts the `RequestOfferSnapshot` call.
 
 6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunks with `data` greater than 64 MB are rejected.
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the chain's app hash at the snapshot height for verification. If the chunk is rejected the node should retry it. If it was rejected with a verification failure, it should be refetched from a different source. If an internal error occurred, `ResponseException` should be returned and state sync should be aborted.
+7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the chain's app hash at the snapshot height for verification. If the chunk is rejected the node should retry it. If it was rejected with `verify_failed`, it should be refetched from a different source. If an internal error occurred, `ResponseException` should be returned and state sync should be aborted.
 
 8. Once all chunks have been applied, the node compares the app hash to the chain app hash, and if they do not match it either errors or discards the state and starts over.
 
