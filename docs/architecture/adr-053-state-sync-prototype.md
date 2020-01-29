@@ -43,6 +43,7 @@ message SnapshotChunk {
     uint16 format = 2;   // The application-specific snapshot format
     uint64 chunk = 3;    // The chunk index (zero-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
+    bytes checksum = 5;  // SHA-1 checksum of data
 }
 ```
 
@@ -123,7 +124,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
     * The application accepts the `RequestOfferSnapshot` call.
 
-6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`.
+6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums.
 
 7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk.
 
@@ -166,7 +167,7 @@ This chunk structure is believed to be sufficient to reconstruct an identical IA
 
 We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 16 MB), then serialized and stored in the file system as `snapshots/<height>/<format>/<chunk>/data` and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 16 MB), then serialized. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
