@@ -82,7 +82,6 @@ message ResponseGetSnapshotChunk {
 message RequestApplySnapshotChunk {
     SnapshotChunk chunk = 1;
     bytes chain_hash = 2;
-    bool final = 3;
 }
 
 message ResponseApplySnapshotChunk {}
@@ -126,7 +125,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`.
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk. The final chunk has `final: true`.
+7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk.
 
 8. Once all chunks have been applied, the node compares the app hash to the chain hash, and if they do not match it either errors or discards the state and starts over.
 
