@@ -948,7 +948,16 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
+		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
+		// If necessary adjust global WriteTimeout to ensure it's greater than
+		// TimeoutBroadcastTxCommit.
+		// See https://github.com/tendermint/tendermint/issues/3435
+		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		}
 		listener, err := rpcserver.Listen(grpcListenAddr, config)
 		if err != nil {
 			return nil, err
