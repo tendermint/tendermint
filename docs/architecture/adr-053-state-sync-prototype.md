@@ -189,8 +189,6 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
-* Do we need to reject chunk sizes beyond a configurable limit, or will this be handled implicitly by e.g. gRPC request size limits?
-
 ## Status
 
 Proposed
