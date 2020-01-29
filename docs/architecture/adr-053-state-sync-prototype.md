@@ -33,14 +33,14 @@ A node can have multiple snapshots taken at various heights. Snapshots can be ta
 ```proto
 message Snapshot {
     uint64 height = 1;   // The height at which the snapshot was taken
-    uint64 format = 2;   // The application-specific snapshot format
+    uint16 format = 2;   // The application-specific snapshot format
     uint64 chunks = 3;   // The number of chunks in the snapshot
     bytes metadata = 4;  // Arbitrary application metadata
 }
 
 message SnapshotChunk {
     uint64 height = 1;   // The height of the corresponding snapshot
-    uint64 format = 2;   // The application-specific snapshot format
+    uint16 format = 2;   // The application-specific snapshot format
     uint64 chunk = 3;    // The chunk index (zero-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
 }
@@ -70,7 +70,7 @@ message ResponseOfferSnapshot {
 // Fetches a snapshot chunk
 message RequestGetSnapshotChunk {
     uint64 height = 1;
-    uint64 format = 2;
+    uint16 format = 2;
     uint64 chunk = 3;
 }
 
