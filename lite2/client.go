@@ -403,25 +403,21 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	if height < 0 {
 		return nil, errors.New("negative height")
 	}
-
-	if height == 0 {
-		var err error
-		height, err = c.LastTrustedHeight()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	h, err := c.trustedStore.SignedHeader(height)
+	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return nil, err
 	}
-
-	// Ensure header can still be trusted.
+	if height == 0 || height > latestHeight {
+		height = latestHeight
+	}
+	h, err := c.trustedStore.SignedHeader(height)
+	if err == provider.ErrSignedHeaderNotFound {
+		//fetch header from primary and verify
+		h, _, err = c.fetchHeaderAndValsAtHeight(height)
+	}
 	if HeaderExpired(h, c.trustingPeriod, now) {
 		return nil, ErrOldHeaderExpired{h.Time.Add(c.trustingPeriod), now}
 	}
-
 	return h, nil
 }
 
