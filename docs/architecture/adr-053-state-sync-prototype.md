@@ -14,11 +14,11 @@ Background discussions and justifications are detailed in [ADR-042](./adr-042-st
 
 * The application periodically takes full state snapshots (i.e. eager snapshots).
 
-* The application splits snapshots into smaller chunks that can be individually verified against a chain Merkle root.
+* The application splits snapshots into smaller chunks that can be individually verified against a chain app hash.
 
-* Tendermint uses the light client to obtain a trusted chain Merkle root for verification.
+* Tendermint uses the light client to obtain a trusted chain app hash for verification.
 
-* Tendermint discovers and downloads snapshot chunks in parallel from multiple peers, and passes them to the application via ABCI to be applied and verified against the chain root.
+* Tendermint discovers and downloads snapshot chunks in parallel from multiple peers, and passes them to the application via ABCI to be applied and verified against the chain app hash.
 
 * Historical blocks are not backfilled, so state synced nodes will have a truncated block history.
 
@@ -67,7 +67,13 @@ message RequestOfferSnapshot {
 }
 
 message ResponseOfferSnapshot {
-    bool accepted = 1;
+    enum status {
+        unknown = 0;
+        accepted = 1;         // Snapshot is accepted
+        rejected = 2;         // Snapshot is rejected for a generic reason
+        rejected_height = 3;  // Snapshot height is rejected: avoid this height
+        rejected_format = 4;  // Snapshot format is rejected: avoid this format
+    }
 }
 
 // Fetches a snapshot chunk
@@ -87,7 +93,14 @@ message RequestApplySnapshotChunk {
     bytes chain_hash = 2;
 }
 
-message ResponseApplySnapshotChunk {}
+message ResponseApplySnapshotChunk {
+    enum status {
+        unknown = 0;
+        applied = 1;          // Chunk was successfully applied
+        rejected = 2;         // Chunk was rejected for a generic reason
+        rejected_verify = 3;  // Chunk was rejected because verification failed
+    }
+}
 ```
 
 ### Taking Snapshots
@@ -102,7 +115,7 @@ Tendermint is not aware of the snapshotting process at all, it is entirely an ap
 
 * **Asynchronous:** snapshots must be asynchronous, i.e. not halt block processing and state transitions.
 
-* **Chunked:** snapshots must be split into chunks of reasonable size (on the order of megabytes), and each chunk must be verifiable against the chain Merkle root.
+* **Chunked:** snapshots must be split into chunks of reasonable size (on the order of megabytes), and each chunk must be verifiable against the chain app hash.
 
 * **Garbage collected:** snapshots must be garbage collected periodically.
 
@@ -120,17 +133,19 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 4. The node requests available snapshots via `RequestListSnapshots`. Snapshots with `metadata` greater than 64 KB are rejected.
 
-5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies both of the following conditions:
+5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
 
     * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
+
+    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOffsetSnapshot` call (via `rejected_height` or `rejected_format`).
 
     * The application accepts the `RequestOfferSnapshot` call.
 
 6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunks with `data` greater than 64 MB are rejected.
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk.
+7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the chain's app hash at the snapshot height for verification. If the chunk is rejected the node should retry it. If it was rejected with a verification failure, it should be refetched from a different source. If an internal error occurred, `ResponseException` should be returned and state sync should be aborted.
 
-8. Once all chunks have been applied, the node compares the app hash to the chain hash, and if they do not match it either errors or discards the state and starts over.
+8. Once all chunks have been applied, the node compares the app hash to the chain app hash, and if they do not match it either errors or discards the state and starts over.
 
 9. The node switches to fast sync to catch up blocks that were committed while restoring the snapshot.
 
@@ -184,8 +199,6 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 * Is it possible to reconstruct an identical IAVL tree given separate subtrees in an appropriate order, or is more data needed about the branch structure?
 
 * Should we punish nodes that provide invalid snapshots?
-
-* Should `ResponseOfferSnapshot` and `ResponseApplySnapshotChunk` return specific codes for e.g. invalid heights, unknown formats, and so on?
 
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
