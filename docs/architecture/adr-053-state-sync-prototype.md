@@ -49,6 +49,8 @@ message SnapshotChunk {
 
 Chunk verification data must be encoded along with the state data in the `data` field.
 
+Chunk `data` cannot be larger than 64 MB, and snapshot `metadata` cannot be larger than 64 KB.
+
 ### ABCI Interface
 
 ```proto
@@ -116,7 +118,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 3. The node contacts a set of full nodes, and verifies the trusted block header using the given hash via the light client.
 
-4. The node requests available snapshots via `RequestListSnapshots`.
+4. The node requests available snapshots via `RequestListSnapshots`. Snapshots with `metadata` greater than 64 KB are rejected.
 
 5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies both of the following conditions:
 
@@ -124,7 +126,7 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
     * The application accepts the `RequestOfferSnapshot` call.
 
-6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums.
+6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunks with `data` greater than 64 MB are rejected.
 
 7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the root chain hash at the snapshot height for verification. If the chunk cannot be verified or applied, the application returns `ResponseException` and Tendermint tries refetching the chunk.
 
@@ -167,7 +169,7 @@ This chunk structure is believed to be sufficient to reconstruct an identical IA
 
 We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 16 MB), then serialized. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 32 MB), then serialized. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
