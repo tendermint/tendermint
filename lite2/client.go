@@ -89,7 +89,11 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 // current primary is unavailable.
 func Witnesses(providers []provider.Provider) Option {
 	return func(c *Client) {
-		c.witnesses = providers
+		for _, witness := range providers {
+			if witness.ChainID() == c.ChainID() {
+				c.witnesses = append(c.witnesses, witness)
+			}
+		}
 	}
 }
 
