@@ -138,11 +138,6 @@ module.exports = {
       }
     ]
   },
-  markdown: {
-    anchor: {
-      permalinkSymbol: ""
-    }
-  },
   plugins: [
     [
       "@vuepress/google-analytics",
