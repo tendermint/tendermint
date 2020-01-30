@@ -880,7 +880,7 @@ func TestProvider_Replacement(t *testing.T) {
 	err = c.Start()
 	require.NoError(t, err)
 	defer c.Stop()
-	assert.NotEqual(t, c.primary, primary)
+	assert.NotEqual(t, c.Primary(), primary)
 	assert.Equal(t, 0, len(c.witnesses))
 
 }
