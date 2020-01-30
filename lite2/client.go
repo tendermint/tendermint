@@ -3,6 +3,7 @@ package lite
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -51,6 +52,9 @@ const (
 
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
+	maxAttempts                               = 5
+	// max backOff in seconds
+	backOffCap = 10
 )
 
 // Option sets a parameter for the light client.
@@ -145,14 +149,12 @@ type Client struct {
 	verificationMode mode
 	trustLevel       tmmath.Fraction
 
-	// Primary provider of new headers.
-	primary provider.Provider
-
-	// See Witnesses option
-	witnesses []provider.Provider
-
 	// Mutex for locking during changes of the lite clients providers
 	providerMutex sync.Mutex
+	// Primary provider of new headers.
+	primary provider.Provider
+	// See Witnesses option
+	witnesses []provider.Provider
 
 	// Where trusted headers are stored.
 	trustedStore store.Store
@@ -529,6 +531,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	c.providerMutex.Lock()
 	if len(c.witnesses) > 0 {
 		if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
+			c.providerMutex.Unlock()
 			c.logger.Error("Error when comparing new header with one from a witness", "err", err)
 			return err
 		}
@@ -871,27 +874,29 @@ func (c *Client) Update(now time.Time) error {
 // replaceProvider takes the first alternative provider and promotes it as the primary provider
 func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
 	if len(c.witnesses) == 0 {
-		return errors.Errorf("unable to replace provider. No other alternatives exist.")
+		return errors.Errorf("no witnesses left.")
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
-	c.providerMutex.Unlock()
+	c.logger.Info("New primary", "p", c.primary)
 	return nil
 }
 
 // signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
 // Handles dropout by the primary provider by swapping with an alternative provider
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
-	for attempts := 0; attempts < 5; attempts++ {
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
 		if err == nil || err == provider.ErrSignedHeaderNotFound {
 			return h, err
 		}
+		time.Sleep(backoffAndJitterTime(attempt))
 	}
-	c.logger.Info("Unable to communicate with primary provider. Replacing with an alternative.")
+	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
 		return nil, err
@@ -903,19 +908,26 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
 // Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
-	for attempts := 0; attempts < 5; attempts++ {
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return h, err
 		}
+		time.Sleep(backoffAndJitterTime(attempt))
 	}
-	c.logger.Info("Unable to communicate with primary provider. Replacing with an alternative.")
+	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
 		return nil, err
 	}
 	return c.validatorSetFromPrimary(height)
 
+}
+
+// generates a backoff time between operations that is calculated as a random duration between 0 and a set cap
+func backoffAndJitterTime(attempt int) time.Duration {
+	rand.Seed(time.Now().UnixNano())
+	return time.Duration(rand.Intn(backOffCap/maxAttempts*attempt)) * time.Second
 }

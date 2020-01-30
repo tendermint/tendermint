@@ -60,9 +60,9 @@ func (p *deadMock) ChainID() string {
 }
 
 func (p *deadMock) SignedHeader(height int64) (*types.SignedHeader, error) {
-	return nil, errors.New("No response from provider")
+	return nil, errors.New("no response from provider")
 }
 
 func (p *deadMock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	return nil, errors.New("No response from provider")
+	return nil, errors.New("no response from provider")
 }
