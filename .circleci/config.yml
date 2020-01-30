@@ -297,10 +297,6 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
@@ -320,10 +316,6 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
@@ -347,57 +339,54 @@ jobs:
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
-  # Test RPC implementation against the swagger documented specs
-  contract_tests:
-    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace/
-      GOOS: linux
-      GOARCH: amd64
-    parallelism: 1
-    steps:
-      - checkout
-      - run:
-          name: Test RPC endpoints against swagger documentation
-          command: |
-            set -x
-            export PATH=~/.local/bin:$PATH
+  # # Test RPC implementation against the swagger documented specs
+  # contract_tests:
+  #   working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+  #   machine:
+  #     image: circleci/classic:latest
+  #   environment:
+  #     GOBIN: /home/circleci/.go_workspace/bin
+  #     GOPATH: /home/circleci/.go_workspace/
+  #     GOOS: linux
+  #     GOARCH: amd64
+  #   parallelism: 1
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Test RPC endpoints against swagger documentation
+  #         command: |
+  #           set -x
+  #           export PATH=~/.local/bin:$PATH
 
-            # install node and dredd
-            ./scripts/get_nodejs.sh
+  #           # install node and dredd
+  #           ./scripts/get_nodejs.sh
 
-            # build the binaries with a proper version of Go
-            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+  #           # build the binaries with a proper version of Go
+  #           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
 
-            # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
-            go get github.com/snikch/goodman/cmd/goodman
-            make contract-tests
+  #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
+  #           go get github.com/snikch/goodman/cmd/goodman
+  #           make contract-tests
 
 workflows:
   version: 2
   test-suite:
     jobs:
       - deploy_docs:
+          context: tendermint-docs
+          filters:
+            branches:
+              only:
+                - master
+            tags:
+              only:
+                - /^v.*/
+      - deploy_docs:
           context: tendermint-docs-staging
           filters:
             branches:
               only:
-                - /.*/
-            tags:
-              ignore:
-                - /^v.*/
-      - deploy_docs:
-          context: tendermint-docs
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v.*/
+                - docs-theme-latest
       - setup_dependencies
       - test_abci_apps:
           requires:
@@ -427,9 +416,9 @@ workflows:
               only:
                 - master
                 - /v[0-9]+\.[0-9]+/
-      - contract_tests:
-          requires:
-            - setup_dependencies
+      # - contract_tests:
+      #     requires:
+      #       - setup_dependencies
 
   release:
     jobs:
@@ -453,3 +442,4 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
+                - master

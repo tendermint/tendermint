@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/rand"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -29,7 +29,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	go evsw.FireEvent("event", "data")
 	received := <-messages
 	if received != "data" {
-		t.Errorf("Message received does not match: %v", received)
+		t.Errorf("message received does not match: %v", received)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	close(numbers)
 	eventSum := <-doneSum
 	if checkSum != eventSum {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 
@@ -94,14 +94,14 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	go fireEvents(evsw, "event1", doneSending1, uint64(1))
 	go fireEvents(evsw, "event2", doneSending2, uint64(1))
 	go fireEvents(evsw, "event3", doneSending3, uint64(1))
-	var checkSum uint64 = 0
+	var checkSum uint64
 	checkSum += <-doneSending1
 	checkSum += <-doneSending2
 	checkSum += <-doneSending3
 	close(numbers)
 	eventSum := <-doneSum
 	if checkSum != eventSum {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 
@@ -162,7 +162,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	eventSum2 := <-doneSum2
 	if checkSum1 != eventSum1 ||
 		checkSum2 != eventSum2 {
-		t.Errorf("Not all messages sent were received for different listeners to different events.\n")
+		t.Errorf("not all messages sent were received for different listeners to different events.\n")
 	}
 }
 
@@ -255,7 +255,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 		// correct value asserted by preceding tests, suffices to be non-zero
 		checkSumEvent2 == uint64(0) ||
 		eventSum2 != uint64(0) {
-		t.Errorf("Not all messages sent were received or unsubscription did not register.\n")
+		t.Errorf("not all messages sent were received or unsubscription did not register.\n")
 	}
 }
 
@@ -356,7 +356,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	// collect received events for event2
 	go sumReceivedNumbers(numbers2, doneSum2)
 	addListenersStress := func() {
-		r1 := cmn.NewRand()
+		r1 := rand.NewRand()
 		r1.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 400; k++ {
 			listenerNumber := r1.Intn(100) + 3
@@ -367,7 +367,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 		}
 	}
 	removeListenersStress := func() {
-		r2 := cmn.NewRand()
+		r2 := rand.NewRand()
 		r2.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 80; k++ {
 			listenerNumber := r2.Intn(100) + 3
@@ -390,7 +390,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	eventSum2 := <-doneSum2
 	if checkSum != eventSum1 ||
 		checkSum != eventSum2 {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 

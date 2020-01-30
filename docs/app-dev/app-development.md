@@ -187,7 +187,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []cmn.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},
@@ -298,7 +298,6 @@ ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
     Header header = req.getHeader();
     byte[] prevAppHash = header.getAppHash().toByteArray();
     long prevHeight = header.getHeight();
-    long numTxs = header.getNumTxs();
 
     // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
 

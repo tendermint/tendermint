@@ -1,11 +1,13 @@
 package types
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
 )
 
 const (
@@ -14,6 +16,9 @@ const (
 
 	// BlockPartSizeBytes is the size of one block part.
 	BlockPartSizeBytes = 65536 // 64kB
+
+	// MaxBlockPartsCount is the maximum number of block parts.
+	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
@@ -44,7 +49,8 @@ type BlockParams struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance.
 type EvidenceParams struct {
-	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
+	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
+	MaxAgeDuration  time.Duration `json:"max_age_duration"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -74,7 +80,8 @@ func DefaultBlockParams() BlockParams {
 // DefaultEvidenceParams Params returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAge: 100000, // 27.8 hrs at 1block/s
+		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:  48 * time.Hour,
 	}
 }
 
@@ -97,27 +104,32 @@ func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 // allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
 	if params.Block.MaxBytes <= 0 {
-		return errors.Errorf("Block.MaxBytes must be greater than 0. Got %d",
+		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
 	}
 	if params.Block.MaxBytes > MaxBlockSizeBytes {
-		return errors.Errorf("Block.MaxBytes is too big. %d > %d",
+		return errors.Errorf("block.MaxBytes is too big. %d > %d",
 			params.Block.MaxBytes, MaxBlockSizeBytes)
 	}
 
 	if params.Block.MaxGas < -1 {
-		return errors.Errorf("Block.MaxGas must be greater or equal to -1. Got %d",
+		return errors.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
 	}
 
 	if params.Block.TimeIotaMs <= 0 {
-		return errors.Errorf("Block.TimeIotaMs must be greater than 0. Got %v",
+		return errors.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
 			params.Block.TimeIotaMs)
 	}
 
-	if params.Evidence.MaxAge <= 0 {
-		return errors.Errorf("EvidenceParams.MaxAge must be greater than 0. Got %d",
-			params.Evidence.MaxAge)
+	if params.Evidence.MaxAgeNumBlocks <= 0 {
+		return errors.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+			params.Evidence.MaxAgeNumBlocks)
+	}
+
+	if params.Evidence.MaxAgeDuration <= 0 {
+		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
+			params.Evidence.MaxAgeDuration)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -156,7 +168,7 @@ func (params *ConsensusParams) Hash() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
-		cmn.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
+		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
@@ -174,7 +186,8 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.Block.MaxGas = params2.Block.MaxGas
 	}
 	if params2.Evidence != nil {
-		res.Evidence.MaxAge = params2.Evidence.MaxAge
+		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
+		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
 	}
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.

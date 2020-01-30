@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"testing"
 	"time"
@@ -26,17 +27,10 @@ type scTestParams struct {
 	syncTimeout   time.Duration
 }
 
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func verifyScheduler(sc *scheduler) {
 	missing := 0
 	if sc.maxHeight() >= sc.height {
-		missing = int(min(int64(sc.targetPending), sc.maxHeight()-sc.height+1))
+		missing = int(math.Min(float64(sc.targetPending), float64(sc.maxHeight()-sc.height+1)))
 	}
 	if len(sc.blockStates) != missing {
 		panic(fmt.Sprintf("scheduler block length %d different than target %d", len(sc.blockStates), missing))
@@ -673,7 +667,7 @@ func TestScGetPeersAtHeight(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// getPeersAtHeight should not mutate the scheduler
 			wantSc := sc
-			res := sc.getPeersAtHeight(tt.args.height)
+			res := sc.getPeersAtHeightOrAbove(tt.args.height)
 			sort.Sort(PeerByID(res))
 			assert.Equal(t, tt.wantResult, res)
 			assert.Equal(t, wantSc, sc)
@@ -1137,7 +1131,6 @@ func TestScNextHeightToSchedule(t *testing.T) {
 			resMin := sc.nextHeightToSchedule()
 			assert.Equal(t, tt.wantHeight, resMin)
 			checkSameScheduler(t, wantSc, sc)
-
 		})
 	}
 }

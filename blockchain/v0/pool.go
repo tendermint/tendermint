@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -61,7 +61,7 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 
 // BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
-	cmn.BaseService
+	service.BaseService
 	startTime time.Time
 
 	mtx sync.Mutex
@@ -92,11 +92,11 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		requestsCh: requestsCh,
 		errorsCh:   errorsCh,
 	}
-	bp.BaseService = *cmn.NewBaseService(nil, "BlockPool", bp)
+	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
 }
 
-// OnStart implements cmn.Service by spawning requesters routine and recording
+// OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
 	go pool.makeRequestersRoutine()
@@ -247,7 +247,14 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.Logger.Info("peer sent us a block we didn't expect", "peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
+		pool.Logger.Info(
+			"peer sent us a block we didn't expect",
+			"peer",
+			peerID,
+			"curHeight",
+			pool.height,
+			"blockHeight",
+			block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
@@ -494,7 +501,7 @@ func (peer *bpPeer) onTimeout() {
 //-------------------------------------
 
 type bpRequester struct {
-	cmn.BaseService
+	service.BaseService
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
@@ -515,7 +522,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *cmn.NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
 	return bpr
 }
 

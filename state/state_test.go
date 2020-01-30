@@ -7,12 +7,15 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/kv"
+	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	dbm "github.com/tendermint/tm-db"
 
@@ -23,7 +26,7 @@ import (
 // setupTestCase does setup common to all test cases.
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	config := cfg.ResetTestRoot("state_")
-	dbType := dbm.DBBackendType(config.DBBackend)
+	dbType := dbm.BackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
@@ -89,8 +92,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := makeBlock(state, 2)
 	abciResponses := sm.NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
+	abciResponses.DeliverTxs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
+	abciResponses.DeliverTxs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
@@ -132,8 +135,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{
 					Data: []byte("Gotcha!"),
 					Events: []abci.Event{
-						{Type: "type1", Attributes: []cmn.KVPair{{Key: []byte("a"), Value: []byte("1")}}},
-						{Type: "type2", Attributes: []cmn.KVPair{{Key: []byte("build"), Value: []byte("stuff")}}},
+						{Type: "type1", Attributes: []kv.Pair{{Key: []byte("a"), Value: []byte("1")}}},
+						{Type: "type2", Attributes: []kv.Pair{{Key: []byte("build"), Value: []byte("stuff")}}},
 					},
 				},
 			},
@@ -158,8 +161,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
 		responses := &sm.ABCIResponses{
-			DeliverTx: tc.added,
-			EndBlock:  &abci.ResponseEndBlock{},
+			DeliverTxs: tc.added,
+			EndBlock:   &abci.ResponseEndBlock{},
 		}
 		sm.SaveABCIResponses(stateDB, h, responses)
 	}
@@ -315,17 +318,17 @@ func TestProposerFrequency(t *testing.T) {
 	maxPower := 1000
 	nTestCases := 5
 	for i := 0; i < nTestCases; i++ {
-		N := cmn.RandInt()%maxVals + 1
+		N := tmrand.Int()%maxVals + 1
 		vals := make([]*types.Validator, N)
 		totalVotePower := int64(0)
 		for j := 0; j < N; j++ {
 			// make sure votePower > 0
-			votePower := int64(cmn.RandInt()%maxPower) + 1
+			votePower := int64(tmrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
 			pubKey := privVal.GetPubKey()
 			val := types.NewValidator(pubKey, votePower)
-			val.ProposerPriority = cmn.RandInt64()
+			val.ProposerPriority = tmrand.Int64()
 			vals[j] = val
 		}
 		valSet := types.NewValidatorSet(vals)
@@ -342,7 +345,7 @@ func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	for i := 0; i < size; i++ {
 		totalVotePower += powers[i]
 		val := types.NewValidator(ed25519.GenPrivKey().PubKey(), powers[i])
-		val.ProposerPriority = cmn.RandInt64()
+		val.ProposerPriority = rand.Int64()
 		vals[i] = val
 	}
 	valSet := types.NewValidatorSet(vals)
@@ -362,7 +365,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 	for i := 0; i < runs; i++ {
 		prop := valSet.GetProposer()
 		idx, _ := valSet.GetByAddress(prop.Address)
-		freqs[idx] += 1
+		freqs[idx]++
 		valSet.IncrementProposerPriority(1)
 	}
 
@@ -378,7 +381,11 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		// https://github.com/cwgoes/tm-proposer-idris
 		// and inferred to generalize to N-1
 		bound := N - 1
-		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
+		require.True(
+			t,
+			abs <= bound,
+			fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq),
+		)
 	}
 }
 
@@ -563,7 +570,13 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	expectedVal1Prio -= totalPower      // 1, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
-	assert.EqualValues(t, expectedVal2Prio, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+	assert.EqualValues(
+		t,
+		expectedVal2Prio,
+		updatedVal2.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
 
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
@@ -586,8 +599,20 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	expectedVal1Prio2 := expectedVal1Prio + val1VotingPower // 1 + 10 == 11
 	expectedVal1Prio2 -= totalPower                         // -9, val1 proposer
 
-	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
-	assert.EqualValues(t, expectedVal2Prio2, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+	assert.EqualValues(
+		t,
+		expectedVal1Prio2,
+		updatedVal1.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
+	assert.EqualValues(
+		t,
+		expectedVal2Prio2,
+		updatedVal2.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
 
 	// no changes in voting power and both validators have same voting power
 	// -> proposers should alternate:
@@ -616,7 +641,13 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 		updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 		assert.NoError(t, err)
 		// alternate (and cyclic priorities):
-		assert.NotEqual(t, updatedState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
+		assert.NotEqual(
+			t,
+			updatedState.Validators.Proposer.Address,
+			updatedState.NextValidators.Proposer.Address,
+			"iter: %v",
+			i,
+		)
 		assert.Equal(t, oldState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
 
 		_, updatedVal1 = updatedState.NextValidators.GetByAddress(val1PubKey.Address())
@@ -643,7 +674,11 @@ func TestLargeGenesisValidator(t *testing.T) {
 	genesisVotingPower := types.MaxTotalVotingPower / 1000
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
 	// fmt.Println("genesis addr: ", genesisPubKey.Address())
-	genesisVal := &types.Validator{Address: genesisPubKey.Address(), PubKey: genesisPubKey, VotingPower: genesisVotingPower}
+	genesisVal := &types.Validator{
+		Address:     genesisPubKey.Address(),
+		PubKey:      genesisPubKey,
+		VotingPower: genesisVotingPower,
+	}
 	// reset state validators to above validator
 	state.Validators = types.NewValidatorSet([]*types.Validator{genesisVal})
 	state.NextValidators = state.Validators
@@ -951,7 +986,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 func TestApplyUpdates(t *testing.T) {
 	initParams := makeConsensusParams(1, 2, 3, 4)
-
+	const maxAge int64 = 66
 	cases := [...]struct {
 		init     types.ConsensusParams
 		updates  abci.ConsensusParams
@@ -970,10 +1005,11 @@ func TestApplyUpdates(t *testing.T) {
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
-					MaxAge: 66,
+					MaxAgeNumBlocks: maxAge,
+					MaxAgeDuration:  time.Duration(maxAge),
 				},
 			},
-			makeConsensusParams(1, 2, 3, 66)},
+			makeConsensusParams(1, 2, 3, maxAge)},
 	}
 
 	for i, tc := range cases {

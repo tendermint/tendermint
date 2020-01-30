@@ -165,8 +165,11 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		peerID := memR.ids.GetForPeer(src)
-		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{SenderID: peerID})
+		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+		if src != nil {
+			txInfo.SenderP2PID = src.ID()
+		}
+		err := memR.mempool.CheckTx(msg.Tx, nil, txInfo)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
 		}
@@ -254,15 +257,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-// MempoolMessage is a message sent or received by the Reactor.
-type MempoolMessage interface{}
+// Message is a message sent or received by the Reactor.
+type Message interface{}
 
-func RegisterMempoolMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*MempoolMessage)(nil), nil)
+func RegisterMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Message)(nil), nil)
 	cdc.RegisterConcrete(&TxMessage{}, "tendermint/mempool/TxMessage", nil)
 }
 
-func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
+func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
 	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
 	if l := len(bz); l > maxMsgSize {
 		return msg, ErrTxTooLarge{maxMsgSize, l}
@@ -273,7 +276,7 @@ func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
 
 //-------------------------------------
 
-// TxMessage is a MempoolMessage containing a transaction.
+// TxMessage is a Message containing a transaction.
 type TxMessage struct {
 	Tx types.Tx
 }

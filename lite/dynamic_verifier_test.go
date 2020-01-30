@@ -127,7 +127,7 @@ func TestDynamicVerify(t *testing.T) {
 }
 
 func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
-	height += 1
+	height++
 	consHash := []byte("special-params")
 	appHash := []byte(fmt.Sprintf("h=%d", height))
 	resHash := []byte(fmt.Sprintf("res=%d", height))
@@ -186,9 +186,9 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	err = cert.Verify(sh)
 	require.Nil(err, "%+v", err)
 	assert.Equal(fcz[7].Height(), cert.LastTrustedHeight())
-	fc_, err := trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
+	commit, err := trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
 	require.NotNil(err, "%+v", err)
-	assert.Equal(fc_, (FullCommit{}))
+	assert.Equal(commit, (FullCommit{}))
 
 	// With fcz[9] Verify will update last trusted height.
 	err = source.SaveFullCommit(fcz[9])
@@ -197,9 +197,9 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	err = cert.Verify(sh)
 	require.Nil(err, "%+v", err)
 	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
-	fc_, err = trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
+	commit, err = trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
 	require.Nil(err, "%+v", err)
-	assert.Equal(fc_.Height(), fcz[8].Height())
+	assert.Equal(commit.Height(), fcz[8].Height())
 
 	// Add access to all full commits via untrusted source.
 	for i := 0; i < count; i++ {

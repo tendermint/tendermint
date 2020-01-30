@@ -56,7 +56,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
   - `pub_key`: The first element specifies the `pub_key` type. 1
-  == Ed25519. The second element are the pubkey bytes.
+    == Ed25519. The second element are the pubkey bytes.
   - `power`: The validator's voting power.
   - `name`: Name of the validator (optional).
 - `app_hash`: The expected application hash (as returned by the
@@ -78,7 +78,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
       "time_iota_ms": "1000"
     },
     "evidence": {
-      "max_age": "100000"
+      "max_age_num_blocks": "100000"
+      "max_age_duration": "10000"
     },
     "validator": {
       "pub_key_types": [
@@ -159,7 +160,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 ::: tip
-Find the RPC Documentation [here](https://tendermint.com/rpc/)
+Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
 :::
 
 ### Formatting
@@ -263,12 +264,18 @@ create_empty_blocks = false
 Remember: because the default is to _create empty blocks_, avoiding
 empty blocks requires the config option to be set to `false`.
 
-The block interval setting allows for a delay (in seconds) between the
-creation of each new empty block. It is set via the `config.toml`:
+The block interval setting allows for a delay (in time.Duration format [ParseDuration](https://golang.org/pkg/time/#ParseDuration)) between the
+creation of each new empty block. It can be set with this additional flag:
+
+```
+--consensus.create_empty_blocks_interval="5s"
+```
+
+or set the configuration via the `config.toml` file:
 
 ```
 [consensus]
-create_empty_blocks_interval = 5
+create_empty_blocks_interval = "5s"
 ```
 
 With this setting, empty blocks will be produced every 5s if no block

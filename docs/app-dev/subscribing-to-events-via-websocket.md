@@ -17,14 +17,14 @@ method via Websocket.
 {
     "jsonrpc": "2.0",
     "method": "subscribe",
-    "id": "0",
+    "id": 0,
     "params": {
         "query": "tm.event='NewBlock'"
     }
 }
 ```
 
-Check out [API docs](https://tendermint.com/rpc/) for
+Check out [API docs](https://docs.tendermint.com/master/rpc/) for
 more information on query syntax and other options.
 
 You can also use tags, given you had included them into DeliverTx
@@ -44,7 +44,7 @@ Response:
 ```
 {
     "jsonrpc": "2.0",
-    "id": "0#event",
+    "id": 0,
     "result": {
         "query": "tm.event='ValidatorSetUpdates'",
         "data": {

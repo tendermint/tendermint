@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 )
 
 type signerEndpoint struct {
-	cmn.BaseService
+	service.BaseService
 
 	connMtx sync.Mutex
 	conn    net.Conn
@@ -122,8 +122,6 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
-	se.Logger.Debug("Write::Error Resetting deadline", "obj", se)
-
 	err = se.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		return

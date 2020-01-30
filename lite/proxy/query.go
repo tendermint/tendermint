@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -21,10 +21,10 @@ import (
 // If there is any error in checking, returns an error.
 func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Verifier) (
-	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
+	val bytes.HexBytes, height int64, proof *merkle.Proof, err error) {
 
 	if reqHeight < 0 {
-		err = cmn.NewError("Height cannot be negative")
+		err = errors.New("height cannot be negative")
 		return
 	}
 
@@ -54,7 +54,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 
 	// Validate the response, e.g. height.
 	if resp.IsErr() {
-		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
+		err = errors.Errorf("query error for key %d: %d", key, resp.Code)
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		return nil, lerr.ErrEmptyTree()
 	}
 	if resp.Height == 0 {
-		return nil, cmn.NewError("Height returned is zero")
+		return nil, errors.New("height returned is zero")
 	}
 
 	// AppHash for height H is in header H+1
@@ -79,24 +79,27 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		if err != nil {
 			return nil, err
 		}
+
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
 		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
 		if err != nil {
-			return nil, errors.Wrap(err, "Couldn't verify value proof")
+			return nil, errors.Wrap(err, "couldn't verify value proof")
 		}
-		return &ctypes.ResultABCIQuery{Response: resp}, nil
-	} else {
-		// Value absent
-		// Validate the proof against the certified header to ensure data integrity.
-		// XXX How do we encode the key into a string...
-		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
-		if err != nil {
-			return nil, errors.Wrap(err, "Couldn't verify absence proof")
-		}
+
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
+
+	// Value absent
+	// Validate the proof against the certified header to ensure data integrity.
+	// XXX How do we encode the key into a string...
+	err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't verify absence proof")
+	}
+
+	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
 
 func parseQueryStorePath(path string) (storeName string, err error) {

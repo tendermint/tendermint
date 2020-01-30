@@ -121,10 +121,10 @@ func TestSwitches(t *testing.T) {
 	defer s2.Stop()
 
 	if s1.Peers().Size() != 1 {
-		t.Errorf("Expected exactly 1 peer in s1, got %v", s1.Peers().Size())
+		t.Errorf("expected exactly 1 peer in s1, got %v", s1.Peers().Size())
 	}
 	if s2.Peers().Size() != 1 {
-		t.Errorf("Expected exactly 1 peer in s2, got %v", s2.Peers().Size())
+		t.Errorf("expected exactly 1 peer in s2, got %v", s2.Peers().Size())
 	}
 
 	// Lets send some messages
@@ -136,12 +136,28 @@ func TestSwitches(t *testing.T) {
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
 
-	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch0Msg,
+		byte(0x00),
+		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch1Msg,
+		byte(0x01),
+		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch2Msg,
+		byte(0x02),
+		s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
 
-func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+func assertMsgReceivedWithTimeout(
+	t *testing.T,
+	msgBytes []byte,
+	channel byte,
+	reactor *TestReactor,
+	checkPeriod,
+	timeout time.Duration,
+) {
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
@@ -191,7 +207,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	var (
 		filters = []PeerFilterFunc{
 			func(_ IPeerSet, _ Peer) error { return nil },
-			func(_ IPeerSet, _ Peer) error { return fmt.Errorf("denied!") },
+			func(_ IPeerSet, _ Peer) error { return fmt.Errorf("denied") },
 			func(_ IPeerSet, _ Peer) error { return nil },
 		}
 		sw = MakeSwitch(
@@ -213,7 +229,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -258,7 +274,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -284,7 +300,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -330,7 +346,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
+		isPersistent: sw.IsPeerPersistent,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -352,9 +368,10 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	defer s.Close()
 
 	scrapeMetrics := func() string {
-		resp, _ := http.Get(s.URL)
+		resp, err := http.Get(s.URL)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 		buf, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 		return string(buf)
 	}
 
@@ -514,21 +531,36 @@ func TestSwitchFullConnectivity(t *testing.T) {
 func TestSwitchAcceptRoutine(t *testing.T) {
 	cfg.MaxNumInboundPeers = 5
 
+	// Create some unconditional peers.
+	const unconditionalPeersNum = 2
+	var (
+		unconditionalPeers   = make([]*remotePeer, unconditionalPeersNum)
+		unconditionalPeerIDs = make([]string, unconditionalPeersNum)
+	)
+	for i := 0; i < unconditionalPeersNum; i++ {
+		peer := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+		peer.Start()
+		unconditionalPeers[i] = peer
+		unconditionalPeerIDs[i] = string(peer.ID())
+	}
+
 	// make switch
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw.AddUnconditionalPeerIDs(unconditionalPeerIDs)
 	err := sw.Start()
 	require.NoError(t, err)
 	defer sw.Stop()
 
-	remotePeers := make([]*remotePeer, 0)
+	// 0. check there are no peers
 	assert.Equal(t, 0, sw.Peers().Size())
 
 	// 1. check we connect up to MaxNumInboundPeers
+	peers := make([]*remotePeer, 0)
 	for i := 0; i < cfg.MaxNumInboundPeers; i++ {
-		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
-		remotePeers = append(remotePeers, rp)
-		rp.Start()
-		c, err := rp.Dial(sw.NetAddress())
+		peer := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+		peers = append(peers, peer)
+		peer.Start()
+		c, err := peer.Dial(sw.NetAddress())
 		require.NoError(t, err)
 		// spawn a reading routine to prevent connection from closing
 		go func(c net.Conn) {
@@ -545,9 +577,9 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 
 	// 2. check we close new connections if we already have MaxNumInboundPeers peers
-	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
-	rp.Start()
-	conn, err := rp.Dial(sw.NetAddress())
+	peer := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	peer.Start()
+	conn, err := peer.Dial(sw.NetAddress())
 	require.NoError(t, err)
 	// check conn is closed
 	one := make([]byte, 1)
@@ -555,11 +587,31 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	_, err = conn.Read(one)
 	assert.Equal(t, io.EOF, err)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
-	rp.Stop()
+	peer.Stop()
 
-	// stop remote peers
-	for _, rp := range remotePeers {
-		rp.Stop()
+	// 3. check we connect to unconditional peers despite the limit.
+	for _, peer := range unconditionalPeers {
+		c, err := peer.Dial(sw.NetAddress())
+		require.NoError(t, err)
+		// spawn a reading routine to prevent connection from closing
+		go func(c net.Conn) {
+			for {
+				one := make([]byte, 1)
+				_, err := c.Read(one)
+				if err != nil {
+					return
+				}
+			}
+		}(c)
+	}
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, cfg.MaxNumInboundPeers+unconditionalPeersNum, sw.Peers().Size())
+
+	for _, peer := range peers {
+		peer.Stop()
+	}
+	for _, peer := range unconditionalPeers {
+		peer.Stop()
 	}
 }
 

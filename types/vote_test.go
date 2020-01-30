@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -43,19 +42,6 @@ func exampleVote(t byte) *Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
-}
-
-// Ensure that Vote and CommitSig have the same encoding.
-// This ensures using CommitSig isn't a breaking change.
-// This test will fail and can be removed once CommitSig contains only sigs and
-// timestamps.
-func TestVoteEncoding(t *testing.T) {
-	vote := examplePrecommit()
-	commitSig := vote.CommitSig()
-	cdc := amino.NewCodec()
-	bz1 := cdc.MustMarshalBinaryBare(vote)
-	bz2 := cdc.MustMarshalBinaryBare(commitSig)
-	assert.Equal(t, bz1, bz2)
 }
 
 func TestVoteSignable(t *testing.T) {
@@ -134,7 +120,8 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				// remaining fields:
 				0x2a,                                                                // (field_number << 3) | wire_type
 				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1, // timestamp
-				0x32,                                                                               // (field_number << 3) | wire_type
+				// (field_number << 3) | wire_type
+				0x32,
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
 		},
 	}
@@ -198,7 +185,7 @@ func TestIsVoteTypeValid(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(st *testing.T) {
 			if rs := IsVoteTypeValid(tt.in); rs != tt.out {
-				t.Errorf("Got unexpected Vote type. Expected:\n%v\nGot:\n%v", rs, tt.out)
+				t.Errorf("got unexpected Vote type. Expected:\n%v\nGot:\n%v", rs, tt.out)
 			}
 		})
 	}
@@ -257,13 +244,13 @@ func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
 	expected := `Vote{56789:6AF1F4111082 12345/02/2(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str != expected {
-		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
+		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
 	expected = `Vote{56789:6AF1F4111082 12345/02/1(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str2 != expected {
-		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
+		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
 }
 
@@ -278,7 +265,9 @@ func TestVoteValidateBasic(t *testing.T) {
 		{"Good Vote", func(v *Vote) {}, false},
 		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
 		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
-		{"Invalid BlockID", func(v *Vote) { v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}} }, true},
+		{"Invalid BlockID", func(v *Vote) {
+			v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
+		}, true},
 		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
 		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
 		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true},

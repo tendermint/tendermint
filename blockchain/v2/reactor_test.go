@@ -6,7 +6,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
@@ -52,7 +52,7 @@ import (
 */
 
 type mockPeer struct {
-	cmn.Service
+	service.Service
 	id p2p.ID
 }
 
@@ -67,7 +67,7 @@ func (mp mockPeer) CloseConn() error   { return nil }
 
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 	return p2p.DefaultNodeInfo{
-		ID_:        "",
+		DefaultNodeID:        "",
 		ListenAddr: "",
 	}
 }
@@ -529,13 +529,13 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight, int(0), types.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
 			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
-			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
+			lastCommit = types.NewCommit(blockHeight, int(0), lastBlockMeta.BlockID, []types.CommitSig{vote})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)

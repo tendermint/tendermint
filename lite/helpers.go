@@ -9,7 +9,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// privKeys is a helper type for testing.
+// PrivKeys is a helper type for testing.
 //
 // It lets us simulate signing with many keys.  The main use case is to create
 // a set, and call GenSignedHeader to get properly signed header for testing.
@@ -70,21 +70,29 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 
 // signHeader properly signs the header with all keys from first to last exclusive.
 func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
-	commitSigs := make([]*types.CommitSig, len(pkz))
+	commitSigs := make([]types.CommitSig, len(pkz))
+	for i := 0; i < len(pkz); i++ {
+		commitSigs[i] = types.NewCommitSigAbsent()
+	}
 
 	// We need this list to keep the ordering.
 	vset := pkz.ToValidators(1, 0)
 
+	blockID := types.BlockID{
+		Hash:        header.Hash(),
+		PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+	}
+
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i])
+		vote := makeVote(header, vset, pkz[i], blockID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
-	blockID := types.BlockID{Hash: header.Hash()}
-	return types.NewCommit(blockID, commitSigs)
+
+	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 
-func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey) *types.Vote {
+func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey, blockID types.BlockID) *types.Vote {
 	addr := key.PubKey().Address()
 	idx, _ := valset.GetByAddress(addr)
 	vote := &types.Vote{
@@ -94,7 +102,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		Round:            1,
 		Timestamp:        tmtime.Now(),
 		Type:             types.PrecommitType,
-		BlockID:          types.BlockID{Hash: header.Hash()},
+		BlockID:          blockID,
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)
@@ -112,11 +120,9 @@ func genHeader(chainID string, height int64, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
-		ChainID:  chainID,
-		Height:   height,
-		Time:     tmtime.Now(),
-		NumTxs:   int64(len(txs)),
-		TotalTxs: int64(len(txs)),
+		ChainID: chainID,
+		Height:  height,
+		Time:    tmtime.Now(),
 		// LastBlockID
 		// LastCommitHash
 		ValidatorsHash:     valset.Hash(),

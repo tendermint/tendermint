@@ -61,7 +61,10 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 	}
 
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
-	runCmd.IntVar(&flagAcceptRetries, "accept-retries", defaultAcceptRetries, "The number of attempts to listen for incoming connections")
+	runCmd.IntVar(&flagAcceptRetries,
+		"accept-retries",
+		defaultAcceptRetries,
+		"The number of attempts to listen for incoming connections")
 	runCmd.StringVar(&flagBindAddr, "addr", defaultBindAddr, "Bind to this address for the testing")
 	runCmd.StringVar(&flagTMHome, "tmhome", defaultTMHome, "Path to the Tendermint home directory")
 	runCmd.Usage = func() {
@@ -76,7 +79,10 @@ Flags:`)
 	}
 
 	extractKeyCmd = flag.NewFlagSet("extract_key", flag.ExitOnError)
-	extractKeyCmd.StringVar(&flagKeyOutputPath, "output", defaultExtractKeyOutput, "Path to which signing key should be written")
+	extractKeyCmd.StringVar(&flagKeyOutputPath,
+		"output",
+		defaultExtractKeyOutput,
+		"Path to which signing key should be written")
 	extractKeyCmd.StringVar(&flagTMHome, "tmhome", defaultTMHome, "Path to the Tendermint home directory")
 	extractKeyCmd.Usage = func() {
 		fmt.Println(`Extracts a signing key from a local Tendermint instance for use in the remote

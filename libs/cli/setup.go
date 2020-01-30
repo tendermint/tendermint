@@ -151,7 +151,7 @@ func validateOutput(cmd *cobra.Command, args []string) error {
 	switch output {
 	case "text", "json":
 	default:
-		return errors.Errorf("Unsupported output format: %s", output)
+		return errors.Errorf("unsupported output format: %s", output)
 	}
 	return nil
 }

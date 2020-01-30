@@ -21,10 +21,10 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 - `state.db`: Stores the current blockchain state (ie. height, validators,
   consensus params). Only grows if consensus params or validators change. Also
   used to temporarily store intermediate results during block processing.
-- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
+- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
 
 By default, Tendermint will only index txs by their hash, not by their DeliverTx
-result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
+result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
 There is no current strategy for pruning the databases. Consider reducing
@@ -99,7 +99,7 @@ send & receive rate per connection (`SendRate`, `RecvRate`).
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See the [RPC Documentation](https://tendermint.com/rpc/)
+elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/master/rpc/)
 for more information.
 
 Rate-limiting and authentication are another key aspects to help protect
@@ -141,6 +141,19 @@ returns just the votes seen at the current height.
 - [StackOverflow
   questions](https://stackoverflow.com/questions/tagged/tendermint)
 
+### Debug Utility
+
+Tendermint also ships with a `debug` sub-command that allows you to kill a live
+Tendermint process while collecting useful information in a compressed archive
+such as the configuration used, consensus state, network state, the node' status,
+the WAL, and even the stacktrace of the process before exit. These files can be
+useful to examine when debugging a faulty Tendermint process.
+
+In addition, the `debug` sub-command also allows you to dump debugging data into
+compressed archives at a regular interval. These archives contain the goroutine
+and heap profiles in addition to the consensus state, network info, node status,
+and even the WAL.
+
 ## Monitoring Tendermint
 
 Each Tendermint instance has a standard `/health` RPC endpoint, which
@@ -149,10 +162,6 @@ if something is wrong.
 
 Other useful endpoints include mentioned earlier `/status`, `/net_info` and
 `/validators`.
-
-We have a small tool, called `tm-monitor`, which outputs information from
-the endpoints above plus some statistics. The tool can be found
-[here](https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor).
 
 Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).

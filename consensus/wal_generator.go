@@ -13,8 +13,8 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
@@ -27,7 +27,8 @@ import (
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
-// (byteBufferWAL) and waits until numBlocks are created. If the node fails to produce given numBlocks, it returns an error.
+// (byteBufferWAL) and waits until numBlocks are created.
+// If the node fails to produce given numBlocks, it returns an error.
 func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	config := getConfig(t)
 
@@ -73,7 +74,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	mempool := mock.Mempool{}
 	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
-	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
+	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {
@@ -119,14 +120,14 @@ func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	return base + cmn.RandIntn(spread)
+	return base + tmrand.Intn(spread)
 }
 
 func makeAddrs() (string, string, string) {
 	start := randPort()
-	return fmt.Sprintf("tcp://0.0.0.0:%d", start),
-		fmt.Sprintf("tcp://0.0.0.0:%d", start+1),
-		fmt.Sprintf("tcp://0.0.0.0:%d", start+2)
+	return fmt.Sprintf("tcp://127.0.0.1:%d", start),
+		fmt.Sprintf("tcp://127.0.0.1:%d", start+1),
+		fmt.Sprintf("tcp://127.0.0.1:%d", start+2)
 }
 
 // getConfig returns a config for test cases
@@ -168,10 +169,10 @@ func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalS
 // Save writes message to the internal buffer except when heightToStop is
 // reached, in which case it will signal the caller via signalWhenStopsTo and
 // skip writing.
-func (w *byteBufferWAL) Write(m WALMessage) {
+func (w *byteBufferWAL) Write(m WALMessage) error {
 	if w.stopped {
 		w.logger.Debug("WAL already stopped. Not writing message", "msg", m)
-		return
+		return nil
 	}
 
 	if endMsg, ok := m.(EndHeightMessage); ok {
@@ -180,7 +181,7 @@ func (w *byteBufferWAL) Write(m WALMessage) {
 			w.logger.Debug("Stopping WAL at height", "height", endMsg.Height)
 			w.signalWhenStopsTo <- struct{}{}
 			w.stopped = true
-			return
+			return nil
 		}
 	}
 
@@ -189,15 +190,19 @@ func (w *byteBufferWAL) Write(m WALMessage) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to encode the msg %v", m))
 	}
+
+	return nil
 }
 
-func (w *byteBufferWAL) WriteSync(m WALMessage) {
-	w.Write(m)
+func (w *byteBufferWAL) WriteSync(m WALMessage) error {
+	return w.Write(m)
 }
 
 func (w *byteBufferWAL) FlushAndSync() error { return nil }
 
-func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (w *byteBufferWAL) SearchForEndHeight(
+	height int64,
+	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 

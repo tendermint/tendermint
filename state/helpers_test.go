@@ -3,15 +3,18 @@ package state_test
 import (
 	"bytes"
 	"fmt"
+	"time"
+
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 type paramsChangeTestCase struct {
@@ -61,7 +64,8 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, err
 	}
-	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+	blockID := types.BlockID{Hash: block.Hash(),
+		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
@@ -69,8 +73,13 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	return state, blockID, nil
 }
 
-func makeValidCommit(height int64, blockID types.BlockID, vals *types.ValidatorSet, privVals map[string]types.PrivValidator) (*types.Commit, error) {
-	sigs := make([]*types.CommitSig, 0)
+func makeValidCommit(
+	height int64,
+	blockID types.BlockID,
+	vals *types.ValidatorSet,
+	privVals map[string]types.PrivValidator,
+) (*types.Commit, error) {
+	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(i)
 		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID)
@@ -79,7 +88,7 @@ func makeValidCommit(height int64, blockID types.BlockID, vals *types.ValidatorS
 		}
 		sigs = append(sigs, vote.CommitSig())
 	}
-	return types.NewCommit(blockID, sigs), nil
+	return types.NewCommit(height, 0, blockID, sigs), nil
 }
 
 // make some bogus txs
@@ -123,7 +132,13 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 }
 
 func makeBlock(state sm.State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	block, _ := state.MakeBlock(
+		height,
+		makeTxs(state.LastBlockHeight),
+		new(types.Commit),
+		nil,
+		state.Validators.GetProposer().Address,
+	)
 	return block
 }
 
@@ -147,12 +162,16 @@ func makeConsensusParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAgeNumBlocks: evidenceAge,
+			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
 	}
 }
 
-func makeHeaderPartsResponsesValPubKeyChange(state sm.State, pubkey crypto.PubKey) (types.Header, types.BlockID, *sm.ABCIResponses) {
+func makeHeaderPartsResponsesValPubKeyChange(
+	state sm.State,
+	pubkey crypto.PubKey,
+) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &sm.ABCIResponses{
@@ -173,7 +192,10 @@ func makeHeaderPartsResponsesValPubKeyChange(state sm.State, pubkey crypto.PubKe
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesValPowerChange(state sm.State, power int64) (types.Header, types.BlockID, *sm.ABCIResponses) {
+func makeHeaderPartsResponsesValPowerChange(
+	state sm.State,
+	power int64,
+) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &sm.ABCIResponses{
@@ -193,7 +215,10 @@ func makeHeaderPartsResponsesValPowerChange(state sm.State, power int64) (types.
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesParams(state sm.State, params types.ConsensusParams) (types.Header, types.BlockID, *sm.ABCIResponses) {
+func makeHeaderPartsResponsesParams(
+	state sm.State,
+	params types.ConsensusParams,
+) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &sm.ABCIResponses{

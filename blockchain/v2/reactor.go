@@ -138,6 +138,8 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
 	scheduler := newScheduler(state.LastBlockHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
+	// TODO: Fix naming to just newProcesssor
+	// newPcState requires a processorContext
 	processor := newPcState(pContext)
 
 	return &BlockchainReactor{

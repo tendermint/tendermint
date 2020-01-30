@@ -6,7 +6,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -95,7 +95,11 @@ func makeStatusFunc(c client.StatusClient) func(ctx *rpctypes.Context) (*ctypes.
 	}
 }
 
-func makeBlockchainInfoFunc(c rpcclient.Client) func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func makeBlockchainInfoFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	minHeight,
+	maxHeight int64,
+) (*ctypes.ResultBlockchainInfo, error) {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 		return c.BlockchainInfo(minHeight, maxHeight)
 	}
@@ -125,32 +129,48 @@ func makeTxFunc(c rpcclient.Client) func(ctx *rpctypes.Context, hash []byte, pro
 	}
 }
 
-func makeValidatorsFunc(c rpcclient.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultValidators, error) {
+func makeValidatorsFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	height *int64,
+) (*ctypes.ResultValidators, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultValidators, error) {
-		return c.Validators(height)
+		return c.Validators(height, 0, 0)
 	}
 }
 
-func makeBroadcastTxCommitFunc(c rpcclient.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func makeBroadcastTxCommitFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	tx types.Tx,
+) (*ctypes.ResultBroadcastTxCommit, error) {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return c.BroadcastTxCommit(tx)
 	}
 }
 
-func makeBroadcastTxSyncFunc(c rpcclient.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func makeBroadcastTxSyncFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	tx types.Tx,
+) (*ctypes.ResultBroadcastTx, error) {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxSync(tx)
 	}
 }
 
-func makeBroadcastTxAsyncFunc(c rpcclient.Client) func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func makeBroadcastTxAsyncFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	tx types.Tx,
+) (*ctypes.ResultBroadcastTx, error) {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxAsync(tx)
 	}
 }
 
-func makeABCIQueryFunc(c rpcclient.Client) func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
-	return func(ctx *rpctypes.Context, path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func makeABCIQueryFunc(c rpcclient.Client) func(
+	ctx *rpctypes.Context,
+	path string,
+	data bytes.HexBytes,
+) (*ctypes.ResultABCIQuery, error) {
+	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQuery(path, data)
 	}
 }

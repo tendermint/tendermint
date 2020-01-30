@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
@@ -37,17 +37,20 @@ var defaultOptions = Options{
 
 func waitForRPC() {
 	laddr := GetConfig().RPC.ListenAddress
-	client := rpcclient.NewJSONRPCClient(laddr)
+	client, err := rpcclient.NewJSONRPCClient(laddr)
+	if err != nil {
+		panic(err)
+	}
 	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
 		_, err := client.Call("status", map[string]interface{}{}, result)
 		if err == nil {
 			return
-		} else {
-			fmt.Println("error", err)
-			time.Sleep(time.Millisecond)
 		}
+
+		fmt.Println("error", err)
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -74,7 +77,7 @@ func makePathname() string {
 }
 
 func randPort() int {
-	port, err := cmn.GetFreePort()
+	port, err := tmnet.GetFreePort()
 	if err != nil {
 		panic(err)
 	}
@@ -82,9 +85,9 @@ func randPort() int {
 }
 
 func makeAddrs() (string, string, string) {
-	return fmt.Sprintf("tcp://0.0.0.0:%d", randPort()),
-		fmt.Sprintf("tcp://0.0.0.0:%d", randPort()),
-		fmt.Sprintf("tcp://0.0.0.0:%d", randPort())
+	return fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
+		fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
+		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
 func createConfig() *cfg.Config {
@@ -97,7 +100,7 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
+	c.TxIndex.IndexKeys = "app.creator,tx.height" // see kvstore application
 	return c
 }
 

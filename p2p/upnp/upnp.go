@@ -27,7 +27,12 @@ type upnpNAT struct {
 // protocol is either "udp" or "tcp"
 type NAT interface {
 	GetExternalAddress() (addr net.IP, err error)
-	AddPortMapping(protocol string, externalPort, internalPort int, description string, timeout int) (mappedExternalPort int, err error)
+	AddPortMapping(
+		protocol string,
+		externalPort,
+		internalPort int,
+		description string,
+		timeout int) (mappedExternalPort int, err error)
 	DeletePortMapping(protocol string, externalPort, internalPort int) (err error)
 }
 
@@ -104,7 +109,7 @@ func Discover() (nat NAT, err error) {
 			return
 		}
 	}
-	err = errors.New("UPnP port discovery failed")
+	err = errors.New("upnp port discovery failed")
 	return nat, err
 }
 
@@ -127,7 +132,7 @@ type ExternalIPAddress struct {
 	IP      string
 }
 
-type UPNPService struct {
+type Service struct {
 	ServiceType string `xml:"serviceType"`
 	ControlURL  string `xml:"controlURL"`
 }
@@ -137,7 +142,7 @@ type DeviceList struct {
 }
 
 type ServiceList struct {
-	Service []UPNPService `xml:"service"`
+	Service []Service `xml:"service"`
 }
 
 type Device struct {
@@ -161,7 +166,7 @@ func getChildDevice(d *Device, deviceType string) *Device {
 	return nil
 }
 
-func getChildService(d *Device, serviceType string) *UPNPService {
+func getChildService(d *Device, serviceType string) *Service {
 	sl := d.ServiceList.Service
 	for i := 0; i < len(sl); i++ {
 		if strings.Contains(sl[i].ServiceType, serviceType) {
@@ -214,17 +219,17 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 	}
 	a := &root.Device
 	if !strings.Contains(a.DeviceType, "InternetGatewayDevice:1") {
-		err = errors.New("No InternetGatewayDevice")
+		err = errors.New("no InternetGatewayDevice")
 		return
 	}
 	b := getChildDevice(a, "WANDevice:1")
 	if b == nil {
-		err = errors.New("No WANDevice")
+		err = errors.New("no WANDevice")
 		return
 	}
 	c := getChildDevice(b, "WANConnectionDevice:1")
 	if c == nil {
-		err = errors.New("No WANConnectionDevice")
+		err = errors.New("no WANConnectionDevice")
 		return
 	}
 	d := getChildService(c, "WANIPConnection:1")
@@ -234,7 +239,7 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 		d = getChildService(b, "WANIPConnection:1")
 
 		if d == nil {
-			err = errors.New("No WANIPConnection")
+			err = errors.New("no WANIPConnection")
 			return
 		}
 	}
@@ -254,7 +259,8 @@ func combineURL(rootURL, subURL string) string {
 
 func soapRequest(url, function, message, domain string) (r *http.Response, err error) {
 	fullMessage := "<?xml version=\"1.0\" ?>" +
-		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n" +
+		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+		"s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n" +
 		"<s:Body>" + message + "</s:Body></s:Envelope>"
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(fullMessage))
@@ -281,7 +287,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 
 	if r.StatusCode >= 400 {
 		// log.Stderr(function, r.StatusCode)
-		err = errors.New("Error " + strconv.Itoa(r.StatusCode) + " for " + function)
+		err = errors.New("error " + strconv.Itoa(r.StatusCode) + " for " + function)
 		r = nil
 		return
 	}
@@ -289,7 +295,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 }
 
 type statusInfo struct {
-	externalIpAddress string
+	externalIPAddress string
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
@@ -332,14 +338,19 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	if err != nil {
 		return
 	}
-	addr = net.ParseIP(info.externalIpAddress)
+	addr = net.ParseIP(info.externalIPAddress)
 	if addr == nil {
-		err = fmt.Errorf("Failed to parse IP: %v", info.externalIpAddress)
+		err = fmt.Errorf("failed to parse IP: %v", info.externalIPAddress)
 	}
 	return
 }
 
-func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int, description string, timeout int) (mappedExternalPort int, err error) {
+func (n *upnpNAT) AddPortMapping(
+	protocol string,
+	externalPort,
+	internalPort int,
+	description string,
+	timeout int) (mappedExternalPort int, err error) {
 	// A single concatenation would break ARM compilation.
 	message := "<u:AddPortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort)
@@ -367,7 +378,7 @@ func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int
 	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
-	return
+	return mappedExternalPort, err
 }
 
 func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort int) (err error) {

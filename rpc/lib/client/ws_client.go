@@ -14,7 +14,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -25,8 +26,10 @@ const (
 	defaultPingPeriod           = 0
 )
 
-// WSClient is a WebSocket client. The methods of WSClient are safe for use by
-// multiple goroutines.
+// WSClient is a JSON-RPC client, which uses WebSocket for communication with
+// the remote server.
+//
+// WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct { // nolint: maligned
 	conn *websocket.Conn
 	cdc  *amino.Codec
@@ -35,7 +38,8 @@ type WSClient struct { // nolint: maligned
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
 
-	// Single user facing channel to read RPCResponses from, closed only when the client is being stopped.
+	// Single user facing channel to read RPCResponses from, closed only when the
+	// client is being stopped.
 	ResponsesCh chan types.RPCResponse
 
 	// Callback, which will be called each time after successful reconnect.
@@ -58,6 +62,8 @@ type WSClient struct { // nolint: maligned
 	mtx            sync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
+	nextReqID      int
+	// sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
 	writeWait time.Duration
@@ -68,7 +74,7 @@ type WSClient struct { // nolint: maligned
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
 
-	cmn.BaseService
+	service.BaseService
 
 	// Time between sending a ping and receiving a pong. See
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
@@ -78,21 +84,26 @@ type WSClient struct { // nolint: maligned
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
-// The function panics if the provided address is invalid.
-func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	protocol, addr, err := toClientAddrAndParse(remoteAddr)
+// An error is returned on invalid remote. The function panics when remote is nil.
+func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
+	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
-		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
+		return nil, err
 	}
 	// default to ws protocol, unless wss is explicitly specified
-	if protocol != "wss" {
-		protocol = "ws"
+	if parsedURL.Scheme != protoWSS {
+		parsedURL.Scheme = protoWS
+	}
+
+	dialFn, err := makeHTTPDialer(remoteAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
-		Address:              addr,
-		Dialer:               makeHTTPDialer(remoteAddr),
+		Address:              parsedURL.GetTrimmedHostWithPath(),
+		Dialer:               dialFn,
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
 
@@ -100,13 +111,15 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		readWait:             defaultReadWait,
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
-		protocol:             protocol,
+		protocol:             parsedURL.Scheme,
+
+		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
+	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
 		option(c)
 	}
-	return c
+	return c, nil
 }
 
 // MaxReconnectAttempts sets the maximum number of reconnect attempts before returning an error.
@@ -151,10 +164,10 @@ func OnReconnect(cb func()) func(*WSClient) {
 
 // String returns WS client full address.
 func (c *WSClient) String() string {
-	return fmt.Sprintf("%s (%s)", c.Address, c.Endpoint)
+	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
-// OnStart implements cmn.Service by dialing a server and creating read and
+// OnStart implements service.Service by dialing a server and creating read and
 // write routines.
 func (c *WSClient) OnStart() error {
 	err := c.dial()
@@ -178,7 +191,7 @@ func (c *WSClient) OnStart() error {
 	return nil
 }
 
-// Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
+// Stop overrides service.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
 func (c *WSClient) Stop() error {
 	if err := c.BaseService.Stop(); err != nil {
@@ -210,41 +223,47 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
+		// c.mtx.Lock()
+		// c.sentIDs[request.ID.(types.JSONRPCIntID)] = true
+		// c.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
 
-// Call the given method. See Send description.
+// Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("ws-client"), method, params)
+	request, err := types.MapToRequest(c.cdc, c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
 }
 
-// CallWithArrayParams the given method with params in a form of array. See
-// Send description.
+// CallWithArrayParams enqueues a call request onto the Send queue. Params are
+// in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest(c.cdc, types.JSONRPCStringID("ws-client"), method, params)
+	request, err := types.ArrayToRequest(c.cdc, c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
 }
 
-func (c *WSClient) Codec() *amino.Codec {
-	return c.cdc
-}
-
-func (c *WSClient) SetCodec(cdc *amino.Codec) {
-	c.cdc = cdc
-}
+func (c *WSClient) Codec() *amino.Codec       { return c.cdc }
+func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Private methods
+
+func (c *WSClient) nextRequestID() types.JSONRPCIntID {
+	c.mtx.Lock()
+	id := c.nextReqID
+	c.nextReqID++
+	c.mtx.Unlock()
+	return types.JSONRPCIntID(id)
+}
 
 func (c *WSClient) dial() error {
 	dialer := &websocket.Dialer{
@@ -275,7 +294,7 @@ func (c *WSClient) reconnect() error {
 	}()
 
 	for {
-		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
@@ -414,7 +433,10 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit():
-			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			if err := c.conn.WriteMessage(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			); err != nil {
 				c.Logger.Error("failed to write message", "err", err)
 			}
 			return
@@ -470,10 +492,31 @@ func (c *WSClient) readRoutine() {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))
 			continue
 		}
-		c.Logger.Info("got response", "resp", response.Result)
+
+		if err = validateResponseID(response.ID); err != nil {
+			c.Logger.Error("error in response ID", "id", response.ID, "err", err)
+			continue
+		}
+
+		// TODO: events resulting from /subscribe do not work with ->
+		// because they are implemented as responses with the subscribe request's
+		// ID. According to the spec, they should be notifications (requests
+		// without IDs).
+		// https://github.com/tendermint/tendermint/issues/2949
+		// c.mtx.Lock()
+		// if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
+		// 	c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
+		// 	c.mtx.Unlock()
+		// 	continue
+		// }
+		// delete(c.sentIDs, response.ID.(types.JSONRPCIntID))
+		// c.mtx.Unlock()
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine
+
+		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
+
 		select {
 		case <-c.Quit():
 		case c.ResponsesCh <- response:

@@ -1,9 +1,9 @@
-## v0.32.7
+## v0.33.1
 
 \*\*
 
 Special thanks to external contributors on this release:
-@erikgrinaker
+@princesinha19
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -18,10 +18,11 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-### IMPROVEMENTS:
+- [rpc] [\#3333] Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (more in the future) (@princesinha19)
 
-- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
+### IMPROVEMENTS:
 
 ### BUG FIXES:
 
-- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)
+- [node] [#\4311] Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
+- [rpc] [#\4319] Check `BlockMeta` is not nil in `/block` & `/block_by_hash`

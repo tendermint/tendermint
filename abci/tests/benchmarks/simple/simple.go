@@ -8,12 +8,12 @@ import (
 	"reflect"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 )
 
 func main() {
 
-	conn, err := cmn.Connect("unix://test.sock")
+	conn, err := tmnet.Connect("unix://test.sock")
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -62,7 +62,7 @@ func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error
 		return nil, err
 	}
 	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
-		return nil, fmt.Errorf("Expected flush response but got something else: %v", reflect.TypeOf(resFlush))
+		return nil, fmt.Errorf("expected flush response but got something else: %v", reflect.TypeOf(resFlush))
 	}
 
 	return res, nil

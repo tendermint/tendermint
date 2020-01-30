@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
@@ -17,13 +17,13 @@ const (
 )
 
 var (
-	ErrVoteUnexpectedStep            = errors.New("Unexpected step")
-	ErrVoteInvalidValidatorIndex     = errors.New("Invalid validator index")
-	ErrVoteInvalidValidatorAddress   = errors.New("Invalid validator address")
-	ErrVoteInvalidSignature          = errors.New("Invalid signature")
-	ErrVoteInvalidBlockHash          = errors.New("Invalid block hash")
-	ErrVoteNonDeterministicSignature = errors.New("Non-deterministic signature")
-	ErrVoteNil                       = errors.New("Nil vote")
+	ErrVoteUnexpectedStep            = errors.New("unexpected step")
+	ErrVoteInvalidValidatorIndex     = errors.New("invalid validator index")
+	ErrVoteInvalidValidatorAddress   = errors.New("invalid validator address")
+	ErrVoteInvalidSignature          = errors.New("invalid signature")
+	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
+	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
+	ErrVoteNil                       = errors.New("nil vote")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -34,13 +34,9 @@ func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
 }
 
-func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		&DuplicateVoteEvidence{
-			PubKey: val.PubKey,
-			VoteA:  voteA,
-			VoteB:  voteB,
-		},
+		NewDuplicateVoteEvidence(val.PubKey, vote1, vote2),
 	}
 }
 
@@ -61,13 +57,27 @@ type Vote struct {
 }
 
 // CommitSig converts the Vote to a CommitSig.
-// If the Vote is nil, the CommitSig will be nil.
-func (vote *Vote) CommitSig() *CommitSig {
+func (vote *Vote) CommitSig() CommitSig {
 	if vote == nil {
-		return nil
+		return NewCommitSigAbsent()
 	}
-	cs := CommitSig(*vote)
-	return &cs
+
+	var blockIDFlag BlockIDFlag
+	switch {
+	case vote.BlockID.IsComplete():
+		blockIDFlag = BlockIDFlagCommit
+	case vote.BlockID.IsZero():
+		blockIDFlag = BlockIDFlagNil
+	default:
+		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
+	}
+
+	return CommitSig{
+		BlockIDFlag:      blockIDFlag,
+		ValidatorAddress: vote.ValidatorAddress,
+		Timestamp:        vote.Timestamp,
+		Signature:        vote.Signature,
+	}
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
@@ -87,6 +97,7 @@ func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
 	}
+
 	var typeString string
 	switch vote.Type {
 	case PrevoteType:
@@ -99,13 +110,13 @@ func (vote *Vote) String() string {
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
 		vote.ValidatorIndex,
-		cmn.Fingerprint(vote.ValidatorAddress),
+		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
 		vote.Round,
 		vote.Type,
 		typeString,
-		cmn.Fingerprint(vote.BlockID.Hash),
-		cmn.Fingerprint(vote.Signature),
+		tmbytes.Fingerprint(vote.BlockID.Hash),
+		tmbytes.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
 	)
 }
@@ -124,39 +135,39 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 // ValidateBasic performs basic validation.
 func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if vote.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if vote.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
-		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
+		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
 			len(vote.ValidatorAddress),
 		)
 	}
 	if vote.ValidatorIndex < 0 {
-		return errors.New("Negative ValidatorIndex")
+		return errors.New("negative ValidatorIndex")
 	}
 	if len(vote.Signature) == 0 {
-		return errors.New("Signature is missing")
+		return errors.New("signature is missing")
 	}
 	if len(vote.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }

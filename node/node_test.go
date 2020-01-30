@@ -16,8 +16,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
@@ -174,7 +174,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
-	tmpfile := "/tmp/kms." + cmn.RandStr(6) + ".sock"
+	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
@@ -219,7 +219,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -249,7 +249,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	types.RegisterMockEvidencesGlobal() // XXX!
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
+	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
@@ -257,7 +257,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomGoodEvidence(1, proposerAddr, cmn.RandBytes(minEvSize))
+		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
 		assert.NoError(t, err)
 	}
@@ -266,8 +266,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	txLength := 1000
 	for i := 0; i < maxBytes/txLength; i++ {
-		tx := cmn.RandBytes(txLength)
-		err := mempool.CheckTx(tx, nil)
+		tx := tmrand.Bytes(txLength)
+		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -279,7 +279,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 	)
 
-	commit := types.NewCommit(types.BlockID{}, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,

@@ -93,7 +93,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -244,7 +244,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -351,9 +351,9 @@ the same results as for the Go version.
 ## Bounties
 
 Want to write the counter app in your favorite language?! We'd be happy
-to add you to our [ecosystem](https://tendermint.com/ecosystem)! We're
-also offering [bounties](https://hackerone.com/tendermint/) for
-implementations in new languages!
+to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)!
+See [funding](https://github.com/interchainio/funding) opportunities from the
+[Interchain Foundation](https://interchain.io/) for implementations in new languages and more.
 
 The `abci-cli` is designed strictly for testing and debugging. In a real
 deployment, the role of sending messages is taken by Tendermint, which

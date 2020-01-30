@@ -7,8 +7,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -33,13 +33,13 @@ func main() {
 	)
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {})
+	tmos.TrapSignal(logger, func() {})
 
 	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
 	config := rpcserver.DefaultConfig()
-	listener, err := rpcserver.Listen("0.0.0.0:8008", config)
+	listener, err := rpcserver.Listen("tcp://127.0.0.1:8008", config)
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 	rpcserver.StartHTTPServer(listener, mux, logger, config)
 }

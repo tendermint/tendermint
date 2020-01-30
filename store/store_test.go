@@ -29,8 +29,13 @@ type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
-	return types.NewCommit(types.BlockID{}, commitSigs)
+	commitSigs := []types.CommitSig{{
+		BlockIDFlag:      types.BlockIDFlagCommit,
+		ValidatorAddress: []byte("ValidatorAddress"),
+		Timestamp:        timestamp,
+		Signature:        []byte("Signature"),
+	}}
+	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {
@@ -71,7 +76,8 @@ func TestLoadBlockStoreStateJSON(t *testing.T) {
 
 func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
-	db.Set(blockStoreKey, []byte(`{"height": "10000"}`))
+	err := db.Set(blockStoreKey, []byte(`{"height": "10000"}`))
+	require.NoError(t, err)
 	bs := NewBlockStore(db)
 	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
 
@@ -87,7 +93,8 @@ func TestNewBlockStore(t *testing.T) {
 		tt := tt
 		// Expecting a panic here on trying to parse an invalid blockStore
 		_, _, panicErr := doFn(func() (interface{}, error) {
-			db.Set(blockStoreKey, tt.data)
+			err := db.Set(blockStoreKey, tt.data)
+			require.NoError(t, err)
 			_ = NewBlockStore(db)
 			return nil, nil
 		})
@@ -95,7 +102,8 @@ func TestNewBlockStore(t *testing.T) {
 		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
 	}
 
-	db.Set(blockStoreKey, nil)
+	err = db.Set(blockStoreKey, nil)
+	require.NoError(t, err)
 	bs = NewBlockStore(db)
 	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
 }
@@ -155,7 +163,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	header1 := types.Header{
 		Height:  1,
-		NumTxs:  100,
 		ChainID: "block_test",
 		Time:    tmtime.Now(),
 	}
@@ -264,7 +271,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			}
 
 			if tuple.corruptBlockInDB {
-				db.Set(calcBlockMetaKey(tuple.block.Height), []byte("block-bogus"))
+				err := db.Set(calcBlockMetaKey(tuple.block.Height), []byte("block-bogus"))
+				require.NoError(t, err)
 			}
 			bBlock := bs.LoadBlock(tuple.block.Height)
 			bBlockMeta := bs.LoadBlockMeta(tuple.block.Height)
@@ -273,7 +281,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				db.Delete(calcSeenCommitKey(tuple.block.Height))
 			}
 			if tuple.corruptSeenCommitInDB {
-				db.Set(calcSeenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
+				err := db.Set(calcSeenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
+				require.NoError(t, err)
 			}
 			bSeenCommit := bs.LoadSeenCommit(tuple.block.Height)
 
@@ -282,7 +291,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				db.Delete(calcBlockCommitKey(commitHeight))
 			}
 			if tuple.corruptCommitInDB {
-				db.Set(calcBlockCommitKey(commitHeight), []byte("foo-bogus"))
+				err := db.Set(calcBlockCommitKey(commitHeight), []byte("foo-bogus"))
+				require.NoError(t, err)
 			}
 			bCommit := bs.LoadBlockCommit(commitHeight)
 			return &quad{block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
@@ -338,13 +348,15 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Nil(t, res, "a non-existent block part should return nil")
 
 	// 2. Next save a corrupted block then try to load it
-	db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
+	err := db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
+	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
 	require.Contains(t, panicErr.Error(), "unmarshal to types.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
-	db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
+	err = db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
+	require.NoError(t, err)
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved block should return a proper block")
@@ -367,14 +379,16 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.Nil(t, res, "a non-existent blockMeta should return nil")
 
 	// 2. Next save a corrupted blockMeta then try to load it
-	db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
+	err := db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
+	require.NoError(t, err)
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
 	require.Contains(t, panicErr.Error(), "unmarshal to types.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{}
-	db.Set(calcBlockMetaKey(height), cdc.MustMarshalBinaryBare(meta))
+	err = db.Set(calcBlockMetaKey(height), cdc.MustMarshalBinaryBare(meta))
+	require.NoError(t, err)
 	gotMeta, _, panicErr := doFn(loadMeta)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved blockMeta should return a proper blocMeta ")

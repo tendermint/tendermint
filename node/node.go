@@ -26,9 +26,9 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -63,7 +63,7 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
+	dbType := dbm.BackendType(ctx.Config.DBBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
@@ -80,8 +80,8 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 	}
 }
 
-// NodeProvider takes a config and a logger and returns a ready to go Node.
-type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
+// Provider takes a config and a logger and returns a ready to go Node.
+type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
@@ -100,7 +100,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
 		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
 		if err != nil {
-			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPrivVal, err)
 		}
 		logger.Info("Upgrading PrivValidator file",
 			"old", oldPrivVal,
@@ -170,7 +170,7 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 // Node is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
 type Node struct {
-	cmn.BaseService
+	service.BaseService
 
 	// config
 	config        *cfg.Config
@@ -192,12 +192,12 @@ type Node struct {
 	bcReactor        p2p.Reactor       // for fast-syncing
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
-	consensusState   *cs.ConsensusState     // latest consensus state
-	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
-	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
-	evidencePool     *evidence.EvidencePool // tracking evidence
-	proxyApp         proxy.AppConns         // connection to the application
-	rpcListeners     []net.Listener         // rpc servers
+	consensusState   *cs.State      // latest consensus state
+	consensusReactor *cs.Reactor    // for participating in the consensus
+	pexReactor       *pex.Reactor   // for exchanging peer addresses
+	evidencePool     *evidence.Pool // tracking evidence
+	proxyApp         proxy.AppConns // connection to the application
+	rpcListeners     []net.Listener // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
 	prometheusSrv    *http.Server
@@ -248,10 +248,10 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 			return nil, nil, err
 		}
 		switch {
-		case config.TxIndex.IndexTags != "":
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		case config.TxIndex.IndexAllTags:
-			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
+		case config.TxIndex.IndexKeys != "":
+			txIndexer = kv.NewTxIndex(store, kv.IndexEvents(splitAndTrimEmpty(config.TxIndex.IndexKeys, ",", " ")))
+		case config.TxIndex.IndexAllKeys:
+			txIndexer = kv.NewTxIndex(store, kv.IndexAllEvents())
 		default:
 			txIndexer = kv.NewTxIndex(store)
 		}
@@ -267,8 +267,14 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus types.BlockEventPublisher, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
+func doHandshake(
+	stateDB dbm.DB,
+	state sm.State,
+	blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc,
+	eventBus types.BlockEventPublisher,
+	proxyApp proxy.AppConns,
+	consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -334,16 +340,16 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
+	stateDB dbm.DB, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
+	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
-	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
+	evidenceReactor := evidence.NewReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
 }
@@ -375,14 +381,14 @@ func createConsensusReactor(config *cfg.Config,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mempool *mempl.CListMempool,
-	evidencePool *evidence.EvidencePool,
+	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
 	fastSync bool,
 	eventBus *types.EventBus,
-	consensusLogger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
+	consensusLogger log.Logger) (*consensus.Reactor, *consensus.State) {
 
-	consensusState := cs.NewConsensusState(
+	consensusState := cs.NewState(
 		config.Consensus,
 		state.Copy(),
 		blockExec,
@@ -395,7 +401,7 @@ func createConsensusReactor(config *cfg.Config,
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
@@ -403,7 +409,15 @@ func createConsensusReactor(config *cfg.Config,
 	return consensusReactor, consensusState
 }
 
-func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
+func createTransport(
+	config *cfg.Config,
+	nodeInfo p2p.NodeInfo,
+	nodeKey *p2p.NodeKey,
+	proxyApp proxy.AppConns,
+) (
+	*p2p.MultiplexTransport,
+	[]p2p.PeerFilterFunc,
+) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -465,8 +479,8 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
-	consensusReactor *consensus.ConsensusReactor,
-	evidenceReactor *evidence.EvidenceReactor,
+	consensusReactor *consensus.Reactor,
+	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -518,11 +532,11 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
-	sw *p2p.Switch, logger log.Logger) *pex.PEXReactor {
+	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	// TODO persistent peers ? so we can have their DNS addrs saved
-	pexReactor := pex.NewPEXReactor(addrBook,
-		&pex.PEXReactorConfig{
+	pexReactor := pex.NewReactor(addrBook,
+		&pex.ReactorConfig{
 			Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 			SeedMode: config.P2P.SeedMode,
 			// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
@@ -530,7 +544,8 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 			// TODO (melekes): make it dynamic based on the actual block latencies
 			// from the live network.
 			// https://github.com/tendermint/tendermint/issues/3523
-			SeedDisconnectWaitPeriod: 28 * time.Hour,
+			SeedDisconnectWaitPeriod:     28 * time.Hour,
+			PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
 		})
 	pexReactor.SetLogger(logger.With("module", "pex"))
 	sw.AddReactor("PEX", pexReactor)
@@ -666,6 +681,11 @@ func NewNode(config *cfg.Config,
 		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
 	}
 
+	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not add peer ids from unconditional_peer_ids field")
+	}
+
 	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create addrbook")
@@ -683,7 +703,7 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	var pexReactor *pex.PEXReactor
+	var pexReactor *pex.Reactor
 	if config.P2P.PexReactor {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
@@ -719,7 +739,7 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
 	}
-	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	for _, option := range options {
 		option(node)
@@ -728,7 +748,7 @@ func NewNode(config *cfg.Config,
 	return node, nil
 }
 
-// OnStart starts the Node. It implements cmn.Service.
+// OnStart starts the Node. It implements service.Service.
 func (n *Node) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
@@ -785,7 +805,7 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
-// OnStop stops the Node. It implements cmn.Service.
+// OnStop stops the Node. It implements service.Service.
 func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
@@ -817,7 +837,7 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(cmn.Service); ok {
+	if pvsc, ok := n.privValidator.(service.Service); ok {
 		pvsc.Stop()
 	}
 
@@ -931,7 +951,16 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
+		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
+		// If necessary adjust global WriteTimeout to ensure it's greater than
+		// TimeoutBroadcastTxCommit.
+		// See https://github.com/tendermint/tendermint/issues/3435
+		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		}
 		listener, err := rpcserver.Listen(grpcListenAddr, config)
 		if err != nil {
 			return nil, err
@@ -975,12 +1004,12 @@ func (n *Node) BlockStore() *store.BlockStore {
 }
 
 // ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.ConsensusState {
+func (n *Node) ConsensusState() *cs.State {
 	return n.consensusState
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
+func (n *Node) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
@@ -995,12 +1024,12 @@ func (n *Node) Mempool() mempl.Mempool {
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *Node) PEXReactor() *pex.PEXReactor {
+func (n *Node) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
 // EvidencePool returns the Node's EvidencePool.
-func (n *Node) EvidencePool() *evidence.EvidencePool {
+func (n *Node) EvidencePool() *evidence.Pool {
 	return n.evidencePool
 }
 
@@ -1077,9 +1106,9 @@ func makeNodeInfo(
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
-		ID_:     nodeKey.ID(),
-		Network: genDoc.ChainID,
-		Version: version.TMCoreSemVer,
+		DefaultNodeID: nodeKey.ID(),
+		Network:       genDoc.ChainID,
+		Version:       version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
@@ -1119,7 +1148,10 @@ var (
 // database, or creates one using the given genesisDocProvider and persists the
 // result to the database. On success this also returns the genesis doc loaded
 // through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+func LoadStateFromDBOrGenesisDocProvider(
+	stateDB dbm.DB,
+	genesisDocProvider GenesisDocProvider,
+) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
@@ -1140,12 +1172,15 @@ func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider Gene
 
 // panics if failed to unmarshal bytes
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
-	b := db.Get(genesisDocKey)
+	b, err := db.Get(genesisDocKey)
+	if err != nil {
+		panic(err)
+	}
 	if len(b) == 0 {
-		return nil, errors.New("Genesis doc not found")
+		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
-	err := cdc.UnmarshalJSON(b, &genDoc)
+	err = cdc.UnmarshalJSON(b, &genDoc)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
 	}

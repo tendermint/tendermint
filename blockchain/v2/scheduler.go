@@ -59,11 +59,11 @@ type scSchedulerFail struct {
 type blockState int
 
 const (
-	blockStateUnknown blockState = iota
-	blockStateNew
-	blockStatePending
-	blockStateReceived
-	blockStateProcessed
+	blockStateUnknown   blockState = iota + 1 // no known peer has this block
+	blockStateNew                             // indicates that a peer has reported having this block
+	blockStatePending                         // indicates that this block has been requested from a peer
+	blockStateReceived                        // indicates that this block has been received by a peer
+	blockStateProcessed                       // indicates that this block has been applied
 )
 
 func (e blockState) String() string {
@@ -79,14 +79,14 @@ func (e blockState) String() string {
 	case blockStateProcessed:
 		return "Processed"
 	default:
-		return fmt.Sprintf("unknown blockState: %d", e)
+		return fmt.Sprintf("invalid blockState: %d", e)
 	}
 }
 
 type peerState int
 
 const (
-	peerStateNew = iota
+	peerStateNew = iota + 1
 	peerStateReady
 	peerStateRemoved
 )
@@ -100,7 +100,7 @@ func (e peerState) String() string {
 	case peerStateRemoved:
 		return "Removed"
 	default:
-		return fmt.Sprintf("unknown peerState: %d", e)
+		panic(fmt.Sprintf("unknown peerState: %d", e))
 	}
 }
 
@@ -113,7 +113,7 @@ type scPeer struct {
 
 	height      int64 // updated when statusResponse is received
 	lastTouched time.Time
-	lastRate    int64 // updated when blockResponse is received
+	lastRate    int64 // last receive rate in bytes
 }
 
 func (p scPeer) String() string {
@@ -254,7 +254,7 @@ func (sc *scheduler) removePeer(peerID p2p.ID) error {
 		}
 	}
 	for h := range sc.blockStates {
-		if maxPeerHeight < h {
+		if h > maxPeerHeight {
 			delete(sc.blockStates, h)
 		}
 	}
@@ -312,7 +312,7 @@ func (sc *scheduler) getStateAtHeight(height int64) blockState {
 	}
 }
 
-func (sc *scheduler) getPeersAtHeight(height int64) []p2p.ID {
+func (sc *scheduler) getPeersAtHeightOrAbove(height int64) []p2p.ID {
 	peers := make([]p2p.ID, 0)
 	for _, peer := range sc.peers {
 		if peer.state != peerStateReady {
@@ -463,13 +463,13 @@ func (sc *scheduler) pendingFrom(peerID p2p.ID) []int64 {
 }
 
 func (sc *scheduler) selectPeer(height int64) (p2p.ID, error) {
-	peers := sc.getPeersAtHeight(height)
+	peers := sc.getPeersAtHeightOrAbove(height)
 	if len(peers) == 0 {
 		return "", fmt.Errorf("cannot find peer for height %d", height)
 	}
 
 	// create a map from number of pending requests to a list
-	// of peers having that number of pending requests
+	// of peers having that number of pending requests.
 	pendingFrom := make(map[int][]p2p.ID)
 	for _, peerID := range peers {
 		numPending := len(sc.pendingFrom(peerID))

@@ -5,7 +5,7 @@ var (
 	GitCommit string
 
 	// Version is the built softwares version.
-	Version string = TMCoreSemVer
+	Version = TMCoreSemVer
 )
 
 func init() {
@@ -20,7 +20,7 @@ const (
 	// Must be a string because scripts like dist.sh read this file.
 	// XXX: Don't change the name of this variable or you will break
 	// automation :)
-	TMCoreSemVer = "0.32.6"
+	TMCoreSemVer = "0.32.8"
 
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer  = "0.16.1"

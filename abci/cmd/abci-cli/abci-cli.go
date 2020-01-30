@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -111,16 +111,28 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:26658", "address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress,
+		"address",
+		"",
+		"tcp://0.0.0.0:26658",
+		"address of application socket")
 	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose,
+		"verbose",
+		"v",
+		false,
+		"print the command and results as if it were a console session")
 	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
 func addQueryFlags() {
 	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
 	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve,
+		"prove",
+		"",
+		false,
+		"whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {
@@ -298,14 +310,14 @@ func persistentArgs(line []byte) []string {
 func compose(fs []func() error) error {
 	if len(fs) == 0 {
 		return nil
-	} else {
-		err := fs[0]()
-		if err == nil {
-			return compose(fs[1:])
-		} else {
-			return err
-		}
 	}
+
+	err := fs[0]()
+	if err == nil {
+		return compose(fs[1:])
+	}
+
+	return err
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
@@ -338,7 +350,7 @@ LOOP:
 		line, more, err := bufReader.ReadLine()
 		switch {
 		case more:
-			return errors.New("Input line is too long")
+			return errors.New("input line is too long")
 		case err == io.EOF:
 			break LOOP
 		case len(line) == 0:
@@ -362,7 +374,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			return errors.New("Input is too long")
+			return errors.New("input is too long")
 		} else if err != nil {
 			return err
 		}
@@ -614,7 +626,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
-	app := counter.NewCounterApplication(flagSerial)
+	app := counter.NewApplication(flagSerial)
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
@@ -628,7 +640,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -643,7 +655,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = kvstore.NewKVStoreApplication()
+		app = kvstore.NewApplication()
 	} else {
 		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
 		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
@@ -660,7 +672,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -718,14 +730,14 @@ func stringOrHexToBytes(s string) ([]byte, error) {
 	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
-			err = fmt.Errorf("Error decoding hex argument: %s", err.Error())
+			err = fmt.Errorf("error decoding hex argument: %s", err.Error())
 			return nil, err
 		}
 		return b, nil
 	}
 
 	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
-		err := fmt.Errorf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
+		err := fmt.Errorf("invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
 		return nil, err
 	}
 
