@@ -50,10 +50,17 @@ var (
 )
 
 func init() {
-	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888", "Serve the proxy on the given address")
-	LiteCmd.Flags().StringVar(&primaryAddr, "primary", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
-	LiteCmd.Flags().StringVar(&witnessesAddrs, "witnesses", "", "Tendermint nodes to cross-check the primary node, comma-separated")
+	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
+		"Serve the proxy on the given address")
+
+	LiteCmd.Flags().StringVar(&primaryAddr, "primary", "tcp://localhost:26657",
+		"Connect to a Tendermint node at this address")
+
+	LiteCmd.Flags().StringVar(&witnessesAddrs, "witnesses", "",
+		"Tendermint nodes to cross-check the primary node, comma-separated")
+
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
+
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
 	LiteCmd.Flags().IntVar(
 		&maxOpenConnections,
@@ -61,8 +68,11 @@ func init() {
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
 
-	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour, "Trusting period. Should be significantly less than the unbonding period")
+	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
+		"Trusting period. Should be significantly less than the unbonding period")
+
 	LiteCmd.Flags().Int64Var(&trustedHeight, "trusted-height", 1, "Trusted header's height")
+
 	LiteCmd.Flags().BytesHexVar(&trustedHash, "trusted-hash", []byte{}, "Trusted header's hash")
 }
 
@@ -77,13 +87,14 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	primary := httpp.NewWithClient(chainID, rpcClient)
 
 	logger.Info("Connecting to the witness nodes...")
-	var witnesses []provider.Provider
-	for _, addr := range strings.Split(witnessesAddrs, ",") {
+	addrs := strings.Split(witnessesAddrs, ",")
+	witnesses := make([]provider.Provider, len(addrs))
+	for i, addr := range addrs {
 		p, err := httpp.New(chainID, addr)
 		if err != nil {
 			return errors.Wrapf(err, "http provider for %s", addr)
 		}
-		witnesses = append(witnesses, p)
+		witnesses[i] = p
 	}
 
 	logger.Info("Creating client...")
