@@ -2,6 +2,7 @@ package commands
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,6 +13,7 @@ import (
 
 	tmos "github.com/tendermint/tendermint/libs/os"
 	lite "github.com/tendermint/tendermint/lite2"
+	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	lproxy "github.com/tendermint/tendermint/lite2/proxy"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
@@ -36,9 +38,10 @@ just with added trust and running locally.`,
 
 var (
 	listenAddr         string
-	nodeAddr           string
+	primaryAddr        string
 	chainID            string
 	home               string
+	witnessesAddrs     string
 	maxOpenConnections int
 
 	trustingPeriod time.Duration
@@ -48,7 +51,8 @@ var (
 
 func init() {
 	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888", "Serve the proxy on the given address")
-	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
+	LiteCmd.Flags().StringVar(&primaryAddr, "primary", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
+	LiteCmd.Flags().StringVar(&witnessesAddrs, "witnesses", "", "Tendermint nodes to cross-check the primary node, comma-separated")
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
 	LiteCmd.Flags().IntVar(
@@ -65,11 +69,21 @@ func init() {
 func runProxy(cmd *cobra.Command, args []string) error {
 	liteLogger := logger.With("module", "lite")
 
-	logger.Info("Connecting to Tendermint node...")
-	// First, connect a client
-	node, err := rpcclient.NewHTTP(nodeAddr, "/websocket")
+	logger.Info("Connecting to the primary node...")
+	rpcClient, err := rpcclient.NewHTTP(chainID, primaryAddr)
 	if err != nil {
-		return errors.Wrap(err, "new HTTP client")
+		return errors.Wrapf(err, "http client for %s", primaryAddr)
+	}
+	primary := httpp.NewWithClient(chainID, rpcClient)
+
+	logger.Info("Connecting to the witness nodes...")
+	var witnesses []provider.Provider
+	for _, addr := range strings.Split(witnessesAddrs, ",") {
+		p, err := httpp.New(chainID, addr)
+		if err != nil {
+			return errors.Wrapf(err, "http provider for %s", addr)
+		}
+		witnesses = append(witnesses, p)
 	}
 
 	logger.Info("Creating client...")
@@ -84,7 +98,8 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			Height: trustedHeight,
 			Hash:   trustedHash,
 		},
-		httpp.NewWithClient(chainID, node),
+		primary,
+		witnesses,
 		dbs.New(db, chainID),
 		lite.Logger(liteLogger),
 	)
@@ -96,7 +111,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		Addr:   listenAddr,
 		Config: &rpcserver.Config{MaxOpenConnections: maxOpenConnections},
 		Codec:  amino.NewCodec(),
-		Client: lrpc.NewClient(node, c),
+		Client: lrpc.NewClient(rpcClient, c),
 		Logger: liteLogger,
 	}
 	// Stop upon receiving SIGTERM or CTRL-C.
