@@ -52,7 +52,7 @@ const (
 
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
-	maxAttempts                               = 5
+	maxRetryAttempts                          = 10
 )
 
 // Option sets a parameter for the light client.
@@ -876,7 +876,7 @@ func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 	if len(c.witnesses) == 0 {
-		return errors.Errorf("no witnesses left.")
+		return errors.Errorf("no witnesses left")
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
@@ -887,14 +887,14 @@ func (c *Client) replacePrimaryProvider() error {
 // signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
 // Handles dropout by the primary provider by swapping with an alternative provider
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
 		if err == nil || err == provider.ErrSignedHeaderNotFound {
 			return h, err
 		}
-		time.Sleep(backoffAndJitterTime(attempt+1, 1, 5))
+		time.Sleep(time.Duration(1<<attempt)*time.Second + time.Duration(rand.Intn(1000))*time.Millisecond)
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
@@ -908,14 +908,14 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
 // Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return h, err
 		}
-		time.Sleep(backoffAndJitterTime(attempt+1, 1, 5))
+		time.Sleep(time.Duration(1<<attempt)*time.Second + time.Duration(rand.Intn(1000))*time.Millisecond)
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
@@ -931,14 +931,14 @@ func backoffAndJitterTime(attempt, backOffBase, jitter int) time.Duration {
 	return time.Duration((backOffBase*attempt*attempt)+rand.Intn(jitter)) * time.Second
 }
 
-// Primary returns the primary provider for the lite client
+// Primary returns the primary provider.
 func (c *Client) Primary() provider.Provider {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 	return c.primary
 }
 
-// Witnesses returns the witness providers for the lite client
+// Witnesses returns the witness providers.
 func (c *Client) Witnesses() []provider.Provider {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
