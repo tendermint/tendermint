@@ -53,7 +53,8 @@ const (
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
 	maxAttempts                               = 5
-	backOffBase                               = 1000
+	backOffBase                               = 1
+	jitter                                    = 5
 )
 
 // Option sets a parameter for the light client.
@@ -200,6 +201,8 @@ func NewClient(
 		quit:                               make(chan struct{}),
 		logger:                             log.NewNopLogger(),
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	for _, o := range options {
 		o(c)
@@ -927,8 +930,7 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 
 // generates a backoff time between operations that is calculated as a random duration between 0 and a set cap
 func backoffAndJitterTime(attempt int) time.Duration {
-	rand.Seed(time.Now().UnixNano())
-	return time.Duration(rand.Intn(backOffBase*attempt*attempt)) * time.Second
+	return time.Duration((backOffBase*attempt*attempt)+rand.Intn(jitter)) * time.Second
 }
 
 // Primary returns the primary provider for the lite client
