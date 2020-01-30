@@ -948,7 +948,16 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
+		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
+		// If necessary adjust global WriteTimeout to ensure it's greater than
+		// TimeoutBroadcastTxCommit.
+		// See https://github.com/tendermint/tendermint/issues/3435
+		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		}
 		listener, err := rpcserver.Listen(grpcListenAddr, config)
 		if err != nil {
 			return nil, err
@@ -1158,12 +1167,15 @@ func LoadStateFromDBOrGenesisDocProvider(
 
 // panics if failed to unmarshal bytes
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
-	b := db.Get(genesisDocKey)
+	b, err := db.Get(genesisDocKey)
+	if err != nil {
+		panic(err)
+	}
 	if len(b) == 0 {
 		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
-	err := cdc.UnmarshalJSON(b, &genDoc)
+	err = cdc.UnmarshalJSON(b, &genDoc)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
 	}

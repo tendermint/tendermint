@@ -58,7 +58,10 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	if err != nil {
+		return errors.Wrap(err, "failed to create new http client")
+	}
 
 	home := viper.GetString(cli.HomeFlag)
 	conf := cfg.DefaultConfig()

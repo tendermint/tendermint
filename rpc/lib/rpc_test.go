@@ -28,7 +28,7 @@ import (
 
 // Client and Server should work over tcp or unix sockets
 const (
-	tcpAddr = "tcp://0.0.0.0:47768"
+	tcpAddr = "tcp://127.0.0.1:47768"
 
 	unixSocket = "/tmp/rpc_test.sock"
 	unixAddr   = "unix://" + unixSocket
@@ -274,17 +274,20 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 func TestServersAndClientsBasic(t *testing.T) {
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
-		cl1 := client.NewURIClient(addr)
+		cl1, err := client.NewURIClient(addr)
+		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using URI client", addr)
 		testWithHTTPClient(t, cl1)
 
-		cl2 := client.NewJSONRPCClient(addr)
+		cl2, err := client.NewJSONRPCClient(addr)
+		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 		testWithHTTPClient(t, cl2)
 
-		cl3 := client.NewWSClient(addr, websocketEndpoint)
+		cl3, err := client.NewWSClient(addr, websocketEndpoint)
+		require.Nil(t, err)
 		cl3.SetLogger(log.TestingLogger())
-		err := cl3.Start()
+		err = cl3.Start()
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using WS client", addr)
 		testWithWSClient(t, cl3)
@@ -293,7 +296,8 @@ func TestServersAndClientsBasic(t *testing.T) {
 }
 
 func TestHexStringArg(t *testing.T) {
-	cl := client.NewURIClient(tcpAddr)
+	cl, err := client.NewURIClient(tcpAddr)
+	require.Nil(t, err)
 	// should NOT be handled as hex
 	val := "0xabc"
 	got, err := echoViaHTTP(cl, val)
@@ -302,7 +306,8 @@ func TestHexStringArg(t *testing.T) {
 }
 
 func TestQuotedStringArg(t *testing.T) {
-	cl := client.NewURIClient(tcpAddr)
+	cl, err := client.NewURIClient(tcpAddr)
+	require.Nil(t, err)
 	// should NOT be unquoted
 	val := "\"abc\""
 	got, err := echoViaHTTP(cl, val)
@@ -311,9 +316,10 @@ func TestQuotedStringArg(t *testing.T) {
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
-	err := cl.Start()
+	err = cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
 
@@ -336,9 +342,10 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 }
 
 func TestWSHandlesArrayParams(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
-	err := cl.Start()
+	err = cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
 
@@ -361,9 +368,10 @@ func TestWSHandlesArrayParams(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
-	err := cl.Start()
+	err = cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
 

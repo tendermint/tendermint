@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -23,8 +24,12 @@ type http struct {
 
 // New creates a HTTP provider, which is using the rpcclient.HTTP
 // client under the hood.
-func New(chainID, remote string) provider.Provider {
-	return NewWithClient(chainID, rpcclient.NewHTTP(remote, "/websocket"))
+func New(chainID, remote string) (provider.Provider, error) {
+	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	if err != nil {
+		return nil, err
+	}
+	return NewWithClient(chainID, httpClient), nil
 }
 
 // NewWithClient allows you to provide custom SignStatusClient.
@@ -35,10 +40,13 @@ func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
 	}
 }
 
+// ChainID returns a chainID this provider was configured with.
 func (p *http) ChainID() string {
 	return p.chainID
 }
 
+// SignedHeader fetches a SignedHeader at the given height and checks the
+// chainID matches.
 func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 	h, err := validateHeight(height)
 	if err != nil {
@@ -47,6 +55,10 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 	commit, err := p.client.Commit(h)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrSignedHeaderNotFound
+		}
 		return nil, err
 	}
 
@@ -58,6 +70,8 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 	return &commit.SignedHeader, nil
 }
 
+// ValidatorSet fetches a ValidatorSet at the given height. Multiple HTTP
+// requests might be required if the validator set size is over 100.
 func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	h, err := validateHeight(height)
 	if err != nil {
@@ -67,6 +81,10 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	const maxPerPage = 100
 	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrValidatorSetNotFound
+		}
 		return nil, err
 	}
 

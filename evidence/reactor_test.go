@@ -106,7 +106,7 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *Pool, valAddr []byte, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockGoodEvidence(int64(i+1), 0, valAddr)
+		ev := types.NewMockEvidence(int64(i+1), time.Now().UTC(), 0, valAddr)
 		err := evpool.AddEvidence(ev)
 		assert.Nil(t, err)
 		evList[i] = ev
@@ -215,7 +215,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 			valAddr := []byte("myval")
 			evListMsg.Evidence = make([]types.Evidence, n)
 			for i := 0; i < n; i++ {
-				evListMsg.Evidence[i] = types.NewMockGoodEvidence(int64(i+1), 0, valAddr)
+				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), 0, valAddr)
 			}
 			tc.malleateEvListMsg(evListMsg)
 			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")

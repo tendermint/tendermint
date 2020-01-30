@@ -44,7 +44,10 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	if err != nil {
+		return errors.Wrap(err, "failed to create new http client")
+	}
 
 	home := viper.GetString(cli.HomeFlag)
 	conf := cfg.DefaultConfig()
@@ -121,7 +124,10 @@ func killProc(pid uint64, dir string) error {
 	go func() {
 		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
 		// a goroutine stacktrace.
-		if err := syscall.Kill(int(pid), syscall.SIGABRT); err != nil {
+		p, err := os.FindProcess(os.Getpid())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
+		} else if err = p.Signal(syscall.SIGABRT); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process: %s", err)
 		}
 

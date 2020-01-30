@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -37,7 +38,8 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
-				MaxAge: 1000000,
+				MaxAgeNumBlocks: 10000,
+				MaxAgeDuration:  48 * time.Hour,
 			},
 		},
 	}
@@ -53,18 +55,22 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 
 func TestEvidencePool(t *testing.T) {
 
-	valAddr := []byte("val1")
-	height := int64(5)
-	stateDB := initializeValidatorState(valAddr, height)
-	evidenceDB := dbm.NewMemDB()
-	pool := NewPool(stateDB, evidenceDB)
+	var (
+		valAddr      = []byte("val1")
+		height       = int64(5)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		pool         = NewPool(stateDB, evidenceDB)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
 
-	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
-	badEvidence := types.MockBadEvidence{MockGoodEvidence: goodEvidence}
+	goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	badEvidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
 	assert.NotNil(t, err)
+	// err: evidence created at 2019-01-01 00:00:00 +0000 UTC has expired. Evidence can not be older than: ...
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -87,14 +93,17 @@ func TestEvidencePool(t *testing.T) {
 
 func TestEvidencePoolIsCommitted(t *testing.T) {
 	// Initialization:
-	valAddr := []byte("validator_address")
-	height := int64(42)
-	stateDB := initializeValidatorState(valAddr, height)
-	evidenceDB := dbm.NewMemDB()
-	pool := NewPool(stateDB, evidenceDB)
+	var (
+		valAddr       = []byte("validator_address")
+		height        = int64(42)
+		lastBlockTime = time.Now()
+		stateDB       = initializeValidatorState(valAddr, height)
+		evidenceDB    = dbm.NewMemDB()
+		pool          = NewPool(stateDB, evidenceDB)
+	)
 
 	// evidence not seen yet:
-	evidence := types.NewMockGoodEvidence(height, 0, valAddr)
+	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
@@ -102,6 +111,40 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, []types.Evidence{evidence})
+	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
 	assert.True(t, pool.IsCommitted(evidence))
+}
+
+func TestAddEvidence(t *testing.T) {
+
+	var (
+		valAddr      = []byte("val1")
+		height       = int64(100002)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		pool         = NewPool(stateDB, evidenceDB)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	testCases := []struct {
+		evHeight      int64
+		evTime        time.Time
+		expErr        bool
+		evDescription string
+	}{
+		{height, time.Now(), false, "valid evidence"},
+		{height, evidenceTime, true, "evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
+		{int64(1), time.Now(), true, "evidence from height 1 is too old"},
+		{int64(1), evidenceTime, true,
+			"evidence from height 1 is too old & evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
+		err := pool.AddEvidence(ev)
+		if tc.expErr {
+			assert.Error(t, err)
+		}
+	}
 }

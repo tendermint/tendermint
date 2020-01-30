@@ -160,8 +160,9 @@ func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(c.ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-	return core.TxSearch(c.ctx, query, prove, page, perPage)
+func (c *Local) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+	*ctypes.ResultTxSearch, error) {
+	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
@@ -177,14 +178,20 @@ func (c *Local) Subscribe(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
-	sub, err := c.EventBus.Subscribe(ctx, subscriber, q)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
-	}
 
 	outCap := 1
 	if len(outCapacity) > 0 {
 		outCap = outCapacity[0]
+	}
+
+	var sub types.Subscription
+	if outCap > 0 {
+		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
+	} else {
+		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to subscribe")
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)

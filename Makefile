@@ -1,9 +1,3 @@
-GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/square/certstrap
-GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
@@ -47,7 +41,7 @@ protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 	## See https://stackoverflow.com/a/25518702
 	## Note the $< here is substituted for the %.proto
 	## Note the $@ here is substituted for the %.pb.go
-	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
+	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc:../../..
 
 ########################################
 ### Build ABCI

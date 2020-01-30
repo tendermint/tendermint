@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -62,13 +61,16 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, txindex.ErrorEmptyHash
 	}
 
-	rawBytes := txi.store.Get(hash)
+	rawBytes, err := txi.store.Get(hash)
+	if err != nil {
+		panic(err)
+	}
 	if rawBytes == nil {
 		return nil, nil
 	}
 
 	txResult := new(types.TxResult)
-	err := cdc.UnmarshalBinaryBare(rawBytes, &txResult)
+	err = cdc.UnmarshalBinaryBare(rawBytes, &txResult)
 	if err != nil {
 		return nil, fmt.Errorf("error reading TxResult: %v", err)
 	}
@@ -157,12 +159,14 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 	}
 }
 
-// Search performs a search using the given query. It breaks the query into
-// conditions (like "tx.height > 5"). For each condition, it queries the DB
-// index. One special use cases here: (1) if "tx.hash" is found, it returns tx
-// result for it (2) for range queries it is better for the client to provide
-// both lower and upper bounds, so we are not performing a full scan. Results
-// from querying indexes are then intersected and returned to the caller.
+// Search performs a search using the given query.
+//
+// It breaks the query into conditions (like "tx.height > 5"). For each
+// condition, it queries the DB index. One special use cases here: (1) if
+// "tx.hash" is found, it returns tx result for it (2) for range queries it is
+// better for the client to provide both lower and upper bounds, so we are not
+// performing a full scan. Results from querying indexes are then intersected
+// and returned to the caller, in no particular order.
 func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	var hashesInitialized bool
 	filteredHashes := make(map[string][]byte)
@@ -246,14 +250,6 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 		results = append(results, res)
 	}
-
-	// sort by height & index by default
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].Height == results[j].Height {
-			return results[i].Index < results[j].Index
-		}
-		return results[i].Height < results[j].Height
-	})
 
 	return results, nil
 }
@@ -393,7 +389,10 @@ func (txi *TxIndex) match(
 
 	switch {
 	case c.Op == query.OpEqual:
-		it := dbm.IteratePrefix(txi.store, startKeyBz)
+		it, err := dbm.IteratePrefix(txi.store, startKeyBz)
+		if err != nil {
+			panic(err)
+		}
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
@@ -404,7 +403,10 @@ func (txi *TxIndex) match(
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
-		it := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
+		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
+		if err != nil {
+			panic(err)
+		}
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
@@ -463,7 +465,10 @@ func (txi *TxIndex) matchRange(
 	lowerBound := r.lowerBoundValue()
 	upperBound := r.upperBoundValue()
 
-	it := dbm.IteratePrefix(txi.store, startKey)
+	it, err := dbm.IteratePrefix(txi.store, startKey)
+	if err != nil {
+		panic(err)
+	}
 	defer it.Close()
 
 LOOP:

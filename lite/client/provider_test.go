@@ -35,8 +35,9 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p := NewHTTPProvider(chainID, rpcAddr)
-	require.NotNil(t, p)
+	p, err := NewHTTPProvider(chainID, rpcAddr)
+	require.Nil(err)
+	require.NotNil(p)
 
 	// let it produce some blocks
 	err = rpcclient.WaitForHeight(p.(*provider).client, 6, nil)

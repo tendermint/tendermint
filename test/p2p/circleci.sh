@@ -6,6 +6,17 @@ SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
+# Enable IPv6 support in Docker daemon
+echo
+echo "* [$(date +"%T")] enabling IPv6 stack in Docker daemon"
+cat <<'EOF' | sudo tee /etc/docker/daemon.json
+{
+  "ipv6": true,
+  "fixed-cidr-v6": "2001:db8:1::/64"
+}
+EOF
+sudo service docker restart
+
 LOGS_DIR="$DIR/logs"
 echo
 echo "* [$(date +"%T")] cleaning up $LOGS_DIR"
@@ -33,6 +44,10 @@ fi
 echo
 echo "* [$(date +"%T")] running p2p tests on a local docker network"
 bash "$DIR/../p2p/test.sh" tester
+
+echo
+echo "* [$(date +"%T")] running IPv6 p2p tests on a local docker network"
+bash "$DIR/../p2p/test.sh" tester 6
 
 echo
 echo "* [$(date +"%T")] copying log files out of docker container into $LOGS_DIR"

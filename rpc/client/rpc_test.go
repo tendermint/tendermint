@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,10 @@ import (
 
 func getHTTPClient() *client.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 	c.SetLogger(log.TestingLogger())
 	return c
 }
@@ -48,16 +52,17 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+		_, _ = client.NewHTTPWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
-		rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
 	})
 }
 
 func TestCustomHTTPClient(t *testing.T) {
 	remote := rpctest.GetConfig().RPC.ListenAddress
-	c := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	c, err := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	require.Nil(t, err)
 	status, err := c.Status()
 	require.NoError(t, err)
 	require.NotNil(t, status)
@@ -413,7 +418,7 @@ func TestTxSearch(t *testing.T) {
 	c := getHTTPClient()
 	_, _, tx := MakeTxKV()
 	bres, err := c.BroadcastTxCommit(tx)
-	require.Nil(t, err, "%+v", err)
+	require.Nil(t, err)
 
 	txHeight := bres.Height
 	txHash := bres.Hash
@@ -425,8 +430,8 @@ func TestTxSearch(t *testing.T) {
 
 		// now we query for the tx.
 		// since there's only one tx, we know index=0.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		ptx := result.Txs[0]
@@ -443,33 +448,53 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
-		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
+		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30, "asc")
+		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query a non existing tx with page 1 and txsPerPage 1
-		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
+
+		// broadcast another transaction to make sure we have at least two.
+		_, _, tx2 := MakeTxKV()
+		_, err = c.BroadcastTxCommit(tx2)
+		require.Nil(t, err)
+
+		// chech sorting
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "asc")
+		require.Nil(t, err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
+		}
+
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "desc")
+		require.Nil(t, err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
+		}
 	}
 }
 
@@ -480,6 +505,7 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 		Height:           vote.Height,
 		Round:            vote.Round,
 		Type:             vote.Type,
+		Timestamp:        vote.Timestamp,
 		BlockID: types.BlockID{
 			Hash:        make([]byte, len(vote.BlockID.Hash)),
 			PartsHeader: vote.BlockID.PartsHeader,
@@ -518,6 +544,7 @@ func makeEvidences(
 		Height:           1,
 		Round:            0,
 		Type:             types.PrevoteType,
+		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
 			PartsHeader: types.PartSetHeader{
@@ -580,7 +607,6 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 
 	ev, fakes := makeEvidences(t, pv, chainID)
-
 	t.Logf("evidence %v", ev)
 
 	for i, c := range GetClients() {
