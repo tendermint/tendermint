@@ -926,11 +926,6 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 
 }
 
-// generates a backoff time between operations that is calculated as a random duration between 0 and a set cap
-func backoffAndJitterTime(attempt, backOffBase, jitter int) time.Duration {
-	return time.Duration((backOffBase*attempt*attempt)+rand.Intn(jitter)) * time.Second
-}
-
 // Primary returns the primary provider.
 func (c *Client) Primary() provider.Provider {
 	c.providerMutex.Lock()
