@@ -53,8 +53,6 @@ const (
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
 	maxAttempts                               = 5
-	backOffBase                               = 1
-	jitter                                    = 5
 )
 
 // Option sets a parameter for the light client.
@@ -896,7 +894,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == nil || err == provider.ErrSignedHeaderNotFound {
 			return h, err
 		}
-		time.Sleep(backoffAndJitterTime(attempt + 1))
+		time.Sleep(backoffAndJitterTime(attempt+1, 1, 5))
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
@@ -917,7 +915,7 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return h, err
 		}
-		time.Sleep(backoffAndJitterTime(attempt + 1))
+		time.Sleep(backoffAndJitterTime(attempt+1, 1, 5))
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
@@ -929,7 +927,7 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 }
 
 // generates a backoff time between operations that is calculated as a random duration between 0 and a set cap
-func backoffAndJitterTime(attempt int) time.Duration {
+func backoffAndJitterTime(attempt, backOffBase, jitter int) time.Duration {
 	return time.Duration((backOffBase*attempt*attempt)+rand.Intn(jitter)) * time.Second
 }
 
