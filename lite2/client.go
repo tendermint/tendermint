@@ -853,3 +853,20 @@ func (c *Client) Update(now time.Time) error {
 
 	return nil
 }
+
+func (c *Client) previousTrustedHeight(height int64) (int64, error) {
+	FirstTrustedHeight, err := c.FirstTrustedHeight()
+	if err != nil {
+		return -1, err
+	}
+	if height < FirstTrustedHeight {
+		return -1, errors.New("height is less than first trusted height.")
+	}
+	for i := height - 1; i > FirstTrustedHeight; i-- {
+		previousTrustedHeader, err := c.trustedStore.SignedHeader(i)
+		if err == nil {
+			return previousTrustedHeader.Height, nil
+		}
+	}
+	return FirstTrustedHeight, nil
+}
