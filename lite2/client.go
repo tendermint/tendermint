@@ -530,11 +530,9 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if len(c.witnesses) > 0 {
-		if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
-			c.logger.Error("Error when comparing new header with one from a witness", "err", err)
-			return err
-		}
+	if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
+		c.logger.Error("Error when comparing new header with one from a witness", "err", err)
+		return err
 	}
 
 	var err error
@@ -740,6 +738,10 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 
 // compare header with one from a random witness.
 func (c *Client) compareNewHeaderWithRandomWitness(h *types.SignedHeader) error {
+	if len(c.witnesses) == 0 {
+		return errors.New("could not find any witnesses")
+	}
+
 	// 1. Pick a witness.
 	witness := c.witnesses[tmrand.Intn(len(c.witnesses))]
 
