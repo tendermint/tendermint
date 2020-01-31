@@ -1,11 +1,11 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
@@ -38,20 +38,21 @@ func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet
 		panic("negative or zero height")
 	}
 
-	// TODO: batch
-	bz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
+	shBz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "marshalling header")
 	}
-	s.db.Set(s.shKey(sh.Height), bz)
-
-	bz, err = s.cdc.MarshalBinaryLengthPrefixed(valSet)
+	valSetBz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "marshalling validator set")
 	}
-	s.db.Set(s.vsKey(sh.Height+1), bz)
 
-	return nil
+	b := s.db.NewBatch()
+	b.Set(s.shKey(sh.Height), shBz)
+	b.Set(s.vsKey(sh.Height+1), valSetBz)
+	err = b.WriteSync()
+	b.Close()
+	return err
 }
 
 // DeleteSignedHeaderAndNextValidatorSet deletes SignedHeader and ValidatorSet
@@ -61,11 +62,12 @@ func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 		panic("negative or zero height")
 	}
 
-	// TODO: batch
-	s.db.Delete(s.shKey(height))
-	s.db.Delete(s.vsKey(height + 1))
-
-	return nil
+	b := s.db.NewBatch()
+	b.Delete(s.shKey(height))
+	b.Delete(s.vsKey(height + 1))
+	err := b.WriteSync()
+	b.Close()
+	return err
 }
 
 // SignedHeader loads SignedHeader at the given height.

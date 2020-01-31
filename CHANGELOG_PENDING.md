@@ -24,6 +24,5 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [rpc] [#\4319] Check BlockMeta is not nil in Blocks & BlockByHash
-
-
+- [node] [#\4311] Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
+- [rpc] [#\4319] Check `BlockMeta` is not nil in `/block` & `/block_by_hash`
