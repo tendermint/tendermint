@@ -486,6 +486,9 @@ func (c *Client) updateMissingTrustedHeaderAndVals(height int64) (*types.SignedH
 		return nil, nil, err
 	}
 	newVals, err = c.primary.ValidatorSet(height)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// updates store if valid
 	err = c.sequence(newHeader, newVals, time.Now())
@@ -910,7 +913,7 @@ func (c *Client) previousTrustedHeight(height int64) (int64, error) {
 		return -1, err
 	}
 	if height < FirstTrustedHeight {
-		return -1, errors.New("height is less than first trusted height.")
+		return -1, errors.New("height is less than first trusted height")
 	}
 	for i := height - 1; i > FirstTrustedHeight; i-- {
 		previousTrustedHeader, err := c.trustedStore.SignedHeader(i)
