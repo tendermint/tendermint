@@ -196,10 +196,12 @@ func TestScAddPeer(t *testing.T) {
 			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}},
 		},
 		{
-			name:       "add second peer",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {height: -1}}},
-			args:       args{peerID: "P2"},
-			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1}, "P2": {height: -1}}},
+			name:   "add second peer",
+			fields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}},
+			args:   args{peerID: "P2"},
+			wantFields: scTestParams{peers: map[string]*scPeer{
+				"P1": {height: -1, state: peerStateNew},
+				"P2": {height: -1, state: peerStateNew}}},
 		},
 		{
 			name:       "attempt to add duplicate peer",

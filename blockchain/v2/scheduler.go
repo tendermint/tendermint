@@ -477,15 +477,15 @@ func (sc *scheduler) selectPeer(height int64) (p2p.ID, error) {
 	}
 
 	// find the set of peers with minimum number of pending requests.
-	minPending := math.MaxInt64
+	var minPending int64 = math.MaxInt64
 	for mp := range pendingFrom {
-		if mp < minPending {
-			minPending = mp
+		if int64(mp) < minPending {
+			minPending = int64(mp)
 		}
 	}
 
-	sort.Sort(PeerByID(pendingFrom[minPending]))
-	return pendingFrom[minPending][0], nil
+	sort.Sort(PeerByID(pendingFrom[int(minPending)]))
+	return pendingFrom[int(minPending)][0], nil
 }
 
 // PeerByID is a list of peers sorted by peerID.

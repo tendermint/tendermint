@@ -6,8 +6,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -23,7 +23,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"fmt"
 )
 
 /*
@@ -68,8 +67,8 @@ func (mp mockPeer) CloseConn() error   { return nil }
 
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 	return p2p.DefaultNodeInfo{
-		DefaultNodeID:        "",
-		ListenAddr: "",
+		DefaultNodeID: "",
+		ListenAddr:    "",
 	}
 }
 func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
@@ -501,7 +500,7 @@ func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower 
 }
 
 // Why are we importing the entire blockExecutor dependency graph here
-// when we have the facilities to 
+// when we have the facilities to
 func newReactorStore(
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
@@ -532,15 +531,21 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		fmt.Printf("adding block: %d\n", blockHeight)
-		lastCommit := types.NewCommit(blockHeight, int(0), types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-
-
-			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
-			lastCommit = types.NewCommit(lastBlock.Header.Height, int(0), lastBlockMeta.BlockID, []types.CommitSig{vote})
+			vote, err := types.MakeVote(
+				lastBlock.Header.Height,
+				lastBlockMeta.BlockID,
+				state.Validators,
+				privVals[0],
+				lastBlock.Header.ChainID)
+			if err != nil {
+				panic(err)
+			}
+			lastCommit = types.NewCommit(vote.Height, vote.Round,
+				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
