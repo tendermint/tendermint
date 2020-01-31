@@ -412,13 +412,22 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	if err != nil {
 		return nil, err
 	}
-	if height == 0 || height > latestHeight {
+	if latestHeight <= 0 {
+		return nil, errors.New("no headers exist")
+	}
+	if height == 0 {
 		height = latestHeight
 	}
 	h, err := c.trustedStore.SignedHeader(height)
 	if err == provider.ErrSignedHeaderNotFound {
 		//fetch header from primary and verify
-		h, _, err = c.fetchHeaderAndValsAtHeight(height)
+		h, _, err = c.updateMissingTrustedHeaderAndVals(height)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, err
 	}
 	if HeaderExpired(h, c.trustingPeriod, now) {
 		return nil, ErrOldHeaderExpired{h.Time.Add(c.trustingPeriod), now}
@@ -441,13 +450,49 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
-	// Checks height is positive and header is not expired.
+	// Checks height is positive and header is not expired and updates missing if expired.
 	_, err := c.TrustedHeader(height, now)
 	if err != nil {
 		return nil, err
 	}
 
 	return c.trustedStore.ValidatorSet(height)
+}
+
+// updateMissingTrustedHeaderAndVals finds the previous trusted height and then uses the sequence method to verify
+// all the headers at each height up to the inputted height.
+// If all are verified updates the store and returns the header and validator set.
+func (c *Client) updateMissingTrustedHeaderAndVals(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
+	var (
+		prevTrustedHeight int64
+		newHeader         *types.SignedHeader
+		newVals           *types.ValidatorSet
+		err               error
+	)
+	prevTrustedHeight, err = c.previousTrustedHeight(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.trustedHeader, err = c.trustedStore.SignedHeader(prevTrustedHeight)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.trustedNextVals, err = c.trustedStore.ValidatorSet(prevTrustedHeight)
+	if err != nil {
+		return nil, nil, err
+	}
+	newHeader, err = c.primary.SignedHeader(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	newVals, err = c.primary.ValidatorSet(height)
+
+	// updates store if valid
+	err = c.sequence(newHeader, newVals, time.Now())
+	if err != nil {
+		return nil, nil, err
+	}
+	return newHeader, newVals, nil
 }
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
