@@ -421,7 +421,7 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	h, err := c.trustedStore.SignedHeader(height)
 	if err == provider.ErrSignedHeaderNotFound {
 		//fetch header from primary and verify
-		h, _, err = c.updateMissingTrustedHeaderAndVals(height)
+		h, _, err = c.fetchMissingTrustedHeaderAndVals(height)
 		if err != nil {
 			return nil, err
 		}
@@ -461,8 +461,7 @@ func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.Valida
 
 // updateMissingTrustedHeaderAndVals finds the previous trusted height and then uses the sequence method to verify
 // all the headers at each height up to the inputted height.
-// If all are verified updates the store and returns the header and validator set.
-func (c *Client) updateMissingTrustedHeaderAndVals(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
+func (c *Client) fetchMissingTrustedHeaderAndVals(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
 	var (
 		prevTrustedHeight int64
 		newHeader         *types.SignedHeader
@@ -481,20 +480,28 @@ func (c *Client) updateMissingTrustedHeaderAndVals(height int64) (*types.SignedH
 	if err != nil {
 		return nil, nil, err
 	}
-	newHeader, err = c.primary.SignedHeader(height)
-	if err != nil {
-		return nil, nil, err
-	}
-	newVals, err = c.primary.ValidatorSet(height)
+	newHeader, newVals, err = c.fetchHeaderAndValsAtHeight(height)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// updates store if valid
-	err = c.sequence(newHeader, newVals, time.Now())
+	switch c.verificationMode {
+	case sequential:
+		err = c.sequence(newHeader, newVals, time.Now())
+	case skipping:
+		err = c.bisection(c.trustedHeader, c.trustedNextVals, newHeader, newVals, time.Now())
+	default:
+		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
+	}
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// try to save the requested trusted header to store
+	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(newHeader, newVals); err != nil {
+		return nil, nil, errors.Wrap(err, "failed to save trusted header")
+	}
+
 	return newHeader, newVals, nil
 }
 
@@ -908,18 +915,15 @@ func (c *Client) Update(now time.Time) error {
 }
 
 func (c *Client) previousTrustedHeight(height int64) (int64, error) {
-	FirstTrustedHeight, err := c.FirstTrustedHeight()
+	firstTrustedHeight, err := c.FirstTrustedHeight()
 	if err != nil {
 		return -1, err
 	}
-	if height < FirstTrustedHeight {
-		return -1, errors.New("height is less than first trusted height")
-	}
-	for i := height - 1; i > FirstTrustedHeight; i-- {
+	for i := height - 1; i > firstTrustedHeight; i-- {
 		previousTrustedHeader, err := c.trustedStore.SignedHeader(i)
 		if err == nil {
 			return previousTrustedHeader.Height, nil
 		}
 	}
-	return FirstTrustedHeight, nil
+	return firstTrustedHeight, nil
 }
