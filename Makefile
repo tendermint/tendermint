@@ -94,10 +94,6 @@ protoc_libs: libs/kv/types.pb.go
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
-	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
-	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
-	mv out/remotedb.crt libs/db/remotedb/test.crt
-	mv out/remotedb.key libs/db/remotedb/test.key
 	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
 	certstrap sign "server" --CA "tendermint.com" --passphrase ""
 	mv out/server.crt rpc/lib/server/test.crt
@@ -106,16 +102,8 @@ gen_certs: clean_certs
 
 # deletes generated certificates
 clean_certs:
-	rm -f libs/db/remotedb/test.crt
-	rm -f libs/db/remotedb/test.key
 	rm -f rpc/lib/server/test.crt
 	rm -f rpc/lib/server/test.key
-
-test_libs:
-	go test -tags clevedb boltdb $(PACKAGES)
-
-grpc_dbserver:
-	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
 
 protoc_grpc: rpc/grpc/types.pb.go
 

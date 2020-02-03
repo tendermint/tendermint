@@ -47,9 +47,9 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 ## Minimum requirements
 
-| Requirement | Notes              |
-| ----------- | ------------------ |
-| Go version  | Go1.13 or higher   |
+| Requirement | Notes            |
+| ----------- | ---------------- |
+| Go version  | Go1.13 or higher |
 
 ## Documentation
 
