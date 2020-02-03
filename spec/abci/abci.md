@@ -64,26 +64,26 @@ Example:
 	Events: []abci.Event{
 		{
 			Type: "validator.provisions",
-			Attributes: cmn.KVPairs{
-				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			Attributes: kv.Pairs{
+				kv.Pair{Key: []byte("address"), Value: []byte("...")},
+				kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+				kv.Pair{Key: []byte("balance"), Value: []byte("...")},
 			},
 		},
 		{
 			Type: "validator.provisions",
-			Attributes: cmn.KVPairs{
-				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			Attributes: kv.Pairs{
+				kv.Pair{Key: []byte("address"), Value: []byte("...")},
+				kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+				kv.Pair{Key: []byte("balance"), Value: []byte("...")},
 			},
 		},
 		{
 			Type: "validator.slashed",
-			Attributes: cmn.KVPairs{
-				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-				cmn.KVPair{Key: []byte("reason"), Value: []byte("...")},
+			Attributes: kv.Pairs{
+				kv.Pair{Key: []byte("address"), Value: []byte("...")},
+				kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+				kv.Pair{Key: []byte("reason"), Value: []byte("...")},
 			},
 		},
 		// ...
@@ -282,7 +282,7 @@ Commit are included in the header of the next block.
   - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously.
 - **Response**:
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
 - **Usage**:
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
@@ -309,7 +309,7 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
   - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -337,7 +337,7 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
   - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -354,7 +354,7 @@ Commit are included in the header of the next block.
     voting power to 0 to remove).
   - `ConsensusParamUpdates (ConsensusParams)`: Changes to
     consensus-critical time, size, and other parameters.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
 - **Usage**:
   - Signals the end of a block.
   - Called after all transactions, prior to each Commit.
