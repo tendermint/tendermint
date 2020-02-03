@@ -2,6 +2,7 @@ package commands
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,6 +13,7 @@ import (
 
 	tmos "github.com/tendermint/tendermint/libs/os"
 	lite "github.com/tendermint/tendermint/lite2"
+	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	lproxy "github.com/tendermint/tendermint/lite2/proxy"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
@@ -36,9 +38,10 @@ just with added trust and running locally.`,
 
 var (
 	listenAddr         string
-	nodeAddr           string
+	primaryAddr        string
 	chainID            string
 	home               string
+	witnessesAddrs     string
 	maxOpenConnections int
 
 	trustingPeriod time.Duration
@@ -47,9 +50,17 @@ var (
 )
 
 func init() {
-	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888", "Serve the proxy on the given address")
-	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
+	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
+		"Serve the proxy on the given address")
+
+	LiteCmd.Flags().StringVar(&primaryAddr, "primary", "tcp://localhost:26657",
+		"Connect to a Tendermint node at this address")
+
+	LiteCmd.Flags().StringVar(&witnessesAddrs, "witnesses", "",
+		"Tendermint nodes to cross-check the primary node, comma-separated")
+
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
+
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
 	LiteCmd.Flags().IntVar(
 		&maxOpenConnections,
@@ -57,19 +68,33 @@ func init() {
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
 
-	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour, "Trusting period. Should be significantly less than the unbonding period")
+	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
+		"Trusting period. Should be significantly less than the unbonding period")
+
 	LiteCmd.Flags().Int64Var(&trustedHeight, "trusted-height", 1, "Trusted header's height")
+
 	LiteCmd.Flags().BytesHexVar(&trustedHash, "trusted-hash", []byte{}, "Trusted header's hash")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
 	liteLogger := logger.With("module", "lite")
 
-	logger.Info("Connecting to Tendermint node...")
-	// First, connect a client
-	node, err := rpcclient.NewHTTP(nodeAddr, "/websocket")
+	logger.Info("Connecting to the primary node...")
+	rpcClient, err := rpcclient.NewHTTP(chainID, primaryAddr)
 	if err != nil {
-		return errors.Wrap(err, "new HTTP client")
+		return errors.Wrapf(err, "http client for %s", primaryAddr)
+	}
+	primary := httpp.NewWithClient(chainID, rpcClient)
+
+	logger.Info("Connecting to the witness nodes...")
+	addrs := strings.Split(witnessesAddrs, ",")
+	witnesses := make([]provider.Provider, len(addrs))
+	for i, addr := range addrs {
+		p, err := httpp.New(chainID, addr)
+		if err != nil {
+			return errors.Wrapf(err, "http provider for %s", addr)
+		}
+		witnesses[i] = p
 	}
 
 	logger.Info("Creating client...")
@@ -84,7 +109,8 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			Height: trustedHeight,
 			Hash:   trustedHash,
 		},
-		httpp.NewWithClient(chainID, node),
+		primary,
+		witnesses,
 		dbs.New(db, chainID),
 		lite.Logger(liteLogger),
 	)
@@ -96,7 +122,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		Addr:   listenAddr,
 		Config: &rpcserver.Config{MaxOpenConnections: maxOpenConnections},
 		Codec:  amino.NewCodec(),
-		Client: lrpc.NewClient(node, c),
+		Client: lrpc.NewClient(rpcClient, c),
 		Logger: liteLogger,
 	}
 	// Stop upon receiving SIGTERM or CTRL-C.
