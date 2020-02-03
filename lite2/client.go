@@ -75,26 +75,9 @@ func SequentialVerification() Option {
 // applies to non-adjacent headers. For adjacent headers, sequential
 // verification is used.
 func SkippingVerification(trustLevel tmmath.Fraction) Option {
-	if err := ValidateTrustLevel(trustLevel); err != nil {
-		panic(err)
-	}
 	return func(c *Client) {
 		c.verificationMode = skipping
 		c.trustLevel = trustLevel
-	}
-}
-
-// Witnesses option can be used to supply providers, which will be used for
-// cross-checking the primary provider. A witness can become a primary iff the
-// current primary is unavailable.
-func Witnesses(providers []provider.Provider) Option {
-	return func(c *Client) {
-		for _, witness := range providers {
-			if witness.ChainID() != c.ChainID() {
-				panic("Witness chainID is not equal to the Lite Client chainID")
-			}
-		}
-		c.witnesses = providers
 	}
 }
 
@@ -175,11 +158,16 @@ type Client struct {
 // obtain the header & vals from the primary or they are invalid (e.g. trust
 // hash does not match with the one from the header).
 //
+// Witnesses are providers, which will be used for cross-checking the primary
+// provider. At least one witness must be given. A witness can become a primary
+// iff the current primary is unavailable.
+//
 // See all Option(s) for the additional configuration.
 func NewClient(
 	chainID string,
 	trustOptions TrustOptions,
 	primary provider.Provider,
+	witnesses []provider.Provider,
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
 
@@ -189,6 +177,7 @@ func NewClient(
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
 		primary:                            primary,
+		witnesses:                          witnesses,
 		trustedStore:                       trustedStore,
 		updatePeriod:                       defaultUpdatePeriod,
 		removeNoLongerTrustedHeadersPeriod: defaultRemoveNoLongerTrustedHeadersPeriod,
@@ -199,6 +188,24 @@ func NewClient(
 
 	for _, o := range options {
 		o(c)
+	}
+
+	// Validate the number of witnesses.
+	if len(c.witnesses) < 1 {
+		return nil, errors.New("expected at least one witness")
+	}
+
+	// Verify witnesses are all on the same chain.
+	for i, w := range witnesses {
+		if w.ChainID() != chainID {
+			return nil, errors.Errorf("witness #%d: %v is on another chain %s, expected %s",
+				i, w, w.ChainID(), chainID)
+		}
+	}
+
+	// Validate trust level.
+	if err := ValidateTrustLevel(c.trustLevel); err != nil {
+		return nil, err
 	}
 
 	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
@@ -523,11 +530,9 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if len(c.witnesses) > 0 {
-		if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
-			c.logger.Error("Error when comparing new header with one from a witness", "err", err)
-			return err
-		}
+	if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
+		c.logger.Error("Error when comparing new header with one from a witness", "err", err)
+		return err
 	}
 
 	var err error
@@ -733,6 +738,10 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 
 // compare header with one from a random witness.
 func (c *Client) compareNewHeaderWithRandomWitness(h *types.SignedHeader) error {
+	if len(c.witnesses) == 0 {
+		return errors.New("could not find any witnesses")
+	}
+
 	// 1. Pick a witness.
 	witness := c.witnesses[tmrand.Intn(len(c.witnesses))]
 
