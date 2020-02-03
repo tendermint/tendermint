@@ -200,8 +200,6 @@ func NewClient(
 		logger:                             log.NewNopLogger(),
 	}
 
-	rand.Seed(time.Now().UnixNano())
-
 	for _, o := range options {
 		o(c)
 	}
@@ -894,6 +892,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == nil || err == provider.ErrSignedHeaderNotFound {
 			return h, err
 		}
+		// add exponential backoff and jitter between attempts  - 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
 		time.Sleep(time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond)
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
@@ -915,6 +914,7 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return h, err
 		}
+		// add exponential backoff and jitter between attempts  - 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
 		time.Sleep(time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond)
 	}
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
