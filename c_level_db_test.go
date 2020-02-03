@@ -48,7 +48,10 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 			idx := (int64(rand.Int()) % numItems)
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
-			valBytes := db.Get(idxBytes)
+			valBytes, err := db.Get(idxBytes)
+			if err != nil {
+				b.Error(err)
+			}
 			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if val == 0 {
 				if !bytes.Equal(valBytes, nil) {

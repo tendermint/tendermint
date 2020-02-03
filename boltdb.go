@@ -225,12 +225,12 @@ func (bdb *BoltDB) Iterator(start, end []byte) (Iterator, error) {
 
 // WARNING: Any concurrent writes or reads will block until the iterator is
 // closed.
-func (bdb *BoltDB) ReverseIterator(start, end []byte) Iterator {
+func (bdb *BoltDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return newBoltDBIterator(tx, start, end, true)
+	return newBoltDBIterator(tx, start, end, true), nil
 }
 
 // boltDBIterator allows you to iterate on range of keys/values given some

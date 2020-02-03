@@ -7,9 +7,26 @@ export GO111MODULE = on
 all: lint test
 
 ### go tests
+## By default this will only test memdb & goleveldb
 test:
 	@echo "--> Running go test"
-	@go test -p 1 $(PACKAGES)
+	@go test -p 1 $(PACKAGES) -v
+
+test-cleveldb:
+	@echo "--> Running go test"
+	@go test -p 1 $(PACKAGES) -tags cleveldb -v
+
+test-rocksdb:
+	@echo "--> Running go test"
+	@go test -p 1 $(PACKAGES) -tags rocksdb -v
+
+test-boltdb:
+	@echo "--> Running go test"
+	@go test -p 1 $(PACKAGES) -tags boltdb -v
+
+test-all:
+	@echo "--> Running go test"
+	@go test -p 1 $(PACKAGES) -tags cleveldb,boltdb,rocksdb -v
 
 lint:
 	@echo "--> Running linter"
