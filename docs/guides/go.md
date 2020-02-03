@@ -58,7 +58,7 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```sh
-$ mkdir -p kvstore
+$ mkdir kvstore
 $ cd kvstore
 ```
 
