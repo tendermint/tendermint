@@ -910,10 +910,10 @@ func TestProvider_Replacement(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		primary,
+		[]provider.Provider{witness},
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
-		Witnesses([]provider.Provider{witness}),
 	)
 	require.NoError(t, err)
 	err = c.Start()
