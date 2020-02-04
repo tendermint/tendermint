@@ -559,6 +559,24 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
+// Primary returns the primary provider.
+//
+// NOTE: provider may be not safe for concurrent access.
+func (c *Client) Primary() provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.primary
+}
+
+// Witnesses returns the witness providers.
+//
+// NOTE: providers may be not safe for concurrent access.
+func (c *Client) Witnesses() []provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.witnesses
+}
+
 // Cleanup removes all the data (headers and validator sets) stored. Note: the
 // client must be stopped at this point.
 func (c *Client) Cleanup() error {
@@ -901,16 +919,16 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == nil || err == provider.ErrSignedHeaderNotFound {
 			return h, err
 		}
-		// add exponential backoff and jitter between attempts  - 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
-		time.Sleep(time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond)
+		time.Sleep(backoffTimeout(attempt))
 	}
+
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
 		return nil, err
 	}
-	return c.signedHeaderFromPrimary(height)
 
+	return c.signedHeaderFromPrimary(height)
 }
 
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
@@ -923,28 +941,20 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return h, err
 		}
-		// add exponential backoff and jitter between attempts  - 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
-		time.Sleep(time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond)
+		time.Sleep(backoffTimeout(attempt))
 	}
+
 	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
 		return nil, err
 	}
+
 	return c.validatorSetFromPrimary(height)
-
 }
 
-// Primary returns the primary provider.
-func (c *Client) Primary() provider.Provider {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-	return c.primary
-}
-
-// Witnesses returns the witness providers.
-func (c *Client) Witnesses() []provider.Provider {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-	return c.witnesses
+// exponential backoff (with jitter)
+//		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
+func backoffTimeout(attempt int) time.Duration {
+	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }
