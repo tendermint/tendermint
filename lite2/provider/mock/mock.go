@@ -1,19 +1,20 @@
 package mock
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
-// mock provider allows to directly set headers & vals, which can be handy when
-// testing.
 type mock struct {
 	chainID string
 	headers map[int64]*types.SignedHeader
 	vals    map[int64]*types.ValidatorSet
 }
 
-// New creates a mock provider.
+// New creates a mock provider with the given set of headers and validator
+// sets.
 func New(chainID string, headers map[int64]*types.SignedHeader, vals map[int64]*types.ValidatorSet) provider.Provider {
 	return &mock{
 		chainID: chainID,
@@ -44,4 +45,25 @@ func (p *mock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		return p.vals[height], nil
 	}
 	return nil, provider.ErrValidatorSetNotFound
+}
+
+type deadMock struct {
+	chainID string
+}
+
+// NewDeadMock creates a mock provider that always errors.
+func NewDeadMock(chainID string) provider.Provider {
+	return &deadMock{chainID: chainID}
+}
+
+func (p *deadMock) ChainID() string {
+	return p.chainID
+}
+
+func (p *deadMock) SignedHeader(height int64) (*types.SignedHeader, error) {
+	return nil, errors.New("no response from provider")
+}
+
+func (p *deadMock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
+	return nil, errors.New("no response from provider")
 }
