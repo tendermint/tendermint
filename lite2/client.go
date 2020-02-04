@@ -980,20 +980,6 @@ func (c *Client) Update(now time.Time) error {
 	return nil
 }
 
-func (c *Client) previousTrustedHeight(height int64) (int64, error) {
-	firstTrustedHeight, err := c.FirstTrustedHeight()
-	if err != nil {
-		return -1, err
-	}
-	for i := height - 1; i > firstTrustedHeight; i-- {
-		previousTrustedHeader, err := c.trustedStore.SignedHeader(i)
-		if err == nil {
-			return previousTrustedHeader.Height, nil
-		}
-	}
-	return firstTrustedHeight, nil
-}
-
 // replaceProvider takes the first alternative provider and promotes it as the primary provider
 func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
