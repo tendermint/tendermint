@@ -74,3 +74,7 @@ func Test_SaveSignedHeaderAndNextValidatorSet(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, valSet)
 }
+
+func Test_SignedHeaderAfter(t *testing.T) {
+	// TODO
+}

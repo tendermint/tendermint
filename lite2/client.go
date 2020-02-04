@@ -398,11 +398,13 @@ func (c *Client) Stop() {
 	c.routinesWaitGroup.Wait()
 }
 
-// TrustedHeader returns a trusted header at the given height (0 - the latest)
-// or nil if no such header exist.
+// TrustedHeader returns a trusted header at the given height (0 - the latest).
+// If a header is missing in trustedStore (e.g. it was skipped during
+// bisection), it will be downloaded from primary.
 //
-// Headers, which can't be trusted anymore, are removed once a day (can be
-// changed with RemoveNoLongerTrustedHeadersPeriod option).
+// Headers along with validator sets, which can't be trusted anymore, are
+// removed once a day (can be changed with RemoveNoLongerTrustedHeadersPeriod
+// option).
 // .
 // height must be >= 0.
 //
@@ -418,38 +420,54 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	if height < 0 {
 		return nil, errors.New("negative height")
 	}
+
+	// 1) Get latest height.
 	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return nil, err
 	}
-	if latestHeight <= 0 {
+	if latestHeight == -1 {
 		return nil, errors.New("no headers exist")
+	}
+	if height > latestHeight {
+		return nil, errors.Errorf("unverified header requested (latest: %d)", latestHeight)
 	}
 	if height == 0 {
 		height = latestHeight
 	}
+
+	// 2) Get header from store.
 	h, err := c.trustedStore.SignedHeader(height)
-	if err == provider.ErrSignedHeaderNotFound {
-		//fetch header from primary and verify
-		h, _, err = c.fetchMissingTrustedHeaderAndVals(height)
+	switch {
+	case errors.Is(err, store.ErrSignedHeaderNotFound):
+		// 2.1) If not found, try to fetch header from primary.
+		h, err = c.fetchMissingTrustedHeader(height, now)
 		if err != nil {
 			return nil, err
 		}
-	}
-	if err != nil {
+	case err != nil:
 		return nil, err
 	}
+
+	// 3) Ensure header can still be trusted.
 	if HeaderExpired(h, c.trustingPeriod, now) {
 		return nil, ErrOldHeaderExpired{h.Time.Add(c.trustingPeriod), now}
 	}
+
 	return h, nil
 }
 
-// TrustedValidatorSet returns a trusted validator set at the given height (0 -
-// the latest) or nil if no such validator set exist. The second return
-// parameter is height validator set corresponds to (useful when you pass 0).
+// TrustedValidatorSet returns a trusted validator set at the given height. If
+// a validator set is missing in trustedStore (e.g. the associated header was
+// skipped during bisection), it will be downloaded from primary. The second
+// return parameter is height validator set corresponds to (useful when you
+// pass 0).
 //
 // height must be >= 0.
+//
+// Headers along with validator sets, which can't be trusted anymore, are
+// removed once a day (can be changed with RemoveNoLongerTrustedHeadersPeriod
+// option).
 //
 // It returns an error if:
 //	- header signed by that validator set expired (ErrOldHeaderExpired)
@@ -460,59 +478,15 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
-	// Checks height is positive and header is not expired and updates missing if expired.
-	_, err := c.TrustedHeader(height, now)
+	// Checks height is positive and header (note: height - 1) is not expired.
+	// Additionaly, it fetches validator set from primary if it's missing in
+	// store.
+	_, err := c.TrustedHeader(height-1, now)
 	if err != nil {
 		return nil, err
 	}
 
 	return c.trustedStore.ValidatorSet(height)
-}
-
-// updateMissingTrustedHeaderAndVals finds the previous trusted height and then uses the sequence method to verify
-// all the headers at each height up to the inputted height.
-func (c *Client) fetchMissingTrustedHeaderAndVals(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
-	var (
-		prevTrustedHeight int64
-		newHeader         *types.SignedHeader
-		newVals           *types.ValidatorSet
-		err               error
-	)
-	prevTrustedHeight, err = c.previousTrustedHeight(height)
-	if err != nil {
-		return nil, nil, err
-	}
-	c.trustedHeader, err = c.trustedStore.SignedHeader(prevTrustedHeight)
-	if err != nil {
-		return nil, nil, err
-	}
-	c.trustedNextVals, err = c.trustedStore.ValidatorSet(prevTrustedHeight)
-	if err != nil {
-		return nil, nil, err
-	}
-	newHeader, newVals, err = c.fetchHeaderAndValsAtHeight(height)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	switch c.verificationMode {
-	case sequential:
-		err = c.sequence(newHeader, newVals, time.Now())
-	case skipping:
-		err = c.bisection(c.trustedHeader, c.trustedNextVals, newHeader, newVals, time.Now())
-	default:
-		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// try to save the requested trusted header to store
-	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(newHeader, newVals); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to save trusted header")
-	}
-
-	return newHeader, newVals, nil
 }
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
@@ -806,6 +780,65 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 		return nil, nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
 	}
 	return h, vals, nil
+}
+
+// fetchMissingTrustedHeader finds the closest height after the
+// requested height and does backwards verification.
+func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
+	c.logger.Info("Fetching missing header", "height", height)
+
+	trustedHeader, err := c.trustedStore.SignedHeaderAfter(height)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get signed header after %d", height)
+	}
+
+	var untrustedHeader *types.SignedHeader
+	for i := trustedHeader.Height - 1; i >= height; i-- {
+		untrustedHeader, err = c.signedHeaderFromPrimary(i)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to obtain the header #%d", i)
+		}
+
+		if err := untrustedHeader.ValidateBasic(c.chainID); err != nil {
+			return nil, errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+		}
+
+		if untrustedHeader.Height >= trustedHeader.Height {
+			return nil, errors.Errorf("expected older header height %d to be less than one of newer header %d",
+				untrustedHeader.Height,
+				trustedHeader.Height)
+		}
+
+		if !untrustedHeader.Time.Before(trustedHeader.Time) {
+			return nil, errors.Errorf("expected older header time %v to be before newer header time %v",
+				untrustedHeader.Time,
+				trustedHeader.Time)
+		}
+
+		if HeaderExpired(untrustedHeader, c.trustingPeriod, now) {
+			return nil, ErrOldHeaderExpired{untrustedHeader.Time.Add(c.trustingPeriod), now}
+		}
+
+		if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+			return nil, errors.Errorf("older header hash %X does not match trusted header's last block %X",
+				untrustedHeader.Hash(),
+				trustedHeader.LastBlockID.Hash)
+		}
+	}
+
+	nextVals, err := c.validatorSetFromPrimary(height + 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
+	}
+	if !bytes.Equal(untrustedHeader.NextValidatorsHash, nextVals.Hash()) {
+		return nil, errors.Errorf("expected next validator's hash %X, but got %X",
+			untrustedHeader.NextValidatorsHash, nextVals.Hash())
+	}
+	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(untrustedHeader, nextVals); err != nil {
+		return nil, errors.Wrap(err, "failed to save trusted header")
+	}
+
+	return untrustedHeader, nil
 }
 
 // compare header with one from a random witness.
