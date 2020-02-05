@@ -413,7 +413,7 @@ func (c *Client) Stop() {
 //  - there are some issues with the trusted store, although that should not
 //  happen normally;
 //  - negative height is passed;
-//  - header is not found.
+//  - header has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
@@ -474,7 +474,7 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 //  - there are some issues with the trusted store, although that should not
 //  happen normally;
 //  - negative height is passed;
-//  - validator set is not found.
+//  - header signed by that validator set has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
