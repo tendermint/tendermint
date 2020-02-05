@@ -40,13 +40,15 @@ mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
+BUF_VERSION ?= 0.4.0
+
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
 
-tools: certstrap protobuf goodman
+tools: certstrap protobuf buf goodman
 
 check: check_tools
 
@@ -64,6 +66,13 @@ protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
+
+buf: protoc-gen-buf-check-breaking protoc-gen-buf-check-lint
+	@echo "Installing buf..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/buf" && \
+	chmod +x "${BIN}/buf"
 
 goodman: $(GOODMAN)
 $(GOODMAN):
