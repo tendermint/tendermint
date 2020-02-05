@@ -9,7 +9,7 @@ a newer version of Tendermint Core.
 
 ### Protobuf Changes
 
-When upgrading to version <version #> you will have to fetch the third_party directory along with the updated proto files.
+When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
 
 ## v0.33.0
 
