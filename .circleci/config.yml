@@ -373,7 +373,7 @@ jobs:
   #         command: |
   #           set -x
   #           export PATH=~/.local/bin:$PATH
-  
+
   #           # install node and dredd
   #           ./scripts/get_nodejs.sh
 
