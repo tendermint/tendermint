@@ -52,7 +52,7 @@ GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
 
-tools: certstrap protobuf buf goodman
+tools: certstrap protobuf goodman
 
 check: check_tools
 
