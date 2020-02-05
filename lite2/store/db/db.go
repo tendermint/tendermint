@@ -155,6 +155,10 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 }
 
 func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
+	if height <= 0 {
+		panic("negative or zero height")
+	}
+
 	itr, err := s.db.ReverseIterator(
 		s.shKey(height),
 		append(s.shKey(1<<63-1), byte(0x00)),
