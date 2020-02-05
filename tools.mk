@@ -38,6 +38,10 @@ mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 # Go tools
 ###
 
+BIN ?= /usr/local/bin
+UNAME_S ?= $(shell uname -s)
+UNAME_M ?= $(shell uname -m)
+
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
 BUF_VERSION ?= 0.4.0
@@ -87,7 +91,7 @@ protoc-gen-buf-check-lint:
     "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-lint-${UNAME_S}-${UNAME_M}" \
     -o "${BIN}/protoc-gen-buf-check-lint" && \
 	chmod +x "${BIN}/protoc-gen-buf-check-lint"
-	
+
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"
