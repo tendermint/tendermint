@@ -984,4 +984,5 @@ func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	// 2) header is missing, but it's expired => expect error
 	h, err = c.TrustedHeader(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
+	assert.Nil(t, h)
 }

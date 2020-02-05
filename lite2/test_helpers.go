@@ -150,7 +150,8 @@ func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Tim
 
 // GenSignedHeaderLastBlockID calls genHeader and signHeader and combines them into a SignedHeader.
 func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTime time.Time, txs types.Txs,
-	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int, lastBlockID types.BlockID) *types.SignedHeader {
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
+	lastBlockID types.BlockID) *types.SignedHeader {
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	header.LastBlockID = lastBlockID

@@ -479,7 +479,7 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
 	// Checks height is positive and header (note: height - 1) is not expired.
-	// Additionaly, it fetches validator set from primary if it's missing in
+	// Additionally, it fetches validator set from primary if it's missing in
 	// store.
 	_, err := c.TrustedHeader(height-1, now)
 	if err != nil {
