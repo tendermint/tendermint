@@ -37,10 +37,10 @@ install_c:
 proto-all: proto-gen proto-lint proto-check-breaking
 
 proto-gen:
-	## If you get the following error,	
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"	
-	## See https://stackoverflow.com/a/25518702	
-	## Note the $< here is substituted for the %.proto	
+	## If you get the following error,
+	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	## See https://stackoverflow.com/a/25518702
+	## Note the $< here is substituted for the %.proto
 	## Note the $@ here is substituted for the %.pb.go
 	@sh scripts/protocgen.sh
 
