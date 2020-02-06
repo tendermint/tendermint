@@ -135,7 +135,7 @@ func Logger(l log.Logger) Option {
 
 // MaxRetryAttempts option can be used to set max attempts before replacing
 // primary with a witness.
-func MaxRetryAttempts(max int) Option {
+func MaxRetryAttempts(max uint) Option {
 	return func(c *Client) {
 		c.maxRetryAttempts = max
 	}
@@ -154,7 +154,7 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
-	maxRetryAttempts int // see MaxRetryAttempts option
+	maxRetryAttempts uint // see MaxRetryAttempts option
 
 	// Mutex for locking during changes of the lite clients providers
 	providerMutex sync.Mutex
@@ -1062,7 +1062,7 @@ func (c *Client) replacePrimaryProvider() error {
 // signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
 // Handles dropout by the primary provider by swapping with an alternative provider
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= c.maxRetryAttempts; attempt++ {
+	for attempt := uint(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
@@ -1091,7 +1091,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
 // Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
-	for attempt := 1; attempt <= c.maxRetryAttempts; attempt++ {
+	for attempt := uint(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		vals, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
@@ -1112,6 +1112,6 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 
 // exponential backoff (with jitter)
 //		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
-func backoffTimeout(attempt int) time.Duration {
+func backoffTimeout(attempt uint) time.Duration {
 	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }
