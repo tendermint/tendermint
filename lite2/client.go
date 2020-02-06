@@ -43,6 +43,20 @@ type TrustOptions struct {
 	Hash   []byte
 }
 
+// ValidateBasic performs basic validation.
+func (opts TrustOptions) ValidateBasic() error {
+	if opts.Period <= 0 {
+		return errors.New("negative or zero period")
+	}
+	if opts.Height <= 0 {
+		return errors.New("negative or zero height")
+	}
+	if len(opts.Hash) == 0 {
+		return errors.New("empty hash")
+	}
+	return nil
+}
+
 type mode byte
 
 const (
@@ -172,6 +186,10 @@ func NewClient(
 	witnesses []provider.Provider,
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
+
+	if err := trustOptions.ValidateBasic(); err != nil {
+		return nil, errors.Wrap(err, "invalid TrustOptions")
+	}
 
 	c := &Client{
 		chainID:                            chainID,
