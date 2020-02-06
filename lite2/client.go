@@ -191,9 +191,38 @@ func NewClient(
 		return nil, errors.Wrap(err, "invalid TrustOptions")
 	}
 
+	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	c.trustingPeriod = trustOptions.Period
+
+	if c.trustedHeader != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	return c, err
+}
+
+// NewClientFromTrustedStore initializes existing client from the trusted store.
+func NewClientFromTrustedStore(
+	chainID string,
+	primary provider.Provider,
+	witnesses []provider.Provider,
+	trustedStore store.Store,
+	options ...Option) (*Client, error) {
+
 	c := &Client{
 		chainID:                            chainID,
-		trustingPeriod:                     trustOptions.Period,
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
 		primary:                            primary,
@@ -230,17 +259,6 @@ func NewClient(
 
 	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
 		return nil, err
-	}
-	if c.trustedHeader != nil {
-		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
-			return nil, err
-		}
-	}
-
-	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
-		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
-			return nil, err
-		}
 	}
 
 	return c, nil
