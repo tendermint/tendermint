@@ -44,7 +44,7 @@ UNAME_M ?= $(shell uname -m)
 
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
-BUF_VERSION ?= 0.4.0
+BUF_VERSION ?= 0.7.0
 
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
