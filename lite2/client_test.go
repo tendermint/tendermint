@@ -914,6 +914,7 @@ func TestProvider_Replacement(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 	err = c.Start()

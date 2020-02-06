@@ -65,7 +65,7 @@ const (
 
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
-	maxRetryAttempts                          = 10
+	defaultMaxRetryAttempts                   = 10
 )
 
 // Option sets a parameter for the light client.
@@ -129,6 +129,14 @@ func Logger(l log.Logger) Option {
 	}
 }
 
+// MaxRetryAttempts option can be used to set max attempts before replacing
+// primary with a witness.
+func MaxRetryAttempts(max int) Option {
+	return func(c *Client) {
+		c.maxRetryAttempts = max
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -142,6 +150,7 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
+	maxRetryAttempts int // see MaxRetryAttempts option
 
 	// Mutex for locking during changes of the lite clients providers
 	providerMutex sync.Mutex
@@ -214,6 +223,8 @@ func NewClient(
 }
 
 // NewClientFromTrustedStore initializes existing client from the trusted store.
+//
+// See NewClient
 func NewClientFromTrustedStore(
 	chainID string,
 	primary provider.Provider,
@@ -225,6 +236,7 @@ func NewClientFromTrustedStore(
 		chainID:                            chainID,
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
+		maxRetryAttempts:                   defaultMaxRetryAttempts,
 		primary:                            primary,
 		witnesses:                          witnesses,
 		trustedStore:                       trustedStore,
@@ -1046,7 +1058,7 @@ func (c *Client) replacePrimaryProvider() error {
 // signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
 // Handles dropout by the primary provider by swapping with an alternative provider
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	for attempt := 1; attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
@@ -1075,7 +1087,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
 // Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	for attempt := 1; attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		vals, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
