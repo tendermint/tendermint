@@ -787,13 +787,43 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
 	c.logger.Info("Fetching missing header", "height", height)
 
-	trustedHeader, err := c.trustedStore.SignedHeaderAfter(height)
+	closestHeader, err := c.trustedStore.SignedHeaderAfter(height)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get signed header after %d", height)
 	}
 
-	var untrustedHeader *types.SignedHeader
-	for i := trustedHeader.Height - 1; i >= height; i-- {
+	// Perform backwards verification from closestHeader to header at the given
+	// height.
+	h, err := c.backwards(height, closestHeader, now)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch next validator set from primary and persist it.
+	nextVals, err := c.validatorSetFromPrimary(height + 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
+	}
+	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
+		return nil, errors.Errorf("expected next validator's hash %X, but got %X",
+			h.NextValidatorsHash, nextVals.Hash())
+	}
+	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(h, nextVals); err != nil {
+		return nil, errors.Wrap(err, "failed to save trusted header")
+	}
+
+	return h, nil
+}
+
+// Backwards verification (see VerifyHeaderBackwards func in the spec)
+func (c *Client) backwards(toHeight int64, fromHeader *types.SignedHeader, now time.Time) (*types.SignedHeader, error) {
+	var (
+		trustedHeader   = fromHeader
+		untrustedHeader *types.SignedHeader
+		err             error
+	)
+
+	for i := trustedHeader.Height - 1; i >= toHeight; i-- {
 		untrustedHeader, err = c.signedHeaderFromPrimary(i)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to obtain the header #%d", i)
@@ -801,12 +831,6 @@ func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.
 
 		if err := untrustedHeader.ValidateBasic(c.chainID); err != nil {
 			return nil, errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
-		}
-
-		if untrustedHeader.Height >= trustedHeader.Height {
-			return nil, errors.Errorf("expected older header height %d to be less than one of newer header %d",
-				untrustedHeader.Height,
-				trustedHeader.Height)
 		}
 
 		if !untrustedHeader.Time.Before(trustedHeader.Time) {
@@ -824,21 +848,11 @@ func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.
 				untrustedHeader.Hash(),
 				trustedHeader.LastBlockID.Hash)
 		}
+
+		trustedHeader = untrustedHeader
 	}
 
-	nextVals, err := c.validatorSetFromPrimary(height + 1)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
-	}
-	if !bytes.Equal(untrustedHeader.NextValidatorsHash, nextVals.Hash()) {
-		return nil, errors.Errorf("expected next validator's hash %X, but got %X",
-			untrustedHeader.NextValidatorsHash, nextVals.Hash())
-	}
-	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(untrustedHeader, nextVals); err != nil {
-		return nil, errors.Wrap(err, "failed to save trusted header")
-	}
-
-	return untrustedHeader, nil
+	return trustedHeader, nil
 }
 
 // compare header with one from a random witness.
@@ -1000,8 +1014,15 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
-		if err == nil || err == provider.ErrSignedHeaderNotFound {
-			return h, err
+		if err == nil {
+			// sanity check
+			if height > 0 && h.Height != height {
+				return nil, errors.Errorf("expected %d height, got %d", height, h.Height)
+			}
+			return h, nil
+		}
+		if err == provider.ErrSignedHeaderNotFound {
+			return nil, err
 		}
 		time.Sleep(backoffTimeout(attempt))
 	}
@@ -1020,10 +1041,10 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
 	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
-		h, err := c.primary.ValidatorSet(height)
+		vals, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
 		if err == nil || err == provider.ErrValidatorSetNotFound {
-			return h, err
+			return vals, err
 		}
 		time.Sleep(backoffTimeout(attempt))
 	}
