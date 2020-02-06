@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/lite2/provider"
@@ -51,8 +52,11 @@ func (opts TrustOptions) ValidateBasic() error {
 	if opts.Height <= 0 {
 		return errors.New("negative or zero height")
 	}
-	if len(opts.Hash) == 0 {
-		return errors.New("empty hash")
+	if len(opts.Hash) != tmhash.Size {
+		return errors.Errorf("expected hash size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(opts.Hash),
+		)
 	}
 	return nil
 }
