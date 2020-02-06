@@ -204,12 +204,10 @@ func NewClient(
 		return nil, errors.Wrap(err, "invalid TrustOptions")
 	}
 
-	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, options...)
+	c, err := NewClientFromTrustedStore(chainID, trustOptions.Period, primary, witnesses, trustedStore, options...)
 	if err != nil {
 		return nil, err
 	}
-
-	c.trustingPeriod = trustOptions.Period
 
 	if c.trustedHeader != nil {
 		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
@@ -231,6 +229,7 @@ func NewClient(
 // See NewClient
 func NewClientFromTrustedStore(
 	chainID string,
+	trustingPeriod time.Duration,
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
@@ -238,6 +237,7 @@ func NewClientFromTrustedStore(
 
 	c := &Client{
 		chainID:                            chainID,
+		trustingPeriod:                     trustingPeriod,
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
 		maxRetryAttempts:                   defaultMaxRetryAttempts,
