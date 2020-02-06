@@ -11,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
@@ -558,7 +557,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
+	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
 		c.logger.Error("Error when comparing new header with one from a witness", "err", err)
 		return err
 	}
@@ -855,32 +854,33 @@ func (c *Client) backwards(toHeight int64, fromHeader *types.SignedHeader, now t
 	return trustedHeader, nil
 }
 
-// compare header with one from a random witness.
-func (c *Client) compareNewHeaderWithRandomWitness(h *types.SignedHeader) error {
+// compare header with all witnesses provided.
+func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
 	// 0. Check witnesses exist
 	if len(c.witnesses) == 0 {
 		return errors.New("could not find any witnesses")
 	}
 
-	// 1. Pick a witness.
-	witness := c.witnesses[tmrand.Intn(len(c.witnesses))]
-	c.providerMutex.Unlock()
+	// 1. Loop through all witnesses.
+	for _, witness := range c.witnesses {
 
-	// 2. Fetch the header.
-	altH, err := witness.SignedHeader(h.Height)
-	if err != nil {
-		return errors.Wrapf(err,
-			"failed to obtain header #%d from the witness %v", h.Height, witness)
-	}
+		// 2. Fetch the header.
+		altH, err := witness.SignedHeader(h.Height)
+		if err != nil {
+			return errors.Wrapf(err,
+				"failed to obtain header #%d from the witness %v", h.Height, witness)
+		}
 
-	// 3. Compare hashes.
-	if !bytes.Equal(h.Hash(), altH.Hash()) {
-		// TODO: One of the providers is lying. Send the evidence to fork
-		// accountability server.
-		return errors.Errorf(
-			"header hash %X does not match one %X from the witness %v",
-			h.Hash(), altH.Hash(), witness)
+		// 3. Compare hashes.
+		if !bytes.Equal(h.Hash(), altH.Hash()) {
+			// TODO: One of the providers is lying. Send the evidence to fork
+			// accountability server.
+			return errors.Errorf(
+				"header hash %X does not match one %X from the witness %v",
+				h.Hash(), altH.Hash(), witness)
+		}
 	}
 
 	return nil
