@@ -81,7 +81,7 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, errors.New("signed header not found")
+		return nil, store.ErrSignedHeaderNotFound
 	}
 
 	var signedHeader *types.SignedHeader
@@ -100,7 +100,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, errors.New("validator set not found")
+		return nil, store.ErrValidatorSetNotFound
 	}
 
 	var valSet *types.ValidatorSet
@@ -152,6 +152,32 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	}
 
 	return -1, nil
+}
+
+func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
+	if height <= 0 {
+		panic("negative or zero height")
+	}
+
+	itr, err := s.db.ReverseIterator(
+		s.shKey(height+1),
+		append(s.shKey(1<<63-1), byte(0x00)),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer itr.Close()
+
+	for itr.Valid() {
+		key := itr.Key()
+		_, existingHeight, ok := parseShKey(key)
+		if ok {
+			return s.SignedHeader(existingHeight)
+		}
+		itr.Next()
+	}
+
+	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
 }
 
 func (s *dbs) shKey(height int64) []byte {
