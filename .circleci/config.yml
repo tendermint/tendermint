@@ -80,14 +80,14 @@ jobs:
     steps:
       - checkout
       - run:
-          command: make proto-lint
+          command: apk add --update make && make proto-lint
 
   proto-breakage:
     executor: protoc
     steps:
       - checkout
       - run:
-          command: make proto-check-breaking
+          command: apk add --update make && make proto-check-breaking
 
   test_abci_apps:
     executor: golang
