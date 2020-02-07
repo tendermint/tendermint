@@ -916,11 +916,25 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	}
 
 	// 1. Loop through all witnesses.
-	for _, witness := range c.witnesses {
+	for i := 0; i < len(c.witnesses); i++ {
+		witness := c.witnesses[i]
 
 		// 2. Fetch the header.
-		altH, err := witness.SignedHeader(h.Height)
-		if err != nil {
+		altH, err := c.signedHeaderFromWitness(witness, h.Height)
+		switch err.(type) {
+		case nil:
+			break
+		case ErrWitnessNonResponsive: // remove witness
+			l := len(c.witnesses) - 1
+			if l < 1 {
+				c.witnesses = nil
+				return errors.New("could not find a responsive witness")
+			}
+			c.witnesses[l], c.witnesses[i] = c.witnesses[i], c.witnesses[l] //swap with last witness
+			c.witnesses = c.witnesses[:l]                                   // truncate the end
+			i--
+			continue
+		default:
 			return errors.Wrapf(err,
 				"failed to obtain header #%d from the witness %v", h.Height, witness)
 		}
@@ -1108,6 +1122,26 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 	}
 
 	return c.validatorSetFromPrimary(height)
+}
+
+func (c *Client) signedHeaderFromWitness(witness provider.Provider, height int64) (*types.SignedHeader, error) {
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
+		h, err := witness.SignedHeader(height)
+		if err == nil {
+			// sanity check
+			if height > 0 && h.Height != height {
+				return nil, errors.Errorf("expected %d height, got %d", height, h.Height)
+			}
+			return h, nil
+		}
+		if err == provider.ErrSignedHeaderNotFound {
+			return nil, err
+		}
+		time.Sleep(backoffTimeout(attempt))
+	}
+
+	return nil, ErrWitnessNonResponsive{Witness: witness}
+
 }
 
 // exponential backoff (with jitter)

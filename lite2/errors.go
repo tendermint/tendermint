@@ -2,6 +2,7 @@ package lite
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/lite2/provider"
 	"time"
 
 	"github.com/tendermint/tendermint/types"
@@ -27,4 +28,12 @@ type ErrNewValSetCantBeTrusted struct {
 
 func (e ErrNewValSetCantBeTrusted) Error() string {
 	return fmt.Sprintf("cant trust new val set: %v", e.Reason)
+}
+
+type ErrWitnessNonResponsive struct {
+	Witness provider.Provider
+}
+
+func (e ErrWitnessNonResponsive) Error() string {
+	return fmt.Sprint("witness is not responding", "witness", e.Witness)
 }
