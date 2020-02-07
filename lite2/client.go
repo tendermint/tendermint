@@ -965,11 +965,17 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 		c.logger.Error("can't get first trusted height", "err", err)
 		return
 	}
+	if oldestHeight == -1 {
+		return
+	}
 
 	// 2) Get the latest height.
 	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		c.logger.Error("can't get last trusted height", "err", err)
+		return
+	}
+	if latestHeight == -1 {
 		return
 	}
 
