@@ -16,7 +16,7 @@ executors:
       AWS_REGION: us-east-1
   protoc:
     docker:
-      - image: bufbuild/buf
+      - image: tendermintdev/docker-protoc
 
 commands:
   run_test:
@@ -80,14 +80,14 @@ jobs:
     steps:
       - checkout
       - run:
-          command: apk add --update make && make proto-lint
+          command: make proto-lint
 
   proto-breakage:
     executor: protoc
     steps:
       - checkout
       - run:
-          command: apk add --update make && make proto-check-breaking
+          command: make proto-check-breaking
 
   test_abci_apps:
     executor: golang
