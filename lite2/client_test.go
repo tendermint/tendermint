@@ -988,9 +988,9 @@ func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	assert.Nil(t, h)
 }
 
-func TestNew_Client_From_Trusted_Store(t *testing.T) {
+func Test_NewClientFromTrustedStore(t *testing.T) {
 	const (
-		chainID = "TestNew_Client_From_Trusted_Store"
+		chainID = "Test_NewClientFromTrustedStore"
 	)
 
 	var (
@@ -1002,20 +1002,15 @@ func TestNew_Client_From_Trusted_Store(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 		primary = mockp.New(
 			chainID,
-			map[int64]*types.SignedHeader{
-				1: header,
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
+			map[int64]*types.SignedHeader{},
+			map[int64]*types.ValidatorSet{},
 		)
 	)
 
 	// 1) Initiate DB and fill with a "trusted" header
 	db := dbs.New(dbm.NewMemDB(), chainID)
 	err := db.SaveSignedHeaderAndNextValidatorSet(header, vals)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// 2) Initialize Lite Client from Trusted Store
 	c, err := NewClientFromTrustedStore(
@@ -1031,5 +1026,4 @@ func TestNew_Client_From_Trusted_Store(t *testing.T) {
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
-
 }
