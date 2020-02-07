@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/lite2/provider"
@@ -43,6 +44,23 @@ type TrustOptions struct {
 	Hash   []byte
 }
 
+// ValidateBasic performs basic validation.
+func (opts TrustOptions) ValidateBasic() error {
+	if opts.Period <= 0 {
+		return errors.New("negative or zero period")
+	}
+	if opts.Height <= 0 {
+		return errors.New("negative or zero height")
+	}
+	if len(opts.Hash) != tmhash.Size {
+		return errors.Errorf("expected hash size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(opts.Hash),
+		)
+	}
+	return nil
+}
+
 type mode byte
 
 const (
@@ -51,7 +69,7 @@ const (
 
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
-	maxRetryAttempts                          = 10
+	defaultMaxRetryAttempts                   = 10
 )
 
 // Option sets a parameter for the light client.
@@ -115,6 +133,14 @@ func Logger(l log.Logger) Option {
 	}
 }
 
+// MaxRetryAttempts option can be used to set max attempts before replacing
+// primary with a witness.
+func MaxRetryAttempts(max uint16) Option {
+	return func(c *Client) {
+		c.maxRetryAttempts = max
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -128,6 +154,7 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
+	maxRetryAttempts uint16 // see MaxRetryAttempts option
 
 	// Mutex for locking during changes of the lite clients providers
 	providerMutex sync.Mutex
@@ -173,11 +200,47 @@ func NewClient(
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
 
+	if err := trustOptions.ValidateBasic(); err != nil {
+		return nil, errors.Wrap(err, "invalid TrustOptions")
+	}
+
+	c, err := NewClientFromTrustedStore(chainID, trustOptions.Period, primary, witnesses, trustedStore, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.trustedHeader != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	return c, err
+}
+
+// NewClientFromTrustedStore initializes existing client from the trusted store.
+//
+// See NewClient
+func NewClientFromTrustedStore(
+	chainID string,
+	trustingPeriod time.Duration,
+	primary provider.Provider,
+	witnesses []provider.Provider,
+	trustedStore store.Store,
+	options ...Option) (*Client, error) {
+
 	c := &Client{
 		chainID:                            chainID,
-		trustingPeriod:                     trustOptions.Period,
+		trustingPeriod:                     trustingPeriod,
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
+		maxRetryAttempts:                   defaultMaxRetryAttempts,
 		primary:                            primary,
 		witnesses:                          witnesses,
 		trustedStore:                       trustedStore,
@@ -212,17 +275,6 @@ func NewClient(
 
 	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
 		return nil, err
-	}
-	if c.trustedHeader != nil {
-		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
-			return nil, err
-		}
-	}
-
-	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
-		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
-			return nil, err
-		}
 	}
 
 	return c, nil
@@ -1010,7 +1062,7 @@ func (c *Client) replacePrimaryProvider() error {
 // signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
 // Handles dropout by the primary provider by swapping with an alternative provider
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
@@ -1039,7 +1091,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
 // Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
 		vals, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
@@ -1060,6 +1112,6 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 
 // exponential backoff (with jitter)
 //		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
-func backoffTimeout(attempt int) time.Duration {
+func backoffTimeout(attempt uint16) time.Duration {
 	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }

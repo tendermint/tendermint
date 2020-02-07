@@ -914,6 +914,7 @@ func TestProvider_Replacement(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 	err = c.Start()
@@ -985,4 +986,44 @@ func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	h, err = c.TrustedHeader(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
 	assert.Nil(t, h)
+}
+
+func Test_NewClientFromTrustedStore(t *testing.T) {
+	const (
+		chainID = "Test_NewClientFromTrustedStore"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+		primary = mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{},
+			map[int64]*types.ValidatorSet{},
+		)
+	)
+
+	// 1) Initiate DB and fill with a "trusted" header
+	db := dbs.New(dbm.NewMemDB(), chainID)
+	err := db.SaveSignedHeaderAndNextValidatorSet(header, vals)
+	require.NoError(t, err)
+
+	// 2) Initialize Lite Client from Trusted Store
+	c, err := NewClientFromTrustedStore(
+		chainID,
+		1*time.Hour,
+		primary,
+		[]provider.Provider{primary},
+		db,
+	)
+	require.NoError(t, err)
+
+	// 3) Check header exists through the lite clients eyes
+	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, h.Height)
 }
