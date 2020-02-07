@@ -965,7 +965,7 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 		c.logger.Error("can't get first trusted height", "err", err)
 		return
 	}
-	if oldestHeight == -1 {
+	if oldestHeight == -1 { // no headers yet => wait
 		return
 	}
 
@@ -975,7 +975,7 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 		c.logger.Error("can't get last trusted height", "err", err)
 		return
 	}
-	if latestHeight == -1 {
+	if latestHeight == -1 { // no headers yet => wait
 		return
 	}
 

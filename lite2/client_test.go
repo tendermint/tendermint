@@ -307,6 +307,12 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		Logger(log.TestingLogger()),
 	)
+
+	assert.NotPanics(t, func() {
+		now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
+		c.RemoveNoLongerTrustedHeaders(now)
+	})
+
 	require.NoError(t, err)
 	err = c.Start()
 	require.NoError(t, err)
