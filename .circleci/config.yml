@@ -16,7 +16,7 @@ executors:
       AWS_REGION: us-east-1
   protoc:
     docker:
-      - image: tendermintdev/docker-protoc
+      - image: bufbuild/buf
 
 commands:
   run_test:
