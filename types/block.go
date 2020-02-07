@@ -319,7 +319,7 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
-// - https://github.com/tendermint/spec/spec/blockchain/blockchain.md
+// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	Version version.Consensus `json:"version"`
