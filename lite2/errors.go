@@ -2,9 +2,9 @@ package lite
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/lite2/provider"
 	"time"
 
+	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
