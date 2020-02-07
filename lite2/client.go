@@ -960,7 +960,7 @@ func (c *Client) removeNoLongerTrustedHeadersRoutine() {
 // Exposed for testing.
 func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	// 1) Get the oldest height.
-	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	oldestHeight, err := c.FirstTrustedHeight()
 	if err != nil {
 		c.logger.Error("can't get first trusted height", "err", err)
 		return
