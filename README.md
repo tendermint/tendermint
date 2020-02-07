@@ -129,7 +129,7 @@ For more information on upgrading, see [UPGRADING.md](./UPGRADING.md)
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](/docs/spec).
+[Tendermint specification](https://docs.tendermint.com/master/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
 hosted at: https://docs.tendermint.com/master/

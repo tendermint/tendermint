@@ -14,7 +14,7 @@ If you want to decode bytes into one of the types, but don't care about the spec
 
 ## Binary encoding
 
-For Binary encoding, please refer to the [Tendermint encoding specification](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/encoding.md).
+For Binary encoding, please refer to the [Tendermint encoding specification](https://docs.tendermint.com/master/spec/blockchain/encoding.html).
 
 ## JSON Encoding
 
