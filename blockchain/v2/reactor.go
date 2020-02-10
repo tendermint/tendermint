@@ -381,7 +381,7 @@ func (r *BlockchainReactor) demux() {
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
 			if msg, ok := event.(pcFinished); ok {
-				r.io.switchToConsensus(msg.tdState, msg.blocksSynced)
+				r.io.trySwitchToConsensus(msg.tdState, msg.blocksSynced)
 			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")

@@ -144,7 +144,7 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) switchToConsensus(state sm.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
