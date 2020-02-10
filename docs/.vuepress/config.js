@@ -38,6 +38,7 @@ module.exports = {
       }
     },
     footer: {
+      questionsText: "Chat with Cosmos developers on [Riot](https://riot.im/app/#/room/#tendermint:matrix.org) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
