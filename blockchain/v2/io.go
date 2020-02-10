@@ -74,7 +74,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 		return fmt.Errorf("peer not found")
 	}
 	if block == nil {
-		return fmt.Errorf("nil block")
+		panic("trying to send nil block")
 	}
 	msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
