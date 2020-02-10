@@ -13,8 +13,10 @@ type iIo interface {
 	sendBlockToPeer(block *types.Block, peerID p2p.ID) error
 	sendBlockNotFound(height int64, peerID p2p.ID) error
 	sendStatusResponse(height int64, peerID p2p.ID) error
-	switchToConsensus(state state.State, blocksSynced int)
+
 	broadcastStatusRequest(height int64)
+
+	switchToConsensus(state state.State, blocksSynced int)
 }
 
 type switchIo struct {
