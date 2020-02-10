@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type iIo interface {
+type iIO interface {
 	sendBlockRequest(peerID p2p.ID, height int64) error
 	sendBlockToPeer(block *types.Block, peerID p2p.ID) error
 	sendBlockNotFound(height int64, peerID p2p.ID) error
@@ -19,12 +19,12 @@ type iIo interface {
 	switchToConsensus(state state.State, blocksSynced int)
 }
 
-type switchIo struct {
+type switchIO struct {
 	sw *p2p.Switch
 }
 
-func newSwitchIo(sw *p2p.Switch) *switchIo {
-	return &switchIo{
+func newSwitchIo(sw *p2p.Switch) *switchIO {
+	return &switchIO{
 		sw: sw,
 	}
 }
@@ -40,7 +40,7 @@ type consensusReactor interface {
 	SwitchToConsensus(state.State, int)
 }
 
-func (sio *switchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
+func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -54,7 +54,7 @@ func (sio *switchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *switchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
+func (sio *switchIO) sendStatusResponse(height int64, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -68,7 +68,7 @@ func (sio *switchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
+func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -84,7 +84,7 @@ func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
+func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -97,14 +97,14 @@ func (sio *switchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIo) switchToConsensus(state state.State, blocksSynced int) {
+func (sio *switchIO) switchToConsensus(state state.State, blocksSynced int) {
 	conR, ok := sio.sw.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
 		conR.SwitchToConsensus(state, blocksSynced)
 	}
 }
 
-func (sio *switchIo) broadcastStatusRequest(height int64) {
+func (sio *switchIO) broadcastStatusRequest(height int64) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{height})
 	// XXX: maybe we should use an io specific peer list here
 	sio.sw.Broadcast(BlockchainChannel, msgBytes)

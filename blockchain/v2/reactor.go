@@ -120,7 +120,7 @@ type BlockchainReactor struct {
 	syncHeight    int64
 
 	reporter behaviour.Reporter
-	io       iIo
+	io       iIO
 	store    blockStore
 }
 
