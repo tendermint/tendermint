@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/p2p"
-	tdState "github.com/tendermint/tendermint/state"
+	tmState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -33,8 +33,8 @@ func makePcBlock(height int64) *types.Block {
 // makeState takes test parameters and creates a specific processor state.
 func makeState(p *params) *pcState {
 	var (
-		tdState = tdState.State{LastBlockHeight: p.height}
-		context = newMockProcessorContext(tdState, p.verBL, p.appBL)
+		tmState = tmState.State{LastBlockHeight: p.height}
+		context = newMockProcessorContext(tmState, p.verBL, p.appBL)
 	)
 	state := newPcState(context)
 
@@ -208,7 +208,7 @@ func TestRProcessBlockSuccess(t *testing.T) {
 					event:         rProcessBlock{},
 					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 1}, blocksSynced: 1},
+					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 1}, blocksSynced: 1},
 				},
 			},
 		},
@@ -271,7 +271,7 @@ func TestScFinishedEv(t *testing.T) {
 					currentState: &params{height: 100, items: []pcBlock{}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{}, blocksSynced: 100},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},
@@ -282,7 +282,7 @@ func TestScFinishedEv(t *testing.T) {
 					currentState: &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},

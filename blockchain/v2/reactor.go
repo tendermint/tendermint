@@ -132,7 +132,7 @@ type blockVerifier interface {
 	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 }
 
-// XXX: unify naming in this package around tdState
+// XXX: unify naming in this package around tmState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
 	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
@@ -381,7 +381,7 @@ func (r *BlockchainReactor) demux() {
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
 			if msg, ok := event.(pcFinished); ok {
-				r.io.trySwitchToConsensus(msg.tdState, msg.blocksSynced)
+				r.io.trySwitchToConsensus(msg.tmState, msg.blocksSynced)
 			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")

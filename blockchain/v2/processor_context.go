@@ -11,7 +11,7 @@ type processorContext interface {
 	applyBlock(blockID types.BlockID, block *types.Block) error
 	verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-	tdState() state.State
+	tmState() state.State
 }
 
 type pContext struct {
@@ -35,7 +35,7 @@ func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block) error 
 	return err
 }
 
-func (pc pContext) tdState() state.State {
+func (pc pContext) tmState() state.State {
 	return pc.state
 }
 
@@ -84,6 +84,6 @@ func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet
 
 }
 
-func (mpc *mockPContext) tdState() state.State {
+func (mpc *mockPContext) tmState() state.State {
 	return mpc.state
 }

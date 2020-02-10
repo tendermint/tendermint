@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
-	tdState "github.com/tendermint/tendermint/state"
+	tmState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -29,7 +29,7 @@ type pcFinished struct {
 	priorityNormal
 	height       int64
 	blocksSynced int
-	tdState      tdState.State
+	tmState      tmState.State
 }
 
 func (p pcFinished) Error() string {
@@ -85,7 +85,7 @@ func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) {
 }
 
 func (state *pcState) height() int64 {
-	return state.context.tdState().LastBlockHeight
+	return state.context.tmState().LastBlockHeight
 }
 
 // purgePeer moves all unprocessed blocks from the queue
@@ -103,7 +103,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case scFinishedEv:
 		if state.synced() {
-			return noOp, pcFinished{tdState: state.context.tdState(), blocksSynced: state.blocksSynced}
+			return noOp, pcFinished{tmState: state.context.tmState(), blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 		return noOp, nil
@@ -124,11 +124,11 @@ func (state *pcState) handle(event Event) (Event, error) {
 		return noOp, nil
 
 	case rProcessBlock:
-		tdState := state.context.tdState()
+		tmState := state.context.tmState()
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, pcFinished{tdState: tdState, blocksSynced: state.blocksSynced}
+				return noOp, pcFinished{tmState: tmState, blocksSynced: state.blocksSynced}
 			}
 			return noOp, nil
 		}
@@ -138,7 +138,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstPartsHeader := firstParts.Header()
 		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 
-		err = state.context.verifyCommit(tdState.ChainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
 			state.purgePeer(secondItem.peerID)
