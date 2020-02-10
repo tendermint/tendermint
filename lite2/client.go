@@ -3,14 +3,15 @@ package lite
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
@@ -43,6 +44,23 @@ type TrustOptions struct {
 	Hash   []byte
 }
 
+// ValidateBasic performs basic validation.
+func (opts TrustOptions) ValidateBasic() error {
+	if opts.Period <= 0 {
+		return errors.New("negative or zero period")
+	}
+	if opts.Height <= 0 {
+		return errors.New("negative or zero height")
+	}
+	if len(opts.Hash) != tmhash.Size {
+		return errors.Errorf("expected hash size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(opts.Hash),
+		)
+	}
+	return nil
+}
+
 type mode byte
 
 const (
@@ -51,6 +69,7 @@ const (
 
 	defaultUpdatePeriod                       = 5 * time.Second
 	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
+	defaultMaxRetryAttempts                   = 10
 )
 
 // Option sets a parameter for the light client.
@@ -75,26 +94,9 @@ func SequentialVerification() Option {
 // applies to non-adjacent headers. For adjacent headers, sequential
 // verification is used.
 func SkippingVerification(trustLevel tmmath.Fraction) Option {
-	if err := ValidateTrustLevel(trustLevel); err != nil {
-		panic(err)
-	}
 	return func(c *Client) {
 		c.verificationMode = skipping
 		c.trustLevel = trustLevel
-	}
-}
-
-// Witnesses option can be used to supply providers, which will be used for
-// cross-checking the primary provider. A witness can become a primary iff the
-// current primary is unavailable.
-func Witnesses(providers []provider.Provider) Option {
-	return func(c *Client) {
-		for _, witness := range providers {
-			if witness.ChainID() != c.ChainID() {
-				panic("Witness chainID is not equal to the Lite Client chainID")
-			}
-		}
-		c.witnesses = providers
 	}
 }
 
@@ -131,6 +133,14 @@ func Logger(l log.Logger) Option {
 	}
 }
 
+// MaxRetryAttempts option can be used to set max attempts before replacing
+// primary with a witness.
+func MaxRetryAttempts(max uint16) Option {
+	return func(c *Client) {
+		c.maxRetryAttempts = max
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -144,10 +154,12 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
+	maxRetryAttempts uint16 // see MaxRetryAttempts option
 
+	// Mutex for locking during changes of the lite clients providers
+	providerMutex sync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
-
 	// See Witnesses option
 	witnesses []provider.Provider
 
@@ -175,20 +187,62 @@ type Client struct {
 // obtain the header & vals from the primary or they are invalid (e.g. trust
 // hash does not match with the one from the header).
 //
+// Witnesses are providers, which will be used for cross-checking the primary
+// provider. At least one witness must be given. A witness can become a primary
+// iff the current primary is unavailable.
+//
 // See all Option(s) for the additional configuration.
 func NewClient(
 	chainID string,
 	trustOptions TrustOptions,
 	primary provider.Provider,
+	witnesses []provider.Provider,
+	trustedStore store.Store,
+	options ...Option) (*Client, error) {
+
+	if err := trustOptions.ValidateBasic(); err != nil {
+		return nil, errors.Wrap(err, "invalid TrustOptions")
+	}
+
+	c, err := NewClientFromTrustedStore(chainID, trustOptions.Period, primary, witnesses, trustedStore, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.trustedHeader != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
+			return nil, err
+		}
+	}
+
+	return c, err
+}
+
+// NewClientFromTrustedStore initializes existing client from the trusted store.
+//
+// See NewClient
+func NewClientFromTrustedStore(
+	chainID string,
+	trustingPeriod time.Duration,
+	primary provider.Provider,
+	witnesses []provider.Provider,
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
 
 	c := &Client{
 		chainID:                            chainID,
-		trustingPeriod:                     trustOptions.Period,
+		trustingPeriod:                     trustingPeriod,
 		verificationMode:                   skipping,
 		trustLevel:                         DefaultTrustLevel,
+		maxRetryAttempts:                   defaultMaxRetryAttempts,
 		primary:                            primary,
+		witnesses:                          witnesses,
 		trustedStore:                       trustedStore,
 		updatePeriod:                       defaultUpdatePeriod,
 		removeNoLongerTrustedHeadersPeriod: defaultRemoveNoLongerTrustedHeadersPeriod,
@@ -201,19 +255,26 @@ func NewClient(
 		o(c)
 	}
 
-	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
-		return nil, err
+	// Validate the number of witnesses.
+	if len(c.witnesses) < 1 {
+		return nil, errors.New("expected at least one witness")
 	}
-	if c.trustedHeader != nil {
-		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
-			return nil, err
+
+	// Verify witnesses are all on the same chain.
+	for i, w := range witnesses {
+		if w.ChainID() != chainID {
+			return nil, errors.Errorf("witness #%d: %v is on another chain %s, expected %s",
+				i, w, w.ChainID(), chainID)
 		}
 	}
 
-	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
-		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
-			return nil, err
-		}
+	// Validate trust level.
+	if err := ValidateTrustLevel(c.trustLevel); err != nil {
+		return nil, err
+	}
+
+	if err := c.restoreTrustedHeaderAndNextVals(); err != nil {
+		return nil, err
 	}
 
 	return c, nil
@@ -268,7 +329,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	var primaryHash []byte
 	switch {
 	case options.Height > c.trustedHeader.Height:
-		h, err := c.primary.SignedHeader(c.trustedHeader.Height)
+		h, err := c.signedHeaderFromPrimary(c.trustedHeader.Height)
 		if err != nil {
 			return err
 		}
@@ -320,7 +381,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 // Fetch trustedHeader and trustedNextVals from primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
-	h, err := c.primary.SignedHeader(options.Height)
+	h, err := c.signedHeaderFromPrimary(options.Height)
 	if err != nil {
 		return err
 	}
@@ -335,7 +396,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// 2) Fetch and verify the vals.
-	vals, err := c.primary.ValidatorSet(options.Height)
+	vals, err := c.validatorSetFromPrimary(options.Height)
 	if err != nil {
 		return err
 	}
@@ -353,7 +414,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// 3) Fetch and verify the next vals (verification happens in
 	// updateTrustedHeaderAndVals).
-	nextVals, err := c.primary.ValidatorSet(options.Height + 1)
+	nextVals, err := c.validatorSetFromPrimary(options.Height + 1)
 	if err != nil {
 		return err
 	}
@@ -388,11 +449,13 @@ func (c *Client) Stop() {
 	c.routinesWaitGroup.Wait()
 }
 
-// TrustedHeader returns a trusted header at the given height (0 - the latest)
-// or nil if no such header exist.
+// TrustedHeader returns a trusted header at the given height (0 - the latest).
+// If a header is missing in trustedStore (e.g. it was skipped during
+// bisection), it will be downloaded from primary.
 //
-// Headers, which can't be trusted anymore, are removed once a day (can be
-// changed with RemoveNoLongerTrustedHeadersPeriod option).
+// Headers along with validator sets, which can't be trusted anymore, are
+// removed once a day (can be changed with RemoveNoLongerTrustedHeadersPeriod
+// option).
 // .
 // height must be >= 0.
 //
@@ -401,7 +464,7 @@ func (c *Client) Stop() {
 //  - there are some issues with the trusted store, although that should not
 //  happen normally;
 //  - negative height is passed;
-//  - header is not found.
+//  - header has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
@@ -409,20 +472,35 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 		return nil, errors.New("negative height")
 	}
 
-	if height == 0 {
-		var err error
-		height, err = c.LastTrustedHeight()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	h, err := c.trustedStore.SignedHeader(height)
+	// 1) Get latest height.
+	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return nil, err
 	}
+	if latestHeight == -1 {
+		return nil, errors.New("no headers exist")
+	}
+	if height > latestHeight {
+		return nil, errors.Errorf("unverified header requested (latest: %d)", latestHeight)
+	}
+	if height == 0 {
+		height = latestHeight
+	}
 
-	// Ensure header can still be trusted.
+	// 2) Get header from store.
+	h, err := c.trustedStore.SignedHeader(height)
+	switch {
+	case errors.Is(err, store.ErrSignedHeaderNotFound):
+		// 2.1) If not found, try to fetch header from primary.
+		h, err = c.fetchMissingTrustedHeader(height, now)
+		if err != nil {
+			return nil, err
+		}
+	case err != nil:
+		return nil, err
+	}
+
+	// 3) Ensure header can still be trusted.
 	if HeaderExpired(h, c.trustingPeriod, now) {
 		return nil, ErrOldHeaderExpired{h.Time.Add(c.trustingPeriod), now}
 	}
@@ -430,23 +508,31 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 	return h, nil
 }
 
-// TrustedValidatorSet returns a trusted validator set at the given height (0 -
-// the latest) or nil if no such validator set exist. The second return
-// parameter is height validator set corresponds to (useful when you pass 0).
+// TrustedValidatorSet returns a trusted validator set at the given height. If
+// a validator set is missing in trustedStore (e.g. the associated header was
+// skipped during bisection), it will be downloaded from primary. The second
+// return parameter is height validator set corresponds to (useful when you
+// pass 0).
 //
 // height must be >= 0.
+//
+// Headers along with validator sets, which can't be trusted anymore, are
+// removed once a day (can be changed with RemoveNoLongerTrustedHeadersPeriod
+// option).
 //
 // It returns an error if:
 //	- header signed by that validator set expired (ErrOldHeaderExpired)
 //  - there are some issues with the trusted store, although that should not
 //  happen normally;
 //  - negative height is passed;
-//  - validator set is not found.
+//  - header signed by that validator set has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error) {
-	// Checks height is positive and header is not expired.
-	_, err := c.TrustedHeader(height, now)
+	// Checks height is positive and header (note: height - 1) is not expired.
+	// Additionally, it fetches validator set from primary if it's missing in
+	// store.
+	_, err := c.TrustedHeader(height-1, now)
 	if err != nil {
 		return nil, err
 	}
@@ -523,11 +609,9 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if len(c.witnesses) > 0 {
-		if err := c.compareNewHeaderWithRandomWitness(newHeader); err != nil {
-			c.logger.Error("Error when comparing new header with one from a witness", "err", err)
-			return err
-		}
+	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
+		c.logger.Error("Error when comparing new header with one from a witness", "err", err)
+		return err
 	}
 
 	var err error
@@ -544,11 +628,29 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	}
 
 	// Update trusted header and vals.
-	nextVals, err := c.primary.ValidatorSet(newHeader.Height + 1)
+	nextVals, err := c.validatorSetFromPrimary(newHeader.Height + 1)
 	if err != nil {
 		return err
 	}
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
+}
+
+// Primary returns the primary provider.
+//
+// NOTE: provider may be not safe for concurrent access.
+func (c *Client) Primary() provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.primary
+}
+
+// Witnesses returns the witness providers.
+//
+// NOTE: providers may be not safe for concurrent access.
+func (c *Client) Witnesses() []provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.witnesses
 }
 
 // Cleanup removes all the data (headers and validator sets) stored. Note: the
@@ -603,7 +705,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 		err           error
 	)
 	for height := c.trustedHeader.Height + 1; height < newHeader.Height; height++ {
-		interimHeader, err = c.primary.SignedHeader(height)
+		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
@@ -623,7 +725,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 		if height == newHeader.Height-1 {
 			nextVals = newVals
 		} else {
-			nextVals, err = c.primary.ValidatorSet(height + 1)
+			nextVals, err = c.validatorSetFromPrimary(height + 1)
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
@@ -677,7 +779,7 @@ func (c *Client) bisection(
 
 	// right branch
 	{
-		nextVals, err := c.primary.ValidatorSet(pivot + 1)
+		nextVals, err := c.validatorSetFromPrimary(pivot + 1)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
 		}
@@ -720,36 +822,117 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *typ
 
 // fetch header and validators for the given height from primary provider.
 func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
-	h, err := c.primary.SignedHeader(height)
+	h, err := c.signedHeaderFromPrimary(height)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to obtain the header #%d", height)
 	}
-	vals, err := c.primary.ValidatorSet(height)
+	vals, err := c.validatorSetFromPrimary(height)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
 	}
 	return h, vals, nil
 }
 
-// compare header with one from a random witness.
-func (c *Client) compareNewHeaderWithRandomWitness(h *types.SignedHeader) error {
-	// 1. Pick a witness.
-	witness := c.witnesses[tmrand.Intn(len(c.witnesses))]
+// fetchMissingTrustedHeader finds the closest height after the
+// requested height and does backwards verification.
+func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
+	c.logger.Info("Fetching missing header", "height", height)
 
-	// 2. Fetch the header.
-	altH, err := witness.SignedHeader(h.Height)
+	closestHeader, err := c.trustedStore.SignedHeaderAfter(height)
 	if err != nil {
-		return errors.Wrapf(err,
-			"failed to obtain header #%d from the witness %v", h.Height, witness)
+		return nil, errors.Wrapf(err, "can't get signed header after %d", height)
 	}
 
-	// 3. Compare hashes.
-	if !bytes.Equal(h.Hash(), altH.Hash()) {
-		// TODO: One of the providers is lying. Send the evidence to fork
-		// accountability server.
-		return errors.Errorf(
-			"header hash %X does not match one %X from the witness %v",
-			h.Hash(), altH.Hash(), witness)
+	// Perform backwards verification from closestHeader to header at the given
+	// height.
+	h, err := c.backwards(height, closestHeader, now)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch next validator set from primary and persist it.
+	nextVals, err := c.validatorSetFromPrimary(height + 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
+	}
+	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
+		return nil, errors.Errorf("expected next validator's hash %X, but got %X",
+			h.NextValidatorsHash, nextVals.Hash())
+	}
+	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(h, nextVals); err != nil {
+		return nil, errors.Wrap(err, "failed to save trusted header")
+	}
+
+	return h, nil
+}
+
+// Backwards verification (see VerifyHeaderBackwards func in the spec)
+func (c *Client) backwards(toHeight int64, fromHeader *types.SignedHeader, now time.Time) (*types.SignedHeader, error) {
+	var (
+		trustedHeader   = fromHeader
+		untrustedHeader *types.SignedHeader
+		err             error
+	)
+
+	for i := trustedHeader.Height - 1; i >= toHeight; i-- {
+		untrustedHeader, err = c.signedHeaderFromPrimary(i)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to obtain the header #%d", i)
+		}
+
+		if err := untrustedHeader.ValidateBasic(c.chainID); err != nil {
+			return nil, errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+		}
+
+		if !untrustedHeader.Time.Before(trustedHeader.Time) {
+			return nil, errors.Errorf("expected older header time %v to be before newer header time %v",
+				untrustedHeader.Time,
+				trustedHeader.Time)
+		}
+
+		if HeaderExpired(untrustedHeader, c.trustingPeriod, now) {
+			return nil, ErrOldHeaderExpired{untrustedHeader.Time.Add(c.trustingPeriod), now}
+		}
+
+		if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+			return nil, errors.Errorf("older header hash %X does not match trusted header's last block %X",
+				untrustedHeader.Hash(),
+				trustedHeader.LastBlockID.Hash)
+		}
+
+		trustedHeader = untrustedHeader
+	}
+
+	return trustedHeader, nil
+}
+
+// compare header with all witnesses provided.
+func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	// 0. Check witnesses exist
+	if len(c.witnesses) == 0 {
+		return errors.New("could not find any witnesses")
+	}
+
+	// 1. Loop through all witnesses.
+	for _, witness := range c.witnesses {
+
+		// 2. Fetch the header.
+		altH, err := witness.SignedHeader(h.Height)
+		if err != nil {
+			return errors.Wrapf(err,
+				"failed to obtain header #%d from the witness %v", h.Height, witness)
+		}
+
+		// 3. Compare hashes.
+		if !bytes.Equal(h.Hash(), altH.Hash()) {
+			// TODO: One of the providers is lying. Send the evidence to fork
+			// accountability server.
+			return errors.Errorf(
+				"header hash %X does not match one %X from the witness %v",
+				h.Hash(), altH.Hash(), witness)
+		}
 	}
 
 	return nil
@@ -777,9 +960,12 @@ func (c *Client) removeNoLongerTrustedHeadersRoutine() {
 // Exposed for testing.
 func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	// 1) Get the oldest height.
-	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
+	oldestHeight, err := c.FirstTrustedHeight()
 	if err != nil {
 		c.logger.Error("can't get first trusted height", "err", err)
+		return
+	}
+	if oldestHeight == -1 { // no headers yet => wait
 		return
 	}
 
@@ -787,6 +973,9 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		c.logger.Error("can't get last trusted height", "err", err)
+		return
+	}
+	if latestHeight == -1 { // no headers yet => wait
 		return
 	}
 
@@ -861,4 +1050,74 @@ func (c *Client) Update(now time.Time) error {
 	}
 
 	return nil
+}
+
+// replaceProvider takes the first alternative provider and promotes it as the primary provider
+func (c *Client) replacePrimaryProvider() error {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	if len(c.witnesses) == 0 {
+		return errors.Errorf("no witnesses left")
+	}
+	c.primary = c.witnesses[0]
+	c.witnesses = c.witnesses[1:]
+	c.logger.Info("New primary", "p", c.primary)
+	return nil
+}
+
+// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
+// Handles dropout by the primary provider by swapping with an alternative provider
+func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
+		c.providerMutex.Lock()
+		h, err := c.primary.SignedHeader(height)
+		c.providerMutex.Unlock()
+		if err == nil {
+			// sanity check
+			if height > 0 && h.Height != height {
+				return nil, errors.Errorf("expected %d height, got %d", height, h.Height)
+			}
+			return h, nil
+		}
+		if err == provider.ErrSignedHeaderNotFound {
+			return nil, err
+		}
+		time.Sleep(backoffTimeout(attempt))
+	}
+
+	c.logger.Info("Primary is unavailable. Replacing with the first witness")
+	err := c.replacePrimaryProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.signedHeaderFromPrimary(height)
+}
+
+// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
+// Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
+func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
+		c.providerMutex.Lock()
+		vals, err := c.primary.ValidatorSet(height)
+		c.providerMutex.Unlock()
+		if err == nil || err == provider.ErrValidatorSetNotFound {
+			return vals, err
+		}
+		time.Sleep(backoffTimeout(attempt))
+	}
+
+	c.logger.Info("Primary is unavailable. Replacing with the first witness")
+	err := c.replacePrimaryProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.validatorSetFromPrimary(height)
+}
+
+// exponential backoff (with jitter)
+//		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
+func backoffTimeout(attempt uint16) time.Duration {
+	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }

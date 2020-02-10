@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/lite2/provider"
 	mockp "github.com/tendermint/tendermint/lite2/provider/mock"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	"github.com/tendermint/tendermint/types"
@@ -127,6 +128,11 @@ func TestClient_SequentialVerification(t *testing.T) {
 				tc.otherHeaders,
 				tc.vals,
 			),
+			[]provider.Provider{mockp.New(
+				chainID,
+				tc.otherHeaders,
+				tc.vals,
+			)},
 			dbs.New(dbm.NewMemDB(), chainID),
 			SequentialVerification(),
 		)
@@ -228,6 +234,11 @@ func TestClient_SkippingVerification(t *testing.T) {
 				tc.otherHeaders,
 				tc.vals,
 			),
+			[]provider.Provider{mockp.New(
+				chainID,
+				tc.otherHeaders,
+				tc.vals,
+			)},
 			dbs.New(dbm.NewMemDB(), chainID),
 			SkippingVerification(DefaultTrustLevel),
 		)
@@ -264,6 +275,26 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
+	primary := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			// trusted header
+			1: header,
+			// interim header (3/3 signed)
+			2: keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			// last header (3/3 signed)
+			3: keys.GenSignedHeader(chainID, 3, bTime.Add(4*time.Hour), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+		},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+			3: vals,
+			4: vals,
+		},
+	)
+
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -271,28 +302,17 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 			Height: 1,
 			Hash:   header.Hash(),
 		},
-		mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header,
-				// interim header (3/3 signed)
-				2: keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-				// last header (3/3 signed)
-				3: keys.GenSignedHeader(chainID, 3, bTime.Add(4*time.Hour), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
-		),
+		primary,
+		[]provider.Provider{primary},
 		dbs.New(dbm.NewMemDB(), chainID),
 		Logger(log.TestingLogger()),
 	)
+
+	assert.NotPanics(t, func() {
+		now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
+		c.RemoveNoLongerTrustedHeaders(now)
+	})
+
 	require.NoError(t, err)
 	err = c.Start()
 	require.NoError(t, err)
@@ -333,6 +353,18 @@ func TestClient_Cleanup(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
+	primary := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			// trusted header
+			1: header,
+		},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		},
+	)
+
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -340,17 +372,8 @@ func TestClient_Cleanup(t *testing.T) {
 			Height: 1,
 			Hash:   header.Hash(),
 		},
-		mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header,
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
-		),
+		primary,
+		[]provider.Provider{primary},
 		dbs.New(dbm.NewMemDB(), chainID),
 		Logger(log.TestingLogger()),
 	)
@@ -388,6 +411,18 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(header, vals)
 		require.NoError(t, err)
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+			},
+		)
+
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -395,17 +430,8 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 				Height: 1,
 				Hash:   header.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					// trusted header
-					1: header,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -430,6 +456,18 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header1,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+			},
+		)
+
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -437,17 +475,8 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 				Height: 1,
 				Hash:   header1.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					// trusted header
-					1: header1,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -487,6 +516,18 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: header,
+				2: header2,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+			},
+		)
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -494,18 +535,8 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 				Height: 2,
 				Hash:   header2.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					1: header,
-					2: header2,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-					3: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -535,6 +566,19 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: header1,
+				2: header2,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+			},
+		)
+
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -542,18 +586,8 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 				Height: 2,
 				Hash:   header2.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					1: header1,
-					2: header2,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-					3: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -595,6 +629,19 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(header2, vals)
 		require.NoError(t, err)
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: header,
+				2: header2,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+			},
+		)
+
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -602,18 +649,8 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 				Height: 1,
 				Hash:   header.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					1: header,
-					2: header2,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-					3: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -650,6 +687,17 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(header2, vals)
 		require.NoError(t, err)
 
+		primary := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: header1,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+			},
+		)
+
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
@@ -657,16 +705,8 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 				Height: 1,
 				Hash:   header1.Hash(),
 			},
-			mockp.New(
-				chainID,
-				map[int64]*types.SignedHeader{
-					1: header1,
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-				},
-			),
+			primary,
+			[]provider.Provider{primary},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -702,6 +742,26 @@ func TestClient_Update(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
+	primary := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			// trusted header
+			1: header,
+			// interim header (3/3 signed)
+			2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			// last header (3/3 signed)
+			3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+		},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+			3: vals,
+			4: vals,
+		},
+	)
+
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -709,25 +769,8 @@ func TestClient_Update(t *testing.T) {
 			Height: 1,
 			Hash:   header.Hash(),
 		},
-		mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header,
-				// interim header (3/3 signed)
-				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-				// last header (3/3 signed)
-				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
-		),
+		primary,
+		[]provider.Provider{primary},
 		dbs.New(dbm.NewMemDB(), chainID),
 		Logger(log.TestingLogger()),
 	)
@@ -760,6 +803,26 @@ func TestClient_Concurrency(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
+	primary := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			// trusted header
+			1: header,
+			// interim header (3/3 signed)
+			2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			// last header (3/3 signed)
+			3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+		},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+			3: vals,
+			4: vals,
+		},
+	)
+
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -767,25 +830,8 @@ func TestClient_Concurrency(t *testing.T) {
 			Height: 1,
 			Hash:   header.Hash(),
 		},
-		mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header,
-				// interim header (3/3 signed)
-				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-				// last header (3/3 signed)
-				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
-		),
+		primary,
+		[]provider.Provider{primary},
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
@@ -826,4 +872,164 @@ func TestClient_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestProvider_Replacement(t *testing.T) {
+	const (
+		chainID = "TestProvider_Replacement"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+		primary = mockp.NewDeadMock(chainID)
+		witness = mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: header,
+				// interim header (3/3 signed)
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				// last header (3/3 signed)
+				3: keys.GenSignedHeader(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		)
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   header.Hash(),
+		},
+		primary,
+		[]provider.Provider{witness},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
+	)
+	require.NoError(t, err)
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Stop()
+
+	assert.NotEqual(t, c.Primary(), primary)
+	assert.Equal(t, 0, len(c.Witnesses()))
+}
+
+func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
+	const (
+		chainID = "TestProvider_TrustedHeaderFetchesMissingHeader"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		h1       = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+		h2 = keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h1.Hash()})
+		h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
+		primary = mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: h2,
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		)
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 1 * time.Hour,
+			Height: 3,
+			Hash:   h3.Hash(),
+		},
+		primary,
+		[]provider.Provider{primary},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Stop()
+
+	// 1) header is missing => expect no error
+	h, err := c.TrustedHeader(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+	require.NoError(t, err)
+	if assert.NotNil(t, h) {
+		assert.EqualValues(t, 2, h.Height)
+	}
+
+	// 2) header is missing, but it's expired => expect error
+	h, err = c.TrustedHeader(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+	assert.Error(t, err)
+	assert.Nil(t, h)
+}
+
+func Test_NewClientFromTrustedStore(t *testing.T) {
+	const (
+		chainID = "Test_NewClientFromTrustedStore"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+		primary = mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{},
+			map[int64]*types.ValidatorSet{},
+		)
+	)
+
+	// 1) Initiate DB and fill with a "trusted" header
+	db := dbs.New(dbm.NewMemDB(), chainID)
+	err := db.SaveSignedHeaderAndNextValidatorSet(header, vals)
+	require.NoError(t, err)
+
+	// 2) Initialize Lite Client from Trusted Store
+	c, err := NewClientFromTrustedStore(
+		chainID,
+		1*time.Hour,
+		primary,
+		[]provider.Provider{primary},
+		db,
+	)
+	require.NoError(t, err)
+
+	// 3) Check header exists through the lite clients eyes
+	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, h.Height)
 }
