@@ -38,7 +38,13 @@ mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 # Go tools
 ###
 
+BIN ?= /usr/local/bin
+UNAME_S ?= $(shell uname -s)
+UNAME_M ?= $(shell uname -m)
+
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
+
+BUF_VERSION ?= 0.7.0
 
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
@@ -64,6 +70,27 @@ protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
+
+buf: protoc-gen-buf-check-breaking protoc-gen-buf-check-lint
+	@echo "Installing buf..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/buf" && \
+	chmod +x "${BIN}/buf"
+
+protoc-gen-buf-check-breaking:
+	@echo "Installing protoc-gen-buf-check-breaking..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-breaking-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/protoc-gen-buf-check-breaking" && \
+	chmod +x "${BIN}/protoc-gen-buf-check-breaking"
+
+protoc-gen-buf-check-lint:
+	@echo "Installing protoc-gen-buf-check-lint..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-lint-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/protoc-gen-buf-check-lint" && \
+	chmod +x "${BIN}/protoc-gen-buf-check-lint"
 
 goodman: $(GOODMAN)
 $(GOODMAN):

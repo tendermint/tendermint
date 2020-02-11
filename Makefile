@@ -1,7 +1,6 @@
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-INCLUDE = -I=${GOPATH}/src/github.com/tendermint/tendermint -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
@@ -12,8 +11,9 @@ all: check build test install
 include tools.mk
 include tests.mk
 
-########################################
-### Build Tendermint
+###############################################################################
+###                                Build Tendermint                        ###
+###############################################################################
 
 build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
@@ -30,26 +30,31 @@ install:
 install_c:
 	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
 
-########################################
-### Protobuf
+###############################################################################
+###                                Protobuf                                 ###
+###############################################################################
 
-protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
+proto-all: proto-gen proto-lint proto-check-breaking
 
-%.pb.go: %.proto
+proto-gen:
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
 	## Note the $< here is substituted for the %.proto
 	## Note the $@ here is substituted for the %.pb.go
-	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc:../../..
+	@sh scripts/protocgen.sh
 
-########################################
-### Build ABCI
+proto-lint:
+	@buf check lint --error-format=json
 
-# see protobuf section above
-protoc_abci: abci/types/types.pb.go
+proto-check-breaking:
+	@buf check breaking --against-input '.git#branch=master'
 
-protoc_proto3types: types/proto3/block.pb.go
+.PHONY: proto-all proto-gen proto-lint proto-check-breaking
+
+###############################################################################
+###                              Build ABCI                                 ###
+###############################################################################
 
 build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
@@ -57,8 +62,9 @@ build_abci:
 install_abci:
 	@go install -mod=readonly ./abci/cmd/...
 
-########################################
-### Distribution
+###############################################################################
+###                              Distribution                               ###
+###############################################################################
 
 # dist builds binaries for all platforms and packages them for distribution
 # TODO add abci to these scripts
@@ -86,10 +92,9 @@ get_deps_bin_size:
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 
-########################################
-### Libs
-
-protoc_libs: libs/kv/types.pb.go
+###############################################################################
+###                                  Libs                                   ###
+###############################################################################
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
@@ -105,13 +110,9 @@ clean_certs:
 	rm -f rpc/lib/server/test.crt
 	rm -f rpc/lib/server/test.key
 
-protoc_grpc: rpc/grpc/types.pb.go
-
-protoc_merkle: crypto/merkle/merkle.pb.go
-
-
-########################################
-### Formatting, linting, and vetting
+###############################################################################
+###                  Formatting, linting, and vetting                       ###
+###############################################################################
 
 fmt:
 	@go fmt ./...
@@ -122,8 +123,9 @@ lint:
 
 DESTINATION = ./index.html.md
 
-###########################################################
-### Documentation
+###############################################################################
+###                           Documentation                                 ###
+###############################################################################
 
 build-docs:
 	cd docs && \
@@ -142,16 +144,18 @@ sync-docs:
 	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
 .PHONY: sync-docs
 
-###########################################################
-### Docker image
+###############################################################################
+###                            Docker image                                 ###
+###############################################################################
 
 build-docker:
 	cp $(OUTPUT) DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
 
-###########################################################
-### Local testnet using docker
+###############################################################################
+###                       Local testnet using docker                        ###
+###############################################################################
 
 # Build linux binary on other platforms
 build-linux: tools
@@ -176,8 +180,9 @@ localnet-start: localnet-stop build-docker-localnode
 localnet-stop:
 	docker-compose down
 
-###########################################################
-### Remote full-nodes (sentry) using terraform and ansible
+###############################################################################
+###          Remote full-nodes (sentry) using terraform and ansible         ###
+###############################################################################
 
 # Server management
 sentry-start:
@@ -216,7 +221,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
- 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
+ 	gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux
