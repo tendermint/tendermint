@@ -79,7 +79,10 @@ type Group struct {
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
 func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
-	dir := path.Dir(headPath)
+	dir, err := filepath.Abs(path.Dir(headPath))
+	if err != nil {
+		return nil, err
+	}
 	head, err := OpenAutoFile(headPath)
 	if err != nil {
 		return nil, err
