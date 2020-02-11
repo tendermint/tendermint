@@ -3,7 +3,7 @@ package autofile
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -30,7 +30,7 @@ func TestSIGHUP(t *testing.T) {
 	name := "sighup_test"
 	af, err := OpenAutoFile(name)
 	require.NoError(t, err)
-	require.True(t, path.IsAbs(af.Path))
+	require.True(t, filepath.IsAbs(af.Path))
 
 	// Write to the file.
 	_, err = af.Write([]byte("Line 1\n"))
@@ -64,10 +64,10 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Both files should exist
-	if body := tmos.MustReadFile(path.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
+	if body := tmos.MustReadFile(filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
 		t.Errorf("unexpected body %s", body)
 	}
-	if body := tmos.MustReadFile(path.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
+	if body := tmos.MustReadFile(filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
 		t.Errorf("unexpected body %s", body)
 	}
 

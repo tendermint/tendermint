@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -79,7 +78,7 @@ type Group struct {
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
 func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
-	dir, err := filepath.Abs(path.Dir(headPath))
+	dir, err := filepath.Abs(filepath.Dir(headPath))
 	if err != nil {
 		return nil, err
 	}
