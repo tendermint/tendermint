@@ -294,7 +294,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height < c.trustedHeader.Height:
 		c.logger.Info("Client initialized with old header (trusted is more recent)",
 			"old", options.Height,
-			"trusted", c.trustedHeader.Height)
+			"trusted", c.trustedHeader.Height,
+			"trusted-hash", fmt.Sprintf("%X", c.trustedHeader.Hash()))
 
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
