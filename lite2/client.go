@@ -342,7 +342,9 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return err
 	}
 
-	// NOTE: Verify func will check if it's expired or not.
+	// NOTE: - Verify func will check if it's expired or not.
+	//       - h.Time is not being checked against time.Now() because we don't
+	//         want to add yet another argument to NewClient* functions.
 	if err := h.ValidateBasic(c.chainID); err != nil {
 		return err
 	}
@@ -356,12 +358,14 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	if err != nil {
 		return err
 	}
+
 	if !bytes.Equal(h.ValidatorsHash, vals.Hash()) {
 		return errors.Errorf("expected header's validators (%X) to match those that were supplied (%X)",
 			h.ValidatorsHash,
 			vals.Hash(),
 		)
 	}
+
 	// Ensure that +2/3 of validators signed correctly.
 	err = vals.VerifyCommit(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
 	if err != nil {
