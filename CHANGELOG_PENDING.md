@@ -22,6 +22,10 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [proto] [\#4369] Add [buf](https://buf.build/) for usage with linting and checking if there are breaking changes with the master branch.
+- [proto] [\#4369] Add `make proto-gen` cmd to generate proto stubs outside of GOPATH.
+
+
 ### BUG FIXES:
 
 - [node] [#\4311] Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
