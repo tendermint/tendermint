@@ -915,27 +915,42 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 		return errors.New("could not find any witnesses")
 	}
 
-	// 1. Loop through all witnesses.
-	for _, witness := range c.witnesses {
+	matchedHeader := false
 
-		// 2. Fetch the header.
-		altH, err := witness.SignedHeader(h.Height)
-		if err != nil {
-			return errors.Wrapf(err,
-				"failed to obtain header #%d from the witness %v", h.Height, witness)
+	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
+		// 1. Loop through all witnesses.
+		for _, witness := range c.witnesses {
+
+			// 2. Fetch the header.
+			altH, err := witness.SignedHeader(h.Height)
+			if err != nil {
+				c.logger.Info("No Response from witness ", "witness", witness)
+				continue
+			}
+
+			// 3. Compare hashes.
+			if !bytes.Equal(h.Hash(), altH.Hash()) {
+				// TODO: One of the providers is lying. Send the evidence to fork
+				// accountability server.
+				return errors.Errorf(
+					"header hash %X does not match one %X from the witness %v",
+					h.Hash(), altH.Hash(), witness)
+			}
+
+			matchedHeader = true
+
 		}
 
-		// 3. Compare hashes.
-		if !bytes.Equal(h.Hash(), altH.Hash()) {
-			// TODO: One of the providers is lying. Send the evidence to fork
-			// accountability server.
-			return errors.Errorf(
-				"header hash %X does not match one %X from the witness %v",
-				h.Hash(), altH.Hash(), witness)
+		// 4. Check that one responding witness has returned a matching header
+		if matchedHeader {
+			return nil
 		}
+
+		time.Sleep(backoffTimeout(attempt))
+
 	}
 
-	return nil
+	return errors.New("awaiting response from all witnesses exceeded dropout time")
 }
 
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {

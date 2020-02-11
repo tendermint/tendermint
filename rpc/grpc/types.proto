@@ -1,9 +1,9 @@
 syntax = "proto3";
 package tendermint.rpc.grpc;
-option go_package = "github.com/tendermint/tendermint/rpc/grpc;core_grpc";
+option go_package = "github.com/tendermint/tendermint/rpc/grpc;coregrpc";
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/tendermint/tendermint/abci/types/types.proto";
+import "third_party/proto/gogoproto/gogo.proto";
+import "abci/types/types.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;

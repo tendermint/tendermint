@@ -1033,3 +1033,56 @@ func Test_NewClientFromTrustedStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
 }
+
+func TestCompareWithWitnesses(t *testing.T) {
+	const (
+		chainID = "TestCompareWithWitnesses"
+	)
+
+	var (
+		keys = genPrivKeys(4)
+		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
+		vals     = keys.ToValidators(20, 10)
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		h1       = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+		h2 = keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h1.Hash()})
+		h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
+		liveProvider = mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: h2,
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		)
+		deadProvider = mockp.NewDeadMock(chainID)
+	)
+
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 1 * time.Hour,
+			Height: 2,
+			Hash:   h2.Hash(),
+		},
+		liveProvider,
+		[]provider.Provider{deadProvider, deadProvider, deadProvider},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
+	)
+	require.NoError(t, err)
+	err = c.Update(time.Now())
+	assert.Error(t, err)
+
+}

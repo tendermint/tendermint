@@ -98,6 +98,10 @@ need. Instead of running `go get -u=patch`, which will update anything,
 specify exactly the dependency you want to update, eg.
 `GO111MODULE=on go get -u github.com/tendermint/go-amino@master`.
 
+## Protobuf
+
+When working with [protobuf](https://developers.google.com/protocol-buffers) there are a few things you should know. We use [buf](https://buf.build/) for our linting and breaking changes checking. If you would like to run linting and check if the changes you have made are breaking then you will have to install the needed dependencies with `make buf`. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`. To generate new stubs based off of your changes you can run `make proto-gen` (you can do this outside of GOPATH).
+
 ## Vagrant
 
 If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started

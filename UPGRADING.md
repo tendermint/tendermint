@@ -3,6 +3,14 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## Unreleased
+
+<Overview>
+
+### Protobuf Changes
+
+When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
+
 ## v0.33.0
 
 This release is not compatible with previous blockchains due to commit becoming signatures only and fields in the header have been removed.
