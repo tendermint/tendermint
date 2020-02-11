@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -60,6 +61,10 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 			return nil, provider.ErrSignedHeaderNotFound
 		}
 		return nil, err
+	}
+
+	if commit.Header == nil {
+		return nil, errors.New("header is nil")
 	}
 
 	// Verify we're still on the same chain.
