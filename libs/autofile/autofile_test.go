@@ -30,6 +30,7 @@ func TestSIGHUP(t *testing.T) {
 	name := "sighup_test"
 	af, err := OpenAutoFile(name)
 	require.NoError(t, err)
+	require.True(t, path.IsAbs(af.Path))
 
 	// Write to the file.
 	_, err = af.Write([]byte("Line 1\n"))
