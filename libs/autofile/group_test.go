@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -105,6 +106,23 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 func TestRotateFile(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
+
+	// Create a different temporary directory and move into it, to make sure
+	// relative paths are resolved at Group creation
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(origDir)
+
+	dir, err := ioutil.TempDir("", "rotate_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	err = os.Chdir(dir)
+	require.NoError(t, err)
+
+	require.True(t, filepath.IsAbs(g.Head.Path))
+	require.True(t, filepath.IsAbs(g.Dir))
+
+	// Create and rotate files
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
@@ -128,6 +146,11 @@ func TestRotateFile(t *testing.T) {
 	if string(body2) != "Line 4\nLine 5\nLine 6\n" {
 		t.Errorf("got unexpected contents: [%v]", string(body2))
 	}
+
+	// Make sure there are no files in the current, temporary directory
+	files, err := ioutil.ReadDir(".")
+	require.NoError(t, err)
+	assert.Empty(t, files)
 
 	// Cleanup
 	destroyTestGroup(t, g)
