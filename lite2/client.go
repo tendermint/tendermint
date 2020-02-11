@@ -567,11 +567,6 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
 
-	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
-		c.logger.Error("Error when comparing new header with witnesses", "err", err)
-		return err
-	}
-
 	var err error
 	switch c.verificationMode {
 	case sequential:
@@ -582,6 +577,11 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
 	if err != nil {
+		return err
+	}
+
+	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
+		c.logger.Error("Error when comparing new header with witnesses", "err", err)
 		return err
 	}
 
