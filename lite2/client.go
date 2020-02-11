@@ -170,7 +170,7 @@ func NewClient(
 		}
 	}
 
-	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+	if c.trustedHeader == nil || c.trustedHeader.Height < trustOptions.Height {
 		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
 			return nil, err
 		}
@@ -302,13 +302,13 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			options.Height, options.Hash,
 			c.trustedHeader.Height, c.trustedHeader.Hash())
 		if c.confirmationFn(action) {
-			// remove all the headers ( options.Height, trustedHeader.Height ]
+			// remove all the headers (options.Height, trustedHeader.Height]
 			c.cleanup(options.Height + 1)
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
 				"old", options.Height)
 		} else {
-			return errors.New("rollback aborted")
+			return nil
 		}
 
 		primaryHash = options.Hash
@@ -616,7 +616,9 @@ func (c *Client) Cleanup() error {
 	return c.cleanup(0)
 }
 
-// cleanup deletes all headers & validator sets between +stopHeight+ and latest height included
+// cleanup deletes all headers & validator sets between +stopHeight+ and latest
+// height included. It also sets trustedHeader (vals) to the latest header
+// (vals) if such exists.
 func (c *Client) cleanup(stopHeight int64) error {
 	// 1) Get the oldest height.
 	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
