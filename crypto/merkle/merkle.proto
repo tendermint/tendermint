@@ -27,5 +27,5 @@ message ProofOp {
 
 // Proof is Merkle proof defined by the list of ProofOps
 message Proof {
-  repeated ProofOp ops = 1 [(gogoproto.nullable)=false];
+  repeated ProofOp ops = 1 [(gogoproto.nullable) = false];
 }

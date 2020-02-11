@@ -46,8 +46,7 @@ message RequestEcho {
   string message = 1;
 }
 
-message RequestFlush {
-}
+message RequestFlush {}
 
 message RequestInfo {
   string version = 1;
@@ -62,10 +61,13 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time = 1  [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.stdtime) = true
+  ];
   string chain_id = 2;
   ConsensusParams consensus_params = 3;
-  repeated ValidatorUpdate validators = 4  [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validators = 4 [(gogoproto.nullable) = false];
   bytes app_state_bytes = 5;
 }
 
@@ -78,9 +80,9 @@ message RequestQuery {
 
 message RequestBeginBlock {
   bytes hash = 1;
-  Header header = 2 [(gogoproto.nullable)=false];
-  LastCommitInfo last_commit_info = 3 [(gogoproto.nullable)=false];
-  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
+  Header header = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo last_commit_info = 3 [(gogoproto.nullable) = false];
+  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -101,8 +103,7 @@ message RequestEndBlock {
   int64 height = 1;
 }
 
-message RequestCommit {
-}
+message RequestCommit {}
 
 //----------------------------------------
 // Response types
@@ -156,7 +157,7 @@ message ResponseSetOption {
 
 message ResponseInitChain {
   ConsensusParams consensus_params = 1;
-  repeated ValidatorUpdate validators = 2 [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validators = 2 [(gogoproto.nullable) = false];
 }
 
 message ResponseQuery {
@@ -173,7 +174,10 @@ message ResponseQuery {
 }
 
 message ResponseBeginBlock {
-  repeated Event events = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  repeated Event events = 1 [
+    (gogoproto.nullable) = false, 
+    (gogoproto.jsontag) = "events,omitempty"
+  ];
 }
 
 message ResponseCheckTx {
@@ -181,9 +185,12 @@ message ResponseCheckTx {
   bytes data = 2;
   string log = 3; // nondeterministic
   string info = 4; // nondeterministic
-  int64 gas_wanted  = 5;
+  int64 gas_wanted = 5;
   int64 gas_used = 6;
-  repeated Event events = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  repeated Event events = 7 [
+    (gogoproto.nullable) = false, 
+    (gogoproto.jsontag) = "events,omitempty"
+  ];
   string codespace = 8;
 }
 
@@ -194,14 +201,20 @@ message ResponseDeliverTx {
   string info = 4; // nondeterministic
   int64 gas_wanted = 5;
   int64 gas_used = 6;
-  repeated Event events = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  repeated Event events = 7 [
+    (gogoproto.nullable) = false, 
+    (gogoproto.jsontag) = "events,omitempty"
+  ];
   string codespace = 8;
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
   ConsensusParams consensus_param_updates = 2;
-  repeated Event events = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  repeated Event events = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag) = "events,omitempty"
+  ];
 }
 
 message ResponseCommit {
@@ -231,7 +244,10 @@ message BlockParams {
 message EvidenceParams {
   // Note: must be greater than 0
   int64 max_age_num_blocks = 1;
-  google.protobuf.Duration max_age_duration = 2 [(gogoproto.nullable)=false, (gogoproto.stdduration)=true];
+  google.protobuf.Duration max_age_duration = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.stdduration) = true
+  ];
 }
 
 // ValidatorParams contains limits on validators.
@@ -241,12 +257,15 @@ message ValidatorParams {
 
 message LastCommitInfo {
   int32 round = 1;
-  repeated VoteInfo votes = 2 [(gogoproto.nullable)=false];
+  repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
 message Event {
   string type = 1;
-  repeated tendermint.libs.kv.Pair attributes = 2 [(gogoproto.nullable)=false, (gogoproto.jsontag)="attributes,omitempty"];
+  repeated tendermint.libs.kv.Pair attributes = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag) = "attributes,omitempty"
+  ];
 }
 
 //----------------------------------------
@@ -254,13 +273,16 @@ message Event {
 
 message Header {
   // basic block info
-  Version version = 1 [(gogoproto.nullable)=false];
-  string chain_id = 2 [(gogoproto.customname)="ChainID"];
+  Version version = 1 [(gogoproto.nullable) = false];
+  string chain_id = 2 [(gogoproto.customname) = "ChainID"];
   int64 height = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 4 [
+    (gogoproto.nullable)=false,
+    (gogoproto.stdtime)=true
+  ];
 
   // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable)=false];
+  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
 
   // hashes of block data
   bytes last_commit_hash = 6; // commit from validators from the last block
@@ -283,10 +305,9 @@ message Version {
   uint64 App = 2;
 }
 
-
 message BlockID {
   bytes hash = 1;
-  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
+  PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
 }
 
 message PartSetHeader {
@@ -303,13 +324,13 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  PubKey pub_key = 1 [(gogoproto.nullable)=false];
+  PubKey pub_key = 1 [(gogoproto.nullable) = false];
   int64 power = 2;
 }
 
 // VoteInfo
 message VoteInfo {
-  Validator validator = 1 [(gogoproto.nullable)=false];
+  Validator validator = 1 [(gogoproto.nullable) = false];
   bool signed_last_block = 2;
 }
 
@@ -320,9 +341,12 @@ message PubKey {
 
 message Evidence {
   string type = 1;
-  Validator validator = 2 [(gogoproto.nullable)=false];
+  Validator validator = 2 [(gogoproto.nullable) = false];
   int64 height = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 4 [
+    (gogoproto.nullable) = false,
+    (gogoproto.stdtime) = true
+  ];
   int64 total_voting_power = 5;
 }
 
