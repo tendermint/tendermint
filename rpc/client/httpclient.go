@@ -123,8 +123,14 @@ func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, e
 
 var _ Client = (*HTTP)(nil)
 
+// SetLogger sets a logger.
 func (c *HTTP) SetLogger(l log.Logger) {
 	c.WSEvents.SetLogger(l)
+}
+
+// Remote returns the remote network address in a string form.
+func (c *HTTP) Remote() string {
+	return c.remote
 }
 
 // NewBatch creates a new batch client for this HTTP client.
