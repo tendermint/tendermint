@@ -180,27 +180,6 @@ localnet-start: localnet-stop build-docker-localnode
 localnet-stop:
 	docker-compose down
 
-###############################################################################
-###          Remote full-nodes (sentry) using terraform and ansible         ###
-###############################################################################
-
-# Server management
-sentry-start:
-	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
-	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
-	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
-	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 0 --n 4 --o . ; fi
-	cd networks/remote/ansible && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
-	@echo "Next step: Add your validator setup in the genesis.json and config.tml files and run \"make sentry-config\". (Public key of validator, chain ID, peer IP and node ID.)"
-
-# Configuration management
-sentry-config:
-	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
-
-sentry-stop:
-	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
-	cd networks/remote/terraform && terraform destroy -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
-
 # Build hooks for dredd, to skip or add information on some steps
 build-contract-tests-hooks:
 ifeq ($(OS),Windows_NT)
@@ -221,7 +200,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
- 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop \
+ 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	localnet-stop build-docker build-docker-localnode protoc_grpc protoc_all \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux
