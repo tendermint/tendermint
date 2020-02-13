@@ -561,7 +561,8 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()), "vals", hash2str(newVals.Hash()))
+	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
+		"vals", hash2str(newVals.Hash()))
 
 	if c.trustedHeader.Height >= newHeader.Height {
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
@@ -577,6 +578,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
 	if err != nil {
+		c.logger.Error("Can't verify", "err", err)
 		return err
 	}
 
@@ -874,17 +876,31 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 
 	// 1. Check witnesses exist
 	if len(c.witnesses) == 0 {
-		return errors.New("could not find any witnesses")
+		return errors.New("could not find any witnesses. please reset the light client")
 	}
 
 	// 2. Make sure AT LEAST ONE witness returns the same header
 	headerMatched := false
+	witnessesToRemove := make([]int, 0)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 
-		for _, witness := range c.witnesses {
+		for i, witness := range c.witnesses {
 			altH, err := witness.SignedHeader(h.Height)
 			if err != nil {
 				c.logger.Error("Failed to get a header from witness", "height", h.Height, "witness", witness)
+				continue
+			}
+
+			if err = altH.ValidateBasic(); err != nil {
+				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
+				witnessesToRemove = append(witnessesToRemove, i)
+				continue
+			}
+
+			if err = c.trustedNextVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
+				altH.Height, altH.Commit, c.trustLevel); err != nil {
+				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
+				witnessesToRemove = append(witnessesToRemove, i)
 				continue
 			}
 
@@ -899,6 +915,10 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			headerMatched = true
 		}
 
+		for _, idx := range witnessesToRemove {
+			c.removeWitness(idx)
+		}
+
 		if headerMatched {
 			return nil
 		}
@@ -908,6 +928,19 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	}
 
 	return errors.New("awaiting response from all witnesses exceeded dropout time")
+}
+
+// NOTE: requires a providerMutex locked.
+func (c *Client) removeWitness(idx int) {
+	switch len(c.witnesses) {
+	case 0:
+		panic(fmt.Sprintf("wanted to remove %d element from empty witnesses slice", idx))
+	case 1:
+		c.witnesses = make([]provider.Provider, 0)
+	default:
+		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
+		c.witnesses = c.witnesses[:len(c.witnesses)-1]
+	}
 }
 
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {
