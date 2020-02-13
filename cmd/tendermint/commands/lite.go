@@ -25,13 +25,12 @@ import (
 // LiteCmd represents the base command when called without any subcommands
 var LiteCmd = &cobra.Command{
 	Use:   "lite",
-	Short: "Run lite-client proxy server, verifying tendermint rpc",
-	Long: `This node will run a secure proxy to a tendermint rpc server.
+	Short: "Run a light client proxy server, verifying Tendermint rpc",
+	Long: `Run a light client proxy server, verifying Tendermint rpc.
 
 All calls that can be tracked back to a block header by a proof
-will be verified before passing them back to the caller. Other that
-that it will present the same interface as a full tendermint node,
-just with added trust and running locally.`,
+will be verified before passing them back to the caller. Other than
+that, it will present the same interface as a full Tendermint node.`,
 	RunE:         runProxy,
 	SilenceUsage: true,
 }
@@ -52,27 +51,20 @@ var (
 func init() {
 	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
 		"Serve the proxy on the given address")
-
+	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&primaryAddr, "primary", "tcp://localhost:26657",
 		"Connect to a Tendermint node at this address")
-
 	LiteCmd.Flags().StringVar(&witnessesAddrs, "witnesses", "",
 		"Tendermint nodes to cross-check the primary node, comma-separated")
-
-	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
-
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
 	LiteCmd.Flags().IntVar(
 		&maxOpenConnections,
 		"max-open-connections",
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
-
 	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
 		"Trusting period. Should be significantly less than the unbonding period")
-
 	LiteCmd.Flags().Int64Var(&trustedHeight, "trusted-height", 1, "Trusted header's height")
-
 	LiteCmd.Flags().BytesHexVar(&trustedHash, "trusted-hash", []byte{}, "Trusted header's hash")
 }
 

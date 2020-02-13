@@ -76,24 +76,29 @@ Example usage:
 				Hash:   header.Hash(),
 			},
 			httpp.New(chainID, "tcp://localhost:26657"),
+			[]provider.Provider{httpp.New(chainID, "tcp://witness1:26657")},
 			dbs.New(db, chainID),
 		)
 
-		err = c.VerifyHeaderAtHeight(101, time.Now())
+		err = c.Start()
 		if err != nil {
-			fmt.Println("retry?")
+			// return err
+			t.Fatal(err)
 		}
+		defer c.Stop()
 
 		h, err := c.TrustedHeader(101)
 		if err != nil {
-			fmt.Println("retry?")
+			// handle error
 		}
 		fmt.Println("got header", h)
+
+Check out other examples in example_test.go
 
 ## 2. Pure functions to verify a new header (see verifier.go)
 
 Verify function verifies a new header against some trusted header. See
-https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
+https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/verification.md
 for details.
 
 ## 3. Secure RPC proxy
@@ -105,7 +110,7 @@ as a wrapper, which verifies all the headers, using a light client connected to
 some other node.
 
 See
-https://github.com/tendermint/tendermint/blob/master/cmd/tendermint/commands/lite.go
+https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html
 for usage example.
 */
 package lite
