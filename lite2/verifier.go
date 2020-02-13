@@ -49,7 +49,7 @@ func Verify(
 	}
 
 	if h2.Height == h1.Height+1 {
-		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) {
+		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) { //h1.nextValidatorHash
 			err := errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
 				h1NextVals.Hash(),
 				h2.ValidatorsHash,
