@@ -48,6 +48,20 @@ data in the trusted store and `NewClient` is called, the light client will a)
 check if stored header is more recent b) optionally ask the user whenever it
 should rollback (no confirmation required by default).
 
+```go
+func NewClient(
+	chainID string,
+	trustOptions TrustOptions,
+	primary provider.Provider,
+	witnesses []provider.Provider,
+	trustedStore store.Store,
+	options ...Option) (*Client, error) {
+```
+
+`witnesses` as argument (as opposite to `Option`) is an intentional choice,
+made to increase security by default. At least one witness is required,
+although, right now, the light client does not check that primary != witness.
+
 Due to bisection algorithm nature, some headers might be skipped. If the light
 client does not have a header for height `X` and `TrustedHeader(X)` or
 `TrustedValidatorSet(X)` methods are called, it will download the header from
