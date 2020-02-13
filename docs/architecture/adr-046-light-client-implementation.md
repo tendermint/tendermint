@@ -68,6 +68,9 @@ interface is thin and can accommodate many implementations.
 If provider (primary or witness) becomes unavailable for a prolonged period of
 time, it will be removed to ensure smooth operation.
 
+Both `Client` and providers expose chain ID to track if there are on the same
+chain. Note, when chain upgrades or forks, chain ID changes.
+
 The light client stores headers & validators in the trusted store:
 
 ```go
