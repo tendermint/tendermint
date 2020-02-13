@@ -891,7 +891,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 				continue
 			}
 
-			if err = altH.ValidateBasic(); err != nil {
+			if err = altH.ValidateBasic(c.chainID); err != nil {
 				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
 				witnessesToRemove = append(witnessesToRemove, i)
 				continue

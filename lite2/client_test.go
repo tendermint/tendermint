@@ -874,9 +874,9 @@ func TestClient_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
-func TestProvider_Replacement(t *testing.T) {
+func Test_PrimaryProvider_Replacement(t *testing.T) {
 	const (
-		chainID = "TestProvider_Replacement"
+		chainID = "Test_PrimaryProvider_Replacement"
 	)
 
 	var (
@@ -916,19 +916,20 @@ func TestProvider_Replacement(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{witness},
+		[]provider.Provider{witness, witness},
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 		MaxRetryAttempts(1),
 	)
+
 	require.NoError(t, err)
 	err = c.Start()
 	require.NoError(t, err)
 	defer c.Stop()
 
+	assert.Equal(t, 1, len(c.Witnesses()))
 	assert.NotEqual(t, c.Primary(), primary)
-	assert.Equal(t, 0, len(c.Witnesses()))
 }
 
 func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
