@@ -12,13 +12,12 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [rpc] [\#3333](https://github.com/tendermint/tendermint/issues/3333) Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (more in the future) (@princesinha19)
+- [rpc] [\#3333](https://github.com/tendermint/tendermint/issues/3333) Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (@princesinha19)
 
 ### IMPROVEMENTS:
 
 - [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add [buf](https://buf.build/) for usage with linting and checking if there are breaking changes with the master branch.
 - [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add `make proto-gen` cmd to generate proto stubs outside of GOPATH.
-
 
 ### BUG FIXES:
 
