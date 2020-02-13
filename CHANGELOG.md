@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.33.1
+
+*Feburary 13, 2020*
+
+Special thanks to external contributors on this release:
+@princesinha19
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#3333](https://github.com/tendermint/tendermint/issues/3333) Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (@princesinha19)
+
+### IMPROVEMENTS:
+
+- [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add [buf](https://buf.build/) for usage with linting and checking if there are breaking changes with the master branch.
+- [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add `make proto-gen` cmd to generate proto stubs outside of GOPATH.
+
+### BUG FIXES:
+
+- [node] [\#4311](https://github.com/tendermint/tendermint/issues/4311) Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
+- [rpc] [\#4319](https://github.com/tendermint/tendermint/issues/4319) Check `BlockMeta` is not nil in `/block` & `/block_by_hash`
+
 ## v0.33
 
 Special thanks to external contributors on this release: @mrekucci, @PSalant726, @princesinha19, @greg-szabo, @dongsam, @cuonglm, @jgimeno, @yenkhoon
