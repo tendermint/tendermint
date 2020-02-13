@@ -7,9 +7,13 @@ a newer version of Tendermint Core.
 
 <Overview>
 
+## v0.33.1
+
+This release is compatible with the previous version. The only change that is required is if you are fetching the protobuf files for application use.
+
 ### Protobuf Changes
 
-When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
+When upgrading to version 0.33.1 you will have to fetch the `third_party` directory along with the updated proto files.
 
 ## v0.33.0
 
