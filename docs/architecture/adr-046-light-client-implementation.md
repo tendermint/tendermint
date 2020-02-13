@@ -61,6 +61,8 @@ func NewClient(
 `witnesses` as argument (as opposite to `Option`) is an intentional choice,
 made to increase security by default. At least one witness is required,
 although, right now, the light client does not check that primary != witness.
+When cross-checking a new header with witnesses, minimum number of witnesses
+required to respond: 1.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
 client does not have a header for height `X` and `TrustedHeader(X)` or
