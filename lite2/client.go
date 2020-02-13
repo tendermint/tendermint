@@ -1061,21 +1061,25 @@ func (c *Client) Update(now time.Time) error {
 	return nil
 }
 
-// replaceProvider takes the first alternative provider and promotes it as the primary provider
+// replaceProvider takes the first alternative provider and promotes it as the
+// primary provider.
 func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
-	if len(c.witnesses) == 0 {
-		return errors.Errorf("no witnesses left")
+
+	if len(c.witnesses) <= 1 {
+		return errors.Errorf("only one witness left. please reset the light client")
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
 	c.logger.Info("New primary", "p", c.primary)
+
 	return nil
 }
 
-// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
-// Handles dropout by the primary provider by swapping with an alternative provider
+// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider
+// at the specified height. Handles dropout by the primary provider by swapping
+// with an alternative provider.
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
@@ -1103,8 +1107,9 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 	return c.signedHeaderFromPrimary(height)
 }
 
-// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
-// Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
+// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider
+// at the specified height. Handles dropout by the primary provider after 5
+// attempts by replacing it with an alternative provider.
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
