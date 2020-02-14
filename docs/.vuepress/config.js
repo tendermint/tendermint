@@ -32,7 +32,7 @@ module.exports = {
       }
     },
     footer: {
-      questionsText: "Reach out to the Cosmos developers on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
+      questionsText: "Reach out to Cosmos developers on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
