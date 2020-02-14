@@ -35,20 +35,13 @@ func VerifyViaVals(
 	trustLevel tmmath.Fraction,
 ) error {
 
-	if err := ValidateTrustLevel(trustLevel); err != nil {
-		return err
-	}
-	// Ensure last header can still be trusted.
-	if HeaderExpired(trustedHeader, trustingPeriod, now) {
-		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
-	}
-
-	if err := verifyNewHeaderAndVals(chainID, unverifiedHeader, unverifiedVals, trustedHeader, now); err != nil {
+	err := initialHeaderVerification(unverifiedHeader, trustedHeader, trustingPeriod, now, chainID, unverifiedVals)
+	if err != nil {
 		return err
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
-	err := trustedNextVals.VerifyCommitTrusting(chainID, unverifiedHeader.Commit.BlockID, unverifiedHeader.Height,
+	err = trustedNextVals.VerifyCommitTrusting(chainID, unverifiedHeader.Commit.BlockID, unverifiedHeader.Height,
 		unverifiedHeader.Commit, trustLevel)
 	if err != nil {
 		switch e := err.(type) {
@@ -58,14 +51,6 @@ func VerifyViaVals(
 			return e
 		}
 	}
-
-	// Ensure that +2/3 of new validators signed correctly.
-	err = unverifiedVals.VerifyCommit(chainID, unverifiedHeader.Commit.BlockID, unverifiedHeader.Height,
-		unverifiedHeader.Commit)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -89,12 +74,8 @@ func VerifyViaSigs(
 		return errors.New("headers must be adjacent in height")
 	}
 
-	// Ensure last header can still be trusted.
-	if HeaderExpired(trustedHeader, trustingPeriod, now) {
-		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
-	}
-
-	if err := verifyNewHeaderAndVals(chainID, unverifiedHeader, unverifiedVals, trustedHeader, now); err != nil {
+	err := initialHeaderVerification(unverifiedHeader, trustedHeader, trustingPeriod, now, chainID, unverifiedVals)
+	if err != nil {
 		return err
 	}
 
@@ -106,14 +87,25 @@ func VerifyViaSigs(
 		)
 		return err
 	}
+	return nil
+}
 
-	// Ensure that +2/3 of new validators signed correctly.
-	err := unverifiedVals.VerifyCommit(chainID, unverifiedHeader.Commit.BlockID, unverifiedHeader.Height,
-		unverifiedHeader.Commit)
-	if err != nil {
+func initialHeaderVerification(unverifiedHeader *types.SignedHeader, trustedHeader *types.SignedHeader,
+	trustingPeriod time.Duration, now time.Time, chainID string, unverifiedVals *types.ValidatorSet) error {
+	// Ensure last header can still be trusted.
+	if HeaderExpired(trustedHeader, trustingPeriod, now) {
+		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
+	}
+
+	if err := verifyNewHeaderAndVals(chainID, unverifiedHeader, unverifiedVals, trustedHeader, now); err != nil {
 		return err
 	}
 
+	// Ensure that +2/3 of new validators signed correctly.
+	if err := unverifiedVals.VerifyCommit(chainID, unverifiedHeader.Commit.BlockID, unverifiedHeader.Height,
+		unverifiedHeader.Commit); err != nil {
+		return err
+	}
 	return nil
 }
 
