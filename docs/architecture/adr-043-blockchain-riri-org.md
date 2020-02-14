@@ -28,7 +28,7 @@ This ADR is meant to specify the missing components and control necessary to ach
 Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`.
 
 ![v2 Blockchain Reactor Architecture
-Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v2.png)
+Diagram](https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e814/docs/architecture/img/blockchain-reactor-v2.png)
 
 ### Fast Sync Related Communication Channels
 
@@ -36,7 +36,7 @@ The diagram below shows the fast sync routines and the types of channels and que
 In addition the per reactor channels used by the sendRoutine to send messages over the Peer MConnection are shown.
 
 ![v2 Blockchain Channels and Queues
-Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-v2-channels.png)
+Diagram](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
 
 ### Reactor changes in detail
 
