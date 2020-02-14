@@ -277,7 +277,7 @@ func (m *TxMessage) String() string {
 }
 
 // calcMaxMsgSize returns the max size of TxMessage
-// account for amino overhead of TxMessage
+// account for proto overhead of bytesValue
 func calcMaxMsgSize(maxTxSize int) int {
-	return maxTxSize + 4
+	return maxTxSize + 4 //TODO: document
 }
