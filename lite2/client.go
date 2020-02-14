@@ -698,8 +698,8 @@ func (c *Client) cleanup(stopHeight int64) error {
 
 // see VerifyHeader
 func (c *Client) sequence(
-	lastHeader *types.SignedHeader,
-	lastNextVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader,
+	trustedNextVals *types.ValidatorSet,
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
@@ -709,18 +709,18 @@ func (c *Client) sequence(
 		interimNextVals *types.ValidatorSet
 		err             error
 	)
-	for height := lastHeader.Height + 1; height < newHeader.Height; height++ {
+	for height := trustedHeader.Height + 1; height < newHeader.Height; height++ {
 		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
 
-		c.logger.Debug("Verify newHeader against lastHeader",
+		c.logger.Debug("Verify newHeader against trustedHeader",
 			"lastHeight", c.trustedHeader.Height,
 			"lastHash", c.trustedHeader.Hash(),
 			"newHeight", interimHeader.Height,
 			"newHash", interimHeader.Hash())
-		err = Verify(c.chainID, lastHeader, lastNextVals, interimHeader, lastNextVals,
+		err = Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, trustedNextVals,
 			c.trustingPeriod, now, c.trustLevel)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
@@ -739,7 +739,7 @@ func (c *Client) sequence(
 		if err != nil {
 			return errors.Wrapf(err, "failed to update trusted state #%d", height)
 		}
-		lastHeader, lastNextVals = interimHeader, interimNextVals
+		trustedHeader, trustedNextVals = interimHeader, interimNextVals
 	}
 
 	// 2) Verify the new header.
