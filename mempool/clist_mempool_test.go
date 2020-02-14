@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -414,13 +414,6 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
 }
 
-// Size of the amino encoded TxMessage is the length of the
-// encoded byte array, plus 1 for the struct field, plus 4
-// for the amino prefix.
-func txMessageSize(tx types.Tx) int {
-	return amino.ByteSliceSize(tx) + 1 + 4
-}
-
 func TestMempoolMaxMsgSize(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -458,9 +451,9 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 
 		tx := tmrand.Bytes(testCase.len)
 		err := mempl.CheckTx(tx, nil, TxInfo{})
-		msg := &TxMessage{tx}
-		encoded := cdc.MustMarshalBinaryBare(msg)
-		require.Equal(t, len(encoded), txMessageSize(tx), caseString)
+		bz := gogotypes.BytesValue{Value: tx}
+		encoded, _ := bz.Marshal() // ignore error
+		require.Equal(t, len(encoded), proto.Size(&bz), caseString)
 		if !testCase.err {
 			require.True(t, len(encoded) <= maxMsgSize, caseString)
 			require.NoError(t, err, caseString)
@@ -469,7 +462,6 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 			require.Equal(t, err, ErrTxTooLarge{maxTxSize, testCase.len}, caseString)
 		}
 	}
-
 }
 
 func TestMempoolTxsBytes(t *testing.T) {
