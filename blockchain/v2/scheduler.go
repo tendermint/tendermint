@@ -350,7 +350,7 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 		return fmt.Errorf("couldn't find peer %s", peerID)
 	}
 
-	if peer.state == peerStateRemoved {
+	if peer.state != peerStateReady {
 		return fmt.Errorf("cannot receive blocks from removed peer %s", peerID)
 	}
 
