@@ -35,6 +35,17 @@ proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a9909
 
 https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc#TrustOptions
 
+One way to obtain semi-trusted hash & height is to query multiple full nodes
+and compare their hashes:
+
+```sh
+$ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"
+{
+  "height": "273",
+  "hash": "188F4F36CBCD2C91B57509BBF231C777E79B52EE3E0D90D06B1A25EB16E6E23D"
+}
+```
+
 ## HTTP proxy
 
 Tendermint comes with a built-in `tendermint lite` command, which can be used
