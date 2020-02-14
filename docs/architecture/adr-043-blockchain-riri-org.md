@@ -4,6 +4,7 @@
 * 18-06-2019: Initial draft
 * 08-07-2019: Reviewed
 * 29-11-2019: Implemented
+* 14-02-2020: Updated with the implementation details
 
 ## Context
 
@@ -28,6 +29,14 @@ Partition the responsibilities of the blockchain reactor into a set of component
 
 ![v2 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v2.png)
+
+### Fast Sync Related Communication Channels
+
+The diagram below shows the fast sync routines and the types of channels and queues used to communicate with each other. 
+In addition the per reactor channels used by the sendRoutine to send messages over the Peer MConnection are shown.
+
+![v2 Blockchain Channels and Queues
+Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-v2-channels.png)
 
 ### Reactor changes in detail
 
