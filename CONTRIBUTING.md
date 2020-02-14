@@ -31,7 +31,7 @@ at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
 When the problem is well understood but the solution leads to large
-strucural changes to the code base, these changes should be proposed in
+structural changes to the code base, these changes should be proposed in
 the form of an [Architectural Decision Record
 (ADR)](./docs/architecture/). The ADR will help build consensus on an
 overall strategy to ensure the code base maintains coherence
