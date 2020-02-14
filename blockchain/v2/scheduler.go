@@ -351,7 +351,7 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 	}
 
 	if peer.state != peerStateReady {
-		return fmt.Errorf("cannot receive blocks from removed peer %s", peerID)
+		return fmt.Errorf("cannot receive blocks from not ready peer %s", peerID)
 	}
 
 	if state := sc.getStateAtHeight(height); state != blockStatePending || sc.pendingBlocks[height] != peerID {
