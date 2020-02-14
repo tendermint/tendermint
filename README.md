@@ -47,9 +47,9 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 ## Minimum requirements
 
-| Requirement | Notes              |
-| ----------- | ------------------ |
-| Go version  | Go1.13 or higher   |
+| Requirement | Notes            |
+| ----------- | ---------------- |
+| Go version  | Go1.13 or higher |
 
 ## Documentation
 
@@ -129,7 +129,7 @@ For more information on upgrading, see [UPGRADING.md](./UPGRADING.md)
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](/docs/spec).
+[Tendermint specification](https://docs.tendermint.com/master/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
 hosted at: https://docs.tendermint.com/master/
@@ -157,6 +157,5 @@ Additional documentation is found [here](/docs/tools).
 
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 - [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-- [Original Whitepaper](https://github.com/tendermint/spec)
-  - You can find the link at the bottom of the readme
+- [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
 - [Blog](https://blog.cosmos.network/tendermint/home)

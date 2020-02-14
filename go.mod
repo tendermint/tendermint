@@ -12,7 +12,7 @@ require (
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.3.3
 	github.com/google/gofuzz v1.0.0 // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/gtank/merlin v0.1.1-0.20191105220539-8318aed1a79f
@@ -32,5 +32,5 @@ require (
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
-	google.golang.org/grpc v1.26.0
+	google.golang.org/grpc v1.27.1
 )

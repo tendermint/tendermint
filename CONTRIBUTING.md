@@ -31,7 +31,7 @@ at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
 When the problem is well understood but the solution leads to large
-strucural changes to the code base, these changes should be proposed in
+structural changes to the code base, these changes should be proposed in
 the form of an [Architectural Decision Record
 (ADR)](./docs/architecture/). The ADR will help build consensus on an
 overall strategy to ensure the code base maintains coherence
@@ -97,6 +97,10 @@ When updating dependencies, please only update the particular dependencies you
 need. Instead of running `go get -u=patch`, which will update anything,
 specify exactly the dependency you want to update, eg.
 `GO111MODULE=on go get -u github.com/tendermint/go-amino@master`.
+
+## Protobuf
+
+When working with [protobuf](https://developers.google.com/protocol-buffers) there are a few things you should know. We use [buf](https://buf.build/) for our linting and breaking changes checking. If you would like to run linting and check if the changes you have made are breaking then you will have to install the needed dependencies with `make buf`. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`. To generate new stubs based off of your changes you can run `make proto-gen` (you can do this outside of GOPATH).
 
 ## Vagrant
 

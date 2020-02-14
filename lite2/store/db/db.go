@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
@@ -37,20 +38,21 @@ func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet
 		panic("negative or zero height")
 	}
 
-	// TODO: batch
-	bz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
+	shBz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "marshalling header")
 	}
-	s.db.Set(s.shKey(sh.Height), bz)
-
-	bz, err = s.cdc.MarshalBinaryLengthPrefixed(valSet)
+	valSetBz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "marshalling validator set")
 	}
-	s.db.Set(s.vsKey(sh.Height+1), bz)
 
-	return nil
+	b := s.db.NewBatch()
+	b.Set(s.shKey(sh.Height), shBz)
+	b.Set(s.vsKey(sh.Height+1), valSetBz)
+	err = b.WriteSync()
+	b.Close()
+	return err
 }
 
 // DeleteSignedHeaderAndNextValidatorSet deletes SignedHeader and ValidatorSet
@@ -60,11 +62,12 @@ func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
 		panic("negative or zero height")
 	}
 
-	// TODO: batch
-	s.db.Delete(s.shKey(height))
-	s.db.Delete(s.vsKey(height + 1))
-
-	return nil
+	b := s.db.NewBatch()
+	b.Delete(s.shKey(height))
+	b.Delete(s.vsKey(height + 1))
+	err := b.WriteSync()
+	b.Close()
+	return err
 }
 
 // SignedHeader loads SignedHeader at the given height.
@@ -78,7 +81,7 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, nil
+		return nil, store.ErrSignedHeaderNotFound
 	}
 
 	var signedHeader *types.SignedHeader
@@ -97,7 +100,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, nil
+		return nil, store.ErrValidatorSetNotFound
 	}
 
 	var valSet *types.ValidatorSet
@@ -149,6 +152,32 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	}
 
 	return -1, nil
+}
+
+func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
+	if height <= 0 {
+		panic("negative or zero height")
+	}
+
+	itr, err := s.db.ReverseIterator(
+		s.shKey(height+1),
+		append(s.shKey(1<<63-1), byte(0x00)),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer itr.Close()
+
+	for itr.Valid() {
+		key := itr.Key()
+		_, existingHeight, ok := parseShKey(key)
+		if ok {
+			return s.SignedHeader(existingHeight)
+		}
+		itr.Next()
+	}
+
+	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
 }
 
 func (s *dbs) shKey(height int64) []byte {

@@ -1,6 +1,6 @@
----
+<!---
 order: 1
----
+--->
 
 # Creating an application in Go
 
@@ -58,8 +58,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```sh
-$ mkdir -p $GOPATH/src/github.com/me/kvstore
-$ cd $GOPATH/src/github.com/me/kvstore
+$ mkdir kvstore
+$ cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -228,9 +228,9 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```
@@ -437,8 +437,7 @@ To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/master/introduction/install.html). If you're
-installing from source, don't forget to checkout the latest release (`git
-checkout vX.Y.Z`).
+installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
 ```sh
 $ rm -rf /tmp/example

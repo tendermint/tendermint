@@ -5,11 +5,11 @@ a newer version of Tendermint Core.
 
 ## Unreleased
 
-> Overview Section
+<Overview>
 
-### Proto Changes
+### Protobuf Changes
 
-If you are fetching the proto files for use in your application then you must also fetch the third_party/proto/gogoproto/gogo.proto directory as we have phased out GOPATH and included linting and breakage checking.
+When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
 
 ## v0.33.0
 
@@ -232,14 +232,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-- [Merkle tree](./docs/spec/blockchain/encoding.md#merkle-trees)
-- [ConsensusParams](./docs/spec/blockchain/state.md#consensusparams)
+- [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
+- [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-- [Vote](https://github.com/tendermint/tendermint/blob/master/docs/spec/consensus/signing.md#votes)
+- [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress

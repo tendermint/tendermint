@@ -2,9 +2,11 @@ package core
 
 import (
 	"fmt"
+	"sort"
+
+	"github.com/pkg/errors"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
-
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -53,10 +55,11 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
-func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
+func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
+	*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("transaction indexing is disabled")
+		return nil, errors.New("transaction indexing is disabled")
 	}
 
 	q, err := tmquery.New(query)
@@ -97,6 +100,27 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 			TxResult: r.Result,
 			Tx:       r.Tx,
 			Proof:    proof,
+		}
+	}
+
+	if len(apiResults) > 1 {
+		switch orderBy {
+		case "desc":
+			sort.Slice(apiResults, func(i, j int) bool {
+				if apiResults[i].Height == apiResults[j].Height {
+					return apiResults[i].Index > apiResults[j].Index
+				}
+				return apiResults[i].Height > apiResults[j].Height
+			})
+		case "asc", "":
+			sort.Slice(apiResults, func(i, j int) bool {
+				if apiResults[i].Height == apiResults[j].Height {
+					return apiResults[i].Index < apiResults[j].Index
+				}
+				return apiResults[i].Height < apiResults[j].Height
+			})
+		default:
+			return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 		}
 	}
 

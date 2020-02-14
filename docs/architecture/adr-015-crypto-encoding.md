@@ -21,12 +21,12 @@ representation of the pubkey.
 This has two significant drawbacks.
 Amino encoding is less space-efficient, due to requiring support for upgradability.
 Amino encoding support requires forking protobuf and adding this new interface support
-option in the langauge of choice.
+option in the language of choice.
 
 The reason for continuing to use amino however is that people can create code
 more easily in languages that already have an up to date amino library.
 It is possible that this will change in the future, if it is deemed that
-requiring amino for interacting with tendermint cryptography is unneccessary.
+requiring amino for interacting with Tendermint cryptography is unnecessary.
 
 The arguments for space efficiency here are refuted on the basis that there are
 far more egregious wastages of space in the SDK.
@@ -35,9 +35,9 @@ increasing the space attached to each validator / account.
 
 The alternative to using amino here would be for us to create an enum type.
 Switching to just an enum type is worthy of investigation post-launch.
-For referrence, part of amino encoding interfaces is basically a 4 byte enum
+For reference, part of amino encoding interfaces is basically a 4 byte enum
 type definition.
-Enum types would just change that 4 bytes to be a varuint, and it would remove
+Enum types would just change that 4 bytes to be a variant, and it would remove
 the protobuf overhead, but it would be hard to integrate into the existing API.
 
 ### Signatures
