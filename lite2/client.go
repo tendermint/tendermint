@@ -880,15 +880,13 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	// 1. Check witnesses exist
-	if len(c.witnesses) == 0 {
-		return errors.New("could not find any witnesses. please reset the light client")
-	}
-
-	// 2. Make sure AT LEAST ONE witness returns the same header
+	// 1. Make sure AT LEAST ONE witness returns the same header.
 	headerMatched := false
 	witnessesToRemove := make([]int, 0)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
+		if len(c.witnesses) == 0 {
+			return errors.New("could not find any witnesses. please reset the light client")
+		}
 
 		for i, witness := range c.witnesses {
 			altH, err := witness.SignedHeader(h.Height)
@@ -924,12 +922,13 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 		for _, idx := range witnessesToRemove {
 			c.removeWitness(idx)
 		}
+		witnessesToRemove = make([]int, 0)
 
 		if headerMatched {
 			return nil
 		}
 
-		// 3. Otherwise, sleep
+		// 2. Otherwise, sleep
 		time.Sleep(backoffTimeout(attempt))
 	}
 

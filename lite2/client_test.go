@@ -734,6 +734,44 @@ func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
 
 	err = c.Update(bTime.Add(2 * time.Hour))
 	if assert.Error(t, err) {
-		assert.Contains(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
+		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
 	}
+}
+
+func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
+	// straight invalid header
+	badProvider1 := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			3: &types.SignedHeader{Header: nil, Commit: nil},
+		},
+		map[int64]*types.ValidatorSet{},
+	)
+
+	// less than 1/3 signed
+	badProvider2 := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			3: keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
+		},
+		map[int64]*types.ValidatorSet{},
+	)
+
+	c, err := NewClient(
+		chainID,
+		trustOptions,
+		fullNode,
+		[]provider.Provider{badProvider1, badProvider2},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+
+	err = c.Update(bTime.Add(2 * time.Hour))
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "could not find any witnesses")
+	}
+	assert.Zero(t, 0, len(c.Witnesses()))
 }
