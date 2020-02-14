@@ -354,7 +354,6 @@ func (r *BlockchainReactor) demux() {
 
 		// Incremental events from processor
 		case event := <-r.processor.next():
-			// io.handle reportPeerError
 			switch event := event.(type) {
 			case pcBlockProcessed:
 				r.setSyncHeight(event.height)
@@ -368,6 +367,7 @@ func (r *BlockchainReactor) demux() {
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
 			case pcFinished:
+				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced)
 				r.processor.stop()
 			}
 
@@ -379,9 +379,7 @@ func (r *BlockchainReactor) demux() {
 		// Terminal event from processor
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
-			if msg, ok := event.(pcFinished); ok {
-				r.io.trySwitchToConsensus(msg.tmState, msg.blocksSynced)
-			}
+
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
 			return

@@ -207,8 +207,7 @@ func TestRProcessBlockSuccess(t *testing.T) {
 				{ // finish when H+1 or/and H+2 are missing
 					event:         rProcessBlock{},
 					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
-					wantNextEvent: noOp,
-					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 1}, blocksSynced: 1},
+					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 1}, blocksSynced: 1},
 				},
 			},
 		},
@@ -270,8 +269,7 @@ func TestScFinishedEv(t *testing.T) {
 				{
 					currentState: &params{height: 100, items: []pcBlock{}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{}, blocksSynced: 100},
-					wantNextEvent: noOp,
-					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},
@@ -281,8 +279,7 @@ func TestScFinishedEv(t *testing.T) {
 				{
 					currentState: &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100},
-					wantNextEvent: noOp,
-					wantErr:       pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},

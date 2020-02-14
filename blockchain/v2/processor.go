@@ -103,7 +103,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case scFinishedEv:
 		if state.synced() {
-			return noOp, pcFinished{tmState: state.context.tmState(), blocksSynced: state.blocksSynced}
+			return pcFinished{tmState: state.context.tmState(), blocksSynced: state.blocksSynced}, nil
 		}
 		state.draining = true
 		return noOp, nil
@@ -128,7 +128,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, pcFinished{tmState: tmState, blocksSynced: state.blocksSynced}
+				return pcFinished{tmState: tmState, blocksSynced: state.blocksSynced}, nil
 			}
 			return noOp, nil
 		}
