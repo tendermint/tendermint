@@ -743,7 +743,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	badProvider1 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
-			3: &types.SignedHeader{Header: nil, Commit: nil},
+			3: {Header: nil, Commit: nil},
 		},
 		map[int64]*types.ValidatorSet{},
 	)
@@ -753,7 +753,8 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		chainID,
 		map[int64]*types.SignedHeader{
 			3: keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"),
+				len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
 		},
 		map[int64]*types.ValidatorSet{},
 	)
