@@ -198,7 +198,7 @@ func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 
 // Start implements cmn.Service interface
 func (r *BlockchainReactor) Start() error {
-	r.reporter = behaviour.NewSwitcReporter(r.BaseReactor.Switch)
+	r.reporter = behaviour.NewSwitchReporter(r.BaseReactor.Switch)
 	go r.scheduler.start()
 	go r.processor.start()
 	go r.demux()
