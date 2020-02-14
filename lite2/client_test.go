@@ -55,7 +55,6 @@ var (
 )
 
 func TestClient_SequentialVerification(t *testing.T) {
-
 	testCases := []struct {
 		otherHeaders map[int64]*types.SignedHeader // all except ^
 		vals         map[int64]*types.ValidatorSet
@@ -176,7 +175,6 @@ func TestClient_SequentialVerification(t *testing.T) {
 }
 
 func TestClient_SkippingVerification(t *testing.T) {
-
 	// required for 2nd test case
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
@@ -249,7 +247,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 }
 
 func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
-
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -291,7 +288,6 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
-
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -314,8 +310,7 @@ func TestClient_Cleanup(t *testing.T) {
 }
 
 // trustedHeader.Height == options.Height
-func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
-
+func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
@@ -388,8 +383,7 @@ func TestClientRestoreTrustedHeaderAfterStartup1(t *testing.T) {
 }
 
 // trustedHeader.Height < options.Height
-func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
-
+func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
@@ -472,8 +466,7 @@ func TestClientRestoreTrustedHeaderAfterStartup2(t *testing.T) {
 }
 
 // trustedHeader.Height > options.Height
-func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
-
+func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
@@ -581,7 +574,6 @@ func TestClientRestoreTrustedHeaderAfterStartup3(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
-
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -606,7 +598,6 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Concurrency(t *testing.T) {
-
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -654,8 +645,7 @@ func TestClient_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_PrimaryProvider_Replacement(t *testing.T) {
-
+func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -675,8 +665,7 @@ func Test_PrimaryProvider_Replacement(t *testing.T) {
 	assert.Equal(t, 1, len(c.Witnesses()))
 }
 
-func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
-
+func TestClient_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -708,31 +697,29 @@ func TestProvider_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	assert.Nil(t, h)
 }
 
-func Test_NewClientFromTrustedStore(t *testing.T) {
-
+func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	// 1) Initiate DB and fill with a "trusted" header
 	db := dbs.New(dbm.NewMemDB(), chainID)
 	err := db.SaveSignedHeaderAndNextValidatorSet(h1, vals)
 	require.NoError(t, err)
 
-	// 2) Initialize Lite Client from Trusted Store
 	c, err := NewClientFromTrustedStore(
 		chainID,
 		trustPeriod,
-		fullNode,
-		[]provider.Provider{fullNode},
+		deadNode,
+		[]provider.Provider{deadNode},
 		db,
 	)
 	require.NoError(t, err)
 
-	// 3) Check header exists through the lite clients eyes
+	// 2) Check header exists (deadNode is being used to ensure we're not getting
+	// it from primary)
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
 }
 
-func TestCompareWithWitnesses(t *testing.T) {
-
+func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -744,7 +731,9 @@ func TestCompareWithWitnesses(t *testing.T) {
 		MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
-	err = c.Update(time.Now())
-	assert.Error(t, err)
 
+	err = c.Update(bTime.Add(2 * time.Hour))
+	if assert.Error(t, err) {
+		assert.Contains(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
+	}
 }
