@@ -515,6 +515,7 @@ func (sc *scheduler) handleBlockResponse(event bcBlockResponse) (Event, error) {
 
 	err = sc.markReceived(event.peerID, event.block.Height, event.size, event.time)
 	if err != nil {
+		_ = sc.removePeer(event.peerID)
 		return scPeerError{peerID: event.peerID, reason: err}, nil
 	}
 
