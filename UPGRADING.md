@@ -5,11 +5,11 @@ a newer version of Tendermint Core.
 
 ## Unreleased
 
-<Overview>
+> Overview Section
 
-### Protobuf Changes
+### Proto Changes
 
-When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
+If you are fetching the proto files for use in your application then you must also fetch the third_party/proto/gogoproto/gogo.proto directory as we have phased out GOPATH and included linting and breakage checking.
 
 ## v0.33.0
 

@@ -40,29 +40,19 @@ install_c:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-proto-all: proto-gen proto-lint proto-check-breaking
-.PHONY: proto-all
+protoc_all: proto-gen proto-lint proto-check-breakage
 
 proto-gen:
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	## Note the $< here is substituted for the %.proto
-	## Note the $@ here is substituted for the %.pb.go
 	@sh scripts/protocgen.sh
-.PHONY: proto-gen
 
 proto-lint:
-	@buf check lint --error-format=json
-.PHONY: proto-lint
+	@buf check lint
 
 proto-check-breaking:
 	@buf check breaking --against-input '.git#branch=master'
-.PHONY: proto-check-breaking
 
-###############################################################################
-###                              Build ABCI                                 ###
-###############################################################################
+########################################
+### Build ABCI
 
 build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
@@ -105,9 +95,8 @@ get_deps_bin_size:
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 .PHONY: get_deps_bin_size
 
-###############################################################################
-###                                  Libs                                   ###
-###############################################################################
+########################################
+### Libs
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
@@ -125,9 +114,9 @@ clean_certs:
 	rm -f rpc/lib/server/test.key
 .PHONY: clean_certs
 
-###############################################################################
-###                  Formatting, linting, and vetting                       ###
-###############################################################################
+
+########################################
+### Formatting, linting, and vetting
 
 fmt:
 	@go fmt ./...
@@ -220,4 +209,12 @@ endif
 # The binaries should be built beforehand
 contract-tests:
 	dredd
-.PHONY: contract-tests
+
+# To avoid unintended conflicts with file names, always add to .PHONY
+# unless there is a reason not to.
+# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
+.PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
+ 	protoc-gen proto-lint proto-check-breakage gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop \
+ 	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
+	build_c-amazonlinux
