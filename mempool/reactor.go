@@ -17,7 +17,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	aminoOverheadForTxMessage = 8
+	protoOverheadForTxMessage = 4
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 
@@ -279,5 +279,5 @@ func (m *TxMessage) String() string {
 // calcMaxMsgSize returns the max size of TxMessage
 // account for proto overhead of bytesValue
 func calcMaxMsgSize(maxTxSize int) int {
-	return maxTxSize + 4 //TODO: document
+	return maxTxSize + protoOverheadForTxMessage
 }
