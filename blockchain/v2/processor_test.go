@@ -241,7 +241,8 @@ func TestRProcessBlockFailures(t *testing.T) {
 			name: "blocks H+1 and H+2 present from same peers - H+1 verification fails ",
 			steps: []pcFsmMakeStateValues{
 				{
-					currentState: &params{height: 0, items: []pcBlock{{"P1", 1}, {"P1", 2}, {"P2", 3}}, verBL: []int64{1}}, event: rProcessBlock{},
+					currentState: &params{height: 0, items: []pcBlock{{"P1", 1}, {"P1", 2}, {"P2", 3}}, 
+						verBL: []int64{1}}, event: rProcessBlock{},
 					wantState:     &params{height: 0, items: []pcBlock{{"P2", 3}}, verBL: []int64{1}},
 					wantNextEvent: pcBlockVerificationFailure{height: 1, firstPeerID: "P1", secondPeerID: "P1"},
 				},
@@ -251,7 +252,8 @@ func TestRProcessBlockFailures(t *testing.T) {
 			name: "blocks H+1 and H+2 present from different peers - H+1 applyBlock fails ",
 			steps: []pcFsmMakeStateValues{
 				{
-					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}, {"P2", 3}}, appBL: []int64{1}}, event: rProcessBlock{},
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}, {"P2", 3}}, appBL: []int64{1}}, 
+						event: rProcessBlock{},
 					wantState: &params{items: []pcBlock{{"P2", 3}}, appBL: []int64{1}}, wantPanic: true,
 				},
 			},

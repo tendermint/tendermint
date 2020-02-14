@@ -283,7 +283,8 @@ func TestScTouchPeer(t *testing.T) {
 			name:       "touch peer in state Ready",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now}}},
 			args:       args{peerID: "P1", time: now.Add(3 * time.Second)},
-			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now.Add(3 * time.Second)}}},
+			wantFields: scTestParams{peers: map[string]*scPeer{
+				"P1": {state: peerStateReady, lastTouched: now.Add(3 * time.Second)}}},
 		},
 	}
 
@@ -904,7 +905,11 @@ func TestScMarkReceived(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
-			if err := sc.markReceived(tt.args.peerID, tt.args.height, tt.args.size, now.Add(time.Second)); (err != nil) != tt.wantErr {
+			if err := sc.markReceived(
+				tt.args.peerID, 
+				tt.args.height, 
+				tt.args.size, 
+				now.Add(time.Second)); (err != nil) != tt.wantErr {
 				t.Errorf("markReceived() wantErr %v, error = %v", tt.wantErr, err)
 			}
 			wantSc := newTestScheduler(tt.wantFields)

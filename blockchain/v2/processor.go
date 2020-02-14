@@ -27,7 +27,6 @@ type pcBlockProcessed struct {
 // processor has finished
 type pcFinished struct {
 	priorityNormal
-	height       int64
 	blocksSynced int
 	tmState      tmState.State
 }

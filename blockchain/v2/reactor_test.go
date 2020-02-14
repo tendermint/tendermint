@@ -105,12 +105,6 @@ func (mba *mockBlockApplier) ApplyBlock(state sm.State, blockID types.BlockID, b
 	return state, nil
 }
 
-type mockBlockVerifier struct{}
-
-func (mbv *mockBlockVerifier) VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
-	return nil
-}
-
 type mockSwitchIo struct {
 	mtx                 sync.Mutex
 	switchedToConsensus bool
@@ -479,7 +473,8 @@ func makeVote(header *types.Header, blockID types.BlockID, valset *types.Validat
 	return vote
 }
 
-func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (
+	*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {

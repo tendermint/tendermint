@@ -602,7 +602,7 @@ func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
 
 	// Check behavior of peer responsible to deliver block at sc.height.
 	timeHeightAsked, ok := sc.pendingTime[sc.height]
-	if ok && time.Now().Sub(timeHeightAsked) > sc.peerTimeout {
+	if ok && time.Since(timeHeightAsked) > sc.peerTimeout {
 		// A request was sent to a peer for block at sc.height but a response was not received
 		// from that peer within sc.peerTimeout. Remove the peer. This is to ensure that a peer
 		// will be timed out even if it sends blocks at higher heights but prevents progress by

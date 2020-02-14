@@ -124,12 +124,12 @@ type BlockchainReactor struct {
 	store    blockStore
 }
 
-type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
-}
-
 type blockVerifier interface {
 	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
+}
+
+type blockApplier interface {
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
 }
 
 // XXX: unify naming in this package around tmState
@@ -154,7 +154,11 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 }
 
 // NewBlockchainReactor creates a new reactor instance.
-func NewBlockchainReactor(state state.State, blockApplier blockApplier, store blockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(
+		state state.State, 
+		blockApplier blockApplier, 
+		store blockStore, 
+		fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
 	return newReactor(state, store, reporter, blockApplier, 1000)
 }
