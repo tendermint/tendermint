@@ -1,0 +1,16 @@
+build:
+  roots:
+    - .
+lint:
+  use:
+    - MINIMAL
+    - FILE_LOWER_SNAKE_CASE
+    - UNARY_RPC
+  except:
+    - PACKAGE_DIRECTORY_MATCH
+  ignore:
+    - third_party
+breaking:
+  use:
+    - FILE
+    - PACKAGE

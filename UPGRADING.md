@@ -3,6 +3,18 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## Unreleased
+
+<Overview>
+
+## v0.33.1
+
+This release is compatible with the previous version. The only change that is required is if you are fetching the protobuf files for application use.
+
+### Protobuf Changes
+
+When upgrading to version 0.33.1 you will have to fetch the `third_party` directory along with the updated proto files.
+
 ## v0.33.0
 
 This release is not compatible with previous blockchains due to commit becoming signatures only and fields in the header have been removed.
@@ -224,14 +236,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-- [Merkle tree](./docs/spec/blockchain/encoding.md#merkle-trees)
-- [ConsensusParams](./docs/spec/blockchain/state.md#consensusparams)
+- [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
+- [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-- [Vote](https://github.com/tendermint/tendermint/blob/master/docs/spec/consensus/signing.md#votes)
+- [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress

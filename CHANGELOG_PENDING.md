@@ -1,4 +1,4 @@
-## v0.33.1
+## v0.33.2
 
 \*\*
 
@@ -20,5 +20,3 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-
-

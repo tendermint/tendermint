@@ -418,7 +418,7 @@ func TestTxSearch(t *testing.T) {
 	c := getHTTPClient()
 	_, _, tx := MakeTxKV()
 	bres, err := c.BroadcastTxCommit(tx)
-	require.Nil(t, err, "%+v", err)
+	require.Nil(t, err)
 
 	txHeight := bres.Height
 	txHash := bres.Hash
@@ -430,8 +430,8 @@ func TestTxSearch(t *testing.T) {
 
 		// now we query for the tx.
 		// since there's only one tx, we know index=0.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		ptx := result.Txs[0]
@@ -448,33 +448,53 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
-		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
+		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30, "asc")
+		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query a non existing tx with page 1 and txsPerPage 1
-		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
-		require.Nil(t, err, "%+v", err)
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "asc")
+		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
+
+		// broadcast another transaction to make sure we have at least two.
+		_, _, tx2 := MakeTxKV()
+		_, err = c.BroadcastTxCommit(tx2)
+		require.Nil(t, err)
+
+		// chech sorting
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "asc")
+		require.Nil(t, err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
+		}
+
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "desc")
+		require.Nil(t, err)
+		for k := 0; k < len(result.Txs)-1; k++ {
+			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
+			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
+		}
 	}
 }
 

@@ -85,9 +85,9 @@ func randPort() int {
 }
 
 func makeAddrs() (string, string, string) {
-	return fmt.Sprintf("tcp://0.0.0.0:%d", randPort()),
-		fmt.Sprintf("tcp://0.0.0.0:%d", randPort()),
-		fmt.Sprintf("tcp://0.0.0.0:%d", randPort())
+	return fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
+		fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
+		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
 func createConfig() *cfg.Config {

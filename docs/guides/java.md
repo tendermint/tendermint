@@ -1,6 +1,6 @@
----
+<!---
 order: 3
----
+--->
 
 # Creating an application in Java
 
@@ -170,15 +170,15 @@ Copy the necessary `.proto` files to your project:
 mkdir -p \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/common \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/kv \
   $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto
 
 cp $GOPATH/src/github.com/tendermint/tendermint/abci/types/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/crypto/merkle/merkle.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle/merkle.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/libs/common/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/common/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/libs/kv/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/kv/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
