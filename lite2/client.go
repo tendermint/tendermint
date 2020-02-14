@@ -617,7 +617,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	var err error
 	switch c.verificationMode {
 	case sequential:
-		err = c.sequence(newHeader, newVals, now)
+		err = c.sequence(c.trustedHeader, c.trustedNextVals, newHeader, newVals, now)
 	case skipping:
 		err = c.bisection(c.trustedHeader, c.trustedNextVals, newHeader, newVals, now)
 	default:
@@ -697,25 +697,30 @@ func (c *Client) cleanup(stopHeight int64) error {
 }
 
 // see VerifyHeader
-func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
+func (c *Client) sequence(
+	trustedHeader *types.SignedHeader,
+	trustedNextVals *types.ValidatorSet,
+	newHeader *types.SignedHeader,
+	newVals *types.ValidatorSet,
+	now time.Time) error {
 	// 1) Verify any intermediate headers.
 	var (
-		interimHeader *types.SignedHeader
-		nextVals      *types.ValidatorSet
-		err           error
+		interimHeader   *types.SignedHeader
+		interimNextVals *types.ValidatorSet
+		err             error
 	)
-	for height := c.trustedHeader.Height + 1; height < newHeader.Height; height++ {
+	for height := trustedHeader.Height + 1; height < newHeader.Height; height++ {
 		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
 
-		c.logger.Debug("Verify newHeader against lastHeader",
+		c.logger.Debug("Verify newHeader against trustedHeader",
 			"lastHeight", c.trustedHeader.Height,
 			"lastHash", c.trustedHeader.Hash(),
 			"newHeight", interimHeader.Height,
 			"newHash", interimHeader.Hash())
-		err = Verify(c.chainID, c.trustedHeader, c.trustedNextVals, interimHeader, c.trustedNextVals,
+		err = Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, trustedNextVals,
 			c.trustingPeriod, now, c.trustLevel)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
@@ -723,17 +728,18 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 
 		// Update trusted header and vals.
 		if height == newHeader.Height-1 {
-			nextVals = newVals
+			interimNextVals = newVals
 		} else {
-			nextVals, err = c.validatorSetFromPrimary(height + 1)
+			interimNextVals, err = c.validatorSetFromPrimary(height + 1)
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
 		}
-		err = c.updateTrustedHeaderAndVals(interimHeader, nextVals)
+		err = c.updateTrustedHeaderAndVals(interimHeader, interimNextVals)
 		if err != nil {
 			return errors.Wrapf(err, "failed to update trusted state #%d", height)
 		}
+		trustedHeader, trustedNextVals = interimHeader, interimNextVals
 	}
 
 	// 2) Verify the new header.
