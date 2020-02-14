@@ -725,7 +725,8 @@ func (c *Client) bisection(
 			"lastHash", trustedHeader.Hash(),
 			"newHeight", newHeader.Height,
 			"newHash", newHeader.Hash())
-		err := Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, interimVals, c.trustingPeriod, now, c.trustLevel)
+		err := Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, interimVals, c.trustingPeriod, now,
+			c.trustLevel)
 		switch err.(type) {
 		case nil:
 
