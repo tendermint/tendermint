@@ -1,6 +1,6 @@
 syntax = "proto3";
 package tendermint.rpc.grpc;
-option  go_package = "github.com/tendermint/tendermint/rpc/coregrpc";
+option  go_package = "github.com/tendermint/tendermint/rpc/grpc;coregrpc";
 
 import "third_party/proto/gogoproto/gogo.proto";
 import "abci/types/types.proto";

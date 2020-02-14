@@ -9,57 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
 )
-
-// TrustOptions are the trust parameters needed when a new light client
-// connects to the network or when an existing light client that has been
-// offline for longer than the trusting period connects to the network.
-//
-// The expectation is the user will get this information from a trusted source
-// like a validator, a friend, or a secure website. A more user friendly
-// solution with trust tradeoffs is that we establish an https based protocol
-// with a default end point that populates this information. Also an on-chain
-// registry of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the
-// future.
-type TrustOptions struct {
-	// tp: trusting period.
-	//
-	// Should be significantly less than the unbonding period (e.g. unbonding
-	// period = 3 weeks, trusting period = 2 weeks).
-	//
-	// More specifically, trusting period + time needed to check headers + time
-	// needed to report and punish misbehavior should be less than the unbonding
-	// period.
-	Period time.Duration
-
-	// Header's Height and Hash must both be provided to force the trusting of a
-	// particular header.
-	Height int64
-	Hash   []byte
-}
-
-// ValidateBasic performs basic validation.
-func (opts TrustOptions) ValidateBasic() error {
-	if opts.Period <= 0 {
-		return errors.New("negative or zero period")
-	}
-	if opts.Height <= 0 {
-		return errors.New("negative or zero height")
-	}
-	if len(opts.Hash) != tmhash.Size {
-		return errors.Errorf("expected hash size to be %d bytes, got %d bytes",
-			tmhash.Size,
-			len(opts.Hash),
-		)
-	}
-	return nil
-}
 
 type mode byte
 
@@ -215,7 +170,7 @@ func NewClient(
 		}
 	}
 
-	if c.trustedHeader == nil || c.trustedHeader.Height != trustOptions.Height {
+	if c.trustedHeader == nil || c.trustedHeader.Height < trustOptions.Height {
 		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
 			return nil, err
 		}
@@ -339,20 +294,21 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height < c.trustedHeader.Height:
 		c.logger.Info("Client initialized with old header (trusted is more recent)",
 			"old", options.Height,
-			"trusted", c.trustedHeader.Height)
+			"trusted", c.trustedHeader.Height,
+			"trusted-hash", hash2str(c.trustedHeader.Hash()))
 
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
 			options.Height, options.Hash,
 			c.trustedHeader.Height, c.trustedHeader.Hash())
 		if c.confirmationFn(action) {
-			// remove all the headers ( options.Height, trustedHeader.Height ]
+			// remove all the headers (options.Height, trustedHeader.Height]
 			c.cleanup(options.Height + 1)
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
 				"old", options.Height)
 		} else {
-			return errors.New("rollback aborted")
+			return nil
 		}
 
 		primaryHash = options.Hash
@@ -386,7 +342,9 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return err
 	}
 
-	// NOTE: Verify func will check if it's expired or not.
+	// NOTE: - Verify func will check if it's expired or not.
+	//       - h.Time is not being checked against time.Now() because we don't
+	//         want to add yet another argument to NewClient* functions.
 	if err := h.ValidateBasic(c.chainID); err != nil {
 		return err
 	}
@@ -400,12 +358,14 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	if err != nil {
 		return err
 	}
+
 	if !bytes.Equal(h.ValidatorsHash, vals.Hash()) {
 		return errors.Errorf("expected header's validators (%X) to match those that were supplied (%X)",
 			h.ValidatorsHash,
 			vals.Hash(),
 		)
 	}
+
 	// Ensure that +2/3 of validators signed correctly.
 	err = vals.VerifyCommit(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
 	if err != nil {
@@ -570,8 +530,6 @@ func (c *Client) ChainID() string {
 // If the header is not found by the primary provider,
 // provider.ErrSignedHeaderNotFound error is returned.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
-	c.logger.Info("VerifyHeaderAtHeight", "height", height)
-
 	if c.trustedHeader.Height >= height {
 		return nil, errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
 	}
@@ -603,15 +561,11 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newHeader.Hash(), "newVals", fmt.Sprintf("%X", newVals.Hash()))
+	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
+		"vals", hash2str(newVals.Hash()))
 
 	if c.trustedHeader.Height >= newHeader.Height {
 		return errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
-	}
-
-	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
-		c.logger.Error("Error when comparing new header with one from a witness", "err", err)
-		return err
 	}
 
 	var err error
@@ -624,6 +578,12 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
 	if err != nil {
+		c.logger.Error("Can't verify", "err", err)
+		return err
+	}
+
+	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
+		c.logger.Error("Error when comparing new header with witnesses", "err", err)
 		return err
 	}
 
@@ -660,7 +620,9 @@ func (c *Client) Cleanup() error {
 	return c.cleanup(0)
 }
 
-// cleanup deletes all headers & validator sets between +stopHeight+ and latest height included
+// cleanup deletes all headers & validator sets between +stopHeight+ and latest
+// height included. It also sets trustedHeader (vals) to the latest header
+// (vals) if such exists.
 func (c *Client) cleanup(stopHeight int64) error {
 	// 1) Get the oldest height.
 	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
@@ -826,7 +788,8 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *typ
 	return nil
 }
 
-// fetch header and validators for the given height from primary provider.
+// fetch header and validators for the given height (0 - latest) from primary
+// provider.
 func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
 	h, err := c.signedHeaderFromPrimary(height)
 	if err != nil {
@@ -916,47 +879,73 @@ func (c *Client) backwards(toHeight int64, fromHeader *types.SignedHeader, now t
 func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
-	// 0. Check witnesses exist
-	if len(c.witnesses) == 0 {
-		return errors.New("could not find any witnesses")
-	}
 
-	matchedHeader := false
-
+	// 1. Make sure AT LEAST ONE witness returns the same header.
+	headerMatched := false
+	witnessesToRemove := make([]int, 0)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
-		// 1. Loop through all witnesses.
-		for _, witness := range c.witnesses {
+		if len(c.witnesses) == 0 {
+			return errors.New("could not find any witnesses. please reset the light client")
+		}
 
-			// 2. Fetch the header.
+		for i, witness := range c.witnesses {
 			altH, err := witness.SignedHeader(h.Height)
 			if err != nil {
-				c.logger.Info("No Response from witness ", "witness", witness)
+				c.logger.Error("Failed to get a header from witness", "height", h.Height, "witness", witness)
 				continue
 			}
 
-			// 3. Compare hashes.
+			if err = altH.ValidateBasic(c.chainID); err != nil {
+				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
+				witnessesToRemove = append(witnessesToRemove, i)
+				continue
+			}
+
 			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				// TODO: One of the providers is lying. Send the evidence to fork
-				// accountability server.
+				if err = c.trustedNextVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
+					altH.Height, altH.Commit, c.trustLevel); err != nil {
+					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
+					witnessesToRemove = append(witnessesToRemove, i)
+					continue
+				}
+
+				// TODO: send the diverged headers to primary && all witnesses
+
 				return errors.Errorf(
 					"header hash %X does not match one %X from the witness %v",
 					h.Hash(), altH.Hash(), witness)
 			}
 
-			matchedHeader = true
-
+			headerMatched = true
 		}
 
-		// 4. Check that one responding witness has returned a matching header
-		if matchedHeader {
+		for _, idx := range witnessesToRemove {
+			c.removeWitness(idx)
+		}
+		witnessesToRemove = make([]int, 0)
+
+		if headerMatched {
 			return nil
 		}
 
+		// 2. Otherwise, sleep
 		time.Sleep(backoffTimeout(attempt))
-
 	}
 
 	return errors.New("awaiting response from all witnesses exceeded dropout time")
+}
+
+// NOTE: requires a providerMutex locked.
+func (c *Client) removeWitness(idx int) {
+	switch len(c.witnesses) {
+	case 0:
+		panic(fmt.Sprintf("wanted to remove %d element from empty witnesses slice", idx))
+	case 1:
+		c.witnesses = make([]provider.Provider, 0)
+	default:
+		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
+		c.witnesses = c.witnesses[:len(c.witnesses)-1]
+	}
 }
 
 func (c *Client) removeNoLongerTrustedHeadersRoutine() {
@@ -1001,6 +990,10 @@ func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
 	}
 
 	// 3) Remove all headers that are outside of the trusting period.
+	//
+	// NOTE: even the latest header can be removed. it's okay because
+	// c.trustedHeader will retain it in memory so other funcs like VerifyHeader
+	// don't crash.
 	for height := oldestHeight; height <= latestHeight; height++ {
 		h, err := c.trustedStore.SignedHeader(height)
 		if err != nil {
@@ -1067,27 +1060,31 @@ func (c *Client) Update(now time.Time) error {
 			return err
 		}
 
-		c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", latestHeader.Hash())
+		c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", hash2str(latestHeader.Hash()))
 	}
 
 	return nil
 }
 
-// replaceProvider takes the first alternative provider and promotes it as the primary provider
+// replaceProvider takes the first alternative provider and promotes it as the
+// primary provider.
 func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
-	if len(c.witnesses) == 0 {
-		return errors.Errorf("no witnesses left")
+
+	if len(c.witnesses) <= 1 {
+		return errors.Errorf("only one witness left. please reset the light client")
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
 	c.logger.Info("New primary", "p", c.primary)
+
 	return nil
 }
 
-// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider at the specified height.
-// Handles dropout by the primary provider by swapping with an alternative provider
+// signedHeaderFromPrimary retrieves the SignedHeader from the primary provider
+// at the specified height. Handles dropout by the primary provider by swapping
+// with an alternative provider.
 func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, error) {
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
@@ -1115,8 +1112,9 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 	return c.signedHeaderFromPrimary(height)
 }
 
-// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider at the specified height.
-// Handles dropout by the primary provider after 5 attempts by replacing it with an alternative provider
+// validatorSetFromPrimary retrieves the ValidatorSet from the primary provider
+// at the specified height. Handles dropout by the primary provider after 5
+// attempts by replacing it with an alternative provider.
 func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, error) {
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		c.providerMutex.Lock()
@@ -1141,4 +1139,8 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 //		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
 func backoffTimeout(attempt uint16) time.Duration {
 	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
+}
+
+func hash2str(hash []byte) string {
+	return fmt.Sprintf("%X", hash)
 }
