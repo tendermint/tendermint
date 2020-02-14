@@ -901,16 +901,16 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 				continue
 			}
 
-			if err = c.trustedNextVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
-				altH.Height, altH.Commit, c.trustLevel); err != nil {
-				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
-				witnessesToRemove = append(witnessesToRemove, i)
-				continue
-			}
-
 			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				// TODO: One of the providers is lying. Send the evidence to fork
-				// accountability server.
+				if err = c.trustedNextVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
+					altH.Height, altH.Commit, c.trustLevel); err != nil {
+					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
+					witnessesToRemove = append(witnessesToRemove, i)
+					continue
+				}
+
+				// TODO: send the diverged headers to primary && all witnesses
+
 				return errors.Errorf(
 					"header hash %X does not match one %X from the witness %v",
 					h.Hash(), altH.Hash(), witness)
