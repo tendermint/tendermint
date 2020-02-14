@@ -44,9 +44,16 @@ type queueItem struct {
 type blockQueue map[int64]queueItem
 
 type pcState struct {
-	queue        blockQueue // blocks waiting to be processed
+	// blocks waiting to be processed
+	queue        blockQueue
+
+	// draining indicates that the next rProcessBlock event with a queue miss constitutes completion
 	draining     bool
+
+	// the number of blocks successfully synced by the processor
 	blocksSynced int
+
+	// the processorContext which contains the processor dependencies
 	context      processorContext
 }
 
