@@ -632,8 +632,7 @@ func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
 }
 
 func (sc *scheduler) handleTrySchedule(event rTrySchedule) (Event, error) {
-
-	if time.Now().Sub(sc.lastAdvance) > sc.syncTimeout {
+	if time.Since(sc.lastAdvance) > sc.syncTimeout {
 		return scFinishedEv{reason: "timeout, no advance"}, nil
 	}
 
