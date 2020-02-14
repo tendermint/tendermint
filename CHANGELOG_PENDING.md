@@ -1,9 +1,8 @@
-## v0.33.1
+## v0.33.2
 
 \*\*
 
 Special thanks to external contributors on this release:
-@princesinha19
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -18,11 +17,6 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [rpc] [\#3333] Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (more in the future) (@princesinha19)
-
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-
-- [node] [#\4311] Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
-- [rpc] [#\4319] Check `BlockMeta` is not nil in `/block` & `/block_by_hash`
