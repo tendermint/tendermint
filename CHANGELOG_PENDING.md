@@ -21,4 +21,4 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [RPC] [#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket
+- [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
