@@ -107,7 +107,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	mempool.Flush()
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
-	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	// each tx has 20 bytes = 21 bytes, 1 gas
 	tests := []struct {
 		numTxsToCreate int
 		maxBytes       int64
@@ -121,11 +121,11 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 0, -1, 0},
 		{20, 0, 10, 0},
 		{20, 10, 10, 0},
-		{20, 22, 10, 1},
-		{20, 220, -1, 10},
-		{20, 220, 5, 5},
-		{20, 220, 10, 10},
-		{20, 220, 15, 10},
+		{20, 20, 10, 1},
+		{20, 200, -1, 10},
+		{20, 200, 5, 5},
+		{20, 200, 10, 10},
+		{20, 200, 15, 10},
 		{20, 20000, -1, 20},
 		{20, 20000, 5, 5},
 		{20, 20000, 30, 20},
@@ -150,7 +150,7 @@ func TestMempoolFilters(t *testing.T) {
 	nopPostFilter := func(tx types.Tx, res *abci.ResponseCheckTx) error { return nil }
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
-	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	// each tx has 20 bytes
 	tests := []struct {
 		numTxsToCreate int
 		preFilter      PreCheckFunc
@@ -159,16 +159,15 @@ func TestMempoolFilters(t *testing.T) {
 	}{
 		{10, nopPreFilter, nopPostFilter, 10},
 		{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
+		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 10},
 		{10, nopPreFilter, PostCheckMaxGas(-1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(0), 0},
 		{10, nopPreFilter, PostCheckMaxGas(1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(3000), 10},
 		{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
 		{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
+		{10, PreCheckAminoMaxBytes(20), PostCheckMaxGas(1), 10},
+		{10, PreCheckAminoMaxBytes(20), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, abciResponses(len(emptyTxArr), abci.CodeTypeOK), tt.preFilter, tt.postFilter)

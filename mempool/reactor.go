@@ -255,7 +255,7 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
 	if l := len(bz); l > maxMsgSize {
 		return TxMessage{}, ErrTxTooLarge{maxMsgSize, l}
 	}
-	// err = cdc.UnmarshalBinaryBare(bz, &msg)
+
 	msg := gogotypes.BytesValue{}
 	err := msg.Unmarshal(bz)
 	txMsg := TxMessage{
