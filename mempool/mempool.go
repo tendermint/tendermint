@@ -100,9 +100,8 @@ type TxInfo struct {
 
 //--------------------------------------------------------------------------------
 
-// PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
-// overhead is smaller or equal to the expected maxBytes.
-func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
+// PreCheckMaxBytes checks that the size of the transaction is smaller or equal to the expected maxBytes.
+func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		txSize := int64(len(tx))
 		if txSize > maxBytes {

@@ -227,7 +227,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 			txsBytes, mem.config.MaxTxsBytes}
 	}
 
-	// The size of the corresponding amino-encoded TxMessage
+	// The size of the corresponding TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
 	if txSize > mem.config.MaxTxBytes {
