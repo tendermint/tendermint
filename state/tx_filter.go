@@ -12,7 +12,7 @@ func TxPreCheck(state State) mempl.PreCheckFunc {
 		state.ConsensusParams.Block.MaxBytes,
 		state.Validators.Size(),
 	)
-	return mempl.PreCheckAminoMaxBytes(maxDataBytes)
+	return mempl.PreCheckMaxBytes(maxDataBytes)
 }
 
 // TxPostCheck returns a function to filter transactions after processing.
