@@ -56,6 +56,10 @@ type bcBlockResponseMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *bcBlockResponseMessage) ValidateBasic() error {
+	if m.Block == nil {
+		return errors.New("block response message has nil block")
+	}
+
 	return m.Block.ValidateBasic()
 }
 
