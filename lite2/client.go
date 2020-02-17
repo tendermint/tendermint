@@ -720,7 +720,7 @@ func (c *Client) sequence(
 			"lastHash", c.trustedHeader.Hash(),
 			"newHeight", interimHeader.Height,
 			"newHash", interimHeader.Hash())
-		err = VerifyViaSigs(c.chainID, trustedHeader, interimHeader, trustedNextVals,
+		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, trustedNextVals,
 			c.trustingPeriod, now)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
@@ -743,7 +743,7 @@ func (c *Client) sequence(
 	}
 
 	// 2) Verify the new header.
-	return VerifyViaSigs(c.chainID, c.trustedHeader, newHeader, newVals, c.trustingPeriod, now)
+	return VerifyAdjacent(c.chainID, c.trustedHeader, newHeader, newVals, c.trustingPeriod, now)
 }
 
 // see VerifyHeader
@@ -759,7 +759,7 @@ func (c *Client) bisection(
 		"lastHash", lastHeader.Hash(),
 		"newHeight", newHeader.Height,
 		"newHash", newHeader.Hash())
-	err := VerifyViaVals(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 	switch err.(type) {
 	case nil:
 		return nil

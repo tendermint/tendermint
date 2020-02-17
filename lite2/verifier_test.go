@@ -52,7 +52,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"unverifiedHeader.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not" +
+			"untrustedHeader.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not" +
 				" 'TestVerifyAdjacentHeaders'",
 		},
 		// new header's time is before old header's time -> error
@@ -140,7 +140,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyViaSigs(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now)
+			err := VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now)
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
@@ -254,7 +254,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyViaVals(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now,
+			err := VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now,
 				DefaultTrustLevel)
 
 			switch {
@@ -284,7 +284,7 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	err := VerifyViaVals(chainID, header, vals, header, vals, 2*time.Hour, time.Now(),
+	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(),
 		tmmath.Fraction{Numerator: 2, Denominator: 1})
 	assert.Error(t, err)
 }
