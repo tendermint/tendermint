@@ -227,7 +227,10 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// ensure peer hasn't already sent us this tx
 		if _, ok := memTx.senders.Load(peerID); !ok {
 			msg := gogotypes.BytesValue{Value: []byte(memTx.tx)}
-			bz, _ := msg.Marshal()
+			bz, err := msg.Marshal()
+			if err != nil {
+				// TODO: question bubble up the error or ignore it?
+			}
 			success := peer.Send(MempoolChannel, bz)
 			if !success {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
