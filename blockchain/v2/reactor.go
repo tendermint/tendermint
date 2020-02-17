@@ -166,6 +166,7 @@ func NewBlockchainReactor(
 // SetSwitch implements Reactor interface.
 func (r *BlockchainReactor) SetSwitch(sw *p2p.Switch) {
 	if sw == nil {
+		panic("set nil switch")
 	}
 
 	r.Switch = sw
