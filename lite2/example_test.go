@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -33,12 +34,12 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 		chainID = config.ChainID()
 	)
 
-	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	header, err := provider.SignedHeader(2)
+	header, err := primary.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -55,7 +56,8 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 			Height: 2,
 			Hash:   header.Hash(),
 		},
-		provider,
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(1*time.Second),
 		Logger(log.TestingLogger()),
@@ -99,12 +101,12 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 		chainID = config.ChainID()
 	)
 
-	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	header, err := provider.SignedHeader(2)
+	header, err := primary.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -121,7 +123,8 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 			Height: 2,
 			Hash:   header.Hash(),
 		},
-		provider,
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),

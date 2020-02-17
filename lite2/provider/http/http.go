@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 type SignStatusClient interface {
 	rpcclient.SignClient
 	rpcclient.StatusClient
+	// Remote returns the remote network address in a string form.
+	Remote() string
 }
 
 // http provider uses an RPC client (or SignStatusClient more generally) to
@@ -45,6 +48,10 @@ func (p *http) ChainID() string {
 	return p.chainID
 }
 
+func (p *http) String() string {
+	return fmt.Sprintf("http{%s}", p.client.Remote())
+}
+
 // SignedHeader fetches a SignedHeader at the given height and checks the
 // chainID matches.
 func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
@@ -60,6 +67,10 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 			return nil, provider.ErrSignedHeaderNotFound
 		}
 		return nil, err
+	}
+
+	if commit.Header == nil {
+		return nil, errors.New("header is nil")
 	}
 
 	// Verify we're still on the same chain.

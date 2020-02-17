@@ -21,14 +21,14 @@ type Store interface {
 	//
 	// height must be > 0.
 	//
-	// If SignedHeader is not found, an error is returned.
+	// If SignedHeader is not found, ErrSignedHeaderNotFound is returned.
 	SignedHeader(height int64) (*types.SignedHeader, error)
 
 	// ValidatorSet returns the ValidatorSet that corresponds to height.
 	//
 	// height must be > 0.
 	//
-	// If ValidatorSet is not found, an error is returned.
+	// If ValidatorSet is not found, ErrValidatorSetNotFound is returned.
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
 
 	// LastSignedHeaderHeight returns the last (newest) SignedHeader height.
@@ -40,4 +40,9 @@ type Store interface {
 	//
 	// If the store is empty, -1 and nil error are returned.
 	FirstSignedHeaderHeight() (int64, error)
+
+	// SignedHeaderAfter returns the SignedHeader after the certain height.
+	//
+	// height must be > 0 && <= LastSignedHeaderHeight.
+	SignedHeaderAfter(height int64) (*types.SignedHeader, error)
 }
