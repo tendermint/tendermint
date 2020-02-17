@@ -155,10 +155,10 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 
 // NewBlockchainReactor creates a new reactor instance.
 func NewBlockchainReactor(
-		state state.State, 
-		blockApplier blockApplier, 
-		store blockStore, 
-		fastSync bool) *BlockchainReactor {
+	state state.State,
+	blockApplier blockApplier,
+	store blockStore,
+	fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
 	return newReactor(state, store, reporter, blockApplier, 1000)
 }

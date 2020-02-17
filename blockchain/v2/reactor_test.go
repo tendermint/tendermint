@@ -25,32 +25,6 @@ import (
 	"time"
 )
 
-/*
-# What do we test in v1?
-
-* TestFastSyncNoBlockResponse
-	* test that we switch to consensus after not receiving a block for a certain amount of time
-* TestFastSyncBadBlockStopsPeer
-	* test that a bad block will evict the peer
-* TestBcBlockRequestMessageValidateBasic
-	* test the behaviour of bcBlockRequestMessage.ValidateBasic()
-* TestBcBlockResponseMessageValidateBasic
-	* test the validation of of the message body
-
-# What do we want to test:
-	* Initialization from disk store
-	* BlockResponse from state
-		* Invalid Request
-		* Block Missing
-		* Block Found
-	* StatusRequest
-		* Invalid Message
-		* Valid Status
-	* Termination
-		* Timeout
-		* Completion on sync blocks
-*/
-
 type mockPeer struct {
 	service.Service
 	id p2p.ID

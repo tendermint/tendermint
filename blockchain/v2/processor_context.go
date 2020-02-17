@@ -15,9 +15,9 @@ type processorContext interface {
 }
 
 type pContext struct {
-	store    blockStore
-	applier  blockApplier
-	state    state.State
+	store   blockStore
+	applier blockApplier
+	state   state.State
 }
 
 func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
@@ -53,9 +53,9 @@ type mockPContext struct {
 }
 
 func newMockProcessorContext(
-		state state.State, 
-		verificationBlackList []int64, 
-		applicationBlackList []int64) *mockPContext {
+	state state.State,
+	verificationBlackList []int64,
+	applicationBlackList []int64) *mockPContext {
 	return &mockPContext{
 		applicationBL:  applicationBlackList,
 		verificationBL: verificationBlackList,

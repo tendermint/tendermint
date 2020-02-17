@@ -280,9 +280,9 @@ func TestScTouchPeer(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name:       "touch peer in state Ready",
-			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now}}},
-			args:       args{peerID: "P1", time: now.Add(3 * time.Second)},
+			name:   "touch peer in state Ready",
+			fields: scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastTouched: now}}},
+			args:   args{peerID: "P1", time: now.Add(3 * time.Second)},
 			wantFields: scTestParams{peers: map[string]*scPeer{
 				"P1": {state: peerStateReady, lastTouched: now.Add(3 * time.Second)}}},
 		},
@@ -906,9 +906,9 @@ func TestScMarkReceived(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.markReceived(
-				tt.args.peerID, 
-				tt.args.height, 
-				tt.args.size, 
+				tt.args.peerID,
+				tt.args.height,
+				tt.args.size,
 				now.Add(time.Second)); (err != nil) != tt.wantErr {
 				t.Errorf("markReceived() wantErr %v, error = %v", tt.wantErr, err)
 			}
@@ -1988,7 +1988,8 @@ func TestScHandle(t *testing.T) {
 					currentSc: &scTestParams{startTime: now, peers: map[string]*scPeer{}, height: 1},
 					args:      args{event: bcAddNewPeer{peerID: "P1"}},
 					wantEvent: noOpEvent{},
-					wantSc:    &scTestParams{startTime: now, peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}, height: 1},
+					wantSc: &scTestParams{startTime: now, peers: map[string]*scPeer{
+						"P1": {height: -1, state: peerStateNew}}, height: 1},
 				},
 				{ // set height of P1
 					args:      args{event: bcStatusResponse{peerID: "P1", time: tick[0], height: 3}},

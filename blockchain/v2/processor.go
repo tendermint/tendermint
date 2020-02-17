@@ -44,16 +44,16 @@ type blockQueue map[int64]queueItem
 
 type pcState struct {
 	// blocks waiting to be processed
-	queue        blockQueue
+	queue blockQueue
 
 	// draining indicates that the next rProcessBlock event with a queue miss constitutes completion
-	draining     bool
+	draining bool
 
 	// the number of blocks successfully synced by the processor
 	blocksSynced int
 
 	// the processorContext which contains the processor dependencies
-	context      processorContext
+	context processorContext
 }
 
 func (state *pcState) String() string {
