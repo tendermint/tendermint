@@ -107,7 +107,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	mempool.Flush()
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
-	// each tx has 20 bytes = 21 bytes, 1 gas
+	// each tx has 20 bytes
 	tests := []struct {
 		numTxsToCreate int
 		maxBytes       int64
@@ -121,7 +121,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 0, -1, 0},
 		{20, 0, 10, 0},
 		{20, 10, 10, 0},
-		{20, 20, 10, 1},
+		{20, 22, 10, 1},
 		{20, 200, -1, 10},
 		{20, 200, 5, 5},
 		{20, 200, 10, 10},
@@ -450,14 +450,15 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 
 		tx := tmrand.Bytes(testCase.len)
 		err := mempl.CheckTx(tx, nil, TxInfo{})
-		bz := gogotypes.BytesValue{Value: tx}
-		encoded, _ := bz.Marshal() // ignore error
-		require.Equal(t, len(encoded), proto.Size(&bz), caseString)
+		bv := gogotypes.BytesValue{Value: tx}
+		bz, err := bv.Marshal() // ignore error
+		require.NoError(t, err)
+		require.Equal(t, len(bz), proto.Size(&bv), caseString)
 		if !testCase.err {
-			require.True(t, len(encoded) <= maxMsgSize, caseString)
+			require.True(t, len(bz) <= maxMsgSize, caseString)
 			require.NoError(t, err, caseString)
 		} else {
-			require.True(t, len(encoded) > maxMsgSize, caseString)
+			require.True(t, len(bz) > maxMsgSize, caseString)
 			require.Equal(t, err, ErrTxTooLarge{maxTxSize, testCase.len}, caseString)
 		}
 	}

@@ -229,7 +229,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			msg := gogotypes.BytesValue{Value: []byte(memTx.tx)}
 			bz, err := msg.Marshal()
 			if err != nil {
-				// TODO: question bubble up the error or ignore it?
+				panic(err)
 			}
 			success := peer.Send(MempoolChannel, bz)
 			if !success {
