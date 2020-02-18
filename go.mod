@@ -1,6 +1,6 @@
 module github.com/tendermint/tendermint
 
-go 1.12
+go 1.13
 
 require (
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200102211924-4bcbc698314f
