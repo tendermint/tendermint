@@ -682,8 +682,8 @@ func (c *Client) sequence(
 			"lastHash", c.trustedHeader.Hash(),
 			"newHeight", interimHeader.Height,
 			"newHash", interimHeader.Hash())
-		err = Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, trustedNextVals,
-			c.trustingPeriod, now, c.trustLevel)
+		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, trustedNextVals,
+			c.trustingPeriod, now)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}
@@ -705,7 +705,7 @@ func (c *Client) sequence(
 	}
 
 	// 2) Verify the new header.
-	return Verify(c.chainID, c.trustedHeader, c.trustedNextVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+	return VerifyAdjacent(c.chainID, c.trustedHeader, newHeader, newVals, c.trustingPeriod, now)
 }
 
 // see VerifyHeader
