@@ -11,6 +11,7 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
     * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
     * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
     * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
+    * Added open questions and implementation plan.
 
 ## Context
 
