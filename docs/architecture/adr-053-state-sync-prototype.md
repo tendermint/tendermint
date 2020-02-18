@@ -11,6 +11,7 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
     * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
     * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
     * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
+    * Added experimental prototype info.
     * Added open questions and implementation plan.
 
 ## Context
@@ -189,6 +190,38 @@ Snapshots should be taken at some configurable height interval, e.g. every 1000 
 Taking consistent snapshots of IAVL trees is greatly simplified by them being versioned: simply snapshot the version that corresponds to the snapshot height, while concurrent writes create new versions. IAVL pruning must not prune a version that is being snapshotted.
 
 Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
+
+## Experimental Prototype
+
+An experimental but functional state sync prototype is available in the `erik/statesync-prototype` branches of the Tendermint, IAVL, Cosmos SDK, and Gaia repositories. To fetch the necessary branches:
+
+```sh
+$ mkdir statesync
+$ cd statesync
+$ git clone git@github.com:tendermint/tendermint -b erik/statesync-prototype
+$ git clone git@github.com:tendermint/iavl -b erik/statesync-prototype
+$ git clone git@github.com:cosmos/cosmos-sdk -b erik/statesync-prototype
+$ git clone git@github.com:cosmos/gaia -b erik/statesync-prototype
+```
+
+To spin up three nodes of a four-node testnet:
+
+```sh
+$ cd gaia
+$ ./tools/start.sh
+```
+
+Wait for the first snapshot to be taken at height 3, then (in a separate terminal) start the fourth node with state sync enabled:
+
+```sh
+$ ./tools/sync.sh
+```
+
+To stop the testnet, run:
+
+```sh
+$ ./tools/stop.sh
+```
 
 ## Open Questions
 
