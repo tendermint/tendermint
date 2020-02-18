@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
@@ -64,8 +65,10 @@ func BenchmarkTxSearch(b *testing.B) {
 
 	b.ResetTimer()
 
+	ctx := context.Background()
+
 	for i := 0; i < b.N; i++ {
-		if _, err := indexer.Search(txQuery); err != nil {
+		if _, err := indexer.Search(ctx, txQuery); err != nil {
 			b.Errorf("failed to query for txs: %s", err)
 		}
 	}
