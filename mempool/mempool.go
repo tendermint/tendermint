@@ -105,7 +105,7 @@ func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		txSize := int64(len(tx))
 		if txSize > maxBytes {
-			return fmt.Errorf("tx size (including proto overhead) is too big: %d, max: %d",
+			return fmt.Errorf("tx size is too big: %d, max: %d",
 				txSize, maxBytes)
 		}
 		return nil

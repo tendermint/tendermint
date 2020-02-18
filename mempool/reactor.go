@@ -261,6 +261,9 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
 
 	msg := gogotypes.BytesValue{}
 	err := msg.Unmarshal(bz)
+	if err != nil {
+		return TxMessage{}, err
+	}
 	txMsg := TxMessage{
 		Tx: types.Tx(msg.Value),
 	}
