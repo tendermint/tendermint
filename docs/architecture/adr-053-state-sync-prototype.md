@@ -6,6 +6,11 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
 
 * 2020-01-28: Initial draft (Erik Grinaker)
 
+* 2020-02-18: Updates after initial prototype (Erik Grinaker)
+    * ABCI: added missing `reason` fields
+    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based)
+    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`
+
 ## Context
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
@@ -34,14 +39,14 @@ A node can have multiple snapshots taken at various heights. Snapshots can be ta
 message Snapshot {
     uint64 height = 1;   // The height at which the snapshot was taken
     uint32 format = 2;   // The application-specific snapshot format
-    uint64 chunks = 3;   // The number of chunks in the snapshot
+    uint32 chunks = 3;   // The number of chunks in the snapshot
     bytes metadata = 4;  // Arbitrary application metadata
 }
 
 message SnapshotChunk {
     uint64 height = 1;   // The height of the corresponding snapshot
     uint32 format = 2;   // The application-specific snapshot format
-    uint64 chunk = 3;    // The chunk index (zero-based)
+    uint32 chunk = 3;    // The chunk index (zero-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
     bytes checksum = 5;  // SHA-1 checksum of data
 }
@@ -64,11 +69,13 @@ message ResponseListSnapshots {
 // Offers a snapshot to the application
 message RequestOfferSnapshot {
     Snapshot snapshot = 1;
+    bytes app_hash = 2;
 }
 
 message ResponseOfferSnapshot {
     bool accepted = 1;
-    enum reason {             // Reason why snapshot was rejected
+    Reason reason = 2;        // Reason why snapshot was rejected
+    enum Reason {
         unknown = 0;          // Unknown or generic reason
         invalid_height = 1;   // Height is rejected: avoid this height
         invalid_format = 2;   // Format is rejected: avoid this format
@@ -79,7 +86,7 @@ message ResponseOfferSnapshot {
 message RequestGetSnapshotChunk {
     uint64 height = 1;
     uint32 format = 2;
-    uint64 chunk = 3;
+    uint32 chunk = 3;
 }
 
 message ResponseGetSnapshotChunk {
@@ -89,12 +96,12 @@ message ResponseGetSnapshotChunk {
 // Applies a snapshot chunk
 message RequestApplySnapshotChunk {
     SnapshotChunk chunk = 1;
-    bytes chain_hash = 2;
 }
 
 message ResponseApplySnapshotChunk {
     bool applied = 1;
-    enum reason {           // Reason why chunk failed
+    Reason reason = 2;      // Reason why chunk failed
+    enum Reason {
         unknown = 0;        // Unknown or generic reason
         verify_failed = 1;  // Chunk verification failed
     }
@@ -199,6 +206,10 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 * Should we punish nodes that provide invalid snapshots?
 
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
+
+### ABCI
+
+* Should we call these snapshots? IAVL already has a different concept called snapshots.
 
 ## Status
 
