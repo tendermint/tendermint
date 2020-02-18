@@ -269,7 +269,11 @@ $ ./tools/stop.sh
 
 * **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus) [optional]
 
-  * Notify P2P peers about channel changes [#4394](https://github.com/tendermint/tendermint/issues/4394) [optional]
+  * Notify P2P peers about channel changes [optional] [#4394](https://github.com/tendermint/tendermint/issues/4394)
+
+  * Check peers have certain channels [optional] [#1148]https://github.com/tendermint/tendermint/issues/1148)
+
+  * Node should go back to fast-syncing when lagging significantly [optional] [#129](https://github.com/tendermint/tendermint/issues/129)
 
 * **Tendermint:** light client verification for fast sync [optional]
 
