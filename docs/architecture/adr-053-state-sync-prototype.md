@@ -265,13 +265,13 @@ $ ./tools/stop.sh
 
   * Prune blockchain history [optional] [#3652](https://github.com/tendermint/tendermint/issues/3652)
 
-  * Allow genesis to start from non-zero height [optional] [2543](https://github.com/tendermint/tendermint/issues/2543)
+  * Allow genesis to start from non-zero height [optional] [#2543](https://github.com/tendermint/tendermint/issues/2543)
 
 * **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus) [optional]
 
   * Notify P2P peers about channel changes [optional] [#4394](https://github.com/tendermint/tendermint/issues/4394)
 
-  * Check peers have certain channels [optional] [#1148]https://github.com/tendermint/tendermint/issues/1148)
+  * Check peers have certain channels [optional] [#1148](https://github.com/tendermint/tendermint/issues/1148)
 
   * Node should go back to fast-syncing when lagging significantly [optional] [#129](https://github.com/tendermint/tendermint/issues/129)
 
