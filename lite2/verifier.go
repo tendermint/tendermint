@@ -61,6 +61,10 @@ func VerifyNonAdjacent(
 	}
 
 	// Ensure that +2/3 of new validators signed correctly.
+	//
+	// NOTE: this should always be the last check because untrustedVals can be
+	// intentionaly made very large to DOS the light client. not the case for
+	// VerifyAdjacent, where validator set is known in advance.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
 		return err
