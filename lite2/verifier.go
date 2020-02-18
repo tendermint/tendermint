@@ -11,25 +11,27 @@ import (
 )
 
 var (
-	// DefaultTrustLevel - new header can be trusted if at least one correct old
+	// DefaultTrustLevel - new header can be trusted if at least one correct
 	// validator signed it.
 	DefaultTrustLevel = tmmath.Fraction{Numerator: 1, Denominator: 3}
 )
 
-// VerifyViaVals verifies the new header (untrustedHeader) against the old header (trustedHeader). It ensures that:
+// VerifyNonAdjacent verifies non-adjacent untrustedHeader against
+// trustedHeader. It ensures that:
 //
 //	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
 //	b) untrustedHeader is valid;
-//	c) trustLevel ([1/3, 1]) of last trusted validators (trustedHeaderNextVals) signed
-//		 correctly  (if not, ErrNewValSetCantBeTrusted is returned);
-//	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned).
+//	c) trustLevel ([1/3, 1]) of trustedHeaderNextVals signed correctly
+//     (if not, ErrNewValSetCantBeTrusted is returned);
+//	d) more than 2/3 of untrustedVals have signed h2 (if not,
+//	   ErrNotEnoughVotingPowerSigned is returned);
+//  e) headers are non-adjacent.
 func VerifyNonAdjacent(
 	chainID string,
-	trustedHeader *types.SignedHeader,
-	trustedNextVals *types.ValidatorSet,
-	untrustedHeader *types.SignedHeader,
-	untrustedVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height=X
+	trustedNextVals *types.ValidatorSet, // height=X+1
+	untrustedHeader *types.SignedHeader, // height=Y
+	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
 	trustLevel tmmath.Fraction) error {
@@ -67,19 +69,20 @@ func VerifyNonAdjacent(
 	return nil
 }
 
-// VerifyViaSigs verifies the directly adjacent new header (untrustedHeader) against the old header (trustedHeader).
-// It ensures that:
+// VerifyAdjacent verifies directly adjacent untrustedHeader against
+// trustedHeader. It ensures that:
 //
 //	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
 //	b) untrustedHeader is valid;
 //	c) untrustedHeader.ValidatorsHash equals trustedHeaderNextVals.Hash()
 //	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned).
+//	   ErrNotEnoughVotingPowerSigned is returned);
+//  e) headers are adjacent.
 func VerifyAdjacent(
 	chainID string,
-	trustedHeader *types.SignedHeader,
-	untrustedHeader *types.SignedHeader,
-	untrustedVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height=X
+	untrustedHeader *types.SignedHeader, // height=X+1
+	untrustedVals *types.ValidatorSet, // height=X+1
 	trustingPeriod time.Duration,
 	now time.Time) error {
 
@@ -113,13 +116,13 @@ func VerifyAdjacent(
 	return nil
 }
 
-// Verify combines both adjacent and non adjacent verify functions
+// Verify combines both VerifyAdjacent and VerifyNonAdjacent functions.
 func Verify(
 	chainID string,
-	trustedHeader *types.SignedHeader,
-	trustedNextVals *types.ValidatorSet,
-	untrustedHeader *types.SignedHeader,
-	untrustedVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height=X
+	trustedNextVals *types.ValidatorSet, // height=X+1
+	untrustedHeader *types.SignedHeader, // height=Y
+	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
 	trustLevel tmmath.Fraction) error {
