@@ -193,6 +193,8 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
+* Do we need incremental chunk verification for first version?
+
 * Should we call these snapshots? IAVL already has a different concept called snapshots.
 
 * Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
@@ -208,6 +210,38 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 * Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
 
 * Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+
+## Implementation Plan
+
+* **Tendermint:** rpc/client (Local) must not depend on node (Node), due to import cycles [required]
+
+* **Tendermint:** light client P2P transport [optional]
+
+* **IAVL:** dump/restore API (iterator-based) [required] [#3639](https://github.com/tendermint/tendermint/issues/3639)
+
+  * Incremental verification [optional]
+
+* **Cosmos SDK:** multistore dump/restore API (iterator-based) [required]
+
+* **Cosmos SDK:** snapshot scheduling and pruning [required]
+
+* **Tendermint:** support starting with a truncated block history [required]
+
+  * Allow start with only blockstore [optional] [#3713](https://github.com/tendermint/tendermint/issues/3713)
+
+  * Prune blockchain history [optional] [#3652](https://github.com/tendermint/tendermint/issues/3652)
+
+  * Allow genesis to start from non-zero height [optional] [2543](https://github.com/tendermint/tendermint/issues/2543)
+
+* **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus) [optional]
+
+  * Notify P2P peers about channel changes [#4394](https://github.com/tendermint/tendermint/issues/4394) [optional]
+
+* **Tendermint:** light client verification for fast sync [optional]
+
+* **Tendermint:** state sync reactor and ABCI interface [required] [#828](https://github.com/tendermint/tendermint/issues/828)
+
+* **Cosmos SDK:** snapshot ABCI implementation [required]
 
 ## Status
 
