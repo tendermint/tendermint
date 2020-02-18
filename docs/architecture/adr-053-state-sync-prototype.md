@@ -191,13 +191,23 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 
 ## Open Questions
 
-* Should we punish nodes that provide invalid snapshots?
-
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
-### ABCI
-
 * Should we call these snapshots? IAVL already has a different concept called snapshots.
+
+* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
+
+* How can we make sure `ListSnapshots` data is valid? An adversary can provide a large number of invalid snapshots and make the node stuck in discovery mode. Perhaps collect snapshot list from many peers and pick ones that are available on a majority.
+
+* Should we punish nodes that provide invalid snapshots? How?
+
+* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
+
+* How large chunks can we send without getting memory issues? Can we stream the chunk contents?
+
+* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
+
+* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
 
 ## Status
 
