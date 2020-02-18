@@ -127,10 +127,9 @@ func Verify(
 	if untrustedHeader.Height != trustedHeader.Height+1 {
 		return VerifyNonAdjacent(chainID, trustedHeader, trustedNextVals, untrustedHeader, untrustedVals,
 			trustingPeriod, now, trustLevel)
-	} else {
-		return VerifyAdjacent(chainID, trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now)
 	}
 
+	return VerifyAdjacent(chainID, trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now)
 }
 
 func verifyNewHeaderAndVals(
