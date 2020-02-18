@@ -49,7 +49,7 @@ message Snapshot {
 message SnapshotChunk {
     uint64 height = 1;   // The height of the corresponding snapshot
     uint32 format = 2;   // The application-specific snapshot format
-    uint32 chunk = 3;    // The chunk index (zero-based)
+    uint32 chunk = 3;    // The chunk index (one-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
     bytes checksum = 5;  // SHA-1 checksum of data
 }
