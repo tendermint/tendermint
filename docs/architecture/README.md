@@ -67,5 +67,6 @@ Note the context/background should be written in the present tense.
 - [ADR-044-Lite-Client-With-Weak-Subjectivity](./adr-044-lite-client-with-weak-subjectivity.md)
 - [ADR-045-ABCI-Evidence](./adr-045-abci-evidence.md)
 - [ADR-046-Light-Client-Implementation](./adr-046-light-client-implementation.md)
+- [ADR-047-Handling-Evidence-From-Light-Client](./adr-047-handling-evidence-from-light-client.md)
 - [ADR-051-Double-Signing-Risk-Reduction](./adr-051-double-signing-risk-reduction.md)
 - [ADR-052-Tendermint-Mode](./adr-052-tendermint-mode.md)
