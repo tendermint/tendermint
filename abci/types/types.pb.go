@@ -7,6 +7,14 @@ import (
 	bytes "bytes"
 	context "context"
 	fmt "fmt"
+	io "io"
+	math "math"
+	math_bits "math/bits"
+	reflect "reflect"
+	strconv "strconv"
+	strings "strings"
+	time "time"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
@@ -18,13 +26,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	io "io"
-	math "math"
-	math_bits "math/bits"
-	reflect "reflect"
-	strconv "strconv"
-	strings "strings"
-	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2430,8 +2431,11 @@ func (m *PartSetHeader) GetHash() []byte {
 // Validator
 type Validator struct {
 	Address []byte `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	//PubKey pub_key = 2 [(gogoproto.nullable)=false];
-	Power int64 `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
+	// PubKey pub_key = 2 [(gogoproto.nullable)=false];
+	Power                int64    `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *Validator) Reset()      { *m = Validator{} }

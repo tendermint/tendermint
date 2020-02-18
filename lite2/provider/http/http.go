@@ -1,7 +1,9 @@
 package http
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -12,6 +14,8 @@ import (
 type SignStatusClient interface {
 	rpcclient.SignClient
 	rpcclient.StatusClient
+	// Remote returns the remote network address in a string form.
+	Remote() string
 }
 
 // http provider uses an RPC client (or SignStatusClient more generally) to
@@ -44,6 +48,10 @@ func (p *http) ChainID() string {
 	return p.chainID
 }
 
+func (p *http) String() string {
+	return fmt.Sprintf("http{%s}", p.client.Remote())
+}
+
 // SignedHeader fetches a SignedHeader at the given height and checks the
 // chainID matches.
 func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
@@ -54,7 +62,15 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 	commit, err := p.client.Commit(h)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrSignedHeaderNotFound
+		}
 		return nil, err
+	}
+
+	if commit.Header == nil {
+		return nil, errors.New("header is nil")
 	}
 
 	// Verify we're still on the same chain.
@@ -76,6 +92,10 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	const maxPerPage = 100
 	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
+		// TODO: standartise errors on the RPC side
+		if strings.Contains(err.Error(), "height must be less than or equal") {
+			return nil, provider.ErrValidatorSetNotFound
+		}
 		return nil, err
 	}
 

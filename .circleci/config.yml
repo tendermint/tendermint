@@ -75,6 +75,20 @@ jobs:
           paths:
             - "."
 
+  proto-lint:
+    executor: protoc
+    steps:
+      - checkout
+      - run:
+          command: make proto-lint
+
+  proto-breakage:
+    executor: protoc
+    steps:
+      - checkout
+      - run:
+          command: make proto-check-breaking
+
   test_abci_apps:
     executor: golang
     steps:
@@ -130,20 +144,6 @@ jobs:
             - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
-
-  proto-lint:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-lint
-
-  proto-breakage:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-check-breaking
 
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
@@ -373,13 +373,10 @@ jobs:
   #         command: |
   #           set -x
   #           export PATH=~/.local/bin:$PATH
-
   #           # install node and dredd
   #           ./scripts/get_nodejs.sh
-
   #           # build the binaries with a proper version of Go
   #           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
-
   #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
   #           go get github.com/snikch/goodman/cmd/goodman
   #           make contract-tests
@@ -407,6 +404,8 @@ workflows:
       - test_abci_apps:
           requires:
             - setup_dependencies
+      - proto-breakage
+      - proto-lint
       - test_abci_cli:
           requires:
             - setup_dependencies
@@ -416,8 +415,6 @@ workflows:
       - test_cover:
           requires:
             - setup_dependencies
-      - proto-breakage
-      - proto-lint
       - test_persistence:
           requires:
             - setup_dependencies

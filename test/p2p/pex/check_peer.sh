@@ -1,10 +1,11 @@
 #! /bin/bash
 set -u
 
-ID=$1
-N=$2
+IPV=$1
+ID=$2
+N=$3
 
-addr=$(test/p2p/ip.sh "$ID"):26657
+addr=$(test/p2p/address.sh $IPV "$ID" 26657)
 
 echo "2. wait until peer $ID connects to other nodes using pex reactor"
 peers_count="0"

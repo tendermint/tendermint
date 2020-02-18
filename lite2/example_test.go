@@ -8,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func TestExample_Client(t *testing.T) {
+// Automatically getting new headers and verifying them.
+func TestExample_Client_AutoUpdate(t *testing.T) {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -34,12 +34,12 @@ func TestExample_Client(t *testing.T) {
 		chainID = config.ChainID()
 	)
 
-	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	header, err := provider.SignedHeader(2)
+	header, err := primary.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -56,20 +56,27 @@ func TestExample_Client(t *testing.T) {
 			Height: 2,
 			Hash:   header.Hash(),
 		},
-		provider,
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
 		dbs.New(db, chainID),
+		UpdatePeriod(1*time.Second),
+		Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	c.SetLogger(log.TestingLogger())
-
-	_, err = c.VerifyHeaderAtHeight(3, time.Now())
+	err = c.Start()
 	if err != nil {
 		stdlog.Fatal(err)
 	}
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
 
-	h, err := c.TrustedHeader(3, time.Now())
+	time.Sleep(2 * time.Second)
+
+	h, err := c.TrustedHeader(0, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -78,7 +85,8 @@ func TestExample_Client(t *testing.T) {
 	// Output: got header 3
 }
 
-func TestExample_AutoClient(t *testing.T) {
+// Manually getting headers and verifying them.
+func TestExample_Client_ManualUpdate(t *testing.T) {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -93,12 +101,12 @@ func TestExample_AutoClient(t *testing.T) {
 		chainID = config.ChainID()
 	)
 
-	provider, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	header, err := provider.SignedHeader(2)
+	header, err := primary.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -108,38 +116,43 @@ func TestExample_AutoClient(t *testing.T) {
 		stdlog.Fatal(err)
 	}
 
-	base, err := NewClient(
+	c, err := NewClient(
 		chainID,
 		TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
 		},
-		provider,
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
 		dbs.New(db, chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	base.SetLogger(log.TestingLogger())
-
-	c := NewAutoClient(base, 1*time.Second)
-	defer c.Stop()
-
-	select {
-	case h := <-c.TrustedHeaders():
-		fmt.Println("got header", h.Height)
-		// Output: got header 3
-	case err := <-c.Errs():
-		switch errors.Cause(err).(type) {
-		case ErrOldHeaderExpired:
-			// reobtain trust height and hash
-			stdlog.Fatal(err)
-		default:
-			// try with another full node
-			stdlog.Fatal(err)
-		}
+	err = c.Start()
+	if err != nil {
+		stdlog.Fatal(err)
 	}
+	defer func() {
+		c.Stop()
+		c.Cleanup()
+	}()
+
+	_, err = c.VerifyHeaderAtHeight(3, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	h, err := c.TrustedHeader(3, time.Now())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	fmt.Println("got header", h.Height)
+	// Output: got header 3
 }
 
 func TestMain(m *testing.M) {

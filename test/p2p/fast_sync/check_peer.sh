@@ -2,7 +2,8 @@
 set -eu
 set -o pipefail
 
-ID=$1
+IPV=$1
+ID=$2
 
 ###########################################
 #
@@ -10,9 +11,9 @@ ID=$1
 #
 ###########################################
 
-addr=$(test/p2p/ip.sh $ID):26657
+addr=$(test/p2p/address.sh $IPV $ID 26657)
 peerID=$(( $(($ID % 4)) + 1  )) # 1->2 ... 3->4 ... 4->1
-peer_addr=$(test/p2p/ip.sh $peerID):26657
+peer_addr=$(test/p2p/address.sh $IPV $peerID 26657)
 
 # get another peer's height
 h1=`curl -s $peer_addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
