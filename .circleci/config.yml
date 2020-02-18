@@ -131,20 +131,6 @@ jobs:
       - store_artifacts:
           path: /tmp/logs
 
-  proto-lint:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-lint
-
-  proto-breakage:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-check-breaking
-
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
     machine:
@@ -418,8 +404,6 @@ workflows:
       - test_cover:
           requires:
             - setup_dependencies
-      - proto-breakage
-      - proto-lint
       - test_persistence:
           requires:
             - setup_dependencies
