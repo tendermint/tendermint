@@ -531,7 +531,8 @@ func (c *Client) ChainID() string {
 // provider.ErrSignedHeaderNotFound error is returned.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if c.trustedHeader.Height >= height {
-		return nil, errors.Errorf("header at more recent height #%d exists", c.trustedHeader.Height)
+		c.logger.Info("Header is less than trusted header height. Using TrustedHeader function instead")
+		return c.TrustedHeader(height, now)
 	}
 
 	// Request the header and the vals.
