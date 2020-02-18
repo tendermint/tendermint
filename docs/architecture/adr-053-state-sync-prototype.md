@@ -7,9 +7,10 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
 * 2020-01-28: Initial draft (Erik Grinaker)
 
 * 2020-02-18: Updates after initial prototype (Erik Grinaker)
-    * ABCI: added missing `reason` fields
-    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based)
-    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`
+    * ABCI: added missing `reason` fields.
+    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
+    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
+    * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
 
 ## Context
 
@@ -172,24 +173,13 @@ The Gaia data structure consists of a set of named IAVL trees. A root hash is co
 
 IAVL trees are versioned, but a snapshot only contains the version relevant for the snapshot height. All historical versions are ignored.
 
-IAVL trees are insertion-order dependent, so key/value pairs must be stored in an appropriate insertion order to produce the same tree branching structure and thus the same Merkle hashes.
+IAVL trees are insertion-order dependent, so key/value pairs must be set in an appropriate insertion order to produce the same tree branching structure. This insertion order can be found by doing a breadth-first scan of all nodes (including inner nodes) and collecting unique keys in order. However, the node hash also depends on the node's version, so snapshots must contain the inner nodes' version numbers as well.
 
-A chunk corresponds to a subtree key range within an IAVL tree, in insertion order, along with the Merkle proof from the root of the subtree all the way up to the root of the multistore (including the Merkle proof for the surrounding multistore.
+For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks are done, only a final app hash comparison at the end of the snapshot restoration.
 
-```go
-struct SnapshotChunk {
-    Store   string            // Name (key) of IAVL store in outer MultiStore
-    Keys    [][]byte          // Snapshotted keys in insertion order
-    Values  [][]byte          // Snapshotted values corresponding to Keys
-    Proof   []merkle.ProofOp  // Merkle proof from subtree root to MultiStore root
-}
-```
+For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-This chunk structure is believed to be sufficient to reconstruct an identical IAVL tree by applying separate chunks, but this may require the chunks to be ordered in a certain way; further research is needed.
-
-We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
-
-Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 32 MB), then serialized. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting node data up to some size limit (e.g. 32 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
@@ -200,8 +190,6 @@ Taking consistent snapshots of IAVL trees is greatly simplified by them being ve
 Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
 
 ## Open Questions
-
-* Is it possible to reconstruct an identical IAVL tree given separate subtrees in an appropriate order, or is more data needed about the branch structure?
 
 * Should we punish nodes that provide invalid snapshots?
 
