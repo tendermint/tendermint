@@ -54,6 +54,7 @@ func (mp mockPeer) TrySend(byte, []byte) bool { return true }
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
+//nolint:unused
 type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
@@ -427,24 +428,6 @@ func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Bl
 
 type testApp struct {
 	abci.BaseApplication
-}
-
-func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
-	addr := privVal.GetPubKey().Address()
-	idx, _ := valset.GetByAddress(addr)
-	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
-		Height:           header.Height,
-		Round:            1,
-		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
-		BlockID:          blockID,
-	}
-
-	_ = privVal.SignVote(header.ChainID, vote)
-
-	return vote
 }
 
 func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (

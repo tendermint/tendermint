@@ -128,10 +128,12 @@ type BlockchainReactor struct {
 	store    blockStore
 }
 
+//nolint:unused,deadcode
 type blockVerifier interface {
 	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 }
 
+//nolint:deadcode
 type blockApplier interface {
 	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
 }
