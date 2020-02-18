@@ -1,34 +1,32 @@
 syntax = "proto3";
 
 package tendermint.types;
-option go_package = "github.com/tendermint/tendermint/types";
+option  go_package = "github.com/tendermint/tendermint/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
-  BLOCK_ID_FLAG_UNSPECIFIED = 0;
-  BLOCK_ID_FLAG_ABSENT = 1;
-  BLOCK_ID_FLAG_COMMIT = 2;
-  BLOCK_ID_FLAG_NIL = 3;
+  absent = 0;
+  commit = 1;
+  nil    = 2;
 }
 
 // SignedMsgType is a type of signed message in the consensus.
 enum SignedMsgType {
-  SIGNED_MSG_TYPE_UNSPECIFIED = 0;
-  SIGNED_MSG_TYPE_PREVOTE = 1;
-  SIGNED_MSG_TYPE_PRECOMMIT = 2;
-  SIGNED_MSG_TYPE_PRPOSAL = 3;
+  prevote   = 0;
+  precommit = 1;
+  proposal  = 3;
 }
 
 // PartsetHeader
 message PartSetHeader {
   int64 total = 1;
-  bytes hash = 2;
+  bytes hash  = 2;
 }
 
 // BlockID
 message BlockID {
-  bytes hash = 1;
-  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
+  bytes         hash         = 1;
+  PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
 }

@@ -30,7 +30,7 @@ type cleanupFunc func()
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BLOCK_ID_FLAG_COMMIT,
+		BlockIDFlag:      types.commit,
 		ValidatorAddress: []byte("ValidatorAddress"),
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),

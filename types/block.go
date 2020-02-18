@@ -446,7 +446,7 @@ type CommitSig struct {
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
 func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
-		BlockIDFlag:      BLOCK_ID_FLAG_COMMIT,
+		BlockIDFlag:      commit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
 		Signature:        signature,
@@ -455,20 +455,20 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 
 // ForBlock returns true if CommitSig is for the block.
 func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == BLOCK_ID_FLAG_COMMIT
+	return cs.BlockIDFlag == commit
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
 // fields are all empty.
 func NewCommitSigAbsent() CommitSig {
 	return CommitSig{
-		BlockIDFlag: BLOCK_ID_FLAG_ABSENT,
+		BlockIDFlag: absent,
 	}
 }
 
 // Absent returns true if CommitSig is absent.
 func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == BLOCK_ID_FLAG_ABSENT
+	return cs.BlockIDFlag == absent
 }
 
 func (cs CommitSig) String() string {
@@ -484,11 +484,11 @@ func (cs CommitSig) String() string {
 func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 	var blockID BlockID
 	switch cs.BlockIDFlag {
-	case BLOCK_ID_FLAG_ABSENT:
+	case absent:
 		blockID = BlockID{}
-	case BLOCK_ID_FLAG_COMMIT:
+	case commit:
 		blockID = commitBlockID
-	case BLOCK_ID_FLAG_NIL:
+	case nil:
 		blockID = BlockID{}
 	default:
 		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
@@ -499,15 +499,15 @@ func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 // ValidateBasic performs basic validation.
 func (cs CommitSig) ValidateBasic() error {
 	switch cs.BlockIDFlag {
-	case BLOCK_ID_FLAG_ABSENT:
-	case BLOCK_ID_FLAG_COMMIT:
-	case BLOCK_ID_FLAG_NIL:
+	case absent:
+	case commit:
+	case nil:
 	default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
 	switch cs.BlockIDFlag {
-	case BLOCK_ID_FLAG_ABSENT:
+	case absent:
 		if len(cs.ValidatorAddress) != 0 {
 			return errors.New("validator address is present")
 		}
@@ -571,7 +571,7 @@ func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig)
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, SIGNED_MSG_TYPE_PRECOMMIT, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, precommit, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
@@ -590,7 +590,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 func (commit *Commit) GetVote(valIdx int) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             SIGNED_MSG_TYPE_PRECOMMIT,
+		Type:             precommit,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -612,7 +612,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(SIGNED_MSG_TYPE_PRECOMMIT)
+	return byte(precommit)
 }
 
 // GetHeight returns height of the commit.

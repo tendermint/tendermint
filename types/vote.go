@@ -65,9 +65,9 @@ func (vote *Vote) CommitSig() CommitSig {
 	var blockIDFlag BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = BLOCK_ID_FLAG_COMMIT
+		blockIDFlag = commit
 	case vote.BlockID.IsZero():
-		blockIDFlag = BLOCK_ID_FLAG_NIL
+		blockIDFlag = nil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -100,9 +100,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case SIGNED_MSG_TYPE_PREVOTE:
+	case prevote:
 		typeString = "Prevote"
-	case SIGNED_MSG_TYPE_PRECOMMIT:
+	case precommit:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")

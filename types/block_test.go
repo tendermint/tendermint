@@ -36,7 +36,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -56,7 +56,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -119,7 +119,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -136,7 +136,7 @@ func TestBlockHashesTo(t *testing.T) {
 
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, valSet, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -209,13 +209,13 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
 	assert.Equal(t, 1, commit.Round)
-	assert.Equal(t, SIGNED_MSG_TYPE_PRECOMMIT, SignedMsgType(commit.Type()))
+	assert.Equal(t, precommit, SignedMsgType(commit.Type()))
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
 	}
@@ -351,7 +351,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 func randCommit() *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	if err != nil {
 		panic(err)
@@ -430,7 +430,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, SIGNED_MSG_TYPE_PRECOMMIT, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, precommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	assert.NoError(t, err)
 
@@ -470,7 +470,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		voteSet, valSet, vals := randVoteSet(height-1, round, SIGNED_MSG_TYPE_PRECOMMIT, tc.numValidators, 1)
+		voteSet, valSet, vals := randVoteSet(height-1, round, precommit, tc.numValidators, 1)
 
 		vi := 0
 		for n := range tc.blockIDs {
@@ -481,7 +481,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 					ValidatorIndex:   vi,
 					Height:           height - 1,
 					Round:            round,
-					Type:             SIGNED_MSG_TYPE_PRECOMMIT,
+					Type:             precommit,
 					BlockID:          tc.blockIDs[n],
 					Timestamp:        tmtime.Now(),
 				}

@@ -100,8 +100,8 @@ func (hvs *HeightVoteSet) addRound(round int) {
 		panic("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.SIGNED_MSG_TYPE_PREVOTE, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, types.SIGNED_MSG_TYPE_PRECOMMIT, hvs.valSet)
+	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.prevote, hvs.valSet)
+	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, types.precommit, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,
@@ -135,13 +135,13 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 func (hvs *HeightVoteSet) Prevotes(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	return hvs.getVoteSet(round, types.SIGNED_MSG_TYPE_PREVOTE)
+	return hvs.getVoteSet(round, types.prevote)
 }
 
 func (hvs *HeightVoteSet) Precommits(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	return hvs.getVoteSet(round, types.SIGNED_MSG_TYPE_PRECOMMIT)
+	return hvs.getVoteSet(round, types.precommit)
 }
 
 // Last round and blockID that has +2/3 prevotes for a particular block or nil.
@@ -150,7 +150,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int, polBlockID types.BlockID) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	for r := hvs.round; r >= 0; r-- {
-		rvs := hvs.getVoteSet(r, types.SIGNED_MSG_TYPE_PREVOTE)
+		rvs := hvs.getVoteSet(r, types.prevote)
 		polBlockID, ok := rvs.TwoThirdsMajority()
 		if ok {
 			return r, polBlockID
@@ -165,9 +165,9 @@ func (hvs *HeightVoteSet) getVoteSet(round int, voteType types.SignedMsgType) *t
 		return nil
 	}
 	switch voteType {
-	case types.SIGNED_MSG_TYPE_PREVOTE:
+	case types.prevote:
 		return rvs.Prevotes
-	case types.SIGNED_MSG_TYPE_PRECOMMIT:
+	case types.precommit:
 		return rvs.Precommits
 	default:
 		panic(fmt.Sprintf("Unexpected vote type %X", voteType))

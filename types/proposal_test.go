@@ -110,7 +110,7 @@ func TestProposalValidateBasic(t *testing.T) {
 		expectErr        bool
 	}{
 		{"Good Proposal", func(p *Proposal) {}, false},
-		{"Invalid Type", func(p *Proposal) { p.Type = SIGNED_MSG_TYPE_PRECOMMIT }, true},
+		{"Invalid Type", func(p *Proposal) { p.Type = precommit }, true},
 		{"Invalid Height", func(p *Proposal) { p.Height = -1 }, true},
 		{"Invalid Round", func(p *Proposal) { p.Round = -1 }, true},
 		{"Invalid POLRound", func(p *Proposal) { p.POLRound = -2 }, true},

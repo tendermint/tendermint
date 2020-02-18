@@ -101,7 +101,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             types.SIGNED_MSG_TYPE_PRECOMMIT,
+		Type:             types.precommit,
 		BlockID:          blockID,
 	}
 	// Sign it
