@@ -451,8 +451,8 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 		tx := tmrand.Bytes(testCase.len)
 		err := mempl.CheckTx(tx, nil, TxInfo{})
 		bv := gogotypes.BytesValue{Value: tx}
-		bz, err := bv.Marshal() // ignore error
-		require.NoError(t, err)
+		bz, err2 := bv.Marshal()
+		require.NoError(t, err2)
 		require.Equal(t, len(bz), proto.Size(&bv), caseString)
 		if !testCase.err {
 			require.True(t, len(bz) <= maxMsgSize, caseString)
