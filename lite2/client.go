@@ -568,23 +568,35 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
 		"vals", hash2str(newVals.Hash()))
+	var (
+		err error
+	)
 
-	if c.latestTrustedHeader.Height >= newHeader.Height {
-		return errors.Errorf("header at more recent height #%d exists", c.latestTrustedHeader.Height)
-	}
+	if newHeader.Height >= c.latestTrustedHeader.Height {
+		var err error
+		switch c.verificationMode {
+		case sequential:
+			err = c.sequence(c.latestTrustedHeader, c.latestTrustedNextVals, newHeader, newVals, now)
+		case skipping:
+			err = c.bisection(c.latestTrustedHeader, c.latestTrustedNextVals, newHeader, newVals, now)
+		default:
+			panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
+		}
+		if err != nil {
+			c.logger.Error("Can't verify", "err", err)
+			return err
+		}
+	} else {
+		closestHeader, err := c.trustedStore.SignedHeaderAfter(newHeader.Height)
+		if err != nil {
+			return errors.Wrapf(err, "can't get signed header after %d", newHeader)
+		}
 
-	var err error
-	switch c.verificationMode {
-	case sequential:
-		err = c.sequence(c.latestTrustedHeader, c.latestTrustedNextVals, newHeader, newVals, now)
-	case skipping:
-		err = c.bisection(c.latestTrustedHeader, c.latestTrustedNextVals, newHeader, newVals, now)
-	default:
-		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
-	}
-	if err != nil {
-		c.logger.Error("Can't verify", "err", err)
-		return err
+		// Perform backwards verification from closestHeader to header at the given height.
+		err = c.backwards(closestHeader, newHeader, now)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
@@ -596,6 +608,10 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	nextVals, err := c.validatorSetFromPrimary(newHeader.Height + 1)
 	if err != nil {
 		return err
+	}
+	if !bytes.Equal(newHeader.NextValidatorsHash, newVals.Hash()) {
+		return errors.Errorf("next validator has %X does not match hash of header %X", newVals.Hash(),
+			newHeader.NextValidatorsHash)
 	}
 	return c.updateTrustedHeaderAndNextVals(newHeader, nextVals)
 }
@@ -807,77 +823,44 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 	return h, vals, nil
 }
 
-// fetchMissingTrustedHeader finds the closest height after the
-// requested height and does backwards verification.
-func (c *Client) fetchMissingTrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
-	c.logger.Info("Fetching missing header", "height", height)
-
-	closestHeader, err := c.trustedStore.SignedHeaderAfter(height)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't get signed header after %d", height)
-	}
-
-	// Perform backwards verification from closestHeader to header at the given
-	// height.
-	h, err := c.backwards(height, closestHeader, now)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch next validator set from primary and persist it.
-	nextVals, err := c.validatorSetFromPrimary(height + 1)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
-	}
-	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
-		return nil, errors.Errorf("expected next validator's hash %X, but got %X",
-			h.NextValidatorsHash, nextVals.Hash())
-	}
-	if err := c.trustedStore.SaveSignedHeaderAndNextValidatorSet(h, nextVals); err != nil {
-		return nil, errors.Wrap(err, "failed to save trusted header")
-	}
-
-	return h, nil
-}
-
 // Backwards verification (see VerifyHeaderBackwards func in the spec)
-func (c *Client) backwards(toHeight int64, fromHeader *types.SignedHeader, now time.Time) (*types.SignedHeader, error) {
+func (c *Client) backwards(trustedHeader *types.SignedHeader, newHeader *types.SignedHeader,
+	now time.Time) error {
 	var (
-		trustedHeader   = fromHeader
-		untrustedHeader *types.SignedHeader
-		err             error
+		interimHeader *types.SignedHeader
+		err           error
 	)
 
-	for i := trustedHeader.Height - 1; i >= toHeight; i-- {
-		untrustedHeader, err = c.signedHeaderFromPrimary(i)
+	for trustedHeader.Height > newHeader.Height {
+		interimHeader, err = c.signedHeaderFromPrimary(trustedHeader.Height - 1)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to obtain the header #%d", i)
+			return errors.Wrapf(err, "failed to obtain the header at height #%d", trustedHeader.Height-1)
 		}
 
-		if err := untrustedHeader.ValidateBasic(c.chainID); err != nil {
-			return nil, errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+		if err := interimHeader.ValidateBasic(c.chainID); err != nil {
+			return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
 		}
 
-		if !untrustedHeader.Time.Before(trustedHeader.Time) {
-			return nil, errors.Errorf("expected older header time %v to be before newer header time %v",
-				untrustedHeader.Time,
+		if !interimHeader.Time.Before(trustedHeader.Time) {
+			return errors.Errorf("expected older header time %v to be before newer header time %v",
+				interimHeader.Time,
 				trustedHeader.Time)
 		}
 
-		if HeaderExpired(untrustedHeader, c.trustingPeriod, now) {
-			return nil, ErrOldHeaderExpired{untrustedHeader.Time.Add(c.trustingPeriod), now}
+		if HeaderExpired(interimHeader, c.trustingPeriod, now) {
+			return ErrOldHeaderExpired{interimHeader.Time.Add(c.trustingPeriod), now}
 		}
 
-		if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
-			return nil, errors.Errorf("older header hash %X does not match trusted header's last block %X",
-				untrustedHeader.Hash(),
+		if !bytes.Equal(interimHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+			return errors.Errorf("older header hash %X does not match trusted header's last block %X",
+				interimHeader.Hash(),
 				trustedHeader.LastBlockID.Hash)
 		}
 
-		trustedHeader = untrustedHeader
+		trustedHeader = interimHeader
 	}
 
-	return trustedHeader, nil
+	return nil
 }
 
 // compare header with all witnesses provided.
