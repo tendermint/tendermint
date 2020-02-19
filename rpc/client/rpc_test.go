@@ -418,17 +418,22 @@ func TestTxSearch(t *testing.T) {
 	c := getHTTPClient()
 
 	// first we broadcast a few txs
-	txCount := 10
 	var tx []byte
 	var txHeight int64
 	var txHash tmbytes.HexBytes
-	for i := 0; i < txCount; i++ {
+	for i := 0; i < 10; i++ {
 		_, _, tx = MakeTxKV()
 		res, err := c.BroadcastTxCommit(tx)
 		require.NoError(t, err)
 		txHeight = res.Height
 		txHash = res.Hash
 	}
+
+	// Since we're not using an isolated test server, we'll have lingering transactions
+	// from other tests as well
+	result, err := c.TxSearch("tx.height >= 0", true, 1, 100, "asc")
+	require.NoError(t, err)
+	txCount := len(result.Txs)
 
 	anotherTxHash := types.Tx("a different tx").Hash()
 
