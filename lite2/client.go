@@ -560,6 +560,10 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // If, at any moment, SignedHeader or ValidatorSet are not found by the primary
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
+//
+// NOTE: although newVals is entered as input, trustedStore will only store the
+// validator set at height newHeader.Height+1 (i.e.
+// newHeader.NextValidatorsHash).
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
 		"vals", hash2str(newVals.Hash()))
@@ -708,7 +712,7 @@ func (c *Client) sequence(
 	return Verify(c.chainID, c.trustedHeader, c.trustedNextVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 }
 
-// see VerifyHeader  NB: although newVals is entered as input actually updates client database with newNextVals
+// see VerifyHeader
 func (c *Client) bisection(
 	trustedHeader *types.SignedHeader, // height h
 	trustedNextVals *types.ValidatorSet, // height h + 1
