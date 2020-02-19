@@ -4,37 +4,41 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
 type processorContext interface {
-	applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
+	applyBlock(blockID types.BlockID, block *types.Block) error
 	verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+	tmState() state.State
 }
 
-// nolint:unused
 type pContext struct {
-	store    *store.BlockStore
-	executor *state.BlockExecutor
-	state    *state.State
+	store   blockStore
+	applier blockApplier
+	state   state.State
 }
 
-// nolint:unused,deadcode
-func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state.State) *pContext {
+func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
 	return &pContext{
-		store:    st,
-		executor: ex,
-		state:    s,
+		store:   st,
+		applier: ex,
+		state:   s,
 	}
 }
 
-func (pc *pContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
-	return pc.executor.ApplyBlock(state, blockID, block)
+func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block) error {
+	newState, err := pc.applier.ApplyBlock(pc.state, blockID, block)
+	pc.state = newState
+	return err
 }
 
-func (pc *pContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
+func (pc pContext) tmState() state.State {
+	return pc.state
+}
+
+func (pc pContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
 	return pc.state.Validators.VerifyCommit(chainID, blockID, height, commit)
 }
 
@@ -45,22 +49,28 @@ func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, see
 type mockPContext struct {
 	applicationBL  []int64
 	verificationBL []int64
+	state          state.State
 }
 
-func newMockProcessorContext(verificationBlackList []int64, applicationBlackList []int64) *mockPContext {
+func newMockProcessorContext(
+	state state.State,
+	verificationBlackList []int64,
+	applicationBlackList []int64) *mockPContext {
 	return &mockPContext{
 		applicationBL:  applicationBlackList,
 		verificationBL: verificationBlackList,
+		state:          state,
 	}
 }
 
-func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
+func (mpc *mockPContext) applyBlock(blockID types.BlockID, block *types.Block) error {
 	for _, h := range mpc.applicationBL {
 		if h == block.Height {
-			return state, fmt.Errorf("generic application error")
+			return fmt.Errorf("generic application error")
 		}
 	}
-	return state, nil
+	mpc.state.LastBlockHeight = block.Height
+	return nil
 }
 
 func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
@@ -73,4 +83,9 @@ func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, hei
 }
 
 func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+
+}
+
+func (mpc *mockPContext) tmState() state.State {
+	return mpc.state
 }
