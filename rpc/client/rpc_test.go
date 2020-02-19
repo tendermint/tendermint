@@ -3,6 +3,7 @@ package client_test
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -508,7 +509,7 @@ func TestTxSearch(t *testing.T) {
 		seen := map[int64]bool{}
 		maxHeight := int64(0)
 		perPage := 3
-		pages := txCount/perPage + 1
+		pages := int(math.Ceil(float64(txCount) / float64(perPage)))
 		for page := 1; page <= pages; page++ {
 			result, err = c.TxSearch("tx.height >= 1", false, page, perPage, "asc")
 			require.NoError(t, err)
