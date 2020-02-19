@@ -589,12 +589,13 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	} else {
 		closestHeader, err := c.trustedStore.SignedHeaderAfter(newHeader.Height)
 		if err != nil {
-			return errors.Wrapf(err, "can't get signed header after %d", newHeader)
+			return errors.Wrapf(err, "can't get signed header after height %d", newHeader.Height)
 		}
 
 		// Perform backwards verification from closestHeader to header at the given height.
 		err = c.backwards(closestHeader, newHeader, now)
 		if err != nil {
+			c.logger.Error("Can't verify", "err", err)
 			return err
 		}
 	}
