@@ -733,7 +733,6 @@ func (c *Client) bisection(
 			c.trustLevel)
 		switch err.(type) {
 		case nil:
-
 			// Update the lower bound to the previous upper bound
 			trustedHeader = interimHeader
 			trustedNextVals, err = c.validatorSetFromPrimary(interimHeader.Height + 1)
@@ -754,12 +753,14 @@ func (c *Client) bisection(
 
 			// Update the upper bound to the untrustedHeader
 			interimHeader, interimVals = newHeader, newVals
+
 		case ErrNewValSetCantBeTrusted:
 			pivotHeight := (interimHeader.Height + trustedHeader.Height) / 2
 			interimHeader, interimVals, err = c.fetchHeaderAndValsAtHeight(pivotHeight)
 			if err != nil {
 				return err
 			}
+
 		default:
 			return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
 		}
