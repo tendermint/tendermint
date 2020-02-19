@@ -247,9 +247,11 @@ $ ./tools/stop.sh
 
 ## Implementation Plan
 
+* **Tendermint:** light client P2P transport [optional]
+
 * **Tendermint:** rpc/client (Local) must not depend on node (Node), due to import cycles [required]
 
-* **Tendermint:** light client P2P transport [optional]
+  * Only required if we do not implement P2P transport, since the cycle is caused by HTTP transport
 
 * **IAVL:** dump/restore API (iterator-based) [required] [#3639](https://github.com/tendermint/tendermint/issues/3639)
 
