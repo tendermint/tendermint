@@ -65,9 +65,9 @@ func (vote *Vote) CommitSig() CommitSig {
 	var blockIDFlag BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = Block_id_flag_commit
+		blockIDFlag = BlockIDFlagCommit
 	case vote.BlockID.IsZero():
-		blockIDFlag = Block_id_flag_nil
+		blockIDFlag = BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}

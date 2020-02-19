@@ -613,7 +613,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		badChainID = "notmychainID"
 		badBlockID = BlockID{Hash: []byte("goodbye")}
 		badHeight  = height + 1
-		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: Block_id_flag_absent}})
+		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}})
 	)
 
 	// test some error cases

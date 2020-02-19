@@ -7,9 +7,9 @@ import "third_party/proto/gogoproto/gogo.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
-  Block_id_flag_absent = 0;
-  Block_id_flag_commit = 1;
-  Block_id_flag_nil    = 2;
+  BlockIDFlagAbsent = 0;
+  BlockIDFlagCommit = 1;
+  BlockIDFlagNil    = 2;
 }
 
 // SignedMsgType is a type of signed message in the consensus.

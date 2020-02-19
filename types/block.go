@@ -446,7 +446,7 @@ type CommitSig struct {
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
 func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
-		BlockIDFlag:      Block_id_flag_commit,
+		BlockIDFlag:      BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
 		Signature:        signature,
@@ -455,20 +455,20 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 
 // ForBlock returns true if CommitSig is for the block.
 func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == Block_id_flag_commit
+	return cs.BlockIDFlag == BlockIDFlagCommit
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
 // fields are all empty.
 func NewCommitSigAbsent() CommitSig {
 	return CommitSig{
-		BlockIDFlag: Block_id_flag_absent,
+		BlockIDFlag: BlockIDFlagAbsent,
 	}
 }
 
 // Absent returns true if CommitSig is absent.
 func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == Block_id_flag_absent
+	return cs.BlockIDFlag == BlockIDFlagAbsent
 }
 
 func (cs CommitSig) String() string {
@@ -484,11 +484,11 @@ func (cs CommitSig) String() string {
 func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 	var blockID BlockID
 	switch cs.BlockIDFlag {
-	case Block_id_flag_absent:
+	case BlockIDFlagAbsent:
 		blockID = BlockID{}
-	case Block_id_flag_commit:
+	case BlockIDFlagCommit:
 		blockID = commitBlockID
-	case Block_id_flag_nil:
+	case BlockIDFlagNil:
 		blockID = BlockID{}
 	default:
 		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
@@ -499,15 +499,15 @@ func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 // ValidateBasic performs basic validation.
 func (cs CommitSig) ValidateBasic() error {
 	switch cs.BlockIDFlag {
-	case Block_id_flag_absent:
-	case Block_id_flag_commit:
-	case Block_id_flag_nil:
+	case BlockIDFlagAbsent:
+	case BlockIDFlagCommit:
+	case BlockIDFlagNil:
 	default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
 	switch cs.BlockIDFlag {
-	case Block_id_flag_absent:
+	case BlockIDFlagAbsent:
 		if len(cs.ValidatorAddress) != 0 {
 			return errors.New("validator address is present")
 		}
