@@ -43,7 +43,7 @@ var (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, int)
+	SwitchToConsensus(sm.State, uint64)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -59,7 +59,7 @@ type BlockchainReactor struct {
 	fastSync bool
 
 	fsm          *BcReactorFSM
-	blocksSynced int
+	blocksSynced uint64
 
 	// Receive goroutine forwards messages to this channel to be processed in the context of the poolRoutine.
 	messagesForFSMCh chan bcReactorMessage

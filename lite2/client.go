@@ -294,8 +294,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height < c.trustedHeader.Height:
 		c.logger.Info("Client initialized with old header (trusted is more recent)",
 			"old", options.Height,
-			"trusted", c.trustedHeader.Height,
-			"trusted-hash", hash2str(c.trustedHeader.Hash()))
+			"trustedHeight", c.trustedHeader.Height,
+			"trustedHash", hash2str(c.trustedHeader.Hash()))
 
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
@@ -373,14 +373,14 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// 3) Fetch and verify the next vals (verification happens in
-	// updateTrustedHeaderAndVals).
+	// updateTrustedHeaderAndNextVals).
 	nextVals, err := c.validatorSetFromPrimary(options.Height + 1)
 	if err != nil {
 		return err
 	}
 
 	// 4) Persist both of them and continue.
-	return c.updateTrustedHeaderAndVals(h, nextVals)
+	return c.updateTrustedHeaderAndNextVals(h, nextVals)
 }
 
 // Start starts two processes: 1) auto updating 2) removing outdated headers.
@@ -560,6 +560,10 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // If, at any moment, SignedHeader or ValidatorSet are not found by the primary
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
+//
+// NOTE: although newVals is entered as input, trustedStore will only store the
+// validator set at height newHeader.Height+1 (i.e.
+// newHeader.NextValidatorsHash).
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
 		"vals", hash2str(newVals.Hash()))
@@ -592,7 +596,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	if err != nil {
 		return err
 	}
-	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
+	return c.updateTrustedHeaderAndNextVals(newHeader, nextVals)
 }
 
 // Primary returns the primary provider.
@@ -678,10 +682,10 @@ func (c *Client) sequence(
 		}
 
 		c.logger.Debug("Verify newHeader against trustedHeader",
-			"lastHeight", c.trustedHeader.Height,
-			"lastHash", c.trustedHeader.Hash(),
+			"trustedHeight", c.trustedHeader.Height,
+			"trustedHash", hash2str(c.trustedHeader.Hash()),
 			"newHeight", interimHeader.Height,
-			"newHash", interimHeader.Hash())
+			"newHash", hash2str(interimHeader.Hash()))
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, trustedNextVals,
 			c.trustingPeriod, now)
 		if err != nil {
@@ -697,7 +701,7 @@ func (c *Client) sequence(
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
 		}
-		err = c.updateTrustedHeaderAndVals(interimHeader, interimNextVals)
+		err = c.updateTrustedHeaderAndNextVals(interimHeader, interimNextVals)
 		if err != nil {
 			return errors.Wrapf(err, "failed to update trusted state #%d", height)
 		}
@@ -710,62 +714,55 @@ func (c *Client) sequence(
 
 // see VerifyHeader
 func (c *Client) bisection(
-	lastHeader *types.SignedHeader,
-	lastVals *types.ValidatorSet,
-	newHeader *types.SignedHeader,
-	newVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height h
+	trustedNextVals *types.ValidatorSet, // height h + 1
+	newHeader *types.SignedHeader, // height g
+	newVals *types.ValidatorSet, // height g
 	now time.Time) error {
 
-	c.logger.Debug("Verify newHeader against lastHeader",
-		"lastHeight", lastHeader.Height,
-		"lastHash", lastHeader.Hash(),
-		"newHeight", newHeader.Height,
-		"newHash", newHeader.Hash())
-	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
-	switch err.(type) {
-	case nil:
-		return nil
-	case ErrNewValSetCantBeTrusted:
-		// continue bisection
-	default:
-		return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
-	}
+	interimVals := newVals
+	interimHeader := newHeader
 
-	pivot := (c.trustedHeader.Height + newHeader.Header.Height) / 2
-	pivotHeader, pivotVals, err := c.fetchHeaderAndValsAtHeight(pivot)
-	if err != nil {
-		return err
-	}
+	for trustedHeader.Height < newHeader.Height {
+		c.logger.Debug("Verify newHeader against trustedHeader",
+			"trustedHeight", trustedHeader.Height,
+			"trustedHash", hash2str(trustedHeader.Hash()),
+			"newHeight", newHeader.Height,
+			"newHash", hash2str(newHeader.Hash()))
+		err := Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, interimVals, c.trustingPeriod, now,
+			c.trustLevel)
+		switch err.(type) {
+		case nil:
+			// Update the lower bound to the previous upper bound
+			trustedHeader = interimHeader
+			trustedNextVals, err = c.validatorSetFromPrimary(interimHeader.Height + 1)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(trustedHeader.NextValidatorsHash, trustedNextVals.Hash()) {
+				return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
+					trustedHeader.NextValidatorsHash,
+					trustedNextVals.Hash(),
+					trustedHeader.Height)
+			}
 
-	// left branch
-	{
-		err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now)
-		if err != nil {
-			return errors.Wrapf(err, "bisection of #%d and #%d", lastHeader.Height, pivot)
-		}
-	}
+			err = c.updateTrustedHeaderAndNextVals(trustedHeader, trustedNextVals)
+			if err != nil {
+				return err
+			}
 
-	// right branch
-	{
-		nextVals, err := c.validatorSetFromPrimary(pivot + 1)
-		if err != nil {
-			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
-		}
-		if !bytes.Equal(pivotHeader.NextValidatorsHash, nextVals.Hash()) {
-			return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
-				pivotHeader.NextValidatorsHash,
-				nextVals.Hash(),
-				pivot)
-		}
+			// Update the upper bound to the untrustedHeader
+			interimHeader, interimVals = newHeader, newVals
 
-		err = c.updateTrustedHeaderAndVals(pivotHeader, nextVals)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update trusted state #%d", pivot)
-		}
+		case ErrNewValSetCantBeTrusted:
+			pivotHeight := (interimHeader.Height + trustedHeader.Height) / 2
+			interimHeader, interimVals, err = c.fetchHeaderAndValsAtHeight(pivotHeight)
+			if err != nil {
+				return err
+			}
 
-		err = c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
-		if err != nil {
-			return errors.Wrapf(err, "bisection of #%d and #%d", pivot, newHeader.Height)
+		default:
+			return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
 		}
 	}
 
@@ -773,7 +770,7 @@ func (c *Client) bisection(
 }
 
 // persist header and next validators to trustedStore.
-func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *types.ValidatorSet) error {
+func (c *Client) updateTrustedHeaderAndNextVals(h *types.SignedHeader, nextVals *types.ValidatorSet) error {
 	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
 		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, nextVals.Hash())
 	}
