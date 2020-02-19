@@ -99,6 +99,15 @@ type addrBook struct {
 	wg sync.WaitGroup
 }
 
+var hashKey []byte
+
+func init() {
+	highwayKeyLength := 32
+	hashKey = make([]byte, highwayKeyLength)
+	rand.Seed(time.Now().UnixNano())
+	rand.Read(hashKey)
+}
+
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
@@ -843,10 +852,7 @@ func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 
 // hash function calculates hash and returns the resulting bytes.
 func hash(b []byte) ([]byte, error) {
-	highwayKeyLength := 32
-	key := make([]byte, highwayKeyLength)
-	rand.Read(key)
-	hasher, err := highwayhash.New64(key)
+	hasher, err := highwayhash.New64(hashKey)
 	if err != nil {
 		return nil, err
 	}
