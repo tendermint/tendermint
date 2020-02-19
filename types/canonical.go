@@ -60,7 +60,7 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		Type:      proposal,
+		Type:      Msg_type_proposal,
 		Height:    proposal.Height,
 		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		POLRound:  int64(proposal.POLRound),

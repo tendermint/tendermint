@@ -543,7 +543,7 @@ func makeEvidences(
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
-		Type:             types.prevote,
+		Type:             types.Msg_type_prevote,
 		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
@@ -591,7 +591,7 @@ func makeEvidences(
 	}
 	// different type
 	vote2 = deepcpVote(vote)
-	vote2.Type = types.precommit
+	vote2.Type = types.Msg_type_precommit
 	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
 	// exactly same vote
 	vote2 = deepcpVote(vote)

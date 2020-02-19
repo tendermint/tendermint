@@ -14,11 +14,11 @@ import (
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(byte(prevote))
+	return exampleVote(byte(Msg_type_prevote))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(byte(precommit))
+	return exampleVote(byte(Msg_type_precommit))
 }
 
 func exampleVote(t byte) *Vote {
@@ -68,7 +68,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		1: {
-			"", &Vote{Height: 1, Round: 1, Type: precommit},
+			"", &Vote{Height: 1, Round: 1, Type: Msg_type_precommit},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -83,7 +83,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		2: {
-			"", &Vote{Height: 1, Round: 1, Type: prevote},
+			"", &Vote{Height: 1, Round: 1, Type: Msg_type_prevote},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -176,8 +176,8 @@ func TestIsVoteTypeValid(t *testing.T) {
 		in   SignedMsgType
 		out  bool
 	}{
-		{"Prevote", prevote, true},
-		{"Precommit", precommit, true},
+		{"Prevote", Msg_type_prevote, true},
+		{"Precommit", Msg_type_precommit, true},
 		{"InvalidType", SignedMsgType(0x3), false},
 	}
 
@@ -220,7 +220,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
 		Timestamp:        timestamp,
-		Type:             prevote,
+		Type:             Msg_type_prevote,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -242,13 +242,13 @@ func TestMaxVoteBytes(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/precommit(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
+	expected := `Vote{56789:6AF1F4111082 12345/02/Msg_type_precommit(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/prevote(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
+	expected = `Vote{56789:6AF1F4111082 12345/02/Msg_type_prevote(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}

@@ -50,7 +50,7 @@ func TestResetValidator(t *testing.T) {
 
 	// test vote
 	height, round := int64(10), 1
-	voteType := byte(types.prevote)
+	voteType := byte(types.Msg_type_prevote)
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
@@ -167,7 +167,7 @@ func TestSignVote(t *testing.T) {
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
 
 	height, round := int64(10), 1
-	voteType := byte(types.prevote)
+	voteType := byte(types.Msg_type_prevote)
 
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
@@ -278,7 +278,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
-		voteType := byte(types.prevote)
+		voteType := byte(types.Msg_type_prevote)
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)

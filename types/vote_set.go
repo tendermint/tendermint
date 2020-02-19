@@ -400,7 +400,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.signedMsgType != precommit {
+	if voteSet.signedMsgType != Msg_type_precommit {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -551,7 +551,7 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Panics if the vote type is not PrecommitType or if
 // there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.signedMsgType != precommit {
+	if voteSet.signedMsgType != Msg_type_precommit {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()

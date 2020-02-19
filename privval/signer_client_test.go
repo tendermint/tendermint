@@ -105,8 +105,8 @@ func TestSignerProposal(t *testing.T) {
 func TestSignerVote(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.precommit}
-		have := &types.Vote{Timestamp: ts, Type: types.precommit}
+		want := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
+		have := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -121,8 +121,8 @@ func TestSignerVote(t *testing.T) {
 func TestSignerVoteResetDeadline(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.precommit}
-		have := &types.Vote{Timestamp: ts, Type: types.precommit}
+		want := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
+		have := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -147,8 +147,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 func TestSignerVoteKeepAlive(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.precommit}
-		have := &types.Vote{Timestamp: ts, Type: types.precommit}
+		want := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
+		have := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -194,7 +194,7 @@ func TestSignerSignProposalErrors(t *testing.T) {
 func TestSignerSignVoteErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		vote := &types.Vote{Timestamp: ts, Type: types.precommit}
+		vote := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
 
 		// Replace signer service privval with one that always fails
 		tc.signerServer.privVal = types.NewErroringMockPV()
@@ -249,7 +249,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		defer tc.signerClient.Close()
 
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.precommit}
+		want := &types.Vote{Timestamp: ts, Type: types.Msg_type_precommit}
 
 		e := tc.signerClient.SignVote(tc.chainID, want)
 		assert.EqualError(t, e, "received unexpected response")

@@ -170,7 +170,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			Height:           height,
 			Round:            0,
 			Timestamp:        tmtime.Now(),
-			Type:             types.precommit,
+			Type:             types.Msg_type_precommit,
 			BlockID:          blockID,
 		}
 		err = badPrivVal.SignVote(chainID, goodVote)

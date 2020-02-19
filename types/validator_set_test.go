@@ -600,7 +600,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             precommit,
+		Type:             Msg_type_precommit,
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
@@ -613,7 +613,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		badChainID = "notmychainID"
 		badBlockID = BlockID{Hash: []byte("goodbye")}
 		badHeight  = height + 1
-		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: absent}})
+		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: Block_id_flag_absent}})
 	)
 
 	// test some error cases
