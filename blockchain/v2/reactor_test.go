@@ -1,6 +1,13 @@
 package v2
 
 import (
+	"net"
+	"os"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -17,12 +24,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	dbm "github.com/tendermint/tm-db"
-	"net"
-	"os"
-	"sort"
-	"sync"
-	"testing"
-	"time"
 )
 
 type mockPeer struct {
