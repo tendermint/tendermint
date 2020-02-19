@@ -103,7 +103,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	fsm := NewFSM(startHeight, bcR)
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
-	//bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+	//bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
 
 	return bcR
 }
@@ -141,7 +141,7 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+	bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
 		go bcR.poolRoutine()
 	}
