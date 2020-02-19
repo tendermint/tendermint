@@ -449,14 +449,7 @@ func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader
 
 	// 2) Get header from store.
 	h, err := c.trustedStore.SignedHeader(height)
-	switch {
-	case errors.Is(err, store.ErrSignedHeaderNotFound):
-		// 2.1) If not found, try to fetch header from primary.
-		h, err = c.fetchMissingTrustedHeader(height, now)
-		if err != nil {
-			return nil, err
-		}
-	case err != nil:
+	if err != nil {
 		return nil, err
 	}
 
