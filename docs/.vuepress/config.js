@@ -19,12 +19,6 @@ module.exports = {
     gutter: {
       title: "Help & Support",
       editLink: true,
-      chat: {
-        title: "Riot Chat",
-        text: "Chat with Tendermint developers on Riot Chat.",
-        url: "https://riot.im/app/#/room/#tendermint:matrix.org",
-        bg: "#222"
-      },
       forum: {
         title: "Tendermint Forum",
         text: "Join the Tendermint forum to learn more",
@@ -38,6 +32,7 @@ module.exports = {
       }
     },
     footer: {
+      questionsText: "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
@@ -95,10 +90,6 @@ module.exports = {
             {
               title: "Forum",
               url: "https://forum.cosmos.network/c/tendermint"
-            },
-            {
-              title: "Chat",
-              url: "https://riot.im/app/#/room/#tendermint:matrix.org"
             }
           ]
         },
@@ -137,11 +128,6 @@ module.exports = {
         ]
       }
     ]
-  },
-  markdown: {
-    anchor: {
-      permalinkSymbol: ""
-    }
   },
   plugins: [
     [

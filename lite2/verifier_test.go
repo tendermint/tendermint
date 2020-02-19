@@ -42,7 +42,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"expected new header height 1 to be greater than one of old header 1",
+			"headers must be adjacent in height",
 		},
 		// different chainID -> error
 		1: {
@@ -52,7 +52,8 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"h2.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not 'TestVerifyAdjacentHeaders'",
+			"untrustedHeader.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not" +
+				" 'TestVerifyAdjacentHeaders'",
 		},
 		// new header's time is before old header's time -> error
 		2: {
@@ -139,8 +140,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := Verify(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, DefaultTrustLevel)
-
+			err := VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now)
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
@@ -254,7 +254,8 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := Verify(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, DefaultTrustLevel)
+			err := VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now,
+				DefaultTrustLevel)
 
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
