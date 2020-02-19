@@ -232,8 +232,8 @@ func sendProposalAndParts(
 
 	// votes
 	cs.mtx.Lock()
-	prevote, _ := cs.signVote(types.Msg_type_prevote, blockHash, parts.Header())
-	precommit, _ := cs.signVote(types.Msg_type_precommit, blockHash, parts.Header())
+	prevote, _ := cs.signVote(types.PrevoteType, blockHash, parts.Header())
+	precommit, _ := cs.signVote(types.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
 	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))

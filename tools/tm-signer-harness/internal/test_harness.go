@@ -34,7 +34,7 @@ const (
 	ErrTestSignVoteFailed                 // 10
 )
 
-var voteTypes = []types.SignedMsgType{types.Msg_type_prevote, types.Msg_type_precommit}
+var voteTypes = []types.SignedMsgType{types.PrevoteType, types.PrecommitType}
 
 // TestHarnessError allows us to keep track of which exit code should be used
 // when exiting the main program.
@@ -206,7 +206,7 @@ func (th *TestHarness) TestSignProposal() error {
 	// sha256 hash of "hash"
 	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
-		Type:     types.Msg_type_proposal,
+		Type:     types.ProposalType,
 		Height:   100,
 		Round:    0,
 		POLRound: -1,

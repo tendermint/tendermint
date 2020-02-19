@@ -338,7 +338,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 	rs := css[0].GetRoundState()
-	signAddVotes(css[0], types.Msg_type_precommit,
+	signAddVotes(css[0], types.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -364,7 +364,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], types.Msg_type_precommit,
+	signAddVotes(css[0], types.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -390,7 +390,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], types.Msg_type_precommit,
+	signAddVotes(css[0], types.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -441,7 +441,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.Msg_type_precommit,
+		signAddVotes(css[0], types.PrecommitType,
 			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 
@@ -456,7 +456,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.Msg_type_precommit,
+		signAddVotes(css[0], types.PrecommitType,
 			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -494,7 +494,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], types.Msg_type_precommit,
+		signAddVotes(css[0], types.PrecommitType,
 			rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -995,7 +995,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				return nil, nil, err
 			}
 		case *types.Vote:
-			if p.Type == types.Msg_type_precommit {
+			if p.Type == types.PrecommitType {
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
 					p.BlockID, []types.CommitSig{p.CommitSig()})
 			}

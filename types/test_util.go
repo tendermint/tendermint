@@ -15,7 +15,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			ValidatorIndex:   i,
 			Height:           height,
 			Round:            round,
-			Type:             Msg_type_precommit,
+			Type:             PrecommitType,
 			BlockID:          blockID,
 			Timestamp:        tmtime.Now(),
 		}
@@ -52,7 +52,7 @@ func MakeVote(
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_precommit,
+		Type:             PrecommitType,
 		BlockID:          blockID,
 	}
 	if err := privVal.SignVote(chainID, vote); err != nil {

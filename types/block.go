@@ -571,7 +571,7 @@ func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig)
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, Msg_type_precommit, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
@@ -590,7 +590,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 func (commit *Commit) GetVote(valIdx int) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             Msg_type_precommit,
+		Type:             PrecommitType,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -612,7 +612,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(Msg_type_precommit)
+	return byte(PrecommitType)
 }
 
 // GetHeight returns height of the commit.
@@ -877,11 +877,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 //--------------------------------------------------------------------------------
 
-// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
-// type BlockID struct {
-// 	Hash        tmbytes.HexBytes `json:"hash"`
-// 	PartsHeader PartSetHeader    `json:"parts"`
-// }
+// BlockID
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {

@@ -566,11 +566,11 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int,
 }
 
 func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int) {
-	ensureVote(voteCh, height, round, types.Msg_type_precommit)
+	ensureVote(voteCh, height, round, types.PrecommitType)
 }
 
 func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int) {
-	ensureVote(voteCh, height, round, types.Msg_type_prevote)
+	ensureVote(voteCh, height, round, types.PrevoteType)
 }
 
 func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int,

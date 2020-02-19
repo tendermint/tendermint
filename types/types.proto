@@ -14,9 +14,9 @@ enum BlockIDFlag {
 
 // SignedMsgType is a type of signed message in the consensus.
 enum SignedMsgType {
-  Msg_type_prevote   = 0;
-  Msg_type_precommit = 1;
-  Msg_type_proposal  = 3;
+  PrevoteType   = 0;
+  PrecommitType = 1;
+  ProposalType  = 3;
 }
 
 // PartsetHeader

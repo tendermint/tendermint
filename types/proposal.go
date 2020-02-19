@@ -35,7 +35,7 @@ type Proposal struct {
 // If there is no POLRound, polRound should be -1.
 func NewProposal(height int64, round int, polRound int, blockID BlockID) *Proposal {
 	return &Proposal{
-		Type:      Msg_type_proposal,
+		Type:      ProposalType,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
@@ -46,7 +46,7 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
-	if p.Type != Msg_type_proposal {
+	if p.Type != ProposalType {
 		return errors.New("invalid Type")
 	}
 	if p.Height < 0 {

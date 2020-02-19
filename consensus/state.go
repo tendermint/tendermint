@@ -1066,14 +1066,14 @@ func (cs *State) defaultDoPrevote(height int64, round int) {
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
 		logger.Info("enterPrevote: Block was locked")
-		cs.signAddVote(types.Msg_type_prevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
+		cs.signAddVote(types.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
 		logger.Info("enterPrevote: ProposalBlock is nil")
-		cs.signAddVote(types.Msg_type_prevote, nil, types.PartSetHeader{})
+		cs.signAddVote(types.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1082,7 +1082,7 @@ func (cs *State) defaultDoPrevote(height int64, round int) {
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
-		cs.signAddVote(types.Msg_type_prevote, nil, types.PartSetHeader{})
+		cs.signAddVote(types.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1090,7 +1090,7 @@ func (cs *State) defaultDoPrevote(height int64, round int) {
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	logger.Info("enterPrevote: ProposalBlock is valid")
-	cs.signAddVote(types.Msg_type_prevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	cs.signAddVote(types.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -1160,7 +1160,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		} else {
 			logger.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil.")
 		}
-		cs.signAddVote(types.Msg_type_precommit, nil, types.PartSetHeader{})
+		cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1184,7 +1184,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 			cs.LockedBlockParts = nil
 			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
-		cs.signAddVote(types.Msg_type_precommit, nil, types.PartSetHeader{})
+		cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1195,7 +1195,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
 		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
-		cs.signAddVote(types.Msg_type_precommit, blockID.Hash, blockID.PartsHeader)
+		cs.signAddVote(types.PrecommitType, blockID.Hash, blockID.PartsHeader)
 		return
 	}
 
@@ -1210,7 +1210,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
 		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
-		cs.signAddVote(types.Msg_type_precommit, blockID.Hash, blockID.PartsHeader)
+		cs.signAddVote(types.PrecommitType, blockID.Hash, blockID.PartsHeader)
 		return
 	}
 
@@ -1226,7 +1226,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
-	cs.signAddVote(types.Msg_type_precommit, nil, types.PartSetHeader{})
+	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1694,7 +1694,7 @@ func (cs *State) addVote(
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
 	if vote.Height+1 == cs.Height {
-		if !(cs.Step == cstypes.RoundStepNewHeight && vote.Type == types.Msg_type_precommit) {
+		if !(cs.Step == cstypes.RoundStepNewHeight && vote.Type == types.PrecommitType) {
 			// TODO: give the reason ..
 			// fmt.Errorf("tryAddVote: Wrong height, not a LastCommit straggler commit.")
 			return added, ErrVoteHeightMismatch
@@ -1737,7 +1737,7 @@ func (cs *State) addVote(
 	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
-	case types.Msg_type_prevote:
+	case types.PrevoteType:
 		prevotes := cs.Votes.Prevotes(vote.Round)
 		cs.Logger.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
@@ -1806,7 +1806,7 @@ func (cs *State) addVote(
 			}
 		}
 
-	case types.Msg_type_precommit:
+	case types.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
 		cs.Logger.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
 

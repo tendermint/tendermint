@@ -600,7 +600,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_precommit,
+		Type:             PrecommitType,
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))

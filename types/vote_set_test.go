@@ -69,7 +69,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 
 func TestAddVote(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_prevote, 10, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 	val0 := privValidators[0]
 
 	// t.Logf(">> %v", voteSet)
@@ -91,7 +91,7 @@ func TestAddVote(t *testing.T) {
 		ValidatorIndex:   0, // since privValidators are in order
 		Height:           height,
 		Round:            round,
-		Type:             Msg_type_prevote,
+		Type:             PrevoteType,
 		Timestamp:        tmtime.Now(),
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
@@ -114,14 +114,14 @@ func TestAddVote(t *testing.T) {
 
 func Test2_3Majority(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_prevote, 10, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 
 	voteProto := &Vote{
 		ValidatorAddress: nil, // NOTE: must fill in
 		ValidatorIndex:   -1,  // NOTE: must fill in
 		Height:           height,
 		Round:            round,
-		Type:             Msg_type_prevote,
+		Type:             PrevoteType,
 		Timestamp:        tmtime.Now(),
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
@@ -170,7 +170,7 @@ func Test2_3Majority(t *testing.T) {
 
 func Test2_3MajorityRedux(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_prevote, 100, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
 	blockPartsTotal := 123
@@ -182,7 +182,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_prevote,
+		Type:             PrevoteType,
 		BlockID:          BlockID{blockHash, blockPartsHeader},
 	}
 
@@ -275,7 +275,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 func TestBadVotes(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_prevote, 10, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
@@ -283,7 +283,7 @@ func TestBadVotes(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_prevote,
+		Type:             PrevoteType,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 
@@ -331,7 +331,7 @@ func TestBadVotes(t *testing.T) {
 	{
 		addr := privValidators[3].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 3)
-		added, err := signAddVote(privValidators[3], withType(vote, byte(Msg_type_precommit)), voteSet)
+		added, err := signAddVote(privValidators[3], withType(vote, byte(PrecommitType)), voteSet)
 		if added || err == nil {
 			t.Errorf("expected VoteSet.Add to fail, wrong type")
 		}
@@ -340,7 +340,7 @@ func TestBadVotes(t *testing.T) {
 
 func TestConflicts(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_prevote, 4, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 4, 1)
 	blockHash1 := tmrand.Bytes(32)
 	blockHash2 := tmrand.Bytes(32)
 
@@ -350,7 +350,7 @@ func TestConflicts(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_prevote,
+		Type:             PrevoteType,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 
@@ -474,7 +474,7 @@ func TestConflicts(t *testing.T) {
 
 func TestMakeCommit(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, Msg_type_precommit, 10, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, PrecommitType, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
@@ -483,7 +483,7 @@ func TestMakeCommit(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             Msg_type_precommit,
+		Type:             PrecommitType,
 		BlockID:          BlockID{blockHash, blockPartsHeader},
 	}
 
