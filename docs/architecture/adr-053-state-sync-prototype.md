@@ -177,7 +177,7 @@ IAVL trees are versioned, but a snapshot only contains the version relevant for 
 
 IAVL trees are insertion-order dependent, so key/value pairs must be set in an appropriate insertion order to produce the same tree branching structure. This insertion order can be found by doing a breadth-first scan of all nodes (including inner nodes) and collecting unique keys in order. However, the node hash also depends on the node's version, so snapshots must contain the inner nodes' version numbers as well.
 
-For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks are done, only a final app hash comparison at the end of the snapshot restoration.
+For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks is done, only a final app hash comparison at the end of the snapshot restoration.
 
 For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
@@ -255,9 +255,7 @@ $ ./tools/stop.sh
 
   * Incremental verification [optional]
 
-* **Cosmos SDK:** multistore dump/restore API (iterator-based) [required]
-
-* **Cosmos SDK:** snapshot scheduling and pruning [required]
+* **Cosmos SDK:** snapshotting, scheduling, and pruning [required]
 
 * **Tendermint:** support starting with a truncated block history [required]
 
