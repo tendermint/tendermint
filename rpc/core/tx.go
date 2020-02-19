@@ -72,6 +72,27 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 		return nil, err
 	}
 
+	// sort results (must be done before pagination)
+	switch orderBy {
+	case "desc":
+		sort.Slice(results, func(i, j int) bool {
+			if results[i].Height == results[j].Height {
+				return results[i].Index > results[j].Index
+			}
+			return results[i].Height > results[j].Height
+		})
+	case "asc", "":
+		sort.Slice(results, func(i, j int) bool {
+			if results[i].Height == results[j].Height {
+				return results[i].Index < results[j].Index
+			}
+			return results[i].Height < results[j].Height
+		})
+	default:
+		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
+	}
+
+	// paginate results
 	totalCount := len(results)
 	perPage = validatePerPage(perPage)
 	page, err = validatePage(page, perPage, totalCount)
@@ -79,49 +100,26 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 		return nil, err
 	}
 	skipCount := validateSkipCount(page, perPage)
+	pageSize := tmmath.MinInt(perPage, totalCount-skipCount)
 
-	apiResults := make([]*ctypes.ResultTx, tmmath.MinInt(perPage, totalCount-skipCount))
-	var proof types.TxProof
-	// if there's no tx in the results array, we don't need to loop through the apiResults array
-	for i := 0; i < len(apiResults); i++ {
-		r := results[skipCount+i]
-		height := r.Height
-		index := r.Index
+	apiResults := make([]*ctypes.ResultTx, 0, pageSize)
+	for i := skipCount; i < skipCount+pageSize; i++ {
+		r := results[i]
 
+		var proof types.TxProof
 		if prove {
-			block := blockStore.LoadBlock(height)
-			proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+			block := blockStore.LoadBlock(r.Height)
+			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}
 
-		apiResults[i] = &ctypes.ResultTx{
+		apiResults = append(apiResults, &ctypes.ResultTx{
 			Hash:     r.Tx.Hash(),
-			Height:   height,
-			Index:    index,
+			Height:   r.Height,
+			Index:    r.Index,
 			TxResult: r.Result,
 			Tx:       r.Tx,
 			Proof:    proof,
-		}
-	}
-
-	if len(apiResults) > 1 {
-		switch orderBy {
-		case "desc":
-			sort.Slice(apiResults, func(i, j int) bool {
-				if apiResults[i].Height == apiResults[j].Height {
-					return apiResults[i].Index > apiResults[j].Index
-				}
-				return apiResults[i].Height > apiResults[j].Height
-			})
-		case "asc", "":
-			sort.Slice(apiResults, func(i, j int) bool {
-				if apiResults[i].Height == apiResults[j].Height {
-					return apiResults[i].Index < apiResults[j].Index
-				}
-				return apiResults[i].Height < apiResults[j].Height
-			})
-		default:
-			return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
-		}
+		})
 	}
 
 	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
