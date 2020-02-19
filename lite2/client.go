@@ -373,14 +373,14 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// 3) Fetch and verify the next vals (verification happens in
-	// updateTrustedHeaderAndVals).
+	// updateTrustedHeaderAndNextVals).
 	nextVals, err := c.validatorSetFromPrimary(options.Height + 1)
 	if err != nil {
 		return err
 	}
 
 	// 4) Persist both of them and continue.
-	return c.updateTrustedHeaderAndVals(h, nextVals)
+	return c.updateTrustedHeaderAndNextVals(h, nextVals)
 }
 
 // Start starts two processes: 1) auto updating 2) removing outdated headers.
@@ -597,7 +597,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	if err != nil {
 		return err
 	}
-	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
+	return c.updateTrustedHeaderAndNextVals(newHeader, nextVals)
 }
 
 // Primary returns the primary provider.
@@ -702,7 +702,7 @@ func (c *Client) sequence(
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
 		}
-		err = c.updateTrustedHeaderAndVals(interimHeader, interimNextVals)
+		err = c.updateTrustedHeaderAndNextVals(interimHeader, interimNextVals)
 		if err != nil {
 			return errors.Wrapf(err, "failed to update trusted state #%d", height)
 		}
@@ -763,7 +763,7 @@ func (c *Client) bisection(
 				pivot)
 		}
 
-		err = c.updateTrustedHeaderAndVals(pivotHeader, nextVals)
+		err = c.updateTrustedHeaderAndNextVals(pivotHeader, nextVals)
 		if err != nil {
 			return errors.Wrapf(err, "failed to update trusted state #%d", pivot)
 		}
@@ -778,7 +778,7 @@ func (c *Client) bisection(
 }
 
 // persist header and next validators to trustedStore.
-func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, nextVals *types.ValidatorSet) error {
+func (c *Client) updateTrustedHeaderAndNextVals(h *types.SignedHeader, nextVals *types.ValidatorSet) error {
 	if !bytes.Equal(h.NextValidatorsHash, nextVals.Hash()) {
 		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, nextVals.Hash())
 	}
