@@ -440,6 +440,7 @@ func TestTxSearch(t *testing.T) {
 		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
+		require.Equal(t, txHash, result.Txs[0].Hash)
 
 		ptx := result.Txs[0]
 		assert.EqualValues(t, txHeight, ptx.Height)
@@ -511,6 +512,7 @@ func TestTxSearch(t *testing.T) {
 			} else {
 				require.LessOrEqual(t, len(result.Txs), perPage)
 			}
+			require.Equal(t, txCount, result.TotalCount)
 			for _, tx := range result.Txs {
 				require.False(t, seen[tx.Height],
 					"Found duplicate height %v in page %v", tx.Height, page)
