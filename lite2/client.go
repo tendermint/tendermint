@@ -294,8 +294,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	case options.Height < c.trustedHeader.Height:
 		c.logger.Info("Client initialized with old header (trusted is more recent)",
 			"old", options.Height,
-			"trusted", c.trustedHeader.Height,
-			"trusted-hash", hash2str(c.trustedHeader.Hash()))
+			"trustedHeight", c.trustedHeader.Height,
+			"trustedHash", hash2str(c.trustedHeader.Hash()))
 
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
@@ -682,10 +682,10 @@ func (c *Client) sequence(
 		}
 
 		c.logger.Debug("Verify newHeader against trustedHeader",
-			"lastHeight", c.trustedHeader.Height,
-			"lastHash", c.trustedHeader.Hash(),
+			"trustedHeight", c.trustedHeader.Height,
+			"trustedHash", hash2str(c.trustedHeader.Hash()),
 			"newHeight", interimHeader.Height,
-			"newHash", interimHeader.Hash())
+			"newHash", hash2str(interimHeader.Hash()))
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, trustedNextVals,
 			c.trustingPeriod, now)
 		if err != nil {
@@ -725,10 +725,10 @@ func (c *Client) bisection(
 
 	for trustedHeader.Height < newHeader.Height {
 		c.logger.Debug("Verify newHeader against trustedHeader",
-			"lastHeight", trustedHeader.Height,
-			"lastHash", trustedHeader.Hash(),
+			"trustedHeight", trustedHeader.Height,
+			"trustedHash", hash2str(trustedHeader.Hash()),
 			"newHeight", newHeader.Height,
-			"newHash", newHeader.Hash())
+			"newHash", hash2str(newHeader.Hash()))
 		err := Verify(c.chainID, trustedHeader, trustedNextVals, interimHeader, interimVals, c.trustingPeriod, now,
 			c.trustLevel)
 		switch err.(type) {
