@@ -17,6 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -414,14 +415,20 @@ func TestTx(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	// first we broadcast a tx
 	c := getHTTPClient()
-	_, _, tx := MakeTxKV()
-	bres, err := c.BroadcastTxCommit(tx)
-	require.Nil(t, err)
 
-	txHeight := bres.Height
-	txHash := bres.Hash
+	// first we broadcast a few txs
+	txCount := 10
+	var tx []byte
+	var txHeight int64
+	var txHash tmbytes.HexBytes
+	for i := 0; i < txCount; i++ {
+		_, _, tx = MakeTxKV()
+		res, err := c.BroadcastTxCommit(tx)
+		require.NoError(t, err)
+		txHeight = res.Height
+		txHash = res.Hash
+	}
 
 	anotherTxHash := types.Tx("a different tx").Hash()
 
@@ -476,12 +483,7 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
-		// broadcast another transaction to make sure we have at least two.
-		_, _, tx2 := MakeTxKV()
-		_, err = c.BroadcastTxCommit(tx2)
-		require.Nil(t, err)
-
-		// chech sorting
+		// check sorting
 		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
@@ -495,6 +497,30 @@ func TestTxSearch(t *testing.T) {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
+
+		// check pagination
+		seen := map[int64]bool{}
+		maxHeight := int64(0)
+		perPage := 3
+		pages := txCount/perPage + 1
+		for page := 1; page <= pages; page++ {
+			result, err = c.TxSearch("tx.height >= 1", false, page, perPage, "asc")
+			require.NoError(t, err)
+			if page < pages {
+				require.Len(t, result.Txs, perPage)
+			} else {
+				require.LessOrEqual(t, len(result.Txs), perPage)
+			}
+			for _, tx := range result.Txs {
+				require.False(t, seen[tx.Height],
+					"Found duplicate height %v in page %v", tx.Height, page)
+				require.Greater(t, tx.Height, maxHeight,
+					"Found decreasing height %v (max seen %v) in page %v", tx.Height, maxHeight, page)
+				seen[tx.Height] = true
+				maxHeight = tx.Height
+			}
+		}
+		require.Len(t, seen, txCount)
 	}
 }
 
