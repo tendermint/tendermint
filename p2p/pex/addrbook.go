@@ -5,19 +5,21 @@
 package pex
 
 import (
+	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"math"
+	"math/rand"
+	"net"
+	"sync"
+	"time"
+
 	"github.com/minio/highwayhash"
 	"github.com/tendermint/tendermint/crypto"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
-	"math"
-	"math/rand"
-	"net"
-	"sync"
-	"time"
 )
 
 const (
@@ -104,8 +106,7 @@ var hashKey []byte
 func init() {
 	highwayKeyLength := 32
 	hashKey = make([]byte, highwayKeyLength)
-	rand.Seed(time.Now().UnixNano())
-	rand.Read(hashKey)
+	crand.Read(hashKey)
 }
 
 // NewAddrBook creates a new address book.
