@@ -368,7 +368,8 @@ func TestClient_Cleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	c.Stop()
-	c.Cleanup()
+	err = c.Cleanup()
+	require.NoError(t, err)
 
 	// Check no headers exist after Cleanup.
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
