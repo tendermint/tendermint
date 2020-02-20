@@ -747,9 +747,6 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	// 1) header is missing => expect no error
 	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
@@ -762,6 +759,15 @@ func TestClient_BackwardsVerification(t *testing.T) {
 	h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
 	assert.NotNil(t, h)
+
+	// 3) already stored headers should return the header without error
+	h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+	assert.NoError(t, err)
+	assert.NotNil(t, h)
+
+	// 4) cannot verify a header in the future
+	h, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
+	assert.Error(t, err)
 }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
