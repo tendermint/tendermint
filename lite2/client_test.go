@@ -767,7 +767,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 	assert.NotNil(t, h)
 
 	// 4) cannot verify a header in the future
-	h, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
+	_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
 }
 
