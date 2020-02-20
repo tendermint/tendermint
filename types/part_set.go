@@ -135,7 +135,7 @@ func (ps *PartSet) Header() PartSetHeader {
 		return PartSetHeader{}
 	}
 	return PartSetHeader{
-		Total: int64(ps.total),
+		Total: ps.total,
 		Hash:  ps.hash,
 	}
 }

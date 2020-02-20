@@ -17,7 +17,9 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round int, step int32, blockID BlockID) *Vote {
+func makeVote(
+	val PrivValidator, chainID string, valIndex int, height int64, round int, step int32, blockID BlockID,
+) *Vote {
 	addr := val.GetPubKey().Address()
 	v := &Vote{
 		ValidatorAddress: addr,
