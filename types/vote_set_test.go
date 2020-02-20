@@ -173,8 +173,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
-	blockPartsTotal := 123
-	blockPartsHeader := PartSetHeader{int64(blockPartsTotal), crypto.CRandBytes(32)}
+	blockPartsTotal := int64(123)
+	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
 		ValidatorAddress: nil, // NOTE: must fill in
@@ -218,7 +218,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	{
 		addr := privValidators[67].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 67)
-		blockPartsHeader := PartSetHeader{int64(blockPartsTotal), crypto.CRandBytes(32)}
+		blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 		_, err := signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		if err != nil {
 			t.Error(err)
@@ -233,7 +233,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	{
 		addr := privValidators[68].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, 68)
-		blockPartsHeader := PartSetHeader{int64(blockPartsTotal + 1), blockPartsHeader.Hash}
+		blockPartsHeader := PartSetHeader{blockPartsTotal + 1, blockPartsHeader.Hash}
 		_, err := signAddVote(privValidators[68], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		if err != nil {
 			t.Error(err)

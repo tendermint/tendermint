@@ -17,7 +17,7 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
+func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round int, step int32, blockID BlockID) *Vote {
 	addr := val.GetPubKey().Address()
 	v := &Vote{
 		ValidatorAddress: addr,
@@ -103,8 +103,8 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
 		PubKey: secp256k1.GenPrivKey().PubKey(), // use secp because it's pubkey is longer
-		VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 1, blockID),
-		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 1, blockID2),
+		VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt32, blockID),
+		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt32, blockID2),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
