@@ -27,8 +27,10 @@ var (
 	bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 	h1       = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
 		[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
+	// 3/3 signed
 	h2 = keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
 		[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h1.Hash()})
+	// 3/3 signed
 	h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
 		[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
 	trustPeriod  = 4 * time.Hour
@@ -56,13 +58,14 @@ var (
 
 func TestClient_SequentialVerification(t *testing.T) {
 	testCases := []struct {
+		name         string
 		otherHeaders map[int64]*types.SignedHeader // all except ^
 		vals         map[int64]*types.ValidatorSet
 		initErr      bool
 		verifyErr    bool
 	}{
-		// good
 		{
+			"good",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
@@ -80,8 +83,8 @@ func TestClient_SequentialVerification(t *testing.T) {
 			false,
 			false,
 		},
-		// bad: different first header
 		{
+			"bad: different first header",
 			map[int64]*types.SignedHeader{
 				// different header
 				1: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
@@ -93,8 +96,8 @@ func TestClient_SequentialVerification(t *testing.T) {
 			true,
 			false,
 		},
-		// bad: 1/3 signed interim header
 		{
+			"bad: 1/3 signed interim header",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
@@ -114,8 +117,8 @@ func TestClient_SequentialVerification(t *testing.T) {
 			false,
 			true,
 		},
-		// bad: 1/3 signed last header
 		{
+			"bad: 1/3 signed last header",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
@@ -138,39 +141,42 @@ func TestClient_SequentialVerification(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		c, err := NewClient(
-			chainID,
-			trustOptions,
-			mockp.New(
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := NewClient(
 				chainID,
-				tc.otherHeaders,
-				tc.vals,
-			),
-			[]provider.Provider{mockp.New(
-				chainID,
-				tc.otherHeaders,
-				tc.vals,
-			)},
-			dbs.New(dbm.NewMemDB(), chainID),
-			SequentialVerification(),
-		)
+				trustOptions,
+				mockp.New(
+					chainID,
+					tc.otherHeaders,
+					tc.vals,
+				),
+				[]provider.Provider{mockp.New(
+					chainID,
+					tc.otherHeaders,
+					tc.vals,
+				)},
+				dbs.New(dbm.NewMemDB(), chainID),
+				SequentialVerification(),
+			)
 
-		if tc.initErr {
-			require.Error(t, err)
-			continue
-		} else {
+			if tc.initErr {
+				require.Error(t, err)
+				return
+			}
+
 			require.NoError(t, err)
-		}
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
+			err = c.Start()
+			require.NoError(t, err)
+			defer c.Stop()
 
-		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-		if tc.verifyErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+			_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+			if tc.verifyErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 
@@ -179,12 +185,19 @@ func TestClient_SkippingVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
 
+	// 1/3+ of vals, 2/3- of newVals
+	transitKeys := keys.Extend(3)
+	transitVals := transitKeys.ToValidators(10, 1)
+
 	testCases := []struct {
+		name         string
 		otherHeaders map[int64]*types.SignedHeader // all except ^
 		vals         map[int64]*types.ValidatorSet
+		initErr      bool
+		verifyErr    bool
 	}{
-		// good
 		{
+			"good",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
@@ -197,9 +210,28 @@ func TestClient_SkippingVerification(t *testing.T) {
 				3: vals,
 				4: vals,
 			},
+			false,
+			false,
 		},
-		// good, val set changes 100% at height 2
 		{
+			"good, but val set changes by 2/3 (1/3 of vals is still present)",
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: h1,
+				3: transitKeys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, transitVals, transitVals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(transitKeys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: transitVals,
+				4: transitVals,
+			},
+			false,
+			false,
+		},
+		{
+			"good, but val set changes 100% at height 2",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
@@ -216,33 +248,68 @@ func TestClient_SkippingVerification(t *testing.T) {
 				3: newVals,
 				4: newVals,
 			},
+			false,
+			false,
+		},
+		{
+			"bad: last header signed by newVals, interim header has no signers",
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: h1,
+				// last header (0/4 of the original val set signed)
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(1*time.Hour), nil, vals, newVals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, 0),
+				// last header (0/4 of the original val set signed)
+				3: newKeys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, newVals, newVals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(newKeys)),
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: newVals,
+				4: newVals,
+			},
+			false,
+			true,
 		},
 	}
 
 	for _, tc := range testCases {
-		c, err := NewClient(
-			chainID,
-			trustOptions,
-			mockp.New(
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := NewClient(
 				chainID,
-				tc.otherHeaders,
-				tc.vals,
-			),
-			[]provider.Provider{mockp.New(
-				chainID,
-				tc.otherHeaders,
-				tc.vals,
-			)},
-			dbs.New(dbm.NewMemDB(), chainID),
-			SkippingVerification(DefaultTrustLevel),
-		)
-		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
+				trustOptions,
+				mockp.New(
+					chainID,
+					tc.otherHeaders,
+					tc.vals,
+				),
+				[]provider.Provider{mockp.New(
+					chainID,
+					tc.otherHeaders,
+					tc.vals,
+				)},
+				dbs.New(dbm.NewMemDB(), chainID),
+				SkippingVerification(DefaultTrustLevel),
+			)
+			if tc.initErr {
+				require.Error(t, err)
+				return
+			}
 
-		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-		assert.NoError(t, err)
+			require.NoError(t, err)
+			err = c.Start()
+			require.NoError(t, err)
+			defer c.Stop()
+
+			_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+			if tc.verifyErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 

@@ -11,106 +11,167 @@ import (
 )
 
 var (
-	// DefaultTrustLevel - new header can be trusted if at least one correct old
+	// DefaultTrustLevel - new header can be trusted if at least one correct
 	// validator signed it.
 	DefaultTrustLevel = tmmath.Fraction{Numerator: 1, Denominator: 3}
 )
 
-// Verify verifies the new header (h2) against the old header (h1). It ensures that:
+// VerifyNonAdjacent verifies non-adjacent untrustedHeader against
+// trustedHeader. It ensures that:
 //
-//	a) h1 can still be trusted (if not, ErrOldHeaderExpired is returned);
-//	b) h2 is valid;
-//	c) either h2.ValidatorsHash equals h1NextVals.Hash()
-//		 OR trustLevel ([1/3, 1]) of last trusted validators (h1NextVals) signed
-//		 correctly  (if not, ErrNewValSetCantBeTrusted is returned);
-//	c) more than 2/3 of new validators (h2Vals) have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned).
-func Verify(
+//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
+//	b) untrustedHeader is valid;
+//	c) trustLevel ([1/3, 1]) of trustedHeaderNextVals signed correctly
+//     (if not, ErrNewValSetCantBeTrusted is returned);
+//	d) more than 2/3 of untrustedVals have signed h2 (if not,
+//	   ErrNotEnoughVotingPowerSigned is returned);
+//  e) headers are non-adjacent.
+func VerifyNonAdjacent(
 	chainID string,
-	h1 *types.SignedHeader,
-	h1NextVals *types.ValidatorSet,
-	h2 *types.SignedHeader,
-	h2Vals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height=X
+	trustedNextVals *types.ValidatorSet, // height=X+1
+	untrustedHeader *types.SignedHeader, // height=Y
+	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
 	trustLevel tmmath.Fraction) error {
 
-	if err := ValidateTrustLevel(trustLevel); err != nil {
+	if untrustedHeader.Height == trustedHeader.Height+1 {
+		return errors.New("headers must be non adjacent in height")
+	}
+
+	if HeaderExpired(trustedHeader, trustingPeriod, now) {
+		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
+	}
+
+	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
 		return err
 	}
 
-	// Ensure last header can still be trusted.
-	if HeaderExpired(h1, trustingPeriod, now) {
-		return ErrOldHeaderExpired{h1.Time.Add(trustingPeriod), now}
-	}
-
-	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
-		return err
-	}
-
-	if h2.Height == h1.Height+1 {
-		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) {
-			err := errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
-				h1NextVals.Hash(),
-				h2.ValidatorsHash,
-			)
-			return err
-		}
-	} else {
-		// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
-		err := h1NextVals.VerifyCommitTrusting(chainID, h2.Commit.BlockID, h2.Height, h2.Commit, trustLevel)
-		if err != nil {
-			switch e := err.(type) {
-			case types.ErrNotEnoughVotingPowerSigned:
-				return ErrNewValSetCantBeTrusted{e}
-			default:
-				return e
-			}
+	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
+	err := trustedNextVals.VerifyCommitTrusting(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
+		untrustedHeader.Commit, trustLevel)
+	if err != nil {
+		switch e := err.(type) {
+		case types.ErrNotEnoughVotingPowerSigned:
+			return ErrNewValSetCantBeTrusted{e}
+		default:
+			return e
 		}
 	}
 
 	// Ensure that +2/3 of new validators signed correctly.
-	err := h2Vals.VerifyCommit(chainID, h2.Commit.BlockID, h2.Height, h2.Commit)
-	if err != nil {
+	//
+	// NOTE: this should always be the last check because untrustedVals can be
+	// intentionaly made very large to DOS the light client. not the case for
+	// VerifyAdjacent, where validator set is known in advance.
+	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
+		untrustedHeader.Commit); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func verifyNewHeaderAndVals(
+// VerifyAdjacent verifies directly adjacent untrustedHeader against
+// trustedHeader. It ensures that:
+//
+//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
+//	b) untrustedHeader is valid;
+//	c) untrustedHeader.ValidatorsHash equals trustedHeaderNextVals.Hash()
+//	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
+//	   ErrNotEnoughVotingPowerSigned is returned);
+//  e) headers are adjacent.
+func VerifyAdjacent(
 	chainID string,
-	h2 *types.SignedHeader,
-	h2Vals *types.ValidatorSet,
-	h1 *types.SignedHeader,
+	trustedHeader *types.SignedHeader, // height=X
+	untrustedHeader *types.SignedHeader, // height=X+1
+	untrustedVals *types.ValidatorSet, // height=X+1
+	trustingPeriod time.Duration,
 	now time.Time) error {
 
-	if err := h2.ValidateBasic(chainID); err != nil {
-		return errors.Wrap(err, "h2.ValidateBasic failed")
+	if untrustedHeader.Height != trustedHeader.Height+1 {
+		return errors.New("headers must be adjacent in height")
 	}
 
-	if h2.Height <= h1.Height {
+	if HeaderExpired(trustedHeader, trustingPeriod, now) {
+		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
+	}
+
+	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
+		return err
+	}
+
+	// Check the validator hashes are the same
+	if !bytes.Equal(untrustedHeader.ValidatorsHash, trustedHeader.NextValidatorsHash) {
+		err := errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
+			trustedHeader.NextValidatorsHash,
+			untrustedHeader.ValidatorsHash,
+		)
+		return err
+	}
+
+	// Ensure that +2/3 of new validators signed correctly.
+	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
+		untrustedHeader.Commit); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Verify combines both VerifyAdjacent and VerifyNonAdjacent functions.
+func Verify(
+	chainID string,
+	trustedHeader *types.SignedHeader, // height=X
+	trustedNextVals *types.ValidatorSet, // height=X+1
+	untrustedHeader *types.SignedHeader, // height=Y
+	untrustedVals *types.ValidatorSet, // height=Y
+	trustingPeriod time.Duration,
+	now time.Time,
+	trustLevel tmmath.Fraction) error {
+
+	if untrustedHeader.Height != trustedHeader.Height+1 {
+		return VerifyNonAdjacent(chainID, trustedHeader, trustedNextVals, untrustedHeader, untrustedVals,
+			trustingPeriod, now, trustLevel)
+	}
+
+	return VerifyAdjacent(chainID, trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now)
+}
+
+func verifyNewHeaderAndVals(
+	chainID string,
+	untrustedHeader *types.SignedHeader,
+	untrustedVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader,
+	now time.Time) error {
+
+	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
+		return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+	}
+
+	if untrustedHeader.Height <= trustedHeader.Height {
 		return errors.Errorf("expected new header height %d to be greater than one of old header %d",
-			h2.Height,
-			h1.Height)
+			untrustedHeader.Height,
+			trustedHeader.Height)
 	}
 
-	if !h2.Time.After(h1.Time) {
+	if !untrustedHeader.Time.After(trustedHeader.Time) {
 		return errors.Errorf("expected new header time %v to be after old header time %v",
-			h2.Time,
-			h1.Time)
+			untrustedHeader.Time,
+			trustedHeader.Time)
 	}
 
-	if !h2.Time.Before(now) {
+	if !untrustedHeader.Time.Before(now) {
 		return errors.Errorf("new header has a time from the future %v (now: %v)",
-			h2.Time,
+			untrustedHeader.Time,
 			now)
 	}
 
-	if !bytes.Equal(h2.ValidatorsHash, h2Vals.Hash()) {
+	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
 		return errors.Errorf("expected new header validators (%X) to match those that were supplied (%X)",
-			h2.ValidatorsHash,
-			h2Vals.Hash(),
+			untrustedHeader.ValidatorsHash,
+			untrustedVals.Hash(),
 		)
 	}
 
