@@ -299,8 +299,6 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
-	var request types.RPCRequest
-
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -308,7 +306,7 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(-1), err))
 			go wsc.readRoutine()
 		}
 	}()
@@ -339,6 +337,7 @@ func (wsc *wsConnection) readRoutine() {
 				return
 			}
 
+			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCParseError(errors.Wrap(err, "error unmarshaling request")))

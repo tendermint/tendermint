@@ -27,7 +27,7 @@ We would like to suggest a double signing risk reduction method.
     2. If there exists votes from the validator's consensus key, exit state machine program
 - Configuration
     - We would like to suggest by introducing `double_sign_check_height` parameter in `config.toml` and cli, how many blocks state machine looks back to check votes
-    - `double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}` in `config.toml`
+    - <span v-pre>`double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}`</span> in `config.toml`
     - `tendermint node --double_sign_check_height` in cli
     - State machine ignore checking procedure when `vote-check-height == 0`
 

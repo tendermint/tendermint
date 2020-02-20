@@ -4,17 +4,14 @@
   "description": "Welcome to the Tendermint Core documentation!",
   "main": "index.js",
   "dependencies": {
-    "vuepress-theme-cosmos": "^1.0.148"
-  },
-  "devDependencies": {
-    "@vuepress/plugin-google-analytics": "^1.2.0"
+    "vuepress-theme-cosmos": "^1.0.150"
   },
   "scripts": {
     "preserve": "./pre.sh",
-    "serve": "trap 'exit 0' SIGINT; vuepress dev",
+    "serve": "trap 'exit 0' SIGINT; vuepress dev --no-cache",
     "postserve": "./post.sh",
     "prebuild": "./pre.sh",
-    "build": "trap 'exit 0' SIGINT; vuepress build",
+    "build": "trap 'exit 0' SIGINT; vuepress build --no-cache",
     "postbuild": "./post.sh"
   },
   "author": "",
