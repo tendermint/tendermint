@@ -42,7 +42,7 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
            - p2p/pex
 - Configuration, cli command
     - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
-    - `mode = "{{ .BaseConfig.Mode }}"` in `config.toml`
+    - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
     - `tendermint node --mode validator`  in cli
     - fullnode | validator | seed (default: "fullnode")
 - RPC modification
