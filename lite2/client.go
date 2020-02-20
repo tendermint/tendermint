@@ -675,7 +675,8 @@ func (c *Client) sequence(
 		interimNextVals *types.ValidatorSet
 		err             error
 	)
-	for height := trustedHeader.Height + 1; height < newHeader.Height; height++ {
+	for trustedHeader.Height < newHeader.Height {
+		height := trustedHeader.Height + 1
 		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
@@ -701,15 +702,11 @@ func (c *Client) sequence(
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
 		}
-		err = c.updateTrustedHeaderAndNextVals(interimHeader, interimNextVals)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update trusted state #%d", height)
-		}
+
 		trustedHeader, trustedNextVals = interimHeader, interimNextVals
 	}
 
-	// 2) Verify the new header.
-	return VerifyAdjacent(c.chainID, c.trustedHeader, newHeader, newVals, c.trustingPeriod, now)
+	return nil
 }
 
 // see VerifyHeader
@@ -744,11 +741,6 @@ func (c *Client) bisection(
 					trustedHeader.NextValidatorsHash,
 					trustedNextVals.Hash(),
 					trustedHeader.Height)
-			}
-
-			err = c.updateTrustedHeaderAndNextVals(trustedHeader, trustedNextVals)
-			if err != nil {
-				return err
 			}
 
 			// Update the upper bound to the untrustedHeader
