@@ -846,6 +846,10 @@ func (c *Client) backwards(trustedHeader *types.SignedHeader, newHeader *types.S
 		err           error
 	)
 
+	if HeaderExpired(newHeader, c.trustingPeriod, now) {
+		return ErrOldHeaderExpired{newHeader.Time.Add(c.trustingPeriod), now}
+	}
+
 	for trustedHeader.Height > newHeader.Height {
 		interimHeader, err = c.signedHeaderFromPrimary(trustedHeader.Height - 1)
 		if err != nil {
@@ -860,10 +864,6 @@ func (c *Client) backwards(trustedHeader *types.SignedHeader, newHeader *types.S
 			return errors.Errorf("expected older header time %v to be before newer header time %v",
 				interimHeader.Time,
 				trustedHeader.Time)
-		}
-
-		if HeaderExpired(interimHeader, c.trustingPeriod, now) {
-			return ErrOldHeaderExpired{interimHeader.Time.Add(c.trustingPeriod), now}
 		}
 
 		if !bytes.Equal(interimHeader.Hash(), trustedHeader.LastBlockID.Hash) {
