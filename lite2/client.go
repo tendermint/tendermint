@@ -516,12 +516,13 @@ func (c *Client) ChainID() string {
 	return c.chainID
 }
 
-// VerifyHeaderAtHeight fetches the header and validators at the given height
-// and calls VerifyHeader.
+// VerifyHeaderAtHeight fetches header and validators at the given height
+// and calls VerifyHeader. It returns header immediately if such exists in
+// trustedStore (no verification is needed).
 //
-// If the trusted header is more recent than one here, an error is returned.
-// If the header is not found by the primary provider,
-// provider.ErrSignedHeaderNotFound error is returned.
+// It returns provider.ErrSignedHeaderNotFound if header is not found by
+// primary.
+// It returns ErrOldHeaderExpired if header expired.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height <= 0 {
 		return nil, errors.New("negative or zero height")
@@ -530,7 +531,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 	h, err := c.TrustedHeader(height, now)
 	switch err.(type) {
 	case nil: // Return already trusted header
-		c.logger.Debug("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
+		c.logger.Info("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
 		return h, nil
 	case ErrOldHeaderExpired:
 		return nil, err
@@ -545,7 +546,9 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 	return newHeader, c.VerifyHeader(newHeader, newVals, now)
 }
 
-// VerifyHeader verifies new header against the trusted state.
+// VerifyHeader verifies new header against the trusted state. It returns
+// immediately if newHeader exists in trustedStore (no verification is
+// needed).
 //
 // SequentialVerification: verifies that 2/3 of the trusted validator set has
 // signed the new header. If the headers are not adjacent, **all** intermediate
@@ -557,7 +560,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // intermediate headers will be requested. See the specification for details.
 // https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
 //
-// If the trusted header is more recent than one here, an error is returned.
+// It returns ErrOldHeaderExpired if newHeader expired.
 //
 // If, at any moment, SignedHeader or ValidatorSet are not found by the primary
 // provider, provider.ErrSignedHeaderNotFound /
@@ -567,10 +570,24 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // validator set at height newHeader.Height+1 (i.e.
 // newHeader.NextValidatorsHash).
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
+	// XXX: called twice in case VerifyHeaderAtHeight is used, but it's okay
+	// since in memory lookup should be fast.
+	h, err := c.TrustedHeader(newHeader.Height, now)
+	switch err.(type) {
+	case nil: // Return already trusted header
+		// Make sure it's the same header.
+		if !bytes.Equal(h.Hash(), newHeader.Hash()) {
+			return errors.Errorf("existing trusted header %X does not match newHeader %X", h.Hash(), newHeader.Hash())
+		}
+		c.logger.Info("Header has already been verified",
+			"height", newHeader.Height, "hash", hash2str(newHeader.Hash()))
+		return nil
+	case ErrOldHeaderExpired:
+		return err
+	}
+
 	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
 		"vals", hash2str(newVals.Hash()))
-
-	var err error
 
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
