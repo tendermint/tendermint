@@ -18,7 +18,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -419,50 +418,45 @@ func TestTxSearch(t *testing.T) {
 	c := getHTTPClient()
 
 	// first we broadcast a few txs
-	var tx []byte
-	var txHeight int64
-	var txHash tmbytes.HexBytes
 	for i := 0; i < 10; i++ {
-		_, _, tx = MakeTxKV()
-		res, err := c.BroadcastTxCommit(tx)
+		_, _, tx := MakeTxKV()
+		_, err := c.BroadcastTxCommit(tx)
 		require.NoError(t, err)
-		txHeight = res.Height
-		txHash = res.Hash
 	}
 
-	// Since we're not using an isolated test server, we'll have lingering transactions
+	// since we're not using an isolated test server, we'll have lingering transactions
 	// from other tests as well
 	result, err := c.TxSearch("tx.height >= 0", true, 1, 100, "asc")
 	require.NoError(t, err)
 	txCount := len(result.Txs)
 
+	// pick out the last tx to have something to search for in tests
+	find := result.Txs[len(result.Txs)-1]
 	anotherTxHash := types.Tx("a different tx").Hash()
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
 		// now we query for the tx.
-		// since there's only one tx, we know index=0.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, 1, 30, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
-		require.Equal(t, txHash, result.Txs[0].Hash)
+		require.Equal(t, find.Hash, result.Txs[0].Hash)
 
 		ptx := result.Txs[0]
-		assert.EqualValues(t, txHeight, ptx.Height)
-		assert.EqualValues(t, tx, ptx.Tx)
+		assert.EqualValues(t, find.Height, ptx.Height)
+		assert.EqualValues(t, find.Tx, ptx.Tx)
 		assert.Zero(t, ptx.Index)
 		assert.True(t, ptx.TxResult.IsOK())
-		assert.EqualValues(t, txHash, ptx.Hash)
+		assert.EqualValues(t, find.Hash, ptx.Hash)
 
 		// time to verify the proof
-		proof := ptx.Proof
-		if assert.EqualValues(t, tx, proof.Data) {
-			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
+		if assert.EqualValues(t, find.Tx, ptx.Proof.Data) {
+			assert.NoError(t, ptx.Proof.Proof.Verify(ptx.Proof.RootHash, find.Hash))
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30, "asc")
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, 1, 30, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
@@ -506,10 +500,12 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// check pagination
-		seen := map[int64]bool{}
-		maxHeight := int64(0)
-		perPage := 3
-		pages := int(math.Ceil(float64(txCount) / float64(perPage)))
+		var (
+			seen      = map[int64]bool{}
+			maxHeight int64
+			perPage   = 3
+			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
+		)
 		for page := 1; page <= pages; page++ {
 			result, err = c.TxSearch("tx.height >= 1", false, page, perPage, "asc")
 			require.NoError(t, err)
