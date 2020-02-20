@@ -225,25 +225,43 @@ $ ./tools/stop.sh
 
 ## Open Questions
 
-* Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
+* Should we have a simpler scheme for discovering snapshots? E.g. announce supported formats, and have peer supply latest available snapshot.
 
-* Do we need incremental chunk verification for first version?
+    > Downsides: app has to announce supported formats, can't use `metadata` for arbitrary app negotiation of snapshots, having a single snapshot per peer may make fewer peers available for chosen snapshot.
 
-* Should we call these snapshots? IAVL already has a different concept called snapshots.
-
-* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
-
-* How can we make sure `ListSnapshots` data is valid? An adversary can provide a large number of invalid snapshots and make the node stuck in discovery mode. Perhaps collect snapshot list from many peers and pick ones that are available on a majority.
-
-* Should we punish nodes that provide invalid snapshots? How?
+* Should `ListSnapshots` be a streaming API instead of a request/response API?
 
 * Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
 
 * How large chunks can we send without getting memory issues? Can we stream the chunk contents?
 
+* Should we call these snapshots? IAVL already has a different concept called snapshots.
+
 * Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
 
 * Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+
+## Resolved Questions
+
+* Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
+
+    > Yes, this is as intended. Maybe backfill blocks later.
+
+* Do we need incremental chunk verification for first version?
+
+    > No, we'll start simple. Can add chunk verification via a new snapshot format without any breaking changes in Tendermint. For adversarial conditions, maybe consider support for whitelisting peers to download chunks from.
+
+* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
+
+    > Mandatory, to keep things simple for now. It will therefore be a breaking change and push the release. For apps using the Cosmos SDK, we can provide a default implementation that does not serve snapshots and errors when trying to apply them.
+
+* How can we make sure `ListSnapshots` data is valid? An adversary can provide fake/invalid snapshots to DoS peers.
+
+    > For now, just pick snapshots that are available on a large number of peers. Maybe support whitelisting. We may consider e.g. placing snapshot manifests on the blockchain later.
+
+* Should we punish nodes that provide invalid snapshots? How?
+
+    > No, these are full nodes not validators, so we can't punish them. Just disconnect from them and ignore them.
 
 ## Implementation Plan
 
