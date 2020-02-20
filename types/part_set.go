@@ -20,7 +20,7 @@ var (
 )
 
 type Part struct {
-	Index int                `json:"index"`
+	Index int64              `json:"index"`
 	Bytes tmbytes.HexBytes   `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 }
@@ -56,15 +56,6 @@ func (part *Part) StringIndented(indent string) string {
 
 //-------------------------------------
 
-// type PartSetHeader struct {
-// 	Total int              `json:"total"`
-// 	Hash  tmbytes.HexBytes `json:"hash"`
-// }
-
-// func (psh PartSetHeader) String() string {
-// 	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
-// }
-
 func (psh PartSetHeader) IsZero() bool {
 	return psh.Total == 0 && len(psh.Hash) == 0
 }
@@ -88,13 +79,13 @@ func (psh PartSetHeader) ValidateBasic() error {
 //-------------------------------------
 
 type PartSet struct {
-	total int
+	total int64
 	hash  []byte
 
 	mtx           sync.Mutex
 	parts         []*Part
 	partsBitArray *bits.BitArray
-	count         int
+	count         int64
 }
 
 // Returns an immutable, full PartSet from the data bytes.
@@ -107,7 +98,7 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	partsBitArray := bits.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
-			Index: i,
+			Index: int64(i),
 			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
@@ -120,18 +111,18 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
-		total:         total,
+		total:         int64(total),
 		hash:          root,
 		parts:         parts,
 		partsBitArray: partsBitArray,
-		count:         total,
+		count:         int64(total),
 	}
 }
 
 // Returns an empty PartSet ready to be populated.
 func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
-		total:         int(header.Total),
+		total:         header.Total,
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
 		partsBitArray: bits.NewBitArray(int(header.Total)),
@@ -176,14 +167,14 @@ func (ps *PartSet) HashesTo(hash []byte) bool {
 	return bytes.Equal(ps.hash, hash)
 }
 
-func (ps *PartSet) Count() int {
+func (ps *PartSet) Count() int64 {
 	if ps == nil {
 		return 0
 	}
 	return ps.count
 }
 
-func (ps *PartSet) Total() int {
+func (ps *PartSet) Total() int64 {
 	if ps == nil {
 		return 0
 	}
@@ -214,7 +205,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 
 	// Add part
 	ps.parts[part.Index] = part
-	ps.partsBitArray.SetIndex(part.Index, true)
+	ps.partsBitArray.SetIndex(int(part.Index), true)
 	ps.count++
 	return true, nil
 }
