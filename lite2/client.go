@@ -543,7 +543,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 		return nil, err
 	}
 
-	return newHeader, c.VerifyHeader(newHeader, newVals, now)
+	return newHeader, c.verifyHeader(newHeader, newVals, now)
 }
 
 // VerifyHeader verifies new header against the trusted state. It returns
@@ -570,8 +570,6 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // validator set at height newHeader.Height+1 (i.e.
 // newHeader.NextValidatorsHash).
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	// XXX: called twice in case VerifyHeaderAtHeight is used, but it's okay
-	// since in memory lookup should be fast.
 	h, err := c.TrustedHeader(newHeader.Height, now)
 	switch err.(type) {
 	case nil: // Return already trusted header
@@ -586,8 +584,14 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return err
 	}
 
+	return c.verifyHeader(newHeader, newVals, now)
+}
+
+func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
 		"vals", hash2str(newVals.Hash()))
+
+	var err error
 
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
