@@ -220,7 +220,7 @@ func sendProposalAndParts(
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 
 	// parts
-	for i := 0; i < parts.Total(); i++ {
+	for i := 0; int64(i) < parts.Total(); i++ {
 		part := parts.GetPart(i)
 		msg := &BlockPartMessage{
 			Height: height, // This tells peer that this part applies to us.
