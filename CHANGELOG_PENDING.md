@@ -17,6 +17,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [pex] [\#4439](https://github.com/tendermint/tendermint/pull/4439) Use highwayhash for pex buckets (@tau3)
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
