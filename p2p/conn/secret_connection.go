@@ -361,9 +361,9 @@ func computeDHSecret(remPubKey, locPrivKey *[32]byte) (*[32]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var array [32]byte
-	copy(array[:], shrKey)
-	return &array, nil
+	var shrKeyArray [32]byte
+	copy(shrKeyArray[:], shrKey)
+	return &shrKeyArray, nil
 }
 
 func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
