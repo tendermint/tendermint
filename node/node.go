@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"os"
 	"strings"
 	"time"
