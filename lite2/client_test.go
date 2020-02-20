@@ -732,7 +732,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	assert.Equal(t, 1, len(c.Witnesses()))
 }
 
-func TestClient_TrustedHeaderFetchesMissingHeader(t *testing.T) {
+func TestClient_BackwardsVerification(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -752,16 +752,16 @@ func TestClient_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 	defer c.Stop()
 
 	// 1) header is missing => expect no error
-	h, err := c.TrustedHeader(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 	require.NoError(t, err)
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
 	}
 
 	// 2) header is missing, but it's expired => expect error
-	h, err = c.TrustedHeader(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+	h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
-	assert.Nil(t, h)
+	assert.NotNil(t, h)
 }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
