@@ -107,7 +107,7 @@ func (pv MockPV) DisableChecks() {
 	// as MockPV has no safety checks at all.
 }
 
-type erroringMockPV struct {
+type ErroringMockPV struct {
 	MockPV
 }
 
@@ -125,6 +125,6 @@ func (pv *ErroringMockPV) SignProposal(chainID string, proposal *Proposal) error
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
 
-func NewErroringMockPV() *erroringMockPV {
-	return &erroringMockPV{MockPV{ed25519.GenPrivKey(), false, false}}
+func NewErroringMockPV() *ErroringMockPV {
+	return &ErroringMockPV{MockPV{ed25519.GenPrivKey(), false, false}}
 }
