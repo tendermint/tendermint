@@ -727,7 +727,6 @@ func (c *Client) sequence(
 		}
 
 		// Update trusted header and vals.
-		trustedHeader = interimHeader
 		if height == newHeader.Height-1 {
 			interimNextVals = newVals
 		} else {
@@ -742,7 +741,7 @@ func (c *Client) sequence(
 					trustedHeader.Height)
 			}
 		}
-		trustedNextVals = interimNextVals
+		trustedHeader, trustedNextVals = interimHeader, interimNextVals
 	}
 
 	return nil
@@ -774,7 +773,6 @@ func (c *Client) bisection(
 			}
 
 			// Update the lower bound to the previous upper bound
-			trustedHeader = interimHeader
 			interimVals, err = c.validatorSetFromPrimary(interimHeader.Height + 1)
 			if err != nil {
 				return err
@@ -785,8 +783,7 @@ func (c *Client) bisection(
 					interimVals.Hash(),
 					trustedHeader.Height)
 			}
-			trustedNextVals = interimVals
-
+			trustedNextVals, trustedHeader = interimVals, interimHeader
 			// Update the upper bound to the untrustedHeader
 			interimHeader, interimVals = newHeader, newVals
 
