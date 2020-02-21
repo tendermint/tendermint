@@ -57,6 +57,9 @@ var (
 )
 
 func TestClient_SequentialVerification(t *testing.T) {
+	newKeys := genPrivKeys(4)
+	newVals := newKeys.ToValidators(10, 1)
+
 	testCases := []struct {
 		name         string
 		otherHeaders map[int64]*types.SignedHeader // all except ^
@@ -134,6 +137,25 @@ func TestClient_SequentialVerification(t *testing.T) {
 				2: vals,
 				3: vals,
 				4: vals,
+			},
+			false,
+			true,
+		},
+		{
+			"bad: different validator set",
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: h1,
+				// interim header (3/3 signed)
+				2: h2,
+				// last header (3/3 signed)
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: newVals,
+				4: newVals,
 			},
 			false,
 			true,

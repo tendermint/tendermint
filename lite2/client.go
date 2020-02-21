@@ -734,11 +734,11 @@ func (c *Client) sequence(
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
-			if !bytes.Equal(trustedHeader.NextValidatorsHash, interimNextVals.Hash()) {
+			if !bytes.Equal(interimHeader.NextValidatorsHash, interimNextVals.Hash()) {
 				return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
-					trustedHeader.NextValidatorsHash,
+					interimHeader.NextValidatorsHash,
 					interimNextVals.Hash(),
-					trustedHeader.Height)
+					interimHeader.Height)
 			}
 		}
 		trustedHeader, trustedNextVals = interimHeader, interimNextVals
