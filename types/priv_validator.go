@@ -114,16 +114,17 @@ type erroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // Implements PrivValidator.
-func (pv *erroringMockPV) SignVote(chainID string, vote *Vote) error {
+func (pv *ErroringMockPV) SignVote(chainID string, vote *Vote) error {
 	return ErroringMockPVErr
 }
 
 // Implements PrivValidator.
-func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
+func (pv *ErroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
 	return ErroringMockPVErr
 }
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
+
 func NewErroringMockPV() *erroringMockPV {
 	return &erroringMockPV{MockPV{ed25519.GenPrivKey(), false, false}}
 }
