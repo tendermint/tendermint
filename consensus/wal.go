@@ -71,7 +71,6 @@ type WAL interface {
 	Start() error
 	Stop() error
 	Wait()
-	SetLogger(log.Logger)
 }
 
 // Write ahead logger writes msgs to disk before they are processed.
@@ -79,7 +78,7 @@ type WAL interface {
 // TODO: currently the wal is overwritten during replay catchup, give it a mode
 // so it's either reading or appending - must read to end to start appending
 // again.
-type baseWAL struct {
+type BaseWAL struct {
 	service.BaseService
 
 	group *auto.Group
@@ -90,11 +89,11 @@ type baseWAL struct {
 	flushInterval time.Duration
 }
 
-var _ WAL = &baseWAL{}
+var _ WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
-func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (WAL, error) {
+func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
@@ -104,7 +103,7 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (WAL, error) {
 	if err != nil {
 		return nil, err
 	}
-	wal := &baseWAL{
+	wal := &BaseWAL{
 		group:         group,
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
@@ -114,20 +113,20 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (WAL, error) {
 }
 
 // SetFlushInterval allows us to override the periodic flush interval for the WAL.
-func (wal *baseWAL) SetFlushInterval(i time.Duration) {
+func (wal *BaseWAL) SetFlushInterval(i time.Duration) {
 	wal.flushInterval = i
 }
 
-func (wal *baseWAL) Group() *auto.Group {
+func (wal *BaseWAL) Group() *auto.Group {
 	return wal.group
 }
 
-func (wal *baseWAL) SetLogger(l log.Logger) {
+func (wal *BaseWAL) SetLogger(l log.Logger) {
 	wal.BaseService.Logger = l
 	wal.group.SetLogger(l)
 }
 
-func (wal *baseWAL) OnStart() error {
+func (wal *BaseWAL) OnStart() error {
 	size, err := wal.group.Head.Size()
 	if err != nil {
 		return err
@@ -143,7 +142,7 @@ func (wal *baseWAL) OnStart() error {
 	return nil
 }
 
-func (wal *baseWAL) processFlushTicks() {
+func (wal *BaseWAL) processFlushTicks() {
 	for {
 		select {
 		case <-wal.flushTicker.C:
@@ -158,14 +157,14 @@ func (wal *baseWAL) processFlushTicks() {
 
 // FlushAndSync flushes and fsync's the underlying group's data to disk.
 // See auto#FlushAndSync
-func (wal *baseWAL) FlushAndSync() error {
+func (wal *BaseWAL) FlushAndSync() error {
 	return wal.group.FlushAndSync()
 }
 
 // Stop the underlying autofile group.
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
-func (wal *baseWAL) OnStop() {
+func (wal *BaseWAL) OnStop() {
 	wal.flushTicker.Stop()
 	wal.FlushAndSync()
 	wal.group.Stop()
@@ -174,14 +173,14 @@ func (wal *baseWAL) OnStop() {
 
 // Wait for the underlying autofile group to finish shutting down
 // so it's safe to cleanup files.
-func (wal *baseWAL) Wait() {
+func (wal *BaseWAL) Wait() {
 	wal.group.Wait()
 }
 
 // Write is called in newStep and for each receive on the
 // peerMsgQueue and the timeoutTicker.
 // NOTE: does not call fsync()
-func (wal *baseWAL) Write(msg WALMessage) error {
+func (wal *BaseWAL) Write(msg WALMessage) error {
 	if wal == nil {
 		return nil
 	}
@@ -198,7 +197,7 @@ func (wal *baseWAL) Write(msg WALMessage) error {
 // WriteSync is called when we receive a msg from ourselves
 // so that we write to disk before sending signed messages.
 // NOTE: calls fsync()
-func (wal *baseWAL) WriteSync(msg WALMessage) error {
+func (wal *BaseWAL) WriteSync(msg WALMessage) error {
 	if wal == nil {
 		return nil
 	}
@@ -228,7 +227,7 @@ type WALSearchOptions struct {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(
+func (wal *BaseWAL) SearchForEndHeight(
 	height int64,
 	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	var (
@@ -411,7 +410,6 @@ func (nilWAL) FlushAndSync() error          { return nil }
 func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
-func (nilWAL) Start() error         { return nil }
-func (nilWAL) Stop() error          { return nil }
-func (nilWAL) Wait()                {}
-func (nilWAL) SetLogger(log.Logger) {}
+func (nilWAL) Start() error { return nil }
+func (nilWAL) Stop() error  { return nil }
+func (nilWAL) Wait()        {}

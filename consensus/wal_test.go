@@ -55,7 +55,7 @@ func TestWALTruncate(t *testing.T) {
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
 	// time, RotateFile is called, truncate content exist in each file.
-	err = WALGenerateNBlocks(t, wal.(*baseWAL).Group(), 60)
+	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
@@ -176,15 +176,15 @@ func TestWALPeriodicSync(t *testing.T) {
 	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 	require.NoError(t, err)
 
-	wal.(*baseWAL).SetFlushInterval(walTestFlushInterval)
+	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
 
 	// Generate some data
-	err = WALGenerateNBlocks(t, wal.(*baseWAL).Group(), 5)
+	err = WALGenerateNBlocks(t, wal.Group(), 5)
 	require.NoError(t, err)
 
 	// We should have data in the buffer now
-	assert.NotZero(t, wal.(*baseWAL).Group().Buffered())
+	assert.NotZero(t, wal.Group().Buffered())
 
 	require.NoError(t, wal.Start())
 	defer func() {
@@ -195,7 +195,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
 	// The data should have been flushed by the periodic sync
-	assert.Zero(t, wal.(*baseWAL).Group().Buffered())
+	assert.Zero(t, wal.Group().Buffered())
 
 	h := int64(4)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})

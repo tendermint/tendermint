@@ -206,7 +206,6 @@ func (w *byteBufferWAL) SearchForEndHeight(
 	return nil, false, nil
 }
 
-func (w *byteBufferWAL) Start() error         { return nil }
-func (w *byteBufferWAL) Stop() error          { return nil }
-func (w *byteBufferWAL) Wait()                {}
-func (w *byteBufferWAL) SetLogger(log.Logger) {}
+func (w *byteBufferWAL) Start() error { return nil }
+func (w *byteBufferWAL) Stop() error  { return nil }
+func (w *byteBufferWAL) Wait()        {}

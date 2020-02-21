@@ -276,10 +276,9 @@ func (w *crashingWAL) SearchForEndHeight(
 	return w.next.SearchForEndHeight(height, options)
 }
 
-func (w *crashingWAL) Start() error         { return w.next.Start() }
-func (w *crashingWAL) Stop() error          { return w.next.Stop() }
-func (w *crashingWAL) Wait()                { w.next.Wait() }
-func (w *crashingWAL) SetLogger(log.Logger) {}
+func (w *crashingWAL) Start() error { return w.next.Start() }
+func (w *crashingWAL) Stop() error  { return w.next.Stop() }
+func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
 type testSim struct {
