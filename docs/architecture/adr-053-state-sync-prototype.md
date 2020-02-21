@@ -227,19 +227,7 @@ $ ./tools/stop.sh
 
 * Should we have a simpler scheme for discovering snapshots? E.g. announce supported formats, and have peer supply latest available snapshot.
 
-    > Downsides: app has to announce supported formats, can't use `metadata` for arbitrary app negotiation of snapshots, having a single snapshot per peer may make fewer peers available for chosen snapshot.
-
-* Should `ListSnapshots` be a streaming API instead of a request/response API?
-
-* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
-
-* How large chunks can we send without getting memory issues? Can we stream the chunk contents?
-
-* Should we call these snapshots? IAVL already has a different concept called snapshots.
-
-* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
-
-* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+    Downsides: app has to announce supported formats, having a single snapshot per peer may make fewer peers available for chosen snapshot.
 
 ## Resolved Questions
 
@@ -263,45 +251,67 @@ $ ./tools/stop.sh
 
     > No, these are full nodes not validators, so we can't punish them. Just disconnect from them and ignore them.
 
+* Should we call these snapshots? The SDK already uses the term "snapshot" for `PruningOptions.SnapshotEvery`, and state sync will introduce additional SDK options for snapshot scheduling and pruning that are not related to IAVL snapshotting or pruning.
+
+    > Yes. Hopefully these concepts are distinct enough that we can refer to state sync snapshots and IAVL snapshots without too much confusion.
+
+* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
+
+    > As a first approach, store metadata in a database and chunks in the filesystem.
+
+* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
+
+    > After commit.
+
+* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+
+    > We should remove the v1 reactor completely once v2 has stabilized.
+
+* Should `ListSnapshots` be a streaming API instead of a request/response API?
+
+    > No, just use a max message size.
+
 ## Implementation Plan
 
-* **Tendermint:** light client P2P transport [optional]
+### Core Tasks
 
-* **Tendermint:** rpc/client (Local) must not depend on node (Node), due to import cycles [required]
+* **Tendermint:** light client P2P transport
 
-  * Only required if we do not implement P2P transport, since the cycle is caused by HTTP transport
+* **IAVL:** dump/restore API [#3639](https://github.com/tendermint/tendermint/issues/3639)
 
-* **IAVL:** dump/restore API (iterator-based) [required] [#3639](https://github.com/tendermint/tendermint/issues/3639)
+* **Cosmos SDK:** snapshotting, scheduling, and pruning
 
-  * Incremental verification [optional]
+* **Tendermint:** support starting with a truncated block history
 
-* **Cosmos SDK:** snapshotting, scheduling, and pruning [required]
+* **Tendermint:** state sync reactor and ABCI interface [#828](https://github.com/tendermint/tendermint/issues/828)
 
-* **Tendermint:** support starting with a truncated block history [required]
+* **Cosmos SDK:** snapshot ABCI implementation
 
-  * Allow start with only blockstore [optional] [#3713](https://github.com/tendermint/tendermint/issues/3713)
+### Nice-to-Haves
 
-  * Prune blockchain history [optional] [#3652](https://github.com/tendermint/tendermint/issues/3652)
+* **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus)
 
-  * Allow genesis to start from non-zero height [optional] [#2543](https://github.com/tendermint/tendermint/issues/2543)
+    > Let's do a time-boxed prototype (a few days) and see how much work it will be.
 
-* **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus) [optional]
+  * Notify P2P peers about channel changes [#4394](https://github.com/tendermint/tendermint/issues/4394)
 
-  * Notify P2P peers about channel changes [optional] [#4394](https://github.com/tendermint/tendermint/issues/4394)
+  * Check peers have certain channels [#1148](https://github.com/tendermint/tendermint/issues/1148)
 
-  * Check peers have certain channels [optional] [#1148](https://github.com/tendermint/tendermint/issues/1148)
+* **Tendermint:** prune blockchain history [#3652](https://github.com/tendermint/tendermint/issues/3652)
 
-  * Node should go back to fast-syncing when lagging significantly [optional] [#129](https://github.com/tendermint/tendermint/issues/129)
+* **Tendermint:** allow genesis to start from non-zero height [#2543](https://github.com/tendermint/tendermint/issues/2543)
 
-* **Tendermint:** light client verification for fast sync [optional]
+### Follow-up Tasks
 
-* **Tendermint:** state sync reactor and ABCI interface [required] [#828](https://github.com/tendermint/tendermint/issues/828)
+* **Tendermint:** light client verification for fast sync
 
-* **Cosmos SDK:** snapshot ABCI implementation [required]
+* **Tendermint:** allow start with only blockstore [#3713](https://github.com/tendermint/tendermint/issues/3713)
+
+* **Tendermint:** node should go back to fast-syncing when lagging significantly [#129](https://github.com/tendermint/tendermint/issues/129)
 
 ## Status
 
-Proposed
+Accepted
 
 ## References
 
