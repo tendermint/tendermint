@@ -106,7 +106,7 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 			Type: ABCIPubKeyTypeEd25519,
 			Data: pk[:],
 		}
-	case sr25519.PubKeySr25519:
+	case sr25519.PubKey:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeSr25519,
 			Data: pk[:],
@@ -205,11 +205,11 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSr25519:
-		if len(pubKey.Data) != sr25519.PubKeySr25519Size {
+		if len(pubKey.Data) != sr25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySr25519. Got %d, expected %d",
-				len(pubKey.Data), sr25519.PubKeySr25519Size)
+				len(pubKey.Data), sr25519.PubKeySize)
 		}
-		var pk sr25519.PubKeySr25519
+		var pk sr25519.PubKey
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:

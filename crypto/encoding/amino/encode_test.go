@@ -53,7 +53,7 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 
 // ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
 //nolint:govet
-//TODO: this test will break, but keep it as is so we can work towards backwards compatability
+//TODO: this test will break, but keep it as is so we can work towards backwards compatibility
 func ExamplePrintRegisteredTypes() {
 	cdc.PrintTypes(os.Stdout)
 	// Output: | Type | Name | Prefix | Length | Notes |
@@ -149,7 +149,7 @@ func TestPubkeyAminoName(t *testing.T) {
 		found bool
 	}{
 		{ed25519.PubKey{}, ed25519.PubKeyAminoName, true},
-		{sr25519.PubKeySr25519{}, sr25519.PubKeyAminoName, true},
+		{sr25519.PubKey{}, sr25519.PubKeyAminoName, true},
 		{secp256k1.PubKey{}, secp256k1.PubKeyAminoName, true},
 		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
@@ -230,7 +230,7 @@ func TestRegisterKeyType(t *testing.T) {
 	nameTable = make(map[reflect.Type]string, 3)
 	RegisterAmino(cdc)
 	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(sr25519.PubKeySr25519{})] = sr25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyAminoName
 	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyAminoName
 	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }

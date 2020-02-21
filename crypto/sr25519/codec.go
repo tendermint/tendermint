@@ -5,7 +5,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-var _ crypto.PrivKey = PrivKeySr25519{}
+var _ crypto.PrivKey = PrivKey{}
 
 const (
 	PrivKeyAminoName = "tendermint/PrivKeySr25519"
@@ -20,10 +20,10 @@ var cdc = amino.NewCodec()
 
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(PubKeySr25519{},
+	cdc.RegisterConcrete(PubKey{},
 		PubKeyAminoName, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(PrivKeySr25519{},
+	cdc.RegisterConcrete(PrivKey{},
 		PrivKeyAminoName, nil)
 }
