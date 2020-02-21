@@ -743,41 +743,54 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 1 * time.Hour,
-			Height: 3,
-			Hash:   h3.Hash(),
-		},
-		fullNode,
-		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
-		Logger(log.TestingLogger()),
-	)
-	require.NoError(t, err)
+	{
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			fullNode,
+			[]provider.Provider{fullNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
 
-	// 1) header is missing => expect no error
-	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-	require.NoError(t, err)
-	if assert.NotNil(t, h) {
-		assert.EqualValues(t, 2, h.Height)
+		// 1) header is missing => expect no error
+		h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		require.NoError(t, err)
+		if assert.NotNil(t, h) {
+			assert.EqualValues(t, 2, h.Height)
+		}
+
+		// 2) untrusted header is expired but trusted header is not => expect no error
+		h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
+		assert.NotNil(t, h)
 	}
+	{
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			fullNode,
+			[]provider.Provider{fullNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
 
-	// 2) header is missing, but it's expired => expect error
-	h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.Error(t, err)
-	assert.NotNil(t, h)
-
-	// 3) already stored headers should return the header without error
-	h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.NoError(t, err)
-	assert.NotNil(t, h)
-
-	// 4) cannot verify a header in the future
-	_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.Error(t, err)
+		// 3) trusted header has expired => expect error
+		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
+	}
 }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
