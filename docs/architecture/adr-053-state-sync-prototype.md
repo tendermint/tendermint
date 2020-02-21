@@ -275,17 +275,17 @@ $ ./tools/stop.sh
 
 ### Core Tasks
 
-* **Tendermint:** light client P2P transport
+* **Tendermint:** light client P2P transport [#4456](https://github.com/tendermint/tendermint/issues/4456)
 
-* **IAVL:** dump/restore API [#3639](https://github.com/tendermint/tendermint/issues/3639)
+* **IAVL:** export/import API [#210](https://github.com/tendermint/iavl/issues/210)
 
-* **Cosmos SDK:** snapshotting, scheduling, and pruning
+* **Cosmos SDK:** snapshotting, scheduling, and pruning [#5689](https://github.com/cosmos/cosmos-sdk/issues/5689)
 
 * **Tendermint:** support starting with a truncated block history
 
 * **Tendermint:** state sync reactor and ABCI interface [#828](https://github.com/tendermint/tendermint/issues/828)
 
-* **Cosmos SDK:** snapshot ABCI implementation
+* **Cosmos SDK:** snapshot ABCI implementation [#5690](https://github.com/cosmos/cosmos-sdk/issues/5690)
 
 ### Nice-to-Haves
 
@@ -303,7 +303,7 @@ $ ./tools/stop.sh
 
 ### Follow-up Tasks
 
-* **Tendermint:** light client verification for fast sync
+* **Tendermint:** light client verification for fast sync [#4457](https://github.com/tendermint/tendermint/issues/4457)
 
 * **Tendermint:** allow start with only blockstore [#3713](https://github.com/tendermint/tendermint/issues/3713)
 
