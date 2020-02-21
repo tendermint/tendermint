@@ -45,7 +45,7 @@ var _ net.Listener = (*TCPListener)(nil)
 type TCPListener struct {
 	*net.TCPListener
 
-	secretConnKey ed25519.PrivKeyEd25519
+	secretConnKey ed25519.PrivKey
 
 	timeoutAccept    time.Duration
 	timeoutReadWrite time.Duration

@@ -1,7 +1,7 @@
 syntax = "proto3";
-package tendermint.crypto;
+package tendermint.crypto.encoding.proto;
 
-option go_package = "github.com/tendermint/tendermint/crypto";
+option go_package = "github.com/tendermint/tendermint/crypto/encoding/proto";
 
 import "third_party/proto/gogoproto/gogo.proto";
 

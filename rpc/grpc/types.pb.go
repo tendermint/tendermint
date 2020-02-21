@@ -7,6 +7,12 @@ import (
 	bytes "bytes"
 	context "context"
 	fmt "fmt"
+	io "io"
+	math "math"
+	math_bits "math/bits"
+	reflect "reflect"
+	strings "strings"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	golang_proto "github.com/golang/protobuf/proto"
@@ -14,9 +20,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	io "io"
-	math "math"
-	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -34,9 +37,8 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type RequestPing struct {
 }
 
-func (m *RequestPing) Reset()         { *m = RequestPing{} }
-func (m *RequestPing) String() string { return proto.CompactTextString(m) }
-func (*RequestPing) ProtoMessage()    {}
+func (m *RequestPing) Reset()      { *m = RequestPing{} }
+func (*RequestPing) ProtoMessage() {}
 func (*RequestPing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{0}
 }
@@ -71,9 +73,8 @@ type RequestBroadcastTx struct {
 	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 }
 
-func (m *RequestBroadcastTx) Reset()         { *m = RequestBroadcastTx{} }
-func (m *RequestBroadcastTx) String() string { return proto.CompactTextString(m) }
-func (*RequestBroadcastTx) ProtoMessage()    {}
+func (m *RequestBroadcastTx) Reset()      { *m = RequestBroadcastTx{} }
+func (*RequestBroadcastTx) ProtoMessage() {}
 func (*RequestBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{1}
 }
@@ -114,9 +115,8 @@ func (m *RequestBroadcastTx) GetTx() []byte {
 type ResponsePing struct {
 }
 
-func (m *ResponsePing) Reset()         { *m = ResponsePing{} }
-func (m *ResponsePing) String() string { return proto.CompactTextString(m) }
-func (*ResponsePing) ProtoMessage()    {}
+func (m *ResponsePing) Reset()      { *m = ResponsePing{} }
+func (*ResponsePing) ProtoMessage() {}
 func (*ResponsePing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{2}
 }
@@ -152,9 +152,8 @@ type ResponseBroadcastTx struct {
 	DeliverTx *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx,proto3" json:"deliver_tx,omitempty"`
 }
 
-func (m *ResponseBroadcastTx) Reset()         { *m = ResponseBroadcastTx{} }
-func (m *ResponseBroadcastTx) String() string { return proto.CompactTextString(m) }
-func (*ResponseBroadcastTx) ProtoMessage()    {}
+func (m *ResponseBroadcastTx) Reset()      { *m = ResponseBroadcastTx{} }
+func (*ResponseBroadcastTx) ProtoMessage() {}
 func (*ResponseBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{3}
 }
@@ -332,6 +331,57 @@ func (this *ResponseBroadcastTx) Equal(that interface{}) bool {
 		return false
 	}
 	return true
+}
+func (this *RequestPing) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&coregrpc.RequestPing{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RequestBroadcastTx) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&coregrpc.RequestBroadcastTx{")
+	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ResponsePing) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&coregrpc.ResponsePing{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ResponseBroadcastTx) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&coregrpc.ResponseBroadcastTx{")
+	if this.CheckTx != nil {
+		s = append(s, "CheckTx: "+fmt.Sprintf("%#v", this.CheckTx)+",\n")
+	}
+	if this.DeliverTx != nil {
+		s = append(s, "DeliverTx: "+fmt.Sprintf("%#v", this.DeliverTx)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func valueToGoStringTypes(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -748,6 +798,53 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *RequestPing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RequestPing{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RequestBroadcastTx) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RequestBroadcastTx{`,
+		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ResponsePing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ResponsePing{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ResponseBroadcastTx) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ResponseBroadcastTx{`,
+		`CheckTx:` + strings.Replace(fmt.Sprintf("%v", this.CheckTx), "ResponseCheckTx", "types.ResponseCheckTx", 1) + `,`,
+		`DeliverTx:` + strings.Replace(fmt.Sprintf("%v", this.DeliverTx), "ResponseDeliverTx", "types.ResponseDeliverTx", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringTypes(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *RequestPing) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

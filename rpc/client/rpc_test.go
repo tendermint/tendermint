@@ -18,6 +18,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -672,8 +673,8 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		require.NoError(t, err)
 		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 
-		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
-		rawpub := ed25519pub[:]
+		ed25519pub := ev.PubKey.(ed25519.PubKey)
+		rawpub := tmbytes.HexBytes(ed25519pub)
 		result2, err := c.ABCIQuery("/val", rawpub)
 		require.Nil(t, err, "Error querying evidence, err %v", err)
 		qres := result2.Response
