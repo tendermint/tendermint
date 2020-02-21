@@ -705,11 +705,11 @@ func (c *Client) sequence(
 	now time.Time) error {
 	// 1) Verify any intermediate headers.
 	var (
-		interimHeader *types.SignedHeader
-		err           error
+		interimNextVals *types.ValidatorSet
+		interimHeader   *types.SignedHeader
+		err             error
 	)
-	for trustedHeader.Height < newHeader.Height {
-		height := trustedHeader.Height + 1
+	for height := trustedHeader.Height + 1; height < newHeader.Height; height++ {
 		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
@@ -729,19 +729,20 @@ func (c *Client) sequence(
 		// Update trusted header and vals.
 		trustedHeader = interimHeader
 		if height == newHeader.Height-1 {
-			trustedNextVals = newVals
+			interimNextVals = newVals
 		} else {
-			trustedNextVals, err = c.validatorSetFromPrimary(height + 1)
+			interimNextVals, err = c.validatorSetFromPrimary(height + 1)
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
-			if !bytes.Equal(trustedHeader.NextValidatorsHash, trustedNextVals.Hash()) {
+			if !bytes.Equal(trustedHeader.NextValidatorsHash, interimNextVals.Hash()) {
 				return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
 					trustedHeader.NextValidatorsHash,
-					trustedNextVals.Hash(),
+					interimNextVals.Hash(),
 					trustedHeader.Height)
 			}
 		}
+		trustedNextVals = interimNextVals
 	}
 
 	return nil
@@ -768,7 +769,6 @@ func (c *Client) bisection(
 			c.trustLevel)
 		switch err.(type) {
 		case nil:
-			// termination clause
 			if interimHeader.Height == newHeader.Height {
 				return nil
 			}
