@@ -15,6 +15,8 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+  - [lite] Remove old lite package in favor of lite2 package
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
