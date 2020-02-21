@@ -171,6 +171,10 @@ jobs:
       GOPATH: /home/circleci/.go_workspace
     machine:
       image: circleci/classic:latest
+    parameters:
+      ipv:
+        type: integer
+        default: 4
     steps:
       - checkout
       - run: mkdir -p $GOPATH/src/github.com/tendermint
@@ -424,8 +428,7 @@ workflows:
       - localnet:
           requires:
             - setup_dependencies
-      - test_p2p:
-          ipv: 4
+      - test_p2p
       - test_p2p:
           ipv: 6
       - upload_coverage:
