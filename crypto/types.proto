@@ -1,0 +1,29 @@
+syntax = "proto3";
+package tendermint.crypto;
+
+option go_package = "github.com/tendermint/tendermint/crypto";
+
+import "third_party/proto/gogoproto/gogo.proto";
+
+message PubKey {
+  oneof key {
+    bytes                   ed25519   = 1;
+    bytes                   secp256k1 = 2;
+    bytes                   sr25519   = 3;
+    PubKeyMultiSigThreshold multisig  = 4;
+  }
+}
+
+message PrivKey {
+  oneof key {
+    bytes ed25519   = 1;
+    bytes secp256k1 = 2;
+    bytes sr25519   = 3;
+    // bytes multisig = 4;
+  }
+}
+
+message PubKeyMultiSigThreshold {
+  uint64          k        = 1;
+  repeated PubKey pub_keys = 2 [(gogoproto.nullable) = false];
+}
