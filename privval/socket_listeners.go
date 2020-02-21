@@ -23,26 +23,26 @@ type timeoutError interface {
 // TCP Listener
 
 // TCPListenerOption sets an optional parameter on the tcpListener.
-type TCPListenerOption func(*tcpListener)
+type TCPListenerOption func(*TCPListener)
 
 // TCPListenerTimeoutAccept sets the timeout for the listener.
 // A zero time value disables the timeout.
 func TCPListenerTimeoutAccept(timeout time.Duration) TCPListenerOption {
-	return func(tl *tcpListener) { tl.timeoutAccept = timeout }
+	return func(tl *TCPListener) { tl.timeoutAccept = timeout }
 }
 
 // TCPListenerTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
 func TCPListenerTimeoutReadWrite(timeout time.Duration) TCPListenerOption {
-	return func(tl *tcpListener) { tl.timeoutReadWrite = timeout }
+	return func(tl *TCPListener) { tl.timeoutReadWrite = timeout }
 }
 
 // tcpListener implements net.Listener.
-var _ net.Listener = (*tcpListener)(nil)
+var _ net.Listener = (*TCPListener)(nil)
 
-// tcpListener wraps a *net.TCPListener to standardise protocol timeouts
+// TCPListener wraps a *net.TCPListener to standardise protocol timeouts
 // and potentially other tuning parameters. It also returns encrypted connections.
-type tcpListener struct {
+type TCPListener struct {
 	*net.TCPListener
 
 	secretConnKey ed25519.PrivKeyEd25519
@@ -53,8 +53,8 @@ type tcpListener struct {
 
 // NewTCPListener returns a listener that accepts authenticated encrypted connections
 // using the given secretConnKey and the default timeout values.
-func NewTCPListener(ln net.Listener, secretConnKey ed25519.PrivKeyEd25519) *tcpListener {
-	return &tcpListener{
+func NewTCPListener(ln net.Listener, secretConnKey ed25519.PrivKeyEd25519) *TCPListener {
+	return &TCPListener{
 		TCPListener:      ln.(*net.TCPListener),
 		secretConnKey:    secretConnKey,
 		timeoutAccept:    time.Second * defaultTimeoutAcceptSeconds,
@@ -63,7 +63,7 @@ func NewTCPListener(ln net.Listener, secretConnKey ed25519.PrivKeyEd25519) *tcpL
 }
 
 // Accept implements net.Listener.
-func (ln *tcpListener) Accept() (net.Conn, error) {
+func (ln *TCPListener) Accept() (net.Conn, error) {
 	deadline := time.Now().Add(ln.timeoutAccept)
 	err := ln.SetDeadline(deadline)
 	if err != nil {
@@ -89,25 +89,25 @@ func (ln *tcpListener) Accept() (net.Conn, error) {
 // Unix Listener
 
 // unixListener implements net.Listener.
-var _ net.Listener = (*unixListener)(nil)
+var _ net.Listener = (*UnixListener)(nil)
 
-type UnixListenerOption func(*unixListener)
+type UnixListenerOption func(*UnixListener)
 
 // UnixListenerTimeoutAccept sets the timeout for the listener.
 // A zero time value disables the timeout.
 func UnixListenerTimeoutAccept(timeout time.Duration) UnixListenerOption {
-	return func(ul *unixListener) { ul.timeoutAccept = timeout }
+	return func(ul *UnixListener) { ul.timeoutAccept = timeout }
 }
 
 // UnixListenerTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
 func UnixListenerTimeoutReadWrite(timeout time.Duration) UnixListenerOption {
-	return func(ul *unixListener) { ul.timeoutReadWrite = timeout }
+	return func(ul *UnixListener) { ul.timeoutReadWrite = timeout }
 }
 
-// unixListener wraps a *net.UnixListener to standardise protocol timeouts
+// UnixListener wraps a *net.UnixListener to standardise protocol timeouts
 // and potentially other tuning parameters. It returns unencrypted connections.
-type unixListener struct {
+type UnixListener struct {
 	*net.UnixListener
 
 	timeoutAccept    time.Duration
@@ -116,8 +116,8 @@ type unixListener struct {
 
 // NewUnixListener returns a listener that accepts unencrypted connections
 // using the default timeout values.
-func NewUnixListener(ln net.Listener) *unixListener {
-	return &unixListener{
+func NewUnixListener(ln net.Listener) *UnixListener {
+	return &UnixListener{
 		UnixListener:     ln.(*net.UnixListener),
 		timeoutAccept:    time.Second * defaultTimeoutAcceptSeconds,
 		timeoutReadWrite: time.Second * defaultTimeoutReadWriteSeconds,
@@ -125,7 +125,7 @@ func NewUnixListener(ln net.Listener) *unixListener {
 }
 
 // Accept implements net.Listener.
-func (ln *unixListener) Accept() (net.Conn, error) {
+func (ln *UnixListener) Accept() (net.Conn, error) {
 	deadline := time.Now().Add(ln.timeoutAccept)
 	err := ln.SetDeadline(deadline)
 	if err != nil {
