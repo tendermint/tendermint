@@ -709,7 +709,7 @@ func (c *Client) sequence(
 		interimHeader   *types.SignedHeader
 		err             error
 	)
-	for height := trustedHeader.Height + 1; height < newHeader.Height; height++ {
+	for height := trustedHeader.Height + 1; height <= newHeader.Height; height++ {
 		interimHeader, err = c.signedHeaderFromPrimary(height)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
