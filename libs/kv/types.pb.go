@@ -9,8 +9,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -31,12 +29,16 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // Define these here for compatibility but use tmlibs/kv.Pair.
 type Pair struct {
-	Key   []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Pair) Reset()      { *m = Pair{} }
-func (*Pair) ProtoMessage() {}
+func (m *Pair) Reset()         { *m = Pair{} }
+func (m *Pair) String() string { return proto.CompactTextString(m) }
+func (*Pair) ProtoMessage()    {}
 func (*Pair) Descriptor() ([]byte, []int) {
 	return fileDescriptor_31432671d164f444, []int{0}
 }
@@ -83,12 +85,16 @@ func (m *Pair) GetValue() []byte {
 
 // Define these here for compatibility but use tmlibs/kv.KI64Pair.
 type KI64Pair struct {
-	Key   []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value int64  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value                int64    `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *KI64Pair) Reset()      { *m = KI64Pair{} }
-func (*KI64Pair) ProtoMessage() {}
+func (m *KI64Pair) Reset()         { *m = KI64Pair{} }
+func (m *KI64Pair) String() string { return proto.CompactTextString(m) }
+func (*KI64Pair) ProtoMessage()    {}
 func (*KI64Pair) Descriptor() ([]byte, []int) {
 	return fileDescriptor_31432671d164f444, []int{1}
 }
@@ -186,6 +192,9 @@ func (this *Pair) Equal(that interface{}) bool {
 	if !bytes.Equal(this.Value, that1.Value) {
 		return false
 	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
 	return true
 }
 func (this *KI64Pair) Equal(that interface{}) bool {
@@ -213,37 +222,10 @@ func (this *KI64Pair) Equal(that interface{}) bool {
 	if this.Value != that1.Value {
 		return false
 	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
 	return true
-}
-func (this *Pair) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&kv.Pair{")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *KI64Pair) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&kv.KI64Pair{")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
 func (m *Pair) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
@@ -265,6 +247,10 @@ func (m *Pair) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	if len(m.Value) > 0 {
 		i -= len(m.Value)
 		copy(dAtA[i:], m.Value)
@@ -302,6 +288,10 @@ func (m *KI64Pair) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	if m.Value != 0 {
 		i = encodeVarintTypes(dAtA, i, uint64(m.Value))
 		i--
@@ -341,6 +331,7 @@ func NewPopulatedPair(r randyTypes, easy bool) *Pair {
 		this.Value[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
 	}
 	return this
 }
@@ -357,6 +348,7 @@ func NewPopulatedKI64Pair(r randyTypes, easy bool) *KI64Pair {
 		this.Value *= -1
 	}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
 	}
 	return this
 }
@@ -447,6 +439,9 @@ func (m *Pair) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -463,6 +458,9 @@ func (m *KI64Pair) Size() (n int) {
 	if m.Value != 0 {
 		n += 1 + sovTypes(uint64(m.Value))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -471,36 +469,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *Pair) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Pair{`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *KI64Pair) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&KI64Pair{`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *Pair) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -614,6 +582,7 @@ func (m *Pair) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -720,6 +689,7 @@ func (m *KI64Pair) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}

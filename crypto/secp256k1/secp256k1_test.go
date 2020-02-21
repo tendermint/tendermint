@@ -2,7 +2,6 @@ package secp256k1_test
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -33,7 +32,7 @@ var secpDataTable = []keyData{
 func TestPubKeySecp256k1Address(t *testing.T) {
 	for _, d := range secpDataTable {
 		privB, _ := hex.DecodeString(d.priv)
-		pubB, _ := hex.DecodeString(d.pub)
+		// pubB, _ := hex.DecodeString(d.pub)
 		addrBbz, _, _ := base58.CheckDecode(d.addr)
 		addrB := crypto.Address(addrBbz)
 
@@ -43,7 +42,6 @@ func TestPubKeySecp256k1Address(t *testing.T) {
 		pubKey := priv.PubKey()
 		// pubT, _ := pubKey.(secp256k1.PubKey)
 		addr := pubKey.Address()
-		fmt.Println(pubB)
 		// assert.Equal(t, pubT, pubB, "Expected pub keys to match") //TODO;
 		assert.Equal(t, addr, addrB, "Expected addresses to match")
 	}

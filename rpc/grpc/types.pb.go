@@ -10,8 +10,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -35,10 +33,14 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type RequestPing struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RequestPing) Reset()      { *m = RequestPing{} }
-func (*RequestPing) ProtoMessage() {}
+func (m *RequestPing) Reset()         { *m = RequestPing{} }
+func (m *RequestPing) String() string { return proto.CompactTextString(m) }
+func (*RequestPing) ProtoMessage()    {}
 func (*RequestPing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{0}
 }
@@ -70,11 +72,15 @@ func (m *RequestPing) XXX_DiscardUnknown() {
 var xxx_messageInfo_RequestPing proto.InternalMessageInfo
 
 type RequestBroadcastTx struct {
-	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RequestBroadcastTx) Reset()      { *m = RequestBroadcastTx{} }
-func (*RequestBroadcastTx) ProtoMessage() {}
+func (m *RequestBroadcastTx) Reset()         { *m = RequestBroadcastTx{} }
+func (m *RequestBroadcastTx) String() string { return proto.CompactTextString(m) }
+func (*RequestBroadcastTx) ProtoMessage()    {}
 func (*RequestBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{1}
 }
@@ -113,10 +119,14 @@ func (m *RequestBroadcastTx) GetTx() []byte {
 }
 
 type ResponsePing struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ResponsePing) Reset()      { *m = ResponsePing{} }
-func (*ResponsePing) ProtoMessage() {}
+func (m *ResponsePing) Reset()         { *m = ResponsePing{} }
+func (m *ResponsePing) String() string { return proto.CompactTextString(m) }
+func (*ResponsePing) ProtoMessage()    {}
 func (*ResponsePing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{2}
 }
@@ -148,12 +158,16 @@ func (m *ResponsePing) XXX_DiscardUnknown() {
 var xxx_messageInfo_ResponsePing proto.InternalMessageInfo
 
 type ResponseBroadcastTx struct {
-	CheckTx   *types.ResponseCheckTx   `protobuf:"bytes,1,opt,name=check_tx,json=checkTx,proto3" json:"check_tx,omitempty"`
-	DeliverTx *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx,proto3" json:"deliver_tx,omitempty"`
+	CheckTx              *types.ResponseCheckTx   `protobuf:"bytes,1,opt,name=check_tx,json=checkTx,proto3" json:"check_tx,omitempty"`
+	DeliverTx            *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx,proto3" json:"deliver_tx,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
 }
 
-func (m *ResponseBroadcastTx) Reset()      { *m = ResponseBroadcastTx{} }
-func (*ResponseBroadcastTx) ProtoMessage() {}
+func (m *ResponseBroadcastTx) Reset()         { *m = ResponseBroadcastTx{} }
+func (m *ResponseBroadcastTx) String() string { return proto.CompactTextString(m) }
+func (*ResponseBroadcastTx) ProtoMessage()    {}
 func (*ResponseBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{3}
 }
@@ -258,6 +272,9 @@ func (this *RequestPing) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
 	return true
 }
 func (this *RequestBroadcastTx) Equal(that interface{}) bool {
@@ -282,6 +299,9 @@ func (this *RequestBroadcastTx) Equal(that interface{}) bool {
 	if !bytes.Equal(this.Tx, that1.Tx) {
 		return false
 	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
 	return true
 }
 func (this *ResponsePing) Equal(that interface{}) bool {
@@ -301,6 +321,9 @@ func (this *ResponsePing) Equal(that interface{}) bool {
 	if that1 == nil {
 		return this == nil
 	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
 		return false
 	}
 	return true
@@ -330,58 +353,10 @@ func (this *ResponseBroadcastTx) Equal(that interface{}) bool {
 	if !this.DeliverTx.Equal(that1.DeliverTx) {
 		return false
 	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
 	return true
-}
-func (this *RequestPing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&coregrpc.RequestPing{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestBroadcastTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&coregrpc.RequestBroadcastTx{")
-	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponsePing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&coregrpc.ResponsePing{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseBroadcastTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&coregrpc.ResponseBroadcastTx{")
-	if this.CheckTx != nil {
-		s = append(s, "CheckTx: "+fmt.Sprintf("%#v", this.CheckTx)+",\n")
-	}
-	if this.DeliverTx != nil {
-		s = append(s, "DeliverTx: "+fmt.Sprintf("%#v", this.DeliverTx)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -520,6 +495,10 @@ func (m *RequestPing) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -543,6 +522,10 @@ func (m *RequestBroadcastTx) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	if len(m.Tx) > 0 {
 		i -= len(m.Tx)
 		copy(dAtA[i:], m.Tx)
@@ -573,6 +556,10 @@ func (m *ResponsePing) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -596,6 +583,10 @@ func (m *ResponseBroadcastTx) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	if m.DeliverTx != nil {
 		{
 			size, err := m.DeliverTx.MarshalToSizedBuffer(dAtA[:i])
@@ -637,6 +628,7 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 func NewPopulatedRequestPing(r randyTypes, easy bool) *RequestPing {
 	this := &RequestPing{}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 1)
 	}
 	return this
 }
@@ -649,6 +641,7 @@ func NewPopulatedRequestBroadcastTx(r randyTypes, easy bool) *RequestBroadcastTx
 		this.Tx[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 2)
 	}
 	return this
 }
@@ -656,6 +649,7 @@ func NewPopulatedRequestBroadcastTx(r randyTypes, easy bool) *RequestBroadcastTx
 func NewPopulatedResponsePing(r randyTypes, easy bool) *ResponsePing {
 	this := &ResponsePing{}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 1)
 	}
 	return this
 }
@@ -669,6 +663,7 @@ func NewPopulatedResponseBroadcastTx(r randyTypes, easy bool) *ResponseBroadcast
 		this.DeliverTx = types.NewPopulatedResponseDeliverTx(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
 	}
 	return this
 }
@@ -751,6 +746,9 @@ func (m *RequestPing) Size() (n int) {
 	}
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -764,6 +762,9 @@ func (m *RequestBroadcastTx) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -773,6 +774,9 @@ func (m *ResponsePing) Size() (n int) {
 	}
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -790,6 +794,9 @@ func (m *ResponseBroadcastTx) Size() (n int) {
 		l = m.DeliverTx.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -798,53 +805,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *RequestPing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestPing{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestBroadcastTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestBroadcastTx{`,
-		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponsePing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponsePing{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseBroadcastTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseBroadcastTx{`,
-		`CheckTx:` + strings.Replace(fmt.Sprintf("%v", this.CheckTx), "ResponseCheckTx", "types.ResponseCheckTx", 1) + `,`,
-		`DeliverTx:` + strings.Replace(fmt.Sprintf("%v", this.DeliverTx), "ResponseDeliverTx", "types.ResponseDeliverTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *RequestPing) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -890,6 +850,7 @@ func (m *RequestPing) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -977,6 +938,7 @@ func (m *RequestBroadcastTx) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1030,6 +992,7 @@ func (m *ResponsePing) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1155,6 +1118,7 @@ func (m *ResponseBroadcastTx) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
