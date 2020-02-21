@@ -23,7 +23,7 @@ linters:
     - interfacer
     - lll
     - misspell
-    - maligned
+    # - maligned
     - nakedret
     - prealloc
     - scopelint
