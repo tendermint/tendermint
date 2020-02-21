@@ -344,12 +344,12 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 	c.RemoveNoLongerTrustedHeaders(now)
 
 	// Check expired headers are no longer available.
-	h, err := c.TrustedHeader(1, now)
+	h, err := c.TrustedHeader(1)
 	assert.Error(t, err)
 	assert.Nil(t, h)
 
 	// Check not expired headers are available.
-	h, err = c.TrustedHeader(2, now)
+	h, err = c.TrustedHeader(2)
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 }
@@ -371,7 +371,7 @@ func TestClient_Cleanup(t *testing.T) {
 	c.Cleanup()
 
 	// Check no headers exist after Cleanup.
-	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	h, err := c.TrustedHeader(1)
 	assert.Error(t, err)
 	assert.Nil(t, h)
 }
@@ -397,7 +397,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Stop()
 
-		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
@@ -442,7 +442,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Stop()
 
-		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), header1.Hash())
@@ -475,7 +475,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
@@ -526,7 +526,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 		defer c.Stop()
 
 		// Check we no longer have the invalid 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -572,13 +572,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
 
 		// Check we no longer have 2nd header (+header2+).
-		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err = c.TrustedHeader(2)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -628,13 +628,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		defer c.Stop()
 
 		// Check we have swapped invalid 1st header (+header+) with correct one (+header1+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), header1.Hash())
 
 		// Check we no longer have invalid 2nd header (+header2+).
-		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err = c.TrustedHeader(2)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -658,7 +658,7 @@ func TestClient_Update(t *testing.T) {
 	err = c.Update(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
-	h, err := c.TrustedHeader(3, bTime.Add(2*time.Hour))
+	h, err := c.TrustedHeader(3)
 	assert.NoError(t, err)
 	require.NotNil(t, h)
 	assert.EqualValues(t, 3, h.Height)
@@ -699,7 +699,7 @@ func TestClient_Concurrency(t *testing.T) {
 			_, err = c.FirstTrustedHeight()
 			assert.NoError(t, err)
 
-			h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour))
+			h, err := c.TrustedHeader(1)
 			assert.NoError(t, err)
 			assert.NotNil(t, h)
 
@@ -800,7 +800,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 
 	// 2) Check header exists (deadNode is being used to ensure we're not getting
 	// it from primary)
-	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	h, err := c.TrustedHeader(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
 }

@@ -427,7 +427,7 @@ func (c *Client) Stop() {
 //  - header has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
-func (c *Client) TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error) {
+func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 	if height < 0 {
 		return nil, errors.New("negative height")
 	}
@@ -480,7 +480,7 @@ func (c *Client) TrustedValidatorSet(height int64, now time.Time) (*types.Valida
 	// Checks height is positive and header (note: height - 1) is not expired.
 	// Additionally, it fetches validator set from primary if it's missing in
 	// store.
-	_, err := c.TrustedHeader(height-1, now)
+	_, err := c.TrustedHeader(height - 1)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 		return nil, errors.New("negative or zero height")
 	}
 
-	h, err := c.TrustedHeader(height, now)
+	h, err := c.TrustedHeader(height)
 	switch err.(type) {
 	case nil: // Return already trusted header
 		c.logger.Info("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
@@ -565,7 +565,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // validator set at height newHeader.Height+1 (i.e.
 // newHeader.NextValidatorsHash).
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	h, err := c.TrustedHeader(newHeader.Height, now)
+	h, err := c.TrustedHeader(newHeader.Height)
 	switch err.(type) {
 	case nil: // Return already trusted header
 		// Make sure it's the same header.
