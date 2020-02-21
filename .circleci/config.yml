@@ -430,6 +430,7 @@ workflows:
             - setup_dependencies
       - test_p2p
       - test_p2p:
+          name: test_p2p_ipv6
           ipv: 6
       - upload_coverage:
           requires:
