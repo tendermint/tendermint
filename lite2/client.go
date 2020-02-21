@@ -777,11 +777,11 @@ func (c *Client) bisection(
 			if err != nil {
 				return err
 			}
-			if !bytes.Equal(trustedHeader.NextValidatorsHash, interimVals.Hash()) {
+			if !bytes.Equal(interimHeader.NextValidatorsHash, interimVals.Hash()) {
 				return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
-					trustedHeader.NextValidatorsHash,
+					interimHeader.NextValidatorsHash,
 					interimVals.Hash(),
-					trustedHeader.Height)
+					interimHeader.Height)
 			}
 			trustedNextVals, trustedHeader = interimVals, interimHeader
 			// Update the upper bound to the untrustedHeader
