@@ -117,6 +117,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.Validators,
 				privVals[proposerAddr.String()],
 				chainID,
+				time.Now(),
 			)
 			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := types.NewCommit(

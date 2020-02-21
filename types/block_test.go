@@ -348,11 +348,11 @@ func TestMaxHeaderBytes(t *testing.T) {
 	assert.EqualValues(t, MaxHeaderBytes, int64(len(bz)))
 }
 
-func randCommit() *Commit {
+func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}

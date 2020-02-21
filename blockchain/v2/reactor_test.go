@@ -493,7 +493,9 @@ func newReactorStore(
 				lastBlockMeta.BlockID,
 				state.Validators,
 				privVals[0],
-				lastBlock.Header.ChainID)
+				lastBlock.Header.ChainID,
+				time.Now(),
+			)
 			if err != nil {
 				panic(err)
 			}
