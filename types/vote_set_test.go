@@ -8,7 +8,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 

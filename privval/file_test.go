@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/types"
-
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
