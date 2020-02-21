@@ -15,6 +15,8 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+  - [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Removed `conn.ErrSharedSecretIsZero`. A generic error is returned for this condition instead. (@erikgrinaker)
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
