@@ -424,9 +424,9 @@ workflows:
       - localnet:
           requires:
             - setup_dependencies
-      - test_p2p
+      - test_p2p:
           ipv: 4
-      - test_p2p
+      - test_p2p:
           ipv: 6
       - upload_coverage:
           requires:
