@@ -30,15 +30,15 @@ func NewAppConns(clientCreator ClientCreator) AppConns {
 type multiAppConn struct {
 	service.BaseService
 
-	mempoolConn   *appConnMempool
-	consensusConn *appConnConsensus
-	queryConn     *appConnQuery
+	mempoolConn   AppConnMempool
+	consensusConn AppConnConsensus
+	queryConn     AppConnQuery
 
 	clientCreator ClientCreator
 }
 
 // Make all necessary abci connections to the application
-func NewMultiAppConn(clientCreator ClientCreator) *multiAppConn {
+func NewMultiAppConn(clientCreator ClientCreator) AppConns {
 	multiAppConn := &multiAppConn{
 		clientCreator: clientCreator,
 	}
