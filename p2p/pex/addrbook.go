@@ -97,16 +97,16 @@ type addrBook struct {
 	filePath          string
 	key               string // random prefix for bucket placement
 	routabilityStrict bool
+	hashKey           []byte
 
 	wg sync.WaitGroup
 }
 
-var hashKey []byte
-
-func init() {
-	highwayKeyLength := 32
-	hashKey = make([]byte, highwayKeyLength)
-	crand.Read(hashKey)
+func newHashKey() []byte {
+	highwayKeyLength := highwayhash.Size
+	result := make([]byte, highwayKeyLength)
+	crand.Read(result)
+	return result
 }
 
 // NewAddrBook creates a new address book.
@@ -119,6 +119,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 		addrLookup:        make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
+		hashKey:           newHashKey(),
 	}
 	am.init()
 	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
@@ -754,7 +755,7 @@ func (a *addrBook) calcNewBucket(addr, src *p2p.NetAddress) (int, error) {
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(a.groupKey(addr))...)
 	data1 = append(data1, []byte(a.groupKey(src))...)
-	hash1, err := hash(data1)
+	hash1, err := a.hash(data1)
 	if err != nil {
 		return 0, err
 	}
@@ -767,7 +768,7 @@ func (a *addrBook) calcNewBucket(addr, src *p2p.NetAddress) (int, error) {
 	data2 = append(data2, a.groupKey(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
-	hash2, err := hash(data2)
+	hash2, err := a.hash(data2)
 	if err != nil {
 		return 0, err
 	}
@@ -781,7 +782,7 @@ func (a *addrBook) calcOldBucket(addr *p2p.NetAddress) (int, error) {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(addr.String())...)
-	hash1, err := hash(data1)
+	hash1, err := a.hash(data1)
 	if err != nil {
 		return 0, err
 	}
@@ -794,7 +795,7 @@ func (a *addrBook) calcOldBucket(addr *p2p.NetAddress) (int, error) {
 	data2 = append(data2, a.groupKey(addr)...)
 	data2 = append(data2, hashbuf[:]...)
 
-	hash2, err := hash(data2)
+	hash2, err := a.hash(data2)
 	if err != nil {
 		return 0, err
 	}
@@ -852,8 +853,8 @@ func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 }
 
 // hash function calculates hash and returns the resulting bytes.
-func hash(b []byte) ([]byte, error) {
-	hasher, err := highwayhash.New64(hashKey)
+func (a *addrBook) hash(b []byte) ([]byte, error) {
+	hasher, err := highwayhash.New64(a.hashKey)
 	if err != nil {
 		return nil, err
 	}
