@@ -17,6 +17,8 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// FIXME These tests should not rely on .(*addrBook) assertions
+
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
@@ -58,11 +60,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
+	book := NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
@@ -78,7 +80,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	assert.Equal(t, 100, book.Size())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
@@ -91,7 +93,7 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
+	book := NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
@@ -575,7 +577,7 @@ func deleteTempFile(fname string) {
 func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *addrBook, fname string) {
 	fname = createTempFileName("addrbook_test")
 
-	book = NewAddrBook(fname, true)
+	book = NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 
