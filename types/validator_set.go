@@ -667,7 +667,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	}
 
 	// talliedVotingPower <= needed, thus return error
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: needed}
+	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -806,7 +806,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		}
 	}
 
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: needed}
+	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
