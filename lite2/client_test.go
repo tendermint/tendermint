@@ -57,6 +57,9 @@ var (
 )
 
 func TestClient_SequentialVerification(t *testing.T) {
+	newKeys := genPrivKeys(4)
+	newVals := newKeys.ToValidators(10, 1)
+
 	testCases := []struct {
 		name         string
 		otherHeaders map[int64]*types.SignedHeader // all except ^
@@ -134,6 +137,25 @@ func TestClient_SequentialVerification(t *testing.T) {
 				2: vals,
 				3: vals,
 				4: vals,
+			},
+			false,
+			true,
+		},
+		{
+			"bad: different validator set at height 3",
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: h1,
+				// interim header (3/3 signed)
+				2: h2,
+				// last header (3/3 signed)
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: newVals,
+				4: newVals,
 			},
 			false,
 			true,
@@ -368,7 +390,8 @@ func TestClient_Cleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	c.Stop()
-	c.Cleanup()
+	err = c.Cleanup()
+	require.NoError(t, err)
 
 	// Check no headers exist after Cleanup.
 	h, err := c.TrustedHeader(1)
@@ -749,7 +772,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// 1) header is missing => expect no error
+		// 1) normal backwards verification => expect no error
 		h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 		require.NoError(t, err)
 		if assert.NotNil(t, h) {
@@ -759,7 +782,16 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		// 2) untrusted header is expired but trusted header is not => expect no error
 		h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.NoError(t, err)
+		assert.NotNil(t, h))
+
+		// 3) already stored headers should return the header without error
+		h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
 		assert.NotNil(t, h)
+
+		// 4) cannot verify a header in the future
+		_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
 	}
 	{
 		c, err := NewClient(
@@ -777,7 +809,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// 3) trusted header has expired => expect error
+		// 5) trusted header has expired => expect error
 		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
 		assert.Error(t, err)
 	}
