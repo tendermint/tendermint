@@ -304,7 +304,10 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			c.latestTrustedHeader.Height, c.latestTrustedHeader.Hash())
 		if c.confirmationFn(action) {
 			// remove all the headers (options.Height, trustedHeader.Height]
-			c.cleanup(options.Height+1, 0)
+			err := c.cleanup(options.Height+1, 0)
+			if err != nil {
+				return errors.Wrap(err, "unable to check trusted header using options")
+			}
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
 				"old", options.Height)
