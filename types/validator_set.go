@@ -661,7 +661,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		// }
 
 		// return as soon as +2/3 of the signatures are verified
-		if talliedVotingPower > needed {
+		if talliedVotingPower > votingPowerNeeded {
 			return nil
 		}
 	}
