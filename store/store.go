@@ -44,6 +44,33 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	}
 }
 
+// DeleteBlock removes a block and its metadata. Returns true if the block existed.
+func (bs *BlockStore) DeleteBlock(height int64) (bool, error) {
+	if height == bs.Height() {
+		return false, errors.New("cannot delete the latest blockstore height")
+	}
+	meta := bs.LoadBlockMeta(height)
+	if meta == nil {
+		return false, nil
+	}
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+
+	batch.Delete(calcBlockMetaKey(height))
+	batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
+	batch.Delete(calcBlockCommitKey(height))
+	batch.Delete(calcSeenCommitKey(height))
+	for i := 0; i < meta.BlockID.PartsHeader.Total; i++ {
+		batch.Delete(calcBlockPartKey(height, i))
+	}
+	err := batch.WriteSync()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Height returns the last known contiguous block height.
 func (bs *BlockStore) Height() int64 {
 	bs.mtx.RLock()
