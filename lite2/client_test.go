@@ -321,18 +321,25 @@ func TestClientPrunesHeadersAndVals(t *testing.T) {
 		PruningSize(2),
 	)
 	require.NoError(t, err)
-	err = c.Update(bTime.Add(2 * time.Hour))
+
+	_, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour))
 	require.NoError(t, err)
 
+	// pruning size not yet reached. No headers should be pruned.
+	err = c.Prune()
+	assert.NoError(t, err)
 	h, err := c.TrustedHeader(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
 
+	err = c.Update(bTime.Add(2 * time.Hour))
+	require.NoError(t, err)
+
 	err = c.Prune()
 	assert.NoError(t, err)
 
-	// Header should no longer exist => return Error
-	h, err = c.TrustedHeader(1)
+	// Header and ValidatorSet should no longer exist => return Error
+	_, err = c.TrustedHeader(1)
 	assert.Error(t, err)
 
 	_, err = c.TrustedValidatorSet(2)
@@ -734,6 +741,11 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		// 4) cannot verify a header in the future
 		_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.Error(t, err)
+
+		// 5) cannot verify header at height -1
+		_, err = c.VerifyHeaderAtHeight(-1, bTime)
+		assert.Error(t, err)
+
 	}
 	{
 		c, err := NewClient(
@@ -750,10 +762,17 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
+		err = c.Update(bTime.Add(1 * time.Hour).Add(1 * time.Second))
+		require.NoError(t, err)
 
-		// 5) trusted header has expired => expect error
+		// 6) Verify an already verified header
+		err = c.VerifyHeader(h3, vals, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
+
+		// 7) trusted header has expired => expect error
 		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
 		assert.Error(t, err)
+
 	}
 	{
 		testCases := []struct {
