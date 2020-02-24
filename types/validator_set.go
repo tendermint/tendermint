@@ -800,7 +800,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			// signatures (~votes for nil) to measure validator availability.
 			// }
 
-			if talliedVotingPower > needed {
+			if talliedVotingPower > votingPowerNeeded {
 				return nil
 			}
 		}
