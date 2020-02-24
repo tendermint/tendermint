@@ -703,10 +703,11 @@ func (c *Client) sequence(
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
+
 	// 1) Verify any intermediate headers.
 	var (
-		interimNextVals *types.ValidatorSet
 		interimHeader   *types.SignedHeader
+		interimNextVals *types.ValidatorSet
 		err             error
 	)
 	for height := trustedHeader.Height + 1; height <= newHeader.Height; height++ {
