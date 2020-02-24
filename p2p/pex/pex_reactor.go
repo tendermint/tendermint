@@ -264,6 +264,8 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
 			go func() {
 				// In a go-routine so it doesn't block .Receive.
+				// Sleep for one min to allow the peer to handle the addrs.
+				time.Sleep(1 * time.Minute)
 				src.FlushStop()
 				r.Switch.StopPeerGracefully(src)
 			}()
