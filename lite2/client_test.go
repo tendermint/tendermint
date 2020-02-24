@@ -39,19 +39,21 @@ var (
 		Height: 1,
 		Hash:   h1.Hash(),
 	}
+	valSet = map[int64]*types.ValidatorSet{
+		1: vals,
+		2: vals,
+		3: vals,
+		4: vals,
+	}
+	headerSet = map[int64]*types.SignedHeader{
+		1: h1,
+		2: h2,
+		3: h3,
+	}
 	fullNode = mockp.New(
 		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: h2,
-			3: h3,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-			3: vals,
-			4: vals,
-		},
+		headerSet,
+		valSet,
 	)
 	deadNode = mockp.NewDeadMock(chainID)
 )
@@ -77,12 +79,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				// last header (3/3 signed)
 				3: h3,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
+			valSet,
 			false,
 			false,
 		},
@@ -111,12 +108,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				3: keys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
+			valSet,
 			false,
 			true,
 		},
@@ -132,25 +124,13 @@ func TestClient_SequentialVerification(t *testing.T) {
 				3: keys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), len(keys)-1, len(keys)),
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
+			valSet,
 			false,
 			true,
 		},
 		{
 			"bad: different validator set at height 3",
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: h1,
-				// interim header (3/3 signed)
-				2: h2,
-				// last header (3/3 signed)
-				3: h3,
-			},
+			headerSet,
 			map[int64]*types.ValidatorSet{
 				1: vals,
 				2: vals,
@@ -226,12 +206,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				// last header (3/3 signed)
 				3: h3,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
+			valSet,
 			false,
 			false,
 		},
@@ -443,10 +418,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 				// trusted header
 				1: header1,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -525,11 +497,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 				1: diffHeader1,
 				2: diffHeader2,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -569,24 +537,11 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(h2, vals)
 		require.NoError(t, err)
 
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: h1,
-				2: h2,
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
-		)
-
 		c, err := NewClient(
 			chainID,
 			trustOptions,
-			primary,
-			[]provider.Provider{primary},
+			fullNode,
+			[]provider.Provider{fullNode},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -628,10 +583,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			map[int64]*types.SignedHeader{
 				1: header1,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -828,12 +780,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 						3: h3,
 					},
-					map[int64]*types.ValidatorSet{
-						1: vals,
-						2: vals,
-						3: vals,
-						4: vals,
-					},
+					valSet,
 				),
 			},
 			{
@@ -846,12 +793,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 						3: h3,
 					},
-					map[int64]*types.ValidatorSet{
-						1: vals,
-						2: vals,
-						3: vals,
-						4: vals,
-					},
+					valSet,
 				),
 			},
 		}
