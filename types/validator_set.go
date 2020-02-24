@@ -765,7 +765,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	var (
 		talliedVotingPower int64
 		seenVals           = make(map[int]int, len(commit.Signatures)) // validator index -> commit index
-		votingPowerNeeded             = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
+		votingPowerNeeded  = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	)
 
 	for idx, commitSig := range commit.Signatures {
