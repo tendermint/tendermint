@@ -377,6 +377,7 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
+
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -782,10 +783,10 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		// 2) untrusted header is expired but trusted header is not => expect no error
 		h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.NoError(t, err)
-		assert.NotNil(t, h))
+		assert.NotNil(t, h)
 
 		// 3) already stored headers should return the header without error
-		h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+		h, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 
@@ -811,6 +812,78 @@ func TestClient_BackwardsVerification(t *testing.T) {
 
 		// 5) trusted header has expired => expect error
 		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
+	}
+	{
+		badNode := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		)
+
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			badNode,
+			[]provider.Provider{badNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
+
+		// 5) provided header is of a different height => expect error
+		_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
+	}
+	{
+		badNode := mockp.New(
+			chainID,
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: vals,
+				4: vals,
+			},
+		)
+
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			badNode,
+			[]provider.Provider{badNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
+
+		// 6) provided header hash is different => expect error
+		_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.Error(t, err)
 	}
 }
