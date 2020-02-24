@@ -798,76 +798,66 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		assert.Error(t, err)
 	}
 	{
-		badNode := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: h1,
-				2: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-				3: h3,
+		testCases := []struct {
+			provider provider.Provider
+		}{
+			{
+				// provides incorrect height
+				mockp.New(
+					chainID,
+					map[int64]*types.SignedHeader{
+						1: h1,
+						2: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
+							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+						3: h3,
+					},
+					map[int64]*types.ValidatorSet{
+						1: vals,
+						2: vals,
+						3: vals,
+						4: vals,
+					},
+				),
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
+			{
+				// provides incorrect hash
+				mockp.New(
+					chainID,
+					map[int64]*types.SignedHeader{
+						1: h1,
+						2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+						3: h3,
+					},
+					map[int64]*types.ValidatorSet{
+						1: vals,
+						2: vals,
+						3: vals,
+						4: vals,
+					},
+				),
 			},
-		)
+		}
 
-		c, err := NewClient(
-			chainID,
-			TrustOptions{
-				Period: 1 * time.Hour,
-				Height: 3,
-				Hash:   h3.Hash(),
-			},
-			badNode,
-			[]provider.Provider{badNode},
-			dbs.New(dbm.NewMemDB(), chainID),
-			UpdatePeriod(0),
-			Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
+		for _, tc := range testCases {
+			c, err := NewClient(
+				chainID,
+				TrustOptions{
+					Period: 1 * time.Hour,
+					Height: 3,
+					Hash:   h3.Hash(),
+				},
+				tc.provider,
+				[]provider.Provider{tc.provider},
+				dbs.New(dbm.NewMemDB(), chainID),
+				UpdatePeriod(0),
+				Logger(log.TestingLogger()),
+			)
+			require.NoError(t, err)
 
-		// 5) provided header is of a different height => expect error
-		_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-		assert.Error(t, err)
-	}
-	{
-		badNode := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: h1,
-				2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-				3: h3,
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-				4: vals,
-			},
-		)
-
-		c, err := NewClient(
-			chainID,
-			TrustOptions{
-				Period: 1 * time.Hour,
-				Height: 3,
-				Hash:   h3.Hash(),
-			},
-			badNode,
-			[]provider.Provider{badNode},
-			dbs.New(dbm.NewMemDB(), chainID),
-			UpdatePeriod(0),
-			Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// 6) provided header hash is different => expect error
-		_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-		assert.Error(t, err)
+			_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+			assert.Error(t, err)
+		}
 	}
 }
 
