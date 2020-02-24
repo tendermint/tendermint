@@ -310,7 +310,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 	}
 }
 
-func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
+func TestClientPrunesHeadersAndVals(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		trustOptions,
@@ -318,37 +318,26 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		Logger(log.TestingLogger()),
+		PruningSize(2),
 	)
-
-	assert.NotPanics(t, func() {
-		now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
-		c.RemoveNoLongerTrustedHeaders(now)
-	})
-
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
-
-	// Verify new headers.
-	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-	require.NoError(t, err)
-	now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
-	_, err = c.VerifyHeaderAtHeight(3, now)
+	err = c.Update(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
-	// Remove expired headers.
-	c.RemoveNoLongerTrustedHeaders(now)
-
-	// Check expired headers are no longer available.
 	h, err := c.TrustedHeader(1)
-	assert.Error(t, err)
-	assert.Nil(t, h)
-
-	// Check not expired headers are available.
-	h, err = c.TrustedHeader(2)
 	assert.NoError(t, err)
-	assert.NotNil(t, h)
+	assert.EqualValues(t, 1, h.Height)
+
+	err = c.Prune()
+	assert.NoError(t, err)
+
+	// Header should no longer exist => return Error
+	h, err = c.TrustedHeader(1)
+	assert.Error(t, err)
+
+	_, err = c.TrustedValidatorSet(2)
+	assert.Error(t, err)
+
 }
 
 func TestClient_Cleanup(t *testing.T) {

@@ -22,9 +22,9 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultUpdatePeriod                       = 5 * time.Second
-	defaultRemoveNoLongerTrustedHeadersPeriod = 24 * time.Hour
-	defaultMaxRetryAttempts                   = 10
+	defaultUpdatePeriod     = 5 * time.Second
+	defaultPruningAmount    = 1000
+	defaultMaxRetryAttempts = 10
 )
 
 // Option sets a parameter for the light client.
@@ -62,13 +62,14 @@ func UpdatePeriod(d time.Duration) Option {
 	}
 }
 
-// RemoveNoLongerTrustedHeadersPeriod option can be used to define how often
-// the routine, which cleans up no longer trusted headers (outside of trusting
-// period), is run. Default: once a day. When set to zero, the routine won't be
-// started.
-func RemoveNoLongerTrustedHeadersPeriod(d time.Duration) Option {
+// PruningSize option sets the maximum amount of Headers and Validator sets that
+// the light client stores. When Prune() is run, all headers that are earlier than
+// the h amount of headers will be removed from the store. If UpdatePeriod is used,
+// prune will automatically run. Default: 1000. A pruning size of 0 will not prune
+// the lite client at all.
+func PruningSize(h int64) Option {
 	return func(c *Client) {
-		c.removeNoLongerTrustedHeadersPeriod = d
+		c.pruningSize = h
 	}
 }
 
@@ -128,7 +129,7 @@ type Client struct {
 	// See UpdatePeriod option
 	updatePeriod time.Duration
 	// See RemoveNoLongerTrustedHeadersPeriod option
-	removeNoLongerTrustedHeadersPeriod time.Duration
+	pruningSize int64
 	// See ConfirmationFunction option
 	confirmationFn func(action string) bool
 
@@ -191,19 +192,19 @@ func NewClientFromTrustedStore(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:                            chainID,
-		trustingPeriod:                     trustingPeriod,
-		verificationMode:                   skipping,
-		trustLevel:                         DefaultTrustLevel,
-		maxRetryAttempts:                   defaultMaxRetryAttempts,
-		primary:                            primary,
-		witnesses:                          witnesses,
-		trustedStore:                       trustedStore,
-		updatePeriod:                       defaultUpdatePeriod,
-		removeNoLongerTrustedHeadersPeriod: defaultRemoveNoLongerTrustedHeadersPeriod,
-		confirmationFn:                     func(action string) bool { return true },
-		quit:                               make(chan struct{}),
-		logger:                             log.NewNopLogger(),
+		chainID:          chainID,
+		trustingPeriod:   trustingPeriod,
+		verificationMode: skipping,
+		trustLevel:       DefaultTrustLevel,
+		maxRetryAttempts: defaultMaxRetryAttempts,
+		primary:          primary,
+		witnesses:        witnesses,
+		trustedStore:     trustedStore,
+		updatePeriod:     defaultUpdatePeriod,
+		pruningSize:      defaultPruningAmount,
+		confirmationFn:   func(action string) bool { return true },
+		quit:             make(chan struct{}),
+		logger:           log.NewNopLogger(),
 	}
 
 	for _, o := range options {
@@ -303,7 +304,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			c.latestTrustedHeader.Height, c.latestTrustedHeader.Hash())
 		if c.confirmationFn(action) {
 			// remove all the headers (options.Height, trustedHeader.Height]
-			c.cleanup(options.Height + 1)
+			c.cleanup(options.Height+1, 0)
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
 				"old", options.Height)
@@ -387,9 +388,9 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 func (c *Client) Start() error {
 	c.logger.Info("Starting light client")
 
-	if c.removeNoLongerTrustedHeadersPeriod > 0 {
+	if c.pruningSize > 0 && c.updatePeriod > 0 {
 		c.routinesWaitGroup.Add(1)
-		go c.removeNoLongerTrustedHeadersRoutine()
+		go c.pruneRoutine()
 	}
 
 	if c.updatePeriod > 0 {
@@ -639,13 +640,14 @@ func (c *Client) Witnesses() []provider.Provider {
 // client must be stopped at this point.
 func (c *Client) Cleanup() error {
 	c.logger.Info("Removing all the data")
-	return c.cleanup(0)
+	return c.cleanup(0, 0)
 }
 
-// cleanup deletes all headers & validator sets between +stopHeight+ and latest
-// height included. It also sets trustedHeader (vals) to the latest header
-// (vals) if such exists.
-func (c *Client) cleanup(stopHeight int64) error {
+// cleanup deletes all headers & validator sets between startHeight and stopHeight (inclusive).
+// Using a height of 0 will default to the oldest and newest heights respectively.
+// It also resets latestTrustedHeader to the latest header.
+func (c *Client) cleanup(startHeight, stopHeight int64) error {
+
 	// 1) Get the oldest height.
 	oldestHeight, err := c.trustedStore.FirstSignedHeaderHeight()
 	if err != nil {
@@ -658,11 +660,23 @@ func (c *Client) cleanup(stopHeight int64) error {
 		return errors.Wrap(err, "can't get last trusted height")
 	}
 
-	// 3) Remove all headers and validator sets.
-	if stopHeight < oldestHeight {
-		stopHeight = oldestHeight
+	// 3) Ensure the start height and stop height are within the range of headers stored.
+	if stopHeight == 0 || stopHeight > latestHeight {
+		stopHeight = latestHeight
 	}
-	for height := stopHeight; height <= latestHeight; height++ {
+	if startHeight < oldestHeight {
+		startHeight = oldestHeight
+	}
+	if startHeight > stopHeight {
+		return errors.Errorf("startHeight of %d must be less than stopHeight %d", startHeight, stopHeight)
+	}
+
+	for height := startHeight; height <= stopHeight; height++ {
+		// 4a)
+		_, err = c.TrustedHeader(height)
+		if err != nil {
+			continue
+		}
 		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
 		if err != nil {
 			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
@@ -937,16 +951,19 @@ func (c *Client) removeWitness(idx int) {
 	}
 }
 
-func (c *Client) removeNoLongerTrustedHeadersRoutine() {
+func (c *Client) pruneRoutine() {
 	defer c.routinesWaitGroup.Done()
 
-	ticker := time.NewTicker(c.removeNoLongerTrustedHeadersPeriod)
+	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			c.RemoveNoLongerTrustedHeaders(time.Now())
+			err := c.Prune()
+			if err != nil {
+				c.logger.Error("Error during automatic pruning", "err", err)
+			}
 		case <-c.quit:
 			return
 		}
@@ -957,50 +974,31 @@ func (c *Client) removeNoLongerTrustedHeadersRoutine() {
 // expiration).
 //
 // Exposed for testing.
-func (c *Client) RemoveNoLongerTrustedHeaders(now time.Time) {
-	// 1) Get the oldest height.
-	oldestHeight, err := c.FirstTrustedHeight()
-	if err != nil {
-		c.logger.Error("can't get first trusted height", "err", err)
-		return
-	}
-	if oldestHeight == -1 { // no headers yet => wait
-		return
-	}
-
-	// 2) Get the latest height.
+func (c *Client) Prune() error {
+	// 1) find the height of the latest header in the store
 	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
-		c.logger.Error("can't get last trusted height", "err", err)
-		return
-	}
-	if latestHeight == -1 { // no headers yet => wait
-		return
+		return errors.Wrap(err, "unable to prune")
 	}
 
-	// 3) Remove all headers that are outside of the trusting period.
-	//
-	// NOTE: even the latest header can be removed. it's okay because
-	// c.latestTrustedHeader will retain it in memory so other funcs like VerifyHeader
-	// don't crash.
-	for height := oldestHeight; height <= latestHeight; height++ {
-		h, err := c.trustedStore.SignedHeader(height)
-		if err != nil {
-			c.logger.Error("can't get a trusted header", "err", err, "height", height)
-			continue
-		}
-
-		// Stop if the header is within the trusting period.
-		if !HeaderExpired(h, c.trustingPeriod, now) {
-			break
-		}
-
-		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
-		if err != nil {
-			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
-			continue
-		}
+	// 2) calculate the pruneHeight
+	pruneHeight := latestHeight - c.pruningSize
+	firstHeight, err := c.FirstTrustedHeight()
+	if err != nil {
+		return errors.Wrap(err, "unable to prune")
 	}
+	// 3) check to see if pruning is necessary
+	if pruneHeight < firstHeight {
+		return nil
+	}
+
+	// 4) prune from firstHeight to pruneHeight
+	err = c.cleanup(firstHeight, pruneHeight)
+	if err != nil {
+		return errors.Wrap(err, "unable to prune")
+	}
+
+	return nil
 }
 
 func (c *Client) autoUpdateRoutine() {
