@@ -32,17 +32,16 @@ var secpDataTable = []keyData{
 func TestPubKeySecp256k1Address(t *testing.T) {
 	for _, d := range secpDataTable {
 		privB, _ := hex.DecodeString(d.priv)
-		// pubB, _ := hex.DecodeString(d.pub)
+		pubB, _ := hex.DecodeString(d.pub)
 		addrBbz, _, _ := base58.CheckDecode(d.addr)
 		addrB := crypto.Address(addrBbz)
 
 		var priv secp256k1.PrivKey = privB
-		// copy(priv[:], privB)
 
 		pubKey := priv.PubKey()
-		// pubT, _ := pubKey.(secp256k1.PubKey)
+		pubT, _ := pubKey.(secp256k1.PubKey)
 		addr := pubKey.Address()
-		// assert.Equal(t, pubT, pubB, "Expected pub keys to match") //TODO;
+		assert.Equal(t, pubKey, pubB, "Expected pub keys to match") //TODO;
 		assert.Equal(t, addr, addrB, "Expected addresses to match")
 	}
 }

@@ -118,12 +118,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
-	pubArray := []byte(pubKey.(ed25519.PubKey))
-	pubBytes := pubArray[:]
-	privArray := []byte(privKey)
-	privBytes := privArray[:]
+	pubBytes := pubKey.(ed25519.PubKey)
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
-	privB64 := base64.StdEncoding.EncodeToString(privBytes)
+	privB64 := base64.StdEncoding.EncodeToString(privKey)
 
 	serialized := fmt.Sprintf(`{
   "address": "%s",

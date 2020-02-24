@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,7 +13,6 @@ import (
 func TestEncodingPrivEd25519(t *testing.T) {
 	pKey := ed25519.GenPrivKey()
 	bz := pKey.Bytes()
-	fmt.Println(pKey)
 
 	bz1, err := MarshalPrivKey(pKey)
 	require.NoError(t, err)

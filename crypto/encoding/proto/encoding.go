@@ -67,8 +67,7 @@ func GetPubKey(protoKey PubKey) (crypto.PubKey, error) {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
 				len(protoKey.GetEd25519()), ed25519.PubKeySize)
 		}
-		var key ed25519.PubKey
-		copy(key[:], protoKey.GetEd25519())
+		var key ed25519.PubKey = protoKey.GetEd25519()
 		return key, nil
 	case *PubKey_Secp256K1:
 		if len(protoKey.GetSecp256K1()) != secp256k1.PubKeySize {

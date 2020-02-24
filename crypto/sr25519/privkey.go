@@ -23,7 +23,7 @@ func (privKey PrivKey) Bytes() []byte {
 
 // Sign produces a signature on the provided message.
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
-	var p [32]byte
+	var p [PrivKeySize]byte
 	copy(p[:], privKey)
 	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(p)
 	if err != nil {
@@ -44,7 +44,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 // PubKey gets the corresponding public key from the private key.
 func (privKey PrivKey) PubKey() crypto.PubKey {
-	var p [32]byte
+	var p [PrivKeySize]byte
 	copy(p[:], privKey)
 	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(p)
 	if err != nil {
