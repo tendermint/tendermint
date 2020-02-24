@@ -714,7 +714,7 @@ func TestClient_Concurrency(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, h)
 
-			vals, err := c.TrustedValidatorSet(2, bTime.Add(2*time.Hour))
+			vals, err := c.TrustedValidatorSet(2)
 			assert.NoError(t, err)
 			assert.NotNil(t, vals)
 		}()
