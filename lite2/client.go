@@ -773,17 +773,17 @@ func (c *Client) bisection(
 			}
 
 			// Update the lower bound to the previous upper bound
-			interimVals, err = c.validatorSetFromPrimary(interimHeader.Height + 1)
+			interimNextVals, err := c.validatorSetFromPrimary(interimHeader.Height + 1)
 			if err != nil {
 				return err
 			}
-			if !bytes.Equal(interimHeader.NextValidatorsHash, interimVals.Hash()) {
+			if !bytes.Equal(interimHeader.NextValidatorsHash, interimNextVals.Hash()) {
 				return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
 					interimHeader.NextValidatorsHash,
-					interimVals.Hash(),
+					interimNextVals.Hash(),
 					interimHeader.Height)
 			}
-			trustedNextVals, trustedHeader = interimVals, interimHeader
+			trustedHeader, trustedNextVals = interimHeader, interimNextVals
 			// Update the upper bound to the untrustedHeader
 			interimHeader, interimVals = newHeader, newVals
 

@@ -142,7 +142,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 			true,
 		},
 		{
-			"bad: different validator set",
+			"bad: different validator set at height 3",
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: h1,
