@@ -41,7 +41,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 	copy(sig64[:], sig)
 
 	publicKey := &(schnorrkel.PublicKey{})
-	var p [32]byte
+	var p [PubKeySize]byte
 	copy(p[:], pubKey)
 	err := publicKey.Decode(p)
 	if err != nil {
@@ -60,7 +60,9 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeySr25519{%X}", pubKey[:])
+	var pKey [PubKeySize]byte
+	copy(pKey[:], pubKey[:PubKeySize])
+	return fmt.Sprintf("PubKeySr25519{%X}", pKey)
 }
 
 // Equals - checks that two public keys are the same time

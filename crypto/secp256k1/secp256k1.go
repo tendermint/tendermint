@@ -159,7 +159,9 @@ func (pubKey PubKey) Bytes() []byte {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeySecp256k1{%X}", pubKey[:])
+	var pKey [PubKeySize]byte
+	copy(pKey[:], pubKey[:PubKeySize])
+	return fmt.Sprintf("PubKeySecp256k1{%X}", pKey)
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {

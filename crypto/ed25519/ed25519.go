@@ -117,9 +117,7 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
 	privKey := ed25519.NewKeyFromSeed(seed)
-	var privKeyEd PrivKey
-	copy(privKeyEd[:], privKey)
-	return privKeyEd
+	return PrivKey(privKey)
 }
 
 //-------------------------------------
@@ -134,7 +132,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {
 		panic("pubkey is incorrect size")
 	}
-	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
+	return crypto.Address(tmhash.SumTruncated(pubKey))
 }
 
 // Bytes marshals the PubKey using amino encoding.
@@ -155,7 +153,9 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeyEd25519{%X}", pubKey[:])
+	var pKey [PubKeySize]byte
+	copy(pKey[:], pubKey[:PubKeySize])
+	return fmt.Sprintf("PubKeyEd25519{%X}", pKey)
 }
 
 // nolint: golint

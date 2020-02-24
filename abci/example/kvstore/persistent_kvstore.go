@@ -211,8 +211,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey.Data))
 
-	pubkey := ed25519.PubKey{}
-	copy(pubkey[:], v.PubKey.Data)
+	pubkey := ed25519.PubKey(v.PubKey.Data)
 
 	if v.Power == 0 {
 		// remove validator

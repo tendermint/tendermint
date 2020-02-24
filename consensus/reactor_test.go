@@ -318,7 +318,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 //-------------------------------------------------------------
 // ensure we can make blocks despite cycling a validator set
 
-func TestReactorVotingPowerChange(t *testing.T) {
+func TestReactorVotingPowerChange(t *testing.T) { //TODO: here
 	nVals := 4
 	logger := log.TestingLogger()
 	css, cleanup := randConsensusNet(
