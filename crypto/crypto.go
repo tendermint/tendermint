@@ -38,3 +38,11 @@ type Symmetric interface {
 	Encrypt(plaintext []byte, secret []byte) (ciphertext []byte)
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
 }
+
+type Marshaler interface {
+	Marshal() ([]byte, error)
+}
+
+type Unmarshaler interface {
+	Unmarshal([]byte) error
+}

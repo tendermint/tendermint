@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	amino "github.com/tendermint/go-amino"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -27,24 +26,17 @@ const (
 	PrivateKeySize = 64
 )
 
-var cdc = amino.NewCodec()
-
-func init() {
-	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(PubKey{},
-		PubKeyAminoName, nil)
-
-	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(PrivKey{},
-		PrivKeyAminoName, nil)
-}
-
 // PrivKey implements crypto.PrivKey.
 type PrivKey []byte
 
 // Bytes marshals the privkey using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(privKey)
+	bz, err := privKey.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
 }
 
 // Sign produces a signature on the provided message.
@@ -137,10 +129,11 @@ func (pubKey PubKey) Address() crypto.Address {
 
 // Bytes marshals the PubKey using amino encoding.
 func (pubKey PubKey) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
+	bz, err := pubKey.Marshal()
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 
@@ -153,9 +146,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	var pKey [PubKeySize]byte
-	copy(pKey[:], pubKey[:PubKeySize])
-	return fmt.Sprintf("PubKeyEd25519{%X}", pKey)
+	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
 }
 
 // nolint: golint

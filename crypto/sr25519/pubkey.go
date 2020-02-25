@@ -60,9 +60,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	var pKey [PubKeySize]byte
-	copy(pKey[:], pubKey[:PubKeySize])
-	return fmt.Sprintf("PubKeySr25519{%X}", pKey)
+	return fmt.Sprintf("PubKeySr25519{%X}", []byte(pubKey))
 }
 
 // Equals - checks that two public keys are the same time
