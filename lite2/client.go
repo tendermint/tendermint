@@ -342,6 +342,11 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return err
 	}
 
+	err = c.compareNewHeaderWithWitnesses(h)
+	if err != nil {
+		return err
+	}
+
 	// NOTE: - Verify func will check if it's expired or not.
 	//       - h.Time is not being checked against time.Now() because we don't
 	//         want to add yet another argument to NewClient* functions.
