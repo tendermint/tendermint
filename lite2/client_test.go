@@ -883,7 +883,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	assert.EqualValues(t, 2, h.Height)
 
 	// no witnesses left to verify -> error
-	h, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
 	assert.Error(t, err)
 	assert.EqualValues(t, 0, len(c.Witnesses()))
 }
