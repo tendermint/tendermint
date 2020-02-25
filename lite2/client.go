@@ -590,7 +590,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	if newHeader.Height >= c.latestTrustedHeader.Height {
 		switch c.verificationMode {
 		case sequential:
-			err = c.sequence(c.latestTrustedHeader, c.latestTrustedVals, newHeader, newVals, now)
+			err = c.sequence(c.latestTrustedHeader, newHeader, newVals, now)
 		case skipping:
 			err = c.bisection(c.latestTrustedHeader, c.latestTrustedVals, newHeader, newVals, now)
 		default:
@@ -685,16 +685,18 @@ func (c *Client) cleanup(stopHeight int64) error {
 
 // see VerifyHeader
 func (c *Client) sequence(
-	trustedHeader *types.SignedHeader,
-	trustedVals *types.ValidatorSet,
+	initiallyTrustedHeader *types.SignedHeader,
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
 	var (
+		trustedHeader = initiallyTrustedHeader
+
 		interimHeader *types.SignedHeader
 		interimVals   *types.ValidatorSet
-		err           error
+
+		err error
 	)
 
 	for height := trustedHeader.Height + 1; height <= newHeader.Height; height++ {
@@ -710,8 +712,8 @@ func (c *Client) sequence(
 
 		// 2) Verify them
 		c.logger.Debug("Verify newHeader against trustedHeader",
-			"trustedHeight", c.latestTrustedHeader.Height,
-			"trustedHash", hash2str(c.latestTrustedHeader.Hash()),
+			"trustedHeight", trustedHeader.Height,
+			"trustedHash", hash2str(trustedHeader.Hash()),
 			"newHeight", interimHeader.Height,
 			"newHash", hash2str(interimHeader.Hash()))
 
@@ -721,10 +723,8 @@ func (c *Client) sequence(
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}
 
-		// 3) Update trustedHeader and trustedVals
-		// NOTE: we're updating the c.latestTrustedHeader and c.latestTrustedVals
-		// indirectly here because trustedHeader/Vals are pointers.
-		trustedHeader, trustedVals = interimHeader, interimVals
+		// 3) Update trustedHeader
+		trustedHeader = interimHeader
 	}
 
 	return nil
@@ -732,13 +732,16 @@ func (c *Client) sequence(
 
 // see VerifyHeader
 func (c *Client) bisection(
-	trustedHeader *types.SignedHeader,
-	trustedVals *types.ValidatorSet,
+	initiallyTrustedHeader *types.SignedHeader,
+	initiallyTrustedVals *types.ValidatorSet,
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
 	var (
+		trustedHeader = initiallyTrustedHeader
+		trustedVals   = initiallyTrustedVals
+
 		interimHeader = newHeader
 		interimVals   = newVals
 	)
