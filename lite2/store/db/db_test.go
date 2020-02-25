@@ -45,7 +45,7 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err := dbStore.ValidatorSet(2)
+	valSet, err := dbStore.ValidatorSet(1)
 	require.Error(t, err)
 	assert.Nil(t, valSet)
 
@@ -58,7 +58,7 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(2)
+	valSet, err = dbStore.ValidatorSet(1)
 	require.NoError(t, err)
 	assert.NotNil(t, valSet)
 
@@ -70,7 +70,7 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(2)
+	valSet, err = dbStore.ValidatorSet(1)
 	require.Error(t, err)
 	assert.Nil(t, valSet)
 }
