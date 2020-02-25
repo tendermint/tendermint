@@ -194,19 +194,20 @@ func NewClientFromTrustedStore(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:          chainID,
-		trustingPeriod:   trustingPeriod,
-		verificationMode: skipping,
-		trustLevel:       DefaultTrustLevel,
-		maxRetryAttempts: defaultMaxRetryAttempts,
-		primary:          primary,
-		witnesses:        witnesses,
-		trustedStore:     trustedStore,
-		updatePeriod:     defaultUpdatePeriod,
-		pruningSize:      defaultPruningSize,
-		confirmationFn:   func(action string) bool { return true },
-		quit:             make(chan struct{}),
-		logger:           log.NewNopLogger(),
+		chainID:            chainID,
+		trustingPeriod:     trustingPeriod,
+		verificationMode:   skipping,
+		trustLevel:         DefaultTrustLevel,
+		maxRetryAttempts:   defaultMaxRetryAttempts,
+		primary:            primary,
+		witnesses:          witnesses,
+		trustedStore:       trustedStore,
+		storedHeadersCount: 0,
+		updatePeriod:       defaultUpdatePeriod,
+		pruningSize:        defaultPruningSize,
+		confirmationFn:     func(action string) bool { return true },
+		quit:               make(chan struct{}),
+		logger:             log.NewNopLogger(),
 	}
 
 	for _, o := range options {
@@ -684,7 +685,9 @@ func (c *Client) cleanup(startHeight, stopHeight int64) error {
 			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
 			continue
 		}
-		c.storedHeadersCount--
+		if c.storedHeadersCount > 0 {
+			c.storedHeadersCount--
+		}
 	}
 
 	c.latestTrustedHeader = nil

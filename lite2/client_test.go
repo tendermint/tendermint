@@ -322,20 +322,15 @@ func TestClientPrunesHeadersAndVals(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour))
-	require.NoError(t, err)
+	for i := 1; i < 4; i++ {
+		_, err = c.VerifyHeaderAtHeight(int64(i), bTime.Add(2*time.Hour))
+		require.NoError(t, err)
+	}
 
-	// pruning size not yet reached. No headers should be pruned.
-	err = c.Prune()
+	_, err = c.TrustedHeader(3)
 	assert.NoError(t, err)
-	h, err := c.TrustedHeader(1)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, h.Height)
 
-	err = c.Update(bTime.Add(2 * time.Hour))
-	require.NoError(t, err)
-
-	err = c.Prune()
+	_, err = c.TrustedHeader(2)
 	assert.NoError(t, err)
 
 	// Header and ValidatorSet should no longer exist => return Error
@@ -564,6 +559,8 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
 		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
 		require.NoError(t, err)
+		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(h2, vals)
+		require.NoError(t, err)
 
 		// header1 != header
 		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
@@ -595,9 +592,6 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		// Check we have swapped invalid 1st header (+header+) with correct one (+header1+).
 		h, err := c.TrustedHeader(1)
