@@ -699,7 +699,7 @@ func (c *Client) sequence(
 		err error
 	)
 
-	for height := trustedHeader.Height + 1; height <= newHeader.Height; height++ {
+	for height := initiallyTrustedHeader.Height + 1; height <= newHeader.Height; height++ {
 		// 1) Fetch interim headers and vals if needed.
 		if height == newHeader.Height { // last header
 			interimHeader, interimVals = newHeader, newVals
