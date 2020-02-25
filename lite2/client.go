@@ -342,11 +342,6 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return err
 	}
 
-	err = c.compareNewHeaderWithWitnesses(h)
-	if err != nil {
-		return err
-	}
-
 	// NOTE: - Verify func will check if it's expired or not.
 	//       - h.Time is not being checked against time.Now() because we don't
 	//         want to add yet another argument to NewClient* functions.
@@ -356,6 +351,11 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	if !bytes.Equal(h.Hash(), options.Hash) {
 		return errors.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
+	}
+
+	err = c.compareNewHeaderWithWitnesses(h)
+	if err != nil {
+		return err
 	}
 
 	// 2) Fetch and verify the vals.
