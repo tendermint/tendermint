@@ -125,6 +125,8 @@ type Client struct {
 	latestTrustedHeader *types.SignedHeader
 	// Highest next validator set from the store (height=H+1).
 	latestTrustedNextVals *types.ValidatorSet
+	// Amount of headers and vals stored
+	storedHeadersCount uint64
 
 	// See UpdatePeriod option
 	updatePeriod time.Duration
@@ -682,6 +684,7 @@ func (c *Client) cleanup(startHeight, stopHeight int64) error {
 			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
 			continue
 		}
+		c.storedHeadersCount--
 	}
 
 	c.latestTrustedHeader = nil
@@ -809,14 +812,23 @@ func (c *Client) updateTrustedHeaderAndNextVals(h *types.SignedHeader, nextVals 
 		return errors.Wrap(err, "failed to save trusted header")
 	}
 
+	// prune headers
+	c.storedHeadersCount++
+	if c.storedHeadersCount > c.pruningSize {
+		height, err := c.FirstTrustedHeight()
+		if err != nil {
+			return err
+		}
+		err = c.trustedStore.DeleteSignedHeaderAndNextValidatorSet(height)
+		if err != nil {
+			return err
+		}
+		c.storedHeadersCount--
+	}
+
 	if c.latestTrustedHeader == nil || h.Height > c.latestTrustedHeader.Height {
 		c.latestTrustedHeader = h
 		c.latestTrustedNextVals = nextVals
-	}
-
-	err := c.Prune()
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -954,37 +966,6 @@ func (c *Client) removeWitness(idx int) {
 		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
 		c.witnesses = c.witnesses[:len(c.witnesses)-1]
 	}
-}
-
-// RemoveNoLongerTrustedHeaders removes no longer trusted headers (due to
-// expiration).
-//
-// Exposed for testing.
-func (c *Client) Prune() error {
-	// 1) find the height of the latest header in the store
-	latestHeight, err := c.LastTrustedHeight()
-	if err != nil {
-		return errors.Wrap(err, "unable to prune")
-	}
-
-	// 2) calculate the pruneHeight
-	pruneHeight := latestHeight - int64(c.pruningSize)
-	firstHeight, err := c.FirstTrustedHeight()
-	if err != nil {
-		return errors.Wrap(err, "unable to prune")
-	}
-	// 3) check to see if pruning is necessary
-	if pruneHeight < firstHeight {
-		return nil
-	}
-
-	// 4) prune from firstHeight to pruneHeight
-	err = c.cleanup(firstHeight, pruneHeight)
-	if err != nil {
-		return errors.Wrap(err, "unable to prune")
-	}
-
-	return nil
 }
 
 func (c *Client) autoUpdateRoutine() {
