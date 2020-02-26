@@ -815,7 +815,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	assert.EqualValues(t, 1, h.Height)
 }
 
-func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
+func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
 	_, err := NewClient(
 		chainID,
 		trustOptions,
@@ -832,28 +832,27 @@ func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	// less than 1/3 signed
+	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
 			1: h1,
 			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
 				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
+				len(keys)-1, len(keys), types.BlockID{Hash: h1.Hash()}),
 		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
 			2: vals,
 		},
 	)
+	// header is empty
 	badProvider2 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
 			1: h1,
 			2: h2,
-			3: keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
+			3: {Header: nil, Commit: nil},
 		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
