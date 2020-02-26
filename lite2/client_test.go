@@ -50,13 +50,15 @@ var (
 			1: vals,
 			2: vals,
 			3: vals,
-			4: vals,
 		},
 	)
 	deadNode = mockp.NewDeadMock(chainID)
 )
 
 func TestClient_SequentialVerification(t *testing.T) {
+	newKeys := genPrivKeys(4)
+	newVals := newKeys.ToValidators(10, 1)
+
 	testCases := []struct {
 		name         string
 		otherHeaders map[int64]*types.SignedHeader // all except ^
@@ -78,7 +80,6 @@ func TestClient_SequentialVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: vals,
-				4: vals,
 			},
 			false,
 			false,
@@ -112,7 +113,6 @@ func TestClient_SequentialVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: vals,
-				4: vals,
 			},
 			false,
 			true,
@@ -133,7 +133,24 @@ func TestClient_SequentialVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: vals,
-				4: vals,
+			},
+			false,
+			true,
+		},
+		{
+			"bad: different validator set at height 3",
+			map[int64]*types.SignedHeader{
+				// trusted header
+				1: h1,
+				// interim header (3/3 signed)
+				2: h2,
+				// last header (3/3 signed)
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: newVals,
 			},
 			false,
 			true,
@@ -208,7 +225,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: vals,
-				4: vals,
 			},
 			false,
 			false,
@@ -225,7 +241,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: transitVals,
-				4: transitVals,
 			},
 			false,
 			false,
@@ -246,7 +261,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: newVals,
-				4: newVals,
 			},
 			false,
 			false,
@@ -267,7 +281,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 				1: vals,
 				2: vals,
 				3: newVals,
-				4: newVals,
 			},
 			false,
 			true,
@@ -368,7 +381,8 @@ func TestClient_Cleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	c.Stop()
-	c.Cleanup()
+	err = c.Cleanup()
+	require.NoError(t, err)
 
 	// Check no headers exist after Cleanup.
 	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
@@ -381,7 +395,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		c, err := NewClient(
@@ -406,7 +420,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 	// 2. options.Hash != trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		// header1 != header
@@ -421,7 +435,6 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			},
 			map[int64]*types.ValidatorSet{
 				1: vals,
-				2: vals,
 			},
 		)
 
@@ -454,7 +467,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		c, err := NewClient(
@@ -485,7 +498,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 	// This could happen if previous provider was lying to us.
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		// header1 != header
@@ -504,7 +517,6 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			map[int64]*types.ValidatorSet{
 				1: vals,
 				2: vals,
-				3: vals,
 			},
 		)
 
@@ -537,12 +549,12 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		//header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
 		//	[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(h2, vals)
+		err = trustedStore.SaveSignedHeaderAndValidatorSet(h2, vals)
 		require.NoError(t, err)
 
 		primary := mockp.New(
@@ -554,7 +566,6 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			map[int64]*types.ValidatorSet{
 				1: vals,
 				2: vals,
-				3: vals,
 			},
 		)
 
@@ -587,7 +598,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 	// This could happen if previous provider was lying to us.
 	{
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
 		// header1 != header
@@ -596,7 +607,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 
 		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-		err = trustedStore.SaveSignedHeaderAndNextValidatorSet(header2, vals)
+		err = trustedStore.SaveSignedHeaderAndValidatorSet(header2, vals)
 		require.NoError(t, err)
 
 		primary := mockp.New(
@@ -606,7 +617,6 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			},
 			map[int64]*types.ValidatorSet{
 				1: vals,
-				2: vals,
 			},
 		)
 
@@ -732,7 +742,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	assert.Equal(t, 1, len(c.Witnesses()))
 }
 
-func TestClient_TrustedHeaderFetchesMissingHeader(t *testing.T) {
+func TestClient_BackwardsVerification(t *testing.T) {
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -747,27 +757,33 @@ func TestClient_TrustedHeaderFetchesMissingHeader(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	// 1) header is missing => expect no error
-	h, err := c.TrustedHeader(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 	require.NoError(t, err)
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
 	}
 
 	// 2) header is missing, but it's expired => expect error
-	h, err = c.TrustedHeader(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+	h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
 	assert.Error(t, err)
-	assert.Nil(t, h)
+	assert.NotNil(t, h)
+
+	// 3) already stored headers should return the header without error
+	h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+	assert.NoError(t, err)
+	assert.NotNil(t, h)
+
+	// 4) cannot verify a header in the future
+	_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
+	assert.Error(t, err)
 }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	// 1) Initiate DB and fill with a "trusted" header
 	db := dbs.New(dbm.NewMemDB(), chainID)
-	err := db.SaveSignedHeaderAndNextValidatorSet(h1, vals)
+	err := db.SaveSignedHeaderAndValidatorSet(h1, vals)
 	require.NoError(t, err)
 
 	c, err := NewClientFromTrustedStore(

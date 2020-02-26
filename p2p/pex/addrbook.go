@@ -102,7 +102,7 @@ type addrBook struct {
 
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
+func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 	am := &addrBook{
 		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
