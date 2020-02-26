@@ -329,7 +329,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
-		vss[i] = NewValidatorStub(css[i].privValidator, i)
+		vss[i] = newValidatorStub(css[i].privValidator, i)
 	}
 	height, round := css[0].Height, css[0].Round
 	// start the machine

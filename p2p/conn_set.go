@@ -26,7 +26,7 @@ type connSet struct {
 }
 
 // NewConnSet returns a ConnSet implementation.
-func NewConnSet() *connSet {
+func NewConnSet() ConnSet {
 	return &connSet{
 		conns: map[string]connSetItem{},
 	}

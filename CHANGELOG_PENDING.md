@@ -19,6 +19,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached.
+
 ### BUG FIXES:
 
 - [rpc] [\#4437](https://github.com/tendermint/tendermint/pull/4437) Fix tx_search pagination with ordered results (@erikgrinaker)

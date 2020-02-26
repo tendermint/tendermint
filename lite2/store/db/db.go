@@ -31,9 +31,9 @@ func New(db dbm.DB, prefix string) store.Store {
 	return &dbs{db: db, prefix: prefix, cdc: cdc}
 }
 
-// SaveSignedHeaderAndNextValidatorSet persists SignedHeader and ValidatorSet
-// to the db.
-func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
+// SaveSignedHeaderAndValidatorSet persists SignedHeader and ValidatorSet to
+// the db.
+func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
 	if sh.Height <= 0 {
 		panic("negative or zero height")
 	}
@@ -42,6 +42,7 @@ func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet
 	if err != nil {
 		return errors.Wrap(err, "marshalling header")
 	}
+
 	valSetBz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
 	if err != nil {
 		return errors.Wrap(err, "marshalling validator set")
@@ -49,22 +50,22 @@ func (s *dbs) SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet
 
 	b := s.db.NewBatch()
 	b.Set(s.shKey(sh.Height), shBz)
-	b.Set(s.vsKey(sh.Height+1), valSetBz)
+	b.Set(s.vsKey(sh.Height), valSetBz)
 	err = b.WriteSync()
 	b.Close()
 	return err
 }
 
-// DeleteSignedHeaderAndNextValidatorSet deletes SignedHeader and ValidatorSet
-// from the db.
-func (s *dbs) DeleteSignedHeaderAndNextValidatorSet(height int64) error {
+// DeleteSignedHeaderAndValidatorSet deletes SignedHeader and ValidatorSet from
+// the db.
+func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
 	b := s.db.NewBatch()
 	b.Delete(s.shKey(height))
-	b.Delete(s.vsKey(height + 1))
+	b.Delete(s.vsKey(height))
 	err := b.WriteSync()
 	b.Close()
 	return err

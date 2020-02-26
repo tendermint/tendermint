@@ -71,7 +71,7 @@ type validatorStub struct {
 
 var testMinPower int64 = 10
 
-func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -385,7 +385,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = NewValidatorStub(privVals[i], i)
+		vss[i] = newValidatorStub(privVals[i], i)
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
