@@ -181,6 +181,10 @@ func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
 }
 
+func (s *dbs) Prune(size uint64) error {
+	return nil
+}
+
 func (s *dbs) shKey(height int64) []byte {
 	return []byte(fmt.Sprintf("sh/%s/%020d", s.prefix, height))
 }
