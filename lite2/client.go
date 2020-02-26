@@ -841,8 +841,8 @@ func (c *Client) backwards(initiallyTrustedHeader *types.SignedHeader, newHeader
 		trustedHeader = interimHeader
 	}
 
-	if HeaderExpired(initialTrustedHeader, c.trustingPeriod, now) {
-		return ErrOldHeaderExpired{initialTrustedHeader.Time.Add(c.trustingPeriod), now}
+	if HeaderExpired(initiallyTrustedHeader, c.trustingPeriod, now) {
+		return ErrOldHeaderExpired{initiallyTrustedHeader.Time.Add(c.trustingPeriod), now}
 	}
 
 	return nil
