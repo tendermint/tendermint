@@ -27,8 +27,8 @@ type Client interface {
 	Cleanup() error
 
 	// get trusted headers & validators
-	TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error)
-	TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error)
+	TrustedHeader(height int64) (*types.SignedHeader, error)
+	TrustedValidatorSet(height int64) (*types.ValidatorSet, error)
 	LastTrustedHeight() (int64, error)
 	FirstTrustedHeight() (int64, error)
 
