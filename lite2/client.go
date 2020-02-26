@@ -192,19 +192,19 @@ func NewClientFromTrustedStore(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:            chainID,
-		trustingPeriod:     trustingPeriod,
-		verificationMode:   skipping,
-		trustLevel:         DefaultTrustLevel,
-		maxRetryAttempts:   defaultMaxRetryAttempts,
-		primary:            primary,
-		witnesses:          witnesses,
-		trustedStore:       trustedStore,
-		updatePeriod:       defaultUpdatePeriod,
-		pruningSize:        defaultPruningSize,
-		confirmationFn:     func(action string) bool { return true },
-		quit:               make(chan struct{}),
-		logger:             log.NewNopLogger(),
+		chainID:          chainID,
+		trustingPeriod:   trustingPeriod,
+		verificationMode: skipping,
+		trustLevel:       DefaultTrustLevel,
+		maxRetryAttempts: defaultMaxRetryAttempts,
+		primary:          primary,
+		witnesses:        witnesses,
+		trustedStore:     trustedStore,
+		updatePeriod:     defaultUpdatePeriod,
+		pruningSize:      defaultPruningSize,
+		confirmationFn:   func(action string) bool { return true },
+		quit:             make(chan struct{}),
+		logger:           log.NewNopLogger(),
 	}
 
 	for _, o := range options {
@@ -662,17 +662,23 @@ func (c *Client) cleanup(startHeight, stopHeight int64) error {
 		return errors.Errorf("startHeight of %d must be less than stopHeight %d", startHeight, stopHeight)
 	}
 
-	for height := startHeight; height <= stopHeight; height++ {
-		// 4a) Check the header exists in the store
-		_, err = c.TrustedHeader(height)
+	for startHeight <= stopHeight {
+		// 4a) Delete the header and next validator set
+		err = c.trustedStore.DeleteSignedHeaderAndValidatorSet(startHeight)
 		if err != nil {
-			continue
+			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height",
+				startHeight)
 		}
-		// 4b) Delete the header and next validator set
-		err = c.trustedStore.DeleteSignedHeaderAndValidatorSet(height)
-		if err != nil {
-			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height", height)
-			continue
+		// 4b) Jump to the next height
+		if startHeight < stopHeight {
+			h, err := c.trustedStore.SignedHeaderAfter(startHeight)
+			if err != nil {
+				return errors.Wrap(err, "tried to clean up headers")
+			}
+			startHeight = h.Height
+		} else {
+			// 4c) all headers in between have been deleted
+			startHeight = stopHeight + 1
 		}
 	}
 
@@ -791,8 +797,14 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 		return errors.Wrap(err, "failed to save trusted header")
 	}
 
-	c.latestTrustedHeader = h
-	c.latestTrustedVals = vals
+	if err := c.trustedStore.Prune(c.pruningSize); err != nil {
+		return errors.Wrap(err, "failed to save trusted header")
+	}
+
+	if c.latestTrustedHeader == nil || h.Height > c.latestTrustedHeader.Height {
+		c.latestTrustedHeader = h
+		c.latestTrustedVals = vals
+	}
 
 	return nil
 }
