@@ -28,6 +28,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	lite "github.com/tendermint/tendermint/lite2/reactor"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -478,6 +479,7 @@ func createSwitch(config *cfg.Config,
 	bcReactor p2p.Reactor,
 	consensusReactor *consensus.Reactor,
 	evidenceReactor *evidence.Reactor,
+	liteReactor *lite.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -493,6 +495,7 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	sw.AddReactor("LITE", liteReactor) // FIXME Better name?
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
@@ -621,6 +624,10 @@ func NewNode(config *cfg.Config,
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
+	// Set up light client reactor
+	liteReactor := lite.NewReactor(blockStore, stateDB)
+	liteReactor.SetLogger(logger.With("module", "litereactor"))
+
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
@@ -670,7 +677,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		consensusReactor, evidenceReactor, liteReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
