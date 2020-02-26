@@ -411,8 +411,6 @@ func (c *Client) Stop() {
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest).
-// If a header is missing in trustedStore (e.g. it was skipped during
-// bisection), it will be downloaded from primary.
 //
 // Headers along with validator sets, which can't be trusted anymore, are
 // removed once a day (can be changed with RemoveNoLongerTrustedHeadersPeriod
