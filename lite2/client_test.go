@@ -316,10 +316,9 @@ func TestClient_Cleanup(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
+	_, err = c.TrustedHeader(1)
 	require.NoError(t, err)
 
-	c.Stop()
 	err = c.Cleanup()
 	require.NoError(t, err)
 
