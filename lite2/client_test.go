@@ -674,9 +674,10 @@ func TestClient_Concurrency(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, h)
 
-			vals, err := c.TrustedValidatorSet(2)
+			vals, height, err := c.TrustedValidatorSet(2)
 			assert.NoError(t, err)
 			assert.NotNil(t, vals)
+			assert.EqualValues(t, 2, height)
 		}()
 	}
 
