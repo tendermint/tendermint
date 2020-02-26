@@ -802,44 +802,49 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	assert.EqualValues(t, 1, h.Height)
 }
 
-func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
-	c, err := NewClient(
+func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
+	_, err := NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
-		[]provider.Provider{deadNode, deadNode, deadNode},
+		[]provider.Provider{deadNode, deadNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 		MaxRetryAttempts(1),
 	)
-	require.NoError(t, err)
-
-	err = c.Update(bTime.Add(2 * time.Hour))
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
 	}
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	// straight invalid header
+	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
-			3: {Header: nil, Commit: nil},
+			1: h1,
+			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
+				len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
 		},
-		map[int64]*types.ValidatorSet{},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		},
 	)
-
-	// less than 1/3 signed
+	// header is empty
 	badProvider2 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
-			3: keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
+			1: h1,
+			2: h2,
+			3: {Header: nil, Commit: nil},
 		},
-		map[int64]*types.ValidatorSet{},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		},
 	)
 
 	c, err := NewClient(
@@ -850,12 +855,21 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
 	)
+	// witness should have behaved properly -> no error
 	require.NoError(t, err)
+	assert.EqualValues(t, 2, len(c.Witnesses()))
 
-	err = c.Update(bTime.Add(2 * time.Hour))
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "could not find any witnesses")
-	}
-	assert.Zero(t, 0, len(c.Witnesses()))
+	// witness behaves incorrectly -> removed from list, no error
+	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, len(c.Witnesses()))
+	// header should still be verified
+	assert.EqualValues(t, 2, h.Height)
+
+	// no witnesses left to verify -> error
+	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+	assert.Error(t, err)
+	assert.EqualValues(t, 0, len(c.Witnesses()))
 }

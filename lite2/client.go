@@ -356,6 +356,11 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return errors.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
 	}
 
+	err = c.compareNewHeaderWithWitnesses(h)
+	if err != nil {
+		return err
+	}
+
 	// 2) Fetch and verify the vals.
 	vals, err := c.validatorSetFromPrimary(options.Height)
 	if err != nil {
