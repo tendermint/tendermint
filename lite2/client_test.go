@@ -348,7 +348,6 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
-
 	c, err := NewClient(
 		chainID,
 		trustOptions,

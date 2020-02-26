@@ -777,6 +777,7 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 		return errors.Wrap(err, "failed to save trusted header")
 	}
 
+	// Only update latestTrustedHeader if we move forward (not backwards).
 	if c.latestTrustedHeader == nil || h.Height > c.latestTrustedHeader.Height {
 		c.latestTrustedHeader = h
 		c.latestTrustedVals = vals
@@ -800,8 +801,11 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 }
 
 // Backwards verification (see VerifyHeaderBackwards func in the spec)
-func (c *Client) backwards(initiallyTrustedHeader *types.SignedHeader, newHeader *types.SignedHeader,
+func (c *Client) backwards(
+	initiallyTrustedHeader *types.SignedHeader,
+	newHeader *types.SignedHeader,
 	now time.Time) error {
+
 	if HeaderExpired(initiallyTrustedHeader, c.trustingPeriod, now) {
 		return ErrOldHeaderExpired{initiallyTrustedHeader.Time.Add(c.trustingPeriod), now}
 	}
@@ -839,6 +843,7 @@ func (c *Client) backwards(initiallyTrustedHeader *types.SignedHeader, newHeader
 		trustedHeader = interimHeader
 	}
 
+	// Initially trusted header might have expired at this point.
 	if HeaderExpired(initiallyTrustedHeader, c.trustingPeriod, now) {
 		return ErrOldHeaderExpired{initiallyTrustedHeader.Time.Add(c.trustingPeriod), now}
 	}
