@@ -24,7 +24,7 @@ func TestLast_FirstSignedHeaderHeight(t *testing.T) {
 	assert.EqualValues(t, -1, height)
 
 	// 1 key
-	err = dbStore.SaveSignedHeaderAndNextValidatorSet(
+	err = dbStore.SaveSignedHeaderAndValidatorSet(
 		&types.SignedHeader{Header: &types.Header{Height: 1}}, &types.ValidatorSet{})
 	require.NoError(t, err)
 
@@ -37,20 +37,20 @@ func TestLast_FirstSignedHeaderHeight(t *testing.T) {
 	assert.EqualValues(t, 1, height)
 }
 
-func Test_SaveSignedHeaderAndNextValidatorSet(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_SaveSignedHeaderAndNextValidatorSet")
+func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "Test_SaveSignedHeaderAndValidatorSet")
 
 	// Empty store
 	h, err := dbStore.SignedHeader(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err := dbStore.ValidatorSet(2)
+	valSet, err := dbStore.ValidatorSet(1)
 	require.Error(t, err)
 	assert.Nil(t, valSet)
 
 	// 1 key
-	err = dbStore.SaveSignedHeaderAndNextValidatorSet(
+	err = dbStore.SaveSignedHeaderAndValidatorSet(
 		&types.SignedHeader{Header: &types.Header{Height: 1}}, &types.ValidatorSet{})
 	require.NoError(t, err)
 
@@ -58,19 +58,19 @@ func Test_SaveSignedHeaderAndNextValidatorSet(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(2)
+	valSet, err = dbStore.ValidatorSet(1)
 	require.NoError(t, err)
 	assert.NotNil(t, valSet)
 
 	// Empty store
-	err = dbStore.DeleteSignedHeaderAndNextValidatorSet(1)
+	err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
 	require.NoError(t, err)
 
 	h, err = dbStore.SignedHeader(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(2)
+	valSet, err = dbStore.ValidatorSet(1)
 	require.Error(t, err)
 	assert.Nil(t, valSet)
 }
@@ -83,7 +83,7 @@ func Test_SignedHeaderAfter(t *testing.T) {
 		dbStore.SignedHeaderAfter(100)
 	})
 
-	err := dbStore.SaveSignedHeaderAndNextValidatorSet(
+	err := dbStore.SaveSignedHeaderAndValidatorSet(
 		&types.SignedHeader{Header: &types.Header{Height: 2}}, &types.ValidatorSet{})
 	require.NoError(t, err)
 
