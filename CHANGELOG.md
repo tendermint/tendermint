@@ -2,9 +2,17 @@
 
 ## Unreleased
 
+## 0.4.1
+
+**2020-2-26**
+
 ### Breaking Changes
 
-- [fsdb] [\#43](https://github.com/tendermint/tm-db/pull/43#event-2954801205) Remove FSDB
+- [fsdb] [\#43](https://github.com/tendermint/tm-db/pull/43) Remove FSDB
+
+### Bug Fixes
+
+- [boltdb] [\#45](https://github.com/tendermint/tm-db/pull/45) Bring BoltDB to adhere to the db interfaces
 
 ## 0.4
 
@@ -30,7 +38,6 @@
       - `WriteSync() error`
     - Iterator interface:
       - `Error() error`
-
 
 ### IMPROVEMENTS
 
