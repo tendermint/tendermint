@@ -21,15 +21,15 @@ var (
 //
 //	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
 //	b) untrustedHeader is valid;
-//	c) trustLevel ([1/3, 1]) of trustedHeaderNextVals signed correctly
-//     (if not, ErrNewValSetCantBeTrusted is returned);
+//	c) trustLevel ([1/3, 1]) of trustedHeaderVals (or trustedHeaderNextVals)
+//  signed correctly (if not, ErrNewValSetCantBeTrusted is returned);
 //	d) more than 2/3 of untrustedVals have signed h2 (if not,
 //	   ErrNotEnoughVotingPowerSigned is returned);
 //  e) headers are non-adjacent.
 func VerifyNonAdjacent(
 	chainID string,
 	trustedHeader *types.SignedHeader, // height=X
-	trustedNextVals *types.ValidatorSet, // height=X+1
+	trustedVals *types.ValidatorSet, // height=X or height=X+1
 	untrustedHeader *types.SignedHeader, // height=Y
 	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
@@ -49,7 +49,7 @@ func VerifyNonAdjacent(
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
-	err := trustedNextVals.VerifyCommitTrusting(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
+	err := trustedVals.VerifyCommitTrusting(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit, trustLevel)
 	if err != nil {
 		switch e := err.(type) {
@@ -78,7 +78,7 @@ func VerifyNonAdjacent(
 //
 //	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
 //	b) untrustedHeader is valid;
-//	c) untrustedHeader.ValidatorsHash equals trustedHeaderNextVals.Hash()
+//	c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash;
 //	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
 //	   ErrNotEnoughVotingPowerSigned is returned);
 //  e) headers are adjacent.
@@ -124,7 +124,7 @@ func VerifyAdjacent(
 func Verify(
 	chainID string,
 	trustedHeader *types.SignedHeader, // height=X
-	trustedNextVals *types.ValidatorSet, // height=X+1
+	trustedVals *types.ValidatorSet, // height=X or height=X+1
 	untrustedHeader *types.SignedHeader, // height=Y
 	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
@@ -132,7 +132,7 @@ func Verify(
 	trustLevel tmmath.Fraction) error {
 
 	if untrustedHeader.Height != trustedHeader.Height+1 {
-		return VerifyNonAdjacent(chainID, trustedHeader, trustedNextVals, untrustedHeader, untrustedVals,
+		return VerifyNonAdjacent(chainID, trustedHeader, trustedVals, untrustedHeader, untrustedVals,
 			trustingPeriod, now, trustLevel)
 	}
 

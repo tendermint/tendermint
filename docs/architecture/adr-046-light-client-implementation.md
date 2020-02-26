@@ -91,8 +91,8 @@ The light client stores headers & validators in the trusted store:
 
 ```go
 type Store interface {
-	SaveSignedHeaderAndNextValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error
-	DeleteSignedHeaderAndNextValidatorSet(height int64) error
+	SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error
+	DeleteSignedHeaderAndValidatorSet(height int64) error
 
 	SignedHeader(height int64) (*types.SignedHeader, error)
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
