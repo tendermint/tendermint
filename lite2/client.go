@@ -426,32 +426,11 @@ func (c *Client) Stop() {
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
-	if height < 0 {
-		return nil, errors.New("negative height")
-	}
-
-	// 1) Get latest height.
-	latestHeight, err := c.LastTrustedHeight()
+	height, err := c.compareWithLatestHeight(height)
 	if err != nil {
 		return nil, err
 	}
-	if latestHeight == -1 {
-		return nil, errors.New("no headers exist")
-	}
-	if height > latestHeight {
-		return nil, errors.Errorf("unverified header requested (latest: %d)", latestHeight)
-	}
-	if height == 0 {
-		height = latestHeight
-	}
-
-	// 2) Get header from store.
-	h, err := c.trustedStore.SignedHeader(height)
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
+	return c.trustedStore.SignedHeader(height)
 }
 
 // TrustedValidatorSet returns a trusted validator set at the given height (0 -
@@ -471,12 +450,32 @@ func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64) (*types.ValidatorSet, error) {
-	// Checks height is positive.
-	if height < 0 {
-		return nil, errors.New("negative height")
+	height, err := c.compareWithLatestHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	return c.trustedStore.ValidatorSet(height)
+}
+
+func (c *Client) compareWithLatestHeight(height int64) (int64, error) {
+	latestHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		return 0, err
+	}
+	if latestHeight == -1 {
+		return 0, errors.New("no headers exist")
 	}
 
-	return c.trustedStore.ValidatorSet(height)
+	switch {
+	case height > latestHeight:
+		return 0, errors.Errorf("unverified header/valset requested (latest: %d)", latestHeight)
+	case height == 0:
+		return latestHeight, nil
+	case height < 0:
+		return 0, errors.New("negative height")
+	}
+
+	return height, nil
 }
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
