@@ -811,12 +811,10 @@ func (c *Client) backwards(
 	}
 
 	var (
-		trustedHeader *types.SignedHeader
+		trustedHeader = initiallyTrustedHeader
 		interimHeader *types.SignedHeader
 		err           error
 	)
-
-	trustedHeader = initiallyTrustedHeader
 
 	for trustedHeader.Height > newHeader.Height {
 		interimHeader, err = c.signedHeaderFromPrimary(trustedHeader.Height - 1)
