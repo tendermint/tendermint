@@ -368,7 +368,14 @@ func (h *Handshaker) ReplayBlocks(
 		// Either the app is asking for replay, or we're all synced up.
 		if appBlockHeight < storeBlockHeight {
 			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
-			return h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, false)
+			newAppHash, err := h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, false)
+			if err != nil {
+				return nil, err
+			}
+			if newAppHash != nil {
+				return newAppHash, nil
+			}
+			return appHash, nil
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
@@ -419,7 +426,7 @@ func (h *Handshaker) replayBlocks(
 	storeBlockHeight int64,
 	mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
-	// We replay all blocks from appBlockHeight+1.
+	// We replay all blocks from appBlockHeight+1 for as long as we have local blocks.
 	//
 	// Note that we don't have an old version of the state,
 	// so we by-pass state validation/mutation using sm.ExecCommitBlock.
@@ -437,6 +444,9 @@ func (h *Handshaker) replayBlocks(
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
+		if block == nil {
+			return appHash, nil
+		}
 		// Extra check to ensure the app was not changed in a way it shouldn't have.
 		if len(appHash) > 0 {
 			assertAppHashEqualsOneFromBlock(appHash, block)
