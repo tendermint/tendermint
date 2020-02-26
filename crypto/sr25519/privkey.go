@@ -18,7 +18,12 @@ type PrivKey []byte
 
 // Bytes marshals the privkey using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(privKey)
+	bz, err := privKey.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
 }
 
 // Sign produces a signature on the provided message.
