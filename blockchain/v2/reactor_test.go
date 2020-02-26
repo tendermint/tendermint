@@ -329,7 +329,7 @@ func TestReactorTerminationScenarios(t *testing.T) {
 					reactor.processor.send(rProcessBlock{})
 				}
 				// give time for messages to propagate between routines
-				time.Sleep(time.Millisecond)
+				time.Sleep(3 * time.Millisecond)
 			}
 
 			// time for processor to finish and reactor to switch to consensus
