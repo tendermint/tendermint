@@ -11,8 +11,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
-// TODO: add prefixs for keys
-
 func MarshalPubKey(pki crypto.PubKey) ([]byte, error) {
 	protoKey := GetProtoPubKey(pki)
 	return proto.Marshal(&protoKey)
@@ -89,7 +87,6 @@ func GetPubKey(protoKey PubKey) (crypto.PubKey, error) {
 }
 
 func MarshalPrivKey(pki crypto.PrivKey) ([]byte, error) {
-	fmt.Println(pki)
 	var asOneof isPrivKey_Key
 	switch pki := pki.(type) {
 	case ed25519.PrivKey:
