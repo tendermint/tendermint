@@ -455,7 +455,7 @@ func (c *Client) TrustedValidatorSet(height int64) (valSet *types.ValidatorSet, 
 	if err != nil {
 		return nil, heightUsed, err
 	}
-	valSet, err = c.trustedStore.ValidatorSet(height)
+	valSet, err = c.trustedStore.ValidatorSet(heightUsed)
 	if err != nil {
 		return nil, heightUsed, err
 	}
