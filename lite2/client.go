@@ -62,11 +62,11 @@ func UpdatePeriod(d time.Duration) Option {
 	}
 }
 
-// PruningSize option sets the maximum amount of headers and validator sets that
-// the light client stores. When Prune() is run, all headers that are earlier than
-// the h amount of headers will be removed from the store. If UpdatePeriod is used,
-// prune will automatically run. Default: 1000. A pruning size of 0 will not prune
-// the lite client at all.
+// PruningSize option sets the maximum amount of headers & validator set pairs
+// that the light client stores. When Prune() is run, all headers (along with
+// the associated validator set) that are earlier than the h amount of headers
+// will be removed from the store. Default: 1000. A pruning size of 0 will not
+// prune the lite client at all.
 func PruningSize(h uint64) Option {
 	return func(c *Client) {
 		c.pruningSize = h
@@ -307,7 +307,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			// remove all the headers (options.Height, trustedHeader.Height]
 			err := c.cleanup(options.Height+1, 0)
 			if err != nil {
-				return errors.Wrap(err, "unable to check trusted header using options")
+				return errors.Wrap(err, "cleanup")
 			}
 
 			c.logger.Info("Rolled back to older header (newer headers were removed)",
@@ -662,21 +662,21 @@ func (c *Client) cleanup(startHeight, stopHeight int64) error {
 	}
 
 	for startHeight <= stopHeight {
-		// 4a) Delete the header and next validator set
 		err = c.trustedStore.DeleteSignedHeaderAndValidatorSet(startHeight)
 		if err != nil {
 			c.logger.Error("can't remove a trusted header & validator set", "err", err, "height",
 				startHeight)
 		}
-		// 4b) Jump to the next height
+
+		// Jump to the next height.
 		if startHeight < stopHeight {
 			h, err := c.trustedStore.SignedHeaderAfter(startHeight)
 			if err != nil {
-				return errors.Wrap(err, "tried to clean up headers")
+				return errors.Wrapf(err, "failed to get header after %d", startHeight)
 			}
 			startHeight = h.Height
 		} else {
-			// 4c) all headers in between have been deleted
+			// All headers in between have been deleted.
 			startHeight = stopHeight + 1
 		}
 	}
@@ -796,8 +796,10 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 		return errors.Wrap(err, "failed to save trusted header")
 	}
 
-	if err := c.trustedStore.Prune(c.pruningSize); err != nil {
-		return errors.Wrap(err, "failed to save trusted header")
+	if c.pruningSize > 0 {
+		if err := c.trustedStore.Prune(c.pruningSize); err != nil {
+			return errors.Wrap(err, "prune")
+		}
 	}
 
 	if c.latestTrustedHeader == nil || h.Height > c.latestTrustedHeader.Height {
