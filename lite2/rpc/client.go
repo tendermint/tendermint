@@ -191,7 +191,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 
 	// Verify each of the BlockMetas.
 	for _, meta := range res.BlockMetas {
-		h, err := c.lc.TrustedHeader(meta.Header.Height, time.Now())
+		h, err := c.lc.TrustedHeader(meta.Header.Height)
 		if err != nil {
 			return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
 		}
@@ -331,7 +331,7 @@ func (c *Client) updateLiteClientIfNeededTo(height int64) (*types.SignedHeader, 
 		return c.lc.VerifyHeaderAtHeight(height, time.Now())
 	}
 
-	h, err := c.lc.TrustedHeader(height, time.Now())
+	h, err := c.lc.TrustedHeader(height)
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(#%d)", height)
 	}
