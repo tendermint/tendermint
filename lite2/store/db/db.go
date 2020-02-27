@@ -212,7 +212,7 @@ func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 		panic("negative or zero height")
 	}
 
-	itr, err := s.db.ReverseIterator(
+	itr, err := s.db.Iterator(
 		s.shKey(height+1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
