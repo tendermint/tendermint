@@ -976,9 +976,6 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
 	require.NoError(t, err)
