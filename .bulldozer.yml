@@ -1,0 +1,91 @@
+# "version" is the configuration version, currently "1".
+version: 1
+
+# "merge" defines how and when pull requests are merged. If the section is
+# missing, bulldozer will consider all pull requests and use default settings.
+merge:
+  # "whitelist" defines the set of pull requests considered by bulldozer. If
+  # the section is missing, bulldozer considers all pull requests not excluded
+  # by the blacklist.
+  whitelist:
+    # Pull requests with any of these labels (case-insensitive) are added to
+    # the whitelist.
+    labels: ["T:merge"]
+
+    # Pull requests where the body or any comment contains any of these
+    # substrings are added to the whitelist.
+    comment_substrings: ["==MERGE_WHEN_READY=="]
+
+    # Pull requests where any comment matches one of these exact strings are
+    # added to the whitelist.
+    comments: ["Please merge this pull request!"]
+
+    # Pull requests where the body contains any of these substrings are added
+    # to the whitelist.
+    pr_body_substrings: ["==MERGE_WHEN_READY=="]
+
+    # Pull requests targeting any of these branches are added to the whitelist.
+    branches: ["master"]
+
+  # "blacklist" defines the set of pull request ignored by bulldozer. If the
+  # section is missing, bulldozer considers all pull requests. It takes the
+  # same keys as the "whitelist" section.
+  blacklist:
+    labels: ["T:do-not-merge"]
+    comment_substrings: ["==DO_NOT_MERGE=="]
+
+  # "method" defines the merge method. The available options are "merge",
+  # "rebase", and "squash".
+  method: squash
+  options:
+    squash:
+      body: summarize_commits
+
+  # Allows the merge method that is used when auto-merging a PR to be different based on the
+  # target branch. The keys of the hash are the target branch name, and the values are the merge method that
+  # will be used for PRs targeting that branch. The valid values are the same as for the "method" key.
+  # Note: If the target branch does not match any of the specified keys, the "method" key is used instead.
+  branch_method:
+    master: squash
+
+  # "options" defines additional options for the individual merge methods.
+  options:
+    # "squash" options are only used when the merge method is "squash"
+    squash:
+      # "title" defines how the title of the commit message is created when
+      # generating a squash commit. The options are "pull_request_title",
+      # "first_commit_title", and "github_default_title". The default is
+      # "pull_request_title".
+      title: "pull_request_title"
+
+      # "body" defines how the body of the commit message is created when
+      # generating a squash commit. The options are "pull_request_body",
+      # "summarize_commits", and "empty_body". The default is "empty_body".
+      body: "summarize_commits"
+
+      # If "body" is "pull_request_body", then the commit message will be the
+      # part of the pull request body surrounded by "message_delimiter"
+      # strings. This is disabled (empty string) by default.
+      message_delimiter: ==COMMIT_MSG==
+
+  # "required_statuses" is a list of additional status contexts that must pass
+  # before bulldozer can merge a pull request. This is useful if you want to
+  # require extra testing for automated merges, but not for manual merges.
+  required_statuses:
+    - "ci/circleci: test-cover"
+
+  # If true, bulldozer will delete branches after their pull requests merge.
+  delete_after_merge: true
+
+# "update" defines how and when to update pull request branches. Unlike with
+# merges, if this section is missing, bulldozer will not update any pull requests.
+update:
+  # "whitelist" defines the set of pull requests that should be updated by
+  # bulldozer. It accepts the same keys as the whitelist in the "merge" block.
+  whitelist:
+    labels: ["T:update"]
+
+  # "blacklist" defines the set of pull requests that should not be updated by
+  # bulldozer. It accepts the same keys as the blacklist in the "merge" block.
+  blacklist:
+    labels: ["T:do-not-update"]
