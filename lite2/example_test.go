@@ -56,9 +56,9 @@ func ExampleClient_Update() {
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // TODO: primary should not be used here
+		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(1*time.Second),
+		UpdatePeriod(0), // NOTE: value should be greater than zero
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -74,6 +74,14 @@ func ExampleClient_Update() {
 	}()
 
 	time.Sleep(2 * time.Second)
+
+	// XXX: 10 * time.Minute clock drift is needed because a) Tendermint strips
+	// monotonic component (see types/time/time.go) b) single instance is being
+	// run.
+	err = c.Update(time.Now().Add(10 * time.Minute))
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
 	h, err := c.TrustedHeader(0)
 	if err != nil {
