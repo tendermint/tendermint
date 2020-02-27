@@ -77,7 +77,8 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 		},
 		// new header's time is from the future, but it's acceptable (< maxClockDrift) -> no error
 		4: {
-			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(2*time.Hour).Add(maxClockDrift).Add(-1*time.Millisecond), nil, vals, vals,
+			keys.GenSignedHeader(chainID, nextHeight,
+				bTime.Add(2*time.Hour).Add(maxClockDrift).Add(-1*time.Millisecond), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			vals,
 			3 * time.Hour,
