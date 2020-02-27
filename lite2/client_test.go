@@ -345,9 +345,6 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
@@ -387,14 +384,12 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
-		assert.NotNil(t, h)
-		assert.Equal(t, h.Hash(), header1.Hash())
+		if assert.NotNil(t, h) {
+			assert.Equal(t, h.Hash(), header1.Hash())
+		}
 	}
 }
 

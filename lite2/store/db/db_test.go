@@ -152,7 +152,7 @@ func Test_Concurrency(t *testing.T) {
 			dbStore.FirstSignedHeaderHeight()
 
 			dbStore.Prune(2)
-			assert.NotZero(t, dbStore.Size())
+			_ = dbStore.Size()
 
 			dbStore.DeleteSignedHeaderAndValidatorSet(1)
 		}(int64(i))

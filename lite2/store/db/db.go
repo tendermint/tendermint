@@ -204,7 +204,7 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 }
 
 // SignedHeaderAfter iterates over headers until it finds a header after one at
-// height. It panics if no such header exists.
+// height. It returns ErrSignedHeaderNotFound if no such header exists.
 //
 // Safe for concurrent use by multiple goroutines.
 func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
@@ -230,7 +230,7 @@ func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 		itr.Next()
 	}
 
-	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
+	return nil, store.ErrSignedHeaderNotFound
 }
 
 // Prune prunes header & validator set pairs until there are only size pairs
