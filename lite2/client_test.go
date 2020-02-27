@@ -395,7 +395,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		assert.NoError(t, err)
 		if assert.NotNil(t, h) {
 			assert.Equal(t, h.Hash(), header1.Hash())
-    }
+		}
 
 		valSet, _, err := c.TrustedValidatorSet(1)
 		assert.NoError(t, err)
