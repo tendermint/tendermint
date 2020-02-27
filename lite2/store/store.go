@@ -48,5 +48,8 @@ type Store interface {
 
 	// Prune removes headers & the associated validator sets when Store reaches a
 	// defined size (number of header & validator set pairs).
-	Prune(size uint32) error
+	Prune(size uint16) error
+
+	// Size returns a number of currently existing header & validator set pairs.
+	Size() uint16
 }

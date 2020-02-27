@@ -67,7 +67,7 @@ func UpdatePeriod(d time.Duration) Option {
 // the associated validator set) that are earlier than the h amount of headers
 // will be removed from the store. Default: 1000. A pruning size of 0 will not
 // prune the lite client at all.
-func PruningSize(h uint32) Option {
+func PruningSize(h uint16) Option {
 	return func(c *Client) {
 		c.pruningSize = h
 	}
@@ -129,7 +129,7 @@ type Client struct {
 	// See UpdatePeriod option
 	updatePeriod time.Duration
 	// See RemoveNoLongerTrustedHeadersPeriod option
-	pruningSize uint32
+	pruningSize uint16
 	// See ConfirmationFunction option
 	confirmationFn func(action string) bool
 
