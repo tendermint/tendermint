@@ -46,6 +46,7 @@ type Store interface {
 	// height must be > 0 && <= LastSignedHeaderHeight.
 	SignedHeaderAfter(height int64) (*types.SignedHeader, error)
 
-	// Prune, removes headers when the database reaches a defined size in order from oldest to newest
-	Prune(size uint64) error
+	// Prune removes headers & the associated validator sets when Store reaches a
+	// defined size (number of header & validator set pairs).
+	Prune(size uint32) error
 }

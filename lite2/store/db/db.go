@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/binary"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -14,9 +15,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	sizeKey = []byte("size")
+)
+
 type dbs struct {
 	db     dbm.DB
 	prefix string
+	size   uint32
 
 	cdc *amino.Codec
 }
@@ -28,7 +34,14 @@ type dbs struct {
 func New(db dbm.DB, prefix string) store.Store {
 	cdc := amino.NewCodec()
 	cryptoAmino.RegisterAmino(cdc)
-	return &dbs{db: db, prefix: prefix, cdc: cdc}
+
+	size := uint32(0)
+	bz, err := db.Get(sizeKey)
+	if err == nil && len(bz) > 0 {
+		size = binary.LittleEndian.Uint32(bz)
+	}
+
+	return &dbs{db: db, prefix: prefix, cdc: cdc, size: size}
 }
 
 // SaveSignedHeaderAndValidatorSet persists SignedHeader and ValidatorSet to
@@ -51,8 +64,16 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 	b := s.db.NewBatch()
 	b.Set(s.shKey(sh.Height), shBz)
 	b.Set(s.vsKey(sh.Height), valSetBz)
+
+	bs := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bs, s.size+1)
+	b.Set(sizeKey, bs)
+
 	err = b.WriteSync()
 	b.Close()
+	if err != nil {
+		s.size++
+	}
 	return err
 }
 
@@ -66,8 +87,16 @@ func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 	b := s.db.NewBatch()
 	b.Delete(s.shKey(height))
 	b.Delete(s.vsKey(height))
+
+	bs := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bs, s.size-1)
+	b.Set(sizeKey, bs)
+
 	err := b.WriteSync()
 	b.Close()
+	if err != nil {
+		s.size--
+	}
 	return err
 }
 
@@ -181,8 +210,49 @@ func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
 }
 
-func (s *dbs) Prune(size uint64) error {
-	return nil
+func (s *dbs) Prune(size uint32) error {
+	if s.size <= size { // nothing to prune
+		return nil
+	}
+
+	numToPrune := s.size - size
+
+	itr, err := s.db.Iterator(
+		s.shKey(1),
+		append(s.shKey(1<<63-1), byte(0x00)),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer itr.Close()
+
+	b := s.db.NewBatch()
+
+	// Prune numToPrune header & validator set pairs.
+	for itr.Valid() && numToPrune > 0 {
+		key := itr.Key()
+		_, height, ok := parseShKey(key)
+		if ok {
+			b.Delete(s.shKey(height))
+			b.Delete(s.vsKey(height))
+		}
+		itr.Next()
+		numToPrune--
+	}
+
+	err = b.WriteSync()
+	b.Close()
+
+	// Reset db size to prune size.
+	if err == nil {
+		bs := make([]byte, 4)
+		binary.LittleEndian.PutUint32(bs, size)
+		b.Set(sizeKey, bs)
+
+		s.size = size
+	}
+
+	return err
 }
 
 func (s *dbs) shKey(height int64) []byte {
