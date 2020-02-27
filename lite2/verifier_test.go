@@ -75,8 +75,19 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			nil,
 			"new header has a time from the future",
 		},
-		// 3/3 signed -> no error
+		// new header's time is from the future, but it's acceptable (< maxClockDrift) -> no error
 		4: {
+			keys.GenSignedHeader(chainID, nextHeight,
+				bTime.Add(2*time.Hour).Add(maxClockDrift).Add(-1*time.Millisecond), nil, vals, vals,
+				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+			vals,
+			3 * time.Hour,
+			bTime.Add(2 * time.Hour),
+			nil,
+			"",
+		},
+		// 3/3 signed -> no error
+		5: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			vals,
@@ -86,7 +97,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			"",
 		},
 		// 2/3 signed -> no error
-		5: {
+		6: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 1, len(keys)),
 			vals,
@@ -96,7 +107,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			"",
 		},
 		// 1/3 signed -> error
-		6: {
+		7: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), len(keys)-1, len(keys)),
 			vals,
@@ -106,7 +117,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			"",
 		},
 		// vals does not match with what we have -> error
-		7: {
+		8: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, keys.ToValidators(10, 1), vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			keys.ToValidators(10, 1),
@@ -116,7 +127,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			"to match those from new header",
 		},
 		// vals are inconsistent with newHeader -> error
-		8: {
+		9: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			keys.ToValidators(10, 1),
@@ -126,7 +137,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			"to match those that were supplied",
 		},
 		// old header has expired -> error
-		9: {
+		10: {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, vals, vals,
 				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			keys.ToValidators(10, 1),
