@@ -1,12 +1,13 @@
 package lite
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	"github.com/tendermint/tendermint/lite2/store"
-	"time"
 )
 
 // NewClient returns a new light client. It returns an error if it fails to
@@ -153,13 +154,13 @@ func NewNetClientFromTrustedStore(
 }
 
 func providersFromAddresses(providerAddresses []string, chainID string) ([]provider.Provider, error) {
-	var providers []provider.Provider
-	for _, address := range providerAddresses {
+	providers := make([]provider.Provider, len(providerAddresses))
+	for idx, address := range providerAddresses {
 		singleProvider, err := http.New(chainID, address)
 		if err != nil {
 			return nil, err
 		}
-		providers = append(providers, singleProvider)
+		providers[idx] = singleProvider
 	}
 	return providers, nil
 }

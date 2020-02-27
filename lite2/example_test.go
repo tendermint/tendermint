@@ -55,6 +55,9 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 	trustedStore := dbs.New(db, chainID)
 
 	err = trustedStore.SaveSignedHeaderAndValidatorSet(header, vals)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
 	c, err := NewNetClientFromTrustedStore(
 		chainID,
