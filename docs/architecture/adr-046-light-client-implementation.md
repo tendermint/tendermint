@@ -28,7 +28,7 @@ type Client interface {
 
 	// get trusted headers & validators
 	TrustedHeader(height int64) (*types.SignedHeader, error)
-	TrustedValidatorSet(height int64) (*types.ValidatorSet, error)
+	TrustedValidatorSet(height int64) (valSet *types.ValidatorSet, heightUsed int64, err error)
 	LastTrustedHeight() (int64, error)
 	FirstTrustedHeight() (int64, error)
 
