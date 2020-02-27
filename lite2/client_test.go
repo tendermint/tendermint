@@ -39,18 +39,21 @@ var (
 		Height: 1,
 		Hash:   h1.Hash(),
 	}
+	valSet = map[int64]*types.ValidatorSet{
+		1: vals,
+		2: vals,
+		3: vals,
+		4: vals,
+	}
+	headerSet = map[int64]*types.SignedHeader{
+		1: h1,
+		2: h2,
+		3: h3,
+	}
 	fullNode = mockp.New(
 		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: h2,
-			3: h3,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-			3: vals,
-		},
+		headerSet,
+		valSet,
 	)
 	deadNode = mockp.NewDeadMock(chainID)
 )
@@ -76,11 +79,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				// last header (3/3 signed)
 				3: h3,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
+			valSet,
 			false,
 			false,
 		},
@@ -109,11 +108,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				3: keys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
+			valSet,
 			false,
 			true,
 		},
@@ -129,24 +124,13 @@ func TestClient_SequentialVerification(t *testing.T) {
 				3: keys.GenSignedHeader(chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
 					[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), len(keys)-1, len(keys)),
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
+			valSet,
 			false,
 			true,
 		},
 		{
 			"bad: different validator set at height 3",
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: h1,
-				// interim header (3/3 signed)
-				2: h2,
-				// last header (3/3 signed)
-				3: h3,
-			},
+			headerSet,
 			map[int64]*types.ValidatorSet{
 				1: vals,
 				2: vals,
@@ -221,11 +205,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				// last header (3/3 signed)
 				3: h3,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: vals,
-			},
+			valSet,
 			false,
 			false,
 		},
@@ -357,12 +337,12 @@ func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
 	c.RemoveNoLongerTrustedHeaders(now)
 
 	// Check expired headers are no longer available.
-	h, err := c.TrustedHeader(1, now)
+	h, err := c.TrustedHeader(1)
 	assert.Error(t, err)
 	assert.Nil(t, h)
 
 	// Check not expired headers are available.
-	h, err = c.TrustedHeader(2, now)
+	h, err = c.TrustedHeader(2)
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 }
@@ -385,7 +365,7 @@ func TestClient_Cleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check no headers exist after Cleanup.
-	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	h, err := c.TrustedHeader(1)
 	assert.Error(t, err)
 	assert.Nil(t, h)
 }
@@ -411,7 +391,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Stop()
 
-		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
@@ -433,9 +413,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 				// trusted header
 				1: header1,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -455,7 +433,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Stop()
 
-		h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), header1.Hash())
@@ -488,7 +466,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
@@ -514,10 +492,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 				1: diffHeader1,
 				2: diffHeader2,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -538,7 +513,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 		defer c.Stop()
 
 		// Check we no longer have the invalid 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -557,23 +532,11 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		err = trustedStore.SaveSignedHeaderAndValidatorSet(h2, vals)
 		require.NoError(t, err)
 
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: h1,
-				2: h2,
-			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-			},
-		)
-
 		c, err := NewClient(
 			chainID,
 			trustOptions,
-			primary,
-			[]provider.Provider{primary},
+			fullNode,
+			[]provider.Provider{fullNode},
 			trustedStore,
 			Logger(log.TestingLogger()),
 		)
@@ -583,13 +546,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), h1.Hash())
 
 		// Check we no longer have 2nd header (+header2+).
-		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err = c.TrustedHeader(2)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -615,9 +578,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			map[int64]*types.SignedHeader{
 				1: header1,
 			},
-			map[int64]*types.ValidatorSet{
-				1: vals,
-			},
+			valSet,
 		)
 
 		c, err := NewClient(
@@ -638,13 +599,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		defer c.Stop()
 
 		// Check we have swapped invalid 1st header (+header+) with correct one (+header1+).
-		h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Equal(t, h.Hash(), header1.Hash())
 
 		// Check we no longer have invalid 2nd header (+header2+).
-		h, err = c.TrustedHeader(2, bTime.Add(2*time.Hour).Add(1*time.Second))
+		h, err = c.TrustedHeader(2)
 		assert.Error(t, err)
 		assert.Nil(t, h)
 	}
@@ -668,7 +629,7 @@ func TestClient_Update(t *testing.T) {
 	err = c.Update(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
-	h, err := c.TrustedHeader(3, bTime.Add(2*time.Hour))
+	h, err := c.TrustedHeader(3)
 	assert.NoError(t, err)
 	require.NotNil(t, h)
 	assert.EqualValues(t, 3, h.Height)
@@ -709,11 +670,11 @@ func TestClient_Concurrency(t *testing.T) {
 			_, err = c.FirstTrustedHeight()
 			assert.NoError(t, err)
 
-			h, err := c.TrustedHeader(1, bTime.Add(2*time.Hour))
+			h, err := c.TrustedHeader(1)
 			assert.NoError(t, err)
 			assert.NotNil(t, h)
 
-			vals, err := c.TrustedValidatorSet(2, bTime.Add(2*time.Hour))
+			vals, err := c.TrustedValidatorSet(2)
 			assert.NoError(t, err)
 			assert.NotNil(t, vals)
 		}()
@@ -743,41 +704,111 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 1 * time.Hour,
-			Height: 3,
-			Hash:   h3.Hash(),
-		},
-		fullNode,
-		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
-		Logger(log.TestingLogger()),
-	)
-	require.NoError(t, err)
+	{
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			fullNode,
+			[]provider.Provider{fullNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
 
-	// 1) header is missing => expect no error
-	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-	require.NoError(t, err)
-	if assert.NotNil(t, h) {
-		assert.EqualValues(t, 2, h.Height)
+		// 1) header is missing => expect no error
+		h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		require.NoError(t, err)
+		if assert.NotNil(t, h) {
+			assert.EqualValues(t, 2, h.Height)
+		}
+
+		// 2) untrusted header is expired but trusted header is not => expect no error
+		h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
+		assert.NotNil(t, h)
+
+		// 3) already stored headers should return the header without error
+		h, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
+		assert.NotNil(t, h)
 	}
+	{
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			fullNode,
+			[]provider.Provider{fullNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
 
-	// 2) header is missing, but it's expired => expect error
-	h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.Error(t, err)
-	assert.NotNil(t, h)
+		// 3) trusted header has expired => expect error
+		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
+	}
+	{
+		testCases := []struct {
+			provider provider.Provider
+		}{
+			{
+				// provides incorrect height
+				mockp.New(
+					chainID,
+					map[int64]*types.SignedHeader{
+						1: h1,
+						2: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
+							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+						3: h3,
+					},
+					valSet,
+				),
+			},
+			{
+				// provides incorrect hash
+				mockp.New(
+					chainID,
+					map[int64]*types.SignedHeader{
+						1: h1,
+						2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+							[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
+						3: h3,
+					},
+					valSet,
+				),
+			},
+		}
 
-	// 3) already stored headers should return the header without error
-	h, err = c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.NoError(t, err)
-	assert.NotNil(t, h)
+		for _, tc := range testCases {
+			c, err := NewClient(
+				chainID,
+				TrustOptions{
+					Period: 1 * time.Hour,
+					Height: 3,
+					Hash:   h3.Hash(),
+				},
+				tc.provider,
+				[]provider.Provider{tc.provider},
+				dbs.New(dbm.NewMemDB(), chainID),
+				UpdatePeriod(0),
+				Logger(log.TestingLogger()),
+			)
+			require.NoError(t, err)
 
-	// 4) cannot verify a header in the future
-	_, err = c.VerifyHeaderAtHeight(4, bTime.Add(1*time.Hour).Add(1*time.Second))
-	assert.Error(t, err)
+			_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+			assert.Error(t, err)
+		}
+	}
 }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
@@ -797,49 +828,54 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 
 	// 2) Check header exists (deadNode is being used to ensure we're not getting
 	// it from primary)
-	h, err := c.TrustedHeader(1, bTime.Add(1*time.Second))
+	h, err := c.TrustedHeader(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, h.Height)
 }
 
-func TestClientUpdateErrorsIfAllWitnessesUnavailable(t *testing.T) {
-	c, err := NewClient(
+func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
+	_, err := NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
-		[]provider.Provider{deadNode, deadNode, deadNode},
+		[]provider.Provider{deadNode, deadNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 		MaxRetryAttempts(1),
 	)
-	require.NoError(t, err)
-
-	err = c.Update(bTime.Add(2 * time.Hour))
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
 	}
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	// straight invalid header
+	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
-			3: {Header: nil, Commit: nil},
+			1: h1,
+			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
+				len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
 		},
-		map[int64]*types.ValidatorSet{},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		},
 	)
-
-	// less than 1/3 signed
+	// header is empty
 	badProvider2 := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
-			3: keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
-				[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h2.Hash()}),
+			1: h1,
+			2: h2,
+			3: {Header: nil, Commit: nil},
 		},
-		map[int64]*types.ValidatorSet{},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		},
 	)
 
 	c, err := NewClient(
@@ -850,12 +886,21 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
+		MaxRetryAttempts(1),
 	)
+	// witness should have behaved properly -> no error
 	require.NoError(t, err)
+	assert.EqualValues(t, 2, len(c.Witnesses()))
 
-	err = c.Update(bTime.Add(2 * time.Hour))
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "could not find any witnesses")
-	}
-	assert.Zero(t, 0, len(c.Witnesses()))
+	// witness behaves incorrectly -> removed from list, no error
+	h, err := c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, len(c.Witnesses()))
+	// header should still be verified
+	assert.EqualValues(t, 2, h.Height)
+
+	// no witnesses left to verify -> error
+	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+	assert.Error(t, err)
+	assert.EqualValues(t, 0, len(c.Witnesses()))
 }

@@ -2,6 +2,7 @@
 
 ## Changelog
 * 13-02-2020: Initial draft
+* 26-02-2020: Cross-checking the first header
 
 ## Context
 
@@ -26,8 +27,8 @@ type Client interface {
 	Cleanup() error
 
 	// get trusted headers & validators
-	TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error)
-	TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error)
+	TrustedHeader(height int64) (*types.SignedHeader, error)
+	TrustedValidatorSet(height int64) (*types.ValidatorSet, error)
 	LastTrustedHeight() (int64, error)
 	FirstTrustedHeight() (int64, error)
 
@@ -62,7 +63,8 @@ func NewClient(
 made to increase security by default. At least one witness is required,
 although, right now, the light client does not check that primary != witness.
 When cross-checking a new header with witnesses, minimum number of witnesses
-required to respond: 1.
+required to respond: 1. Note the very first header (`TrustOptions.Hash`) is
+also cross-checked with witnesses for additional security.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
 client does not have a header for height `X` and `TrustedHeader(X)` or
