@@ -301,47 +301,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 	}
 }
 
-func TestClientRemovesNoLongerTrustedHeaders(t *testing.T) {
-	c, err := NewClient(
-		chainID,
-		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-	)
-
-	assert.NotPanics(t, func() {
-		now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
-		c.RemoveNoLongerTrustedHeaders(now)
-	})
-
-	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
-
-	// Verify new headers.
-	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-	require.NoError(t, err)
-	now := bTime.Add(4 * time.Hour).Add(1 * time.Second)
-	_, err = c.VerifyHeaderAtHeight(3, now)
-	require.NoError(t, err)
-
-	// Remove expired headers.
-	c.RemoveNoLongerTrustedHeaders(now)
-
-	// Check expired headers are no longer available.
-	h, err := c.TrustedHeader(1)
-	assert.Error(t, err)
-	assert.Nil(t, h)
-
-	// Check not expired headers are available.
-	h, err = c.TrustedHeader(2)
-	assert.NoError(t, err)
-	assert.NotNil(t, h)
-}
-
 func TestClient_Cleanup(t *testing.T) {
 	c, err := NewClient(
 		chainID,
@@ -352,10 +311,9 @@ func TestClient_Cleanup(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
+	_, err = c.TrustedHeader(1)
 	require.NoError(t, err)
 
-	c.Stop()
 	err = c.Cleanup()
 	require.NoError(t, err)
 
@@ -386,9 +344,6 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
@@ -435,14 +390,12 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		h, err := c.TrustedHeader(1)
 		assert.NoError(t, err)
-		assert.NotNil(t, h)
-		assert.Equal(t, h.Hash(), header1.Hash())
+		if assert.NotNil(t, h) {
+			assert.Equal(t, h.Hash(), header1.Hash())
+    }
 
 		valSet, _, err := c.TrustedValidatorSet(1)
 		assert.NoError(t, err)
