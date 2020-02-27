@@ -75,10 +75,10 @@ func ExampleClient_Update() {
 
 	time.Sleep(2 * time.Second)
 
-	// XXX: 10 * time.Minute clock drift is needed because a) Tendermint strips
+	// XXX: 30 * time.Minute clock drift is needed because a) Tendermint strips
 	// monotonic component (see types/time/time.go) b) single instance is being
 	// run.
-	err = c.Update(time.Now().Add(10 * time.Minute))
+	err = c.Update(time.Now().Add(30 * time.Minute))
 	if err != nil {
 		stdlog.Fatal(err)
 	}
