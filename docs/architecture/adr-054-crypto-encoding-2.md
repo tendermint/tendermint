@@ -14,7 +14,7 @@ Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
 ## Options
 
-These are two options available. If there are more please leave a comment and we can discuss it.
+If there are more options please leave a comment and we can discuss it.
 
 1. Remove backwards compatibility and go with `oneof` proto encoding of keys.
 
@@ -27,6 +27,11 @@ These are two options available. If there are more please leave a comment and we
 
 - This may cause issues with bech32 as it will exceed the maximum length permitted by the libraries
 - Backwards compatible, will not keep amino around but use custom marshlers in order to prefix the keys, less of a headache as no migration script would be needed and less coordination in the community.
+
+3. Use proto encoding for over the wire communication. Where backwards compatibility is needed use the amino encoding format: `<PrefixBytes> <Length> <ByteArray>`.
+
+- This is a good proposal but would be a bit hacky. 
+- Less headache, users will be happy for not needing to do a migration.
 
 ## Decision
 
