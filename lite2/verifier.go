@@ -10,6 +10,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	maxClockDrift = 10 * time.Second
+)
+
 var (
 	// DefaultTrustLevel - new header can be trusted if at least one correct
 	// validator signed it.
@@ -162,10 +166,11 @@ func verifyNewHeaderAndVals(
 			trustedHeader.Time)
 	}
 
-	if !untrustedHeader.Time.Before(now) {
-		return errors.Errorf("new header has a time from the future %v (now: %v)",
+	if !untrustedHeader.Time.Before(now.Add(maxClockDrift)) {
+		return errors.Errorf("new header has a time from the future %v (now: %v; max clock drift: %v)",
 			untrustedHeader.Time,
-			now)
+			now,
+			maxClockDrift)
 	}
 
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
