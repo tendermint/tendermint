@@ -932,6 +932,11 @@ func (c *Client) removeWitness(idx int) {
 func (c *Client) autoUpdateRoutine() {
 	defer c.routinesWaitGroup.Done()
 
+	err := c.Update(time.Now())
+	if err != nil {
+		c.logger.Error("Error during auto update", "err", err)
+	}
+
 	ticker := time.NewTicker(c.updatePeriod)
 	defer ticker.Stop()
 
