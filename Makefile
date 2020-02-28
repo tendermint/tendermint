@@ -4,6 +4,7 @@ OUTPUT?=build/tendermint
 BUILD_TAGS?='tendermint'
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
+SSH_GIT := ssh://git@github.com:tendermint/tendermint.git
 
 all: check build test install
 .PHONY: all
@@ -57,7 +58,7 @@ proto-lint:
 .PHONY: proto-lint
 
 proto-check-breaking:
-	@buf check breaking --against-input '.git#branch=master'
+	@buf check breaking --against-input "$(SSH_GIT)#branch=master"
 .PHONY: proto-check-breaking
 
 ###############################################################################
