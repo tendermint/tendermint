@@ -103,8 +103,7 @@ type addrBook struct {
 }
 
 func newHashKey() []byte {
-	highwayKeyLength := highwayhash.Size
-	result := make([]byte, highwayKeyLength)
+	result := make([]byte, highwayhash.Size)
 	crand.Read(result)
 	return result
 }
@@ -777,7 +776,7 @@ func (a *addrBook) calcNewBucket(addr, src *p2p.NetAddress) (int, error) {
 }
 
 // hash(  key + group +
-//                hash(doublesha256(key + addr))%buckets_per_group  ) % num_old_buckets
+//                int64(hash(key + addr))%buckets_per_group  ) % num_old_buckets
 func (a *addrBook) calcOldBucket(addr *p2p.NetAddress) (int, error) {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
