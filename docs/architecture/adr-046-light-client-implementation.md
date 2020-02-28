@@ -68,9 +68,13 @@ required to respond: 1. Note the very first header (`TrustOptions.Hash`) is
 also cross-checked with witnesses for additional security.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
-client does not have a header for height `X` and `TrustedHeader(X)` or
-`TrustedValidatorSet(X)` methods are called, it will download the header from
-primary provider and perform a backwards verification.
+client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
+`VerifyHeader(H#X)` methods are called, it will perform a backwards
+verification from the latest header back to the header at height `X`.
+
+`TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
+If some header is not there, an error will be returned indicating that
+verification is required.
 
 ```go
 type Provider interface {
