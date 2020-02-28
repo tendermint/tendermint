@@ -6,7 +6,7 @@
 
 ## Context
 
-Amino has been a pain point of many users in the ecosystem. While Tendermint does not suffer greatly from the performance degradation introduced by amino, we are making an effort in moving the encoding format to a widely adopt format, [Protocol Buffers](https://developers.google.com/protocol-buffers). With this migration a new standard is needed for the encoding of keys. This will cause ecosystem wide breaking changes.
+Amino has been a pain point of many users in the ecosystem. While Tendermint does not suffer greatly from the performance degradation introduced by amino, we are making an effort in moving the encoding format to a widely adopted format, [Protocol Buffers](https://developers.google.com/protocol-buffers). With this migration a new standard is needed for the encoding of keys. This will cause ecosystem wide breaking changes.
 
 Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
@@ -21,14 +21,7 @@ If there are more options please leave a comment and we can discuss it.
 - This will be a major breaking change in the ecosystem.
 - Will need a migration script to be released in conjunction with the release which will have this change.
 
-> I am leaning towards the first option and go through the with headache in order to entirely remove the amino overhead
-
-2. Keep the amino encoding format `<PrefixBytes> <Length> <ByteArray>` and protobuf encode the key after appending the prefix bytes.
-
-- This may cause issues with bech32 as it will exceed the maximum length permitted by the libraries
-- Backwards compatible, will not keep amino around but use custom marshlers in order to prefix the keys, less of a headache as no migration script would be needed and less coordination in the community.
-
-3. Use proto encoding for over the wire communication. Where backwards compatibility is needed use the amino encoding format: `<PrefixBytes> <Length> <ByteArray>`.
+2. Use proto encoding for over the wire communication. Where backwards compatibility is needed use the amino encoding format: `<PrefixBytes> <Length> <ByteArray>`.
 
 - This is a good proposal but would be a bit hacky. 
 - Less headache, users will be happy for not needing to do a migration.
