@@ -3,6 +3,7 @@
 ## Changelog
 * 13-02-2020: Initial draft
 * 26-02-2020: Cross-checking the first header
+* 28-02-2020: Bisection algorithm details
 
 ## Context
 
@@ -126,6 +127,21 @@ func Verify(
 cases of adjacent and non-adjacent headers. In the former case, it compares the
 hashes directly (2/3+ signed transition). Otherwise, it verifies 1/3+
 (`trustLevel`) of trusted validators are still present in new validators.
+
+### Bisection algorithm details
+
+Non-recursive bisection algorithm was implemented despite the spec containing
+the recursive version. There are two major reasons:
+
+1) Constant memory consumption => no risk of getting OOM (Out-Of-Memory) exceptions;
+2) Faster finality (see Fig. 1).
+
+Fig. 1: Differences between recursive and non-recursive bisections
+
+![Fig. 1](./img/adr-046-fig1.png)
+
+Specification of the non-recursive bisection can be found
+[here](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md).
 
 ## Status
 
