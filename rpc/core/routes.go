@@ -6,6 +6,7 @@ import (
 
 // TODO: better system than "unsafe" prefix
 // NOTE: Amino is registered in rpc/core/types/codec.go.
+
 var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
 	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),

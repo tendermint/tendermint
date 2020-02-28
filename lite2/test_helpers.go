@@ -36,11 +36,11 @@ func genPrivKeys(n int) privKeys {
 // 	return res
 // }
 
-// // Extend adds n more keys (to remove, just take a slice).
-// func (pkz privKeys) Extend(n int) privKeys {
-// 	extra := genPrivKeys(n)
-// 	return append(pkz, extra...)
-// }
+// Extend adds n more keys (to remove, just take a slice).
+func (pkz privKeys) Extend(n int) privKeys {
+	extra := genPrivKeys(n)
+	return append(pkz, extra...)
+}
 
 // // GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
 // func GenSecpPrivKeys(n int) privKeys {

@@ -31,7 +31,7 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
-func NewGRPCClient(addr string, mustConnect bool) *grpcClient {
+func NewGRPCClient(addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,
 		mustConnect: mustConnect,
