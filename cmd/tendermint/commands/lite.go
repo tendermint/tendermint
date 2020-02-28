@@ -89,13 +89,13 @@ func init() {
 func runProxy(cmd *cobra.Command, args []string) error {
 	// Initialise logger.
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	var option log.Option
 	if verbose {
-		option, _ := log.AllowLevel("debug")
-		logger = log.NewFilter(logger, option)
+		option, _ = log.AllowLevel("debug")
 	} else {
-		option, _ := log.AllowLevel("info")
-		logger = log.NewFilter(logger, option)
+		option, _ = log.AllowLevel("info")
 	}
+	logger = log.NewFilter(logger, option)
 
 	chainID = args[0]
 

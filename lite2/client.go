@@ -1039,6 +1039,7 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		if err == nil || err == provider.ErrValidatorSetNotFound {
 			return vals, err
 		}
+		c.logger.Error("Failed to get validator set from primary", "attempt", attempt, "err", err)
 		time.Sleep(backoffTimeout(attempt))
 	}
 
