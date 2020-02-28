@@ -166,12 +166,14 @@ func NewClient(
 	}
 
 	if c.latestTrustedHeader != nil {
+		c.logger.Info("Checking trusted header using options")
 		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
 			return nil, err
 		}
 	}
 
 	if c.latestTrustedHeader == nil || c.latestTrustedHeader.Height < trustOptions.Height {
+		c.logger.Info("Downloading trusted header using options")
 		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
 			return nil, err
 		}
@@ -258,7 +260,7 @@ func (c *Client) restoreTrustedHeaderAndVals() error {
 		c.latestTrustedHeader = trustedHeader
 		c.latestTrustedVals = trustedVals
 
-		c.logger.Debug("Restored trusted header and vals", "height", lastHeight)
+		c.logger.Info("Restored trusted header and vals", "height", lastHeight)
 	}
 
 	return nil
@@ -1013,6 +1015,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == provider.ErrSignedHeaderNotFound {
 			return nil, err
 		}
+		c.logger.Error("Failed to get signed header from primary", "attempt", attempt, "err", err)
 		time.Sleep(backoffTimeout(attempt))
 	}
 
