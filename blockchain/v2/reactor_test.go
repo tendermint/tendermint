@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -494,7 +495,9 @@ func newReactorStore(
 				lastBlockMeta.BlockID,
 				state.Validators,
 				privVals[0],
-				lastBlock.Header.ChainID)
+				lastBlock.Header.ChainID,
+				time.Now(),
+			)
 			if err != nil {
 				panic(err)
 			}

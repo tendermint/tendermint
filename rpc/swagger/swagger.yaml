@@ -7,7 +7,7 @@ info:
     name: Apache 2.0
     url: https://github.com/tendermint/tendermint/blob/master/LICENSE
 servers:
-  - url: https://stargate.cosmos.network:26657
+  - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC
   - url: http://localhost:26657
     description: Interact with the Tendermint RPC locally on your device
