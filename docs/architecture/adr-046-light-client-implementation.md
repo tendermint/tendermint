@@ -136,7 +136,7 @@ the recursive version. There are two major reasons:
 1) Constant memory consumption => no risk of getting OOM (Out-Of-Memory) exceptions;
 2) Faster finality (see Fig. 1).
 
-Fig. 1: Differences between recursive and non-recursive bisections
+_Fig. 1: Differences between recursive and non-recursive bisections_
 
 ![Fig. 1](./img/adr-046-fig1.png)
 
