@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -66,25 +67,25 @@ func (sc *SignerClient) Ping() error {
 }
 
 // GetPubKey retrieves a public key from a remote signer
-func (sc *SignerClient) GetPubKey() crypto.PubKey {
+func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil
+		return nil, err
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil
+		return nil, errors.New("response != PubKeyResponse")
 	}
 
 	if pubKeyResp.Error != nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil
+		return nil, fmt.Errorf("failed to get private validator's public key, %w", pubKeyResp.Error)
 	}
 
-	return pubKeyResp.PubKey
+	return pubKeyResp.PubKey, nil
 }
 
 // SignVote requests a remote signer to sign a vote

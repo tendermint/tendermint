@@ -73,7 +73,10 @@ func TestAddVote(t *testing.T) {
 
 	// t.Logf(">> %v", voteSet)
 
-	val0Addr := val0.GetPubKey().Address()
+	val0p, err := val0.GetPubKey()
+	assert.NoError(t, err)
+	val0Addr := val0p.Address()
+
 	if voteSet.GetByAddress(val0Addr) != nil {
 		t.Errorf("expected GetByAddress(val0.Address) to be nil")
 	}
@@ -94,7 +97,7 @@ func TestAddVote(t *testing.T) {
 		Timestamp:        tmtime.Now(),
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
-	_, err := signAddVote(val0, vote, voteSet)
+	_, err = signAddVote(val0, vote, voteSet)
 	if err != nil {
 		t.Error(err)
 	}
@@ -126,9 +129,11 @@ func Test2_3Majority(t *testing.T) {
 	}
 	// 6 out of 10 voted for nil.
 	for i := 0; i < 6; i++ {
-		addr := privValidators[i].GetPubKey().Address()
+		pv, err := privValidators[i].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, i)
-		_, err := signAddVote(privValidators[i], vote, voteSet)
+		_, err = signAddVote(privValidators[i], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -140,9 +145,11 @@ func Test2_3Majority(t *testing.T) {
 
 	// 7th validator voted for some blockhash
 	{
-		addr := privValidators[6].GetPubKey().Address()
+		pv, err := privValidators[6].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 6)
-		_, err := signAddVote(privValidators[6], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		_, err = signAddVote(privValidators[6], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -154,9 +161,11 @@ func Test2_3Majority(t *testing.T) {
 
 	// 8th validator voted for nil.
 	{
-		addr := privValidators[7].GetPubKey().Address()
+		pv, err := privValidators[7].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 7)
-		_, err := signAddVote(privValidators[7], vote, voteSet)
+		_, err = signAddVote(privValidators[7], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -187,9 +196,11 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 66 out of 100 voted for nil.
 	for i := 0; i < 66; i++ {
-		addr := privValidators[i].GetPubKey().Address()
+		pv, err := privValidators[i].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, i)
-		_, err := signAddVote(privValidators[i], vote, voteSet)
+		_, err = signAddVote(privValidators[i], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -201,9 +212,11 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 67th validator voted for nil
 	{
-		adrr := privValidators[66].GetPubKey().Address()
+		pv, err := privValidators[66].GetPubKey()
+		assert.NoError(t, err)
+		adrr := pv.Address()
 		vote := withValidator(voteProto, adrr, 66)
-		_, err := signAddVote(privValidators[66], withBlockHash(vote, nil), voteSet)
+		_, err = signAddVote(privValidators[66], withBlockHash(vote, nil), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -215,10 +228,12 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 68th validator voted for a different BlockParts PartSetHeader
 	{
-		addr := privValidators[67].GetPubKey().Address()
+		pv, err := privValidators[67].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 67)
 		blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
-		_, err := signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
+		_, err = signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -230,10 +245,12 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 69th validator voted for different BlockParts Total
 	{
-		addr := privValidators[68].GetPubKey().Address()
+		pv, err := privValidators[68].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 68)
 		blockPartsHeader := PartSetHeader{blockPartsTotal + 1, blockPartsHeader.Hash}
-		_, err := signAddVote(privValidators[68], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
+		_, err = signAddVote(privValidators[68], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -245,9 +262,11 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 70th validator voted for different BlockHash
 	{
-		addr := privValidators[69].GetPubKey().Address()
+		pv, err := privValidators[69].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 69)
-		_, err := signAddVote(privValidators[69], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		_, err = signAddVote(privValidators[69], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -259,9 +278,11 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 71st validator voted for the right BlockHash & BlockPartsHeader
 	{
-		addr := privValidators[70].GetPubKey().Address()
+		pv, err := privValidators[70].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 70)
-		_, err := signAddVote(privValidators[70], vote, voteSet)
+		_, err = signAddVote(privValidators[70], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -288,7 +309,9 @@ func TestBadVotes(t *testing.T) {
 
 	// val0 votes for nil.
 	{
-		addr := privValidators[0].GetPubKey().Address()
+		pv, err := privValidators[0].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 0)
 		added, err := signAddVote(privValidators[0], vote, voteSet)
 		if !added || err != nil {
@@ -298,7 +321,9 @@ func TestBadVotes(t *testing.T) {
 
 	// val0 votes again for some block.
 	{
-		addr := privValidators[0].GetPubKey().Address()
+		pv, err := privValidators[0].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
 		if added || err == nil {
@@ -308,7 +333,9 @@ func TestBadVotes(t *testing.T) {
 
 	// val1 votes on another height
 	{
-		addr := privValidators[1].GetPubKey().Address()
+		pv, err := privValidators[1].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 1)
 		added, err := signAddVote(privValidators[1], withHeight(vote, height+1), voteSet)
 		if added || err == nil {
@@ -318,7 +345,9 @@ func TestBadVotes(t *testing.T) {
 
 	// val2 votes on another round
 	{
-		addr := privValidators[2].GetPubKey().Address()
+		pv, err := privValidators[2].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withRound(vote, round+1), voteSet)
 		if added || err == nil {
@@ -328,7 +357,9 @@ func TestBadVotes(t *testing.T) {
 
 	// val3 votes of another type.
 	{
-		addr := privValidators[3].GetPubKey().Address()
+		pv, err := privValidators[3].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 3)
 		added, err := signAddVote(privValidators[3], withType(vote, byte(PrecommitType)), voteSet)
 		if added || err == nil {
@@ -353,7 +384,10 @@ func TestConflicts(t *testing.T) {
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 
-	val0Addr := privValidators[0].GetPubKey().Address()
+	val0, err := privValidators[0].GetPubKey()
+	assert.NoError(t, err)
+	val0Addr := val0.Address()
+
 	// val0 votes for nil.
 	{
 		vote := withValidator(voteProto, val0Addr, 0)
@@ -407,7 +441,9 @@ func TestConflicts(t *testing.T) {
 
 	// val1 votes for blockHash1.
 	{
-		addr := privValidators[1].GetPubKey().Address()
+		pv, err := privValidators[1].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 1)
 		added, err := signAddVote(privValidators[1], withBlockHash(vote, blockHash1), voteSet)
 		if !added || err != nil {
@@ -425,7 +461,9 @@ func TestConflicts(t *testing.T) {
 
 	// val2 votes for blockHash2.
 	{
-		addr := privValidators[2].GetPubKey().Address()
+		pv, err := privValidators[2].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash2), voteSet)
 		if !added || err != nil {
@@ -446,7 +484,9 @@ func TestConflicts(t *testing.T) {
 
 	// val2 votes for blockHash1.
 	{
-		addr := privValidators[2].GetPubKey().Address()
+		pv, err := privValidators[2].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 2)
 		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash1), voteSet)
 		if !added {
@@ -488,9 +528,11 @@ func TestMakeCommit(t *testing.T) {
 
 	// 6 out of 10 voted for some block.
 	for i := 0; i < 6; i++ {
-		addr := privValidators[i].GetPubKey().Address()
+		pv, err := privValidators[i].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, i)
-		_, err := signAddVote(privValidators[i], vote, voteSet)
+		_, err = signAddVote(privValidators[i], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -501,12 +543,14 @@ func TestMakeCommit(t *testing.T) {
 
 	// 7th voted for some other block.
 	{
-		addr := privValidators[6].GetPubKey().Address()
+		pv, err := privValidators[6].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 6)
 		vote = withBlockHash(vote, tmrand.Bytes(32))
 		vote = withBlockPartsHeader(vote, PartSetHeader{123, tmrand.Bytes(32)})
 
-		_, err := signAddVote(privValidators[6], vote, voteSet)
+		_, err = signAddVote(privValidators[6], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -514,9 +558,11 @@ func TestMakeCommit(t *testing.T) {
 
 	// The 8th voted like everyone else.
 	{
-		addr := privValidators[7].GetPubKey().Address()
+		pv, err := privValidators[7].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 7)
-		_, err := signAddVote(privValidators[7], vote, voteSet)
+		_, err = signAddVote(privValidators[7], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -524,11 +570,13 @@ func TestMakeCommit(t *testing.T) {
 
 	// The 9th voted for nil.
 	{
-		addr := privValidators[8].GetPubKey().Address()
+		pv, err := privValidators[8].GetPubKey()
+		assert.NoError(t, err)
+		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 8)
 		vote.BlockID = BlockID{}
 
-		_, err := signAddVote(privValidators[8], vote, voteSet)
+		_, err = signAddVote(privValidators[8], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}

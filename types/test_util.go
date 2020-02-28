@@ -9,7 +9,11 @@ func MakeCommit(blockID BlockID, height int64, round int,
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		addr := validators[i].GetPubKey().Address()
+		pv, err := validators[i].GetPubKey()
+		if err != nil {
+			return nil, err
+		}
+		addr := pv.Address()
 		vote := &Vote{
 			ValidatorAddress: addr,
 			ValidatorIndex:   i,
@@ -20,7 +24,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			Timestamp:        now,
 		}
 
-		_, err := signAddVote(validators[i], vote, voteSet)
+		_, err = signAddVote(validators[i], vote, voteSet)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +49,11 @@ func MakeVote(
 	chainID string,
 	now time.Time,
 ) (*Vote, error) {
-	addr := privVal.GetPubKey().Address()
+	pv, err := privVal.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+	addr := pv.Address()
 	idx, _ := valSet.GetByAddress(addr)
 	vote := &Vote{
 		ValidatorAddress: addr,

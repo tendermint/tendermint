@@ -131,7 +131,8 @@ func TestABCIEvidence(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
-	pubKey := val.GetPubKey()
+	pubKey, err := val.GetPubKey()
+	assert.NoError(t, err)
 	ev := &DuplicateVoteEvidence{
 		PubKey: pubKey,
 		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),

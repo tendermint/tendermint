@@ -923,7 +923,11 @@ func (cs *State) enterPropose(height int64, round int) {
 	}
 
 	// if not a validator, we're done
-	address := cs.privValidator.GetPubKey().Address()
+	pv, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		logger.Error("could not find pubkey for this validator")
+	}
+	address := pv.Address()
 	if !cs.Validators.HasAddress(address) {
 		logger.Debug("This node is not a validator", "addr", address, "vals", cs.Validators)
 		return
@@ -1024,8 +1028,11 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
 		return
 	}
-
-	proposerAddr := cs.privValidator.GetPubKey().Address()
+	pv, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		cs.Logger.Error("could not find pubkey for this validator")
+	}
+	proposerAddr := pv.Address()
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
@@ -1491,7 +1498,12 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 				missingValidatorsPower += val.VotingPower
 			}
 
-			if cs.privValidator != nil && bytes.Equal(val.Address, cs.privValidator.GetPubKey().Address()) {
+			pv, err := cs.privValidator.GetPubKey()
+			if err != nil {
+				panic(err)
+			}
+
+			if cs.privValidator != nil && bytes.Equal(val.Address, pv.Address()) {
 				label := []string{
 					"validator_address", val.Address.String(),
 				}
@@ -1648,7 +1660,13 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		if err == ErrVoteHeightMismatch {
 			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			addr := cs.privValidator.GetPubKey().Address()
+
+			pv, err := cs.privValidator.GetPubKey()
+			if err != nil {
+
+			}
+
+			addr := pv.Address()
 			if bytes.Equal(vote.ValidatorAddress, addr) {
 				cs.Logger.Error(
 					"Found conflicting vote from ourselves. Did you unsafe_reset a validator?",
@@ -1847,7 +1865,11 @@ func (cs *State) signVote(
 	// and the privValidator will refuse to sign anything.
 	cs.wal.FlushAndSync()
 
-	addr := cs.privValidator.GetPubKey().Address()
+	pv, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+	addr := pv.Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
 	vote := &types.Vote{
@@ -1859,7 +1881,7 @@ func (cs *State) signVote(
 		Type:             msgType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
-	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
+	err = cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
 }
 
@@ -1884,8 +1906,12 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(msgType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+	pv, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		cs.Logger.Error("could not get pubkey from validator")
+	}
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetPubKey().Address()) {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(pv.Address()) {
 		return nil
 	}
 	vote, err := cs.signVote(msgType, hash, header)

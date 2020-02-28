@@ -18,7 +18,10 @@ func DefaultValidationRequestHandler(
 	switch r := req.(type) {
 	case *PubKeyRequest:
 		var p crypto.PubKey
-		p = privVal.GetPubKey()
+		p, err = privVal.GetPubKey()
+		if err != nil {
+			return nil, err
+		}
 		res = &PubKeyResponse{p, nil}
 
 	case *SignVoteRequest:

@@ -50,7 +50,12 @@ func makeVote(
 	blockID types.BlockID,
 	valset *types.ValidatorSet,
 	privVal types.PrivValidator) *types.Vote {
-	addr := privVal.GetPubKey().Address()
+	pv, err := privVal.GetPubKey()
+	if err != nil {
+		panic(err)
+	}
+	addr := pv.Address()
+
 	idx, _ := valset.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
