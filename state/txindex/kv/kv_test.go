@@ -144,62 +144,14 @@ func TestTxSearchWithCancelation(t *testing.T) {
 		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
 		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
-	hash := txResult.Tx.Hash()
-
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
 
-	testCases := []struct {
-		q             string
-		resultsLength int
-	}{
-		// search by hash
-		{fmt.Sprintf("tx.hash = '%X'", hash), 0},
-		// search by exact match (one key)
-		{"account.number = 1", 0},
-		// search by exact match (two keys)
-		{"account.number = 1 AND account.owner = 'Ivan'", 0},
-		// search by exact match (two keys)
-		{"account.number = 1 AND account.owner = 'Vlad'", 0},
-		{"account.owner = 'Vlad' AND account.number = 1", 0},
-		{"account.number >= 1 AND account.owner = 'Vlad'", 0},
-		{"account.owner = 'Vlad' AND account.number >= 1", 0},
-		{"account.number <= 0", 0},
-		{"account.number <= 0 AND account.owner = 'Ivan'", 0},
-		// search using a prefix of the stored value
-		{"account.owner = 'Iv'", 0},
-		// search by range
-		{"account.number >= 1 AND account.number <= 5", 0},
-		// search by range (lower bound)
-		{"account.number >= 1", 0},
-		// search by range (upper bound)
-		{"account.number <= 5", 0},
-		// search using not allowed key
-		{"not_allowed = 'boom'", 0},
-		// search for not existing tx result
-		{"account.number >= 2 AND account.number <= 5", 0},
-		// search using not existing key
-		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
-		// search using CONTAINS
-		{"account.owner CONTAINS 'an'", 0},
-		// search for non existing value using CONTAINS
-		{"account.owner CONTAINS 'Vlad'", 0},
-		// search using the wrong key (of numeric type) using CONTAINS
-		{"account.number CONTAINS 'Iv'", 0},
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-
 	cancel()
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(ctx, query.MustParse(tc.q))
-			assert.NoError(t, err)
-			assert.Len(t, results, tc.resultsLength)
-		})
-	}
+	results, err := indexer.Search(ctx, query.MustParse("account.number = 1"))
+	assert.NoError(t, err)
+	assert.Empty(t, results)
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
