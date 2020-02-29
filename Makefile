@@ -58,7 +58,7 @@ proto-lint:
 .PHONY: proto-lint
 
 proto-check-breaking:
-	@buf check breaking --against-input "$(SSH_GIT)#branch=master"
+	@buf check breaking --against-input ".git#branch=master"
 .PHONY: proto-check-breaking
 
 ###############################################################################

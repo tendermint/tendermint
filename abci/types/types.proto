@@ -4,7 +4,7 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
-import "third_party/proto/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
 import "libs/kv/types.proto";
 import "google/protobuf/timestamp.proto";
@@ -57,7 +57,7 @@ message RequestInfo {
 // nondeterministic
 message RequestSetOption {
   string key   = 1;
-  string value = 2;
+  // string value = 2;
 }
 
 message RequestInitChain {
