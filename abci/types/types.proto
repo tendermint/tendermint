@@ -57,7 +57,7 @@ message RequestInfo {
 // nondeterministic
 message RequestSetOption {
   string key   = 1;
-  // string value = 2;
+  string value = 2;
 }
 
 message RequestInitChain {
