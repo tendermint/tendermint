@@ -38,6 +38,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		return nil, err
 	}
 
+	// Capture the current ID, since it can change in the future.
+	subscriptionID := ctx.JSONReq.ID
 	go func() {
 		for {
 			select {
@@ -46,7 +48,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
-						ctx.JSONReq.ID,
+						subscriptionID,
 						resultEvent,
 					))
 			case <-sub.Cancelled():
@@ -59,7 +61,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 					}
 					ctx.WSConn.TryWriteRPCResponse(
 						rpctypes.RPCServerError(
-							ctx.JSONReq.ID,
+							subscriptionID,
 							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
 						))
 				}

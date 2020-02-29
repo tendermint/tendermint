@@ -23,6 +23,8 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [rpc] [\#4493](https://github.com/tendermint/tendermint/pull/4493) Keep the original subscription "id" field when new RPCs come in (@michaelfig)
+
 - [rpc] [\#4437](https://github.com/tendermint/tendermint/pull/4437) Fix tx_search pagination with ordered results (@erikgrinaker)
 
 - [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
