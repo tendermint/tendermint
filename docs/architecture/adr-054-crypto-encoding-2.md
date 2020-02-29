@@ -23,10 +23,11 @@ If there are more options please leave a comment and we can discuss it.
 
 2. Use proto encoding for over the wire communication. Where backwards compatibility is needed use the amino encoding format: `<PrefixBytes> <Length> <ByteArray>`.
 
-- This is a good proposal but would be a bit hacky. 
 - Less headache, users will be happy for not needing to do a migration.
 
 ## Decision
+
+After thought and discussion, option 2 will be the path to move forward with. This will cause less user stress and while looking through the codebase, the places we use keys with prefixed bytes is not vast and mostly not user facing. Below you will find places where it will change encoding of things:
 
 > This section explains all of the details of the proposed solution, including implementation details.
 > It should also describe affects / corollary items that may need to be changed as a part of this.
