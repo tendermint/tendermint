@@ -1,8 +1,6 @@
 package p2p
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/reactor"
 	"github.com/tendermint/tendermint/types"
@@ -34,17 +32,5 @@ func (p *p2p) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 // ValidatorSet implements Provider.
 func (p *p2p) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	err := validateHeight(height)
-	if err != nil {
-		return nil, err
-	}
-	panic("Not implemented")
-}
-
-// validateHeight validates a height
-func validateHeight(height int64) error {
-	if height < 0 {
-		return errors.Errorf("expected height >= 0, got height %d", height)
-	}
-	return nil
+	return p.reactor.ValidatorSet(height)
 }

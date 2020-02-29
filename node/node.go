@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -28,7 +29,11 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
-	lite "github.com/tendermint/tendermint/lite2/reactor"
+	lite "github.com/tendermint/tendermint/lite2"
+	litep "github.com/tendermint/tendermint/lite2/provider"
+	litep2p "github.com/tendermint/tendermint/lite2/provider/p2p"
+	liter "github.com/tendermint/tendermint/lite2/reactor"
+	litedb "github.com/tendermint/tendermint/lite2/store/db"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -46,6 +51,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -479,7 +485,7 @@ func createSwitch(config *cfg.Config,
 	bcReactor p2p.Reactor,
 	consensusReactor *consensus.Reactor,
 	evidenceReactor *evidence.Reactor,
-	liteReactor *lite.Reactor,
+	liteReactor *liter.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -625,8 +631,58 @@ func NewNode(config *cfg.Config,
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Set up light client reactor
-	liteReactor := lite.NewReactor(blockStore, stateDB)
+	liteReactor := liter.NewReactor(blockStore, stateDB)
 	liteReactor.SetLogger(logger.With("module", "litereactor"))
+
+	// Start a light client for testing
+	go func() {
+		l := logger.With("module", "lite")
+		l.Info("Starting lite client")
+
+		lp, err := litep2p.New(state.ChainID, liteReactor)
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		hash, err := hex.DecodeString("8B5D82616EF6B5DA3AC1B1CB2FF711EB39D6DBC80305E32A1AFB0707BA31AC91")
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		lc, err := lite.NewClient(
+			state.ChainID,
+			lite.TrustOptions{
+				Period: 21 * 24 * time.Hour,
+				Height: 100,
+				Hash:   hash,
+			},
+			lp,
+			[]litep.Provider{lp},
+			litedb.New(db.NewMemDB(), ""),
+			lite.UpdatePeriod(0),
+			lite.Logger(l),
+		)
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+		err = lc.Start()
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		for {
+			time.Sleep(5 * time.Second)
+			header, err := lc.VerifyHeaderAtHeight(200, time.Now())
+			if err != nil {
+				l.Error(err.Error())
+			}
+			l.Info("Verified header", "height", header.Height, "hash", header.Hash)
+		}
+	}()
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -1116,6 +1172,7 @@ func makeNodeInfo(
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
+			liter.LiteChannel,
 		},
 		Moniker: config.Moniker,
 		Other: p2p.DefaultNodeInfoOther{

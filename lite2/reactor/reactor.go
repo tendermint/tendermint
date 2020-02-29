@@ -1,8 +1,10 @@
 package reactor
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -46,7 +48,7 @@ func NewReactor(bs *store.BlockStore, stateDB db.DB) *Reactor {
 	}
 }
 
-// SignedHeader synchronously attempts to fetch a header, timing out after some time.
+// SignedHeader synchronously attempts to fetch a header from peers.
 func (r *Reactor) SignedHeader(height int64) (*types.SignedHeader, error) {
 	r.mtx.Lock()
 	if len(r.peers) == 0 {
@@ -66,11 +68,54 @@ func (r *Reactor) SignedHeader(height int64) (*types.SignedHeader, error) {
 	}
 	r.mtx.Unlock()
 
-	peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(signedHeaderRequestMessage{
-		height: height,
+	r.logger.Info("Querying signed header", "height", height)
+	s := peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(&signedHeaderRequestMessage{
+		Height: height,
+	}))
+	if !s {
+		return nil, errors.New("failed to query signed header")
+	}
+
+	select {
+	case res := <-ch:
+		r.logger.Info("Received signed header", "height", res.Height, "hash", hex.EncodeToString([]byte(res.Hash())))
+		return res, nil
+	case <-time.After(3 * time.Second):
+		return nil, errors.New("header timed out")
+	}
+}
+
+// ValidatorSet fetches a validator set from peers.
+func (r *Reactor) ValidatorSet(height int64) (*types.ValidatorSet, error) {
+	r.mtx.Lock()
+	if len(r.peers) == 0 {
+		r.mtx.Unlock()
+		return nil, errors.New("no available peers")
+	}
+	var peer p2p.Peer
+	for _, p := range r.peers {
+		peer = p
+		break
+	}
+	ch := make(chan *types.ValidatorSet)
+	if _, ok := r.chVals[height]; ok {
+		r.chVals[height] = append(r.chVals[height], ch)
+	} else {
+		r.chVals[height] = []chan<- *types.ValidatorSet{ch}
+	}
+	r.mtx.Unlock()
+
+	r.logger.Info("Querying validator set", "height", height)
+	peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(&validatorSetRequestMessage{
+		Height: height,
 	}))
 
-	return <-ch, nil // FIXME Need a timeout here
+	select {
+	case r := <-ch:
+		return r, nil
+	case <-time.After(3 * time.Second):
+		return nil, errors.New("validator set timed out")
+	}
 }
 
 // AddPeer implements Reactor.
@@ -121,36 +166,68 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *signedHeaderRequestMessage:
+		r.logger.Info("req: signed header", "height", msg.Height)
+		height := msg.Height
+		storeHeight := r.blockStore.Height()
+		if height == 0 {
+			height = storeHeight
+		}
+
+		blockMeta := r.blockStore.LoadBlockMeta(height)
+		if blockMeta == nil {
+			r.logger.Error("Block meta not found", "height", height)
+		}
+		var commit *types.Commit
+		if height == storeHeight {
+			commit = r.blockStore.LoadSeenCommit(height)
+		} else {
+			commit = r.blockStore.LoadBlockCommit(height)
+		}
+		if commit == nil {
+			r.logger.Error("Commit not found", "height", msg.Height)
+		}
+
 		var signedHeader *types.SignedHeader
-		blockMeta := r.blockStore.LoadBlockMeta(msg.height)
-		commit := r.blockStore.LoadSeenCommit(msg.height)
 		if blockMeta != nil && commit != nil {
+			r.logger.Info("found header and commit", "height", height)
 			signedHeader = &types.SignedHeader{
 				Header: &blockMeta.Header,
 				Commit: commit,
 			}
 		}
 		src.Send(LiteChannel, cdc.MustMarshalBinaryBare(&signedHeaderResponseMessage{
-			signedHeader: signedHeader,
+			Height:       height,
+			SignedHeader: signedHeader,
 		}))
 	case *signedHeaderResponseMessage:
+		r.logger.Info("resp: signed header", "height", msg.Height)
 		r.mtx.Lock()
 		defer r.mtx.Unlock()
-		for _, ch := range r.chHeader[msg.height] {
-			ch <- msg.signedHeader
+		for _, ch := range r.chHeader[msg.Height] {
+			ch <- msg.SignedHeader
 		}
-		delete(r.chHeader, msg.height)
+		delete(r.chHeader, msg.Height)
 	case *validatorSetRequestMessage:
-		vals, err := state.LoadValidators(r.stateDB, msg.height)
+		r.logger.Info("req: validator set", "height", msg.Height)
+		vals, err := state.LoadValidators(r.stateDB, msg.Height)
 		if _, ok := err.(state.ErrNoValSetForHeight); ok {
 			vals = nil
 		} else if err != nil {
-			r.logger.Error("Failed to fetch validator set", "height", msg.height, "err", err)
+			r.logger.Error("Failed to fetch validator set", "height", msg.Height, "err", err)
 			return
 		}
 		src.Send(LiteChannel, cdc.MustMarshalBinaryBare(&validatorSetResponseMessage{
-			validatorSet: vals,
+			Height:       msg.Height,
+			ValidatorSet: vals,
 		}))
+	case *validatorSetResponseMessage:
+		r.logger.Info("resp: validator set", "height", msg.Height)
+		r.mtx.Lock()
+		defer r.mtx.Unlock()
+		for _, ch := range r.chVals[msg.Height] {
+			ch <- msg.ValidatorSet
+		}
+		delete(r.chVals, msg.Height)
 	}
 }
 
@@ -195,19 +272,19 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 type signedHeaderRequestMessage struct {
-	height int64
+	Height int64
 }
 
 func (m *signedHeaderRequestMessage) ValidateBasic() error {
-	if m.height < 0 {
+	if m.Height < 0 {
 		return errors.New("height cannot be negative")
 	}
 	return nil
 }
 
 type signedHeaderResponseMessage struct {
-	height       int64
-	signedHeader *types.SignedHeader
+	Height       int64
+	SignedHeader *types.SignedHeader
 }
 
 func (m *signedHeaderResponseMessage) ValidateBasic() error {
@@ -215,19 +292,19 @@ func (m *signedHeaderResponseMessage) ValidateBasic() error {
 }
 
 type validatorSetRequestMessage struct {
-	height int64
+	Height int64
 }
 
 func (m *validatorSetRequestMessage) ValidateBasic() error {
-	if m.height < 0 {
+	if m.Height < 0 {
 		return errors.New("height cannot be negative")
 	}
 	return nil
 }
 
 type validatorSetResponseMessage struct {
-	height       int64
-	validatorSet *types.ValidatorSet
+	Height       int64
+	ValidatorSet *types.ValidatorSet
 }
 
 func (m *validatorSetResponseMessage) ValidateBasic() error {
