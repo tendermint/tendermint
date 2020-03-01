@@ -3,7 +3,7 @@ version: 2.1
 executors:
   golang:
     docker:
-      - image: tendermintdev/docker-tendermint-build
+      - image: circleci/golang:1.14
     working_directory: /go/src/github.com/tendermint/tendermint
     environment:
       GOBIN: /tmp/bin
