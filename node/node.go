@@ -634,56 +634,6 @@ func NewNode(config *cfg.Config,
 	liteReactor := liter.NewReactor(blockStore, stateDB)
 	liteReactor.SetLogger(logger.With("module", "litereactor"))
 
-	// Start a light client for testing
-	go func() {
-		l := logger.With("module", "lite")
-		l.Info("Starting lite client")
-
-		lp, err := litep2p.New(state.ChainID, liteReactor)
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
-
-		hash, err := hex.DecodeString("8B5D82616EF6B5DA3AC1B1CB2FF711EB39D6DBC80305E32A1AFB0707BA31AC91")
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
-
-		lc, err := lite.NewClient(
-			state.ChainID,
-			lite.TrustOptions{
-				Period: 21 * 24 * time.Hour,
-				Height: 100,
-				Hash:   hash,
-			},
-			lp,
-			[]litep.Provider{lp},
-			litedb.New(db.NewMemDB(), ""),
-			lite.UpdatePeriod(0),
-			lite.Logger(l),
-		)
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
-		err = lc.Start()
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
-
-		for {
-			time.Sleep(5 * time.Second)
-			header, err := lc.VerifyHeaderAtHeight(200, time.Now())
-			if err != nil {
-				l.Error(err.Error())
-			}
-			l.Info("Verified header", "height", header.Height, "hash", header.Hash)
-		}
-	}()
-
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
@@ -773,6 +723,68 @@ func NewNode(config *cfg.Config,
 			logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
 		}()
 	}
+
+	// FIXME Start a light client for testing
+	go func() {
+		l := logger.With("module", "lite")
+		var peers []p2p.Peer
+		for len(peers) < 2 {
+			l.Info("Waiting for 2 peers")
+			time.Sleep(2 * time.Second)
+			peers = sw.Peers().List()
+		}
+
+		primary, err := litep2p.New(state.ChainID, peers[0], liteReactor)
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		witness, err := litep2p.New(state.ChainID, peers[1], liteReactor)
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		hash, err := hex.DecodeString("D2D5A77B74D568CAC90B6EDA5DDC8978E19ECC62CA76E7263FAF9243BCF6A50A")
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		l.Info("Starting lite client")
+		lc, err := lite.NewClient(
+			state.ChainID,
+			lite.TrustOptions{
+				Period: 21 * 24 * time.Hour,
+				Height: 228,
+				Hash:   hash,
+			},
+			primary,
+			[]litep.Provider{witness},
+			litedb.New(db.NewMemDB(), ""),
+			lite.UpdatePeriod(0),
+			lite.Logger(l),
+		)
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+		err = lc.Start()
+		if err != nil {
+			l.Error(err.Error())
+			return
+		}
+
+		for {
+			time.Sleep(5 * time.Second)
+			header, err := lc.VerifyHeaderAtHeight(300, time.Now())
+			if err != nil {
+				l.Error(err.Error())
+			}
+			l.Info("Verified header", "height", header.Height, "hash", header.Hash)
+		}
+	}()
 
 	node := &Node{
 		config:        config,

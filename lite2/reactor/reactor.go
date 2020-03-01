@@ -1,7 +1,6 @@
 package reactor
 
 import (
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -29,10 +28,10 @@ type Reactor struct {
 
 	blockStore *store.BlockStore
 	stateDB    db.DB
+	dispatcher *Dispatcher
 	logger     log.Logger
 
 	mtx      sync.Mutex
-	peers    map[p2p.ID]p2p.Peer
 	chVals   map[int64][]chan<- *types.ValidatorSet
 	chHeader map[int64][]chan<- *types.SignedHeader
 }
@@ -42,61 +41,20 @@ func NewReactor(bs *store.BlockStore, stateDB db.DB) *Reactor {
 	return &Reactor{
 		blockStore: bs,
 		stateDB:    stateDB,
-		peers:      make(map[p2p.ID]p2p.Peer, 16),
+		dispatcher: NewDispatcher(),
 		chVals:     make(map[int64][]chan<- *types.ValidatorSet),
 		chHeader:   make(map[int64][]chan<- *types.SignedHeader),
 	}
 }
 
-// SignedHeader synchronously attempts to fetch a header from peers.
-func (r *Reactor) SignedHeader(height int64) (*types.SignedHeader, error) {
-	r.mtx.Lock()
-	if len(r.peers) == 0 {
-		r.mtx.Unlock()
-		return nil, errors.New("no available peers")
-	}
-	var peer p2p.Peer
-	for _, p := range r.peers {
-		peer = p
-		break
-	}
-	ch := make(chan *types.SignedHeader)
-	if _, ok := r.chHeader[height]; ok {
-		r.chHeader[height] = append(r.chHeader[height], ch)
-	} else {
-		r.chHeader[height] = []chan<- *types.SignedHeader{ch}
-	}
-	r.mtx.Unlock()
-
-	r.logger.Info("Querying signed header", "height", height)
-	s := peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(&signedHeaderRequestMessage{
-		Height: height,
-	}))
-	if !s {
-		return nil, errors.New("failed to query signed header")
-	}
-
-	select {
-	case res := <-ch:
-		r.logger.Info("Received signed header", "height", res.Height, "hash", hex.EncodeToString([]byte(res.Hash())))
-		return res, nil
-	case <-time.After(3 * time.Second):
-		return nil, errors.New("header timed out")
-	}
+// RequestSignedHeader synchronously attempts to fetch a header from peers.
+func (r *Reactor) RequestSignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
+	return r.dispatcher.RequestSignedHeader(peer, height)
 }
 
-// ValidatorSet fetches a validator set from peers.
-func (r *Reactor) ValidatorSet(height int64) (*types.ValidatorSet, error) {
+// RequestValidatorSet fetches a validator set from peers.
+func (r *Reactor) RequestValidatorSet(peer p2p.Peer, height int64) (*types.ValidatorSet, error) {
 	r.mtx.Lock()
-	if len(r.peers) == 0 {
-		r.mtx.Unlock()
-		return nil, errors.New("no available peers")
-	}
-	var peer p2p.Peer
-	for _, p := range r.peers {
-		peer = p
-		break
-	}
 	ch := make(chan *types.ValidatorSet)
 	if _, ok := r.chVals[height]; ok {
 		r.chVals[height] = append(r.chVals[height], ch)
@@ -120,18 +78,10 @@ func (r *Reactor) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 // AddPeer implements Reactor.
 func (r *Reactor) AddPeer(peer p2p.Peer) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	r.logger.Info("Hi!", "peer", peer.ID())
-	r.peers[peer.ID()] = peer
 }
 
 // RemovePeer implements Reactor.
 func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	r.logger.Info("Bye!", "peer", peer.ID())
-	delete(r.peers, peer.ID())
 }
 
 // GetChannels implements Reactor.
@@ -200,13 +150,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			SignedHeader: signedHeader,
 		}))
 	case *signedHeaderResponseMessage:
-		r.logger.Info("resp: signed header", "height", msg.Height)
-		r.mtx.Lock()
-		defer r.mtx.Unlock()
-		for _, ch := range r.chHeader[msg.Height] {
-			ch <- msg.SignedHeader
-		}
-		delete(r.chHeader, msg.Height)
+		r.dispatcher.RespondSignedHeader(src, msg.Height, msg.SignedHeader)
 	case *validatorSetRequestMessage:
 		r.logger.Info("req: validator set", "height", msg.Height)
 		vals, err := state.LoadValidators(r.stateDB, msg.Height)
@@ -233,8 +177,9 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // SetLogger sets the logger of the reactor.
 func (r *Reactor) SetLogger(logger log.Logger) {
-	r.logger = logger
 	r.BaseReactor.SetLogger(logger)
+	r.logger = logger
+	r.dispatcher.logger = logger
 }
 
 // Start implements Servive.
