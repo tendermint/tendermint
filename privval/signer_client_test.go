@@ -61,8 +61,8 @@ func TestSignerClose(t *testing.T) {
 
 func TestSignerPing(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		err := tc.signerClient.Ping()
 		assert.NoError(t, err)
@@ -71,8 +71,8 @@ func TestSignerPing(t *testing.T) {
 
 func TestSignerGetPubKey(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		pubKey := tc.signerClient.GetPubKey()
 		expectedPubKey := tc.mockPV.GetPubKey()
@@ -92,8 +92,8 @@ func TestSignerProposal(t *testing.T) {
 		want := &types.Proposal{Timestamp: ts}
 		have := &types.Proposal{Timestamp: ts}
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
 		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, have))
@@ -108,8 +108,8 @@ func TestSignerVote(t *testing.T) {
 		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
 		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
@@ -124,8 +124,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		time.Sleep(testTimeoutReadWrite2o3)
 
@@ -150,8 +150,8 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		// Check that even if the client does not request a
 		// signature for a long time. The service is still available
@@ -175,8 +175,8 @@ func TestSignerSignProposalErrors(t *testing.T) {
 		tc.signerServer.privVal = types.NewErroringMockPV()
 		tc.mockPV = types.NewErroringMockPV()
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		ts := time.Now()
 		proposal := &types.Proposal{Timestamp: ts}
@@ -200,8 +200,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 		tc.signerServer.privVal = types.NewErroringMockPV()
 		tc.mockPV = types.NewErroringMockPV()
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		err := tc.signerClient.SignVote(tc.chainID, vote)
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
@@ -245,8 +245,8 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 
 		tc.signerServer.SetRequestHandler(brokenHandler)
 
-		defer tc.signerServer.Stop()
-		defer tc.signerClient.Close()
+		t.Cleanup(func() { tc.signerServer.Stop() })
+		t.Cleanup(func() { tc.signerClient.Close() })
 
 		ts := time.Now()
 		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}

@@ -55,7 +55,7 @@ func TestEcho(t *testing.T) {
 	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	defer s.Stop()
+	t.Cleanup(func() { s.Stop() })
 
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
@@ -89,7 +89,7 @@ func BenchmarkEcho(b *testing.B) {
 	if err := s.Start(); err != nil {
 		b.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	defer s.Stop()
+	b.Cleanup(func() { s.Stop() })
 
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
@@ -128,7 +128,7 @@ func TestInfo(t *testing.T) {
 	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	defer s.Stop()
+	t.Cleanup(func() { s.Stop() })
 
 	// Start client
 	cli, err := clientCreator.NewABCIClient()

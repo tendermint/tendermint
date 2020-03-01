@@ -4,7 +4,7 @@
 
 requirements_check = true
 gpg_check = false
-go_min_version = 1.13
+go_min_version = 1.14
 gpg_key = 2122CBE9
 
 ifeq ($(requirements_check),true)

@@ -1,4 +1,4 @@
-FROM golang:1.13
+FROM golang:1.14
 
 # Add testing deps for curl
 RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' >> /etc/apt/sources.list

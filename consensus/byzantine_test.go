@@ -27,7 +27,7 @@ func TestByzantine(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	// give the byzantine validator a normal ticker
 	ticker := NewTimeoutTicker()
@@ -85,7 +85,7 @@ func TestByzantine(t *testing.T) {
 		sm.SaveState(css[i].blockExec.DB(), css[i].state) //for save height 1's validators info
 	}
 
-	defer func() {
+	t.Cleanup(func() {
 		for _, r := range reactors {
 			if rr, ok := r.(*ByzantineReactor); ok {
 				rr.reactor.Switch.Stop()
@@ -93,7 +93,7 @@ func TestByzantine(t *testing.T) {
 				r.(*Reactor).Switch.Stop()
 			}
 		}
-	}()
+	})
 
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours

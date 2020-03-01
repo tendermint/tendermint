@@ -111,11 +111,11 @@ func TestRotateFile(t *testing.T) {
 	// relative paths are resolved at Group creation
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(origDir)
+	t.Cleanup(func() { os.Chdir(origDir) })
 
 	dir, err := ioutil.TempDir("", "rotate_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	t.Cleanup(func() { os.RemoveAll(dir) })
 	err = os.Chdir(dir)
 	require.NoError(t, err)
 

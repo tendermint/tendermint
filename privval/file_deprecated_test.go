@@ -36,12 +36,12 @@ const oldPrivvalContent = `{
 func TestLoadAndUpgrade(t *testing.T) {
 
 	oldFilePath := initTmpOldFile(t)
-	defer os.Remove(oldFilePath)
+	t.Cleanup(func(){os.Remove(oldFilePath)})
 	newStateFile, err := ioutil.TempFile("", "priv_validator_state*.json")
-	defer os.Remove(newStateFile.Name())
+	t.Cleanup(func(){os.Remove(newStateFile.Name())})
 	require.NoError(t, err)
 	newKeyFile, err := ioutil.TempFile("", "priv_validator_key*.json")
-	defer os.Remove(newKeyFile.Name())
+	t.Cleanup(func(){os.Remove(newKeyFile.Name())})
 	require.NoError(t, err)
 
 	oldPV, err := privval.LoadOldFilePV(oldFilePath)

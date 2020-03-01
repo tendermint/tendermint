@@ -17,12 +17,12 @@ import (
 func TestSIGHUP(t *testing.T) {
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(origDir)
+	t.Cleanup(func() { os.Chdir(origDir) })
 
 	// First, create a temporary directory and move into it
 	dir, err := ioutil.TempDir("", "sighup_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	t.Cleanup(func() { os.RemoveAll(dir) })
 	err = os.Chdir(dir)
 	require.NoError(t, err)
 
@@ -45,7 +45,7 @@ func TestSIGHUP(t *testing.T) {
 	// Move into a different temporary directory
 	otherDir, err := ioutil.TempDir("", "sighup_test_other")
 	require.NoError(t, err)
-	defer os.RemoveAll(otherDir)
+	t.Cleanup(func() { os.RemoveAll(otherDir) })
 	err = os.Chdir(otherDir)
 	require.NoError(t, err)
 

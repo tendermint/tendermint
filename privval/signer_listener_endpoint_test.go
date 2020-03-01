@@ -73,7 +73,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 	err = signerServer.Start()
 	require.NoError(t, err)
-	defer signerServer.Stop()
+	t.Cleanup(func() { signerServer.Stop() })
 
 	select {
 	case attempts := <-attemptCh:
@@ -104,7 +104,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
 		startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
-		defer listenerEndpoint.Stop()
+		t.Cleanup(func() { listenerEndpoint.Stop() })
 
 		require.NoError(t, signerServer.Start())
 		assert.True(t, signerServer.IsRunning())
@@ -120,7 +120,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		// let some pings pass
 		require.NoError(t, signerServer2.Start())
 		assert.True(t, signerServer2.IsRunning())
-		defer signerServer2.Stop()
+		t.Cleanup(func() { signerServer2.Stop() })
 
 		// give the client some time to re-establish the conn to the remote signer
 		// should see sth like this in the logs:

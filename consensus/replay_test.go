@@ -82,7 +82,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
-	defer cs.Stop()
+	t.Cleanup(func() { cs.Stop() })
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -808,7 +808,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x02
 	//		- 0x03
 	config := ResetConfig("handshake_test_")
-	defer os.RemoveAll(config.RootDir)
+	t.Cleanup(func() { os.RemoveAll(config.RootDir) })
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), appVersion)
@@ -1093,7 +1093,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("handshake_test_")
-	defer os.RemoveAll(config.RootDir)
+	t.Cleanup(func() { os.RemoveAll(config.RootDir) })
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 
@@ -1106,7 +1106,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
-	defer proxyApp.Stop()
+	t.Cleanup(func() { proxyApp.Stop() })
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
