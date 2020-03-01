@@ -12,62 +12,112 @@ import (
 
 const timeout = 3 * time.Second
 
-// Dispatcher manages requests and responses to specific peers.
+// call contains call state.
+type call struct {
+	peerID p2p.ID
+	ch     chan<- Message
+}
+
+// Dispatcher dispatches request/response calls to peers.
 type Dispatcher struct {
 	sync.Mutex
-	logger   log.Logger
-	chHeader map[p2p.ID]map[int64][]chan<- *types.SignedHeader
+	logger     log.Logger
+	calls      map[uint64]*call
+	nextCallID uint64
 }
 
-// NewDispatcher creates a new dispatcher
+// NewDispatcher creates a new dispatcher.
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		logger:   log.NewNopLogger(),
-		chHeader: make(map[p2p.ID]map[int64][]chan<- *types.SignedHeader),
+		logger:     log.NewNopLogger(),
+		calls:      make(map[uint64]*call),
+		nextCallID: 1,
 	}
 }
 
-// RequestSignedHeader synchronously requests a signed header from a peer.
-func (d *Dispatcher) RequestSignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
+// call synchronously sends a request and waits for the response.
+func (d *Dispatcher) call(peer p2p.Peer, msg Message) (Message, error) {
+	ch := make(chan Message, 1)
+
 	d.Lock()
-	ch := make(chan *types.SignedHeader)
-	if _, ok := d.chHeader[peer.ID()]; !ok {
-		d.chHeader[peer.ID()] = make(map[int64][]chan<- *types.SignedHeader)
+	callID := d.nextCallID
+	d.nextCallID++ // wraps around to 0 on overflow, but that's fine
+	msg.SetCallID(callID)
+	d.calls[callID] = &call{
+		peerID: peer.ID(),
+		ch:     ch,
 	}
-	d.chHeader[peer.ID()][height] = append(d.chHeader[peer.ID()][height], ch)
 	d.Unlock()
 
-	d.logger.Info("Requesting signed header", "peer", peer.ID(), "height", height)
-	if !peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(&signedHeaderRequestMessage{
-		Height: height,
-	})) {
-		return nil, errors.Errorf("failed to request signed header from %q", peer.ID())
+	if !peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(msg)) {
+		return nil, errors.New("failed to send call request, peer may have disconnected")
 	}
 
 	select {
 	case resp := <-ch:
-		d.logger.Info("Received signed header", "peer", peer.ID(), "height", height)
 		return resp, nil
 	case <-time.After(timeout):
-		return nil, errors.New("timed out requesting signed header")
+		// clean up in goroutine to avoid mutex blocking and return fast
+		go func() {
+			d.Lock()
+			if _, ok := d.calls[callID]; ok {
+				delete(d.calls, callID)
+				close(ch) // safe to close on reader side because access is protected by mutex
+			}
+			d.Unlock()
+		}()
+		return nil, errors.New("call timed out")
 	}
 }
 
-// RespondSignedHeader provides a signed header response from a peer. The header can be nil
-// if it was not found.
-func (d *Dispatcher) RespondSignedHeader(peer p2p.Peer, reqHeight int64, header *types.SignedHeader) {
+// respond provides a call response
+func (d *Dispatcher) respond(src p2p.Peer, msg Message) {
 	d.Lock()
 	defer d.Unlock()
-	// Need to check peer map existence explicitly, since we'll be writing to it below
-	if _, ok := d.chHeader[peer.ID()]; !ok {
+	callID := msg.GetCallID()
+	call, ok := d.calls[callID]
+	if !ok {
+		d.logger.Error("Received call response for unknown call %q", callID)
 		return
 	}
-	for _, ch := range d.chHeader[peer.ID()][reqHeight] {
-		// Send header if the channel has a blocked listener, otherwise ignore it (e.g. timed out)
-		select {
-		case ch <- header:
-		default:
-		}
+	if call.peerID != src.ID() {
+		d.logger.Error("Received call response from wrong peer %q, expected %q",
+			src.ID(), call.peerID)
+		return
 	}
-	d.chHeader[peer.ID()][reqHeight] = make([]chan<- *types.SignedHeader, 0)
+	call.ch <- msg
+	close(call.ch)
+	delete(d.calls, callID)
+}
+
+// SignedHeader synchronously requests a signed header from a peer.
+func (d *Dispatcher) SignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
+	resp, err := d.call(peer, &signedHeaderRequestMessage{
+		Height: height,
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch msg := resp.(type) {
+	case *signedHeaderResponseMessage:
+		return msg.SignedHeader, nil
+	default:
+		return nil, errors.Errorf("received unexpected response %T", msg)
+	}
+}
+
+// ValidatorSet synchronously requests a signed header from a peer.
+func (d *Dispatcher) ValidatorSet(peer p2p.Peer, height int64) (*types.ValidatorSet, error) {
+	resp, err := d.call(peer, &validatorSetRequestMessage{
+		Height: height,
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch msg := resp.(type) {
+	case *validatorSetResponseMessage:
+		return msg.ValidatorSet, nil
+	default:
+		return nil, errors.Errorf("received unexpected response %T", msg)
+	}
 }

@@ -2,8 +2,6 @@ package reactor
 
 import (
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -18,11 +16,11 @@ import (
 )
 
 const (
-	LiteChannel = byte(0x42)
-	maxMsgSize  = int(1e6) // FIXME Set something accurate
+	LiteChannel = byte(0x10)
+	maxMsgSize  = int(1e6) // FIXME Is this sufficient?
 )
 
-// Reactor handles data exchange for light clients across P2P.
+// Reactor handles data exchange for light clients across P2P, via lite2/provider/p2p
 type Reactor struct {
 	p2p.BaseReactor
 
@@ -30,49 +28,14 @@ type Reactor struct {
 	stateDB    db.DB
 	dispatcher *Dispatcher
 	logger     log.Logger
-
-	mtx      sync.Mutex
-	chVals   map[int64][]chan<- *types.ValidatorSet
-	chHeader map[int64][]chan<- *types.SignedHeader
 }
 
-// NewReactor creates a new light client reactor
+// NewReactor creates a new light client reactor.
 func NewReactor(bs *store.BlockStore, stateDB db.DB) *Reactor {
 	return &Reactor{
 		blockStore: bs,
 		stateDB:    stateDB,
 		dispatcher: NewDispatcher(),
-		chVals:     make(map[int64][]chan<- *types.ValidatorSet),
-		chHeader:   make(map[int64][]chan<- *types.SignedHeader),
-	}
-}
-
-// RequestSignedHeader synchronously attempts to fetch a header from peers.
-func (r *Reactor) RequestSignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
-	return r.dispatcher.RequestSignedHeader(peer, height)
-}
-
-// RequestValidatorSet fetches a validator set from peers.
-func (r *Reactor) RequestValidatorSet(peer p2p.Peer, height int64) (*types.ValidatorSet, error) {
-	r.mtx.Lock()
-	ch := make(chan *types.ValidatorSet)
-	if _, ok := r.chVals[height]; ok {
-		r.chVals[height] = append(r.chVals[height], ch)
-	} else {
-		r.chVals[height] = []chan<- *types.ValidatorSet{ch}
-	}
-	r.mtx.Unlock()
-
-	r.logger.Info("Querying validator set", "height", height)
-	peer.Send(LiteChannel, cdc.MustMarshalBinaryBare(&validatorSetRequestMessage{
-		Height: height,
-	}))
-
-	select {
-	case r := <-ch:
-		return r, nil
-	case <-time.After(3 * time.Second):
-		return nil, errors.New("validator set timed out")
 	}
 }
 
@@ -111,12 +74,10 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	// FIXME Debug
-	r.logger.Info("Receive", "src", src.ID(), "chID", chID, "msg", msg)
+	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *signedHeaderRequestMessage:
-		r.logger.Info("req: signed header", "height", msg.Height)
 		height := msg.Height
 		storeHeight := r.blockStore.Height()
 		if height == 0 {
@@ -125,7 +86,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 		blockMeta := r.blockStore.LoadBlockMeta(height)
 		if blockMeta == nil {
-			r.logger.Error("Block meta not found", "height", height)
+			r.logger.Debug("Block meta not found", "height", height)
 		}
 		var commit *types.Commit
 		if height == storeHeight {
@@ -134,44 +95,38 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			commit = r.blockStore.LoadBlockCommit(height)
 		}
 		if commit == nil {
-			r.logger.Error("Commit not found", "height", msg.Height)
+			r.logger.Debug("Commit not found", "height", msg.Height)
 		}
 
 		var signedHeader *types.SignedHeader
 		if blockMeta != nil && commit != nil {
-			r.logger.Info("found header and commit", "height", height)
 			signedHeader = &types.SignedHeader{
 				Header: &blockMeta.Header,
 				Commit: commit,
 			}
 		}
 		src.Send(LiteChannel, cdc.MustMarshalBinaryBare(&signedHeaderResponseMessage{
-			Height:       height,
+			CallID:       msg.GetCallID(),
 			SignedHeader: signedHeader,
 		}))
-	case *signedHeaderResponseMessage:
-		r.dispatcher.RespondSignedHeader(src, msg.Height, msg.SignedHeader)
 	case *validatorSetRequestMessage:
-		r.logger.Info("req: validator set", "height", msg.Height)
 		vals, err := state.LoadValidators(r.stateDB, msg.Height)
-		if _, ok := err.(state.ErrNoValSetForHeight); ok {
+		if err != nil {
+			if _, ok := err.(state.ErrNoValSetForHeight); ok {
+				r.logger.Debug("Validator set not found", "height", msg.Height)
+			} else {
+				r.logger.Error("Failed to fetch validator set", "height", msg.Height, "err", err)
+			}
 			vals = nil
-		} else if err != nil {
-			r.logger.Error("Failed to fetch validator set", "height", msg.Height, "err", err)
-			return
 		}
 		src.Send(LiteChannel, cdc.MustMarshalBinaryBare(&validatorSetResponseMessage{
-			Height:       msg.Height,
+			CallID:       msg.GetCallID(),
 			ValidatorSet: vals,
 		}))
+	case *signedHeaderResponseMessage:
+		r.dispatcher.respond(src, msg)
 	case *validatorSetResponseMessage:
-		r.logger.Info("resp: validator set", "height", msg.Height)
-		r.mtx.Lock()
-		defer r.mtx.Unlock()
-		for _, ch := range r.chVals[msg.Height] {
-			ch <- msg.ValidatorSet
-		}
-		delete(r.chVals, msg.Height)
+		r.dispatcher.respond(src, msg)
 	}
 }
 
@@ -194,8 +149,15 @@ func (r *Reactor) Stop() error {
 	return nil
 }
 
+// Dispatcher returns the dispatcher.
+func (r *Reactor) Dispatcher() *Dispatcher {
+	return r.dispatcher
+}
+
 // Message is a generic message for this reactor.
 type Message interface {
+	GetCallID() uint64
+	SetCallID(uint64)
 	ValidateBasic() error
 }
 
@@ -217,9 +179,12 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 type signedHeaderRequestMessage struct {
+	CallID uint64
 	Height int64
 }
 
+func (m *signedHeaderRequestMessage) GetCallID() uint64   { return m.CallID }
+func (m *signedHeaderRequestMessage) SetCallID(id uint64) { m.CallID = id }
 func (m *signedHeaderRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("height cannot be negative")
@@ -228,18 +193,21 @@ func (m *signedHeaderRequestMessage) ValidateBasic() error {
 }
 
 type signedHeaderResponseMessage struct {
-	Height       int64
+	CallID       uint64
 	SignedHeader *types.SignedHeader
 }
 
-func (m *signedHeaderResponseMessage) ValidateBasic() error {
-	return nil
-}
+func (m *signedHeaderResponseMessage) GetCallID() uint64    { return m.CallID }
+func (m *signedHeaderResponseMessage) SetCallID(id uint64)  { m.CallID = id }
+func (m *signedHeaderResponseMessage) ValidateBasic() error { return nil }
 
 type validatorSetRequestMessage struct {
+	CallID uint64
 	Height int64
 }
 
+func (m *validatorSetRequestMessage) GetCallID() uint64   { return m.CallID }
+func (m *validatorSetRequestMessage) SetCallID(id uint64) { m.CallID = id }
 func (m *validatorSetRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("height cannot be negative")
@@ -248,10 +216,10 @@ func (m *validatorSetRequestMessage) ValidateBasic() error {
 }
 
 type validatorSetResponseMessage struct {
-	Height       int64
+	CallID       uint64
 	ValidatorSet *types.ValidatorSet
 }
 
-func (m *validatorSetResponseMessage) ValidateBasic() error {
-	return nil
-}
+func (m *validatorSetResponseMessage) GetCallID() uint64    { return m.CallID }
+func (m *validatorSetResponseMessage) SetCallID(id uint64)  { m.CallID = id }
+func (m *validatorSetResponseMessage) ValidateBasic() error { return nil }

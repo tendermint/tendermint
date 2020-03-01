@@ -734,13 +734,13 @@ func NewNode(config *cfg.Config,
 			peers = sw.Peers().List()
 		}
 
-		primary, err := litep2p.New(state.ChainID, peers[0], liteReactor)
+		primary, err := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[0])
 		if err != nil {
 			l.Error(err.Error())
 			return
 		}
 
-		witness, err := litep2p.New(state.ChainID, peers[1], liteReactor)
+		witness, err := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[1])
 		if err != nil {
 			l.Error(err.Error())
 			return
@@ -752,7 +752,6 @@ func NewNode(config *cfg.Config,
 			return
 		}
 
-		l.Info("Starting lite client")
 		lc, err := lite.NewClient(
 			state.ChainID,
 			lite.TrustOptions{
