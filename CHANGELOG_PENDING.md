@@ -4,8 +4,7 @@
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -20,6 +19,8 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached.
+
+- [examples/kvstore] [\#4509](https://github.com/tendermint/tendermint/pull/4509) ABCI query now returns the proper height (@erikgrinaker)
 
 ### BUG FIXES:
 

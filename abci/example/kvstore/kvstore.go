@@ -136,6 +136,7 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
+		resQuery.Height = app.state.Height
 
 		return
 	}
@@ -151,6 +152,7 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 		resQuery.Log = "exists"
 	}
 	resQuery.Value = value
+	resQuery.Height = app.state.Height
 
 	return resQuery
 }
