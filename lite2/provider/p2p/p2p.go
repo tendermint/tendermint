@@ -9,15 +9,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// p2p provider uses P2P to obtain necessary information.
+// p2p provider uses P2P to obtain necessary light client information.
 type p2p struct {
 	dispatcher *reactor.Dispatcher
 	chainID    string
 	peer       p2pm.Peer
 }
 
-// New creates a new P2P provider. It takes a dispatcher from lite2/reactor.Reactor.Dispatcher()
-// and an appropriate peer to communicate with.
+// New creates a new P2P provider. It takes a dispatcher from Reactor.Dispatcher() and an
+// appropriate peer to communicate with.
 func New(dispatcher *reactor.Dispatcher, chainID string, peer p2pm.Peer) (provider.Provider, error) {
 	return &p2p{
 		dispatcher: dispatcher,

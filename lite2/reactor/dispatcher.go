@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const timeout = 3 * time.Second
+const timeout = 5 * time.Second
 
 // call contains call state.
 type call struct {
@@ -21,17 +21,16 @@ type call struct {
 // Dispatcher dispatches request/response calls to peers.
 type Dispatcher struct {
 	sync.Mutex
-	logger     log.Logger
 	calls      map[uint64]*call
 	nextCallID uint64
+	logger     log.Logger
 }
 
 // NewDispatcher creates a new dispatcher.
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		logger:     log.NewNopLogger(),
-		calls:      make(map[uint64]*call),
-		nextCallID: 1,
+		logger: log.NewNopLogger(),
+		calls:  make(map[uint64]*call),
 	}
 }
 
@@ -70,7 +69,7 @@ func (d *Dispatcher) call(peer p2p.Peer, msg Message) (Message, error) {
 	}
 }
 
-// respond provides a call response
+// respond provides a call response.
 func (d *Dispatcher) respond(src p2p.Peer, msg Message) {
 	d.Lock()
 	defer d.Unlock()
@@ -90,7 +89,7 @@ func (d *Dispatcher) respond(src p2p.Peer, msg Message) {
 	delete(d.calls, callID)
 }
 
-// SignedHeader synchronously requests a signed header from a peer.
+// SignedHeader synchronously requests a signed header from a peer. It returns nil if not found.
 func (d *Dispatcher) SignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
 	resp, err := d.call(peer, &signedHeaderRequestMessage{
 		Height: height,
@@ -106,7 +105,7 @@ func (d *Dispatcher) SignedHeader(peer p2p.Peer, height int64) (*types.SignedHea
 	}
 }
 
-// ValidatorSet synchronously requests a signed header from a peer.
+// ValidatorSet synchronously requests a signed header from a peer. It returns nil if not found.
 func (d *Dispatcher) ValidatorSet(peer p2p.Peer, height int64) (*types.ValidatorSet, error) {
 	resp, err := d.call(peer, &validatorSetRequestMessage{
 		Height: height,

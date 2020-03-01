@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 	db "github.com/tendermint/tm-db"
 
@@ -20,7 +19,7 @@ const (
 	maxMsgSize  = int(1e6) // FIXME Is this sufficient?
 )
 
-// Reactor handles data exchange for light clients across P2P, via lite2/provider/p2p
+// Reactor handles data exchange for light clients across P2P, via lite2/provider/p2p.
 type Reactor struct {
 	p2p.BaseReactor
 
@@ -88,6 +87,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		if blockMeta == nil {
 			r.logger.Debug("Block meta not found", "height", height)
 		}
+
 		var commit *types.Commit
 		if height == storeHeight {
 			commit = r.blockStore.LoadSeenCommit(height)
@@ -109,6 +109,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			CallID:       msg.GetCallID(),
 			SignedHeader: signedHeader,
 		}))
+
 	case *validatorSetRequestMessage:
 		vals, err := state.LoadValidators(r.stateDB, msg.Height)
 		if err != nil {
@@ -123,6 +124,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			CallID:       msg.GetCallID(),
 			ValidatorSet: vals,
 		}))
+
 	case *signedHeaderResponseMessage:
 		r.dispatcher.respond(src, msg)
 	case *validatorSetResponseMessage:
