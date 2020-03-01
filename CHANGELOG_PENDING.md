@@ -20,7 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached.
 
-- [examples/kvstore] ABCI query now returns the proper height (@erikgrinaker)
+- [examples/kvstore] [\#4509](https://github.com/tendermint/tendermint/pull/4509) ABCI query now returns the proper height (@erikgrinaker)
 
 ### BUG FIXES:
 
