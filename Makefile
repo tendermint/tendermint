@@ -133,6 +133,10 @@ fmt:
 	@go fmt ./...
 .PHONY: fmt
 
+generate:
+	@go generate -v ./...
+.PHONY: generate
+
 lint:
 	@echo "--> Running linter"
 	@golangci-lint run

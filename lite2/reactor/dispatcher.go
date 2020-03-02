@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const timeout = 5 * time.Second
-
 // call contains call state.
 type call struct {
 	peerID p2p.ID
@@ -23,12 +21,14 @@ type Dispatcher struct {
 	sync.Mutex
 	calls      map[uint64]*call
 	nextCallID uint64
+	timeout    time.Duration
 }
 
 // NewDispatcher creates a new dispatcher.
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		calls: make(map[uint64]*call),
+		calls:   make(map[uint64]*call),
+		timeout: 5 * time.Second,
 	}
 }
 
@@ -53,7 +53,7 @@ func (d *Dispatcher) call(peer p2p.Peer, msg Message) (Message, error) {
 	select {
 	case resp := <-ch:
 		return resp, nil
-	case <-time.After(timeout):
+	case <-time.After(d.timeout):
 		d.Lock()
 		delete(d.calls, callID) // no need to close channel, gc handles it
 		d.Unlock()
@@ -68,7 +68,7 @@ func (d *Dispatcher) respond(src p2p.Peer, msg Message) error {
 	callID := msg.GetCallID()
 	call, ok := d.calls[callID]
 	if !ok {
-		return errors.Errorf("received call response for unknown call %q", callID)
+		return errors.Errorf("received call response for unknown call %v", callID)
 	}
 	if call.peerID != src.ID() {
 		return errors.Errorf("received call response from wrong peer %q, expected %q",
@@ -81,14 +81,14 @@ func (d *Dispatcher) respond(src p2p.Peer, msg Message) error {
 
 // SignedHeader synchronously requests a signed header from a peer. It returns nil if not found.
 func (d *Dispatcher) SignedHeader(peer p2p.Peer, height int64) (*types.SignedHeader, error) {
-	resp, err := d.call(peer, &signedHeaderRequestMessage{
+	resp, err := d.call(peer, &SignedHeaderRequestMessage{
 		Height: height,
 	})
 	if err != nil {
 		return nil, err
 	}
 	switch msg := resp.(type) {
-	case *signedHeaderResponseMessage:
+	case *SignedHeaderResponseMessage:
 		return msg.SignedHeader, nil
 	default:
 		return nil, errors.Errorf("received unexpected response %T", msg)
@@ -97,14 +97,14 @@ func (d *Dispatcher) SignedHeader(peer p2p.Peer, height int64) (*types.SignedHea
 
 // ValidatorSet synchronously requests a signed header from a peer. It returns nil if not found.
 func (d *Dispatcher) ValidatorSet(peer p2p.Peer, height int64) (*types.ValidatorSet, error) {
-	resp, err := d.call(peer, &validatorSetRequestMessage{
+	resp, err := d.call(peer, &ValidatorSetRequestMessage{
 		Height: height,
 	})
 	if err != nil {
 		return nil, err
 	}
 	switch msg := resp.(type) {
-	case *validatorSetResponseMessage:
+	case *ValidatorSetResponseMessage:
 		return msg.ValidatorSet, nil
 	default:
 		return nil, errors.Errorf("received unexpected response %T", msg)

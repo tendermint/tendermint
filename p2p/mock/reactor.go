@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
+// FIXME This should probably be replaced by mocks.Reactor
+
 type Reactor struct {
 	p2p.BaseReactor
 }
