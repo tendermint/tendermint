@@ -58,7 +58,7 @@ proto-lint:
 .PHONY: proto-lint
 
 proto-check-breaking:
-	@buf check breaking --against-input ".git#branch=master"
+	@buf check breaking --against-input "https://github.com/tendermint/tendermint.git#branch=master"
 .PHONY: proto-check-breaking
 
 ###############################################################################
