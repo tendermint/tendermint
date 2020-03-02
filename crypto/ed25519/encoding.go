@@ -8,13 +8,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-var _ crypto.Marshaler = PrivKey{}
-
-// var _ crypto.Unmarshaler = PrivKey{}
-var _ crypto.Marshaler = PubKey{}
-
-// var _ crypto.Unmarshaler = PubKey{}
-
 var cdc = amino.NewCodec()
 
 func init() {
@@ -39,7 +32,7 @@ var (
 
 // Marshal attempts to marshal a PrivKeyEd25519 type that is backwards
 // compatible with Amino.
-func (privKey PrivKey) Marshal() ([]byte, error) {
+func (privKey PrivKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPrivKeyEd25519}
 	p := len(prefixPrivKeyEd25519)
 	l := len(lbz)
@@ -54,7 +47,7 @@ func (privKey PrivKey) Marshal() ([]byte, error) {
 
 // Unmarshal attempts to unmarshal provided amino compatbile bytes into a
 // PrivKeyEd25519 reference. An error is returned if the encoding is invalid.
-func (privKey *PrivKey) Unmarshal(bz []byte) error {
+func (privKey *PrivKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPrivKeyEd25519}
 	p := len(prefixPrivKeyEd25519)
 	l := len(lbz)
@@ -75,7 +68,7 @@ func (privKey *PrivKey) Unmarshal(bz []byte) error {
 
 // Marshal attempts to marshal a PubKeyEd25519 type that is backwards
 // compatible with Amino.
-func (pubKey PubKey) Marshal() ([]byte, error) {
+func (pubKey PubKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPubKeyEd25519}
 	p := len(prefixPubKeyEd25519)
 	l := len(lbz)
@@ -90,7 +83,7 @@ func (pubKey PubKey) Marshal() ([]byte, error) {
 
 // Unmarshal attempts to unmarshal provided amino compatbile bytes into a
 // PubKeyEd25519 reference. An error is returned if the encoding is invalid.
-func (pubKey *PubKey) Unmarshal(bz []byte) error {
+func (pubKey *PubKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPubKeyEd25519}
 	p := len(prefixPubKeyEd25519)
 	l := len(lbz)

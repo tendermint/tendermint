@@ -8,13 +8,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-var _ crypto.Marshaler = PrivKey{}
-
-// var _ crypto.Unmarshaler = PrivKey{}
-var _ crypto.Marshaler = PubKey{}
-
-// var _ crypto.Unmarshaler = PubKey{}
-
 const (
 	PrivKeyAminoName = "tendermint/PrivKeySecp256k1"
 	PubKeyAminoName  = "tendermint/PubKeySecp256k1"
@@ -46,7 +39,7 @@ var (
 // NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement
 // it. For now, clients must call MarshalBinary directly on the type to get the
 // custom compatible encoding.
-func (privKey PrivKey) Marshal() ([]byte, error) {
+func (privKey PrivKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPrivKeySecp256k1}
 	p := len(prefixPrivKeySecp256k1)
 	l := len(lbz)
@@ -65,7 +58,7 @@ func (privKey PrivKey) Marshal() ([]byte, error) {
 // NOTE: Amino will not delegate UnmarshalBinaryBare calls to types that implement
 // it. For now, clients must call UnmarshalBinary directly on the type to get the
 // custom compatible decoding.
-func (privKey *PrivKey) Unmarshal(bz []byte) error {
+func (privKey *PrivKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPrivKeySecp256k1}
 	p := len(prefixPrivKeySecp256k1)
 	l := len(lbz)
@@ -90,7 +83,7 @@ func (privKey *PrivKey) Unmarshal(bz []byte) error {
 // NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement
 // it. For now, clients must call MarshalBinary directly on the type to get the
 // custom compatible encoding.
-func (pubKey PubKey) Marshal() ([]byte, error) {
+func (pubKey PubKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPubKeySecp256k1}
 	p := len(prefixPubKeySecp256k1)
 	l := len(lbz)
@@ -109,7 +102,7 @@ func (pubKey PubKey) Marshal() ([]byte, error) {
 // NOTE: Amino will not delegate UnmarshalBinaryBare calls to types that implement
 // it. For now, clients must call UnmarshalBinary directly on the type to get the
 // custom compatible decoding.
-func (pubKey *PubKey) Unmarshal(bz []byte) error {
+func (pubKey *PubKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPubKeySecp256k1}
 	p := len(prefixPubKeySecp256k1)
 	l := len(lbz)

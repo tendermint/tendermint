@@ -37,7 +37,7 @@ func RegisterCodec(c *amino.Codec) {
 
 // Marshal attempts to marshal a PrivKeySr25519 type that is backwards
 // compatible with Amino.
-func (privKey PrivKey) Marshal() ([]byte, error) {
+func (privKey PrivKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPrivKeySr25519}
 	p := len(prefixPrivKeySr25519)
 	l := len(lbz)
@@ -52,7 +52,7 @@ func (privKey PrivKey) Marshal() ([]byte, error) {
 
 // Unmarshal attempts to unmarshal provided amino compatbile bytes into a
 // PrivKeySr25519 reference. An error is returned if the encoding is invalid.
-func (privKey *PrivKey) Unmarshal(bz []byte) error {
+func (privKey *PrivKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPrivKeySr25519}
 	p := len(prefixPrivKeySr25519)
 	l := len(lbz)
@@ -77,7 +77,7 @@ func (privKey *PrivKey) Unmarshal(bz []byte) error {
 // NOTE: Amino will not delegate MarshalBinaryBare calls to types that implement
 // it. For now, clients must call MarshalBinary directly on the type to get the
 // custom compatible encoding.
-func (pubKey PubKey) Marshal() ([]byte, error) {
+func (pubKey PubKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPubKeySr25519}
 	p := len(prefixPubKeySr25519)
 	l := len(lbz)
@@ -96,7 +96,7 @@ func (pubKey PubKey) Marshal() ([]byte, error) {
 // NOTE: Amino will not delegate UnmarshalBinaryBare calls to types that implement
 // it. For now, clients must call UnmarshalBinary directly on the type to get the
 // custom compatible decoding.
-func (pubKey *PubKey) Unmarshal(bz []byte) error {
+func (pubKey *PubKey) AminoUnmarshal(bz []byte) error {
 	lbz := []byte{lengthPubKeySr25519}
 	p := len(prefixPubKeySr25519)
 	l := len(lbz)

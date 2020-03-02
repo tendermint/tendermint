@@ -18,7 +18,7 @@ type PrivKey []byte
 
 // Bytes marshals the privkey using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
-	bz, err := privKey.Marshal()
+	bz, err := privKey.AminoMarshal()
 	if err != nil {
 		panic(err)
 	}

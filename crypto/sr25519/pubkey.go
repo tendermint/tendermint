@@ -25,7 +25,7 @@ func (pubKey PubKey) Address() crypto.Address {
 
 // Bytes marshals the PubKey using amino encoding.
 func (pubKey PubKey) Bytes() []byte {
-	bz, err := pubKey.Marshal()
+	bz, err := pubKey.AminoMarshal()
 	if err != nil {
 		panic(err)
 	}

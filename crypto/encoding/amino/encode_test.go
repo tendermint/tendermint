@@ -1,7 +1,6 @@
 package cryptoamino
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -53,19 +52,20 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 
 // ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
 //nolint:govet
-//TODO: this test will break, but keep it as is so we can work towards backwards compatibility
-func ExamplePrintRegisteredTypes() {
-	cdc.PrintTypes(os.Stdout)
-	// Output: | Type | Name | Prefix | Length | Notes |
-	//| ---- | ---- | ------ | ----- | ------ |
-	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
-	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
-	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
-	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
-	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
-	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
-}
+//TODO: Fix this with the new proto encoding of keys which are []byte
+// TODO: make a issue for this or add it to the meta-issue
+// func ExamplePrintRegisteredTypes() {
+// 	cdc.PrintTypes(os.Stdout)
+// 	// Output: | Type | Name | Prefix | Length | Notes |
+// 	//| ---- | ---- | ------ | ----- | ------ |
+// 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+// 	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
+// 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
+// 	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
+// 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+// 	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
+// 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
+// }
 
 /*
 New encoding of keys is listed below

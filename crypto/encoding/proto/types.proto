@@ -15,6 +15,7 @@ message PubKey {
 }
 
 message PrivKey {
+  // TODO: decide if you will use the protogengocosmos tool to automatically make this a n interface
   oneof key {
     bytes ed25519   = 1;
     bytes secp256k1 = 2;

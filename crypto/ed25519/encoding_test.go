@@ -36,7 +36,7 @@ func TestPrivKeyEd25519MarshalBinary(t *testing.T) {
 
 		var privkey ed25519.PrivKey = privkeyBz
 
-		bz, err := privkey.Marshal()
+		bz, err := privkey.AminoMarshal()
 		require.NoError(t, err)
 		require.Equal(t, tc.out, fmt.Sprintf("%X", bz))
 		require.Equal(t, tc.out, fmt.Sprintf("%X", privkey.Bytes()))
@@ -88,7 +88,7 @@ func TestPrivKeyEd25519Unmarshal(t *testing.T) {
 
 		var privkey ed25519.PrivKey
 
-		require.Equal(t, tc.expectErr, privkey.Unmarshal(bz) != nil)
+		require.Equal(t, tc.expectErr, privkey.AminoUnmarshal(bz) != nil)
 		require.Equal(t, tc.out, fmt.Sprintf("%X", privkey))
 	}
 }
@@ -115,7 +115,7 @@ func TestPubKeyEd25519Marshal(t *testing.T) {
 
 		var pubkey ed25519.PubKey = pubkeyBz
 
-		bz, err := pubkey.Marshal()
+		bz, err := pubkey.AminoMarshal()
 		require.NoError(t, err)
 		require.Equal(t, tc.out, fmt.Sprintf("%X", bz))
 		require.Equal(t, tc.out, fmt.Sprintf("%X", pubkey.Bytes()))
@@ -160,7 +160,7 @@ func TestPubKeyEd25519Unmarshal(t *testing.T) {
 		require.NoError(t, err)
 
 		var pubkey ed25519.PubKey
-		require.Equal(t, tc.expectErr, pubkey.Unmarshal(bz) != nil)
+		require.Equal(t, tc.expectErr, pubkey.AminoUnmarshal(bz) != nil)
 		require.Equal(t, tc.out, pubkey.String())
 	}
 }
