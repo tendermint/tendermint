@@ -8,7 +8,7 @@
 
 If the light client is under attack (either directly - lunatic / phantom
 validators or indirectly - fork on the main chain), it's supposed to halt and
-send an evidence of misbehavior to the correct full node. Upon receiving an
+send evidence of misbehavior to the correct full node. Upon receiving an
 evidence, full node should punish malicious validators (if possible).
 
 ## Decision
