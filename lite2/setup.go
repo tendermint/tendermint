@@ -62,14 +62,14 @@ func NewHTTPClientFromTrustedStore(
 
 }
 
-func providersFromAddresses(providerAddresses []string, chainID string) ([]provider.Provider, error) {
-	providers := make([]provider.Provider, len(providerAddresses))
-	for idx, address := range providerAddresses {
-		singleProvider, err := http.New(chainID, address)
+func providersFromAddresses(addrs []string, chainID string) ([]provider.Provider, error) {
+	providers := make([]provider.Provider, len(addrs))
+	for idx, address := range addrs {
+		p, err := http.New(chainID, address)
 		if err != nil {
 			return nil, err
 		}
-		providers[idx] = singleProvider
+		providers[idx] = p
 	}
 	return providers, nil
 }
