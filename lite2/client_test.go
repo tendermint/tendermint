@@ -943,16 +943,16 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 // #################################  BENCHMARKING ######################################
 //
 
+// NOTE: block is produced every minute. Make sure the verification time is correct for the size of the block chain
 var (
-	largeFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 0.1, bTime))
+	largeFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
 	result        *Client
 )
 
-func BenchmarkSequence(b *testing.B) {
-	b.N = 10
-	genesisHeader, err := largeFullNode.SignedHeader(1)
-	require.NoError(b, err)
-	c, err := NewClient(
+// Creates a client using the largeFullNode
+func defaultClient() *Client {
+	genesisHeader, _ := largeFullNode.SignedHeader(1)
+	c, _ := NewClient(
 		chainID,
 		TrustOptions{
 			Period: 24 * time.Hour,
@@ -965,7 +965,11 @@ func BenchmarkSequence(b *testing.B) {
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
-	require.NoError(b, err)
+	return c
+}
+
+func BenchmarkSequence(b *testing.B) {
+	c := defaultClient()
 	trustedHeader, _, err := c.fetchHeaderAndValsAtHeight(1)
 	require.NoError(b, err)
 	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
@@ -977,23 +981,7 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
-	b.N = 1000
-	genesisHeader, err := largeFullNode.SignedHeader(1)
-	require.NoError(b, err)
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisHeader.Hash(),
-		},
-		largeFullNode,
-		[]provider.Provider{largeFullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
-		Logger(log.TestingLogger()),
-	)
-	require.NoError(b, err)
+	c := defaultClient()
 	trustedHeader, trustedVals, err := c.fetchHeaderAndValsAtHeight(1)
 	require.NoError(b, err)
 	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
@@ -1005,23 +993,7 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkRecursiveBisection(b *testing.B) {
-	b.N = 1000
-	genesisHeader, err := largeFullNode.SignedHeader(1)
-	require.NoError(b, err)
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisHeader.Hash(),
-		},
-		largeFullNode,
-		[]provider.Provider{largeFullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
-		Logger(log.TestingLogger()),
-	)
-	require.NoError(b, err)
+	c := defaultClient()
 	trustedHeader, trustedVals, err := c.fetchHeaderAndValsAtHeight(1)
 	require.NoError(b, err)
 	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
