@@ -752,7 +752,6 @@ type SignedHeader struct {
 
 // ValidateBasic does basic consistency checks and makes sure the header
 // and commit are consistent.
-//
 // NOTE: This does not actually check the cryptographic signatures.  Make
 // sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.

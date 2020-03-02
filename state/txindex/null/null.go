@@ -1,6 +1,7 @@
 package null
 
 import (
+	"context"
 	"errors"
 
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -28,6 +29,6 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	return nil
 }
 
-func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResult, error) {
 	return []*types.TxResult{}, nil
 }

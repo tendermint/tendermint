@@ -55,9 +55,9 @@ passing them back to the caller. Other than that, it will present the same
 interface as a full Tendermint node.
 
 ```sh
-$ tendermint lite --chain-id=supernova --primary=tcp://233.123.0.140:26657 \
-  --witnesses=tcp://179.63.29.15:26657,tcp://144.165.223.135:26657 \
-  --trusted-height=10 --trusted-hash=37E9A6DD3FA25E83B22C18835401E8E56088D0D7ABC6FD99FCDC920DD76C1C57
+$ tendermint lite supernova -p tcp://233.123.0.140:26657 \
+  -w tcp://179.63.29.15:26657,tcp://144.165.223.135:26657 \
+  --height=10 --hash=37E9A6DD3FA25E83B22C18835401E8E56088D0D7ABC6FD99FCDC920DD76C1C57
 ```
 
 For additional options, run `tendermint lite --help`.
