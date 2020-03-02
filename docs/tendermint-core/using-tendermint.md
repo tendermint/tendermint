@@ -104,35 +104,36 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 ## Run
 
-To run a Tendermint node, use
+To run a Tendermint node, use:
 
-```
+```sh
 tendermint node
 ```
 
 By default, Tendermint will try to connect to an ABCI application on
-[127.0.0.1:26658](127.0.0.1:26658). If you have the `kvstore` ABCI app
-installed, run it in another window. If you don't, kill Tendermint and
-run an in-process version of the `kvstore` app:
+`127.0.0.1:26658`. If you have the `kvstore` ABCI app installed, run it in
+another window. If you don't, kill Tendermint and run an in-process version of
+the `kvstore` app:
 
-```
+```sh
 tendermint node --proxy_app=kvstore
 ```
 
-After a few seconds you should see blocks start streaming in. Note that
-blocks are produced regularly, even if there are no transactions. See
-_No Empty Blocks_, below, to modify this setting.
+After a few seconds, you should see blocks start streaming in. Note that blocks
+are produced regularly, even if there are no transactions. See _No Empty
+Blocks_, below, to modify this setting.
 
-Tendermint supports in-process versions of the `counter`, `kvstore` and
-`noop` apps that ship as examples with `abci-cli`. It's easy to compile
-your own app in-process with Tendermint if it's written in Go. If your
-app is not written in Go, simply run it in another process, and use the
-`--proxy_app` flag to specify the address of the socket it is listening
-on, for instance:
+Tendermint supports in-process versions of the `counter`, `kvstore`, and `noop`
+apps that ship as examples with `abci-cli`. It's easy to compile your app
+in-process with Tendermint if it's written in Go. If your app is not written in
+Go, run it in another process, and use the `--proxy_app` flag to specify the
+address of the socket it is listening on, for instance:
 
-```
+```sh
 tendermint node --proxy_app=/var/run/abci.sock
 ```
+
+You can find out what flags are supported by running `tendermint node --help`.
 
 ## Transactions
 

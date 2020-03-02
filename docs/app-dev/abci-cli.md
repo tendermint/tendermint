@@ -192,7 +192,7 @@ Try running these commands:
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 2
 -> value: abc
 -> value.hex: 616263
 
@@ -206,7 +206,7 @@ Try running these commands:
 > query "def"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 3
 -> value: xyz
 -> value.hex: 78797A
 ```
