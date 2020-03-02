@@ -8,9 +8,11 @@ import (
 	"github.com/tendermint/tendermint/lite2/store"
 )
 
-// NewNetClient and NewNetClientFromTrustedStore each initiate an instance of a lite client using just RPC addresses
-// to form the providers to the lite client
-func NewNetClient(
+// NewHTTPClient initiates an instance of a lite client using HTTP addresses
+// for both the primary provider and witnesses of the lite client. A root of trust
+//
+// See all Option(s) for the additional configuration.
+func NewHTTPClient(
 	chainID string,
 	trustOptions TrustOptions,
 	primaryAddress string,
@@ -33,7 +35,11 @@ func NewNetClient(
 
 }
 
-func NewNetClientFromTrustedStore(
+// NewHTTPClientFromTrustedStore initiates an instance of a lite client using HTTP addresses
+// for both the primary provider and witnesses and uses a trusted store as the root of trust.
+//
+// See all Option(s) for the additional configuration.
+func NewHTTPClientFromTrustedStore(
 	chainID string,
 	trustingPeriod time.Duration,
 	primaryAddress string,
