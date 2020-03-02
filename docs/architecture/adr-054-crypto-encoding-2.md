@@ -27,7 +27,24 @@ If there are more options please leave a comment and we can discuss it.
 
 ## Decision
 
-After thought and discussion, option 2 will be the path to move forward with. This will cause less user stress and while looking through the codebase, the places we use keys with prefixed bytes is not vast and mostly not user facing. Below you will find places where it will change encoding of things:
+Move all key types to protobuf encoding and have backwards compatibility available for where it is needed.
+
+The places where backwards compatibility is needed is still unclear. I tried to break it down by usage of `cryptoamino.RegesiterAmino(cdc)` and looking through most of the reactors, we do not rely on a amino encoded key, and the key that is used in genesis and saved for use with validators is in json form, amino does not prefix bytes for json encoding so this will not be a problem.
+
+Modules that use `crypto-amino`:
+
+- State: This will not be a worry as this change will require a network upgrade (hardfork)
+- Privval: The implementation of the privval server is reliant on amino encoded keys, but the key is not stored as amino encoded on disk. Therefore this issue will be resolved with a hardfork upgrade.
+  - Organization with KMS and other tooling will need to be coordinated prior to release.
+- P2P: There a few modules within the p2p package that define there own codec.
+  - Conn: Secret Connection is a area that uses the amino encoded bytes of a key, this as well will not be a worry as there will be a hardfork upgrade and new secret connections will be established.
+    <!-- I'm not sure how much the secret connection is actually used. -->
+  - P2P: Here as well cryptoamino is used but backwards compatibility will not be needed as there will be a hardfork upgrade.
+- Node: Here cryptoamino is used for unmarshaling & marshaling keys for genesis, since json encoding of amino does not prefix any bytes then this will be fine.
+- lite: Within the lite package there is not a requirement for backwards compatibility of keys as there will be a hardfork upgrade as well.
+- evidence: Evidence uses cryptoamino in order to unmarshal specific types of evidence which contain a key type. Again this will not need backwards compatibility as there is a need for a hardfork for these changes.
+
+<!-- TODO: ask bez how he is currently working with encoded types. -->
 
 > This section explains all of the details of the proposed solution, including implementation details.
 > It should also describe affects / corollary items that may need to be changed as a part of this.
