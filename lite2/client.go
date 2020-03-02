@@ -1057,3 +1057,61 @@ func backoffTimeout(attempt uint16) time.Duration {
 func hash2str(hash []byte) string {
 	return fmt.Sprintf("%X", hash)
 }
+
+func (c *Client) recursiveBisection(
+	lastHeader *types.SignedHeader,
+	lastVals *types.ValidatorSet,
+	newHeader *types.SignedHeader,
+	newVals *types.ValidatorSet,
+	now time.Time) error {
+
+	c.logger.Debug("Verify newHeader against lastHeader",
+		"lastHeight", lastHeader.Height,
+		"lastHash", lastHeader.Hash(),
+		"newHeight", newHeader.Height,
+		"newHash", newHeader.Hash())
+	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+	switch err.(type) {
+	case nil:
+		return nil
+	case ErrNewValSetCantBeTrusted:
+		// continue bisection
+	default:
+		return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
+	}
+
+	pivot := (c.latestTrustedHeader.Height + newHeader.Header.Height) / 2
+	pivotHeader, pivotVals, err := c.fetchHeaderAndValsAtHeight(pivot)
+	if err != nil {
+		return err
+	}
+
+	// left branch
+	{
+		err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now)
+		if err != nil {
+			return errors.Wrapf(err, "bisection of #%d and #%d", lastHeader.Height, pivot)
+		}
+	}
+
+	// right branch
+	{
+		nextVals, err := c.primary.ValidatorSet(pivot + 1)
+		if err != nil {
+			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
+		}
+		if !bytes.Equal(pivotHeader.NextValidatorsHash, nextVals.Hash()) {
+			return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
+				pivotHeader.NextValidatorsHash,
+				nextVals.Hash(),
+				pivot)
+		}
+
+		err = c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
+		if err != nil {
+			return errors.Wrapf(err, "bisection of #%d and #%d", pivot, newHeader.Height)
+		}
+	}
+
+	return nil
+}

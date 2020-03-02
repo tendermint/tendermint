@@ -938,3 +938,114 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 	assert.NotNil(t, valSet)
 	assert.EqualValues(t, 2, height)
 }
+
+//
+// #################################  BENCHMARKING ######################################
+//
+
+var (
+	largeFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 0.1, bTime))
+	result        *Client
+)
+
+func BenchmarkSequence(b *testing.B) {
+	b.N = 10
+	genesisHeader, err := largeFullNode.SignedHeader(1)
+	require.NoError(b, err)
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 24 * time.Hour,
+			Height: 1,
+			Hash:   genesisHeader.Hash(),
+		},
+		largeFullNode,
+		[]provider.Provider{largeFullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(b, err)
+	trustedHeader, _, err := c.fetchHeaderAndValsAtHeight(1)
+	require.NoError(b, err)
+	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
+	require.NoError(b, err)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = c.sequence(trustedHeader, untrustedHeader, untrustedVals, bTime.Add(1000*time.Minute))
+	}
+}
+
+func BenchmarkBisection(b *testing.B) {
+	b.N = 1000
+	genesisHeader, err := largeFullNode.SignedHeader(1)
+	require.NoError(b, err)
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 24 * time.Hour,
+			Height: 1,
+			Hash:   genesisHeader.Hash(),
+		},
+		largeFullNode,
+		[]provider.Provider{largeFullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(b, err)
+	trustedHeader, trustedVals, err := c.fetchHeaderAndValsAtHeight(1)
+	require.NoError(b, err)
+	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
+	require.NoError(b, err)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = c.bisection(trustedHeader, trustedVals, untrustedHeader, untrustedVals, bTime.Add(1000*time.Minute))
+	}
+}
+
+func BenchmarkRecursiveBisection(b *testing.B) {
+	b.N = 1000
+	genesisHeader, err := largeFullNode.SignedHeader(1)
+	require.NoError(b, err)
+	c, err := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 24 * time.Hour,
+			Height: 1,
+			Hash:   genesisHeader.Hash(),
+		},
+		largeFullNode,
+		[]provider.Provider{largeFullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(b, err)
+	trustedHeader, trustedVals, err := c.fetchHeaderAndValsAtHeight(1)
+	require.NoError(b, err)
+	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
+	require.NoError(b, err)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = c.recursiveBisection(trustedHeader, trustedVals, untrustedHeader, untrustedVals,
+			bTime.Add(1000*time.Minute))
+	}
+}
+
+func BenchmarkClientInitialization(b *testing.B) {
+	var c *Client
+	for n := 0; n < b.N; n++ {
+		c, _ = NewClient(
+			chainID,
+			trustOptions,
+			fullNode,
+			[]provider.Provider{fullNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			UpdatePeriod(0),
+			Logger(log.TestingLogger()),
+			MaxRetryAttempts(1),
+		)
+	}
+	result = c
+}
