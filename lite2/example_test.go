@@ -57,7 +57,7 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // TODO: primary should not be used here
+		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(1*time.Second),
 		Logger(log.TestingLogger()),
@@ -124,7 +124,7 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // TODO: primary should not be used here
+		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
