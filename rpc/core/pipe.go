@@ -60,7 +60,7 @@ var (
 
 	// interfaces defined in types and above
 	stateDB        dbm.DB
-	blockStore     sm.BlockStore
+	blockStore     sm.BlockStoreRPC
 	evidencePool   sm.EvidencePool
 	consensusState Consensus
 	p2pPeers       peers
@@ -83,7 +83,7 @@ func SetStateDB(db dbm.DB) {
 	stateDB = db
 }
 
-func SetBlockStore(bs sm.BlockStore) {
+func SetBlockStore(bs sm.BlockStoreRPC) {
 	blockStore = bs
 }
 
