@@ -4,22 +4,30 @@ package tendermint.crypto.encoding.proto;
 option go_package = "github.com/tendermint/tendermint/crypto/encoding/proto";
 
 import "third_party/proto/gogoproto/gogo.proto";
+import "third_party/proto/cosmos-proto/cosmos.proto";
 
 message PubKey {
+  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PubKey";
   oneof key {
-    bytes                   ed25519   = 1;
-    bytes                   secp256k1 = 2;
-    bytes                   sr25519   = 3;
-    PubKeyMultiSigThreshold multisig  = 4;
+    bytes ed25519 = 1
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PubKey"];
+    bytes secp256k1 = 2
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PubKey"];
+    bytes sr25519 = 3
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
+    PubKeyMultiSigThreshold multisig = 4;
   }
 }
 
 message PrivKey {
-  // TODO: decide if you will use the protogengocosmos tool to automatically make this a n interface
+  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PrivKey";
   oneof key {
-    bytes ed25519   = 1;
-    bytes secp256k1 = 2;
-    bytes sr25519   = 3;
+    bytes ed25519 = 1
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PrivKey"];
+    bytes secp256k1 = 2
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PrivKey"];
+    bytes sr25519 = 3
+        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PrivKey"];
   }
 }
 
