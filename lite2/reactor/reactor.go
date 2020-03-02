@@ -65,11 +65,12 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		r.logger.Error("error decoding message",
 			"src", src.ID(), "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		return
 	}
 
 	err = msg.ValidateBasic()
 	if err != nil {
-		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		r.logger.Error("peer sent invalid msg", "peer", src, "msg", msg, "err", err)
 		return
 	}
 
@@ -126,9 +127,16 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}))
 
 	case *signedHeaderResponseMessage:
-		r.dispatcher.respond(src, msg)
+		err := r.dispatcher.respond(src, msg)
+		if err != nil {
+			r.logger.Error("Invalid signed header response", "err", err.Error())
+		}
+
 	case *validatorSetResponseMessage:
-		r.dispatcher.respond(src, msg)
+		err := r.dispatcher.respond(src, msg)
+		if err != nil {
+			r.logger.Error("Invalid validator set response", "err", err.Error())
+		}
 	}
 }
 
@@ -136,7 +144,6 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 func (r *Reactor) SetLogger(logger log.Logger) {
 	r.BaseReactor.SetLogger(logger)
 	r.logger = logger
-	r.dispatcher.logger = logger
 }
 
 // Start implements Servive.

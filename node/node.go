@@ -734,19 +734,10 @@ func NewNode(config *cfg.Config,
 			peers = sw.Peers().List()
 		}
 
-		primary, err := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[0])
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
+		primary := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[0])
+		witness := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[1])
 
-		witness, err := litep2p.New(liteReactor.Dispatcher(), state.ChainID, peers[1])
-		if err != nil {
-			l.Error(err.Error())
-			return
-		}
-
-		hash, err := hex.DecodeString("D2D5A77B74D568CAC90B6EDA5DDC8978E19ECC62CA76E7263FAF9243BCF6A50A")
+		hash, err := hex.DecodeString("CF4BF4543F942CA8218E3177C061D73505C2F6B4EB08486A529D15706719BF63")
 		if err != nil {
 			l.Error(err.Error())
 			return
@@ -756,7 +747,7 @@ func NewNode(config *cfg.Config,
 			state.ChainID,
 			lite.TrustOptions{
 				Period: 21 * 24 * time.Hour,
-				Height: 228,
+				Height: 10,
 				Hash:   hash,
 			},
 			primary,
@@ -777,7 +768,7 @@ func NewNode(config *cfg.Config,
 
 		for {
 			time.Sleep(5 * time.Second)
-			header, err := lc.VerifyHeaderAtHeight(300, time.Now())
+			header, err := lc.VerifyHeaderAtHeight(20, time.Now())
 			if err != nil {
 				l.Error(err.Error())
 			}

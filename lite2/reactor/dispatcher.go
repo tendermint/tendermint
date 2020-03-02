@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -23,14 +23,12 @@ type Dispatcher struct {
 	sync.Mutex
 	calls      map[uint64]*call
 	nextCallID uint64
-	logger     log.Logger
 }
 
 // NewDispatcher creates a new dispatcher.
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		logger: log.NewNopLogger(),
-		calls:  make(map[uint64]*call),
+		calls: make(map[uint64]*call),
 	}
 }
 
@@ -56,37 +54,29 @@ func (d *Dispatcher) call(peer p2p.Peer, msg Message) (Message, error) {
 	case resp := <-ch:
 		return resp, nil
 	case <-time.After(timeout):
-		// clean up in goroutine to avoid mutex blocking and return fast
-		go func() {
-			d.Lock()
-			if _, ok := d.calls[callID]; ok {
-				delete(d.calls, callID)
-				close(ch) // safe to close on reader side because access is protected by mutex
-			}
-			d.Unlock()
-		}()
+		d.Lock()
+		delete(d.calls, callID) // no need to close channel, gc handles it
+		d.Unlock()
 		return nil, errors.New("call timed out")
 	}
 }
 
 // respond provides a call response.
-func (d *Dispatcher) respond(src p2p.Peer, msg Message) {
+func (d *Dispatcher) respond(src p2p.Peer, msg Message) error {
 	d.Lock()
 	defer d.Unlock()
 	callID := msg.GetCallID()
 	call, ok := d.calls[callID]
 	if !ok {
-		d.logger.Error("Received call response for unknown call %q", callID)
-		return
+		return errors.Errorf("received call response for unknown call %q", callID)
 	}
 	if call.peerID != src.ID() {
-		d.logger.Error("Received call response from wrong peer %q, expected %q",
+		return errors.Errorf("received call response from wrong peer %q, expected %q",
 			src.ID(), call.peerID)
-		return
 	}
+	delete(d.calls, callID) // no need to close channel, gc handles it
 	call.ch <- msg
-	close(call.ch)
-	delete(d.calls, callID)
+	return nil
 }
 
 // SignedHeader synchronously requests a signed header from a peer. It returns nil if not found.

@@ -18,12 +18,12 @@ type p2p struct {
 
 // New creates a new P2P provider. It takes a dispatcher from Reactor.Dispatcher() and an
 // appropriate peer to communicate with.
-func New(dispatcher *reactor.Dispatcher, chainID string, peer p2pm.Peer) (provider.Provider, error) {
+func New(dispatcher *reactor.Dispatcher, chainID string, peer p2pm.Peer) provider.Provider {
 	return &p2p{
 		dispatcher: dispatcher,
 		chainID:    chainID,
 		peer:       peer,
-	}, nil
+	}
 }
 
 // ChainID implements Provider.
