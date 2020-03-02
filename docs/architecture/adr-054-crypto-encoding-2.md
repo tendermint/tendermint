@@ -16,7 +16,7 @@ Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
 Transitioning from a fixed size byte array to bytes would be the first step. This will enable usage of [cosmos-proto](https://github.com/regen-network/cosmos-proto) interface type. This removes boiler plate needed for oneof types.
 
-Move all key types to protobuf encoding and have backwards compatibility available for where it is needed.
+The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
 
 Protobuf messages:
 
