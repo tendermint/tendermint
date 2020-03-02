@@ -343,6 +343,7 @@ jobs:
           name: Build tendermint
           no_output_timeout: 20m
           command: |
+            sudo apt-get update
             sudo apt-get install -y ruby
             bash -x ./scripts/gitian-build.sh all
             for os in darwin linux windows; do

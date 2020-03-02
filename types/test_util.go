@@ -1,11 +1,11 @@
 package types
 
 import (
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"time"
 )
 
 func MakeCommit(blockID BlockID, height int64, round int,
-	voteSet *VoteSet, validators []PrivValidator) (*Commit, error) {
+	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -17,7 +17,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			Round:            round,
 			Type:             PrecommitType,
 			BlockID:          blockID,
-			Timestamp:        tmtime.Now(),
+			Timestamp:        now,
 		}
 
 		_, err := signAddVote(validators[i], vote, voteSet)
@@ -43,6 +43,7 @@ func MakeVote(
 	valSet *ValidatorSet,
 	privVal PrivValidator,
 	chainID string,
+	now time.Time,
 ) (*Vote, error) {
 	addr := privVal.GetPubKey().Address()
 	idx, _ := valSet.GetByAddress(addr)
@@ -51,7 +52,7 @@ func MakeVote(
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            0,
-		Timestamp:        tmtime.Now(),
+		Timestamp:        now,
 		Type:             PrecommitType,
 		BlockID:          blockID,
 	}

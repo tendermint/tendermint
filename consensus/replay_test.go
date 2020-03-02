@@ -892,7 +892,8 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 			lastBlockMeta.BlockID,
 			state.Validators,
 			privVal,
-			lastBlock.Header.ChainID)
+			lastBlock.Header.ChainID,
+			time.Now())
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
