@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -38,11 +39,6 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 		stdlog.Fatal(err)
 	}
 
-	vals, err := primary.ValidatorSet(2)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-
 	header, err := primary.SignedHeader(2)
 	if err != nil {
 		stdlog.Fatal(err)
@@ -52,19 +48,17 @@ func TestExample_Client_AutoUpdate(t *testing.T) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	trustedStore := dbs.New(db, chainID)
 
-	err = trustedStore.SaveSignedHeaderAndValidatorSet(header, vals)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-
-	c, err := NewNetClientFromTrustedStore(
+	c, err := NewClient(
 		chainID,
-		504*time.Hour,
-		config.RPC.ListenAddress,
-		[]string{config.RPC.ListenAddress}, // TODO: primary should not be used here
-		trustedStore,
+		TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 2,
+			Hash:   header.Hash(),
+		},
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
+		dbs.New(db, chainID),
 		UpdatePeriod(1*time.Second),
 		Logger(log.TestingLogger()),
 	)
@@ -122,15 +116,15 @@ func TestExample_Client_ManualUpdate(t *testing.T) {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewNetClient(
+	c, err := NewClient(
 		chainID,
 		TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
 		},
-		config.RPC.ListenAddress,
-		[]string{config.RPC.ListenAddress}, // TODO: primary should not be used here
+		primary,
+		[]provider.Provider{primary}, // TODO: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
