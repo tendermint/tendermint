@@ -71,7 +71,7 @@ func (psh PartSetHeader) ValidateBasic() error {
 		return errors.New("negative Total")
 	}
 	if psh.Total > math.MaxInt32 {
-		return errors.new("number can not be greater than 2_147_483_647 ")
+		return errors.New("number can not be greater than 2_147_483_647 ")
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
