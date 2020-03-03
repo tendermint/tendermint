@@ -954,12 +954,14 @@ func TestClient_ConcurrentVerifications(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		err := c.Update(bTime.Add(1 * time.Hour).Add(1 * time.Second))
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+		// this should be a forward verification if update hasn't occurred or a backwards verification if it has
+		// in either case we should not see an error
+		_, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
 		assert.NoError(t, err)
 	}()
 
