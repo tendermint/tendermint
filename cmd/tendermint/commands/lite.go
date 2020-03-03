@@ -52,9 +52,9 @@ lite cosmoshub-3 -p 52.57.29.196:26657 -w public-seed-node.cosmoshub.certus.one:
 var (
 	listenAddr         string
 	primaryAddr        string
+	witnessAddrsJoined string
 	chainID            string
 	home               string
-	witnessesAddrs     string
 	maxOpenConnections int
 
 	trustingPeriod time.Duration
@@ -69,7 +69,7 @@ func init() {
 		"Serve the proxy on the given address")
 	LiteCmd.Flags().StringVarP(&primaryAddr, "primary", "p", "",
 		"Connect to a Tendermint node at this address")
-	LiteCmd.Flags().StringVarP(&witnessesAddrs, "witnesses", "w", "",
+	LiteCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
 		"Tendermint nodes to cross-check the primary node, comma-separated")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
 	LiteCmd.Flags().IntVar(
@@ -96,9 +96,10 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	logger = log.NewFilter(logger, option)
 
 	chainID = args[0]
-
 	logger.Info("Creating client...", "chainID", chainID)
-	witnesses := strings.Split(witnessesAddrs, ",")
+
+	witnessesAddrs := strings.Split(witnessAddrsJoined, ",")
+
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
 		return err
@@ -114,7 +115,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 				Hash:   trustedHash,
 			},
 			primaryAddr,
-			witnesses,
+			witnessesAddrs,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)
@@ -123,7 +124,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			chainID,
 			trustingPeriod,
 			primaryAddr,
-			witnesses,
+			witnessesAddrs,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)

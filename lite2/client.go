@@ -953,7 +953,8 @@ func (c *Client) autoUpdateRoutine() {
 	}
 }
 
-// Update attempts to advance the state by downloading the latest header and comparing it with the existing one.
+// Update attempts to advance the state by downloading the latest header and
+// comparing it with the existing one.
 func (c *Client) Update(now time.Time) error {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {

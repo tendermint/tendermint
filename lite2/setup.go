@@ -3,18 +3,17 @@ package lite
 import (
 	"time"
 
-	"time"
-
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	"github.com/tendermint/tendermint/lite2/store"
 )
 
 // NewHTTPClient initiates an instance of a lite client using HTTP addresses
-// for both the primary provider and witnesses of the lite client. A trusted header
-// and hash must be passed to initialize the client.
+// for both the primary provider and witnesses of the lite client. A trusted
+// header and hash must be passed to initialize the client.
 //
 // See all Option(s) for the additional configuration.
+// See NewClient.
 func NewHTTPClient(
 	chainID string,
 	trustOptions TrustOptions,
@@ -35,13 +34,14 @@ func NewHTTPClient(
 		providers[:len(providers)-1],
 		trustedStore,
 		options...)
-
 }
 
-// NewHTTPClientFromTrustedStore initiates an instance of a lite client using HTTP addresses
-// for both the primary provider and witnesses and uses a trusted store as the root of trust.
+// NewHTTPClientFromTrustedStore initiates an instance of a lite client using
+// HTTP addresses for both the primary provider and witnesses and uses a
+// trusted store as the root of trust.
 //
 // See all Option(s) for the additional configuration.
+// See NewClientFromTrustedStore.
 func NewHTTPClientFromTrustedStore(
 	chainID string,
 	trustingPeriod time.Duration,
@@ -62,7 +62,6 @@ func NewHTTPClientFromTrustedStore(
 		providers[:len(providers)-1],
 		trustedStore,
 		options...)
-
 }
 
 func providersFromAddresses(addrs []string, chainID string) ([]provider.Provider, error) {
