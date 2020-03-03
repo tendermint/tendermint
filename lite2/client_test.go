@@ -622,9 +622,6 @@ func TestClient_Update(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	// should result in downloading & verifying header #3
 	err = c.Update(bTime.Add(2 * time.Hour))
@@ -929,7 +926,6 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
-
 	require.NoError(t, err)
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
@@ -939,4 +935,33 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, valSet)
 	assert.EqualValues(t, 2, height)
+}
+
+func TestClient_ConcurrentVerifications(t *testing.T) {
+	c, err := NewClient(
+		chainID,
+		trustOptions,
+		fullNode,
+		[]provider.Provider{fullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := c.Update(bTime.Add(1 * time.Hour).Add(1 * time.Second))
+		assert.Error(t, err)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err := c.VerifyHeaderAtHeight(3, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.NoError(t, err)
+	}()
+
+	wg.Wait()
 }
