@@ -516,6 +516,8 @@ func (c *Client) ChainID() string {
 // It returns provider.ErrSignedHeaderNotFound if header is not found by
 // primary.
 // It returns ErrOldHeaderExpired if header expired.
+//
+// Safe for concurrent use by multiple goroutines
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height <= 0 {
 		return nil, errors.New("negative or zero height")
@@ -557,6 +559,8 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // If, at any moment, SignedHeader or ValidatorSet are not found by the primary
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
+//
+// Safe for concurrent use by multiple goroutines
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	if newHeader.Height <= 0 {
 		return errors.New("negative or zero height")
@@ -960,6 +964,8 @@ func (c *Client) autoUpdateRoutine() {
 
 // Update attempts to advance the state by downloading the latest header and
 // comparing it with the existing one.
+//
+// Safe for concurrent use by multiple goroutines
 func (c *Client) Update(now time.Time) error {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {
