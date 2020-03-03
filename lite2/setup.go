@@ -3,6 +3,8 @@ package lite
 import (
 	"time"
 
+	"time"
+
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	"github.com/tendermint/tendermint/lite2/store"
