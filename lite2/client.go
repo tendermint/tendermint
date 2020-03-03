@@ -583,11 +583,10 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 	var err error
 
-	c.verificationMutex.Lock()
-	defer c.verificationMutex.Unlock()
-
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
+		c.verificationMutex.Lock()
+		defer c.verificationMutex.Unlock()
 		switch c.verificationMode {
 		case sequential:
 			err = c.sequence(c.latestTrustedHeader, newHeader, newVals, now)
