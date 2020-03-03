@@ -98,7 +98,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	chainID = args[0]
 
 	logger.Info("Creating client...", "chainID", chainID)
-	addrs := strings.Split(witnessesAddrs, ",")
+	witnesses := strings.Split(witnessesAddrs, ",")
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 				Hash:   trustedHash,
 			},
 			primaryAddr,
-			addrs,
+			witnesses,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)
@@ -123,7 +123,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			chainID,
 			trustingPeriod,
 			primaryAddr,
-			addrs,
+			witnesses,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)
