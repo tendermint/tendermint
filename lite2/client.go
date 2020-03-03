@@ -953,11 +953,8 @@ func (c *Client) autoUpdateRoutine() {
 	}
 }
 
-// Update attempts to advance the state making exponential steps (note:
-// when SequentialVerification is being used, the client will still be
-// downloading all intermediate headers).
-//
-// Exposed for testing.
+// Update attempts to advance the state by downloading the latest header and
+// comparing it with the existing one.
 func (c *Client) Update(now time.Time) error {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {

@@ -9,16 +9,21 @@ parent:
 
 Tendermint has some tools that are associated with it for:
 
+- [Debugging](./debugging.md)
 - [Benchmarking](#benchmarking)
-- [Validation of remote signers](./remote-signer-validation.md)
 - [Testnets](#testnets)
-
+- [Validation of remote signers](./remote-signer-validation.md)
 
 ## Benchmarking
 
-Benchmarking is done with tm-load-test, for information on how to use the tool please visit the docs: https://github.com/interchainio/tm-load-test
+- https://github.com/interchainio/tm-load-test
 
+`tm-load-test` is a distributed load testing tool (and framework) for load
+testing Tendermint networks.
 
 ## Testnets
 
-The testnets tool is aimed at testing Tendermint with different configurations. For more information please visit: https://github.com/interchainio/testnets.
+- https://github.com/interchainio/testnets
+
+This repository contains various different configurations of test networks for,
+and relating to, Tendermint.
