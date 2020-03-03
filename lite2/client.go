@@ -711,7 +711,19 @@ func (c *Client) sequence(
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, interimVals,
 			c.trustingPeriod, now)
 		if err != nil {
-			return errors.Wrapf(err, "failed to verify the header #%d", height)
+			switch err.(type) {
+			case ErrInvalidHeader:
+				c.logger.Info("replacing primary because: ", "err", err.Error())
+				err = c.replacePrimaryProvider()
+				if err != nil {
+					return errors.Wrapf(err, "tried to verify adjacent header")
+				}
+				// attempt to verify the header again
+				height--
+				continue
+			default:
+				return errors.Wrapf(err, "failed to verify the header #%d", height)
+			}
 		}
 
 		// 3) Update trustedHeader
@@ -763,6 +775,15 @@ func (c *Client) bisection(
 			if err != nil {
 				return err
 			}
+
+		case ErrInvalidHeader:
+			c.logger.Info("replacing primary because: ", "err", err.Error())
+			err = c.replacePrimaryProvider()
+			if err != nil {
+				return errors.Wrapf(err, "tried to verify using bisection")
+			}
+			// attempt to verify the header again
+			continue
 
 		default:
 			return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)

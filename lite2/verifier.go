@@ -49,7 +49,7 @@ func VerifyNonAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return err
+		return ErrInvalidHeader{err.Error()}
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
@@ -71,7 +71,7 @@ func VerifyNonAdjacent(
 	// VerifyAdjacent, where validator set is known in advance.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return err
+		return ErrInvalidHeader{err.Error()}
 	}
 
 	return nil
@@ -103,7 +103,7 @@ func VerifyAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return err
+		return ErrInvalidHeader{err.Error()}
 	}
 
 	// Check the validator hashes are the same
@@ -118,7 +118,7 @@ func VerifyAdjacent(
 	// Ensure that +2/3 of new validators signed correctly.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return err
+		return ErrInvalidHeader{err.Error()}
 	}
 
 	return nil

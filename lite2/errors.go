@@ -28,3 +28,11 @@ type ErrNewValSetCantBeTrusted struct {
 func (e ErrNewValSetCantBeTrusted) Error() string {
 	return fmt.Sprintf("cant trust new val set: %v", e.Reason)
 }
+
+type ErrInvalidHeader struct {
+	Reason string
+}
+
+func (e ErrInvalidHeader) Error() string {
+	return fmt.Sprintf("invalid header: %v", e.Reason)
+}
