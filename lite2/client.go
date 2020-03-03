@@ -128,6 +128,8 @@ type Client struct {
 
 	// See UpdatePeriod option
 	updatePeriod time.Duration
+	// Mutex for locking during verification process
+	verificationMutex sync.Mutex
 	// See RemoveNoLongerTrustedHeadersPeriod option
 	pruningSize uint16
 	// See ConfirmationFunction option
@@ -580,6 +582,9 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		"vals", hash2str(newVals.Hash()))
 
 	var err error
+
+	c.verificationMutex.Lock()
+	defer c.verificationMutex.Unlock()
 
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
