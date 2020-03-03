@@ -583,9 +583,9 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 	var err error
 
+	c.verificationMutex.Lock()
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
-		c.verificationMutex.Lock()
 		defer c.verificationMutex.Unlock()
 		switch c.verificationMode {
 		case sequential:
@@ -596,6 +596,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 			panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 		}
 	} else {
+		c.verificationMutex.Unlock()
 		// 2) Otherwise, perform backwards verification
 		// Find the closest trusted header after newHeader.Height
 		var closestHeader *types.SignedHeader
