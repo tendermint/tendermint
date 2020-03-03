@@ -9,14 +9,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	lite "github.com/tendermint/tendermint/lite2"
-	"github.com/tendermint/tendermint/lite2/provider"
-	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	lproxy "github.com/tendermint/tendermint/lite2/proxy"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
@@ -99,25 +97,8 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	chainID = args[0]
 
-	logger.Info("Creating HTTP client for primary...", "addr", primaryAddr)
-	rpcClient, err := rpcclient.NewHTTP(primaryAddr, "/websocket")
-	if err != nil {
-		return errors.Wrapf(err, "http client for %s", primaryAddr)
-	}
-	primary := httpp.NewWithClient(chainID, rpcClient)
-
-	// TODO: use NewNetClient once we have it
-	addrs := strings.Split(witnessesAddrs, ",")
-	witnesses := make([]provider.Provider, len(addrs))
-	for i, addr := range addrs {
-		p, err := httpp.New(chainID, addr)
-		if err != nil {
-			return errors.Wrapf(err, "http provider for %s", addr)
-		}
-		witnesses[i] = p
-	}
-
 	logger.Info("Creating client...", "chainID", chainID)
+	addrs := strings.Split(witnessesAddrs, ",")
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
 		return err
@@ -125,24 +106,24 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	var c *lite.Client
 	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		c, err = lite.NewClient(
+		c, err = lite.NewHTTPClient(
 			chainID,
 			lite.TrustOptions{
 				Period: trustingPeriod,
 				Height: trustedHeight,
 				Hash:   trustedHash,
 			},
-			primary,
-			witnesses,
+			primaryAddr,
+			addrs,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)
 	} else { // continue from latest state
-		c, err = lite.NewClientFromTrustedStore(
+		c, err = lite.NewHTTPClientFromTrustedStore(
 			chainID,
 			trustingPeriod,
-			primary,
-			witnesses,
+			primaryAddr,
+			addrs,
 			dbs.New(db, chainID),
 			lite.Logger(logger),
 		)
@@ -158,6 +139,10 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	}
 	defer c.Stop()
 
+	rpcClient, err := rpcclient.NewHTTP(primaryAddr, "/websocket")
+	if err != nil {
+		return errors.Wrapf(err, "http client for %s", primaryAddr)
+	}
 	p := lproxy.Proxy{
 		Addr:   listenAddr,
 		Config: &rpcserver.Config{MaxOpenConnections: maxOpenConnections},

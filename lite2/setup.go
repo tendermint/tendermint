@@ -9,7 +9,8 @@ import (
 )
 
 // NewHTTPClient initiates an instance of a lite client using HTTP addresses
-// for both the primary provider and witnesses of the lite client. A root of trust
+// for both the primary provider and witnesses of the lite client. A trusted header
+// and hash must be passed to initialize the client.
 //
 // See all Option(s) for the additional configuration.
 func NewHTTPClient(
