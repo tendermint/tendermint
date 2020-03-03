@@ -47,13 +47,16 @@ message PrivKey {
 }
 ```
 
-> Note: The places where backwards compatibility is needed is still unclear. Still need to dive into the code a bit.
+> Note: The places where backwards compatibility is needed is still unclear.
 
 All modules currently do not rely on amino encoded bytes and keys are not amino encoded for genesis, therefore a hardfork upgrade is what will be needed to adopt these changes.
 
-<!-- TODO: define the above better, need to read the code a bit more -->
+This work will be broken out into a few PRs, this work will be merged into a proto-breakage branch, all PRs will be reviewed prior to being merged:
 
-This work will be broken out into a few PRs. One for the encoding of keys to protobuf and then other PRs will have types and reactor changes.
+1. Encoding of keys to protobuf and protobuf messages
+2. Move Tendermint types to protobuf, mainly the ones that are being encoded.
+3. Go one by one through the reactors and transition amino encoded messages to protobuf.
+4. Test with cosmos-sdk and/or testnets repo.
 
 ## Status
 
@@ -61,7 +64,7 @@ Proposed
 
 ## Consequences
 
-- Depends on which option is chosen
+- Move keys to protobuf encoding, where backwards compatibility is needed, amino marshal and unmarshal functions will be used.
 
 ### Positive
 
