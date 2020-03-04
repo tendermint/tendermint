@@ -10,11 +10,9 @@ Amino has been a pain point of many users in the ecosystem. While Tendermint doe
 
 Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
-> With keys becoming a [oneof type](https://developers.google.com/protocol-buffers/docs/proto3#oneof) we have the option of removing the prefix bytes.
-
 ## Decision
 
-Transitioning from a fixed size byte array to bytes would be the first step. This will enable usage of [cosmos-proto](https://github.com/regen-network/cosmos-proto) interface type. This removes boiler plate needed for oneof types.
+Transitioning from a fixed size byte array to byte slice's would be the first step. This will enable usage of [cosmos-proto](https://github.com/regen-network/cosmos-proto) interface type. This removes boiler plate needed for oneof types.
 
 The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
 
