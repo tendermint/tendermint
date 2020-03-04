@@ -713,7 +713,7 @@ func (c *Client) sequence(
 		if err != nil {
 			switch err.(type) {
 			case ErrInvalidHeader:
-				c.logger.Info("replacing primary because: ", "err", err.Error())
+				c.logger.Debug("replacing primary because: ", "err", err.Error())
 				err = c.replacePrimaryProvider()
 				if err != nil {
 					return errors.Wrapf(err, "tried to verify adjacent header")
@@ -777,7 +777,7 @@ func (c *Client) bisection(
 			}
 
 		case ErrInvalidHeader:
-			c.logger.Info("replacing primary because: ", "err", err.Error())
+			c.logger.Debug("replacing primary because: ", "err", err.Error())
 			err = c.replacePrimaryProvider()
 			if err != nil {
 				return errors.Wrapf(err, "tried to verify using bisection")
@@ -851,19 +851,36 @@ func (c *Client) backwards(
 		}
 
 		if err := interimHeader.ValidateBasic(c.chainID); err != nil {
-			return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+			c.logger.Debug("replacing primary because: ", "err", err.Error())
+			err = c.replacePrimaryProvider()
+			if err != nil {
+				return errors.Wrapf(err, "tried to verify using backwards verification")
+			}
+			// attempt to verify the header again
+			continue
 		}
 
 		if !interimHeader.Time.Before(trustedHeader.Time) {
-			return errors.Errorf("expected older header time %v to be before newer header time %v",
-				interimHeader.Time,
-				trustedHeader.Time)
+			c.logger.Debug("replacing primary because: older header has a later time than earlier header")
+			err = c.replacePrimaryProvider()
+			if err != nil {
+				return errors.Wrapf(err, "tried to verify using backwards verification")
+			}
+			// attempt to verify the header again
+			continue
 		}
 
 		if !bytes.Equal(interimHeader.Hash(), trustedHeader.LastBlockID.Hash) {
-			return errors.Errorf("older header hash %X does not match trusted header's last block %X",
+			err = errors.Errorf("older header hash %X does not match trusted header's last block %X",
 				interimHeader.Hash(),
 				trustedHeader.LastBlockID.Hash)
+			c.logger.Debug("replacing primary because: ", "err", err.Error())
+			err = c.replacePrimaryProvider()
+			if err != nil {
+				return errors.Wrapf(err, "tried to verify using backwards verification")
+			}
+			// attempt to verify the header again
+			continue
 		}
 
 		trustedHeader = interimHeader
