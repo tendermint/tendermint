@@ -161,11 +161,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
-
 			require.NoError(t, err)
-			err = c.Start()
-			require.NoError(t, err)
-			defer c.Stop()
 
 			_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 			if tc.verifyErr {
@@ -287,11 +283,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
-
 			require.NoError(t, err)
-			err = c.Start()
-			require.NoError(t, err)
-			defer c.Stop()
 
 			_, err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
 			if tc.verifyErr {
@@ -429,9 +421,6 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
 		h, err := c.TrustedHeader(1)
@@ -483,9 +472,6 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		// Check we no longer have the invalid 1st header (+header+).
 		h, err := c.TrustedHeader(1)
@@ -520,9 +506,6 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		// Check we still have the 1st header (+header+).
 		h, err := c.TrustedHeader(1)
@@ -584,9 +567,6 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Stop()
 
 		// Check we have swapped invalid 1st header (+header+) with correct one (+header1+).
 		h, err := c.TrustedHeader(1)
@@ -622,9 +602,6 @@ func TestClient_Update(t *testing.T) {
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	// should result in downloading & verifying header #3
 	err = c.Update(bTime.Add(2 * time.Hour))
@@ -649,13 +626,9 @@ func TestClient_Concurrency(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	err = c.Start()
-	require.NoError(t, err)
-	defer c.Stop()
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour))
 	require.NoError(t, err)
