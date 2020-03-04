@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
@@ -17,8 +16,7 @@ func TestEncodingPrivEd25519(t *testing.T) {
 	bz1, err := MarshalPrivKey(pKey)
 	require.NoError(t, err)
 
-	var p crypto.PrivKey
-	err = UnmarshalPrivKey(bz1, &p)
+	p, err := UnmarshalPrivKey(bz1)
 	require.NoError(t, err)
 
 	bz2 := p.Bytes()
@@ -33,8 +31,7 @@ func TestEncodingPrivSr25519(t *testing.T) {
 	bz1, err := MarshalPrivKey(pKey)
 	require.NoError(t, err)
 
-	var p crypto.PrivKey
-	err = UnmarshalPrivKey(bz1, &p)
+	p, err := UnmarshalPrivKey(bz1)
 	require.NoError(t, err)
 
 	bz2 := p.Bytes()
@@ -49,8 +46,7 @@ func TestEncodingPrivSecp256k1(t *testing.T) {
 	bz1, err := MarshalPrivKey(pKey)
 	require.NoError(t, err)
 
-	var p crypto.PrivKey
-	err = UnmarshalPrivKey(bz1, &p)
+	p, err := UnmarshalPrivKey(bz1)
 	require.NoError(t, err)
 
 	bz2 := p.Bytes()
