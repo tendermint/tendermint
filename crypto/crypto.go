@@ -24,7 +24,13 @@ type PubKey interface {
 	Bytes() []byte
 	VerifyBytes(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
-	// ProtoBytes() []byte
+}
+
+// this interface will be phased out, this is here for backwards compatibility where needed.
+// Bytes in tendermint 0.33 and before uses marshalbinarybare from amino, this function should provide the
+// bytes as return and not marshal.
+type AminoBytes interface {
+	AminoBytes() []byte
 }
 
 type PrivKey interface {
@@ -39,12 +45,4 @@ type Symmetric interface {
 	Keygen() []byte
 	Encrypt(plaintext []byte, secret []byte) (ciphertext []byte)
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
-}
-
-type Marshaler interface {
-	Marshal() ([]byte, error)
-}
-
-type Unmarshaler interface {
-	Unmarshal([]byte) error
 }

@@ -115,6 +115,7 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 //-------------------------------------
 
 var _ crypto.PubKey = PubKey{}
+var _ crypto.AminoBytes = PubKey{}
 
 // PubKeyEd25519 implements crypto.PubKey for the Ed25519 signature scheme.
 type PubKey []byte
@@ -135,6 +136,10 @@ func (pubKey PubKey) Bytes() []byte {
 	}
 
 	return bz
+}
+
+func (pubkey PubKey) AminoBytes() []byte {
+
 }
 
 func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
