@@ -6,17 +6,18 @@
 
 ## Context
 
-If the light client is under attack (either directly - lunatic / phantom
-validators or indirectly - fork on the main chain), it's supposed to halt and
-send evidence of misbehavior to the correct full node. Upon receiving an
-evidence, full node should punish malicious validators (if possible).
+If the light client is under attack, either directly -> lunatic/phantom
+validators (light fork) or indirectly -> full fork, it's supposed to halt and
+send evidence of misbehavior to a correct full node. Upon receiving an
+evidence, the full node should punish malicious validators (if possible).
 
 ## Decision
 
 When a light client sees two conflicting headers (`H1.Hash() != H2.Hash()`,
-`H1.Height == H2.Height`), both having 1/3+ of voting power of the currently
-trusted validator set, it will submit a `ConflictingHeadersEvidence` to all
-full nodes it's connected to.
+`H1.Height == H2.Height`), both having 1/3+ of the voting power of the
+currently trusted validator set, it will submit a `ConflictingHeadersEvidence`
+to all full nodes it's connected to. Evidence needs to be submitted to all full
+nodes since there's no way to determine which full node is correct (honest).
 
 ```go
 type ConflictingHeadersEvidence struct {
@@ -31,8 +32,9 @@ slashable) or the fork accountability protocol needs to be started.
 
 ### Validating headers
 
-Check both headers are valid (`ValidateBasic`), have
-the same height and signed by 1/3+ of known validator set.
+Check both headers are valid (`ValidateBasic`), have the same height, and
+signed by 1/3+ of the validator set that the full node had at height
+`H1.Height-1`.
 
 - Q: What if light client validator set is not equal to full node's validator
   set (i.e. from full node's point of view both headers are not properly signed;
@@ -50,8 +52,8 @@ the same height and signed by 1/3+ of known validator set.
 
 ### Figuring out if malicious behaviour is immediately slashable
 
-Let's say H1 was committed on the main chain. Intersect validator sets of H1
-and H2.
+Let's say H1 was committed from this full node's perspective (see Appendix A).
+Intersect validator sets of H1 and H2.
 
 * if there are signers(H2) that are not part of validators(H1), they misbehaved as
 they are signing protocol messages in heights they are not validators =>
@@ -175,3 +177,10 @@ RPC is not open by default).
 ## References
 
 * [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+
+## Appendix A
+
+If there is an actual fork (full fork), a full node may follow either one or
+another branch. So both H1 or H2 can be considered committed depending on which
+branch the full node is following. It's supposed to halt if it notices an
+actual fork, but there's a small chance it doesn't.
