@@ -44,35 +44,35 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 // MockPV implements PrivValidator without any safety or persistence.
 // Only use it for testing.
 type MockPV struct {
-	privKey              crypto.PrivKey
+	PrivKey              crypto.PrivKey
 	breakProposalSigning bool
 	breakVoteSigning     bool
 }
 
-func NewMockPV() *MockPV {
-	return &MockPV{ed25519.GenPrivKey(), false, false}
+func NewMockPV() MockPV {
+	return MockPV{ed25519.GenPrivKey(), false, false}
 }
 
 // NewMockPVWithParams allows one to create a MockPV instance, but with finer
 // grained control over the operation of the mock validator. This is useful for
 // mocking test failures.
-func NewMockPVWithParams(privKey crypto.PrivKey, breakProposalSigning, breakVoteSigning bool) *MockPV {
-	return &MockPV{privKey, breakProposalSigning, breakVoteSigning}
+func NewMockPVWithParams(privKey crypto.PrivKey, breakProposalSigning, breakVoteSigning bool) MockPV {
+	return MockPV{privKey, breakProposalSigning, breakVoteSigning}
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) GetPubKey() crypto.PubKey {
-	return pv.privKey.PubKey()
+func (pv MockPV) GetPubKey() crypto.PubKey {
+	return pv.PrivKey.PubKey()
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
+func (pv MockPV) SignVote(chainID string, vote *Vote) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
 	}
 	signBytes := vote.SignBytes(useChainID)
-	sig, err := pv.privKey.Sign(signBytes)
+	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
 	}
@@ -81,13 +81,13 @@ func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
+func (pv MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	useChainID := chainID
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
 	}
 	signBytes := proposal.SignBytes(useChainID)
-	sig, err := pv.privKey.Sign(signBytes)
+	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
 	}
@@ -96,19 +96,19 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 }
 
 // String returns a string representation of the MockPV.
-func (pv *MockPV) String() string {
+func (pv MockPV) String() string {
 	addr := pv.GetPubKey().Address()
 	return fmt.Sprintf("MockPV{%v}", addr)
 }
 
 // XXX: Implement.
-func (pv *MockPV) DisableChecks() {
+func (pv MockPV) DisableChecks() {
 	// Currently this does nothing,
 	// as MockPV has no safety checks at all.
 }
 
 type ErroringMockPV struct {
-	*MockPV
+	MockPV
 }
 
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
@@ -124,6 +124,7 @@ func (pv *ErroringMockPV) SignProposal(chainID string, proposal *Proposal) error
 }
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
+
 func NewErroringMockPV() *ErroringMockPV {
-	return &ErroringMockPV{&MockPV{ed25519.GenPrivKey(), false, false}}
+	return &ErroringMockPV{MockPV{ed25519.GenPrivKey(), false, false}}
 }

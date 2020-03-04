@@ -45,4 +45,11 @@ type Store interface {
 	//
 	// height must be > 0 && <= LastSignedHeaderHeight.
 	SignedHeaderAfter(height int64) (*types.SignedHeader, error)
+
+	// Prune removes headers & the associated validator sets when Store reaches a
+	// defined size (number of header & validator set pairs).
+	Prune(size uint16) error
+
+	// Size returns a number of currently existing header & validator set pairs.
+	Size() uint16
 }

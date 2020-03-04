@@ -1,6 +1,7 @@
 package db
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -92,4 +93,70 @@ func Test_SignedHeaderAfter(t *testing.T) {
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
 	}
+}
+
+func Test_Prune(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "Test_Prune")
+
+	// Empty store
+	assert.EqualValues(t, 0, dbStore.Size())
+	err := dbStore.Prune(0)
+	require.NoError(t, err)
+
+	// One header
+	err = dbStore.SaveSignedHeaderAndValidatorSet(
+		&types.SignedHeader{Header: &types.Header{Height: 2}}, &types.ValidatorSet{})
+	require.NoError(t, err)
+
+	assert.EqualValues(t, 1, dbStore.Size())
+
+	err = dbStore.Prune(1)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, dbStore.Size())
+
+	err = dbStore.Prune(0)
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, dbStore.Size())
+
+	// Multiple headers
+	for i := 1; i <= 10; i++ {
+		err = dbStore.SaveSignedHeaderAndValidatorSet(
+			&types.SignedHeader{Header: &types.Header{Height: int64(i)}}, &types.ValidatorSet{})
+		require.NoError(t, err)
+	}
+
+	err = dbStore.Prune(11)
+	require.NoError(t, err)
+	assert.EqualValues(t, 10, dbStore.Size())
+
+	err = dbStore.Prune(7)
+	require.NoError(t, err)
+	assert.EqualValues(t, 7, dbStore.Size())
+}
+
+func Test_Concurrency(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "Test_Prune")
+
+	var wg sync.WaitGroup
+	for i := 1; i <= 100; i++ {
+		wg.Add(1)
+		go func(i int64) {
+			defer wg.Done()
+
+			dbStore.SaveSignedHeaderAndValidatorSet(
+				&types.SignedHeader{Header: &types.Header{Height: i}}, &types.ValidatorSet{})
+
+			dbStore.SignedHeader(i)
+			dbStore.ValidatorSet(i)
+			dbStore.LastSignedHeaderHeight()
+			dbStore.FirstSignedHeaderHeight()
+
+			dbStore.Prune(2)
+			_ = dbStore.Size()
+
+			dbStore.DeleteSignedHeaderAndValidatorSet(1)
+		}(int64(i))
+	}
+
+	wg.Wait()
 }

@@ -2,6 +2,7 @@ package kv
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -167,7 +168,18 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 // better for the client to provide both lower and upper bounds, so we are not
 // performing a full scan. Results from querying indexes are then intersected
 // and returned to the caller, in no particular order.
-func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
+//
+// Search will exit early and return any result fetched so far,
+// when a message is received on the context chan.
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResult, error) {
+	// Potentially exit early.
+	select {
+	case <-ctx.Done():
+		results := make([]*types.TxResult, 0)
+		return results, nil
+	default:
+	}
+
 	var hashesInitialized bool
 	filteredHashes := make(map[string][]byte)
 
@@ -205,7 +217,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 		for _, r := range ranges {
 			if !hashesInitialized {
-				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes, true)
+				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, true)
 				hashesInitialized = true
 
 				// Ignore any remaining conditions if the first condition resulted
@@ -214,7 +226,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 					break
 				}
 			} else {
-				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes, false)
+				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, false)
 			}
 		}
 	}
@@ -229,7 +241,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 
 		if !hashesInitialized {
-			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes, true)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, true)
 			hashesInitialized = true
 
 			// Ignore any remaining conditions if the first condition resulted
@@ -238,7 +250,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 				break
 			}
 		} else {
-			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes, false)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, false)
 		}
 	}
 
@@ -249,6 +261,13 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 			return nil, errors.Wrapf(err, "failed to get Tx{%X}", h)
 		}
 		results = append(results, res)
+
+		// Potentially exit early.
+		select {
+		case <-ctx.Done():
+			break
+		default:
+		}
 	}
 
 	return results, nil
@@ -374,6 +393,7 @@ func isRangeOperation(op query.Operator) bool {
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
 func (txi *TxIndex) match(
+	ctx context.Context,
 	c query.Condition,
 	startKeyBz []byte,
 	filteredHashes map[string][]byte,
@@ -397,6 +417,13 @@ func (txi *TxIndex) match(
 
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
 		}
 
 	case c.Op == query.OpContains:
@@ -416,6 +443,13 @@ func (txi *TxIndex) match(
 
 			if strings.Contains(extractValueFromKey(it.Key()), c.Operand.(string)) {
 				tmpHashes[string(it.Value())] = it.Value()
+			}
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
 			}
 		}
 	default:
@@ -438,6 +472,13 @@ func (txi *TxIndex) match(
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
 		}
 	}
 
@@ -450,6 +491,7 @@ func (txi *TxIndex) match(
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
 func (txi *TxIndex) matchRange(
+	ctx context.Context,
 	r queryRange,
 	startKey []byte,
 	filteredHashes map[string][]byte,
@@ -503,6 +545,13 @@ LOOP:
 			// 		break
 			// 	}
 		}
+
+		// Potentially exit early.
+		select {
+		case <-ctx.Done():
+			break
+		default:
+		}
 	}
 
 	if len(tmpHashes) == 0 || firstRun {
@@ -521,6 +570,13 @@ LOOP:
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
 		}
 	}
 
