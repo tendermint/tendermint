@@ -524,7 +524,9 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 	}
 
 	// Check if header already verified.
+	c.verificationMutex.Lock()
 	h, err := c.TrustedHeader(height)
+	c.verificationMutex.Unlock()
 	if err == nil {
 		c.logger.Info("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
 		// Return already trusted header
@@ -567,7 +569,9 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	}
 
 	// Check if newHeader already verified.
+	c.verificationMutex.Lock()
 	h, err := c.TrustedHeader(newHeader.Height)
+	c.verificationMutex.Unlock()
 	if err == nil {
 		// Make sure it's the same header.
 		if !bytes.Equal(h.Hash(), newHeader.Hash()) {
@@ -582,12 +586,11 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 }
 
 func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
-		"vals", hash2str(newVals.Hash()))
-
 	var err error
 
 	c.verificationMutex.Lock()
+	c.logger.Info("VerifyHeader", "height", newHeader.Height, "hash", hash2str(newHeader.Hash()),
+		"vals", hash2str(newVals.Hash()))
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
 		defer c.verificationMutex.Unlock()
