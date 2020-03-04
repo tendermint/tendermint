@@ -26,13 +26,6 @@ type PubKey interface {
 	Equals(PubKey) bool
 }
 
-// this interface will be phased out, this is here for backwards compatibility where needed.
-// Bytes in tendermint 0.33 and before uses marshalbinarybare from amino, this function should provide the
-// bytes as return and not marshal.
-type AminoBytes interface {
-	AminoBytes() []byte
-}
-
 type PrivKey interface {
 	Bytes() []byte
 	Sign(msg []byte) ([]byte, error)

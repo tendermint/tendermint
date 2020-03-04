@@ -23,12 +23,7 @@ type PrivKey []byte
 
 // Bytes marshalls the private key using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
-	bz, err := privKey.AminoMarshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return bz
+	return []byte(privKey)
 }
 
 // PubKey performs the point-scalar multiplication from the privKey on the
@@ -135,11 +130,7 @@ func (pubKey PubKey) Address() crypto.Address {
 
 // Bytes returns the pubkey marshalled with amino encoding.
 func (pubKey PubKey) Bytes() []byte {
-	bz, err := pubKey.AminoMarshal()
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return []byte(pubKey)
 }
 
 func (pubKey PubKey) String() string {
