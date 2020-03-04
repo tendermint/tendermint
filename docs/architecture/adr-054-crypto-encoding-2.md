@@ -74,7 +74,7 @@ Proposed
 
 ### Negative
 
--
+- Hardfork is required to integrate this into running chains.
 
 ### Neutral
 
