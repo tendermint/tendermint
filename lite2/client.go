@@ -128,6 +128,8 @@ type Client struct {
 
 	// See UpdatePeriod option
 	updatePeriod time.Duration
+	// Displays whether the client is auto updating or not
+	autoUpdate bool
 	// See RemoveNoLongerTrustedHeadersPeriod option
 	pruningSize uint16
 	// See ConfirmationFunction option
@@ -203,6 +205,7 @@ func NewClientFromTrustedStore(
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
 		updatePeriod:     defaultUpdatePeriod,
+		autoUpdate:       false,
 		pruningSize:      defaultPruningSize,
 		confirmationFn:   func(action string) bool { return true },
 		quit:             make(chan struct{}),
@@ -392,11 +395,18 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 // Start starts two processes: 1) auto updating 2) removing outdated headers.
 func (c *Client) Start() error {
-	c.logger.Info("Starting light client")
 
-	if c.updatePeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.autoUpdateRoutine()
+	if !c.autoUpdate {
+		if c.updatePeriod > 0 {
+			c.logger.Info("Starting auto update of light client")
+			c.routinesWaitGroup.Add(1)
+			c.autoUpdate = true
+			go c.autoUpdateRoutine()
+		} else {
+			c.logger.Debug("UpdatePeriod not set")
+		}
+	} else {
+		c.logger.Debug("Client already auto-updating")
 	}
 
 	return nil
@@ -406,9 +416,13 @@ func (c *Client) Start() error {
 // Stop only returns after both of them are finished running. If you wish to
 // remove all the data, call Cleanup.
 func (c *Client) Stop() {
-	c.logger.Info("Stopping light client")
-	close(c.quit)
-	c.routinesWaitGroup.Wait()
+	if c.autoUpdate {
+		c.logger.Info("Stopping auto-update of light client")
+		close(c.quit)
+		c.routinesWaitGroup.Wait()
+	} else {
+		c.logger.Debug("Client not running auto update")
+	}
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest).
@@ -583,6 +597,9 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 	// 1) If going forward, perform either bisection or sequential verification
 	if newHeader.Height >= c.latestTrustedHeader.Height {
+		if c.autoUpdate {
+			return errors.New("failed to verify, client is already auto updating")
+		}
 		switch c.verificationMode {
 		case sequential:
 			err = c.sequence(c.latestTrustedHeader, newHeader, newVals, now)
