@@ -925,20 +925,22 @@ func TestClient_ConcurrentVerifications(t *testing.T) {
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := c.Update(bTime.Add(1 * time.Hour).Add(1 * time.Second))
-		assert.NoError(t, err)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// this should be a forward verification if update hasn't occurred or a backwards verification if it has
-		// in either case we should not see an error
-		_, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-		assert.NoError(t, err)
-	}()
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := c.Update(bTime.Add(1 * time.Hour).Add(1 * time.Second))
+			assert.NoError(t, err)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// this should be a forward verification if update hasn't occurred or a backwards verification if it has
+			// in either case we should not see an error
+			_, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+			assert.NoError(t, err)
+		}()
+	}
 
 	wg.Wait()
 }
