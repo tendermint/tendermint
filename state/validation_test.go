@@ -117,6 +117,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.Validators,
 				privVals[proposerAddr.String()],
 				chainID,
+				time.Now(),
 			)
 			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := types.NewCommit(
@@ -162,7 +163,13 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote, err := types.MakeVote(height, blockID, state.Validators, privVals[proposerAddr.String()], chainID)
+		goodVote, err := types.MakeVote(height,
+			blockID,
+			state.Validators,
+			privVals[proposerAddr.String()],
+			chainID,
+			time.Now(),
+		)
 		require.NoError(t, err, "height %d", height)
 		badVote := &types.Vote{
 			ValidatorAddress: badPrivVal.GetPubKey().Address(),

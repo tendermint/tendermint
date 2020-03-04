@@ -111,60 +111,54 @@ to achieve the same things.
 
 ## Debugging Tendermint
 
-If you ever have to debug Tendermint, the first thing you should
-probably do is to check out the logs. See [How to read
-logs](./how-to-read-logs.md), where we explain what certain log
-statements mean.
+If you ever have to debug Tendermint, the first thing you should probably do is
+check out the logs. See [How to read logs](./how-to-read-logs.md), where we
+explain what certain log statements mean.
 
-If, after skimming through the logs, things are not clear still, the
-next thing to try is query the /status RPC endpoint. It provides the
-necessary info: whenever the node is syncing or not, what height it is
-on, etc.
+If, after skimming through the logs, things are not clear still, the next thing
+to try is querying the `/status` RPC endpoint. It provides the necessary info:
+whenever the node is syncing or not, what height it is on, etc.
 
-```
+```sh
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
-`dump_consensus_state` will give you a detailed overview of the
-consensus state (proposer, lastest validators, peers states). From it,
-you should be able to figure out why, for example, the network had
-halted.
+`/dump_consensus_state` will give you a detailed overview of the consensus
+state (proposer, latest validators, peers states). From it, you should be able
+to figure out why, for example, the network had halted.
 
-```
+```sh
 curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 
-There is a reduced version of this endpoint - `consensus_state`, which
-returns just the votes seen at the current height.
+There is a reduced version of this endpoint - `/consensus_state`, which returns
+just the votes seen at the current height.
 
-- [Github Issues](https://github.com/tendermint/tendermint/issues)
-- [StackOverflow
-  questions](https://stackoverflow.com/questions/tagged/tendermint)
+If, after consulting with the logs and above endpoints, you still have no idea
+what's happening, consider using `tendermint debug kill` sub-command. This
+command will scrap all the available info and kill the process. See
+[Debugging](../tools/debugging.md) for the exact format.
 
-### Debug Utility
-
-Tendermint also ships with a `debug` sub-command that allows you to kill a live
-Tendermint process while collecting useful information in a compressed archive
-such as the configuration used, consensus state, network state, the node' status,
-the WAL, and even the stacktrace of the process before exit. These files can be
-useful to examine when debugging a faulty Tendermint process.
-
-In addition, the `debug` sub-command also allows you to dump debugging data into
-compressed archives at a regular interval. These archives contain the goroutine
-and heap profiles in addition to the consensus state, network info, node status,
-and even the WAL.
+You can inspect the resulting archive yourself or create an issue on
+[Github](https://github.com/tendermint/tendermint). Before opening an issue
+however, be sure to check if there's [no existing
+issue](https://github.com/tendermint/tendermint/issues) already.
 
 ## Monitoring Tendermint
 
-Each Tendermint instance has a standard `/health` RPC endpoint, which
-responds with 200 (OK) if everything is fine and 500 (or no response) -
-if something is wrong.
+Each Tendermint instance has a standard `/health` RPC endpoint, which responds
+with 200 (OK) if everything is fine and 500 (or no response) - if something is
+wrong.
 
 Other useful endpoints include mentioned earlier `/status`, `/net_info` and
 `/validators`.
 
 Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).
+
+`tendermint debug dump` sub-command can be used to periodically dump useful
+information into an archive. See [Debugging](../tools/debugging.md) for more
+information.
 
 ## What happens when my app dies?
 

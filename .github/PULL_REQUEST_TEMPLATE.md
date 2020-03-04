@@ -1,13 +1,24 @@
-<!--
+<!-- < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < ☺
+v                               ✰  Thanks for creating a PR! ✰    
+v    Before smashing the submit button please review the checkboxes.
+v    If a checkbox is n/a - please still include it but + a little note why
+☺ > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >  -->
 
-Thanks for filing a PR! Before hitting the button, please check the following items.
-Please note that every non-trivial PR must reference an issue that explains the
-changes in the PR.
+Closes: #XXX
 
+## Description
+
+<!-- Add a description of the changes that this PR introduces and the files that
+are the most critical to review.
 -->
 
-* [ ] Referenced an issue explaining the need for the change
-* [ ] Updated all relevant documentation in docs
-* [ ] Updated all code comments where relevant
-* [ ] Wrote tests
-* [ ] Updated CHANGELOG_PENDING.md
+
+______
+
+For contributor use:
+
+- [ ] Wrote tests
+- [ ] Updated CHANGELOG_PENDING.md
+- [ ] Linked to Github issue with discussion and accepted design OR link to spec that describes this work.
+- [ ] Updated relevant documentation (`docs/`) and code comments
+- [ ] Re-reviewed `Files changed` in the Github PR explorer
