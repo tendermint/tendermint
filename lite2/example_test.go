@@ -58,18 +58,12 @@ func ExampleClient_Update() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0), // NOTE: value should be greater than zero
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	err = c.Start()
-	if err != nil {
-		stdlog.Fatal(err)
-	}
 	defer func() {
-		c.Stop()
 		c.Cleanup()
 	}()
 
@@ -78,6 +72,7 @@ func ExampleClient_Update() {
 	// XXX: 30 * time.Minute clock drift is needed because a) Tendermint strips
 	// monotonic component (see types/time/time.go) b) single instance is being
 	// run.
+	// https://github.com/tendermint/tendermint/issues/4489
 	err = c.Update(time.Now().Add(30 * time.Minute))
 	if err != nil {
 		stdlog.Fatal(err)
@@ -137,7 +132,6 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0),
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {

@@ -22,7 +22,6 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultUpdatePeriod     = 5 * time.Second
 	defaultPruningSize      = 1000
 	defaultMaxRetryAttempts = 10
 )
@@ -52,13 +51,6 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 	return func(c *Client) {
 		c.verificationMode = skipping
 		c.trustLevel = trustLevel
-	}
-}
-
-// UpdatePeriod option can be used to change default polling period (5s).
-func UpdatePeriod(d time.Duration) Option {
-	return func(c *Client) {
-		c.updatePeriod = d
 	}
 }
 
@@ -101,9 +93,6 @@ func MaxRetryAttempts(max uint16) Option {
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
 //
-// By default, the client will poll the primary provider for new headers every
-// 5s (UpdatePeriod). If there are any, it will try to advance the state.
-//
 // Default verification: SkippingVerification(DefaultTrustLevel)
 type Client struct {
 	chainID          string
@@ -126,8 +115,6 @@ type Client struct {
 	// Highest validator set from the store (height=H).
 	latestTrustedVals *types.ValidatorSet
 
-	// See UpdatePeriod option
-	updatePeriod time.Duration
 	// See RemoveNoLongerTrustedHeadersPeriod option
 	pruningSize uint16
 	// See ConfirmationFunction option
@@ -202,7 +189,6 @@ func NewClientFromTrustedStore(
 		primary:          primary,
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
-		updatePeriod:     defaultUpdatePeriod,
 		pruningSize:      defaultPruningSize,
 		confirmationFn:   func(action string) bool { return true },
 		quit:             make(chan struct{}),
@@ -388,27 +374,6 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	// 3) Persist both of them and continue.
 	return c.updateTrustedHeaderAndVals(h, vals)
-}
-
-// Start starts two processes: 1) auto updating 2) removing outdated headers.
-func (c *Client) Start() error {
-	c.logger.Info("Starting light client")
-
-	if c.updatePeriod > 0 {
-		c.routinesWaitGroup.Add(1)
-		go c.autoUpdateRoutine()
-	}
-
-	return nil
-}
-
-// Stop stops two processes: 1) auto updating 2) removing outdated headers.
-// Stop only returns after both of them are finished running. If you wish to
-// remove all the data, call Cleanup.
-func (c *Client) Stop() {
-	c.logger.Info("Stopping light client")
-	close(c.quit)
-	c.routinesWaitGroup.Wait()
 }
 
 // TrustedHeader returns a trusted header at the given height (0 - the latest).
@@ -926,30 +891,6 @@ func (c *Client) removeWitness(idx int) {
 	default:
 		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
 		c.witnesses = c.witnesses[:len(c.witnesses)-1]
-	}
-}
-
-func (c *Client) autoUpdateRoutine() {
-	defer c.routinesWaitGroup.Done()
-
-	err := c.Update(time.Now())
-	if err != nil {
-		c.logger.Error("Error during auto update", "err", err)
-	}
-
-	ticker := time.NewTicker(c.updatePeriod)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			err := c.Update(time.Now())
-			if err != nil {
-				c.logger.Error("Error during auto update", "err", err)
-			}
-		case <-c.quit:
-			return
-		}
 	}
 }
 

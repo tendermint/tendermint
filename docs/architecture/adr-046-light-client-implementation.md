@@ -8,23 +8,13 @@
 ## Context
 
 A `Client` struct represents a light client, connected to a single blockchain.
-As soon as it's started (via `Start`), it tries to update to the latest header
-(using bisection algorithm by default).
 
-Cleaning routine is also started to remove headers outside of trusting period.
-NOTE: since it's periodic, we still need to check header is not expired in
-`TrustedHeader`, `TrustedValidatorSet` methods (and others which are using the
-latest trusted header).
-
-The user has an option to manually verify headers using `VerifyHeader` and
-`VerifyHeaderAtHeight` methods. To avoid races, `UpdatePeriod(0)` needs to be
-passed when initializing the light client (it turns off the auto update).
+The user has an option to verify headers using `VerifyHeader` or
+`VerifyHeaderAtHeight` or `Update` methods. The latter method downloads the
+latest header from primary and compares it with the currently trusted one.
 
 ```go
 type Client interface {
-	// start and stop updating & cleaning goroutines
-	Start() error
-	Stop()
 	Cleanup() error
 
 	// get trusted headers & validators
@@ -41,6 +31,7 @@ type Client interface {
 	// verify new headers
 	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
 	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
+	Update(now time.Time) error
 }
 ```
 
