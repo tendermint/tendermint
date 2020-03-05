@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
+	"github.com/stretchr/testify/require"
 
 	"path"
 
@@ -212,9 +213,7 @@ func signAddVotes(
 func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	pv, err := privVal.GetPubKey()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(address); vote == nil {
@@ -234,9 +233,7 @@ func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub,
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
 	pv, err := privVal.GetPubKey()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
 	if vote = votes.GetByAddress(address); vote == nil {
@@ -258,9 +255,7 @@ func validatePrecommit(
 ) {
 	precommits := cs.Votes.Precommits(thisRound)
 	pv, err := privVal.GetPubKey()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(address); vote == nil {
