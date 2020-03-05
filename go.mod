@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200102211924-4bcbc698314f
-	github.com/Workiva/go-datastructures v1.0.50
+	github.com/Workiva/go-datastructures v1.0.51
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/fortytw2/leaktest v1.3.0
@@ -17,7 +17,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/magiconair/properties v1.8.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.4.1
+	github.com/prometheus/client_golang v1.5.0
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/rs/cors v1.7.0
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
