@@ -14,7 +14,7 @@ type, only the key-value pairs defined in `EndBlock` are used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI](../spec/abci/abci.md) documentation.
+details on `Events`, see the [ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events) documentation.
 
 An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
 For example:

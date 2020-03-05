@@ -87,7 +87,7 @@ jobs:
     steps:
       - checkout
       - run:
-          command: make proto-check-breaking
+          command: make proto-check-breaking-ci
 
   test_abci_apps:
     executor: golang
@@ -378,13 +378,10 @@ jobs:
   #         command: |
   #           set -x
   #           export PATH=~/.local/bin:$PATH
-
   #           # install node and dredd
   #           ./scripts/get_nodejs.sh
-
   #           # build the binaries with a proper version of Go
   #           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
-
   #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
   #           go get github.com/snikch/goodman/cmd/goodman
   #           make contract-tests
