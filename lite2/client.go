@@ -890,7 +890,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 					continue
 				}
 
-				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: altH})
+				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: *h, H2: *altH})
 
 				return errors.Errorf(
 					"header hash %X does not match one %X from the witness %v",
@@ -1055,9 +1055,20 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 }
 
 func (c *Client) sendConflictingHeadersEvidence(ev types.ConflictingHeadersEvidence) {
-	_ = c.primary.ReportEvidence(ev)
+	if evR, ok := c.primary.(provider.EvidenceReporter); ok {
+		err := evR.ReportEvidence(ev)
+		if err != nil {
+			c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)
+		}
+	}
+
 	for _, w := range c.witnesses {
-		_ = w.ReportEvidence(ev)
+		if evR, ok := w.(provider.EvidenceReporter); ok {
+			err := evR.ReportEvidence(ev)
+			if err != nil {
+				c.logger.Error("Failed to report evidence to witness", "ev", ev, "witness", w)
+			}
+		}
 	}
 }
 

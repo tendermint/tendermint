@@ -348,8 +348,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 // observes two (or more) conflicting headers, both having 1/3+ of the voting
 // power of the currently trusted validator set.
 type ConflictingHeadersEvidence struct {
-	H1 types.SignedHeader
-	H2 types.SignedHeader
+	H1 SignedHeader
+	H2 SignedHeader
 }
 
 func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
@@ -386,12 +386,12 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {
-	if err := ev.H1.ValidateBasic(); err != nil {
-		return fmt.Errorf("h1: %w", err)
-	}
-	if err := ev.H2.ValidateBasic(); err != nil {
-		return fmt.Errorf("h2: %w", err)
-	}
+	// if err := ev.H1.ValidateBasic(chainID); err != nil {
+	// 	return fmt.Errorf("h1: %w", err)
+	// }
+	// if err := ev.H2.ValidateBasic(chainID); err != nil {
+	// 	return fmt.Errorf("h2: %w", err)
+	// }
 	if ev.H1.Height != ev.H2.Height {
 		return errors.New("headers are from different heights")
 	}
