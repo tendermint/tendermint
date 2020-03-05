@@ -28,8 +28,14 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	pvi, _ := pvs[i].GetPubKey()
-	pvj, _ := pvs[j].GetPubKey()
+	pvi, err := pvs[i].GetPubKey()
+	if err != nil {
+		panic(err)
+	}
+	pvj, err := pvs[j].GetPubKey()
+	if err != nil {
+		panic(err)
+	}
 
 	return bytes.Compare(pvi.Address(), pvj.Address()) == -1
 }
