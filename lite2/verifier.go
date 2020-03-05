@@ -49,7 +49,7 @@ func VerifyNonAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return ErrInvalidHeader{err.Error()}
+		return ErrInvalidHeader{err}
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
@@ -67,11 +67,11 @@ func VerifyNonAdjacent(
 	// Ensure that +2/3 of new validators signed correctly.
 	//
 	// NOTE: this should always be the last check because untrustedVals can be
-	// intentionaly made very large to DOS the light client. not the case for
+	// intentionally made very large to DOS the light client. not the case for
 	// VerifyAdjacent, where validator set is known in advance.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return ErrInvalidHeader{err.Error()}
+		return ErrInvalidHeader{err}
 	}
 
 	return nil
@@ -103,7 +103,7 @@ func VerifyAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return ErrInvalidHeader{err.Error()}
+		return ErrInvalidHeader{err}
 	}
 
 	// Check the validator hashes are the same
@@ -118,7 +118,27 @@ func VerifyAdjacent(
 	// Ensure that +2/3 of new validators signed correctly.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return ErrInvalidHeader{err.Error()}
+		return ErrInvalidHeader{err}
+	}
+
+	return nil
+}
+
+func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
+	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
+		return ErrInvalidHeader{err}
+	}
+
+	if !untrustedHeader.Time.Before(trustedHeader.Time) {
+		return ErrInvalidHeader{errors.Errorf("expected older header time %v to be before new header time %v",
+			untrustedHeader.Time,
+			trustedHeader.Time)}
+	}
+
+	if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+		return ErrInvalidHeader{errors.Errorf("older header hash %X does not match trusted header's last block %X",
+			untrustedHeader.Hash(),
+			trustedHeader.LastBlockID.Hash)}
 	}
 
 	return nil

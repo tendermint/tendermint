@@ -713,10 +713,11 @@ func (c *Client) sequence(
 		if err != nil {
 			switch err.(type) {
 			case ErrInvalidHeader:
-				c.logger.Debug("replacing primary because: ", "err", err.Error())
-				err = c.replacePrimaryProvider()
-				if err != nil {
-					return errors.Wrapf(err, "tried to verify adjacent header")
+				c.logger.Error("replacing primary because: ", "err", err.Error())
+				err1 := c.replacePrimaryProvider()
+				if err1 != nil {
+					return errors.Wrapf(err, "failed to verify sequence header at height #%d "+
+						"(original error: %v). Can't replace primary", height, err)
 				}
 				// attempt to verify the header again
 				height--
@@ -777,10 +778,11 @@ func (c *Client) bisection(
 			}
 
 		case ErrInvalidHeader:
-			c.logger.Debug("replacing primary because: ", "err", err.Error())
-			err = c.replacePrimaryProvider()
-			if err != nil {
-				return errors.Wrapf(err, "tried to verify using bisection")
+			c.logger.Error("replacing primary because: ", "err", err.Error())
+			providerErr := c.replacePrimaryProvider()
+			if providerErr != nil {
+				return errors.Wrapf(providerErr, "failed bisection verification at height #%d "+
+					"(original error: %v). Can't replace primary", interimHeader.Height, err)
 			}
 			// attempt to verify the header again
 			continue
@@ -850,37 +852,12 @@ func (c *Client) backwards(
 			return errors.Wrapf(err, "failed to obtain the header at height #%d", trustedHeader.Height-1)
 		}
 
-		if err := interimHeader.ValidateBasic(c.chainID); err != nil {
-			c.logger.Debug("replacing primary because: ", "err", err.Error())
-			err = c.replacePrimaryProvider()
-			if err != nil {
-				return errors.Wrapf(err, "tried to verify using backwards verification")
+		if err := VerifyBackwards(c.chainID, interimHeader, trustedHeader); err != nil {
+			c.logger.Error(err.Error())
+			if providerErr := c.replacePrimaryProvider(); providerErr != nil {
+				return errors.Wrapf(providerErr, "failed backwards verification at height #%d "+
+					"(original error: %v). Can't replace primary", interimHeader.Height, err)
 			}
-			// attempt to verify the header again
-			continue
-		}
-
-		if !interimHeader.Time.Before(trustedHeader.Time) {
-			c.logger.Debug("replacing primary because: older header has a later time than earlier header")
-			err = c.replacePrimaryProvider()
-			if err != nil {
-				return errors.Wrapf(err, "tried to verify using backwards verification")
-			}
-			// attempt to verify the header again
-			continue
-		}
-
-		if !bytes.Equal(interimHeader.Hash(), trustedHeader.LastBlockID.Hash) {
-			err = errors.Errorf("older header hash %X does not match trusted header's last block %X",
-				interimHeader.Hash(),
-				trustedHeader.LastBlockID.Hash)
-			c.logger.Debug("replacing primary because: ", "err", err.Error())
-			err = c.replacePrimaryProvider()
-			if err != nil {
-				return errors.Wrapf(err, "tried to verify using backwards verification")
-			}
-			// attempt to verify the header again
-			continue
 		}
 
 		trustedHeader = interimHeader

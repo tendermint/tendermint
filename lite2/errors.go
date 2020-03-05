@@ -29,10 +29,12 @@ func (e ErrNewValSetCantBeTrusted) Error() string {
 	return fmt.Sprintf("cant trust new val set: %v", e.Reason)
 }
 
+// Err InvalidHeader means the header either failed the basic validate or the
+// hashes don't match.
 type ErrInvalidHeader struct {
-	Reason string
+	Reason error
 }
 
 func (e ErrInvalidHeader) Error() string {
-	return fmt.Sprintf("invalid header: %v", e.Reason)
+	return fmt.Sprintf("invalid header: %v", e.Reason.Error())
 }
