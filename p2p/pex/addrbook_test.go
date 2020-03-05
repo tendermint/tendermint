@@ -60,15 +60,15 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true).(*addrBook)
+	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.saveToFile(fname)
+	book.Save()
 
-	book = NewAddrBook(fname, true).(*addrBook)
+	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
-	assert.Zero(t, book.Size())
+	assert.True(t, book.Empty())
 
 	// 100 addresses
 	randAddrs := randNetAddressPairs(t, 100)
@@ -78,11 +78,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	}
 
 	assert.Equal(t, 100, book.Size())
-	book.saveToFile(fname)
+	book.Save()
 
-	book = NewAddrBook(fname, true).(*addrBook)
+	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
 	assert.Equal(t, 100, book.Size())
 }
@@ -93,19 +93,15 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true).(*addrBook)
+	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
 		book.AddAddress(addr, src)
 
-		ka := book.addrLookup[addr.ID]
-		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
-
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
-		}
+		ka := book.HasAddress(addr)
+		assert.True(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
 	}
 }
 
