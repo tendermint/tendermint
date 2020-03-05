@@ -46,7 +46,7 @@ Note the context/background should be written in the present tense.
 - [ADR-015-Crypto-Encoding](./adr-015-crypto-encoding.md)
 - [ADR-016-Protocol-Versions](./adr-016-protocol-versions.md)
 - [ADR-017-Chain-Versions](./adr-017-chain-versions.md)
-- [ADR-018-ABCI-Validators](./adr-018-ABCI-validators.md)
+- [ADR-018-ABCI-Validators](./adr-018-ABCI-Validators.md)
 - [ADR-019-Multisigs](./adr-019-multisigs.md)
 - [ADR-020-Block-Size](./adr-020-block-size.md)
 - [ADR-021-ABCI-Events](./adr-021-abci-events.md)
