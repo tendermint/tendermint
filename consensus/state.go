@@ -1663,7 +1663,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 
 			pv, err := cs.privValidator.GetPubKey()
 			if err != nil {
-
+				return false, err
 			}
 
 			addr := pv.Address()
