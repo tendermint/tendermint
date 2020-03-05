@@ -4,7 +4,7 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
-import "gogoproto/gogo.proto";
+import "third_party/proto/gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
 import "libs/kv/types.proto";
 import "google/protobuf/timestamp.proto";
