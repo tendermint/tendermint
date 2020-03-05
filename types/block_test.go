@@ -110,7 +110,7 @@ func TestBlockMakePartSet(t *testing.T) {
 
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, int64(1), partSet.Total())
+	assert.Equal(t, int32(1), partSet.Total())
 }
 
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
@@ -128,7 +128,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, int64(3), partSet.Total())
+	assert.Equal(t, int32(3), partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -188,7 +188,7 @@ func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
 	return BlockID{
 		Hash: h,
 		PartsHeader: PartSetHeader{
-			Total: int64(partSetSize),
+			Total: int32(partSetSize),
 			Hash:  psH,
 		},
 	}
@@ -330,7 +330,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
-		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
+		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt32, make([]byte, tmhash.Size)),
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),

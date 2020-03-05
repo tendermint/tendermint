@@ -23,7 +23,7 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  int64 total = 1;
+  int32 total = 1;
   bytes hash  = 2;
 }
 

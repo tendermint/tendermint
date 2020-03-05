@@ -199,7 +199,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
 	// Save block parts
-	for i := 0; int64(i) < blockParts.Total(); i++ {
+	for i := 0; int32(i) < blockParts.Total(); i++ {
 		part := blockParts.GetPart(i)
 		bs.saveBlockPart(height, i, part)
 	}
