@@ -932,7 +932,7 @@ func (c *Client) removeWitness(idx int) {
 func (c *Client) autoUpdateRoutine() {
 	defer c.routinesWaitGroup.Done()
 
-	err := c.Update(time.Now())
+	_, err := c.Update(time.Now())
 	if err != nil {
 		c.logger.Error("Error during auto update", "err", err)
 	}
@@ -943,7 +943,7 @@ func (c *Client) autoUpdateRoutine() {
 	for {
 		select {
 		case <-ticker.C:
-			err := c.Update(time.Now())
+			_, err := c.Update(time.Now())
 			if err != nil {
 				c.logger.Error("Error during auto update", "err", err)
 			}
