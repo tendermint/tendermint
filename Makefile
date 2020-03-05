@@ -63,7 +63,7 @@ proto-check-breaking:
 
 proto-check-breaking-ci:
 	@buf check breaking --against-input "$(HTTPS_GIT)#branch=master"
-.PHONY: proto-check-breaking
+.PHONY: proto-check-breaking-ci
 
 ###############################################################################
 ###                              Build ABCI                                 ###
