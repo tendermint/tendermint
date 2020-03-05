@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -321,7 +322,7 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 }
 
 func (c *Client) updateLiteClientIfNeededTo(height int64) (*types.SignedHeader, error) {
-	h, err := c.lc.VerifyHeaderAtHeight(height)
+	h, err := c.lc.VerifyHeaderAtHeight(height, time.Now())
 	return h, errors.Wrapf(err, "failed to update light client to %d", height)
 }
 
