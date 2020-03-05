@@ -14,7 +14,7 @@ import (
 
 const (
 	// Buffer on the Tendermint (server) side to allow some slowness in clients.
-	subCap = 100
+	subBufferSize = 100
 )
 
 // Subscribe for events via WebSocket.
@@ -38,7 +38,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := eventBus.Subscribe(subCtx, addr, q, subCap)
+	sub, err := eventBus.Subscribe(subCtx, addr, q, subBufferSize)
 	if err != nil {
 		return nil, err
 	}
