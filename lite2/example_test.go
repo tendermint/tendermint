@@ -135,7 +135,7 @@ func ExampleClient_VerifyHeaderAtHeight() {
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // TODO: primary should not be used here
+		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
 		UpdatePeriod(0),
 		// Logger(log.TestingLogger()),

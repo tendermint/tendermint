@@ -154,6 +154,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				SequentialVerification(),
+				UpdatePeriod(0),
 			)
 
 			if tc.initErr {
@@ -280,6 +281,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				SkippingVerification(DefaultTrustLevel),
+				UpdatePeriod(0),
 			)
 			if tc.initErr {
 				require.Error(t, err)
