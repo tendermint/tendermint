@@ -66,8 +66,7 @@ I[10-04|13:54:30.392] Started node                                 module=main n
 Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
-please refer to [Consensus
-Overview](../introduction/introduction.md#consensus-overview) or [Byzantine Consensus
+please refer to [Byzantine Consensus
 Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
 
 ```
