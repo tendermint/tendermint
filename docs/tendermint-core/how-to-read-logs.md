@@ -68,7 +68,7 @@ round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
 please refer to [Consensus
 Overview](../introduction/introduction.md#consensus-overview) or [Byzantine Consensus
-Algorithm](../spec/consensus/consensus.md).
+Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
 
 ```
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

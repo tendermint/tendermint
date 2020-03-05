@@ -2,8 +2,7 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- https://docs.tendermint.com/master/ and
-- https://tendermint-staging.interblock.io/docs/
+- https://docs.tendermint.com/master/
 
 built from the files in this (`/docs`) directory for
 [master](https://github.com/tendermint/tendermint/tree/master/docs) respectively.
@@ -80,7 +79,7 @@ npm run serve
 
 Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often https://localhost:8080).
 
-To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist`  directory.
+To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist` directory.
 
 ## Search
 
