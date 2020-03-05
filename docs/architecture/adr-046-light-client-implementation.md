@@ -41,6 +41,7 @@ type Client interface {
 	// verify new headers
 	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
 	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
+	Update(now time.Time) (*types.SignedHeader, error)
 }
 ```
 
