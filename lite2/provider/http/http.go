@@ -10,19 +10,19 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// SignStatusClient combines a SignClient and StatusClient.
-type SignStatusClient interface {
+// client combines a SignClient and StatusClient.
+type client interface {
 	rpcclient.SignClient
-	rpcclient.StatusClient
+	rpcclient.EvidenceClient
 	// Remote returns the remote network address in a string form.
 	Remote() string
 }
 
-// http provider uses an RPC client (or SignStatusClient more generally) to
+// http provider uses an RPC client (or client more generally) to
 // obtain the necessary information.
 type http struct {
 	chainID string
-	client  SignStatusClient
+	client  client
 }
 
 // New creates a HTTP provider, which is using the rpcclient.HTTP
@@ -35,8 +35,8 @@ func New(chainID, remote string) (provider.Provider, error) {
 	return NewWithClient(chainID, httpClient), nil
 }
 
-// NewWithClient allows you to provide custom SignStatusClient.
-func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
+// NewWithClient allows you to provide custom client.
+func NewWithClient(chainID string, client client) provider.Provider {
 	return &http{
 		chainID: chainID,
 		client:  client,
@@ -117,6 +117,12 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	return types.NewValidatorSet(vals), nil
+}
+
+// ReportEvidence calls `/broadcast_evidence` endpoint.
+func (p *http) ReportEvidence(ev types.Evidence) error {
+	_, err := p.client.BroadcastEvidence(ev)
+	return err
 }
 
 func validateHeight(height int64) (*int64, error) {

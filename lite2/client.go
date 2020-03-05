@@ -890,7 +890,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 					continue
 				}
 
-				// TODO: send the diverged headers to primary && all witnesses
+				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: altH})
 
 				return errors.Errorf(
 					"header hash %X does not match one %X from the witness %v",
@@ -1052,6 +1052,13 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 	}
 
 	return c.validatorSetFromPrimary(height)
+}
+
+func (c *Client) sendConflictingHeadersEvidence(ev types.ConflictingHeadersEvidence) {
+	_ = c.primary.ReportEvidence(ev)
+	for _, w := range c.witnesses {
+		_ = w.ReportEvidence(ev)
+	}
 }
 
 // exponential backoff (with jitter)

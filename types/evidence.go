@@ -341,3 +341,65 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	}
 	return false
 }
+
+//-------------------------------------------
+
+// ConflictingHeadersEvidence is primarily used by the light client when it
+// observes two (or more) conflicting headers, both having 1/3+ of the voting
+// power of the currently trusted validator set.
+type ConflictingHeadersEvidence struct {
+	H1 types.SignedHeader
+	H2 types.SignedHeader
+}
+
+func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
+
+// XXX: this is not the time of equivocation
+func (ev ConflictingHeadersEvidence) Time() time.Time { return ev.H1.Time }
+
+// XXX: multiple validators misbehaved
+func (ev ConflictingHeadersEvidence) Address() []byte {
+	return []byte{}
+}
+
+func (ev ConflictingHeadersEvidence) Bytes() []byte {
+	return cdcEncode(ev)
+}
+
+func (ev ConflictingHeadersEvidence) Hash() []byte {
+	bz := make([]byte, tmhash.Size*2)
+	copy(bz[:tmhash.Size-1], ev.H1.Hash().Bytes())
+	copy(bz[tmhash.Size:], ev.H2.Hash().Bytes())
+	return tmhash.Sum(bz)
+}
+
+func (ev ConflictingHeadersEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return nil
+}
+
+func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
+	ev2T, ok := ev2.(ConflictingHeadersEvidence)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ev.H1.Hash(), ev2T.H1.Hash()) && bytes.Equal(ev.H2.Hash(), ev2T.H2.Hash())
+}
+
+func (ev ConflictingHeadersEvidence) ValidateBasic() error {
+	if err := ev.H1.ValidateBasic(); err != nil {
+		return fmt.Errorf("h1: %w", err)
+	}
+	if err := ev.H2.ValidateBasic(); err != nil {
+		return fmt.Errorf("h2: %w", err)
+	}
+	if ev.H1.Height != ev.H2.Height {
+		return errors.New("headers are from different heights")
+	}
+	return nil
+}
+
+func (ev ConflictingHeadersEvidence) String() string {
+	return fmt.Sprintf("ConflictingHeadersEvidence{H1: %d#%X, H2: %d#%X}",
+		ev.H1.Height, ev.H1.Hash(),
+		ev.H2.Height, ev.H2.Hash())
+}
