@@ -13,4 +13,3 @@ lint:
 breaking:
   use:
     - FILE
-    - PACKAGE
