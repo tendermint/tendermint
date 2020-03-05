@@ -10,19 +10,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// client combines a SignClient and StatusClient.
-type client interface {
-	rpcclient.SignClient
-	rpcclient.EvidenceClient
-	// Remote returns the remote network address in a string form.
-	Remote() string
-}
-
 // http provider uses an RPC client (or client more generally) to
 // obtain the necessary information.
 type http struct {
 	chainID string
-	client  client
+	client  rpcclient.RemoteClient
 }
 
 // New creates a HTTP provider, which is using the rpcclient.HTTP
@@ -36,7 +28,7 @@ func New(chainID, remote string) (provider.Provider, error) {
 }
 
 // NewWithClient allows you to provide custom client.
-func NewWithClient(chainID string, client client) provider.Provider {
+func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
 	return &http{
 		chainID: chainID,
 		client:  client,
