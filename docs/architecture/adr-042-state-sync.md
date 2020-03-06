@@ -229,7 +229,6 @@ Proposed
 
 ## References
 [sync: Sync current state without full replay for Applications](https://github.com/tendermint/tendermint/issues/828) - original issue
-[tendermint state sync proposal](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) - Cloudhead proposal
 [tendermint state sync proposal 2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit) - ackratos proposal
 [proposal 2 implementation](https://github.com/tendermint/tendermint/pull/3243)  - ackratos implementation
 [WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
