@@ -156,9 +156,13 @@ and the `latest_app_hash` in particular:
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
+<!-- markdown-link-check-disable -->
+
 Visit http://localhost:26657 in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
+
+<!-- markdown-link-check-enable -->
 
 ::: tip
 Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)

@@ -102,7 +102,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "new goleveldb")
 	}
 
 	var c *lite.Client
@@ -129,16 +129,9 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			lite.Logger(logger),
 		)
 	}
-
 	if err != nil {
-		return errors.Wrap(err, "failed to create")
+		return err
 	}
-	logger.Info("Starting client...")
-	err = c.Start()
-	if err != nil {
-		return errors.Wrap(err, "failed to start")
-	}
-	defer c.Stop()
 
 	rpcClient, err := rpcclient.NewHTTP(primaryAddr, "/websocket")
 	if err != nil {
