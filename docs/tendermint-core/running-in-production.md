@@ -106,7 +106,7 @@ Rate-limiting and authentication are another key aspects to help protect
 against DOS attacks. While in the future we may implement these
 features, for now, validators are supposed to use external tools like
 [NGINX](https://www.nginx.com/blog/rate-limiting-nginx/) or
-[traefik](https://docs.traefik.io/configuration/commons/#rate-limiting)
+[traefik](https://docs.traefik.io/middlewares/ratelimit/)
 to achieve the same things.
 
 ## Debugging Tendermint

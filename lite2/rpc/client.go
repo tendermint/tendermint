@@ -322,20 +322,8 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 }
 
 func (c *Client) updateLiteClientIfNeededTo(height int64) (*types.SignedHeader, error) {
-	lastTrustedHeight, err := c.lc.LastTrustedHeight()
-	if err != nil {
-		return nil, errors.Wrap(err, "LastTrustedHeight")
-	}
-
-	if lastTrustedHeight < height {
-		return c.lc.VerifyHeaderAtHeight(height, time.Now())
-	}
-
-	h, err := c.lc.TrustedHeader(height)
-	if err != nil {
-		return nil, errors.Wrapf(err, "TrustedHeader(#%d)", height)
-	}
-	return h, nil
+	h, err := c.lc.VerifyHeaderAtHeight(height, time.Now())
+	return h, errors.Wrapf(err, "failed to update light client to %d", height)
 }
 
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
