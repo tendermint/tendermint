@@ -83,8 +83,8 @@ func VerifyNonAdjacent(
 //	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
 //	b) untrustedHeader is valid;
 //	c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash;
-//	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned);
+//	d) more than 2/3 of new validators (untrustedVals) have signed h2
+//		(for any of these cases ErrInvalidHeader is returned);
 //  e) headers are adjacent.
 func VerifyAdjacent(
 	chainID string,
@@ -124,6 +124,14 @@ func VerifyAdjacent(
 	return nil
 }
 
+// VerifyBackwards verifies an untrusted header with a height one less than that
+// of an adjacent trusted header. It ensures that:
+//
+// 	a) untrusted header is valid
+//  b) untrusted header has a time before the trusted header
+//	c) that the LastBlockID hash of the trusted header is the same as the hash of
+// 		the trusted header.
+//		(for any of these cases ErrInvalidHeader is returned)
 func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
 	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
 		return ErrInvalidHeader{err}
