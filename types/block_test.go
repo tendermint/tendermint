@@ -178,7 +178,7 @@ func makeBlockIDRandom() BlockID {
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
-func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
+func makeBlockID(hash []byte, partSetSize int32, partSetHash []byte) BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
 		psH = make([]byte, tmhash.Size)
@@ -188,7 +188,7 @@ func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
 	return BlockID{
 		Hash: h,
 		PartsHeader: PartSetHeader{
-			Total: int32(partSetSize),
+			Total: partSetSize,
 			Hash:  psH,
 		},
 	}
@@ -377,9 +377,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {865, 1, 0, true, 0},
-		3: {866, 1, 0, false, 0},
-		4: {867, 1, 0, false, 1},
+		2: {857, 1, 0, true, 0},
+		3: {858, 1, 0, false, 0},
+		4: {859, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -406,9 +406,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {961, 1, true, 0},
-		3: {962, 1, false, 0},
-		4: {963, 1, false, 1},
+		2: {952, 1, true, 0},
+		3: {953, 1, false, 0},
+		4: {954, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

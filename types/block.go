@@ -20,7 +20,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 632
+	MaxHeaderBytes int64 = 628
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -300,7 +300,6 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		maxEvidenceBytes
-
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
 			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",

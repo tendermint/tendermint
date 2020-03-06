@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"math"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -69,9 +68,6 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 func (psh PartSetHeader) ValidateBasic() error {
 	if psh.Total < 0 {
 		return errors.New("negative Total")
-	}
-	if psh.Total > math.MaxInt32 {
-		return errors.New("number can not be greater than 2_147_483_647 ")
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
