@@ -203,6 +203,7 @@ func (b *Block) HashesTo(hash []byte) bool {
 }
 
 // Size returns size of the block in bytes.
+// TODO: check if proto size is the same
 func (b *Block) Size() int {
 	bz, err := cdc.MarshalBinaryBare(b)
 	if err != nil {
@@ -211,10 +212,10 @@ func (b *Block) Size() int {
 	return len(bz)
 }
 
-// String returns a string representation of the block
-func (b *Block) String() string {
-	return b.StringIndented("")
-}
+// // String returns a string representation of the block
+// func (b *Block) String() string {
+// 	return b.StringIndented("")
+// }
 
 // StringIndented returns a string representation of the block
 func (b *Block) StringIndented(indent string) string {
@@ -245,24 +246,24 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------
 // These methods are for Protobuf Compatibility
 
-// Marshal returns the amino encoding.
-func (b *Block) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(b)
-}
+// // Marshal returns the amino encoding.
+// func (b *Block) Marshal() ([]byte, error) {
+// 	return cdc.MarshalBinaryBare(b)
+// }
 
-// MarshalTo calls Marshal and copies to the given buffer.
-func (b *Block) MarshalTo(data []byte) (int, error) {
-	bs, err := b.Marshal()
-	if err != nil {
-		return -1, err
-	}
-	return copy(data, bs), nil
-}
+// // MarshalTo calls Marshal and copies to the given buffer.
+// func (b *Block) MarshalTo(data []byte) (int, error) {
+// 	bs, err := b.Marshal()
+// 	if err != nil {
+// 		return -1, err
+// 	}
+// 	return copy(data, bs), nil
+// }
 
-// Unmarshal deserializes from amino encoded form.
-func (b *Block) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, b)
-}
+// // Unmarshal deserializes from amino encoded form.
+// func (b *Block) Unmarshal(bs []byte) error {
+// 	return cdc.UnmarshalBinaryBare(bs, b)
+// }
 
 //-----------------------------------------------------------------------------
 
@@ -318,32 +319,32 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 // - header.Hash()
 // - abci.Header
 // - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
-type Header struct {
-	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
-	Time    time.Time         `json:"time"`
+// type Header struct {
+// 	// basic block info
+// 	Version version.Consensus `json:"version"`
+// 	ChainID string            `json:"chain_id"`
+// 	Height  int64             `json:"height"`
+// 	Time    time.Time         `json:"time"`
 
-	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
+// 	// prev block info
+// 	LastBlockID BlockID `json:"last_block_id"`
 
-	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
+// 	// hashes of block data
+// 	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
+// 	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
 
-	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	// root hash of all results from the txs from the previous block
-	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
+// 	// hashes from the app output from the prev block
+// 	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
+// 	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
+// 	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
+// 	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
+// 	// root hash of all results from the txs from the previous block
+// 	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
 
-	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
-}
+// 	// consensus info
+// 	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
+// 	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
+// }
 
 // Populate the Header with state-derived data.
 // Call this after MakeBlock to complete the Header.
@@ -604,8 +605,8 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
-	return commit.GetVote(int(valIdx)).SignBytes(chainID)
+func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
+	return commit.GetVote(valIdx).SignBytes(chainID)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -652,7 +653,7 @@ func (commit *Commit) BitArray() *bits.BitArray {
 // GetByIndex returns the vote corresponding to a given validator index.
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
-func (commit *Commit) GetByIndex(valIdx int) *Vote {
+func (commit *Commit) GetByIndex(valIdx int32) *Vote {
 	return commit.GetVote(valIdx)
 }
 
@@ -839,12 +840,12 @@ func (data *Data) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
-type EvidenceData struct {
-	Evidence EvidenceList `json:"evidence"`
+// type EvidenceData struct {
+// Evidence EvidenceList `json:"evidence"`
 
-	// Volatile
-	hash tmbytes.HexBytes
-}
+// 	// Volatile
+// 	hash tmbytes.HexBytes
+// }
 
 // Hash returns the hash of the data.
 func (data *EvidenceData) Hash() tmbytes.HexBytes {

@@ -243,13 +243,13 @@ func (voteSet *VoteSet) addVerifiedVote(
 		// Replace vote if blockKey matches voteSet.maj23.
 		if voteSet.maj23 != nil && voteSet.maj23.Key() == blockKey {
 			voteSet.votes[valIndex] = vote
-			voteSet.votesBitArray.SetIndex(valIndex, true)
+			voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		}
 		// Otherwise don't add it to voteSet.votes
 	} else {
 		// Add to voteSet.votes and incr .sum
 		voteSet.votes[valIndex] = vote
-		voteSet.votesBitArray.SetIndex(valIndex, true)
+		voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		voteSet.sum += votingPower
 	}
 
@@ -598,7 +598,7 @@ func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	valIndex := vote.ValidatorIndex
 	if existing := vs.votes[valIndex]; existing == nil {
-		vs.bitArray.SetIndex(valIndex, true)
+		vs.bitArray.SetIndex(int(valIndex), true)
 		vs.votes[valIndex] = vote
 		vs.sum += votingPower
 	}

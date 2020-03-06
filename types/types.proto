@@ -48,7 +48,7 @@ message Header {
   google.protobuf.Timestamp time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
+  BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
 
   // hashes of block data
   bytes last_commit_hash = 6;  // commit from validators from the last block
@@ -56,23 +56,29 @@ message Header {
 
   // hashes from the app output from the prev block
   bytes validators_hash = 8 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];  // validators for the current block
   bytes next_validators_hash = 9 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];  // validators for the next block
   bytes consensus_hash = 10 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];  // consensus params for current block
   bytes app_hash = 11 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];  // state after txs from the previous block
   bytes last_results_hash = 12 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];  // root hash of all results from the txs from the previous block
 
   // consensus info
   bytes evidence_hash = 13 [
+    (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
   ];                            // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
@@ -124,8 +130,13 @@ message Evidence {
 }
 
 message EvidenceData {
+  repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
   // Volatile
-  bytes hash = 2 [(gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"];
+  bytes hash = 2 [
+    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
+    (gogoproto.customname) = "hash",
+    (gogoproto.nullable)   = false
+  ];
 }
 
 message Block {
