@@ -555,6 +555,9 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // If, at any moment, SignedHeader or ValidatorSet are not found by the primary
 // provider, provider.ErrSignedHeaderNotFound /
 // provider.ErrValidatorSetNotFound error is returned.
+//
+// If the primary provides an invalid header (ErrInvalidHeader), it is rejected
+// and replaced by another provider until all are exhausted.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	if newHeader.Height <= 0 {
 		return errors.New("negative or zero height")
@@ -713,7 +716,7 @@ func (c *Client) sequence(
 		if err != nil {
 			switch err.(type) {
 			case ErrInvalidHeader:
-				c.logger.Error("replacing primary because: ", "err", err.Error())
+				c.logger.Error("primary sent invalid header -> replacing", "err", err.Error())
 				err1 := c.replacePrimaryProvider()
 				if err1 != nil {
 					return errors.Wrapf(err, "failed to verify sequence header at height #%d "+
@@ -778,7 +781,7 @@ func (c *Client) bisection(
 			}
 
 		case ErrInvalidHeader:
-			c.logger.Error("replacing primary because: ", "err", err.Error())
+			c.logger.Error("primary sent invalid header -> replacing", "err", err.Error())
 			providerErr := c.replacePrimaryProvider()
 			if providerErr != nil {
 				return errors.Wrapf(providerErr, "failed bisection verification at height #%d "+
@@ -830,7 +833,9 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 	return h, vals, nil
 }
 
-// Backwards verification (see VerifyHeaderBackwards func in the spec)
+// Backwards verification (see VerifyHeaderBackwards func in the spec) is used to verify
+// headers before a trusted header and within the trusted period. If a sent header is invalid
+// the primary is replaced with another provider and the operation is repeated.
 func (c *Client) backwards(
 	initiallyTrustedHeader *types.SignedHeader,
 	newHeader *types.SignedHeader,
@@ -853,7 +858,7 @@ func (c *Client) backwards(
 		}
 
 		if err := VerifyBackwards(c.chainID, interimHeader, trustedHeader); err != nil {
-			c.logger.Error(err.Error())
+			c.logger.Error("primary sent invalid header -> replacing", "err", err)
 			if providerErr := c.replacePrimaryProvider(); providerErr != nil {
 				return errors.Wrapf(providerErr, "failed backwards verification at height #%d "+
 					"(original error: %v). Can't replace primary", interimHeader.Height, err)
