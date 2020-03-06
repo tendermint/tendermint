@@ -12,7 +12,7 @@ Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
 ## Decision
 
-When using the `oneof` proto type there are many times where one will have to manually switch over the possible messages and then pass them to the interface you'd like to use. By transitioning from a fixed size byte array (`[KeySize]byte`) to byte slice's (`[]byte`) then this would enable the usage of the [cosmos-proto](hhttps://github.com/regen-network/cosmos-proto#interface_type) interface type, which will generate these switch statements.
+When using the `oneof` protobuf type there are many times where one will have to manually switch over the possible messages and then pass them to the interface which is needed. By transitioning from a fixed size byte array (`[size]byte`) to byte slice's (`[]byte`) then this would enable the usage of the [cosmos-proto's](hhttps://github.com/regen-network/cosmos-proto#interface_type) interface type, which will generate these switch statements.
 
 The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
 
