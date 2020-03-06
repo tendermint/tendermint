@@ -895,33 +895,34 @@ func (c *Client) removeWitness(idx int) {
 }
 
 // Update attempts to advance the state by downloading the latest header and
-// comparing it with the existing one.
-func (c *Client) Update(now time.Time) error {
+// comparing it with the existing one. It returns a new header on a successful
+// update. Otherwise, it returns nil (plus an error, if any).
+func (c *Client) Update(now time.Time) (*types.SignedHeader, error) {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {
-		return errors.Wrap(err, "can't get last trusted height")
+		return nil, errors.Wrap(err, "can't get last trusted height")
 	}
 
 	if lastTrustedHeight == -1 {
 		// no headers yet => wait
-		return nil
+		return nil, nil
 	}
 
 	latestHeader, latestVals, err := c.fetchHeaderAndValsAtHeight(0)
 	if err != nil {
-		return errors.Wrapf(err, "can't get latest header and vals")
+		return nil, errors.Wrapf(err, "can't get latest header and vals")
 	}
 
 	if latestHeader.Height > lastTrustedHeight {
 		err = c.VerifyHeader(latestHeader, latestVals, now)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
 		c.logger.Info("Advanced to new state", "height", latestHeader.Height, "hash", hash2str(latestHeader.Hash()))
+		return latestHeader, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 // replaceProvider takes the first alternative provider and promotes it as the

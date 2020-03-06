@@ -604,13 +604,11 @@ func TestClient_Update(t *testing.T) {
 	require.NoError(t, err)
 
 	// should result in downloading & verifying header #3
-	err = c.Update(bTime.Add(2 * time.Hour))
-	require.NoError(t, err)
-
-	h, err := c.TrustedHeader(3)
+	h, err := c.Update(bTime.Add(2 * time.Hour))
 	assert.NoError(t, err)
-	require.NotNil(t, h)
-	assert.EqualValues(t, 3, h.Height)
+	if assert.NotNil(t, h) {
+		assert.EqualValues(t, 3, h.Height)
+	}
 
 	valSet, _, err := c.TrustedValidatorSet(3)
 	assert.NoError(t, err)
@@ -675,7 +673,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	err = c.Update(bTime.Add(2 * time.Hour))
+	_, err = c.Update(bTime.Add(2 * time.Hour))
 	require.NoError(t, err)
 
 	assert.NotEqual(t, c.Primary(), deadNode)

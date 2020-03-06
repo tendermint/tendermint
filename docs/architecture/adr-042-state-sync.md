@@ -34,7 +34,7 @@ across different criteria:
 
 ### Implementation Question
 * What is the format of a snapshot
-    * Complete snapshot 
+    * Complete snapshot
     * Ordered IAVL key ranges
     * Compressed individually chunks which can be validated
 * How is data validated
@@ -58,7 +58,7 @@ request time. This solution would create an auxiliary data structure
 optimized for batch read/writes.
 
 Additionally the propsosals tend to vary on how they provide safety
-properties. 
+properties.
 
 **LightClient** Where a client can aquire the merkle root from the block
 headers synchronized from a trusted validator set. Subsets of the application state,
@@ -70,7 +70,7 @@ downloaded and compared against versions provided by a majority of
 peers.
 
 #### Lazy StateSync
-An [initial specification](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) was published by Alexis Sellier.
+An initial specification was published by Alexis Sellier.
 In this design, the state has a given `size` of primitive elements (like
 keys or nodes), each element is assigned a number from 0 to `size-1`,
 and chunks consists of a range of such elements.  Ackratos raised
@@ -104,7 +104,7 @@ chunks and snappy compressed. Hashes of snappy compressed chunks are stored in a
 manifest file which co-ordinates the state-sync. Obtaining a correct manifest
 file seems to require an honest majority of peers. This means you may not find
 out the state is incorrect until you download the whole thing and compare it
-with a verified block header. 
+with a verified block header.
 
 A similar solution was implemented by Binance in
 [#3594](https://github.com/tendermint/tendermint/pull/3594)
@@ -229,7 +229,6 @@ Proposed
 
 ## References
 [sync: Sync current state without full replay for Applications](https://github.com/tendermint/tendermint/issues/828) - original issue
-[tendermint state sync proposal](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) - Cloudhead proposal
 [tendermint state sync proposal 2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit) - ackratos proposal
 [proposal 2 implementation](https://github.com/tendermint/tendermint/pull/3243)  - ackratos implementation
 [WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
