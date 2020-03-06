@@ -12,6 +12,11 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+const (
+	// Buffer on the Tendermint (server) side to allow some slowness in clients.
+	subBufferSize = 100
+)
+
 // Subscribe for events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
 func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
@@ -33,7 +38,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := eventBus.Subscribe(subCtx, addr, q)
+	sub, err := eventBus.Subscribe(subCtx, addr, q, subBufferSize)
 	if err != nil {
 		return nil, err
 	}
