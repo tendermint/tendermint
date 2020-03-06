@@ -58,18 +58,12 @@ func ExampleClient_Update() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0), // NOTE: value should be greater than zero
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	err = c.Start()
-	if err != nil {
-		stdlog.Fatal(err)
-	}
 	defer func() {
-		c.Stop()
 		c.Cleanup()
 	}()
 
@@ -133,7 +127,6 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0),
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
