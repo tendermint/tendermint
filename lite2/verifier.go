@@ -27,8 +27,8 @@ var (
 //	b) untrustedHeader is valid (if not, ErrInvalidHeader is returned)
 //	c) trustLevel ([1/3, 1]) of trustedHeaderVals (or trustedHeaderNextVals)
 //  signed correctly (if not, ErrNewValSetCantBeTrusted is returned)
-//	d) more than 2/3 of untrustedVals have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned)
+//	d) more than 2/3 of untrustedVals have signed h2
+//    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are non-adjacent.
 func VerifyNonAdjacent(
 	chainID string,
@@ -80,11 +80,11 @@ func VerifyNonAdjacent(
 // VerifyAdjacent verifies directly adjacent untrustedHeader against
 // trustedHeader. It ensures that:
 //
-//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned)
-//	b) untrustedHeader is valid
-//	c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash
-//	d) more than 2/3 of new validators (untrustedVals) have signed h2
-//		(for any of these cases ErrInvalidHeader is returned)
+//  a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned)
+//  b) untrustedHeader is valid (if not, ErrInvalidHeader is returned)
+//  c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash
+//  d) more than 2/3 of new validators (untrustedVals) have signed h2
+//    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are adjacent.
 func VerifyAdjacent(
 	chainID string,
