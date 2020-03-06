@@ -124,34 +124,6 @@ func VerifyAdjacent(
 	return nil
 }
 
-// VerifyBackwards verifies an untrusted header with a height one less than that
-// of an adjacent trusted header. It ensures that:
-//
-// 	a) untrusted header is valid
-//  b) untrusted header has a time before the trusted header
-//	c) that the LastBlockID hash of the trusted header is the same as the hash of
-// 		the trusted header.
-//		(for any of these cases ErrInvalidHeader is returned)
-func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
-	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
-		return ErrInvalidHeader{err}
-	}
-
-	if !untrustedHeader.Time.Before(trustedHeader.Time) {
-		return ErrInvalidHeader{errors.Errorf("expected older header time %v to be before new header time %v",
-			untrustedHeader.Time,
-			trustedHeader.Time)}
-	}
-
-	if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
-		return ErrInvalidHeader{errors.Errorf("older header hash %X does not match trusted header's last block %X",
-			untrustedHeader.Hash(),
-			trustedHeader.LastBlockID.Hash)}
-	}
-
-	return nil
-}
-
 // Verify combines both VerifyAdjacent and VerifyNonAdjacent functions.
 func Verify(
 	chainID string,
@@ -227,4 +199,35 @@ func ValidateTrustLevel(lvl tmmath.Fraction) error {
 func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time.Time) bool {
 	expirationTime := h.Time.Add(trustingPeriod)
 	return !expirationTime.After(now)
+}
+
+// VerifyBackwards verifies an untrusted header with a height one less than
+// that of an adjacent trusted header. It ensures that:
+//
+// 	a) untrusted header is valid
+//  b) untrusted header has a time before the trusted header
+//  c) that the LastBlockID hash of the trusted header is the same as the hash
+//  of the trusted header
+//
+//  For any of these cases ErrInvalidHeader is returned.
+func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
+	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
+		return ErrInvalidHeader{err}
+	}
+
+	if !untrustedHeader.Time.Before(trustedHeader.Time) {
+		return ErrInvalidHeader{
+			errors.Errorf("expected older header time %v to be before new header time %v",
+				untrustedHeader.Time,
+				trustedHeader.Time)}
+	}
+
+	if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+		return ErrInvalidHeader{
+			errors.Errorf("older header hash %X does not match trusted header's last block %X",
+				untrustedHeader.Hash(),
+				trustedHeader.LastBlockID.Hash)}
+	}
+
+	return nil
 }
