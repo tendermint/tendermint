@@ -61,7 +61,7 @@ type P2PID string
 type VoteSet struct {
 	chainID       string
 	height        int64
-	round         int
+	round         int32
 	signedMsgType SignedMsgType
 	valSet        *ValidatorSet
 
@@ -75,7 +75,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int32, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -107,7 +107,7 @@ func (voteSet *VoteSet) GetHeight() int64 {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetRound() int {
+func (voteSet *VoteSet) GetRound() int32 {
 	if voteSet == nil {
 		return -1
 	}
@@ -175,7 +175,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Ensure that signer is a validator.
-	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
+	lookupAddr, val := voteSet.valSet.GetByIndex(int(valIndex)) //TODO: see about lifting this conversion
 	if val == nil {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorIndex,
 			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
@@ -190,7 +190,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// If we already know of this vote, return false.
-	if existing, ok := voteSet.getVote(valIndex, blockKey); ok {
+	if existing, ok := voteSet.getVote(int(valIndex), blockKey); ok { // TODO: same here
 		if bytes.Equal(existing.Signature, vote.Signature) {
 			return false, nil // duplicate
 		}
