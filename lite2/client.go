@@ -896,7 +896,7 @@ func (c *Client) removeWitness(idx int) {
 
 // Update attempts to advance the state by downloading the latest header and
 // comparing it with the existing one. It returns a new header on a successful
-// update.
+// update. Otherwise, it returns nil (plus an error, if any).
 func (c *Client) Update(now time.Time) (*types.SignedHeader, error) {
 	lastTrustedHeight, err := c.LastTrustedHeight()
 	if err != nil {
