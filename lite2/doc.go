@@ -65,33 +65,29 @@ Example usage:
 
 		db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
 		if err != nil {
-			// return err
-			t.Fatal(err)
+			// handle error
 		}
-		c, err := NewClient(
+
+		c, err := NewHTTPClient(
 			chainID,
 			TrustOptions{
 				Period: 504 * time.Hour, // 21 days
 				Height: 100,
 				Hash:   header.Hash(),
 			},
-			httpp.New(chainID, "tcp://localhost:26657"),
-			[]provider.Provider{httpp.New(chainID, "tcp://witness1:26657")},
-			dbs.New(db, chainID),
+			"http://localhost:26657",
+			[]string{"http://witness1:26657"},
+			dbs.New(db, ""),
 		)
-
-		err = c.Start()
-		if err != nil {
-			// return err
-			t.Fatal(err)
-		}
-		defer c.Stop()
-
-		h, err := c.TrustedHeader(101)
 		if err != nil {
 			// handle error
 		}
-		fmt.Println("got header", h)
+
+		h, err := c.TrustedHeader(100)
+		if err != nil {
+			// handle error
+		}
+		fmt.Println("header", h)
 
 Check out other examples in example_test.go
 
