@@ -5,6 +5,7 @@ package types
 
 import (
 	bytes "bytes"
+	context "context"
 	fmt "fmt"
 	io "io"
 	math "math"
@@ -19,6 +20,9 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	merkle "github.com/tendermint/tendermint/crypto/merkle"
 	kv "github.com/tendermint/tendermint/libs/kv"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -4784,6 +4788,447 @@ func (this *Evidence) Equal(that interface{}) bool {
 	}
 	return true
 }
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// ABCIApplicationClient is the client API for ABCIApplication service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type ABCIApplicationClient interface {
+	Echo(ctx context.Context, in *RequestEcho, opts ...grpc.CallOption) (*ResponseEcho, error)
+	Flush(ctx context.Context, in *RequestFlush, opts ...grpc.CallOption) (*ResponseFlush, error)
+	Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error)
+	SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error)
+	DeliverTx(ctx context.Context, in *RequestDeliverTx, opts ...grpc.CallOption) (*ResponseDeliverTx, error)
+	CheckTx(ctx context.Context, in *RequestCheckTx, opts ...grpc.CallOption) (*ResponseCheckTx, error)
+	Query(ctx context.Context, in *RequestQuery, opts ...grpc.CallOption) (*ResponseQuery, error)
+	Commit(ctx context.Context, in *RequestCommit, opts ...grpc.CallOption) (*ResponseCommit, error)
+	InitChain(ctx context.Context, in *RequestInitChain, opts ...grpc.CallOption) (*ResponseInitChain, error)
+	BeginBlock(ctx context.Context, in *RequestBeginBlock, opts ...grpc.CallOption) (*ResponseBeginBlock, error)
+	EndBlock(ctx context.Context, in *RequestEndBlock, opts ...grpc.CallOption) (*ResponseEndBlock, error)
+}
+
+type aBCIApplicationClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewABCIApplicationClient(cc *grpc.ClientConn) ABCIApplicationClient {
+	return &aBCIApplicationClient{cc}
+}
+
+func (c *aBCIApplicationClient) Echo(ctx context.Context, in *RequestEcho, opts ...grpc.CallOption) (*ResponseEcho, error) {
+	out := new(ResponseEcho)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/Echo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) Flush(ctx context.Context, in *RequestFlush, opts ...grpc.CallOption) (*ResponseFlush, error) {
+	out := new(ResponseFlush)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/Flush", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error) {
+	out := new(ResponseInfo)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/Info", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error) {
+	out := new(ResponseSetOption)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/SetOption", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) DeliverTx(ctx context.Context, in *RequestDeliverTx, opts ...grpc.CallOption) (*ResponseDeliverTx, error) {
+	out := new(ResponseDeliverTx)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/DeliverTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) CheckTx(ctx context.Context, in *RequestCheckTx, opts ...grpc.CallOption) (*ResponseCheckTx, error) {
+	out := new(ResponseCheckTx)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/CheckTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) Query(ctx context.Context, in *RequestQuery, opts ...grpc.CallOption) (*ResponseQuery, error) {
+	out := new(ResponseQuery)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/Query", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) Commit(ctx context.Context, in *RequestCommit, opts ...grpc.CallOption) (*ResponseCommit, error) {
+	out := new(ResponseCommit)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/Commit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) InitChain(ctx context.Context, in *RequestInitChain, opts ...grpc.CallOption) (*ResponseInitChain, error) {
+	out := new(ResponseInitChain)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/InitChain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) BeginBlock(ctx context.Context, in *RequestBeginBlock, opts ...grpc.CallOption) (*ResponseBeginBlock, error) {
+	out := new(ResponseBeginBlock)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/BeginBlock", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) EndBlock(ctx context.Context, in *RequestEndBlock, opts ...grpc.CallOption) (*ResponseEndBlock, error) {
+	out := new(ResponseEndBlock)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.types.ABCIApplication/EndBlock", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ABCIApplicationServer is the server API for ABCIApplication service.
+type ABCIApplicationServer interface {
+	Echo(context.Context, *RequestEcho) (*ResponseEcho, error)
+	Flush(context.Context, *RequestFlush) (*ResponseFlush, error)
+	Info(context.Context, *RequestInfo) (*ResponseInfo, error)
+	SetOption(context.Context, *RequestSetOption) (*ResponseSetOption, error)
+	DeliverTx(context.Context, *RequestDeliverTx) (*ResponseDeliverTx, error)
+	CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTx, error)
+	Query(context.Context, *RequestQuery) (*ResponseQuery, error)
+	Commit(context.Context, *RequestCommit) (*ResponseCommit, error)
+	InitChain(context.Context, *RequestInitChain) (*ResponseInitChain, error)
+	BeginBlock(context.Context, *RequestBeginBlock) (*ResponseBeginBlock, error)
+	EndBlock(context.Context, *RequestEndBlock) (*ResponseEndBlock, error)
+}
+
+// UnimplementedABCIApplicationServer can be embedded to have forward compatible implementations.
+type UnimplementedABCIApplicationServer struct {
+}
+
+func (*UnimplementedABCIApplicationServer) Echo(ctx context.Context, req *RequestEcho) (*ResponseEcho, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
+}
+func (*UnimplementedABCIApplicationServer) Flush(ctx context.Context, req *RequestFlush) (*ResponseFlush, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Flush not implemented")
+}
+func (*UnimplementedABCIApplicationServer) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
+}
+func (*UnimplementedABCIApplicationServer) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetOption not implemented")
+}
+func (*UnimplementedABCIApplicationServer) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeliverTx not implemented")
+}
+func (*UnimplementedABCIApplicationServer) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckTx not implemented")
+}
+func (*UnimplementedABCIApplicationServer) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
+}
+func (*UnimplementedABCIApplicationServer) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
+}
+func (*UnimplementedABCIApplicationServer) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitChain not implemented")
+}
+func (*UnimplementedABCIApplicationServer) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BeginBlock not implemented")
+}
+func (*UnimplementedABCIApplicationServer) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EndBlock not implemented")
+}
+
+func RegisterABCIApplicationServer(s *grpc.Server, srv ABCIApplicationServer) {
+	s.RegisterService(&_ABCIApplication_serviceDesc, srv)
+}
+
+func _ABCIApplication_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestEcho)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).Echo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/Echo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).Echo(ctx, req.(*RequestEcho))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_Flush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestFlush)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).Flush(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/Flush",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).Flush(ctx, req.(*RequestFlush))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).Info(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/Info",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).Info(ctx, req.(*RequestInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_SetOption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestSetOption)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).SetOption(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/SetOption",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).SetOption(ctx, req.(*RequestSetOption))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_DeliverTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestDeliverTx)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).DeliverTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/DeliverTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).DeliverTx(ctx, req.(*RequestDeliverTx))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_CheckTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestCheckTx)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).CheckTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/CheckTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).CheckTx(ctx, req.(*RequestCheckTx))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestQuery)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).Query(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/Query",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).Query(ctx, req.(*RequestQuery))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestCommit)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).Commit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/Commit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).Commit(ctx, req.(*RequestCommit))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_InitChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestInitChain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).InitChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/InitChain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).InitChain(ctx, req.(*RequestInitChain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_BeginBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestBeginBlock)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).BeginBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/BeginBlock",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).BeginBlock(ctx, req.(*RequestBeginBlock))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_EndBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestEndBlock)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).EndBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.types.ABCIApplication/EndBlock",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).EndBlock(ctx, req.(*RequestEndBlock))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _ABCIApplication_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "tendermint.abci.types.ABCIApplication",
+	HandlerType: (*ABCIApplicationServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Echo",
+			Handler:    _ABCIApplication_Echo_Handler,
+		},
+		{
+			MethodName: "Flush",
+			Handler:    _ABCIApplication_Flush_Handler,
+		},
+		{
+			MethodName: "Info",
+			Handler:    _ABCIApplication_Info_Handler,
+		},
+		{
+			MethodName: "SetOption",
+			Handler:    _ABCIApplication_SetOption_Handler,
+		},
+		{
+			MethodName: "DeliverTx",
+			Handler:    _ABCIApplication_DeliverTx_Handler,
+		},
+		{
+			MethodName: "CheckTx",
+			Handler:    _ABCIApplication_CheckTx_Handler,
+		},
+		{
+			MethodName: "Query",
+			Handler:    _ABCIApplication_Query_Handler,
+		},
+		{
+			MethodName: "Commit",
+			Handler:    _ABCIApplication_Commit_Handler,
+		},
+		{
+			MethodName: "InitChain",
+			Handler:    _ABCIApplication_InitChain_Handler,
+		},
+		{
+			MethodName: "BeginBlock",
+			Handler:    _ABCIApplication_BeginBlock_Handler,
+		},
+		{
+			MethodName: "EndBlock",
+			Handler:    _ABCIApplication_EndBlock_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "abci/types/types.proto",
+}
+
 func (m *Request) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)

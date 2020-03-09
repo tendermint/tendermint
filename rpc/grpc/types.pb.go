@@ -5,6 +5,7 @@ package coregrpc
 
 import (
 	bytes "bytes"
+	context "context"
 	fmt "fmt"
 	io "io"
 	math "math"
@@ -14,6 +15,9 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	golang_proto "github.com/golang/protobuf/proto"
 	types "github.com/tendermint/tendermint/abci/types"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -330,6 +334,123 @@ func (this *ResponseBroadcastTx) Equal(that interface{}) bool {
 	}
 	return true
 }
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// BroadcastAPIClient is the client API for BroadcastAPI service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type BroadcastAPIClient interface {
+	Ping(ctx context.Context, in *RequestPing, opts ...grpc.CallOption) (*ResponsePing, error)
+	BroadcastTx(ctx context.Context, in *RequestBroadcastTx, opts ...grpc.CallOption) (*ResponseBroadcastTx, error)
+}
+
+type broadcastAPIClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewBroadcastAPIClient(cc *grpc.ClientConn) BroadcastAPIClient {
+	return &broadcastAPIClient{cc}
+}
+
+func (c *broadcastAPIClient) Ping(ctx context.Context, in *RequestPing, opts ...grpc.CallOption) (*ResponsePing, error) {
+	out := new(ResponsePing)
+	err := c.cc.Invoke(ctx, "/tendermint.rpc.grpc.BroadcastAPI/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *broadcastAPIClient) BroadcastTx(ctx context.Context, in *RequestBroadcastTx, opts ...grpc.CallOption) (*ResponseBroadcastTx, error) {
+	out := new(ResponseBroadcastTx)
+	err := c.cc.Invoke(ctx, "/tendermint.rpc.grpc.BroadcastAPI/BroadcastTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// BroadcastAPIServer is the server API for BroadcastAPI service.
+type BroadcastAPIServer interface {
+	Ping(context.Context, *RequestPing) (*ResponsePing, error)
+	BroadcastTx(context.Context, *RequestBroadcastTx) (*ResponseBroadcastTx, error)
+}
+
+// UnimplementedBroadcastAPIServer can be embedded to have forward compatible implementations.
+type UnimplementedBroadcastAPIServer struct {
+}
+
+func (*UnimplementedBroadcastAPIServer) Ping(ctx context.Context, req *RequestPing) (*ResponsePing, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (*UnimplementedBroadcastAPIServer) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BroadcastTx not implemented")
+}
+
+func RegisterBroadcastAPIServer(s *grpc.Server, srv BroadcastAPIServer) {
+	s.RegisterService(&_BroadcastAPI_serviceDesc, srv)
+}
+
+func _BroadcastAPI_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestPing)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BroadcastAPIServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.rpc.grpc.BroadcastAPI/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BroadcastAPIServer).Ping(ctx, req.(*RequestPing))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BroadcastAPI_BroadcastTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestBroadcastTx)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BroadcastAPIServer).BroadcastTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.rpc.grpc.BroadcastAPI/BroadcastTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BroadcastAPIServer).BroadcastTx(ctx, req.(*RequestBroadcastTx))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _BroadcastAPI_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "tendermint.rpc.grpc.BroadcastAPI",
+	HandlerType: (*BroadcastAPIServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ping",
+			Handler:    _BroadcastAPI_Ping_Handler,
+		},
+		{
+			MethodName: "BroadcastTx",
+			Handler:    _BroadcastAPI_BroadcastTx_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "rpc/grpc/types.proto",
+}
+
 func (m *RequestPing) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
