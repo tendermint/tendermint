@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- [memdb] [\#56](https://github.com/tendermint/tm-db/pull/56) Removed some exported methods that were mainly meant for internal use: `Mutex()`, `SetNoLock()`, `SetNoLockSync()`, `DeleteNoLock()`, and `DeleteNoLockSync()`
+
 ### Improvements
 
 - [memdb] [\#53](https://github.com/tendermint/tm-db/pull/53) Use a B-tree for storage, which significantly improves range scan performance
+
+- [memdb] [\#56](https://github.com/tendermint/tm-db/pull/56) Use an RWMutex for improved performance with highly concurrent read-heavy workloads
 
 ## 0.4.1
 

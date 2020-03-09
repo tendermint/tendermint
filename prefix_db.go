@@ -167,28 +167,6 @@ func (pdb *PrefixDB) NewBatch() Batch {
 	return newPrefixBatch(pdb.prefix, pdb.db.NewBatch())
 }
 
-/* NOTE: Uncomment to use memBatch instead of prefixBatch
-// Implements atomicSetDeleter.
-func (pdb *PrefixDB) SetNoLock(key []byte, value []byte) {
-	pdb.db.(atomicSetDeleter).SetNoLock(pdb.prefixed(key), value)
-}
-
-// Implements atomicSetDeleter.
-func (pdb *PrefixDB) SetNoLockSync(key []byte, value []byte) {
-	pdb.db.(atomicSetDeleter).SetNoLockSync(pdb.prefixed(key), value)
-}
-
-// Implements atomicSetDeleter.
-func (pdb *PrefixDB) DeleteNoLock(key []byte) {
-	pdb.db.(atomicSetDeleter).DeleteNoLock(pdb.prefixed(key))
-}
-
-// Implements atomicSetDeleter.
-func (pdb *PrefixDB) DeleteNoLockSync(key []byte) {
-	pdb.db.(atomicSetDeleter).DeleteNoLockSync(pdb.prefixed(key))
-}
-*/
-
 // Implements DB.
 func (pdb *PrefixDB) Close() error {
 	pdb.mtx.Lock()
