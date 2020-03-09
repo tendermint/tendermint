@@ -504,6 +504,7 @@ func assertKeyValues(t *testing.T, db DB, expect map[string][]byte) {
 		require.NoError(t, iter.Error())
 		actual[string(iter.Key())] = iter.Value()
 	}
+	iter.Close()
 
 	assert.Equal(t, expect, actual)
 }
