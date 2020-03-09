@@ -5,15 +5,18 @@
 
 *March 9, 2020*
 
-Special thanks to external contributors on this release: @antho1404, @michaelfig
+Special thanks to external contributors on this release: @antho1404, @michaelfig, @gterzian
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [examples/kvstore] [\#4509](https://github.com/tendermint/tendermint/pull/4509) ABCI query now returns the proper height
 - [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Change `tendermint debug dump` sub-command archives filename's format (@melekes)
+- [cmd] [\#4512](https://github.com/tendermint/tendermint/pull/4512) Change `tendermint debug dump` sub-command archives filename's format (@melekes)
+- [consensus] [\#4431](https://github.com/tendermint/tendermint/pull/4431) Reduce `non-deterministic signature` log noise (@tau3)
+- [examples/kvstore] [\#4509](https://github.com/tendermint/tendermint/pull/4509) ABCI query now returns the proper height (@erikgrinaker)
 - [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached (@alessio).
+- [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Use `curve25519.X25519()` instead of `ScalarMult` (@erikgrinaker)
 
 ### BUG FIXES:
 
@@ -22,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] [\#4493](https://github.com/tendermint/tendermint/pull/4493) Keep the original subscription "id" field when new RPCs come in (@michaelfig)
 - [rpc] [\#4437](https://github.com/tendermint/tendermint/pull/4437) Fix `/tx_search` pagination with ordered results (@erikgrinaker)
 - [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
+- [rpc] [\#4418](https://github.com/tendermint/tendermint/pull/4418) Stop `txSearch` processing if context is done (@gterzian)
 
 
 ## v0.33.1
