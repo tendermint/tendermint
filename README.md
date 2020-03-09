@@ -1,50 +1,29 @@
 # Tendermint DB
 
-Data Base abstractions to be used in applications.
-These abstractions are not only meant to be used in applications built on [Tendermint](https://github.com/tendermint/tendermint), but can be used in a variety of applications.
+Common database interface for various database backends. Primarily meant for applications built on [Tendermint](https://github.com/tendermint/tendermint), such as the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk), but can be used independently of these as well.
 
 ### Minimum Go Version
 
 Go 1.13+
 
-## Supported Databases
+## Supported Database Backends
 
-- [GolevelDB](https://github.com/syndtr/goleveldb)
-- [ClevelDB](https://github.com/google/leveldb)
-- [BoltDB](https://github.com/etcd-io/bbolt)
-- [GoRocksDB](https://github.com/tecbot/gorocksdb)
-- [MemDB](#memdb)
-- [RemoteDB](#remotedb)
+* **[GoLevelDB](https://github.com/syndtr/goleveldb) [stable]**: A pure Go implementation of [LevelDB](https://github.com/google/leveldb) (see below). Currently the default on-disk database used in the Cosmos SDK.
 
+* **MemDB [stable]:** An in-memory database using [Google's B-tree package](https://github.com/google/btree). Has very high performance both for reads, writes, and range scans, but is not durable and will lose all data on process exit. Does not support transactions. Suitable for e.g. caches, working sets, and tests. Used for [IAVL](https://github.com/tendermint/iavl) working sets when the pruning strategy allows it.
 
-## Using Databases
+* **[LevelDB](https://github.com/google/leveldb) [experimental]:** A [Go wrapper](https://github.com/jmhodges/levigo) around [LevelDB](https://github.com/google/leveldb). Uses LSM-trees for on-disk storage, which have good performance for write-heavy workloads, particularly on spinning disks, but requires periodic compaction to maintain decent read performance and reclaim disk space. Does not support transactions.
 
-### GolevelDB
+* **[BoltDB](https://github.com/etcd-io/bbolt) [experimental]:** A [fork](https://github.com/etcd-io/bbolt) of [BoltDB](https://github.com/boltdb/bolt). Uses B+trees for on-disk storage, which have good performance for read-heavy workloads and range scans. Supports serializable ACID transactions.
 
-To use goleveldb there is no need to install anything and you can run the tests by simply running `make test`
+* **[RocksDB](https://github.com/tecbot/gorocksdb) [experimental]:** A [Go wrapper](https://github.com/tecbot/gorocksdb) around [RocksDB](https://rocksdb.org). Similarly to LevelDB (above) it uses LSM-trees for on-disk storage, but is optimized for fast storage media such as SSDs and memory. Supports atomic transactions, but not full ACID transactions.
 
-### ClevelDB
+## Meta-databases
 
-To use cleveldb leveldb must be installed on your machine. Please use you local package manager (brew, snap) to install the db. Once you have installed it you can run tests with `make test-cleveldb`.
+* **PrefixDB [stable]:** A database which wraps another database and uses a static prefix for all keys. This allows multiple logical databases to be stored in a common underlying databases by using different namespaces. Used by the Cosmos SDK to give different modules their own namespaced database in a single application database.
 
-### BoltDB
+* **RemoteDB [experimental]:** A database that connects to distributed Tendermint db instances via [gRPC](https://grpc.io/). This can help with detaching difficult deployments such as LevelDB, and can also ease dependency management for Tendermint developers.
 
-The BoltDB implementation uses bbolt from etcd.
+## Tests
 
-You can test boltdb by running `make test-boltdb`
-
-### RocksDB
-
-To use RocksDB, you must have it installed on your machine. You can install rocksdb by using your machines package manager (brew, snap). Once you have it installed you can run tests using `make test-rocksdb`.
-
-### MemDB
-
-MemDB is a go implementation of a in memory database. It is mainly used for testing purposes but can be used for other purposes as well. To test the database you can run `make test`.
-
-### RemoteDB
-
-RemoteDB is a database meant for connecting to distributed Tendermint db instances. This can help with detaching difficult deployments such as cleveldb, it can also ease
-the burden and cost of deployment of dependencies for databases
-to be used by Tendermint developers. It is built with [gRPC](https://grpc.io/). To test this data base you can run `make test`.
-
-If you have all the databases installed on your machine then you can run tests with `make test-all`
+To test common databases, run `make test`. If all databases are available on the local machine, use `make test-all` to test them all.
