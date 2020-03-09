@@ -12,6 +12,10 @@
 
 - [memdb] [\#56](https://github.com/tendermint/tm-db/pull/56) Use an RWMutex for improved performance with highly concurrent read-heavy workloads
 
+### Bug Fixes
+
+- [goleveldb] [\#58](https://github.com/tendermint/tm-db/pull/58) Make `Batch.Close()` actually remove the batch contents
+
 ## 0.4.1
 
 **2020-2-26**

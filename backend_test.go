@@ -453,9 +453,8 @@ func testDBBatch(t *testing.T, backend BackendType) {
 	batch.Close()
 	err = db.Delete([]byte("c"))
 	require.NoError(t, err)
-	// FIXME Disabled because goleveldb is failing this test currently
-	//err = batch.Write()
-	//require.NoError(t, err)
+	err = batch.Write()
+	require.NoError(t, err)
 	assertKeyValues(t, db, map[string][]byte{"a": {1}, "b": {2}})
 
 	// it should be possible to re-close the batch

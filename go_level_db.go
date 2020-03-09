@@ -196,8 +196,9 @@ func (mBatch *goLevelDBBatch) WriteSync() error {
 }
 
 // Implements Batch.
-// Close is no-op for goLevelDBBatch.
-func (mBatch *goLevelDBBatch) Close() {}
+func (mBatch *goLevelDBBatch) Close() {
+	mBatch.batch.Reset()
+}
 
 //----------------------------------------
 // Iterator
