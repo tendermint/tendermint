@@ -78,18 +78,6 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	db.Close()
 }
 
-/*
-func int642Bytes(i int64) []byte {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, uint64(i))
-	return buf
-}
-
-func bytes2Int64(buf []byte) int64 {
-	return int64(binary.BigEndian.Uint64(buf))
-}
-*/
-
 func TestCLevelDBBackend(t *testing.T) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	// Can't use "" (current directory) or "./" here because levigo.Open returns:

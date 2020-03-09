@@ -3,7 +3,6 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,8 +19,7 @@ func init() {
 	}, false)
 }
 
-// BoltDB is a wrapper around etcd's fork of bolt
-// (https://github.com/etcd-io/bbolt).
+// BoltDB is a wrapper around etcd's fork of bolt (https://github.com/etcd-io/bbolt).
 //
 // NOTE: All operations (including Set, Delete) are synchronous by default. One
 // can globally turn it off by using NoSync config option (not recommended).
@@ -31,6 +29,8 @@ func init() {
 type BoltDB struct {
 	db *bbolt.DB
 }
+
+var _ DB = (*BoltDB)(nil)
 
 // NewBoltDB returns a BoltDB with default options.
 func NewBoltDB(name, dir string) (DB, error) {
@@ -62,6 +62,7 @@ func NewBoltDBWithOpts(name string, dir string, opts *bbolt.Options) (DB, error)
 	return &BoltDB{db: db}, nil
 }
 
+// Get implements DB.
 func (bdb *BoltDB) Get(key []byte) (value []byte, err error) {
 	key = nonEmptyKey(nonNilBytes(key))
 	err = bdb.db.View(func(tx *bbolt.Tx) error {
@@ -77,6 +78,7 @@ func (bdb *BoltDB) Get(key []byte) (value []byte, err error) {
 	return
 }
 
+// Has implements DB.
 func (bdb *BoltDB) Has(key []byte) (bool, error) {
 	bytes, err := bdb.Get(key)
 	if err != nil {
@@ -85,6 +87,7 @@ func (bdb *BoltDB) Has(key []byte) (bool, error) {
 	return bytes != nil, nil
 }
 
+// Set implements DB.
 func (bdb *BoltDB) Set(key, value []byte) error {
 	key = nonEmptyKey(nonNilBytes(key))
 	value = nonNilBytes(value)
@@ -98,10 +101,12 @@ func (bdb *BoltDB) Set(key, value []byte) error {
 	return nil
 }
 
+// SetSync implements DB.
 func (bdb *BoltDB) SetSync(key, value []byte) error {
 	return bdb.Set(key, value)
 }
 
+// Delete implements DB.
 func (bdb *BoltDB) Delete(key []byte) error {
 	key = nonEmptyKey(nonNilBytes(key))
 	err := bdb.db.Update(func(tx *bbolt.Tx) error {
@@ -113,14 +118,17 @@ func (bdb *BoltDB) Delete(key []byte) error {
 	return nil
 }
 
+// DeleteSync implements DB.
 func (bdb *BoltDB) DeleteSync(key []byte) error {
 	return bdb.Delete(key)
 }
 
+// Close implements DB.
 func (bdb *BoltDB) Close() error {
 	return bdb.db.Close()
 }
 
+// Print implements DB.
 func (bdb *BoltDB) Print() error {
 	stats := bdb.db.Stats()
 	fmt.Printf("%v\n", stats)
@@ -138,6 +146,7 @@ func (bdb *BoltDB) Print() error {
 	return nil
 }
 
+// Stats implements DB.
 func (bdb *BoltDB) Stats() map[string]string {
 	stats := bdb.db.Stats()
 	m := make(map[string]string)
@@ -155,63 +164,13 @@ func (bdb *BoltDB) Stats() map[string]string {
 	return m
 }
 
-// boltDBBatch stores key values in sync.Map and dumps them to the underlying
-// DB upon Write call.
-type boltDBBatch struct {
-	db  *BoltDB
-	ops []operation
-}
-
-// NewBatch returns a new batch.
+// NewBatch implements DB.
 func (bdb *BoltDB) NewBatch() Batch {
 	return &boltDBBatch{
 		ops: nil,
 		db:  bdb,
 	}
 }
-
-// It is safe to modify the contents of the argument after Set returns but not
-// before.
-func (bdb *boltDBBatch) Set(key, value []byte) {
-	bdb.ops = append(bdb.ops, operation{opTypeSet, key, value})
-}
-
-// It is safe to modify the contents of the argument after Delete returns but
-// not before.
-func (bdb *boltDBBatch) Delete(key []byte) {
-	bdb.ops = append(bdb.ops, operation{opTypeDelete, key, nil})
-}
-
-// NOTE: the operation is synchronous (see BoltDB for reasons)
-func (bdb *boltDBBatch) Write() error {
-	err := bdb.db.db.Batch(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(bucket)
-		for _, op := range bdb.ops {
-			key := nonEmptyKey(nonNilBytes(op.key))
-			switch op.opType {
-			case opTypeSet:
-				if putErr := b.Put(key, op.value); putErr != nil {
-					return putErr
-				}
-			case opTypeDelete:
-				if delErr := b.Delete(key); delErr != nil {
-					return delErr
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (bdb *boltDBBatch) WriteSync() error {
-	return bdb.Write()
-}
-
-func (bdb *boltDBBatch) Close() {}
 
 // WARNING: Any concurrent writes or reads will block until the iterator is
 // closed.
@@ -231,124 +190,6 @@ func (bdb *BoltDB) ReverseIterator(start, end []byte) (Iterator, error) {
 		return nil, err
 	}
 	return newBoltDBIterator(tx, start, end, true), nil
-}
-
-// boltDBIterator allows you to iterate on range of keys/values given some
-// start / end keys (nil & nil will result in doing full scan).
-type boltDBIterator struct {
-	tx *bbolt.Tx
-
-	itr   *bbolt.Cursor
-	start []byte
-	end   []byte
-
-	currentKey   []byte
-	currentValue []byte
-
-	isInvalid bool
-	isReverse bool
-}
-
-func newBoltDBIterator(tx *bbolt.Tx, start, end []byte, isReverse bool) *boltDBIterator {
-	itr := tx.Bucket(bucket).Cursor()
-
-	var ck, cv []byte
-	if isReverse {
-		if end == nil {
-			ck, cv = itr.Last()
-		} else {
-			_, _ = itr.Seek(end) // after key
-			ck, cv = itr.Prev()  // return to end key
-		}
-	} else {
-		if start == nil {
-			ck, cv = itr.First()
-		} else {
-			ck, cv = itr.Seek(start)
-		}
-	}
-
-	return &boltDBIterator{
-		tx:           tx,
-		itr:          itr,
-		start:        start,
-		end:          end,
-		currentKey:   ck,
-		currentValue: cv,
-		isReverse:    isReverse,
-		isInvalid:    false,
-	}
-}
-
-func (itr *boltDBIterator) Domain() ([]byte, []byte) {
-	return itr.start, itr.end
-}
-
-func (itr *boltDBIterator) Valid() bool {
-	if itr.isInvalid {
-		return false
-	}
-
-	// iterated to the end of the cursor
-	if len(itr.currentKey) == 0 {
-		itr.isInvalid = true
-		return false
-	}
-
-	if itr.isReverse {
-		if itr.start != nil && bytes.Compare(itr.currentKey, itr.start) < 0 {
-			itr.isInvalid = true
-			return false
-		}
-	} else {
-		if itr.end != nil && bytes.Compare(itr.end, itr.currentKey) <= 0 {
-			itr.isInvalid = true
-			return false
-		}
-	}
-
-	// Valid
-	return true
-}
-
-func (itr *boltDBIterator) Next() {
-	itr.assertIsValid()
-	if itr.isReverse {
-		itr.currentKey, itr.currentValue = itr.itr.Prev()
-	} else {
-		itr.currentKey, itr.currentValue = itr.itr.Next()
-	}
-}
-
-func (itr *boltDBIterator) Key() []byte {
-	itr.assertIsValid()
-	return append([]byte{}, itr.currentKey...)
-}
-
-func (itr *boltDBIterator) Value() []byte {
-	itr.assertIsValid()
-	var value []byte
-	if itr.currentValue != nil {
-		value = append([]byte{}, itr.currentValue...)
-	}
-	return value
-}
-
-func (itr *boltDBIterator) Error() error {
-	return nil
-}
-
-func (itr *boltDBIterator) Close() {
-	err := itr.tx.Rollback()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (itr *boltDBIterator) assertIsValid() {
-	if !itr.Valid() {
-		panic("boltdb-iterator is invalid")
-	}
 }
 
 // nonEmptyKey returns a []byte("nil") if key is empty.
