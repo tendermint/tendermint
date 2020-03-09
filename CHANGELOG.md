@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- [memdb] [\#53](https://github.com/tendermint/tm-db/pull/53) Use a B-tree for storage, which significantly improves range scan performance
+
 ## 0.4.1
 
 **2020-2-26**

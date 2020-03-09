@@ -204,6 +204,7 @@ func TestDBIterator(t *testing.T) {
 	for dbType := range backends {
 		t.Run(fmt.Sprintf("%v", dbType), func(t *testing.T) {
 			testDBIterator(t, dbType)
+			testDBIteratorBlankKey(t, dbType)
 		})
 	}
 }
@@ -311,6 +312,18 @@ func testDBIterator(t *testing.T, backend BackendType) {
 	verifyIterator(t, ritr,
 		[]int64(nil), "reverse iterator from 7 (ex) to 6")
 
+	ritr, err = db.ReverseIterator(int642Bytes(10), nil)
+	require.NoError(t, err)
+	verifyIterator(t, ritr, []int64(nil), "reverse iterator to 10")
+
+	ritr, err = db.ReverseIterator(int642Bytes(6), nil)
+	require.NoError(t, err)
+	verifyIterator(t, ritr, []int64{9, 8, 7}, "reverse iterator to 6")
+
+	ritr, err = db.ReverseIterator(int642Bytes(5), nil)
+	require.NoError(t, err)
+	verifyIterator(t, ritr, []int64{9, 8, 7, 5}, "reverse iterator to 5")
+
 	// verifyIterator(t, db.Iterator(int642Bytes(0), int642Bytes(1)), []int64{0}, "forward iterator from 0 to 1")
 
 	ritr, err = db.ReverseIterator(int642Bytes(8), int642Bytes(9))
@@ -329,7 +342,56 @@ func testDBIterator(t *testing.T, backend BackendType) {
 	require.NoError(t, err)
 	verifyIterator(t, ritr,
 		[]int64(nil), "reverse iterator from 2 (ex) to 4")
+}
 
+func testDBIteratorBlankKey(t *testing.T, backend BackendType) {
+	name := fmt.Sprintf("test_%x", randStr(12))
+	dir := os.TempDir()
+	db := NewDB(name, backend, dir)
+	defer cleanupDBDir(dir, name)
+
+	err := db.Set([]byte(""), []byte{0})
+	require.NoError(t, err)
+	err = db.Set([]byte("a"), []byte{1})
+	require.NoError(t, err)
+	err = db.Set([]byte("b"), []byte{2})
+	require.NoError(t, err)
+
+	value, err := db.Get([]byte(""))
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0}, value)
+
+	i, err := db.Iterator(nil, nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"", "a", "b"}, "forward")
+
+	i, err = db.Iterator([]byte(""), nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"", "a", "b"}, "forward from blank")
+
+	i, err = db.Iterator([]byte("a"), nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"a", "b"}, "forward from a")
+
+	i, err = db.Iterator([]byte(""), []byte("b"))
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"", "a"}, "forward from blank to b")
+
+	i, err = db.ReverseIterator(nil, nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"b", "a", ""}, "reverse")
+
+	i, err = db.ReverseIterator([]byte(""), nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"b", "a", ""}, "reverse to blank")
+
+	i, err = db.ReverseIterator([]byte(""), []byte("a"))
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{""}, "reverse to blank from a")
+
+	i, err = db.ReverseIterator([]byte("a"), nil)
+	require.NoError(t, err)
+	verifyIteratorStrings(t, i, []string{"b", "a"}, "reverse to a")
 }
 
 func verifyIterator(t *testing.T, itr Iterator, expected []int64, msg string) {
@@ -337,6 +399,16 @@ func verifyIterator(t *testing.T, itr Iterator, expected []int64, msg string) {
 	for itr.Valid() {
 		key := itr.Key()
 		list = append(list, bytes2Int64(key))
+		itr.Next()
+	}
+	assert.Equal(t, expected, list, msg)
+}
+
+func verifyIteratorStrings(t *testing.T, itr Iterator, expected []string, msg string) {
+	var list []string
+	for itr.Valid() {
+		key := itr.Key()
+		list = append(list, string(key))
 		itr.Next()
 	}
 	assert.Equal(t, expected, list, msg)

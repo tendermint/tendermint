@@ -201,6 +201,38 @@ func (mockIterator) Error() error {
 func (mockIterator) Close() {
 }
 
+func benchmarkRangeScans(b *testing.B, db DB, dbSize int64) {
+	b.StopTimer()
+
+	rangeSize := int64(10000)
+	if dbSize < rangeSize {
+		b.Errorf("db size %v cannot be less than range size %v", dbSize, rangeSize)
+	}
+
+	for i := int64(0); i < dbSize; i++ {
+		bytes := int642Bytes(i)
+		err := db.Set(bytes, bytes)
+		if err != nil {
+			// require.NoError() is very expensive (according to profiler), so check manually
+			b.Fatal(b, err)
+		}
+	}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		start := rand.Int63n(dbSize - rangeSize)
+		end := start + rangeSize
+		iter, err := db.Iterator(int642Bytes(start), int642Bytes(end))
+		require.NoError(b, err)
+		count := 0
+		for ; iter.Valid(); iter.Next() {
+			count++
+		}
+		iter.Close()
+		require.EqualValues(b, rangeSize, count)
+	}
+}
+
 func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 	b.StopTimer()
 
@@ -217,23 +249,29 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 	for i := 0; i < b.N; i++ {
 		// Write something
 		{
-			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
+			idx := rand.Int63n(numItems) // nolint:gosec testing file, so accepting weak random number generator
 			internal[idx]++
 			val := internal[idx]
 			idxBytes := int642Bytes(idx)
 			valBytes := int642Bytes(val)
 			//fmt.Printf("Set %X -> %X\n", idxBytes, valBytes)
 			err := db.Set(idxBytes, valBytes)
-			b.Error(err)
+			if err != nil {
+				// require.NoError() is very expensive (according to profiler), so check manually
+				b.Fatal(b, err)
+			}
 		}
 
 		// Read something
 		{
-			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
+			idx := rand.Int63n(numItems) // nolint:gosec testing file, so accepting weak random number generator
 			valExp := internal[idx]
 			idxBytes := int642Bytes(idx)
 			valBytes, err := db.Get(idxBytes)
-			b.Error(err)
+			if err != nil {
+				// require.NoError() is very expensive (according to profiler), so check manually
+				b.Fatal(b, err)
+			}
 			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if valExp == 0 {
 				if !bytes.Equal(valBytes, nil) {

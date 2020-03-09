@@ -1,10 +1,46 @@
 package db
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	"sort"
 	"sync"
+
+	"github.com/google/btree"
 )
+
+const (
+	// The approximate number of items and children per B-tree node. Tuned with benchmarks.
+	bTreeDegree = 32
+
+	// Size of the channel buffer between traversal goroutine and iterator. Using an unbuffered
+	// channel causes two context switches per item sent, while buffering allows more work per
+	// context switch. Tuned with benchmarks.
+	chBufferSize = 64
+)
+
+// item is a btree.Item with byte slices as keys and values
+type item struct {
+	key   []byte
+	value []byte
+}
+
+// Less implements btree.Item.
+func (i *item) Less(other btree.Item) bool {
+	// this considers nil == []byte{}, but that's ok since we handle nil endpoints
+	// in iterators specially anyway
+	return bytes.Compare(i.key, other.(*item).key) == -1
+}
+
+// newKey creates a new key item
+func newKey(key []byte) *item {
+	return &item{key: key}
+}
+
+// newPair creates a new pair item
+func newPair(key, value []byte) *item {
+	return &item{key: key, value: value}
+}
 
 func init() {
 	registerDBCreator(MemDBBackend, func(name, dir string) (DB, error) {
@@ -15,13 +51,13 @@ func init() {
 var _ DB = (*MemDB)(nil)
 
 type MemDB struct {
-	mtx sync.Mutex
-	db  map[string][]byte
+	mtx   sync.Mutex
+	btree *btree.BTree
 }
 
 func NewMemDB() *MemDB {
 	database := &MemDB{
-		db: make(map[string][]byte),
+		btree: btree.New(bTreeDegree),
 	}
 	return database
 }
@@ -37,8 +73,11 @@ func (db *MemDB) Get(key []byte) ([]byte, error) {
 	defer db.mtx.Unlock()
 	key = nonNilBytes(key)
 
-	value := db.db[string(key)]
-	return value, nil
+	i := db.btree.Get(newKey(key))
+	if i != nil {
+		return i.(*item).value, nil
+	}
+	return nil, nil
 }
 
 // Implements DB.
@@ -47,8 +86,7 @@ func (db *MemDB) Has(key []byte) (bool, error) {
 	defer db.mtx.Unlock()
 	key = nonNilBytes(key)
 
-	_, ok := db.db[string(key)]
-	return ok, nil
+	return db.btree.Has(newKey(key)), nil
 }
 
 // Implements DB.
@@ -79,7 +117,7 @@ func (db *MemDB) SetNoLockSync(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
 
-	db.db[string(key)] = value
+	db.btree.ReplaceOrInsert(newPair(key, value))
 }
 
 // Implements DB.
@@ -109,7 +147,7 @@ func (db *MemDB) DeleteNoLock(key []byte) {
 func (db *MemDB) DeleteNoLockSync(key []byte) {
 	key = nonNilBytes(key)
 
-	delete(db.db, string(key))
+	db.btree.Delete(newKey(key))
 }
 
 // Implements DB.
@@ -127,9 +165,11 @@ func (db *MemDB) Print() error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	for key, value := range db.db {
-		fmt.Printf("[%X]:\t[%X]\n", []byte(key), value)
-	}
+	db.btree.Ascend(func(i btree.Item) bool {
+		item := i.(*item)
+		fmt.Printf("[%X]:\t[%X]\n", item.key, item.value)
+		return true
+	})
 	return nil
 }
 
@@ -140,15 +180,12 @@ func (db *MemDB) Stats() map[string]string {
 
 	stats := make(map[string]string)
 	stats["database.type"] = "memDB"
-	stats["database.size"] = fmt.Sprintf("%d", len(db.db))
+	stats["database.size"] = fmt.Sprintf("%d", db.btree.Len())
 	return stats
 }
 
 // Implements DB.
 func (db *MemDB) NewBatch() Batch {
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
-
 	return &memBatch{db, nil}
 }
 
@@ -160,8 +197,7 @@ func (db *MemDB) Iterator(start, end []byte) (Iterator, error) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	keys := db.getSortedKeys(start, end, false)
-	return newMemDBIterator(db, keys, start, end), nil
+	return newMemDBIterator(db.btree, start, end, false), nil
 }
 
 // Implements DB.
@@ -169,101 +205,133 @@ func (db *MemDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	keys := db.getSortedKeys(start, end, true)
-	return newMemDBIterator(db, keys, start, end), nil
+	return newMemDBIterator(db.btree, start, end, true), nil
 }
 
-// We need a copy of all of the keys.
-// Not the best, but probably not a bottleneck depending.
 type memDBIterator struct {
-	db    DB
-	cur   int
-	keys  []string
-	start []byte
-	end   []byte
+	ch     <-chan *item
+	cancel context.CancelFunc
+	item   *item
+	start  []byte
+	end    []byte
 }
 
 var _ Iterator = (*memDBIterator)(nil)
 
-// Keys is expected to be in reverse order for reverse iterators.
-func newMemDBIterator(db DB, keys []string, start, end []byte) *memDBIterator {
-	return &memDBIterator{
-		db:    db,
-		cur:   0,
-		keys:  keys,
-		start: start,
-		end:   end,
+func newMemDBIterator(bt *btree.BTree, start []byte, end []byte, reverse bool) *memDBIterator {
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *item, chBufferSize)
+	iter := &memDBIterator{
+		ch:     ch,
+		cancel: cancel,
+		start:  start,
+		end:    end,
 	}
-}
 
-// Implements Iterator.
-func (itr *memDBIterator) Domain() ([]byte, []byte) {
-	return itr.start, itr.end
-}
-
-// Implements Iterator.
-func (itr *memDBIterator) Valid() bool {
-	return 0 <= itr.cur && itr.cur < len(itr.keys)
-}
-
-// Implements Iterator.
-func (itr *memDBIterator) Next() {
-	itr.assertIsValid()
-	itr.cur++
-}
-
-// Implements Iterator.
-func (itr *memDBIterator) Key() []byte {
-	itr.assertIsValid()
-	return []byte(itr.keys[itr.cur])
-}
-
-// Implements Iterator.
-func (itr *memDBIterator) Value() []byte {
-	itr.assertIsValid()
-	key := []byte(itr.keys[itr.cur])
-	bytes, err := itr.db.Get(key)
-	if err != nil {
-		return nil
-	}
-	return bytes
-}
-
-func (itr *memDBIterator) Error() error {
-	return nil
-}
-
-// Implements Iterator.
-func (itr *memDBIterator) Close() {
-	itr.keys = nil
-	itr.db = nil
-}
-
-func (itr *memDBIterator) assertIsValid() {
-	if !itr.Valid() {
-		panic("memDBIterator is invalid")
-	}
-}
-
-//----------------------------------------
-// Misc.
-
-func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
-	keys := []string{}
-	for key := range db.db {
-		inDomain := IsKeyInDomain([]byte(key), start, end)
-		if inDomain {
-			keys = append(keys, key)
+	go func() {
+		// Because we use [start, end) for reverse ranges, while btree uses (start, end], we need
+		// the following variables to handle some reverse iteration conditions ourselves.
+		var (
+			skipEqual     []byte
+			abortLessThan []byte
+		)
+		visitor := func(i btree.Item) bool {
+			item := i.(*item)
+			if skipEqual != nil && bytes.Equal(item.key, skipEqual) {
+				skipEqual = nil
+				return true
+			}
+			if abortLessThan != nil && bytes.Compare(item.key, abortLessThan) == -1 {
+				return false
+			}
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- item:
+				return true
+			}
 		}
-	}
-	sort.Strings(keys)
-	if reverse {
-		nkeys := len(keys)
-		for i := 0; i < nkeys/2; i++ {
-			temp := keys[i]
-			keys[i] = keys[nkeys-i-1]
-			keys[nkeys-i-1] = temp
+		s := newKey(start)
+		e := newKey(end)
+		switch {
+		case start == nil && end == nil && !reverse:
+			bt.Ascend(visitor)
+		case start == nil && end == nil && reverse:
+			bt.Descend(visitor)
+		case end == nil && !reverse:
+			// must handle this specially, since nil is considered less than anything else
+			bt.AscendGreaterOrEqual(s, visitor)
+		case !reverse:
+			bt.AscendRange(s, e, visitor)
+		case end == nil:
+			// abort after start, since we use [start, end) while btree uses (start, end]
+			abortLessThan = s.key
+			bt.Descend(visitor)
+		default:
+			// skip end and abort after start, since we use [start, end) while btree uses (start, end]
+			skipEqual = e.key
+			abortLessThan = s.key
+			bt.DescendLessOrEqual(e, visitor)
 		}
+		close(ch)
+	}()
+
+	// prime the iterator with the first value, if any
+	if item, ok := <-ch; ok {
+		iter.item = item
 	}
-	return keys
+
+	return iter
+}
+
+// Close implements Iterator.
+func (i *memDBIterator) Close() {
+	i.cancel()
+	for range i.ch { // drain channel
+	}
+	i.item = nil
+}
+
+// Domain implements Iterator.
+func (i *memDBIterator) Domain() ([]byte, []byte) {
+	return i.start, i.end
+}
+
+// Valid implements Iterator.
+func (i *memDBIterator) Valid() bool {
+	return i.item != nil
+}
+
+// Next implements Iterator.
+func (i *memDBIterator) Next() {
+	item, ok := <-i.ch
+	switch {
+	case ok:
+		i.item = item
+	case i.item == nil:
+		panic("called Next() on invalid iterator")
+	default:
+		i.item = nil
+	}
+}
+
+// Error implements Iterator.
+func (i *memDBIterator) Error() error {
+	return nil // famous last words
+}
+
+// Key implements Iterator.
+func (i *memDBIterator) Key() []byte {
+	if i.item == nil {
+		panic("called Key() on invalid iterator")
+	}
+	return i.item.key
+}
+
+// Value implements Iterator.
+func (i *memDBIterator) Value() []byte {
+	if i.item == nil {
+		panic("called Value() on invalid iterator")
+	}
+	return i.item.value
 }
