@@ -1,6 +1,7 @@
 package txindex
 
 import (
+	"context"
 	"errors"
 
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -21,7 +22,7 @@ type TxIndexer interface {
 	Get(hash []byte) (*types.TxResult, error)
 
 	// Search allows you to query for transactions.
-	Search(q *query.Query) ([]*types.TxResult, error)
+	Search(ctx context.Context, q *query.Query) ([]*types.TxResult, error)
 }
 
 //----------------------------------------------------

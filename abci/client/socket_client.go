@@ -43,7 +43,7 @@ type socketClient struct {
 
 }
 
-func NewSocketClient(addr string, mustConnect bool) *socketClient {
+func NewSocketClient(addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
 		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),

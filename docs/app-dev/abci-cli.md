@@ -142,7 +142,7 @@ response.
 The server may be generic for a particular language, and we provide a
 [reference implementation in
 Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
-[list of other ABCI implementations](./ecosystem.md) for servers in
+[list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
@@ -192,7 +192,7 @@ Try running these commands:
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 2
 -> value: abc
 -> value.hex: 616263
 
@@ -206,7 +206,7 @@ Try running these commands:
 > query "def"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 3
 -> value: xyz
 -> value.hex: 78797A
 ```

@@ -39,6 +39,16 @@ func getHTTPClient() *client.HTTP {
 	return c
 }
 
+func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
+	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	c, err := client.NewHTTPWithTimeout(rpcAddr, "/websocket", timeout)
+	if err != nil {
+		panic(err)
+	}
+	c.SetLogger(log.TestingLogger())
+	return c
+}
+
 func getLocalClient() *client.Local {
 	return client.NewLocal(node)
 }
@@ -411,6 +421,18 @@ func TestTx(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestTxSearchWithTimeout(t *testing.T) {
+	// Get a client with a time-out of 10 secs.
+	timeoutClient := getHTTPClientWithTimeout(10)
+
+	// query using a compositeKey (see kvstore application)
+	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
+	require.Nil(t, err)
+	if len(result.Txs) == 0 {
+		t.Fatal("expected a lot of transactions")
 	}
 }
 

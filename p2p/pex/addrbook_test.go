@@ -17,6 +17,8 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// FIXME These tests should not rely on .(*addrBook) assertions
+
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
@@ -60,13 +62,13 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	// 0 addresses
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.saveToFile(fname)
+	book.Save()
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
-	assert.Zero(t, book.Size())
+	assert.True(t, book.Empty())
 
 	// 100 addresses
 	randAddrs := randNetAddressPairs(t, 100)
@@ -76,11 +78,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	}
 
 	assert.Equal(t, 100, book.Size())
-	book.saveToFile(fname)
+	book.Save()
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
 	assert.Equal(t, 100, book.Size())
 }
@@ -98,12 +100,8 @@ func TestAddrBookLookup(t *testing.T) {
 		src := addrSrc.src
 		book.AddAddress(addr, src)
 
-		ka := book.addrLookup[addr.ID]
-		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
-
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
-		}
+		ka := book.HasAddress(addr)
+		assert.True(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
 	}
 }
 
@@ -575,7 +573,7 @@ func deleteTempFile(fname string) {
 func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *addrBook, fname string) {
 	fname = createTempFileName("addrbook_test")
 
-	book = NewAddrBook(fname, true)
+	book = NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 
