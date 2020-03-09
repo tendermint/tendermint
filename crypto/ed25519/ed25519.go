@@ -29,14 +29,9 @@ const (
 // PrivKey implements crypto.PrivKey.
 type PrivKey []byte
 
-// Bytes marshals the privkey using amino encoding.
+// Bytes returns the privkey byte format.
 func (privKey PrivKey) Bytes() []byte {
-	bz, err := privKey.AminoMarshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return bz
+	return []byte(privKey)
 }
 
 // Sign produces a signature on the provided message.
@@ -53,12 +48,11 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 // PubKey gets the corresponding public key from the private key.
 func (privKey PrivKey) PubKey() crypto.PubKey {
-	privKeyBytes := privKey[:]
 	initialized := false
 	// If the latter 32 bytes of the privkey are all zero, compute the pubkey
 	// otherwise privkey is initialized and we can use the cached value inside
 	// of the private key.
-	for _, v := range privKeyBytes[32:] {
+	for _, v := range privKey[32:] {
 		if v != 0 {
 			initialized = true
 			break
@@ -69,7 +63,7 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
 
-	return PubKey(privKeyBytes[32:])
+	return PubKey(privKey[32:])
 }
 
 // Equals - you probably don't need to use this.
@@ -127,7 +121,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	return crypto.Address(tmhash.SumTruncated(pubKey))
 }
 
-// Bytes marshals the PubKey using amino encoding.
+// Bytes returns the PubKey byte format.
 func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
 }

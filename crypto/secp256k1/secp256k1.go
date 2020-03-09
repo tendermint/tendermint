@@ -120,7 +120,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	}
 
 	hasherSHA256 := sha256.New()
-	hasherSHA256.Write(pubKey[:]) // does not error
+	hasherSHA256.Write(pubKey) // does not error
 	sha := hasherSHA256.Sum(nil)
 
 	hasherRIPEMD160 := ripemd160.New()
@@ -128,7 +128,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	return crypto.Address(hasherRIPEMD160.Sum(nil))
 }
 
-// Bytes returns the pubkey marshalled with amino encoding.
+// Bytes returns the pubkey byte format.
 func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
 }
