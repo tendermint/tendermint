@@ -1,5 +1,29 @@
 # Changelog
 
+
+## v0.33.2
+
+*March 9, 2020*
+
+Special thanks to external contributors on this release: @antho1404, @michaelfig
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [examples/kvstore] [\#4509](https://github.com/tendermint/tendermint/pull/4509) ABCI query now returns the proper height
+- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Change `tendermint debug dump` sub-command archives filename's format (@melekes)
+- [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached.
+
+### BUG FIXES:
+
+- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Fix `tendermint debug kill` sub-command (@melekes)
+- [rpc] [\#3935](https://github.com/tendermint/tendermint/issues/3935) Create buffered subscriptions on `/subscribe` (@melekes)
+- [rpc] [\#4493](https://github.com/tendermint/tendermint/pull/4493) Keep the original subscription "id" field when new RPCs come in (@michaelfig)
+- [rpc] [\#4437](https://github.com/tendermint/tendermint/pull/4437) Fix tx_search pagination with ordered results (@erikgrinaker)
+- [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
+
+
 ## v0.33.1
 
 *Feburary 13, 2020*
