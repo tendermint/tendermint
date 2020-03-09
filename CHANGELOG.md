@@ -39,13 +39,13 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [lite2] [\#4470](https://github.com/tendermint/tendermint/issues/4470) Fix inconsistent header-validatorset pairing (@melekes)
 - [lite2] [\#4488](https://github.com/tendermint/tendermint/issues/4488) Allow local clock drift -10 sec. (@melekes)
 - [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Use `curve25519.X25519()` instead of `ScalarMult` (@erikgrinaker)
-- [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached (@alessio).
+- [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) **VerifyCommitX() functions should return as soon as +2/3 threshold is reached** (@alessio).
 
 ### BUG FIXES:
 
 - [cmd] [\#4303](https://github.com/tendermint/tendermint/issues/4303) Show useful error when Tendermint is not initialized (@melekes)
-- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Fix `tendermint debug kill` sub-command (@melekes)
-- [rpc] [\#3935](https://github.com/tendermint/tendermint/issues/3935) Create buffered subscriptions on `/subscribe` (@melekes)
+- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) **Fix `tendermint debug kill` sub-command** (@melekes)
+- [rpc] [\#3935](https://github.com/tendermint/tendermint/issues/3935) **Create buffered subscriptions on `/subscribe`** (@melekes)
 - [rpc] [\#4375](https://github.com/tendermint/tendermint/issues/4375) Stop searching for txs in `/tx_search` upon client timeout (@gterzian)
 - [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
 - [rpc] [\#4432](https://github.com/tendermint/tendermint/issues/4432) Fix `/tx_search` pagination with ordered results (@erikgrinaker)
