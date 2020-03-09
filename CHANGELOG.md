@@ -12,6 +12,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 - [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Change `tendermint debug dump` sub-command archives filename's format (@melekes)
+- [consensus] [\#3583](https://github.com/tendermint/tendermint/issues/3583) Reduce `non-deterministic signature` log noise (@tau3)
 - [examples/kvstore] [\#4507](https://github.com/tendermint/tendermint/issues/4507) ABCI query now returns the proper height (@erikgrinaker)
 - [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Use `curve25519.X25519()` instead of `ScalarMult` (@erikgrinaker)
 - [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) VerifyCommitX() functions should return as soon as +2/3 threashold is reached (@alessio).
