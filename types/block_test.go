@@ -37,7 +37,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
@@ -57,7 +57,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
@@ -120,7 +120,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
@@ -137,7 +137,7 @@ func TestBlockHashesTo(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
@@ -210,7 +210,7 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
@@ -241,7 +241,7 @@ func TestCommitValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			com := randCommit()
+			com := randCommit(time.Now())
 			tc.malleateCommit(com)
 			assert.Equal(t, tc.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -348,11 +348,11 @@ func TestMaxHeaderBytes(t *testing.T) {
 	assert.EqualValues(t, MaxHeaderBytes, int64(len(bz)))
 }
 
-func randCommit() *Commit {
+func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}
@@ -431,7 +431,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	assert.NoError(t, err)
 
 	chainID := voteSet.ChainID()
@@ -506,7 +506,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit()
+	commit := randCommit(time.Now())
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{

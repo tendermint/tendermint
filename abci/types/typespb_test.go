@@ -14,7 +14,6 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/tendermint/tendermint/crypto/merkle"
 	_ "github.com/tendermint/tendermint/libs/kv"
-	_ "github.com/tendermint/tendermint/types"
 	math "math"
 	math_rand "math/rand"
 	testing "testing"

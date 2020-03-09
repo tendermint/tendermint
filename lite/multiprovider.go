@@ -16,7 +16,7 @@ type multiProvider struct {
 }
 
 // NewMultiProvider returns a new provider which wraps multiple other providers.
-func NewMultiProvider(providers ...PersistentProvider) *multiProvider {
+func NewMultiProvider(providers ...PersistentProvider) PersistentProvider {
 	return &multiProvider{
 		logger:    log.NewNopLogger(),
 		providers: providers,

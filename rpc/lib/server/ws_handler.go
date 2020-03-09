@@ -92,7 +92,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := newWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
@@ -154,7 +154,7 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(
+func newWSConnection(
 	baseConn *websocket.Conn,
 	funcMap map[string]*RPCFunc,
 	cdc *amino.Codec,

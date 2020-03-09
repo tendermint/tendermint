@@ -74,7 +74,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	books := make([]*addrBook, N)
+	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
 
 	// create switches
@@ -404,7 +404,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	books := make([]*addrBook, N)
+	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
 
 	// create switches
@@ -631,7 +631,7 @@ func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 	return testCreatePeerWithConfig(dir, id, conf)
 }
 
-func createReactor(conf *ReactorConfig) (r *Reactor, book *addrBook) {
+func createReactor(conf *ReactorConfig) (r *Reactor, book AddrBook) {
 	// directory to store address book
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	if err != nil {
@@ -645,8 +645,9 @@ func createReactor(conf *ReactorConfig) (r *Reactor, book *addrBook) {
 	return
 }
 
-func teardownReactor(book *addrBook) {
-	err := os.RemoveAll(filepath.Dir(book.FilePath()))
+func teardownReactor(book AddrBook) {
+	// FIXME Shouldn't rely on .(*addrBook) assertion
+	err := os.RemoveAll(filepath.Dir(book.(*addrBook).FilePath()))
 	if err != nil {
 		panic(err)
 	}

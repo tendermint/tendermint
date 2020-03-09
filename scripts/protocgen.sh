@@ -7,5 +7,4 @@ for dir in $proto_dirs; do
   protoc -I. \
   --gocosmos_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc,paths=source_relative:. \
   $(find "${dir}" -name '*.proto')
-  # TODO: Add to docs why gogo_slick is being used
 done 
