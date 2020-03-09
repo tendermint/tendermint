@@ -27,8 +27,9 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  int32 total = 1;
-  bytes hash  = 2;
+  option (gogoproto.equal) = true;
+  int32 total              = 1;
+  bytes hash               = 2;
 }
 
 // BlockID
