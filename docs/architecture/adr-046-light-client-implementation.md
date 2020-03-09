@@ -2,32 +2,27 @@
 
 ## Changelog
 * 13-02-2020: Initial draft
+* 26-02-2020: Cross-checking the first header
+* 28-02-2020: Bisection algorithm details
 
 ## Context
 
 A `Client` struct represents a light client, connected to a single blockchain.
-As soon as it's started (via `Start`), it tries to update to the latest header
-(using bisection algorithm by default).
 
-Cleaning routine is also started to remove headers outside of trusting period.
-NOTE: since it's periodic, we still need to check header is not expired in
-`TrustedHeader`, `TrustedValidatorSet` methods (and others which are using the
-latest trusted header).
-
-The user has an option to manually verify headers using `VerifyHeader` and
-`VerifyHeaderAtHeight` methods. To avoid races, `UpdatePeriod(0)` needs to be
-passed when initializing the light client (it turns off the auto update).
+The user has an option to verify headers using `VerifyHeader` or
+`VerifyHeaderAtHeight` or `Update` methods. The latter method downloads the
+latest header from primary and compares it with the currently trusted one.
 
 ```go
 type Client interface {
-	// start and stop updating & cleaning goroutines
-	Start() error
-	Stop()
-	Cleanup() error
+	// verify new headers
+	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
+	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
+	Update(now time.Time) (*types.SignedHeader, error)
 
 	// get trusted headers & validators
-	TrustedHeader(height int64, now time.Time) (*types.SignedHeader, error)
-	TrustedValidatorSet(height int64, now time.Time) (*types.ValidatorSet, error)
+	TrustedHeader(height int64) (*types.SignedHeader, error)
+	TrustedValidatorSet(height int64) (valSet *types.ValidatorSet, heightUsed int64, err error)
 	LastTrustedHeight() (int64, error)
 	FirstTrustedHeight() (int64, error)
 
@@ -36,9 +31,7 @@ type Client interface {
 	Primary() provider.Provider
 	Witnesses() []provider.Provider
 
-	// verify new headers
-	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
-	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
+	Cleanup() error
 }
 ```
 
@@ -62,12 +55,17 @@ func NewClient(
 made to increase security by default. At least one witness is required,
 although, right now, the light client does not check that primary != witness.
 When cross-checking a new header with witnesses, minimum number of witnesses
-required to respond: 1.
+required to respond: 1. Note the very first header (`TrustOptions.Hash`) is
+also cross-checked with witnesses for additional security.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
-client does not have a header for height `X` and `TrustedHeader(X)` or
-`TrustedValidatorSet(X)` methods are called, it will download the header from
-primary provider and perform a backwards verification.
+client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
+`VerifyHeader(H#X)` methods are called, it will perform a backwards
+verification from the latest header back to the header at height `X`.
+
+`TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
+If some header is not there, an error will be returned indicating that
+verification is required.
 
 ```go
 type Provider interface {
@@ -124,6 +122,21 @@ func Verify(
 cases of adjacent and non-adjacent headers. In the former case, it compares the
 hashes directly (2/3+ signed transition). Otherwise, it verifies 1/3+
 (`trustLevel`) of trusted validators are still present in new validators.
+
+### Bisection algorithm details
+
+Non-recursive bisection algorithm was implemented despite the spec containing
+the recursive version. There are two major reasons:
+
+1) Constant memory consumption => no risk of getting OOM (Out-Of-Memory) exceptions;
+2) Faster finality (see Fig. 1).
+
+_Fig. 1: Differences between recursive and non-recursive bisections_
+
+![Fig. 1](./img/adr-046-fig1.png)
+
+Specification of the non-recursive bisection can be found
+[here](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md).
 
 ## Status
 

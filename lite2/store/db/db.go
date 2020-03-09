@@ -1,9 +1,11 @@
 package db
 
 import (
+	"encoding/binary"
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
@@ -14,9 +16,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	sizeKey = []byte("size")
+)
+
 type dbs struct {
 	db     dbm.DB
 	prefix string
+
+	mtx  sync.RWMutex
+	size uint16
 
 	cdc *amino.Codec
 }
@@ -28,11 +37,20 @@ type dbs struct {
 func New(db dbm.DB, prefix string) store.Store {
 	cdc := amino.NewCodec()
 	cryptoAmino.RegisterAmino(cdc)
-	return &dbs{db: db, prefix: prefix, cdc: cdc}
+
+	size := uint16(0)
+	bz, err := db.Get(sizeKey)
+	if err == nil && len(bz) > 0 {
+		size = unmarshalSize(bz)
+	}
+
+	return &dbs{db: db, prefix: prefix, cdc: cdc, size: size}
 }
 
 // SaveSignedHeaderAndValidatorSet persists SignedHeader and ValidatorSet to
 // the db.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
 	if sh.Height <= 0 {
 		panic("negative or zero height")
@@ -48,30 +66,54 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 		return errors.Wrap(err, "marshalling validator set")
 	}
 
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	b := s.db.NewBatch()
 	b.Set(s.shKey(sh.Height), shBz)
 	b.Set(s.vsKey(sh.Height), valSetBz)
+	b.Set(sizeKey, marshalSize(s.size+1))
+
 	err = b.WriteSync()
 	b.Close()
+
+	if err == nil {
+		s.size++
+	}
+
 	return err
 }
 
 // DeleteSignedHeaderAndValidatorSet deletes SignedHeader and ValidatorSet from
 // the db.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	b := s.db.NewBatch()
 	b.Delete(s.shKey(height))
 	b.Delete(s.vsKey(height))
+	b.Set(sizeKey, marshalSize(s.size-1))
+
 	err := b.WriteSync()
 	b.Close()
+
+	if err == nil {
+		s.size--
+	}
+
 	return err
 }
 
 // SignedHeader loads SignedHeader at the given height.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	if height <= 0 {
 		panic("negative or zero height")
@@ -91,6 +133,8 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 }
 
 // ValidatorSet loads ValidatorSet at the given height.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	if height <= 0 {
 		panic("negative or zero height")
@@ -110,6 +154,8 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 }
 
 // LastSignedHeaderHeight returns the last SignedHeader height stored.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	itr, err := s.db.ReverseIterator(
 		s.shKey(1),
@@ -133,6 +179,8 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 }
 
 // FirstSignedHeaderHeight returns the first SignedHeader height stored.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	itr, err := s.db.Iterator(
 		s.shKey(1),
@@ -155,12 +203,16 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	return -1, nil
 }
 
+// SignedHeaderAfter iterates over headers until it finds a header after one at
+// height. It returns ErrSignedHeaderNotFound if no such header exists.
+//
+// Safe for concurrent use by multiple goroutines.
 func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
-	itr, err := s.db.ReverseIterator(
+	itr, err := s.db.Iterator(
 		s.shKey(height+1),
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
@@ -178,7 +230,76 @@ func (s *dbs) SignedHeaderAfter(height int64) (*types.SignedHeader, error) {
 		itr.Next()
 	}
 
-	panic(fmt.Sprintf("no header after height %d. make sure height is not greater than latest existing height", height))
+	return nil, store.ErrSignedHeaderNotFound
+}
+
+// Prune prunes header & validator set pairs until there are only size pairs
+// left.
+//
+// Safe for concurrent use by multiple goroutines.
+func (s *dbs) Prune(size uint16) error {
+	// 1) Check how many we need to prune.
+	s.mtx.RLock()
+	sSize := s.size
+	s.mtx.RUnlock()
+
+	if sSize <= size { // nothing to prune
+		return nil
+	}
+	numToPrune := sSize - size
+
+	// 2) Iterate over headers and perform a batch operation.
+	itr, err := s.db.Iterator(
+		s.shKey(1),
+		append(s.shKey(1<<63-1), byte(0x00)),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	b := s.db.NewBatch()
+
+	pruned := 0
+	for itr.Valid() && numToPrune > 0 {
+		key := itr.Key()
+		_, height, ok := parseShKey(key)
+		if ok {
+			b.Delete(s.shKey(height))
+			b.Delete(s.vsKey(height))
+		}
+		itr.Next()
+		numToPrune--
+		pruned++
+	}
+
+	itr.Close()
+
+	err = b.WriteSync()
+	b.Close()
+	if err != nil {
+		return err
+	}
+
+	// 3) Update size.
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	s.size -= uint16(pruned)
+
+	if wErr := s.db.SetSync(sizeKey, marshalSize(s.size)); wErr != nil {
+		return errors.Wrap(wErr, "failed to persist size")
+	}
+
+	return nil
+}
+
+// Size returns the number of header & validator set pairs.
+//
+// Safe for concurrent use by multiple goroutines.
+func (s *dbs) Size() uint16 {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return s.size
 }
 
 func (s *dbs) shKey(height int64) []byte {
@@ -213,4 +334,14 @@ func parseShKey(key []byte) (prefix string, height int64, ok bool) {
 		return "", 0, false
 	}
 	return
+}
+
+func marshalSize(size uint16) []byte {
+	bs := make([]byte, 2)
+	binary.LittleEndian.PutUint16(bs, size)
+	return bs
+}
+
+func unmarshalSize(bz []byte) uint16 {
+	return binary.LittleEndian.Uint16(bz)
 }
