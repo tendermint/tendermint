@@ -15,7 +15,10 @@ latest header from primary and compares it with the currently trusted one.
 
 ```go
 type Client interface {
-	Cleanup() error
+	// verify new headers
+	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
+	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
+	Update(now time.Time) (*types.SignedHeader, error)
 
 	// get trusted headers & validators
 	TrustedHeader(height int64) (*types.SignedHeader, error)
@@ -28,10 +31,7 @@ type Client interface {
 	Primary() provider.Provider
 	Witnesses() []provider.Provider
 
-	// verify new headers
-	VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error)
-	VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error
-	Update(now time.Time) error
+	Cleanup() error
 }
 ```
 
