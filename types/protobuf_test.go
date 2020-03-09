@@ -135,8 +135,8 @@ func TestABCIEvidence(t *testing.T) {
 	assert.NoError(t, err)
 	ev := &DuplicateVoteEvidence{
 		PubKey: pubKey,
-		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
-		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
+		VoteA:  makeVote(t, val, chainID, 0, 10, 2, 1, blockID),
+		VoteB:  makeVote(t, val, chainID, 0, 10, 2, 1, blockID2),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,
