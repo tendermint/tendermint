@@ -73,17 +73,12 @@ func ExampleClient_Update() {
 	// monotonic component (see types/time/time.go) b) single instance is being
 	// run.
 	// https://github.com/tendermint/tendermint/issues/4489
-	err = c.Update(time.Now().Add(30 * time.Minute))
+	h, err := c.Update(time.Now().Add(30 * time.Minute))
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	h, err := c.TrustedHeader(0)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-
-	if h.Height > 2 {
+	if h != nil && h.Height > 2 {
 		fmt.Println("successful update")
 	} else {
 		fmt.Println("update failed")

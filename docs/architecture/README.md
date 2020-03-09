@@ -70,3 +70,5 @@ Note the context/background should be written in the present tense.
 - [ADR-047-Handling-Evidence-From-Light-Client](./adr-047-handling-evidence-from-light-client.md)
 - [ADR-051-Double-Signing-Risk-Reduction](./adr-051-double-signing-risk-reduction.md)
 - [ADR-052-Tendermint-Mode](./adr-052-tendermint-mode.md)
+- [ADR-053-State-Sync-Prototype](./adr-053-state-sync-prototype.md)
+- [ADR-054-crypto-encoding-2](./adr-054-crypto-encoding-2.md)

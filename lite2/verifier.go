@@ -23,12 +23,12 @@ var (
 // VerifyNonAdjacent verifies non-adjacent untrustedHeader against
 // trustedHeader. It ensures that:
 //
-//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
-//	b) untrustedHeader is valid;
+//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned)
+//	b) untrustedHeader is valid (if not, ErrInvalidHeader is returned)
 //	c) trustLevel ([1/3, 1]) of trustedHeaderVals (or trustedHeaderNextVals)
-//  signed correctly (if not, ErrNewValSetCantBeTrusted is returned);
-//	d) more than 2/3 of untrustedVals have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned);
+//  signed correctly (if not, ErrNewValSetCantBeTrusted is returned)
+//	d) more than 2/3 of untrustedVals have signed h2
+//    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are non-adjacent.
 func VerifyNonAdjacent(
 	chainID string,
@@ -49,7 +49,7 @@ func VerifyNonAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return err
+		return ErrInvalidHeader{err}
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
@@ -67,11 +67,11 @@ func VerifyNonAdjacent(
 	// Ensure that +2/3 of new validators signed correctly.
 	//
 	// NOTE: this should always be the last check because untrustedVals can be
-	// intentionaly made very large to DOS the light client. not the case for
+	// intentionally made very large to DOS the light client. not the case for
 	// VerifyAdjacent, where validator set is known in advance.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return err
+		return ErrInvalidHeader{err}
 	}
 
 	return nil
@@ -80,11 +80,11 @@ func VerifyNonAdjacent(
 // VerifyAdjacent verifies directly adjacent untrustedHeader against
 // trustedHeader. It ensures that:
 //
-//	a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned);
-//	b) untrustedHeader is valid;
-//	c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash;
-//	d) more than 2/3 of new validators (untrustedVals) have signed h2 (if not,
-//	   ErrNotEnoughVotingPowerSigned is returned);
+//  a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned)
+//  b) untrustedHeader is valid (if not, ErrInvalidHeader is returned)
+//  c) untrustedHeader.ValidatorsHash equals trustedHeader.NextValidatorsHash
+//  d) more than 2/3 of new validators (untrustedVals) have signed h2
+//    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are adjacent.
 func VerifyAdjacent(
 	chainID string,
@@ -103,7 +103,7 @@ func VerifyAdjacent(
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
-		return err
+		return ErrInvalidHeader{err}
 	}
 
 	// Check the validator hashes are the same
@@ -118,7 +118,7 @@ func VerifyAdjacent(
 	// Ensure that +2/3 of new validators signed correctly.
 	if err := untrustedVals.VerifyCommit(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
 		untrustedHeader.Commit); err != nil {
-		return err
+		return ErrInvalidHeader{err}
 	}
 
 	return nil
@@ -199,4 +199,35 @@ func ValidateTrustLevel(lvl tmmath.Fraction) error {
 func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time.Time) bool {
 	expirationTime := h.Time.Add(trustingPeriod)
 	return !expirationTime.After(now)
+}
+
+// VerifyBackwards verifies an untrusted header with a height one less than
+// that of an adjacent trusted header. It ensures that:
+//
+// 	a) untrusted header is valid
+//  b) untrusted header has a time before the trusted header
+//  c) that the LastBlockID hash of the trusted header is the same as the hash
+//  of the trusted header
+//
+//  For any of these cases ErrInvalidHeader is returned.
+func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
+	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
+		return ErrInvalidHeader{err}
+	}
+
+	if !untrustedHeader.Time.Before(trustedHeader.Time) {
+		return ErrInvalidHeader{
+			errors.Errorf("expected older header time %v to be before new header time %v",
+				untrustedHeader.Time,
+				trustedHeader.Time)}
+	}
+
+	if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
+		return ErrInvalidHeader{
+			errors.Errorf("older header hash %X does not match trusted header's last block %X",
+				untrustedHeader.Hash(),
+				trustedHeader.LastBlockID.Hash)}
+	}
+
+	return nil
 }
