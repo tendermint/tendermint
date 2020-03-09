@@ -460,6 +460,19 @@ func testDBBatch(t *testing.T, backend BackendType) {
 	// it should be possible to re-close the batch
 	batch.Close()
 
+	// it should also be possible to reuse a closed batch as if it were a new one
+	batch.Set([]byte("c"), []byte{3})
+	err = batch.Write()
+	require.NoError(t, err)
+	assertKeyValues(t, db, map[string][]byte{"a": {1}, "b": {2}, "c": {3}})
+	batch.Close()
+
+	batch.Delete([]byte("c"))
+	err = batch.WriteSync()
+	require.NoError(t, err)
+	assertKeyValues(t, db, map[string][]byte{"a": {1}, "b": {2}})
+	batch.Close()
+
 	// batches should also write changes in order
 	batch = db.NewBatch()
 	batch.Delete([]byte("a"))
