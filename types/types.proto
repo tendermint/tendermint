@@ -9,20 +9,20 @@ import "third_party/proto/gogoproto/gogo.proto";
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = false;
   option (gogoproto.goproto_enum_prefix)   = false;
-  BlockdIDFlagUnknown                      = 0;
-  BlockIDFlagAbsent                        = 1;
-  BlockIDFlagCommit                        = 2;
-  BlockIDFlagNil                           = 3;
+  BLOCKD_ID_FLAG_UNKNOWN                   = 0;
+  BLOCK_ID_FLAG_ABSENT = 1 [(gogoproto.enumvalue_customname) = "BlockIDFlagAbsent"];
+  BLOCK_ID_FLAG_COMMIT = 2 [(gogoproto.enumvalue_customname) = "BlockIDFlagCommit"];
+  BLOCK_ID_FLAG_NIL    = 3 [(gogoproto.enumvalue_customname) = "BlockIDFlagNil"];
 }
 
 // SignedMsgType is a type of signed message in the consensus.
 enum SignedMsgType {
   option (gogoproto.goproto_enum_stringer) = false;
   option (gogoproto.goproto_enum_prefix)   = false;
-  SignedMsgTypeUnknown                     = 0;
-  PrevoteType                              = 1;
-  PrecommitType                            = 2;
-  ProposalType                             = 3;
+  SIGNED_MSG_TYPE_UNKNOWN                  = 0;
+  PREVOTE_TYPE                             = 1 [(gogoproto.enumvalue_customname) = "PrevoteType"];
+  PRECOMMIT_TYPE                           = 2 [(gogoproto.enumvalue_customname) = "PrecommitType"];
+  PROPOSAL_TYPE                            = 3 [(gogoproto.enumvalue_customname) = "ProposalType"];
 }
 
 // PartsetHeader
