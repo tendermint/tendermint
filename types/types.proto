@@ -98,7 +98,11 @@ message Data {
   // This means that block.AppHash does not include these txs.
   bytes Txs = 1 [(gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Txs"];
   // Volatile
-  bytes hash = 2 [(gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"];
+  bytes hash = 2 [
+    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
+    (gogoproto.nullable)   = false,
+    (gogoproto.customname) = "hash"
+  ];
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for
@@ -126,7 +130,7 @@ message DuplicateEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types.Evidence";
+  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types.EvidenceI";
   oneof sum {
     DuplicateEvidence duplicate_vote_evidence = 1;
   }
@@ -142,8 +146,8 @@ message EvidenceData {
   ];
 }
 
-message Block {
-  Header       header   = 1;
-  Data         data     = 2;
-  EvidenceData evidence = 3;
-}
+// message Block {
+//   Header       header   = 1;
+//   Data         data     = 2;
+//   EvidenceData evidence = 3;
+// }

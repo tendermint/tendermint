@@ -55,7 +55,7 @@ func (err *ErrEvidenceOverflow) Error() string {
 //-------------------------------------------
 
 // Evidence represents any provable malicious activity by a validator
-type Evidence interface {
+type EvidenceI interface {
 	Height() int64                                     // height of the equivocation
 	Time() time.Time                                   // time of the equivocation
 	Address() []byte                                   // address of the equivocating validator
@@ -103,7 +103,7 @@ type DuplicateVoteEvidence struct {
 	VoteB  *Vote
 }
 
-var _ Evidence = &DuplicateVoteEvidence{}
+var _ EvidenceI = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
@@ -252,7 +252,7 @@ type MockRandomEvidence struct {
 	randBytes []byte
 }
 
-var _ Evidence = &MockRandomEvidence{}
+var _ EvidenceI = &MockRandomEvidence{}
 
 // UNSTABLE
 func NewMockRandomEvidence(height int64, eTime time.Time, address []byte, randBytes []byte) MockRandomEvidence {
@@ -275,7 +275,7 @@ type MockEvidence struct {
 	EvidenceAddress []byte
 }
 
-var _ Evidence = &MockEvidence{}
+var _ EvidenceI = &MockEvidence{}
 
 // UNSTABLE
 func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) MockEvidence {
