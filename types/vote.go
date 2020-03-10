@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
@@ -40,19 +41,6 @@ func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflic
 
 // Address is hex bytes.
 type Address = crypto.Address
-
-// Vote represents a prevote, precommit, or commit vote from validators for
-// consensus.
-// type Vote struct {
-// 	Type             SignedMsgType `json:"type"`
-// 	Height           int64         `json:"height"`
-// 	Round            int           `json:"round"`
-// 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-// 	Timestamp        time.Time     `json:"timestamp"`
-// 	ValidatorAddress Address       `json:"validator_address"`
-// 	ValidatorIndex   int           `json:"validator_index"`
-// 	Signature        []byte        `json:"signature"`
-// }
 
 // CommitSig converts the Vote to a CommitSig.
 func (vote *Vote) CommitSig() CommitSig {
@@ -91,33 +79,33 @@ func (vote *Vote) Copy() *Vote {
 	return &voteCopy
 }
 
-// func (vote *Vote) String() string {
-// 	if vote == nil {
-// 		return nilVoteStr
-// 	}
+func (vote *Vote) String() string {
+	if vote == nil {
+		return nilVoteStr
+	}
 
-// 	var typeString string
-// 	switch vote.Type {
-// 	case PrevoteType:
-// 		typeString = "Prevote"
-// 	case PrecommitType:
-// 		typeString = "Precommit"
-// 	default:
-// 		panic("Unknown vote type")
-// 	}
+	var typeString string
+	switch vote.Type {
+	case PrevoteType:
+		typeString = "Prevote"
+	case PrecommitType:
+		typeString = "Precommit"
+	default:
+		panic("Unknown vote type")
+	}
 
-// 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-// 		vote.ValidatorIndex,
-// 		tmbytes.Fingerprint(vote.ValidatorAddress),
-// 		vote.Height,
-// 		vote.Round,
-// 		vote.Type,
-// 		typeString,
-// 		tmbytes.Fingerprint(vote.BlockID.Hash),
-// 		tmbytes.Fingerprint(vote.Signature),
-// 		CanonicalTime(vote.Timestamp),
-// 	)
-// }
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+		vote.ValidatorIndex,
+		tmbytes.Fingerprint(vote.ValidatorAddress),
+		vote.Height,
+		vote.Round,
+		vote.Type,
+		typeString,
+		tmbytes.Fingerprint(vote.BlockID.Hash),
+		tmbytes.Fingerprint(vote.Signature),
+		CanonicalTime(vote.Timestamp),
+	)
+}
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {

@@ -109,10 +109,11 @@ message Data {
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 message Vote {
-  SignedMsgType type     = 1;
-  int64         height   = 2;
-  int32         round    = 3;
-  BlockID       block_id = 4
+  option (gogoproto.stringer) = false;
+  SignedMsgType type          = 1;
+  int64         height        = 2;
+  int32         round         = 3;
+  BlockID       block_id      = 4
       [(gogoproto.customname) = 'BlockID', (gogoproto.nullable) = false];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
