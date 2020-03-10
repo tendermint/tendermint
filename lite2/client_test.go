@@ -931,7 +931,6 @@ func defaultClient() *Client {
 		largeFullNode,
 		[]provider.Provider{largeFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
 	return c
@@ -970,7 +969,6 @@ func BenchmarkClientInitialization(b *testing.B) {
 			fullNode,
 			[]provider.Provider{fullNode},
 			dbs.New(dbm.NewMemDB(), chainID),
-			UpdatePeriod(0),
 			Logger(log.TestingLogger()),
 			MaxRetryAttempts(1),
 		)
@@ -990,7 +988,6 @@ func BenchmarkBackwards(b *testing.B) {
 		largeFullNode,
 		[]provider.Provider{largeFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 	)
 	untrustedHeader, _, err := c.fetchHeaderAndValsAtHeight(1)
