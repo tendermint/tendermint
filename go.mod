@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200102211924-4bcbc698314f
-	github.com/Workiva/go-datastructures v1.0.51
+	github.com/Workiva/go-datastructures v1.0.52
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/fortytw2/leaktest v1.3.0
