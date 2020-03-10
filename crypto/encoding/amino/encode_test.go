@@ -17,6 +17,8 @@ import (
 
 type byter interface {
 	Bytes() []byte
+	AminoMarshal() ([]byte, error)
+	AminoUnmarshal([]byte) error
 }
 
 func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
@@ -25,7 +27,9 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	require.Nil(t, err, "%+v", err)
 	if byterSrc, ok := src.(byter); ok {
 		// Make sure this is compatible with current (Bytes()) encoding.
-		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
+		aminoBytes, err := byterSrc.AminoMarshal()
+		assert.NoError(t, err)
+		assert.Equal(t, aminoBytes, bz, "Amino binary vs Bytes() mismatch")
 	}
 	// Make sure we have the expected length.
 	assert.Equal(t, size, len(bz), "Amino binary size mismatch")

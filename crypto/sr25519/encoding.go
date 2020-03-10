@@ -41,7 +41,7 @@ func (privKey PrivKey) AminoMarshal() ([]byte, error) {
 	lbz := []byte{lengthPrivKeySr25519}
 	p := len(prefixPrivKeySr25519)
 	l := len(lbz)
-	bz := make([]byte, p+l+len(privKey[:]))
+	bz := make([]byte, p+l+len(privKey))
 
 	copy(bz[:p], prefixPrivKeySr25519)
 	copy(bz[p:p+l], lbz)

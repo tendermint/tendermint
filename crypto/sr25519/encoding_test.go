@@ -35,7 +35,7 @@ func TestPrivKeySr25519MarshalBinary(t *testing.T) {
 		bz, err := privkey.AminoMarshal()
 		require.NoError(t, err)
 		require.Equal(t, tc.out, fmt.Sprintf("%X", bz))
-		require.Equal(t, tc.out, fmt.Sprintf("%X", privkey.Bytes()))
+		require.Equal(t, tc.in, fmt.Sprintf("%X", privkey.Bytes()))
 	}
 }
 
@@ -108,7 +108,7 @@ func TestPubKeySr25519MarshalBinary(t *testing.T) {
 		bz, err := pubkey.AminoMarshal()
 		require.NoError(t, err)
 		require.Equal(t, tc.out, fmt.Sprintf("%X", bz))
-		require.Equal(t, tc.out, fmt.Sprintf("%X", pubkey.Bytes()))
+		require.Equal(t, tc.in, fmt.Sprintf("%X", pubkey.Bytes()))
 	}
 }
 
