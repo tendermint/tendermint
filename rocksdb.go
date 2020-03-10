@@ -164,8 +164,7 @@ func (db *RocksDB) Stats() map[string]string {
 
 // NewBatch implements DB.
 func (db *RocksDB) NewBatch() Batch {
-	batch := gorocksdb.NewWriteBatch()
-	return &rocksDBBatch{db, batch}
+	return newRocksDBBatch(db)
 }
 
 // Iterator implements DB.

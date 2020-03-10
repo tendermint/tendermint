@@ -169,10 +169,7 @@ func (bdb *BoltDB) Stats() map[string]string {
 
 // NewBatch implements DB.
 func (bdb *BoltDB) NewBatch() Batch {
-	return &boltDBBatch{
-		ops: nil,
-		db:  bdb,
-	}
+	return newBoltDBBatch(bdb)
 }
 
 // WARNING: Any concurrent writes or reads will block until the iterator is

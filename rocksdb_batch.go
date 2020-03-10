@@ -11,35 +11,59 @@ type rocksDBBatch struct {
 
 var _ Batch = (*rocksDBBatch)(nil)
 
+func newRocksDBBatch(db *RocksDB) *rocksDBBatch {
+	return &rocksDBBatch{
+		db:    db,
+		batch: gorocksdb.NewWriteBatch(),
+	}
+}
+
+func (b *rocksDBBatch) assertOpen() {
+	if b.batch == nil {
+		panic("batch has been written or closed")
+	}
+}
+
 // Set implements Batch.
-func (mBatch *rocksDBBatch) Set(key, value []byte) {
-	mBatch.batch.Put(key, value)
+func (b *rocksDBBatch) Set(key, value []byte) {
+	b.assertOpen()
+	b.batch.Put(key, value)
 }
 
 // Delete implements Batch.
-func (mBatch *rocksDBBatch) Delete(key []byte) {
-	mBatch.batch.Delete(key)
+func (b *rocksDBBatch) Delete(key []byte) {
+	b.assertOpen()
+	b.batch.Delete(key)
 }
 
 // Write implements Batch.
-func (mBatch *rocksDBBatch) Write() error {
-	err := mBatch.db.db.Write(mBatch.db.wo, mBatch.batch)
+func (b *rocksDBBatch) Write() error {
+	b.assertOpen()
+	err := b.db.db.Write(b.db.wo, b.batch)
 	if err != nil {
 		return err
 	}
+	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
+	b.Close()
 	return nil
 }
 
-// WriteSync mplements Batch.
-func (mBatch *rocksDBBatch) WriteSync() error {
-	err := mBatch.db.db.Write(mBatch.db.woSync, mBatch.batch)
+// WriteSync implements Batch.
+func (b *rocksDBBatch) WriteSync() error {
+	b.assertOpen()
+	err := b.db.db.Write(b.db.woSync, b.batch)
 	if err != nil {
 		return err
 	}
+	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
+	b.Close()
 	return nil
 }
 
 // Close implements Batch.
-func (mBatch *rocksDBBatch) Close() {
-	mBatch.batch.Destroy()
+func (b *rocksDBBatch) Close() {
+	if b.batch != nil {
+		b.batch.Destroy()
+		b.batch = nil
+	}
 }

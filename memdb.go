@@ -150,7 +150,7 @@ func (db *MemDB) Stats() map[string]string {
 
 // NewBatch implements DB.
 func (db *MemDB) NewBatch() Batch {
-	return &memDBBatch{db, nil}
+	return newMemDBBatch(db)
 }
 
 // Iterator implements DB.

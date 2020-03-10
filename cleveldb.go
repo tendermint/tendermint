@@ -159,8 +159,7 @@ func (db *CLevelDB) Stats() map[string]string {
 
 // NewBatch implements DB.
 func (db *CLevelDB) NewBatch() Batch {
-	batch := levigo.NewWriteBatch()
-	return &cLevelDBBatch{db, batch}
+	return newCLevelDBBatch(db)
 }
 
 // Iterator implements DB.

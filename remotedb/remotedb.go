@@ -98,10 +98,7 @@ func (rd *RemoteDB) ReverseIterator(start, end []byte) (db.Iterator, error) {
 }
 
 func (rd *RemoteDB) NewBatch() db.Batch {
-	return &batch{
-		db:  rd,
-		ops: nil,
-	}
+	return newBatch(rd)
 }
 
 // TODO: Implement Print when db.DB implements a method

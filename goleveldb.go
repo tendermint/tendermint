@@ -153,8 +153,7 @@ func (db *GoLevelDB) Stats() map[string]string {
 
 // NewBatch implements DB.
 func (db *GoLevelDB) NewBatch() Batch {
-	batch := new(leveldb.Batch)
-	return &goLevelDBBatch{db, batch}
+	return newGoLevelDBBatch(db)
 }
 
 // Iterator implements DB.

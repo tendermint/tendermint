@@ -44,7 +44,7 @@ type DB interface {
 	// Closes the connection.
 	Close() error
 
-	// Creates a batch for atomic updates.
+	// Creates a batch for atomic updates. The caller must call Batch.Close.
 	NewBatch() Batch
 
 	// For debugging
@@ -54,24 +54,31 @@ type DB interface {
 	Stats() map[string]string
 }
 
-//----------------------------------------
-// Batch
-
 // Batch Close must be called when the program no longer needs the object.
 type Batch interface {
 	SetDeleter
+
+	// Write writes the batch, possibly without flushing to disk. Only Close() can be called after,
+	// other methods will panic.
 	Write() error
+
+	// WriteSync writes the batch and flushes it to disk. Only Close() can be called after, other
+	// methods will panic.
 	WriteSync() error
+
+	// Close closes the batch. It is idempotent, but any other calls afterwards will panic.
 	Close()
 }
 
 type SetDeleter interface {
-	Set(key, value []byte) // CONTRACT: key, value readonly []byte
-	Delete(key []byte)     // CONTRACT: key readonly []byte
-}
+	// Set sets a key/value pair.
+	// CONTRACT: key, value readonly []byte
+	Set(key, value []byte)
 
-//----------------------------------------
-// Iterator
+	// Delete deletes a key/value pair.
+	// CONTRACT: key readonly []byte
+	Delete(key []byte)
+}
 
 /*
 	Usage:

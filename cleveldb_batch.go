@@ -10,33 +10,59 @@ type cLevelDBBatch struct {
 	batch *levigo.WriteBatch
 }
 
+func newCLevelDBBatch(db *CLevelDB) *cLevelDBBatch {
+	return &cLevelDBBatch{
+		db:    db,
+		batch: levigo.NewWriteBatch(),
+	}
+}
+
+func (b *cLevelDBBatch) assertOpen() {
+	if b.batch == nil {
+		panic("batch has been written or closed")
+	}
+}
+
 // Set implements Batch.
 func (b *cLevelDBBatch) Set(key, value []byte) {
-	b.batch.Put(key, value)
+	b.assertOpen()
+	b.batch.Put(nonNilBytes(key), nonNilBytes(value))
 }
 
 // Delete implements Batch.
 func (b *cLevelDBBatch) Delete(key []byte) {
-	b.batch.Delete(key)
+	b.assertOpen()
+	b.batch.Delete(nonNilBytes(key))
 }
 
 // Write implements Batch.
 func (b *cLevelDBBatch) Write() error {
-	if err := b.db.db.Write(b.db.wo, b.batch); err != nil {
+	b.assertOpen()
+	err := b.db.db.Write(b.db.wo, b.batch)
+	if err != nil {
 		return err
 	}
+	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
+	b.Close()
 	return nil
 }
 
 // WriteSync implements Batch.
 func (b *cLevelDBBatch) WriteSync() error {
-	if err := b.db.db.Write(b.db.woSync, b.batch); err != nil {
+	b.assertOpen()
+	err := b.db.db.Write(b.db.woSync, b.batch)
+	if err != nil {
 		return err
 	}
+	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
+	b.Close()
 	return nil
 }
 
 // Close implements Batch.
 func (b *cLevelDBBatch) Close() {
-	b.batch.Close()
+	if b.batch != nil {
+		b.batch.Close()
+		b.batch = nil
+	}
 }
