@@ -12,12 +12,15 @@ import (
 //------------------------------------------------------
 // blockstore
 
-// BlockStoreRPC is the block store interface used by the RPC.
-type BlockStoreRPC interface {
+// BlockStore defines the interface used by the ConsensusState.
+type BlockStore interface {
 	Height() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
+
+	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+
 	LoadBlockByHash(hash []byte) *types.Block
 	LoadBlockPart(height int64, index int) *types.Part
 
@@ -25,13 +28,7 @@ type BlockStoreRPC interface {
 	LoadSeenCommit(height int64) *types.Commit
 }
 
-// BlockStore defines the BlockStore interface used by the ConsensusState.
-type BlockStore interface {
-	BlockStoreRPC
-	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-}
-
-//-----------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // evidence pool
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.

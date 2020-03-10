@@ -3,6 +3,7 @@ package client_test
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -31,6 +32,16 @@ import (
 func getHTTPClient() *client.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
+	c.SetLogger(log.TestingLogger())
+	return c
+}
+
+func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
+	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	c, err := client.NewHTTPWithTimeout(rpcAddr, "/websocket", timeout)
 	if err != nil {
 		panic(err)
 	}
@@ -413,42 +424,61 @@ func TestTx(t *testing.T) {
 	}
 }
 
-func TestTxSearch(t *testing.T) {
-	// first we broadcast a tx
-	c := getHTTPClient()
-	_, _, tx := MakeTxKV()
-	bres, err := c.BroadcastTxCommit(tx)
+func TestTxSearchWithTimeout(t *testing.T) {
+	// Get a client with a time-out of 10 secs.
+	timeoutClient := getHTTPClientWithTimeout(10)
+
+	// query using a compositeKey (see kvstore application)
+	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
 	require.Nil(t, err)
+	if len(result.Txs) == 0 {
+		t.Fatal("expected a lot of transactions")
+	}
+}
 
-	txHeight := bres.Height
-	txHash := bres.Hash
+func TestTxSearch(t *testing.T) {
+	c := getHTTPClient()
 
+	// first we broadcast a few txs
+	for i := 0; i < 10; i++ {
+		_, _, tx := MakeTxKV()
+		_, err := c.BroadcastTxCommit(tx)
+		require.NoError(t, err)
+	}
+
+	// since we're not using an isolated test server, we'll have lingering transactions
+	// from other tests as well
+	result, err := c.TxSearch("tx.height >= 0", true, 1, 100, "asc")
+	require.NoError(t, err)
+	txCount := len(result.Txs)
+
+	// pick out the last tx to have something to search for in tests
+	find := result.Txs[len(result.Txs)-1]
 	anotherTxHash := types.Tx("a different tx").Hash()
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
 		// now we query for the tx.
-		// since there's only one tx, we know index=0.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30, "asc")
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, 1, 30, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
+		require.Equal(t, find.Hash, result.Txs[0].Hash)
 
 		ptx := result.Txs[0]
-		assert.EqualValues(t, txHeight, ptx.Height)
-		assert.EqualValues(t, tx, ptx.Tx)
+		assert.EqualValues(t, find.Height, ptx.Height)
+		assert.EqualValues(t, find.Tx, ptx.Tx)
 		assert.Zero(t, ptx.Index)
 		assert.True(t, ptx.TxResult.IsOK())
-		assert.EqualValues(t, txHash, ptx.Hash)
+		assert.EqualValues(t, find.Hash, ptx.Hash)
 
 		// time to verify the proof
-		proof := ptx.Proof
-		if assert.EqualValues(t, tx, proof.Data) {
-			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
+		if assert.EqualValues(t, find.Tx, ptx.Proof.Data) {
+			assert.NoError(t, ptx.Proof.Proof.Verify(ptx.Proof.RootHash, find.Hash))
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30, "asc")
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, 1, 30, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
@@ -476,12 +506,7 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
-		// broadcast another transaction to make sure we have at least two.
-		_, _, tx2 := MakeTxKV()
-		_, err = c.BroadcastTxCommit(tx2)
-		require.Nil(t, err)
-
-		// chech sorting
+		// check sorting
 		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
@@ -495,6 +520,33 @@ func TestTxSearch(t *testing.T) {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
+
+		// check pagination
+		var (
+			seen      = map[int64]bool{}
+			maxHeight int64
+			perPage   = 3
+			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
+		)
+		for page := 1; page <= pages; page++ {
+			result, err = c.TxSearch("tx.height >= 1", false, page, perPage, "asc")
+			require.NoError(t, err)
+			if page < pages {
+				require.Len(t, result.Txs, perPage)
+			} else {
+				require.LessOrEqual(t, len(result.Txs), perPage)
+			}
+			require.Equal(t, txCount, result.TotalCount)
+			for _, tx := range result.Txs {
+				require.False(t, seen[tx.Height],
+					"Found duplicate height %v in page %v", tx.Height, page)
+				require.Greater(t, tx.Height, maxHeight,
+					"Found decreasing height %v (max seen %v) in page %v", tx.Height, maxHeight, page)
+				seen[tx.Height] = true
+				maxHeight = tx.Height
+			}
+		}
+		require.Len(t, seen, txCount)
 	}
 }
 

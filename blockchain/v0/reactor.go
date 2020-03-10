@@ -41,7 +41,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, int)
+	SwitchToConsensus(sm.State, uint64)
 }
 
 type peerError struct {
@@ -214,7 +214,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
 
-	blocksSynced := 0
+	blocksSynced := uint64(0)
 
 	chainID := bcR.initialState.ChainID
 	state := bcR.initialState

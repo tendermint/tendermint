@@ -2571,7 +2571,7 @@ func (m *PartSetHeader) GetHash() []byte {
 // Validator
 type Validator struct {
 	Address []byte `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	//PubKey pub_key = 2 [(gogoproto.nullable)=false];
+	// PubKey pub_key = 2 [(gogoproto.nullable)=false];
 	Power                int64    `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

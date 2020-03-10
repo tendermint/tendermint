@@ -77,28 +77,13 @@ $(PROTOBUF):
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
 .PHONY: protobuf
 
-buf: protoc-gen-buf-check-breaking protoc-gen-buf-check-lint
+buf: 
 	@echo "Installing buf..."
 	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/buf" && \
-	chmod +x "${BIN}/buf"
+    "https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/buf-$(UNAME_S)-$(UNAME_M)" \
+    -o "$(BIN)/buf" && \
+	chmod +x "$(BIN)/buf"
 .PHONY: buf
-
-protoc-gen-buf-check-breaking:
-	@echo "Installing protoc-gen-buf-check-breaking..."
-	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-breaking-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/protoc-gen-buf-check-breaking" && \
-	chmod +x "${BIN}/protoc-gen-buf-check-breaking"
-
-protoc-gen-buf-check-lint:
-	@echo "Installing protoc-gen-buf-check-lint..."
-	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-lint-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/protoc-gen-buf-check-lint" && \
-	chmod +x "${BIN}/protoc-gen-buf-check-lint"
-.PHONY: protoc-gen-buf-check-lint
 
 goodman: $(GOODMAN)
 $(GOODMAN):
