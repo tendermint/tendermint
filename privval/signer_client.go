@@ -71,18 +71,18 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil, err
+		return nil, errors.Wrap(err, "send")
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil, errors.New("response != PubKeyResponse")
+		return nil, errors.Errorf("unexpected response type %T", response)
 	}
 
 	if pubKeyResp.Error != nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil, fmt.Errorf("failed to get private validator's public key, %w", pubKeyResp.Error)
+		return nil, fmt.Errorf("remote error: %w", pubKeyResp.Error)
 	}
 
 	return pubKeyResp.PubKey, nil

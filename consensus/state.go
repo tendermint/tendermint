@@ -1663,7 +1663,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 
 			pv, err := cs.privValidator.GetPubKey()
 			if err != nil {
-				return false, err
+				return false, errors.Wrap(err, "can't get pubkey")
 			}
 
 			addr := pv.Address()
@@ -1867,7 +1867,7 @@ func (cs *State) signVote(
 
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 	addr := pv.Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
