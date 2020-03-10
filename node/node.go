@@ -619,7 +619,7 @@ func NewNode(config *cfg.Config,
 
 	pubKey, err := privValidator.GetPubKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
