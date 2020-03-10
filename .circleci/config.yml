@@ -12,7 +12,7 @@ jobs:
       - run:
           name: test
           command: |
-            make test
+            make test-all
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
