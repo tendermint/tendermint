@@ -476,7 +476,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
 				val, err := vals[vi].GetPubKey()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				addr := val.Address()
 				vote := &Vote{
 					ValidatorAddress: addr,

@@ -333,9 +333,9 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		pv, err := css[i].privValidator.GetPubKey()
+		pubKey, err := css[i].privValidator.GetPubKey()
 		require.NoError(t, err)
-		addr := pv.Address()
+		addr := pubKey.Address()
 		activeVals[string(addr)] = struct{}{}
 	}
 

@@ -925,7 +925,8 @@ func (cs *State) enterPropose(height int64, round int) {
 	// if not a validator, we're done
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		logger.Error("could not find pubkey for this validator")
+		logger.Error("error on retrival of pubkey", "err", err)
+		return
 	}
 	address := pv.Address()
 	if !cs.Validators.HasAddress(address) {

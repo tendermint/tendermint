@@ -67,6 +67,7 @@ func (sc *SignerClient) Ping() error {
 }
 
 // GetPubKey retrieves a public key from a remote signer
+// returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {

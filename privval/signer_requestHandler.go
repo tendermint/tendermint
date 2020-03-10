@@ -3,6 +3,8 @@ package privval
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -20,7 +22,7 @@ func DefaultValidationRequestHandler(
 		var p crypto.PubKey
 		p, err = privVal.GetPubKey()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "can't get pubkey")
 		}
 		res = &PubKeyResponse{p, nil}
 

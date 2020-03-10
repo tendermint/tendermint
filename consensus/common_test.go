@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -85,7 +86,7 @@ func (vs *validatorStub) signVote(
 	header types.PartSetHeader) (*types.Vote, error) {
 	pv, err := vs.PrivValidator.GetPubKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 	addr := pv.Address()
 	vote := &types.Vote{
@@ -212,9 +213,9 @@ func signAddVotes(
 
 func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	pv, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	address := pv.Address()
+	address := pubKey.Address()
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(address); vote == nil {
 		panic("Failed to find prevote from validator")

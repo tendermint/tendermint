@@ -27,7 +27,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 
 	pvk, err := pv.GetPubKey()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "can't get pubkey")
 	}
 
 	bz, err := cdc.MarshalJSON(pvk)

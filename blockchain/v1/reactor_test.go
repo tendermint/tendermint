@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -53,7 +54,7 @@ func makeVote(
 	valset *types.ValidatorSet,
 	privVal types.PrivValidator) *types.Vote {
 	pv, err := privVal.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	addr := pv.Address()
 
 	idx, _ := valset.GetByAddress(addr)
