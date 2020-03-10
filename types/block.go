@@ -314,38 +314,6 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 
 //-----------------------------------------------------------------------------
 
-// Header defines the structure of a Tendermint block header.
-// NOTE: changes to the Header should be duplicated in:
-// - header.Hash()
-// - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
-// type Header struct {
-// 	// basic block info
-// 	Version version.Consensus `json:"version"`
-// 	ChainID string            `json:"chain_id"`
-// 	Height  int64             `json:"height"`
-// 	Time    time.Time         `json:"time"`
-
-// 	// prev block info
-// 	LastBlockID BlockID `json:"last_block_id"`
-
-// 	// hashes of block data
-// 	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-// 	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
-
-// 	// hashes from the app output from the prev block
-// 	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
-// 	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
-// 	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
-// 	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
-// 	// root hash of all results from the txs from the previous block
-// 	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
-
-// 	// consensus info
-// 	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
-// 	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
-// }
-
 // Populate the Header with state-derived data.
 // Call this after MakeBlock to complete the Header.
 func (h *Header) Populate(
@@ -793,18 +761,6 @@ func (sh SignedHeader) StringIndented(indent string) string {
 
 //-----------------------------------------------------------------------------
 
-// Data contains the set of transactions included in the block
-// type Data struct {
-
-// 	// Txs that will be applied by state @ block.Height+1.
-// 	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
-// 	// This means that block.AppHash does not include these txs.
-// 	Txs Txs `json:"txs"`
-
-// 	// Volatile
-// 	hash tmbytes.HexBytes
-// }
-
 // Hash returns the hash of the data
 func (data *Data) Hash() tmbytes.HexBytes {
 	if data == nil {
@@ -837,14 +793,6 @@ func (data *Data) StringIndented(indent string) string {
 }
 
 //-----------------------------------------------------------------------------
-
-// EvidenceData contains any evidence of malicious wrong-doing by validators
-// type EvidenceData struct {
-// Evidence EvidenceList `json:"evidence"`
-
-// 	// Volatile
-// 	hash tmbytes.HexBytes
-// }
 
 // Hash returns the hash of the data.
 func (data *EvidenceData) Hash() tmbytes.HexBytes {

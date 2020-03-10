@@ -282,8 +282,8 @@ message Header {
 }
 
 message Version {
-  uint64 Block = 1;
-  uint64 App   = 2;
+  uint64 block = 1;
+  uint64 app   = 2;
 }
 
 message BlockID {

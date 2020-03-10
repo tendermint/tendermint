@@ -42,7 +42,7 @@ message BlockID {
 
 // --------------------------------
 
-// Block Header
+// Header defines the structure of a Tendermint block header.
 message Header {
   // basic block info
   Version                   version  = 1 [(gogoproto.nullable) = false];
@@ -92,6 +92,7 @@ message Version {
   uint64 app   = 2;
 }
 
+// Data contains the set of transactions included in the block
 message Data {
   // Txs that will be applied by state @ block.Height+1.
   // NOTE: not all txs here are valid.  We're just agreeing on the order first.
@@ -138,6 +139,7 @@ message Evidence {
   }
 }
 
+// EvidenceData contains any evidence of malicious wrong-doing by validators
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
   // Volatile

@@ -10,7 +10,7 @@ func MarshalEvidence(eviI EvidenceI) ([]byte, error) {
 	return proto.Marshal(evi)
 }
 
-func UnmarshalPubKey(bz []byte) (EvidenceI, error) {
+func UnmarshalEvidence(bz []byte) (EvidenceI, error) {
 	evi := &Evidence{}
 
 	err := proto.Unmarshal(bz, evi)
