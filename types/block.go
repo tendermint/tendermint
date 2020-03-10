@@ -20,7 +20,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 632
+	MaxHeaderBytes int64 = 628
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -300,7 +300,6 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		maxEvidenceBytes
-
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
 			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
@@ -434,18 +433,6 @@ func (h *Header) StringIndented(indent string) string {
 }
 
 //-------------------------------------
-
-// BlockIDFlag indicates which BlockID the signature is for.
-type BlockIDFlag byte
-
-const (
-	// BlockIDFlagAbsent - no vote was received from a validator.
-	BlockIDFlagAbsent BlockIDFlag = iota + 1
-	// BlockIDFlagCommit - voted for the Commit.BlockID.
-	BlockIDFlagCommit
-	// BlockIDFlagNil - voted for nil.
-	BlockIDFlagNil
-)
 
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
@@ -888,16 +875,12 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 //--------------------------------------------------------------------------------
 
-// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
-type BlockID struct {
-	Hash        tmbytes.HexBytes `json:"hash"`
-	PartsHeader PartSetHeader    `json:"parts"`
-}
+// BlockID
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader)
+		blockID.PartsHeader.Equal(other.PartsHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -932,9 +915,4 @@ func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
 		blockID.PartsHeader.Total > 0 &&
 		len(blockID.PartsHeader.Hash) == tmhash.Size
-}
-
-// String returns a human readable string representation of the BlockID
-func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }

@@ -3,7 +3,7 @@ build:
     - .
 lint:
   use:
-    - MINIMAL
+    - BASIC
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
   except:

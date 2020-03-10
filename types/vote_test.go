@@ -224,7 +224,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
-				Total: math.MaxInt64,
+				Total: math.MaxInt32,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
