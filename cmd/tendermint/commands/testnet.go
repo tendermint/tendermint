@@ -142,7 +142,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pvk, err := pv.GetPubKey()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "can't get pubkey")
 		}
 		genVals[i] = types.GenesisValidator{
 			Address: pvk.Address(),
