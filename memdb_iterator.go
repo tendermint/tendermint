@@ -26,7 +26,7 @@ type memDBIterator struct {
 var _ Iterator = (*memDBIterator)(nil)
 
 // newMemDBIterator creates a new memDBIterator.
-func newMemDBIterator(bt *btree.BTree, start []byte, end []byte, reverse bool) *memDBIterator {
+func newMemDBIterator(db *MemDB, start []byte, end []byte, reverse bool) *memDBIterator {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan *item, chBufferSize)
 	iter := &memDBIterator{
@@ -36,7 +36,9 @@ func newMemDBIterator(bt *btree.BTree, start []byte, end []byte, reverse bool) *
 		end:    end,
 	}
 
+	db.mtx.RLock()
 	go func() {
+		defer db.mtx.RUnlock()
 		// Because we use [start, end) for reverse ranges, while btree uses (start, end], we need
 		// the following variables to handle some reverse iteration conditions ourselves.
 		var (
@@ -61,23 +63,23 @@ func newMemDBIterator(bt *btree.BTree, start []byte, end []byte, reverse bool) *
 		}
 		switch {
 		case start == nil && end == nil && !reverse:
-			bt.Ascend(visitor)
+			db.btree.Ascend(visitor)
 		case start == nil && end == nil && reverse:
-			bt.Descend(visitor)
+			db.btree.Descend(visitor)
 		case end == nil && !reverse:
 			// must handle this specially, since nil is considered less than anything else
-			bt.AscendGreaterOrEqual(newKey(start), visitor)
+			db.btree.AscendGreaterOrEqual(newKey(start), visitor)
 		case !reverse:
-			bt.AscendRange(newKey(start), newKey(end), visitor)
+			db.btree.AscendRange(newKey(start), newKey(end), visitor)
 		case end == nil:
 			// abort after start, since we use [start, end) while btree uses (start, end]
 			abortLessThan = start
-			bt.Descend(visitor)
+			db.btree.Descend(visitor)
 		default:
 			// skip end and abort after start, since we use [start, end) while btree uses (start, end]
 			skipEqual = end
 			abortLessThan = start
-			bt.DescendLessOrEqual(newKey(end), visitor)
+			db.btree.DescendLessOrEqual(newKey(end), visitor)
 		}
 		close(ch)
 	}()
