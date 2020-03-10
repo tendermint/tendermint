@@ -60,7 +60,9 @@ type AddrBook interface {
 	// Mark address
 	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
-	MarkBad(*p2p.NetAddress)
+	MarkBad(*p2p.NetAddress) // Move peer to bad peers list
+	// Add bad peers back to addrBook
+	ReinstateBadPeers()
 
 	IsGood(*p2p.NetAddress) bool
 
@@ -236,7 +238,6 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
-	a.ReinstateBadPeers()
 	return a.Size() < needAddressThreshold
 }
 
