@@ -11,7 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-var bucket = []byte("tm")
+var (
+	bucket         = []byte("tm")
+	boltDBEmptyKey = []byte("nil")
+)
 
 func init() {
 	registerDBCreator(BoltDBBackend, func(name, dir string) (DB, error) {
@@ -196,7 +199,7 @@ func (bdb *BoltDB) ReverseIterator(start, end []byte) (Iterator, error) {
 // WARNING: this may collude with "nil" user key!
 func nonEmptyKey(key []byte) []byte {
 	if len(key) == 0 {
-		return []byte("nil")
+		return boltDBEmptyKey
 	}
 	return key
 }
