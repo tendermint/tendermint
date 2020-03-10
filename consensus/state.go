@@ -1035,6 +1035,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
 		cs.Logger.Error("error on retrival of pubkey", "err", err)
+		return
 	}
 	proposerAddr := pv.Address()
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
