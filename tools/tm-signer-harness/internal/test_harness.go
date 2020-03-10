@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -167,7 +168,6 @@ func (th *TestHarness) Run() {
 		th.Shutdown(newTestHarnessError(ErrMaxAcceptRetriesReached, startErr, ""))
 		return
 	}
-
 	// Run the tests
 	if err := th.TestPublicKey(); err != nil {
 		th.Shutdown(err)
@@ -192,7 +192,7 @@ func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
 	th.logger.Info("Local", "pubKey", th.fpv.GetPubKey())
 	th.logger.Info("Remote", "pubKey", th.signerClient.GetPubKey())
-	if th.fpv.GetPubKey() != th.signerClient.GetPubKey() {
+	if !bytes.Equal(th.fpv.GetPubKey().Bytes(), th.signerClient.GetPubKey().Bytes()) {
 		th.logger.Error("FAILED: Local and remote public keys do not match")
 		return newTestHarnessError(ErrTestPublicKeyFailed, nil, "")
 	}
