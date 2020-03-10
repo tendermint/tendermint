@@ -946,6 +946,7 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 // NOTE: block is produced every minute. Make sure the verification time provided in the function call is correct for
 // the size of the blockchain. The benchmarking may take some time hence it can be more useful to set the time or
 // the amount of iterations use the flag -benchtime t -> i.e. -benchtime 5m or -benchtime 100x
+// Remember that none of these benchmarks account for network latency
 var (
 	largeFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
 	result        *Client
