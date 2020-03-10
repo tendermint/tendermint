@@ -494,8 +494,12 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	if r.book.NeedMoreAddrs() {
-		// 0) Check if banned nodes can be reinstated
+		// Check if banned nodes can be reinstated
 		r.book.ReinstateBadPeers()
+	}
+
+	if r.book.NeedMoreAddrs() {
+
 		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
