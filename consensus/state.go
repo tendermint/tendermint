@@ -1028,6 +1028,11 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
 		return
 	}
+	if cs.privValidator == nil {
+		// should not happen
+		cs.Logger.Error("enterPropose: Cannot propose anything: this node is not a validator.")
+		return nil, nil
+	}
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
 		cs.Logger.Error("could not find pubkey for this validator")
@@ -1497,22 +1502,25 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 				missingValidators++
 				missingValidatorsPower += val.VotingPower
 			}
+			if cs.privValidator != nil {
 
-			pv, err := cs.privValidator.GetPubKey()
-			if err != nil {
-				panic(err)
-			}
+				pv, err := cs.privValidator.GetPubKey()
+				if err != nil {
+					panic(err)
+				}
 
-			if cs.privValidator != nil && bytes.Equal(val.Address, pv.Address()) {
-				label := []string{
-					"validator_address", val.Address.String(),
+				if bytes.Equal(val.Address, pv.Address()) {
+					label := []string{
+						"validator_address", val.Address.String(),
+					}
+					cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
+					if commitSig.ForBlock() {
+						cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
+					} else {
+						cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
+					}
 				}
-				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
-				if commitSig.ForBlock() {
-					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
-				} else {
-					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
-				}
+
 			}
 		}
 	}
@@ -1906,12 +1914,16 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(msgType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+	if cs.privValidator == nil {
+		return nil
+	}
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
 		cs.Logger.Error("could not get pubkey from validator")
+		return nil
 	}
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(pv.Address()) {
+	if !cs.Validators.HasAddress(pv.Address()) {
 		return nil
 	}
 	vote, err := cs.signVote(msgType, hash, header)
