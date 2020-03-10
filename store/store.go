@@ -61,7 +61,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 	var block = new(types.Block)
 	buf := []byte{}
-	for i := 0; i < blockMeta.BlockID.PartsHeader.Total; i++ {
+	for i := 0; i < int(blockMeta.BlockID.PartsHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
@@ -199,7 +199,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
 	// Save block parts
-	for i := 0; i < blockParts.Total(); i++ {
+	for i := 0; i < int(blockParts.Total()); i++ {
 		part := blockParts.GetPart(i)
 		bs.saveBlockPart(height, i, part)
 	}

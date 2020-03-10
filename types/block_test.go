@@ -110,7 +110,7 @@ func TestBlockMakePartSet(t *testing.T) {
 
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 1, partSet.Total())
+	assert.Equal(t, int32(1), partSet.Total())
 }
 
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
@@ -128,7 +128,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 3, partSet.Total())
+	assert.Equal(t, int32(3), partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -178,7 +178,7 @@ func makeBlockIDRandom() BlockID {
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
-func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
+func makeBlockID(hash []byte, partSetSize int32, partSetHash []byte) BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
 		psH = make([]byte, tmhash.Size)
@@ -330,7 +330,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
-		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
+		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt32, make([]byte, tmhash.Size)),
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
@@ -377,9 +377,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {865, 1, 0, true, 0},
-		3: {866, 1, 0, false, 0},
-		4: {867, 1, 0, false, 1},
+		2: {857, 1, 0, true, 0},
+		3: {858, 1, 0, false, 0},
+		4: {859, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -406,9 +406,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {961, 1, true, 0},
-		3: {962, 1, false, 0},
-		4: {963, 1, false, 1},
+		2: {952, 1, true, 0},
+		3: {953, 1, false, 0},
+		4: {954, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

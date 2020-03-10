@@ -6,11 +6,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/tendermint/tendermint/types/proto3"
 )
 
-func TestProto3Compatibility(t *testing.T) {
+func TestProtoCompatibility(t *testing.T) {
 	tm, err := time.Parse("Mon Jan 2 15:04:05 -0700 MST 2006", "Mon Jan 2 15:04:05 -0700 MST 2006")
 	assert.NoError(t, err)
 	// add some nanos, otherwise protobuf will skip over this while amino (still) won't!
@@ -20,13 +18,13 @@ func TestProto3Compatibility(t *testing.T) {
 	t.Log("seconds", seconds)
 	t.Log("nanos", nanos)
 
-	pbHeader := proto3.Header{
-		ChainID: "cosmos",
+	pbHeader := ProtoHeader{
+		ChainId: "cosmos",
 		Height:  150,
-		Time:    &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
-		LastBlockID: &proto3.BlockID{
+		Time:    &ProtoTimestamp{Seconds: seconds, Nanos: nanos},
+		LastBlockId: &BlockID{
 			Hash: []byte("some serious hashing"),
-			PartsHeader: &proto3.PartSetHeader{
+			PartsHeader: PartSetHeader{
 				Total: 8,
 				Hash:  []byte("some more serious hashing"),
 			},
@@ -58,10 +56,10 @@ func TestProto3Compatibility(t *testing.T) {
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
 
-	emptyLastBlockPb := proto3.Header{
-		ChainID:        "cosmos",
+	emptyLastBlockPb := ProtoHeader{
+		ChainId:        "cosmos",
 		Height:         150,
-		Time:           &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
+		Time:           &ProtoTimestamp{Seconds: seconds, Nanos: nanos},
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
 		ValidatorsHash: []byte("validators hash"),
@@ -83,7 +81,7 @@ func TestProto3Compatibility(t *testing.T) {
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
 
-	pb, err = proto.Marshal(&proto3.Header{})
+	pb, err = proto.Marshal(&ProtoHeader{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
 
@@ -92,7 +90,7 @@ func TestProto3Compatibility(t *testing.T) {
 	assert.NoError(t, err, "unexpected error")
 	t.Log(ab)
 
-	pb, err = proto.Marshal(&proto3.Timestamp{})
+	pb, err = proto.Marshal(&ProtoTimestamp{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
 

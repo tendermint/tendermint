@@ -295,7 +295,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
 			conR.metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
@@ -999,7 +999,7 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	}
 
 	ps.PRS.ProposalBlockPartsHeader = proposal.BlockID.PartsHeader
-	ps.PRS.ProposalBlockParts = bits.NewBitArray(proposal.BlockID.PartsHeader.Total)
+	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(proposal.BlockID.PartsHeader.Total))
 	ps.PRS.ProposalPOLRound = proposal.POLRound
 	ps.PRS.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }
@@ -1014,7 +1014,7 @@ func (ps *PeerState) InitProposalBlockParts(partsHeader types.PartSetHeader) {
 	}
 
 	ps.PRS.ProposalBlockPartsHeader = partsHeader
-	ps.PRS.ProposalBlockParts = bits.NewBitArray(partsHeader.Total)
+	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(partsHeader.Total))
 }
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
@@ -1475,7 +1475,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 	if m.BlockParts.Size() == 0 {
 		return errors.New("empty blockParts")
 	}
-	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
+	if m.BlockParts.Size() != int(m.BlockPartsHeader.Total) {
 		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
