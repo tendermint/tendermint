@@ -123,16 +123,18 @@ message Vote {
   bytes signature       = 8;
 }
 
-message DuplicateEvidence {
+// DuplicateVoteEvidence contains evidence a validator signed two conflicting
+// votes.
+message DuplicateVoteEvidence {
   // crypto.Pubkey pub_key = 1;
-  Vote vota_a = 1;
+  Vote vote_a = 1;
   Vote vote_b = 2;
 }
 
 message Evidence {
   option (cosmos_proto.interface_type) = "*EvidenceI";
   oneof sum {
-    DuplicateEvidence duplicate_vote_evidence = 1;
+    DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
 }
 

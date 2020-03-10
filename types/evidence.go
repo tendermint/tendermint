@@ -95,14 +95,6 @@ func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
 
 //-------------------------------------------
 
-// DuplicateVoteEvidence contains evidence a validator signed two conflicting
-// votes.
-// type DuplicateVoteEvidence struct {
-// 	PubKey crypto.PubKey
-// 	VoteA  *Vote
-// 	VoteB  *Vote
-// }
-
 var _ EvidenceI = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
