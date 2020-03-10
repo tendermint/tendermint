@@ -1030,7 +1030,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 	if cs.privValidator == nil {
 		// should not happen
-		cs.Logger.Error("enterPropose: Cannot propose anything: this node is not a validator.")
+		cs.Logger.Error("enterPropose: Cannot propose anything: validator keys are not present.")
 		return nil, nil
 	}
 	pv, err := cs.privValidator.GetPubKey()
