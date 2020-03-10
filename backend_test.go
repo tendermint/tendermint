@@ -498,13 +498,13 @@ func testDBBatch(t *testing.T, backend BackendType) {
 func assertKeyValues(t *testing.T, db DB, expect map[string][]byte) {
 	iter, err := db.Iterator(nil, nil)
 	require.NoError(t, err)
+	defer iter.Close()
 
 	actual := make(map[string][]byte)
 	for ; iter.Valid(); iter.Next() {
 		require.NoError(t, iter.Error())
 		actual[string(iter.Key())] = iter.Value()
 	}
-	iter.Close()
 
 	assert.Equal(t, expect, actual)
 }
