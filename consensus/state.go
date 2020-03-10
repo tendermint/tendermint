@@ -1030,12 +1030,11 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 	if cs.privValidator == nil {
 		// should not happen
-		cs.Logger.Error("enterPropose: Cannot propose anything: validator keys are not present.")
-		return nil, nil
+		panic("expected privValidator to exist")
 	}
 	pv, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		cs.Logger.Error("could not find pubkey for this validator")
+		cs.Logger.Error("error on retrival of pubkey", "err", err)
 	}
 	proposerAddr := pv.Address()
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
@@ -1506,7 +1505,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 				pv, err := cs.privValidator.GetPubKey()
 				if err != nil {
-					panic(err)
+					cs.Logger.Error("error on retrival of pubkey", "err", err)
 				}
 
 				if bytes.Equal(val.Address, pv.Address()) {
