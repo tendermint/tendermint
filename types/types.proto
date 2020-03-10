@@ -130,7 +130,7 @@ message DuplicateEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types.EvidenceI";
+  option (cosmos_proto.interface_type) = "*EvidenceI";
   oneof sum {
     DuplicateEvidence duplicate_vote_evidence = 1;
   }

@@ -62,7 +62,7 @@ type EvidenceI interface {
 	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
 	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
+	Equal(EvidenceI) bool                              // check equality of evidence
 
 	ValidateBasic() error
 	String() string
@@ -97,11 +97,11 @@ func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
-type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
-}
+// type DuplicateVoteEvidence struct {
+// 	PubKey crypto.PubKey
+// 	VoteA  *Vote
+// 	VoteB  *Vote
+// }
 
 var _ EvidenceI = &DuplicateVoteEvidence{}
 
@@ -212,7 +212,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 }
 
 // Equal checks if two pieces of evidence are equal.
-func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
+func (dve *DuplicateVoteEvidence) Equal(ev EvidenceI) bool {
 	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
 		return false
 	}
@@ -297,7 +297,7 @@ func (e MockEvidence) Bytes() []byte {
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
 func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
-func (e MockEvidence) Equal(ev Evidence) bool {
+func (e MockEvidence) Equal(ev EvidenceI) bool {
 	e2 := ev.(MockEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
 		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
@@ -310,7 +310,7 @@ func (e MockEvidence) String() string {
 //-------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
-type EvidenceList []Evidence
+type EvidenceList []EvidenceI
 
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
@@ -333,7 +333,7 @@ func (evl EvidenceList) String() string {
 }
 
 // Has returns true if the evidence is in the EvidenceList.
-func (evl EvidenceList) Has(evidence Evidence) bool {
+func (evl EvidenceList) Has(evidence EvidenceI) bool {
 	for _, ev := range evl {
 		if ev.Equal(evidence) {
 			return true
