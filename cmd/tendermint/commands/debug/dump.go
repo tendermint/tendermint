@@ -126,7 +126,7 @@ func dumpDebugData(outDir string, conf *cfg.Config, rpc *rpcclient.HTTP) {
 		}
 	}
 
-	outFile := filepath.Join(outDir, fmt.Sprintf("%s.zip", start.Format(time.Stamp)))
+	outFile := filepath.Join(outDir, fmt.Sprintf("%s.zip", start.Format(time.RFC3339)))
 	if err := zipDir(tmpDir, outFile); err != nil {
 		logger.Error("failed to create and compress archive", "file", outFile, "error", err)
 	}
