@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	bucketTypeNew = 0x01
-	bucketTypeOld = 0x02
+	bucketTypeNew  = 0x01
+	bucketTypeOld  = 0x02
+	defaultBanTime = 24 * time.Hour
 )
 
 // AddrBook is an address book used for tracking peers
@@ -87,6 +88,7 @@ type addrBook struct {
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
+	badPeers   map[p2p.ID]*knownAddress // blacklisted peers
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -108,6 +110,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 		ourAddrs:          make(map[string]struct{}),
 		privateIDs:        make(map[p2p.ID]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
+		badPeers:          make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 	}
@@ -233,6 +236,7 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
+	a.ReinstateBadPeers()
 	return a.Size() < needAddressThreshold
 }
 
@@ -324,10 +328,24 @@ func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 	ka.markAttempt()
 }
 
-// MarkBad implements AddrBook. Currently it just ejects the address.
-// TODO: black list for some amount of time
+// MarkBad implements AddrBook. Kicks address out from book, places
+// the address in the badPeers pool.
 func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
-	a.RemoveAddress(addr)
+	if a.addBadPeer(addr) {
+		a.RemoveAddress(addr)
+	}
+}
+
+func (a *addrBook) ReinstateBadPeers() {
+	for _, ka := range a.badPeers {
+		if !ka.isBanned(defaultBanTime) {
+			a.mtx.Lock()
+			bucket := a.calcNewBucket(ka.Addr, ka.Src)
+			a.addToNewBucket(ka, bucket)
+			delete(a.badPeers, ka.ID())
+			a.mtx.Unlock()
+		}
+	}
 }
 
 // GetSelection implements AddrBook.
@@ -723,6 +741,22 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 			a.Logger.Error(fmt.Sprintf("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx))
 		}
 	}
+}
+
+func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	// check it exists in addrbook
+	ka := a.addrLookup[addr.ID]
+	// check address is not already there
+	if _, alreadyBadPeer := a.badPeers[addr.ID]; ka != nil && !alreadyBadPeer {
+		// add to bad peer list
+		ka.ban()
+		a.badPeers[addr.ID] = ka
+		return true
+	}
+	return false
 }
 
 //---------------------------------------------------------------------
