@@ -943,7 +943,9 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 // #################################  BENCHMARKING ######################################
 //
 
-// NOTE: block is produced every minute. Make sure the verification time is correct for the size of the block chain
+// NOTE: block is produced every minute. Make sure the verification time provided in the function call is correct for
+// the size of the blockchain. The benchmarking may take some time hence it can be more useful to set the time or
+// the amount of iterations use the flag -benchtime t -> i.e. -benchtime 5m or -benchtime 100x
 var (
 	largeFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
 	result        *Client
@@ -992,19 +994,6 @@ func BenchmarkBisection(b *testing.B) {
 	}
 }
 
-func BenchmarkRecursiveBisection(b *testing.B) {
-	c := defaultClient()
-	trustedHeader, trustedVals, err := c.fetchHeaderAndValsAtHeight(1)
-	require.NoError(b, err)
-	untrustedHeader, untrustedVals, err := c.fetchHeaderAndValsAtHeight(0)
-	require.NoError(b, err)
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		_ = c.recursiveBisection(trustedHeader, trustedVals, untrustedHeader, untrustedVals,
-			bTime.Add(1000*time.Minute))
-	}
-}
-
 func BenchmarkClientInitialization(b *testing.B) {
 	var c *Client
 	for n := 0; n < b.N; n++ {
@@ -1020,4 +1009,26 @@ func BenchmarkClientInitialization(b *testing.B) {
 		)
 	}
 	result = c
+}
+
+func BenchmarkBackwards(b *testing.B) {
+	genesisHeader, _ := largeFullNode.SignedHeader(0)
+	c, _ := NewClient(
+		chainID,
+		TrustOptions{
+			Period: 24 * time.Hour,
+			Height: genesisHeader.Height,
+			Hash:   genesisHeader.Hash(),
+		},
+		largeFullNode,
+		[]provider.Provider{largeFullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		UpdatePeriod(0),
+		Logger(log.TestingLogger()),
+	)
+	untrustedHeader, _, err := c.fetchHeaderAndValsAtHeight(1)
+	require.NoError(b, err)
+	for n := 0; n < b.N; n++ {
+		_ = c.backwards(c.latestTrustedHeader, untrustedHeader, bTime)
+	}
 }
