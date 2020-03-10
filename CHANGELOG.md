@@ -16,6 +16,8 @@
 
 - [boltdb] Properly handle blank keys in iterators
 
+- [cleveldb] Fix handling of empty keys as iterator endpoints
+
 - [goleveldb] [\#58](https://github.com/tendermint/tm-db/pull/58) Make `Batch.Close()` actually remove the batch contents
 
 ## 0.4.1
