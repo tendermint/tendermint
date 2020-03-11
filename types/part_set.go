@@ -84,6 +84,7 @@ type PartSet struct {
 
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
+// CONTRACT: partSize is greater than zero.
 func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
