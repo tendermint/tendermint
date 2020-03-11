@@ -35,4 +35,3 @@ func (kvs Pairs) Less(i, j int) bool {
 }
 func (kvs Pairs) Swap(i, j int) { kvs[i], kvs[j] = kvs[j], kvs[i] }
 func (kvs Pairs) Sort()         { sort.Sort(kvs) }
-
