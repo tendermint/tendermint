@@ -1012,11 +1012,13 @@ func (cs *State) isProposalComplete() bool {
 
 }
 
-// Create the next block to propose and return it.
-// We really only need to return the parts, but the block
-// is returned for convenience so we can log the proposal block.
-// Returns nil block upon error.
+// Create the next block to propose and return it. Returns nil block upon error.
+//
+// We really only need to return the parts, but the block is returned for
+// convenience so we can log the proposal block.
+//
 // NOTE: keep it side-effect free for clarity.
+// CONTRACT: cs.privValidator is not nil.
 func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var commit *types.Commit
 	switch {
@@ -1027,8 +1029,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
-	default:
-		// This shouldn't happen.
+	default: // This shouldn't happen.
 		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 		return
 	}
