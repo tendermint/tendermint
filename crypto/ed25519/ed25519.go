@@ -136,7 +136,7 @@ func (pubKey PubKey) Bytes() []byte {
 
 func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 	// make sure we use the same algorithm to sign
-	if len(sig) != PrivateKeySize {
+	if len(sig) != SignatureSize {
 		return false
 	}
 	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
