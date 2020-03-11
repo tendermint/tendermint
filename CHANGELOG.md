@@ -1,9 +1,8 @@
 # Changelog
 
-
 ## v0.33.2
 
-*March 9, 2020*
+*March 11, 2020*
 
 Special thanks to external contributors on this release:
 @antho1404, @michaelfig, @gterzian, @tau3, @Shivani912
