@@ -64,8 +64,9 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 	if !initialized {
 		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
-
-	return PubKey(privKey[32:])
+	var pubkeyBytes []byte
+	copy(pubkeyBytes[:], privKey[32:])
+	return PubKey(pubkeyBytes)
 }
 
 // Equals - you probably don't need to use this.
@@ -94,7 +95,9 @@ func genPrivKey(rand io.Reader) PrivKey {
 	}
 
 	privKey := ed25519.NewKeyFromSeed(seed)
-	return []byte(privKey)
+	var privKeyEd PrivKey
+	copy(privKeyEd[:], privKey)
+	return privKeyEd
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
