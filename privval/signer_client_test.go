@@ -81,7 +81,7 @@ func TestSignerGetPubKey(t *testing.T) {
 
 		assert.Equal(t, expectedPubKey, pubKey)
 
-		pubKey, err := tc.signerClient.GetPubKey()
+		pubKey, err = tc.signerClient.GetPubKey()
 		require.NoError(t, err)
 		expectedpk, err := tc.mockPV.GetPubKey()
 		require.NoError(t, err)
