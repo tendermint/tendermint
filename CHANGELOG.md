@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.5.0
+
+**2020-03-11**
+
 ### Breaking Changes
 
 - [\#71](https://github.com/tendermint/tm-db/pull/71) Closed or written batches can no longer be reused, all non-`Close()` calls will panic
