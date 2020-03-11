@@ -210,12 +210,7 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ka := a.addrLookup[addr.ID]
-	if ka == nil {
-		return
-	}
-	a.Logger.Info("Remove address from book", "addr", addr)
-	a.removeFromAllBuckets(ka)
+	a.removeAddress(addr)
 }
 
 // IsGood returns true if peer was ever marked as good and haven't
@@ -332,19 +327,22 @@ func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 // MarkBad implements AddrBook. Kicks address out from book, places
 // the address in the badPeers pool.
 func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
 	if a.addBadPeer(addr) {
-		a.RemoveAddress(addr)
+		a.removeAddress(addr)
 	}
 }
 
 func (a *addrBook) ReinstateBadPeers() {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 	for _, ka := range a.badPeers {
 		if !ka.isBanned(defaultBanTime) {
-			a.mtx.Lock()
 			bucket := a.calcNewBucket(ka.Addr, ka.Src)
 			a.addToNewBucket(ka, bucket)
 			delete(a.badPeers, ka.ID())
-			a.mtx.Unlock()
 		}
 	}
 }
@@ -744,6 +742,15 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 	}
 }
 
+func (a *addrBook) removeAddress(addr *p2p.NetAddress) {
+	ka := a.addrLookup[addr.ID]
+	if ka == nil {
+		return
+	}
+	a.Logger.Info("Remove address from book", "addr", addr)
+	a.removeFromAllBuckets(ka)
+}
+
 func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -751,10 +758,12 @@ func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
 	// check it exists in addrbook
 	ka := a.addrLookup[addr.ID]
 	// check address is not already there
-	if _, alreadyBadPeer := a.badPeers[addr.ID]; ka != nil && !alreadyBadPeer {
-		// add to bad peer list
-		ka.ban()
-		a.badPeers[addr.ID] = ka
+	if ka != nil {
+		if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
+			// add to bad peer list
+			ka.ban()
+			a.badPeers[addr.ID] = ka
+		}
 		return true
 	}
 	return false
