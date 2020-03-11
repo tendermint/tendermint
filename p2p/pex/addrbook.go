@@ -22,9 +22,8 @@ import (
 )
 
 const (
-	bucketTypeNew  = 0x01
-	bucketTypeOld  = 0x02
-	defaultBanTime = 24 * time.Hour
+	bucketTypeNew = 0x01
+	bucketTypeOld = 0x02
 )
 
 // AddrBook is an address book used for tracking peers
@@ -60,7 +59,7 @@ type AddrBook interface {
 	// Mark address
 	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
-	MarkBad(*p2p.NetAddress) // Move peer to bad peers list
+	MarkBad(*p2p.NetAddress, time.Duration) // Move peer to bad peers list
 	// Add bad peers back to addrBook
 	ReinstateBadPeers()
 
@@ -326,11 +325,11 @@ func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 
 // MarkBad implements AddrBook. Kicks address out from book, places
 // the address in the badPeers pool.
-func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
+func (a *addrBook) MarkBad(addr *p2p.NetAddress, banTime time.Duration) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	if a.addBadPeer(addr) {
+	if a.addBadPeer(addr, banTime) {
 		a.removeAddress(addr)
 	}
 }
@@ -751,7 +750,7 @@ func (a *addrBook) removeAddress(addr *p2p.NetAddress) {
 	a.removeFromAllBuckets(ka)
 }
 
-func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
+func (a *addrBook) addBadPeer(addr *p2p.NetAddress, banTime time.Duration) bool {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -761,7 +760,7 @@ func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
 	if ka != nil {
 		if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
 			// add to bad peer list
-			ka.ban(defaultBanTime)
+			ka.ban(banTime)
 			a.badPeers[addr.ID] = ka
 		}
 		return true
