@@ -55,12 +55,12 @@ func (ka *knownAddress) markGood() {
 	ka.LastSuccess = now
 }
 
-func (ka *knownAddress) ban() {
-	ka.LastBanTime = time.Now()
+func (ka *knownAddress) ban(banTime time.Duration) {
+	ka.LastBanTime = time.Now().Add(banTime)
 }
 
-func (ka *knownAddress) isBanned(banTime time.Duration) bool {
-	return ka.LastBanTime.Add(banTime).Before(time.Now())
+func (ka *knownAddress) isBanned() bool {
+	return ka.LastBanTime.Before(time.Now())
 }
 
 func (ka *knownAddress) addBucketRef(bucketIdx int) int {

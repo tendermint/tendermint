@@ -339,7 +339,7 @@ func (a *addrBook) ReinstateBadPeers() {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	for _, ka := range a.badPeers {
-		if !ka.isBanned(defaultBanTime) {
+		if !ka.isBanned() {
 			bucket := a.calcNewBucket(ka.Addr, ka.Src)
 			a.addToNewBucket(ka, bucket)
 			delete(a.badPeers, ka.ID())
@@ -761,7 +761,7 @@ func (a *addrBook) addBadPeer(addr *p2p.NetAddress) bool {
 	if ka != nil {
 		if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
 			// add to bad peer list
-			ka.ban()
+			ka.ban(defaultBanTime)
 			a.badPeers[addr.ID] = ka
 		}
 		return true
