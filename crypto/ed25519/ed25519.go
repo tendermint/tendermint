@@ -64,8 +64,8 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 	if !initialized {
 		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
-	var pubkeyBytes []byte
-	copy(pubkeyBytes[:], privKey[32:])
+	pubkeyBytes := make([]byte, PubKeySize)
+	copy(pubkeyBytes, privKey[32:])
 	return PubKey(pubkeyBytes)
 }
 
@@ -89,15 +89,16 @@ func GenPrivKey() PrivKey {
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKey {
 	seed := make([]byte, 32)
+
 	_, err := io.ReadFull(rand, seed)
 	if err != nil {
 		panic(err)
 	}
 
 	privKey := ed25519.NewKeyFromSeed(seed)
-	var privKeyEd PrivKey
-	copy(privKeyEd[:], privKey)
-	return privKeyEd
+	privateKeyEd := make([]byte, PrivateKeySize)
+	copy(privateKeyEd, privKey)
+	return privateKeyEd
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -108,7 +109,9 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
 	privKey := ed25519.NewKeyFromSeed(seed)
-	return PrivKey(privKey)
+	privKeyEd := make([]byte, PrivateKeySize)
+	copy(privKeyEd[:], privKey)
+	return privKeyEd
 }
 
 //-------------------------------------
