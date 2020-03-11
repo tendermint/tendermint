@@ -921,24 +921,27 @@ func (cs *State) enterPropose(height int64, round int) {
 		logger.Debug("This node is not a validator")
 		return
 	}
+	logger.Debug("This node is a validator")
 
-	// if not a validator, we're done
-	pv, err := cs.privValidator.GetPubKey()
+	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		logger.Error("error on retrival of pubkey", "err", err)
+		// If this node is a validator & proposer in the current round, it will
+		// miss the opportunity to create a block.
+		logger.Error("Error on retrival of pubkey", "err", err)
 		return
 	}
-	address := pv.Address()
+	address := pubKey.Address()
+
+	// if not a validator, we're done
 	if !cs.Validators.HasAddress(address) {
 		logger.Debug("This node is not a validator", "addr", address, "vals", cs.Validators)
 		return
 	}
-	logger.Debug("This node is a validator")
 
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose",
 			"proposer",
-			cs.Validators.GetProposer().Address,
+			address,
 			"privValidator",
 			cs.privValidator)
 		cs.decideProposal(height, round)
@@ -966,7 +969,7 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		block, blockParts = cs.createProposalBlock()
-		if block == nil { // on error
+		if block == nil {
 			return
 		}
 	}
@@ -1026,19 +1029,22 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		commit = cs.LastCommit.MakeCommit()
 	default:
 		// This shouldn't happen.
-		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
+		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 		return
 	}
+
 	if cs.privValidator == nil {
-		// should not happen
-		panic("expected privValidator to exist")
+		panic("entered createProposalBlock with privValidator being nil")
 	}
-	pv, err := cs.privValidator.GetPubKey()
+	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		cs.Logger.Error("error on retrival of pubkey", "err", err)
+		// If this node is a validator & proposer in the current round, it will
+		// miss the opportunity to create a block.
+		cs.Logger.Error("Error on retrival of pubkey", "err", err)
 		return
 	}
-	proposerAddr := pv.Address()
+	proposerAddr := pubKey.Address()
+
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
@@ -1503,14 +1509,16 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 				missingValidators++
 				missingValidatorsPower += val.VotingPower
 			}
-			if cs.privValidator != nil {
 
-				pv, err := cs.privValidator.GetPubKey()
+			if cs.privValidator != nil {
+				pubKey, err := cs.privValidator.GetPubKey()
 				if err != nil {
-					cs.Logger.Error("error on retrival of pubkey", "err", err)
+					// Metrics won't be updated, but it's not critical.
+					cs.Logger.Error("Error on retrival of pubkey", "err", err)
+					continue
 				}
 
-				if bytes.Equal(val.Address, pv.Address()) {
+				if bytes.Equal(val.Address, pubKey.Address()) {
 					label := []string{
 						"validator_address", val.Address.String(),
 					}
@@ -1521,7 +1529,6 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 						cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
 					}
 				}
-
 			}
 		}
 	}
@@ -1669,14 +1676,12 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		if err == ErrVoteHeightMismatch {
 			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-
-			pv, err := cs.privValidator.GetPubKey()
+			pubKey, err := cs.privValidator.GetPubKey()
 			if err != nil {
 				return false, errors.Wrap(err, "can't get pubkey")
 			}
 
-			addr := pv.Address()
-			if bytes.Equal(vote.ValidatorAddress, addr) {
+			if bytes.Equal(vote.ValidatorAddress, pubKey.Address()) {
 				cs.Logger.Error(
 					"Found conflicting vote from ourselves. Did you unsafe_reset a validator?",
 					"height",
@@ -1865,6 +1870,7 @@ func (cs *State) addVote(
 	return added, err
 }
 
+// CONTRACT: cs.privValidator is not nil.
 func (cs *State) signVote(
 	msgType types.SignedMsgType,
 	hash []byte,
@@ -1874,22 +1880,23 @@ func (cs *State) signVote(
 	// and the privValidator will refuse to sign anything.
 	cs.wal.FlushAndSync()
 
-	pv, err := cs.privValidator.GetPubKey()
+	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get pubkey")
 	}
-	addr := pv.Address()
-	valIndex, _ := cs.Validators.GetByAddress(addr)
+	addr := pubKey.Address()
+	valIdx, _ := cs.Validators.GetByAddress(addr)
 
 	vote := &types.Vote{
 		ValidatorAddress: addr,
-		ValidatorIndex:   valIndex,
+		ValidatorIndex:   valIdx,
 		Height:           cs.Height,
 		Round:            cs.Round,
 		Timestamp:        cs.voteTime(),
 		Type:             msgType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
+
 	err = cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
 }
@@ -1915,18 +1922,23 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(msgType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
-	if cs.privValidator == nil {
+	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}
-	pv, err := cs.privValidator.GetPubKey()
+
+	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		cs.Logger.Error("could not get pubkey from validator")
+		// Vote won't be signed, but it's not critical.
+		cs.Logger.Error("Error on retrival of pubkey", "err", err)
 		return nil
 	}
-	// if we don't have a key or we're not in the validator set, do nothing
-	if !cs.Validators.HasAddress(pv.Address()) {
+
+	// If the node not in the validator set, do nothing.
+	if !cs.Validators.HasAddress(pubKey.Address()) {
 		return nil
 	}
+
+	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})

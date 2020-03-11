@@ -84,20 +84,22 @@ func (vs *validatorStub) signVote(
 	voteType types.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
-	pv, err := vs.PrivValidator.GetPubKey()
+
+	pubKey, err := vs.PrivValidator.GetPubKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get pubkey")
 	}
-	addr := pv.Address()
+
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
-		ValidatorAddress: addr,
+		ValidatorAddress: pubKey.Address(),
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
+
 	err = vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }

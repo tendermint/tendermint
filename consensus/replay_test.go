@@ -416,11 +416,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	sort.Sort(ValidatorStubsByAddress(newVss))
 	selfIndex := 0
 	for i, vs := range newVss {
-		v, err := vs.GetPubKey()
+		vsPubKey, err := vs.GetPubKey()
 		require.NoError(t, err)
-		css0, err := css[0].privValidator.GetPubKey()
+
+		css0PubKey, err := css[0].privValidator.GetPubKey()
 		require.NoError(t, err)
-		if v.Equals(css0) {
+
+		if vsPubKey.Equals(css0PubKey) {
 			selfIndex = i
 			break
 		}
@@ -477,11 +479,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	copy(newVss, vss[:nVals+3])
 	sort.Sort(ValidatorStubsByAddress(newVss))
 	for i, vs := range newVss {
-		v, err := vs.GetPubKey()
+		vsKeyKey, err := vs.GetPubKey()
 		require.NoError(t, err)
-		css0, err := css[0].privValidator.GetPubKey()
+
+		css0PubKey, err := css[0].privValidator.GetPubKey()
 		require.NoError(t, err)
-		if v.Equals(css0) {
+
+		if vsKeyKey.Equals(css0PubKey) {
 			selfIndex = i
 			break
 		}
@@ -654,9 +658,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
-		pv, err := privVal.GetPubKey()
+		pubKey, err := privVal.GetPubKey()
 		require.NoError(t, err)
-		stateDB, genisisState, store = stateAndStore(config, pv, kvstore.ProtocolVersion)
+		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 	}
 	store.chain = chain
 	store.commits = commits
@@ -825,9 +829,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
-	pv, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	stateDB, state, store := stateAndStore(config, pv, appVersion)
+	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -1111,9 +1115,9 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	config := ResetConfig("handshake_test_")
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	pv, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	stateDB, state, store := stateAndStore(config, pv, 0x0)
+	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address
 

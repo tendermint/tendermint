@@ -53,14 +53,14 @@ func makeVote(
 	blockID types.BlockID,
 	valset *types.ValidatorSet,
 	privVal types.PrivValidator) *types.Vote {
-	pv, err := privVal.GetPubKey()
-	require.NoError(t, err)
-	addr := pv.Address()
 
-	idx, _ := valset.GetByAddress(addr)
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+
+	valIdx, _ := valset.GetByAddress(pubKey.Address())
 	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIdx,
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),

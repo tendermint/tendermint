@@ -154,10 +154,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		pvi, err := privVals[vIdx].GetPubKey()
+		pubKey, err := privVals[vIdx].GetPubKey()
 		require.NoError(t, err)
-		addr := pvi.Address()
-		evpool := newMockEvidencePool(addr)
+		evpool := newMockEvidencePool(pubKey.Address())
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -415,10 +414,9 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		pv, err := css[i].privValidator.GetPubKey()
+		pubKey, err := css[i].privValidator.GetPubKey()
 		require.NoError(t, err)
-		addr := pv.Address()
-		activeVals[string(addr)] = struct{}{}
+		activeVals[string(pubKey.Address())] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
