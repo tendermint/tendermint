@@ -928,10 +928,10 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode2},
 		dbs.New(dbm.NewMemDB(), chainID),
-		UpdatePeriod(0),
 		Logger(log.TestingLogger()),
 		MaxRetryAttempts(1),
 	)
+	require.NoError(t, err)
 
 	// Check verification returns an error.
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour))
@@ -939,7 +939,7 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 		assert.Contains(t, err.Error(), "does not match one")
 	}
 
-	// Check
+	// Check evidence was sent to both full nodes.
 	ev := types.ConflictingHeadersEvidence{H1: *h2, H2: *altH2}
 	assert.True(t, fullNode2.HasEvidence(ev))
 	assert.True(t, fullNode.HasEvidence(ev))
