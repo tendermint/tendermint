@@ -408,6 +408,7 @@ func TestBanBadPeers(t *testing.T) {
 	book.MarkBad(addr, 1*time.Second)
 	// addr should not reachable
 	assert.False(t, book.HasAddress(addr))
+	assert.True(t, book.IsBanned(addr))
 
 	err := book.AddAddress(addr, addr)
 	// book should not add address from the blacklist
