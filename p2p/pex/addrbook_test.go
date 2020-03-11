@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"math"
-	"os"
-	"testing"
-
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
+	"io/ioutil"
+	"math"
+	"os"
+	"testing"
+	"time"
 )
 
 // FIXME These tests should not rely on .(*addrBook) assertions
@@ -395,6 +395,32 @@ func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []st
 	return addrs, private
 }
 
+func TestBanBadPeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addr := randIPv4Address(t)
+	_ = book.AddAddress(addr, addr)
+
+	book.MarkBad(addr, 1*time.Second)
+	// addr should not reachable
+	assert.False(t, book.HasAddress(addr))
+
+	err := book.AddAddress(addr, addr)
+	// book should not add address from the blacklist
+	assert.Error(t, err)
+
+	time.Sleep(1 * time.Second)
+	book.ReinstateBadPeers()
+	// address should be reinstated in the new bucket
+	assert.EqualValues(t, 1, book.Size())
+	assert.True(t, book.HasAddress(addr))
+	assert.False(t, book.IsGood(addr))
+}
+
 func TestAddrBookEmpty(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
@@ -542,27 +568,6 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 		testAddrBookAddressSelection(t, bookSize)
 	}
 }
-
-//func TestBanBadPeers(t *testing.T) {
-//	fname := createTempFileName("addrbook_test")
-//	defer deleteTempFile(fname)
-//
-//	book := NewAddrBook(fname, true)
-//	book.SetLogger(log.TestingLogger())
-//
-//	addr := randIPv4Address(t)
-//	book.AddAddress(addr, addr)
-//
-//	book.MarkBad(addr, 1 * time.Second)
-//
-//	assert.False(t, book.HasAddress(addr))
-//
-//	time.Sleep(1 * time.Second)
-//
-//	book.ReinstateBadPeers()
-//
-//	assert.True(t, book.HasAddress(addr))
-//}
 
 func assertMOldAndNNewAddrsInSelection(t *testing.T, m, n int, addrs []*p2p.NetAddress, book *addrBook) {
 	nOld, nNew := countOldAndNewAddrsInSelection(addrs, book)

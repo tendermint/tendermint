@@ -751,9 +751,6 @@ func (a *addrBook) removeAddress(addr *p2p.NetAddress) {
 }
 
 func (a *addrBook) addBadPeer(addr *p2p.NetAddress, banTime time.Duration) bool {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
 	// check it exists in addrbook
 	ka := a.addrLookup[addr.ID]
 	// check address is not already there
