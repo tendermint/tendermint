@@ -11,13 +11,12 @@ func MakeCommit(blockID BlockID, height int64, round int,
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		pv, err := validators[i].GetPubKey()
+		pubKey, err := validators[i].GetPubKey()
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get pubkey")
 		}
-		addr := pv.Address()
 		vote := &Vote{
-			ValidatorAddress: addr,
+			ValidatorAddress: pubKey.Address(),
 			ValidatorIndex:   i,
 			Height:           height,
 			Round:            round,
@@ -51,11 +50,11 @@ func MakeVote(
 	chainID string,
 	now time.Time,
 ) (*Vote, error) {
-	pv, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get pubkey")
 	}
-	addr := pv.Address()
+	addr := pubKey.Address()
 	idx, _ := valSet.GetByAddress(addr)
 	vote := &Vote{
 		ValidatorAddress: addr,
