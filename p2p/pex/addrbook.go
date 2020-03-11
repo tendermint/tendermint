@@ -608,6 +608,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
+	if _, ok := a.badPeers[addr.ID]; ok {
+		return ErrAddressBanned{addr}
+	}
+
 	if _, ok := a.privateIDs[addr.ID]; ok {
 		return ErrAddrBookPrivate{addr}
 	}
