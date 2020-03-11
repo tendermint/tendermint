@@ -21,9 +21,11 @@ const (
 	PubKeyAminoName  = "tendermint/PubKeyEd25519"
 	// PubKeySize is the number of bytes in an Ed25519 signature.
 	PubKeySize = 32
+	// PrivateKeySize is the size, in bytes, of private keys
+	PrivateKeySize = 64
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
-	PrivateKeySize = 64
+	SignatureSize = 64
 )
 
 // PrivKey implements crypto.PrivKey.

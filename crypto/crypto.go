@@ -31,7 +31,6 @@ type PrivKey interface {
 	Sign(msg []byte) ([]byte, error)
 	PubKey() PubKey
 	Equals(PrivKey) bool
-	// ProtoBytes() []byte
 }
 
 type Symmetric interface {

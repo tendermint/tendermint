@@ -25,7 +25,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			Total: 1000,
 		},
 	}
-	sig := make([]byte, ed25519.PrivateKeySize)
+	sig := make([]byte, ed25519.SignatureSize)
 	for i := 0; i < nval; i++ {
 		commitSigs[i] = (&types.Vote{
 			ValidatorAddress: types.Address(tmrand.Bytes(20)),
