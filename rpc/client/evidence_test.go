@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -101,22 +102,21 @@ func makeEvidences(
 	return correct, fakes
 }
 
-func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
-	config := rpctest.GetConfig()
-	chainID := config.ChainID()
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
+func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
+	var (
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
+		pv      = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	)
 
 	correct, fakes := makeEvidences(t, pv, chainID)
-	t.Logf("evidence %v", correct)
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
 		result, err := c.BroadcastEvidence(correct)
-		require.Nil(t, err)
-		require.Equal(t, correct.Hash(), result.Hash, "Invalid response, result %+v", result)
+		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
+		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
 
 		status, err := c.Status()
 		require.NoError(t, err)
@@ -125,9 +125,9 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		ed25519pub := correct.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
 		result2, err := c.ABCIQuery("/val", rawpub)
-		require.Nil(t, err, "Error querying evidence, err %v", err)
+		require.NoError(t, err)
 		qres := result2.Response
-		require.True(t, qres.IsOK(), "Response not OK")
+		require.True(t, qres.IsOK())
 
 		var v abci.ValidatorUpdate
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
@@ -138,7 +138,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastEvidence(fake)
-			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
+			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
 	}
 }
