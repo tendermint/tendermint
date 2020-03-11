@@ -100,7 +100,7 @@ func GenPrivKeySecp256k1(secret []byte) PrivKey {
 	// copy feB over to fixed 32 byte privKey32 and pad (if necessary)
 	copy(privKey32[32-len(feB):32], feB)
 
-	return PrivKey(privKey32[:])
+	return PrivKey(privKey32)
 }
 
 //-------------------------------------
