@@ -64,6 +64,7 @@ type AddrBook interface {
 	ReinstateBadPeers()
 
 	IsGood(*p2p.NetAddress) bool
+	IsBanned(*p2p.NetAddress) bool
 
 	// Send a selection of addresses to peers
 	GetSelection() []*p2p.NetAddress
@@ -219,6 +220,14 @@ func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 	defer a.mtx.Unlock()
 
 	return a.addrLookup[addr.ID].isOld()
+}
+
+func (a *addrBook) IsBanned(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	_, ok := a.badPeers[addr.ID]
+	return ok
 }
 
 // HasAddress returns true if the address is in the book.
