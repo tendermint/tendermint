@@ -351,6 +351,7 @@ func (a *addrBook) ReinstateBadPeers() {
 			bucket := a.calcNewBucket(ka.Addr, ka.Src)
 			a.addToNewBucket(ka, bucket)
 			delete(a.badPeers, ka.ID())
+			a.Logger.Info("Reinstated Address", "addr", ka.Addr)
 		}
 	}
 }
@@ -772,6 +773,7 @@ func (a *addrBook) addBadPeer(addr *p2p.NetAddress, banTime time.Duration) bool 
 			// add to bad peer list
 			ka.ban(banTime)
 			a.badPeers[addr.ID] = ka
+			a.Logger.Info("Add address to blacklist", "addr", addr)
 		}
 		return true
 	}
