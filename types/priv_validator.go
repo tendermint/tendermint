@@ -12,7 +12,7 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
-	GetPubKey() (key crypto.PubKey, err error)
+	GetPubKey() (crypto.PubKey, error)
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
@@ -106,8 +106,7 @@ func (pv MockPV) SignProposal(chainID string, proposal *Proposal) error {
 // String returns a string representation of the MockPV.
 func (pv MockPV) String() string {
 	mpv, _ := pv.GetPubKey() // mockPV will never return an error, ignored here
-	addr := mpv.Address()
-	return fmt.Sprintf("MockPV{%v}", addr)
+	return fmt.Sprintf("MockPV{%v}", mpv.Address())
 }
 
 // XXX: Implement.

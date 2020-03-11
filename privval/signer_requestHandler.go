@@ -3,8 +3,6 @@ package privval
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -19,12 +17,13 @@ func DefaultValidationRequestHandler(
 
 	switch r := req.(type) {
 	case *PubKeyRequest:
-		var p crypto.PubKey
-		p, err = privVal.GetPubKey()
+		var pubKey crypto.PubKey
+		pubKey, err = privVal.GetPubKey()
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get pubkey")
+			res = &PubKeyResponse{nil, &RemoteSignerError{0, err.Error()}}
+		} else {
+			res = &PubKeyResponse{pubKey, nil}
 		}
-		res = &PubKeyResponse{p, nil}
 
 	case *SignVoteRequest:
 		err = privVal.SignVote(chainID, r.Vote)

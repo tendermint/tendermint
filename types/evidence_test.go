@@ -21,11 +21,10 @@ type voteData struct {
 func makeVote(
 	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
 ) *Vote {
-	pv, err := val.GetPubKey()
+	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
-	addr := pv.Address()
 	v := &Vote{
-		ValidatorAddress: addr,
+		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
