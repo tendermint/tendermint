@@ -50,6 +50,9 @@ const (
 	// Especially in the beginning, node should have more trusted peers than
 	// untrusted.
 	biasToSelectNewPeers = 30 // 70 to select good peers
+
+	// if a peer is marked bad, it will be banned for at least this time period
+	defaultBanTime = 24 * time.Hour
 )
 
 type errMaxAttemptsToDial struct {
@@ -535,7 +538,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 		// failed to connect to. Then we can clean up attemptsToDial, which acts as
 		// a blacklist currently.
 		// https://github.com/tendermint/tendermint/issues/3572
-		r.book.MarkBad(addr)
+		r.book.MarkBad(addr, defaultBanTime)
 		return errMaxAttemptsToDial{}
 	}
 
@@ -747,7 +750,7 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
 	switch err.(type) {
 	case p2p.ErrSwitchAuthenticationFailure:
-		book.MarkBad(addr)
+		book.MarkBad(addr, defaultBanTime)
 	default:
 		book.MarkAttempt(addr)
 	}
