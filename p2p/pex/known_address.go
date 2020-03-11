@@ -60,7 +60,7 @@ func (ka *knownAddress) ban(banTime time.Duration) {
 }
 
 func (ka *knownAddress) isBanned() bool {
-	return ka.LastBanTime.Before(time.Now())
+	return ka.LastBanTime.After(time.Now())
 }
 
 func (ka *knownAddress) addBucketRef(bucketIdx int) int {
