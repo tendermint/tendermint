@@ -22,7 +22,6 @@ import (
 var (
 	largeFullNode    = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
 	genesisHeader, _ = largeFullNode.SignedHeader(1)
-	result           *Client
 )
 
 func BenchmarkSequence(b *testing.B) {
