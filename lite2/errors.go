@@ -30,6 +30,16 @@ func (e ErrNewValSetCantBeTrusted) Error() string {
 	return fmt.Sprintf("cant trust new val set: %v", e.Reason)
 }
 
+// ErrInvalidHeader means the header either failed the basic validation or
+// commit is not signed by 2/3+.
+type ErrInvalidHeader struct {
+	Reason error
+}
+
+func (e ErrInvalidHeader) Error() string {
+	return fmt.Sprintf("invalid header: %v", e.Reason)
+}
+
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
 type ErrConflictingHeaders struct {
 	H1      *types.SignedHeader
