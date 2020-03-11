@@ -45,8 +45,8 @@ type tm2pb struct{}
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
 		Version: abci.Version{
-			Block: header.Version.Block.Uint64(),
-			App:   header.Version.App.Uint64(),
+			Block: header.Version.Block,
+			App:   header.Version.App,
 		},
 		ChainID: header.ChainID,
 		Height:  header.Height,
@@ -149,7 +149,7 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 // ABCI Evidence includes information from the past that's not included in the evidence itself
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
+func (tm2pb) Evidence(ev EvidenceI, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
 	_, val := valSet.GetByAddress(ev.Address())
 	if val == nil {
 		// should already have checked this

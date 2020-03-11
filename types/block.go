@@ -323,7 +323,7 @@ func (h *Header) Populate(
 	consensusHash, appHash, lastResultsHash []byte,
 	proposerAddress Address,
 ) {
-	h.Version = version
+	h.Version = Version{App: version.App.Uint64(), Block: version.Block.Uint64()}
 	h.ChainID = chainID
 	h.Time = timestamp
 	h.LastBlockID = lastBlockID
