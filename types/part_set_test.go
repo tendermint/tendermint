@@ -21,11 +21,11 @@ func TestBasicPartSet(t *testing.T) {
 	partSet := NewPartSetFromData(data, testPartSize)
 
 	assert.NotEmpty(t, partSet.Hash())
-	assert.Equal(t, uint32(100), partSet.Total())
+	assert.EqualValues(t, 100, partSet.Total())
 	assert.Equal(t, 100, partSet.BitArray().Size())
 	assert.True(t, partSet.HashesTo(partSet.Hash()))
 	assert.True(t, partSet.IsComplete())
-	assert.Equal(t, uint32(100), partSet.Count())
+	assert.EqualValues(t, 100, partSet.Count())
 
 	// Test adding parts to a new partSet.
 	partSet2 := NewPartSetFromHeader(partSet.Header())
@@ -49,7 +49,7 @@ func TestBasicPartSet(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, partSet.Hash(), partSet2.Hash())
-	assert.Equal(t, uint32(100), partSet2.Total())
+	assert.EqualValues(t, 100, partSet2.Total())
 	assert.True(t, partSet2.IsComplete())
 
 	// Reconstruct data, assert that they are equal.
