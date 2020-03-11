@@ -65,35 +65,36 @@ Example usage:
 
 		db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
 		if err != nil {
-			// return err
-			t.Fatal(err)
+			// handle error
 		}
-		c, err := NewClient(
+
+		c, err := NewHTTPClient(
 			chainID,
 			TrustOptions{
 				Period: 504 * time.Hour, // 21 days
 				Height: 100,
 				Hash:   header.Hash(),
 			},
-			httpp.New(chainID, "tcp://localhost:26657"),
-			dbs.New(db, chainID),
+			"http://localhost:26657",
+			[]string{"http://witness1:26657"},
+			dbs.New(db, ""),
 		)
-
-		err = c.VerifyHeaderAtHeight(101, time.Now())
 		if err != nil {
-			fmt.Println("retry?")
+			// handle error
 		}
 
-		h, err := c.TrustedHeader(101)
+		h, err := c.TrustedHeader(100)
 		if err != nil {
-			fmt.Println("retry?")
+			// handle error
 		}
-		fmt.Println("got header", h)
+		fmt.Println("header", h)
+
+Check out other examples in example_test.go
 
 ## 2. Pure functions to verify a new header (see verifier.go)
 
 Verify function verifies a new header against some trusted header. See
-https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
+https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/verification.md
 for details.
 
 ## 3. Secure RPC proxy
@@ -105,7 +106,7 @@ as a wrapper, which verifies all the headers, using a light client connected to
 some other node.
 
 See
-https://github.com/tendermint/tendermint/blob/master/cmd/tendermint/commands/lite.go
+https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html
 for usage example.
 */
 package lite

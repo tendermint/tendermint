@@ -37,6 +37,7 @@ type Metrics struct {
 	ErrorsShed metrics.Counter
 }
 
+// PrometheusMetrics returns metrics for in and out events, errors, etc. handled by routines.
 // Can we burn in the routine name here?
 func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	labels := []string{}

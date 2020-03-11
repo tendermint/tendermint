@@ -1644,6 +1644,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
 		// If it's otherwise invalid, punish peer.
+		// nolint: gocritic
 		if err == ErrVoteHeightMismatch {
 			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
@@ -1661,6 +1662,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			}
 			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
 			return added, err
+		} else if err == types.ErrVoteNonDeterministicSignature {
+			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)
 		} else {
 			// Either
 			// 1) bad peer OR

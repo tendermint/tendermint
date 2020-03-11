@@ -96,6 +96,16 @@ func NewHTTP(remote, wsEndpoint string) (*HTTP, error) {
 	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
 }
 
+// Create timeout enabled http client
+func NewHTTPWithTimeout(remote, wsEndpoint string, timeout uint) (*HTTP, error) {
+	httpClient, err := rpcclient.DefaultHTTPClient(remote)
+	if err != nil {
+		return nil, err
+	}
+	httpClient.Timeout = time.Duration(timeout) * time.Second
+	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
+}
+
 // NewHTTPWithClient allows for setting a custom http client (See NewHTTP).
 // An error is returned on invalid remote. The function panics when remote is nil.
 func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {

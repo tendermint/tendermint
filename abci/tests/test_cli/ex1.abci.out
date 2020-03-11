@@ -27,7 +27,7 @@
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 2
 -> key: abc
 -> key.hex: 616263
 -> value: abc
@@ -43,7 +43,7 @@
 > query "def"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 3
 -> key: def
 -> key.hex: 646566
 -> value: xyz

@@ -51,57 +51,52 @@ PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
+.PHONY: all
 
 tools: certstrap protobuf goodman
+.PHONY: tools
 
 check: check_tools
+.PHONY: check
 
 check_tools:
 	@# https://stackoverflow.com/a/25668869
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+.PHONY: check_tools
 
 certstrap: $(CERTSTRAP)
 $(CERTSTRAP):
 	@echo "Get Certstrap"
 	@go get github.com/square/certstrap@v1.2.0
+.PHONY: certstrap
 
 protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
+.PHONY: protobuf
 
-buf: protoc-gen-buf-check-breaking protoc-gen-buf-check-lint
+buf: 
 	@echo "Installing buf..."
 	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/buf" && \
-	chmod +x "${BIN}/buf"
-
-protoc-gen-buf-check-breaking:
-	@echo "Installing protoc-gen-buf-check-breaking..."
-	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-breaking-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/protoc-gen-buf-check-breaking" && \
-	chmod +x "${BIN}/protoc-gen-buf-check-breaking"
-
-protoc-gen-buf-check-lint:
-	@echo "Installing protoc-gen-buf-check-lint..."
-	@curl -sSL \
-    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-lint-${UNAME_S}-${UNAME_M}" \
-    -o "${BIN}/protoc-gen-buf-check-lint" && \
-	chmod +x "${BIN}/protoc-gen-buf-check-lint"
+    "https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/buf-$(UNAME_S)-$(UNAME_M)" \
+    -o "$(BIN)/buf" && \
+	chmod +x "$(BIN)/buf"
+.PHONY: buf
 
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"
 	@go get github.com/snikch/goodman/cmd/goodman@10e37e294daa3c9a90abded60ff9924bafab3888
+.PHONY: goodman
 
 tools-clean:
 	rm -f $(CERTSTRAP) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
 	rm -rf /usr/local/include/google/protobuf
 	rm -f /usr/local/bin/protoc
+.PHONY: tooks-clean
 
 ###
 # Non Go tools
@@ -127,5 +122,4 @@ protoc:
 	@unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc
 	@unzip -o $(PROTOC_ZIP) -d /usr/local 'include/*'
 	@rm -f $(PROTOC_ZIP)
-
-.PHONY: all tools tools-clean protoc
+.PHONY: protoc
