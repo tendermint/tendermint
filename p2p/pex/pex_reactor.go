@@ -534,10 +534,6 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
-		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
-		// failed to connect to. Then we can clean up attemptsToDial, which acts as
-		// a blacklist currently.
-		// https://github.com/tendermint/tendermint/issues/3572
 		r.book.MarkBad(addr, defaultBanTime)
 		return errMaxAttemptsToDial{}
 	}

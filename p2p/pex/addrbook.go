@@ -222,11 +222,12 @@ func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 	return a.addrLookup[addr.ID].isOld()
 }
 
+// IsBanned returns true if the peer is currently banned
 func (a *addrBook) IsBanned(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
 	_, ok := a.badPeers[addr.ID]
+	a.mtx.Unlock()
+
 	return ok
 }
 
@@ -351,7 +352,7 @@ func (a *addrBook) ReinstateBadPeers() {
 			bucket := a.calcNewBucket(ka.Addr, ka.Src)
 			a.addToNewBucket(ka, bucket)
 			delete(a.badPeers, ka.ID())
-			a.Logger.Info("Reinstated Address", "addr", ka.Addr)
+			a.Logger.Info("Reinstated address", "addr", ka.Addr)
 		}
 	}
 }
