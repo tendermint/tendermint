@@ -344,10 +344,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	//height 2
 	height++
 	incrementHeight(vss...)
-	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err := assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -369,7 +370,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	//height 3
 	height++
 	incrementHeight(vss...)
-	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
@@ -394,12 +396,14 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	//height 4
 	height++
 	incrementHeight(vss...)
-	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
+	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
-	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
+	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
@@ -412,7 +416,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	sort.Sort(ValidatorStubsByAddress(newVss))
 	selfIndex := 0
 	for i, vs := range newVss {
-		if vs.GetPubKey().Equals(css[0].privValidator.GetPubKey()) {
+		vsPubKey, err := vs.GetPubKey()
+		require.NoError(t, err)
+
+		css0PubKey, err := css[0].privValidator.GetPubKey()
+		require.NoError(t, err)
+
+		if vsPubKey.Equals(css0PubKey) {
 			selfIndex = i
 			break
 		}
@@ -469,7 +479,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	copy(newVss, vss[:nVals+3])
 	sort.Sort(ValidatorStubsByAddress(newVss))
 	for i, vs := range newVss {
-		if vs.GetPubKey().Equals(css[0].privValidator.GetPubKey()) {
+		vsKeyKey, err := vs.GetPubKey()
+		require.NoError(t, err)
+
+		css0PubKey, err := css[0].privValidator.GetPubKey()
+		require.NoError(t, err)
+
+		if vsKeyKey.Equals(css0PubKey) {
 			selfIndex = i
 			break
 		}
@@ -642,7 +658,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
-		stateDB, genisisState, store = stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
+		pubKey, err := privVal.GetPubKey()
+		require.NoError(t, err)
+		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 	}
 	store.chain = chain
 	store.commits = commits
@@ -811,7 +829,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), appVersion)
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -1095,7 +1115,9 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	config := ResetConfig("handshake_test_")
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address
 

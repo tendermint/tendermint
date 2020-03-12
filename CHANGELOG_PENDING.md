@@ -18,4 +18,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
+- [privval] \#4534 Add `error` as a return value on`GetPubKey()`
+
 ### BUG FIXES:
