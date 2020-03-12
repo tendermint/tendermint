@@ -1,0 +1,17 @@
+# todo in this PR 
+
+- [ ] define block type in protobuf
+  - [x] Header type
+  - [x] Data type
+  - [ ] EvidenceData type
+    - [ ] Duplicate vote
+      - [x] Vote type
+      - [ ] crypto pubkey
+    - [ ] Decide if mock evidence should be kept in production path
+  - [ ] Commit Type 
+    - [x] CommitSig
+    - [ ] BitArray in proto?
+
+- [ ] Remove block.proto
+- [x] Remove protobuf compatibility tests
+- [ ] 
