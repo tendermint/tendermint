@@ -2,7 +2,7 @@
 
 ## v0.33.2
 
-*March 11, 2020*
+*March 12, 2020*
 
 Special thanks to external contributors on this release:
 @antho1404, @michaelfig, @gterzian, @tau3, @Shivani912
@@ -38,6 +38,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [lite2] [\#4470](https://github.com/tendermint/tendermint/issues/4470) Fix inconsistent header-validatorset pairing (@melekes)
 - [lite2] [\#4488](https://github.com/tendermint/tendermint/issues/4488) Allow local clock drift -10 sec. (@melekes)
 - [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Use `curve25519.X25519()` instead of `ScalarMult` (@erikgrinaker)
+- [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)
 - [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) **VerifyCommitX() functions should return as soon as +2/3 threshold is reached** (@alessio).
 - [libs/kv] [\#4542](https://github.com/tendermint/tendermint/pull/4542) remove unused type KI64Pair (@tessr)
 
