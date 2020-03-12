@@ -110,7 +110,7 @@ func TestBlockMakePartSet(t *testing.T) {
 
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, uint32(1), partSet.Total())
+	assert.EqualValues(t, 1, partSet.Total())
 }
 
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
@@ -128,7 +128,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, uint32(3), partSet.Total())
+	assert.EqualValues(t, 3, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
