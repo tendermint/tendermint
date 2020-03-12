@@ -93,7 +93,7 @@ func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 	partsBitArray := bits.NewBitArray(int(total))
 	for i := uint32(0); i < total; i++ {
 		part := &Part{
-			Index: uint32(i),
+			Index: i,
 			Bytes: data[i*partSize : tmmath.MinInt(len(data), int((i+1)*partSize))],
 		}
 		parts[i] = part
