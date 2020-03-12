@@ -56,7 +56,9 @@ func (ka *knownAddress) markGood() {
 }
 
 func (ka *knownAddress) ban(banTime time.Duration) {
-	ka.LastBanTime = time.Now().Add(banTime)
+	if ka.LastBanTime.Before(time.Now().Add(banTime)) {
+		ka.LastBanTime = time.Now().Add(banTime)
+	}
 }
 
 func (ka *knownAddress) isBanned() bool {
