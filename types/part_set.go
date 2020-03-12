@@ -27,7 +27,7 @@ type Part struct {
 
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
-	if len(part.Bytes) > BlockPartSizeBytes {
+	if len(part.Bytes) > int(BlockPartSizeBytes) {
 		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
 	}
 	if err := part.Proof.ValidateBasic(); err != nil {
@@ -85,32 +85,32 @@ type PartSet struct {
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
 // CONTRACT: partSize is greater than zero.
-func NewPartSetFromData(data []byte, partSize int) *PartSet {
+func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 	// divide data into 4kb parts.
-	total := (len(data) + partSize - 1) / partSize
+	total := (uint32(len(data)) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	partsBytes := make([][]byte, total)
-	partsBitArray := bits.NewBitArray(total)
-	for i := 0; i < total; i++ {
+	partsBitArray := bits.NewBitArray(int(total))
+	for i := uint32(0); i < total; i++ {
 		part := &Part{
 			Index: uint32(i),
-			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
+			Bytes: data[i*partSize : tmmath.MinInt(len(data), int((i+1)*partSize))],
 		}
 		parts[i] = part
 		partsBytes[i] = part.Bytes
-		partsBitArray.SetIndex(i, true)
+		partsBitArray.SetIndex(int(i), true)
 	}
 	// Compute merkle proofs
 	root, proofs := merkle.SimpleProofsFromByteSlices(partsBytes)
-	for i := 0; i < total; i++ {
+	for i := uint32(0); i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
-		total:         uint32(total),
+		total:         total,
 		hash:          root,
 		parts:         parts,
 		partsBitArray: partsBitArray,
-		count:         uint32(total),
+		count:         total,
 	}
 }
 
