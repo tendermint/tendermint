@@ -714,39 +714,52 @@ func (c *Client) bisection(
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
+	type HeaderSet struct {
+		sh  *types.SignedHeader
+		val *types.ValidatorSet
+	}
+
 	var (
+		headerCache = []HeaderSet{{newHeader, newVals}}
+		depth       = 0
+
 		trustedHeader = initiallyTrustedHeader
 		trustedVals   = initiallyTrustedVals
-
-		interimHeader = newHeader
-		interimVals   = newVals
 	)
 
 	for {
 		c.logger.Debug("Verify newHeader against trustedHeader",
 			"trustedHeight", trustedHeader.Height,
 			"trustedHash", hash2str(trustedHeader.Hash()),
-			"newHeight", interimHeader.Height,
-			"newHash", hash2str(interimHeader.Hash()))
+			"newHeight", headerCache[depth].sh.Height,
+			"newHash", hash2str(headerCache[depth].sh.Hash()))
 
-		err := Verify(c.chainID, trustedHeader, trustedVals, interimHeader, interimVals, c.trustingPeriod, now,
-			c.trustLevel)
+		err := Verify(c.chainID, trustedHeader, trustedVals, headerCache[depth].sh, headerCache[depth].val,
+			c.trustingPeriod, now, c.trustLevel)
 		switch err.(type) {
 		case nil:
-			if interimHeader.Height == newHeader.Height {
+			if depth == 0 {
 				return nil
 			}
 
 			// Update the lower bound to the previous upper bound
-			trustedHeader, trustedVals = interimHeader, interimVals
-			// Update the upper bound to the untrustedHeader
-			interimHeader, interimVals = newHeader, newVals
+			trustedHeader, trustedVals = headerCache[depth].sh, headerCache[depth].val
+			// Remove the untrusted header at the lower bound in the header cache
+			headerCache = headerCache[:depth]
+			// Update the upper bound to the untrustedHeader by setting depth to 0
+			depth = 0
 
 		case ErrNewValSetCantBeTrusted:
-			pivotHeight := (interimHeader.Height + trustedHeader.Height) / 2
-			interimHeader, interimVals, err = c.fetchHeaderAndValsAtHeight(pivotHeight)
-			if err != nil {
-				return err
+			if depth == len(headerCache)-1 {
+				pivotHeight := (headerCache[depth].sh.Height + trustedHeader.Height) / 2
+				interimHeader, interimVals, err := c.fetchHeaderAndValsAtHeight(pivotHeight)
+				if err != nil {
+					return err
+				}
+				depth++
+				headerCache = append(headerCache, HeaderSet{interimHeader, interimVals})
+			} else { // depth is less than length - 1
+				depth++
 			}
 
 		case ErrInvalidHeader:
@@ -756,14 +769,14 @@ func (c *Client) bisection(
 				c.logger.Error("Can't replace primary", "err", replaceErr)
 				// return original error
 				return errors.Wrapf(err, "verify from #%d to #%d failed",
-					trustedHeader.Height, interimHeader.Height)
+					trustedHeader.Height, headerCache[depth].sh.Height)
 			}
 			// attempt to verify the header again
 			continue
 
 		default:
 			return errors.Wrapf(err, "verify from #%d to #%d failed",
-				trustedHeader.Height, interimHeader.Height)
+				trustedHeader.Height, headerCache[depth].sh.Height)
 		}
 	}
 }
