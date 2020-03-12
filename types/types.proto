@@ -134,7 +134,9 @@ message DuplicateVoteEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) = "*EvidenceI";
+  option (cosmos_proto.interface_type) =
+      "*EvidenceI";  // TODO: ask abou tthis since if these files are imported somewhere it wont
+                     // work correctly
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
@@ -149,6 +151,40 @@ message EvidenceData {
     (gogoproto.customname) = "hash",
     (gogoproto.nullable)   = false
   ];
+}
+
+// Commit contains the evidence that a block was committed by a set of validators.
+// NOTE: Commit is empty for height 1, but never nil.
+message Commit {
+  // NOTE: The signatures are in order of address to preserve the bonded
+  // ValidatorSet order.
+  // Any peer with a block can gossip signatures by index with a peer without
+  // recalculating the active ValidatorSet.
+  uint64             height     = 1;
+  uint32             round      = 2;
+  BlockID            block_id   = 3 [(gogoproto.customname) = "BlockID"];
+  repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
+
+  // Memoized in first call to corresponding method.
+  // NOTE: can't memoize in constructor because constructor isn't used for
+  // unmarshaling.
+  bytes hash = 5 [
+    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
+    (gogoproto.customname) = "hash",
+    (gogoproto.nullable)   = false
+  ];
+  // bitArray
+}
+
+message CommitSig {
+  BlockIDFlag block_id_flag     = 1 [(gogoproto.customname) = "BlockIDFlag"];
+  bytes       validator_address = 2 [
+    (gogoproto.casttype) = "github.com/tendermint/tendermint/crypto.Address",
+    (gogoproto.nullable) = false
+  ];
+  google.protobuf.Timestamp timestamp = 3
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes signature = 4;
 }
 
 // message Block {
