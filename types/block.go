@@ -403,14 +403,6 @@ func (h *Header) StringIndented(indent string) string {
 
 //-------------------------------------
 
-// CommitSig is a part of the Vote included in a Commit.
-type CommitSig struct {
-	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress Address     `json:"validator_address"`
-	Timestamp        time.Time   `json:"timestamp"`
-	Signature        []byte      `json:"signature"`
-}
-
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
 func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
@@ -563,7 +555,7 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
 		Timestamp:        commitSig.Timestamp,
-		ValidatorAddress: commitSig.ValidatorAddress,
+		ValidatorAddress: &commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
 	}
@@ -585,15 +577,15 @@ func (commit *Commit) Type() byte {
 
 // GetHeight returns height of the commit.
 // Implements VoteSetReader.
-func (commit *Commit) GetHeight() int64 {
-	return commit.Height
-}
+// func (commit *Commit) GetHeight() int64 {
+// 	return commit.Height
+// }
 
 // GetRound returns height of the commit.
 // Implements VoteSetReader.
-func (commit *Commit) GetRound() int32 {
-	return commit.Round
-}
+// func (commit *Commit) GetRound() int32 {
+// 	return commit.Round
+// }
 
 // Size returns the number of signatures in the commit.
 // Implements VoteSetReader.

@@ -14,7 +14,7 @@ import (
 // NOTE: privValidators are in order
 func randVoteSet(
 	height int64,
-	round int,
+	round int32,
 	signedMsgType SignedMsgType,
 	numValidators int,
 	votingPower int64,
@@ -24,7 +24,7 @@ func randVoteSet(
 }
 
 // Convenience: Return new vote with different validator address/index
-func withValidator(vote *Vote, addr []byte, idx int) *Vote {
+func withValidator(vote *Vote, addr []byte, idx int32) *Vote {
 	vote = vote.Copy()
 	vote.ValidatorAddress = addr
 	vote.ValidatorIndex = idx
@@ -39,7 +39,7 @@ func withHeight(vote *Vote, height int64) *Vote {
 }
 
 // Convenience: Return new vote with different round
-func withRound(vote *Vote, round int) *Vote {
+func withRound(vote *Vote, round int32) *Vote {
 	vote = vote.Copy()
 	vote.Round = round
 	return vote
@@ -67,7 +67,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func TestAddVote(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 	val0 := privValidators[0]
 
@@ -112,7 +112,7 @@ func TestAddVote(t *testing.T) {
 }
 
 func Test2_3Majority(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 
 	voteProto := &Vote{
@@ -125,7 +125,7 @@ func Test2_3Majority(t *testing.T) {
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 	// 6 out of 10 voted for nil.
-	for i := 0; i < 6; i++ {
+	for i := int32(0); i < 6; i++ {
 		addr := privValidators[i].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, i)
 		_, err := signAddVote(privValidators[i], vote, voteSet)
@@ -168,7 +168,7 @@ func Test2_3Majority(t *testing.T) {
 }
 
 func Test2_3MajorityRedux(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
@@ -186,7 +186,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	}
 
 	// 66 out of 100 voted for nil.
-	for i := 0; i < 66; i++ {
+	for i := int32(0); i < 66; i++ {
 		addr := privValidators[i].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, i)
 		_, err := signAddVote(privValidators[i], vote, voteSet)
@@ -273,7 +273,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 }
 
 func TestBadVotes(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 
 	voteProto := &Vote{
@@ -338,7 +338,7 @@ func TestBadVotes(t *testing.T) {
 }
 
 func TestConflicts(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 4, 1)
 	blockHash1 := tmrand.Bytes(32)
 	blockHash2 := tmrand.Bytes(32)
@@ -472,7 +472,7 @@ func TestConflicts(t *testing.T) {
 }
 
 func TestMakeCommit(t *testing.T) {
-	height, round := int64(1), 0
+	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, PrecommitType, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
@@ -487,7 +487,7 @@ func TestMakeCommit(t *testing.T) {
 	}
 
 	// 6 out of 10 voted for some block.
-	for i := 0; i < 6; i++ {
+	for i := int32(0); i < 6; i++ {
 		addr := privValidators[i].GetPubKey().Address()
 		vote := withValidator(voteProto, addr, i)
 		_, err := signAddVote(privValidators[i], vote, voteSet)

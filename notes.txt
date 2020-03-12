@@ -1,6 +1,7 @@
 # todo in this PR 
 
-- [ ] define block type in protobuf
+- [ ] define block type in protobuf, keep hand generated type 
+      > Note: you will have to go back and forth between the two types.
   - [x] Header type
   - [x] Data type
   - [ ] EvidenceData type
@@ -8,9 +9,11 @@
       - [x] Vote type
       - [ ] crypto pubkey
     - [ ] Decide if mock evidence should be kept in production path
-  - [ ] Commit Type 
+  - [x] Commit Type 
     - [x] CommitSig
-    - [ ] BitArray in proto?
+      - [x] create a proto representation without the mutex and keep the handwritten one
+
+- [ ] Define marshal & unmarshal json funcs where needed
 
 - [ ] Remove block.proto
 - [x] Remove protobuf compatibility tests

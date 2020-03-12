@@ -28,22 +28,22 @@ func (r *PartSetHeader) UnmarshalJSON(b []byte) error {
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *ProtoHeader) MarshalJSON() ([]byte, error) {
+func (r *Header) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *ProtoHeader) UnmarshalJSON(b []byte) error {
+func (r *Header) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *ProtoVersion) MarshalJSON() ([]byte, error) {
+func (r *Version) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *ProtoVersion) UnmarshalJSON(b []byte) error {
+func (r *Version) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
@@ -69,6 +69,6 @@ type jsonRoundTripper interface {
 }
 
 var _ jsonRoundTripper = (*PartSetHeader)(nil)
-var _ jsonRoundTripper = (*ProtoHeader)(nil)
-var _ jsonRoundTripper = (*ProtoVersion)(nil)
+var _ jsonRoundTripper = (*Header)(nil)
+var _ jsonRoundTripper = (*Version)(nil)
 var _ jsonRoundTripper = (*ProtoTimestamp)(nil)

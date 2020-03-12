@@ -5,6 +5,7 @@ option  go_package = "github.com/tendermint/tendermint/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 import "third_party/proto/cosmos-proto/cosmos.proto";
+import "libs/bits/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
@@ -97,7 +98,7 @@ message Data {
   // Txs that will be applied by state @ block.Height+1.
   // NOTE: not all txs here are valid.  We're just agreeing on the order first.
   // This means that block.AppHash does not include these txs.
-  bytes Txs = 1 [(gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Txs"];
+  bytes Txs = 1 [(gogoproto.casttype) = "Txs"];
   // Volatile
   bytes hash = 2 [
     (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
@@ -134,9 +135,8 @@ message DuplicateVoteEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) =
-      "*EvidenceI";  // TODO: ask abou tthis since if these files are imported somewhere it wont
-                     // work correctly
+  option (cosmos_proto.interface_type) = "*EvidenceI";
+
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
@@ -156,6 +156,7 @@ message EvidenceData {
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 message Commit {
+  option (gogoproto.sizer) = false;
   // NOTE: The signatures are in order of address to preserve the bonded
   // ValidatorSet order.
   // Any peer with a block can gossip signatures by index with a peer without
@@ -173,22 +174,24 @@ message Commit {
     (gogoproto.customname) = "hash",
     (gogoproto.nullable)   = false
   ];
-  // bitArray
+  tendermint.libs.bits.TmBitArray bit_array = 6 [(gogoproto.customname) = "bitArray"];
 }
 
+// CommitSig is a part of the Vote included in a Commit.
 message CommitSig {
+  option (gogoproto.goproto_stringer) = false;
+
   BlockIDFlag block_id_flag     = 1 [(gogoproto.customname) = "BlockIDFlag"];
-  bytes       validator_address = 2 [
-    (gogoproto.casttype) = "github.com/tendermint/tendermint/crypto.Address",
-    (gogoproto.nullable) = false
-  ];
+  bytes       validator_address = 2
+      [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto.Address"];
   google.protobuf.Timestamp timestamp = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
 }
 
-// message Block {
-//   Header       header   = 1;
-//   Data         data     = 2;
-//   EvidenceData evidence = 3;
-// }
+message TmBlock {
+  Header       header     = 1;
+  Data         data       = 2;
+  EvidenceData evidence   = 3;
+  Commit       LastCommit = 4;
+}
