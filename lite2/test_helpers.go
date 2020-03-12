@@ -160,3 +160,61 @@ func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTi
 		Commit: pkz.signHeader(header, first, last),
 	}
 }
+
+func (pkz privKeys) ChangeKeys(delta int) privKeys {
+	newKeys := pkz[delta:]
+	return newKeys.Extend(delta)
+}
+
+// Generates the header and validator set to create a full entire mock node with blocks to height (
+// blockSize) and with variation in validator sets. BlockIntervals are in per minute.
+// NOTE: Expected to have a large validator set size ~ 100 validators.
+func GenMockNode(
+	chainID string,
+	blockSize int64,
+	valSize int,
+	valVariation float32,
+	bTime time.Time) (
+	string,
+	map[int64]*types.SignedHeader,
+	map[int64]*types.ValidatorSet) {
+
+	var (
+		headers         = make(map[int64]*types.SignedHeader, blockSize)
+		valset          = make(map[int64]*types.ValidatorSet, blockSize)
+		keys            = genPrivKeys(valSize)
+		totalVariation  = valVariation
+		valVariationInt int
+		newKeys         privKeys
+	)
+
+	valVariationInt = int(totalVariation)
+	totalVariation = -float32(valVariationInt)
+	newKeys = keys.ChangeKeys(valVariationInt)
+
+	// genesis header and vals
+	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
+		keys.ToValidators(2, 2), newKeys.ToValidators(2, 2), []byte("app_hash"), []byte("cons_hash"),
+		[]byte("results_hash"), 0, len(keys))
+	currentHeader := lastHeader
+	headers[1] = currentHeader
+	valset[1] = keys.ToValidators(2, 2)
+	keys = newKeys
+
+	for height := int64(2); height <= blockSize; height++ {
+		totalVariation += valVariation
+		valVariationInt = int(totalVariation)
+		totalVariation = -float32(valVariationInt)
+		newKeys = keys.ChangeKeys(valVariationInt)
+		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+			nil,
+			keys.ToValidators(2, 2), newKeys.ToValidators(2, 2), []byte("app_hash"), []byte("cons_hash"),
+			[]byte("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
+		headers[height] = currentHeader
+		valset[height] = keys.ToValidators(2, 2)
+		lastHeader = currentHeader
+		keys = newKeys
+	}
+
+	return chainID, headers, valset
+}
