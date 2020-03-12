@@ -769,16 +769,17 @@ func (a *addrBook) addBadPeer(addr *p2p.NetAddress, banTime time.Duration) bool 
 	// check it exists in addrbook
 	ka := a.addrLookup[addr.ID]
 	// check address is not already there
-	if ka != nil {
-		if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
-			// add to bad peer list
-			ka.ban(banTime)
-			a.badPeers[addr.ID] = ka
-			a.Logger.Info("Add address to blacklist", "addr", addr)
-		}
-		return true
+	if ka == nil {
+		return false
 	}
-	return false
+
+	if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
+		// add to bad peer list
+		ka.ban(banTime)
+		a.badPeers[addr.ID] = ka
+		a.Logger.Info("Add address to blacklist", "addr", addr)
+	}
+	return true
 }
 
 //---------------------------------------------------------------------
