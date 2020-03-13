@@ -105,7 +105,10 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	if randPower {
 		votePower += int64(tmrand.Uint32())
 	}
-	pubKey := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
+	if err != nil {
+		panic(fmt.Errorf("could not retrieve pubkey %w", err))
+	}
 	val := NewValidator(pubKey, votePower)
 	return val, privVal
 }

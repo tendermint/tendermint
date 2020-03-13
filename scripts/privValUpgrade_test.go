@@ -100,7 +100,9 @@ func TestLoadAndUpgrade(t *testing.T) {
 					assert.Equal(t, oldPV.Address, upgradedPV.Key.Address)
 					assert.Equal(t, oldPV.Address, upgradedPV.GetAddress())
 					assert.Equal(t, oldPV.PubKey, upgradedPV.Key.PubKey)
-					assert.Equal(t, oldPV.PubKey, upgradedPV.GetPubKey())
+					upv, err := upgradedPV.GetPubKey()
+					require.NoError(t, err)
+					assert.Equal(t, oldPV.PubKey, upv)
 					assert.Equal(t, oldPV.PrivKey, upgradedPV.Key.PrivKey)
 
 					assert.Equal(t, oldPV.LastHeight, upgradedPV.LastSignState.Height)
