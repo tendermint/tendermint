@@ -26,6 +26,9 @@ const (
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
 	SignatureSize = 64
+	// SeedSize is the size, in bytes, of private key seeds. These are the
+	// private key representations used by RFC 8032.
+	SeedSize = 32
 )
 
 // PrivKey implements crypto.PrivKey.
@@ -49,11 +52,12 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 }
 
 // PubKey gets the corresponding public key from the private key.
+//
+// Panics if the private key is not initialized.
 func (privKey PrivKey) PubKey() crypto.PubKey {
+	// If the latter 32 bytes of the privkey are all zero, privkey is not
+	// initialized.
 	initialized := false
-	// If the latter 32 bytes of the privkey are all zero, compute the pubkey
-	// otherwise privkey is initialized and we can use the cached value inside
-	// of the private key.
 	for _, v := range privKey[32:] {
 		if v != 0 {
 			initialized = true
@@ -64,6 +68,7 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 	if !initialized {
 		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
+
 	pubkeyBytes := make([]byte, PubKeySize)
 	copy(pubkeyBytes, privKey[32:])
 	return PubKey(pubkeyBytes)
@@ -88,17 +93,14 @@ func GenPrivKey() PrivKey {
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKey {
-	seed := make([]byte, 32)
+	seed := make([]byte, SeedSize)
 
 	_, err := io.ReadFull(rand, seed)
 	if err != nil {
 		panic(err)
 	}
 
-	privKey := ed25519.NewKeyFromSeed(seed)
-	privateKeyEd := make([]byte, PrivateKeySize)
-	copy(privateKeyEd, privKey)
-	return privateKeyEd
+	return PrivKey(ed25519.NewKeyFromSeed(seed))
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -108,10 +110,7 @@ func genPrivKey(rand io.Reader) PrivKey {
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
-	privKey := ed25519.NewKeyFromSeed(seed)
-	privKeyEd := make([]byte, PrivateKeySize)
-	copy(privKeyEd[:], privKey)
-	return privKeyEd
+	return PrivKey(ed25519.NewKeyFromSeed(seed))
 }
 
 //-------------------------------------
