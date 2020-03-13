@@ -1479,7 +1479,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
 	}
-	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
 		return errors.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
