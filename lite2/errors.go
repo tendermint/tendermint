@@ -38,3 +38,9 @@ type ErrInvalidHeader struct {
 func (e ErrInvalidHeader) Error() string {
 	return fmt.Sprintf("invalid header: %v", e.Reason)
 }
+
+type ErrNoWitnesses struct{}
+
+func (e ErrNoWitnesses) Error() string {
+	return fmt.Sprint("no witnesses connected. Please reset light client")
+}
