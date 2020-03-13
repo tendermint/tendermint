@@ -21,7 +21,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 632
+	MaxHeaderBytes int64 = 628
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -135,7 +135,7 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize int) *PartSet {
+func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	if b == nil {
 		return nil
 	}

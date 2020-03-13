@@ -182,7 +182,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
-	blockPartsTotal := 123
+	blockPartsTotal := uint32(123)
 	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{

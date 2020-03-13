@@ -19,7 +19,7 @@ type CanonicalBlockID struct {
 
 type CanonicalPartSetHeader struct {
 	Hash  bytes.HexBytes
-	Total int
+	Total uint32
 }
 
 type CanonicalProposal struct {
