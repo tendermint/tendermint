@@ -50,7 +50,7 @@ func (b *Block) ValidateBasic() error {
 	defer b.mtx.Unlock()
 
 	if len(b.Header.ChainID) > MaxChainIDLen {
-		return fmt.Errorf("chainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
+		return fmt.Errorf("chainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.Header.ChainID))
 	}
 
 	if b.Header.Height < 0 {
@@ -132,9 +132,9 @@ func (b *Block) ValidateBasic() error {
 		)
 	}
 
-	if len(b.ProposerAddress) != crypto.AddressSize {
+	if len(b.Header.ProposerAddress) != crypto.AddressSize {
 		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
-			crypto.AddressSize, len(b.ProposerAddress))
+			crypto.AddressSize, len(b.Header.ProposerAddress))
 	}
 
 	return nil

@@ -27,7 +27,7 @@ func (tx Tx) String() string {
 }
 
 // Txs is a slice of Tx.
-type Txs []Tx
+type Txs []Tx //TODO: see about change this to [][]byte
 
 // Hash returns the Merkle root hash of the transaction hashes.
 // i.e. the leaves of the tree are the hashes of the txs.

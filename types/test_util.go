@@ -67,14 +67,16 @@ func MakeVote(
 // It populates the same set of fields validated by ValidateBasic.
 func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
-		Header: Header{
-			Height: height,
+		TmBlock: TmBlock{
+			Header: Header{
+				Height: height,
+			},
+			Data: Data{
+				Txs: txs,
+			},
+			Evidence:   EvidenceData{Evidence: evidence},
+			LastCommit: lastCommit,
 		},
-		Data: Data{
-			Txs: txs,
-		},
-		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: lastCommit,
 	}
 	block.fillHeader()
 	return block

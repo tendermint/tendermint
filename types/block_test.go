@@ -472,7 +472,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	for _, tc := range testCases {
 		voteSet, valSet, vals := randVoteSet(height-1, round, PrecommitType, tc.numValidators, 1)
 
-		vi := 0
+		vi := int32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
 				addr := vals[vi].GetPubKey().Address()
@@ -510,7 +510,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		Version:            Version{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            chainID,
 		Height:             commit.Height,
 		Time:               timestamp,

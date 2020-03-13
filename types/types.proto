@@ -59,32 +59,14 @@ message Header {
   bytes data_hash        = 7;  // transactions
 
   // hashes from the app output from the prev block
-  bytes validators_hash = 8 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];  // validators for the current block
-  bytes next_validators_hash = 9 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];  // validators for the next block
-  bytes consensus_hash = 10 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];  // consensus params for current block
-  bytes app_hash = 11 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];  // state after txs from the previous block
-  bytes last_results_hash = 12 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];  // root hash of all results from the txs from the previous block
+  bytes validators_hash      = 8;   // validators for the current block
+  bytes next_validators_hash = 9;   // validators for the next block
+  bytes consensus_hash       = 10;  // consensus params for current block
+  bytes app_hash             = 11;  // state after txs from the previous block
+  bytes last_results_hash    = 12;  // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes evidence_hash = 13 [
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes"
-  ];                            // evidence included in the block
+  bytes evidence_hash    = 13;  // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
 }
 
@@ -98,13 +80,9 @@ message Data {
   // Txs that will be applied by state @ block.Height+1.
   // NOTE: not all txs here are valid.  We're just agreeing on the order first.
   // This means that block.AppHash does not include these txs.
-  bytes Txs = 1 [(gogoproto.casttype) = "Txs"];
+  repeated bytes Txs = 1;
   // Volatile
-  bytes hash = 2 [
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
-    (gogoproto.nullable)   = false,
-    (gogoproto.customname) = "hash"
-  ];
+  bytes hash = 2 [(gogoproto.customname) = "hash"];
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for
@@ -119,17 +97,16 @@ message Vote {
       [(gogoproto.customname) = 'BlockID', (gogoproto.nullable) = false];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes validator_address = 6 [
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/crypto.Address",
-    (gogoproto.nullable)   = false
-  ];
-  int32 validator_index = 7;  // TODO: double check what size can be used
-  bytes signature       = 8;
+  bytes validator_address = 6;
+  int32 validator_index   = 7;  // TODO: double check what size can be used
+  bytes signature         = 8;
 }
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 message DuplicateVoteEvidence {
+  option (gogoproto.goproto_stringer) = false;
+
   // crypto.Pubkey pub_key = 1;
   Vote vote_a = 1;
   Vote vote_b = 2;
@@ -147,17 +124,12 @@ message Evidence {
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
   // Volatile
-  bytes hash = 2 [
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
-    (gogoproto.customname) = "hash",
-    (gogoproto.nullable)   = false
-  ];
+  bytes hash = 2 [(gogoproto.customname) = "hash"];
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 message TmCommit {
-  option (gogoproto.sizer) = false;
   // NOTE: The signatures are in order of address to preserve the bonded
   // ValidatorSet order.
   // Any peer with a block can gossip signatures by index with a peer without
@@ -170,11 +142,7 @@ message TmCommit {
   // Memoized in first call to corresponding method.
   // NOTE: can't memoize in constructor because constructor isn't used for
   // unmarshaling.
-  bytes hash = 5 [
-    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bytes.HexBytes",
-    (gogoproto.customname) = "hash",
-    (gogoproto.nullable)   = false
-  ];
+  bytes                           hash      = 5 [(gogoproto.customname) = "hash"];
   tendermint.libs.bits.TmBitArray bit_array = 6 [(gogoproto.customname) = "bitArray"];
 }
 
@@ -182,10 +150,9 @@ message TmCommit {
 message CommitSig {
   option (gogoproto.goproto_stringer) = false;
 
-  BlockIDFlag block_id_flag     = 1 [(gogoproto.customname) = "BlockIDFlag"];
-  bytes       validator_address = 2
-      [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto.Address"];
-  google.protobuf.Timestamp timestamp = 3
+  BlockIDFlag               block_id_flag     = 1 [(gogoproto.customname) = "BlockIDFlag"];
+  bytes                     validator_address = 2;
+  google.protobuf.Timestamp timestamp         = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
 }
