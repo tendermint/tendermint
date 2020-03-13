@@ -233,12 +233,12 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 
 // GetByAddress returns an index of the validator with address and validator
 // itself if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int, val *Validator) {
+func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
 	idx := sort.Search(len(vals.Validators), func(i int) bool {
 		return bytes.Compare(address, vals.Validators[i].Address) <= 0
 	})
 	if idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address) {
-		return idx, vals.Validators[idx].Copy()
+		return int32(idx), vals.Validators[idx].Copy()
 	}
 	return -1, nil
 }
