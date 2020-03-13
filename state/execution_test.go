@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	chainID      = "execution_chain"
-	testPartSize = 65536
-	nTxsPerBlock = 10
+	chainID             = "execution_chain"
+	testPartSize uint32 = 65536
+	nTxsPerBlock        = 10
 )
 
 func TestApplyBlock(t *testing.T) {
