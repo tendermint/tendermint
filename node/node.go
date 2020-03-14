@@ -805,17 +805,10 @@ func (n *Node) OnStart() error {
 			keepBlocks := int64(3)
 			time.Sleep(10 * time.Second)
 			logger.Info("Pruning old blocks")
-			pruned := 0
-			for i := n.blockStore.Height() - keepBlocks; i > 0; i-- {
-				existed, err := n.blockStore.DeleteBlock(i)
-				if err != nil {
-					logger.Error("Failed to delete block %v: %v", i, err)
-					break
-				}
-				if !existed {
-					break
-				}
-				pruned++
+			pruned, err := n.blockStore.PruneBlocks(n.blockStore.Height() - keepBlocks + 1)
+			if err != nil {
+				logger.Error("Failed to prune blocks", "err", err)
+				continue
 			}
 			logger.Info(fmt.Sprintf("Pruned %v blocks", pruned))
 		}

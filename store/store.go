@@ -198,6 +198,28 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+// PruneBlocks removes block up to (but not including) a given height. It returns the number
+// of blocks pruned.
+func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+
+	// FIXME Since the key encoding does not preserve the order of blocks (by height), we have no
+	// choice but to abort on the first missing block, since iterating to 0 will not scale.
+	// See: https://github.com/tendermint/tendermint/issues/4567
+	pruned := uint64(0)
+	for i := height - 1; i > 0; i-- {
+		existed, err := bs.DeleteBlock(i)
+		if err != nil {
+			return 0, fmt.Errorf("failed to prune block %v: %w", i, err)
+		}
+		if !existed {
+			break
+		}
+		pruned++
+	}
+
+	return pruned, nil
+}
+
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
 // blockParts: Must be parts of the block
 // seenCommit: The +2/3 precommits that were seen which committed at height.
