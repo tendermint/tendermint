@@ -1419,6 +1419,17 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.Logger.Info("Calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
+	// Prune the blockStore.
+	if cs.config.RetainBlocks > 0 {
+		prune := cs.blockStore.Height() - int64(cs.config.RetainBlocks)
+		pruned, err := cs.blockStore.PruneBlocks(prune)
+		if err != nil {
+			cs.Logger.Error(fmt.Sprintf("Failed to prune blocks to height %v", prune), "err", err.Error())
+		} else {
+			cs.Logger.Info("Pruned blocks", "pruned", pruned, "height", prune)
+		}
+	}
+
 	fail.Fail() // XXX
 
 	// Write EndHeightMessage{} for this height, implying that the blockstore

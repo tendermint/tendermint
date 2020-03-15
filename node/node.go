@@ -798,22 +798,6 @@ func (n *Node) OnStart() error {
 		return errors.Wrap(err, "could not dial peers from persistent_peers field")
 	}
 
-	// Start the block pruner
-	go func() {
-		logger := n.Logger.With("module", "blockpruner")
-		for {
-			keepBlocks := int64(3)
-			time.Sleep(10 * time.Second)
-			logger.Info("Pruning old blocks")
-			pruned, err := n.blockStore.PruneBlocks(n.blockStore.Height() - keepBlocks + 1)
-			if err != nil {
-				logger.Error("Failed to prune blocks", "err", err)
-				continue
-			}
-			logger.Info(fmt.Sprintf("Pruned %v blocks", pruned))
-		}
-	}()
-
 	return nil
 }
 

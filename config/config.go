@@ -763,6 +763,7 @@ type ConsensusConfig struct {
 	// EmptyBlocks mode and possible interval between empty blocks
 	CreateEmptyBlocks         bool          `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval time.Duration `mapstructure:"create_empty_blocks_interval"`
+	RetainBlocks              uint64        `mapstructure:"retain_blocks"`
 
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
@@ -783,6 +784,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		SkipTimeoutCommit:           false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
+		RetainBlocks:                0,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 	}
@@ -881,6 +883,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.RetainBlocks == 1 {
+		return errors.New("must retain at least 2 blocks")
 	}
 	return nil
 }
