@@ -302,7 +302,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If the app's block height is lower than the blockstore base, then we can't replay.
 	if appBlockHeight < storeBlockBase {
-		return nil, fmt.Errorf("unable to replay blocks: blockstore base %v lower than app height %v",
+		return nil, fmt.Errorf("blockstore base %v lower than app height %v",
 			storeBlockBase, appBlockHeight)
 	}
 
