@@ -465,6 +465,7 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
+	// FIXME This should have the block store base as well, if it's backwards compatible
 	Height int64
 }
 
