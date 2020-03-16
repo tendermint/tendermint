@@ -213,6 +213,8 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		}
 	}
 
+	bs.saveState()
+
 	return pruned, nil
 }
 
@@ -287,13 +289,13 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	seenCommitBytes := cdc.MustMarshalBinaryBare(seenCommit)
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
-	// Save new BlockStoreStateJSON descriptor
-	BlockStoreStateJSON{Height: height}.Save(bs.db)
-
 	// Done!
 	bs.mtx.Lock()
 	bs.height = height
 	bs.mtx.Unlock()
+
+	// Save new BlockStoreStateJSON descriptor
+	bs.saveState()
 
 	// Flush
 	bs.db.SetSync(nil, nil)
@@ -305,6 +307,16 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	}
 	partBytes := cdc.MustMarshalBinaryBare(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
+}
+
+func (bs *BlockStore) saveState() {
+	bs.mtx.RLock()
+	bsJSON := BlockStoreStateJSON{
+		Base:   bs.base,
+		Height: bs.height,
+	}
+	bs.mtx.RUnlock()
+	bsJSON.Save(bs.db)
 }
 
 //-----------------------------------------------------------------------------
