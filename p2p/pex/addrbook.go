@@ -358,7 +358,11 @@ func (a *addrBook) ReinstateBadPeers() {
 	defer a.mtx.Unlock()
 	for _, ka := range a.badPeers {
 		if !ka.isBanned() {
-			bucket := a.calcNewBucket(ka.Addr, ka.Src)
+			bucket, err := a.calcNewBucket(ka.Addr, ka.Src)
+			if err != nil {
+				a.Logger.Error(err.Error(), "addr", ka.Addr)
+			}
+
 			a.addToNewBucket(ka, bucket)
 			delete(a.badPeers, ka.ID())
 			a.Logger.Info("Reinstated address", "addr", ka.Addr)
