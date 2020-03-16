@@ -326,7 +326,8 @@ func TestProposerFrequency(t *testing.T) {
 			votePower := int64(tmrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
-			pubKey := privVal.GetPubKey()
+			pubKey, err := privVal.GetPubKey()
+			require.NoError(t, err)
 			val := types.NewValidator(pubKey, votePower)
 			val.ProposerPriority = tmrand.Int64()
 			vals[j] = val

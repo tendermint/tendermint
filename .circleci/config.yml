@@ -404,7 +404,7 @@ workflows:
           filters:
             branches:
               only:
-                - docs-theme-latest
+                - docs-staging
       - setup_dependencies
       - test_abci_apps:
           requires:

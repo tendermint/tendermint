@@ -1,6 +1,0 @@
-basecoind (@VERSION@) @STABILITY@; urgency=medium
-
-  * Automatic build. See https://github.com/cosmos/cosmos-sdk for more information.
-
- -- Greg Szabo <greg@philosobear.com>  @DATETIMESTAMP@
-
