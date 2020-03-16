@@ -489,7 +489,7 @@ func (w *WSEvents) OnStop() {
 // subscriber to query. By default, returns a channel with cap=1. Error is
 // returned if it fails to subscribe.
 //
-// Channel is never closed to prevent clients from seeing an erroneus event.
+// Channel is never closed to prevent clients from seeing an erroneous event.
 //
 // It returns an error if WSEvents is not running.
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
