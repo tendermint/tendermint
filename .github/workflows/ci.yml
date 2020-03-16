@@ -1,0 +1,12 @@
+name: Test
+on: [pull_request]
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    container: tendermintdev/docker-tm-db-testing
+    steps:
+      - uses: actions/checkout@v2
+      - name: test all dbs
+        run: |
+          make test-all
+        shell: bash
