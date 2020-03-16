@@ -4,7 +4,6 @@
 package proto
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -72,7 +71,6 @@ var xxx_messageInfo_PubKey proto.InternalMessageInfo
 
 type isPubKey_Key interface {
 	isPubKey_Key()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -171,7 +169,6 @@ var xxx_messageInfo_PrivKey proto.InternalMessageInfo
 
 type isPrivKey_Key interface {
 	isPrivKey_Key()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -288,7 +285,7 @@ func init() {
 func init() { proto.RegisterFile("crypto/encoding/proto/types.proto", fileDescriptor_32876cb9ea95204c) }
 
 var fileDescriptor_32876cb9ea95204c = []byte{
-	// 439 bytes of a gzipped FileDescriptorProto
+	// 426 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0x4c, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0x4f, 0xcd, 0x4b, 0xce, 0x4f, 0xc9, 0xcc, 0x4b, 0xd7, 0x2f, 0x28, 0xca, 0x2f,
 	0xc9, 0xd7, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x03, 0xb3, 0x85, 0x14, 0x4a, 0x52, 0xf3, 0x52,
@@ -312,249 +309,12 @@ var fileDescriptor_32876cb9ea95204c = []byte{
 	0x3c, 0x5c, 0x8c, 0xd9, 0xe0, 0x20, 0x66, 0x09, 0x62, 0xcc, 0x16, 0xf2, 0xe4, 0xe2, 0x28, 0x28,
 	0x4d, 0x8a, 0xcf, 0x4e, 0xad, 0x2c, 0x96, 0x60, 0x52, 0x60, 0xd6, 0xe0, 0x36, 0xd2, 0xd0, 0x23,
 	0x94, 0xc3, 0x60, 0xb1, 0xc8, 0x72, 0xe2, 0x9e, 0x3c, 0x43, 0x10, 0x7b, 0x01, 0x98, 0x57, 0x6c,
-	0xc5, 0xb2, 0x60, 0xa1, 0x3c, 0xa3, 0x53, 0xcc, 0x8f, 0x87, 0x72, 0x8c, 0x2b, 0x1e, 0xc9, 0x31,
-	0xee, 0x78, 0x24, 0xc7, 0x78, 0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x0f, 0x1e, 0xc9,
-	0x31, 0x4e, 0x78, 0x2c, 0xc7, 0x70, 0xe1, 0xb1, 0x1c, 0xc3, 0x8d, 0xc7, 0x72, 0x0c, 0x51, 0xc4,
-	0x67, 0x17, 0x94, 0x92, 0x20, 0x89, 0x0d, 0x4c, 0x19, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0x74,
-	0xfb, 0xdc, 0x03, 0x29, 0x04, 0x00, 0x00,
+	0xc5, 0xb2, 0x60, 0xa1, 0x3c, 0xa3, 0x53, 0xc0, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31,
+	0x3e, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb,
+	0x31, 0x44, 0x11, 0x9f, 0x45, 0x50, 0x72, 0x7f, 0x12, 0x1b, 0x98, 0x32, 0x06, 0x04, 0x00, 0x00,
+	0xff, 0xff, 0xc4, 0x09, 0xd2, 0xc5, 0x1d, 0x04, 0x00, 0x00,
 }
 
-func (this *PubKey) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKey)
-	if !ok {
-		that2, ok := that.(PubKey)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Key == nil {
-		if this.Key != nil {
-			return false
-		}
-	} else if this.Key == nil {
-		return false
-	} else if !this.Key.Equal(that1.Key) {
-		return false
-	}
-	return true
-}
-func (this *PubKey_Ed25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKey_Ed25519)
-	if !ok {
-		that2, ok := that.(PubKey_Ed25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	return true
-}
-func (this *PubKey_Secp256K1) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKey_Secp256K1)
-	if !ok {
-		that2, ok := that.(PubKey_Secp256K1)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Secp256K1, that1.Secp256K1) {
-		return false
-	}
-	return true
-}
-func (this *PubKey_Sr25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKey_Sr25519)
-	if !ok {
-		that2, ok := that.(PubKey_Sr25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Sr25519, that1.Sr25519) {
-		return false
-	}
-	return true
-}
-func (this *PrivKey) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivKey)
-	if !ok {
-		that2, ok := that.(PrivKey)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Key == nil {
-		if this.Key != nil {
-			return false
-		}
-	} else if this.Key == nil {
-		return false
-	} else if !this.Key.Equal(that1.Key) {
-		return false
-	}
-	return true
-}
-func (this *PrivKey_Ed25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivKey_Ed25519)
-	if !ok {
-		that2, ok := that.(PrivKey_Ed25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	return true
-}
-func (this *PrivKey_Secp256K1) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivKey_Secp256K1)
-	if !ok {
-		that2, ok := that.(PrivKey_Secp256K1)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Secp256K1, that1.Secp256K1) {
-		return false
-	}
-	return true
-}
-func (this *PrivKey_Sr25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivKey_Sr25519)
-	if !ok {
-		that2, ok := that.(PrivKey_Sr25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Sr25519, that1.Sr25519) {
-		return false
-	}
-	return true
-}
-func (this *PubKeyMultiSigThreshold) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKeyMultiSigThreshold)
-	if !ok {
-		that2, ok := that.(PubKeyMultiSigThreshold)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.K != that1.K {
-		return false
-	}
-	if len(this.PubKeys) != len(that1.PubKeys) {
-		return false
-	}
-	for i := range this.PubKeys {
-		if !this.PubKeys[i].Equal(&that1.PubKeys[i]) {
-			return false
-		}
-	}
-	return true
-}
 func (this *PubKey) GetPubKey() github_com_tendermint_tendermint_crypto.PubKey {
 	if x := this.GetEd25519(); x != nil {
 		return x
@@ -831,180 +591,6 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	}
 	dAtA[offset] = uint8(v)
 	return base
-}
-func NewPopulatedPubKey(r randyTypes, easy bool) *PubKey {
-	this := &PubKey{}
-	oneofNumber_Key := []int32{1, 2, 3}[r.Intn(3)]
-	switch oneofNumber_Key {
-	case 1:
-		this.Key = NewPopulatedPubKey_Ed25519(r, easy)
-	case 2:
-		this.Key = NewPopulatedPubKey_Secp256K1(r, easy)
-	case 3:
-		this.Key = NewPopulatedPubKey_Sr25519(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedPubKey_Ed25519(r randyTypes, easy bool) *PubKey_Ed25519 {
-	this := &PubKey_Ed25519{}
-	v1 := r.Intn(100)
-	this.Ed25519 = make(github_com_tendermint_tendermint_crypto_ed25519.PubKey, v1)
-	for i := 0; i < v1; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPubKey_Secp256K1(r randyTypes, easy bool) *PubKey_Secp256K1 {
-	this := &PubKey_Secp256K1{}
-	v2 := r.Intn(100)
-	this.Secp256K1 = make(github_com_tendermint_tendermint_crypto_secp256k1.PubKey, v2)
-	for i := 0; i < v2; i++ {
-		this.Secp256K1[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPubKey_Sr25519(r randyTypes, easy bool) *PubKey_Sr25519 {
-	this := &PubKey_Sr25519{}
-	v3 := r.Intn(100)
-	this.Sr25519 = make(github_com_tendermint_tendermint_crypto_sr25519.PubKey, v3)
-	for i := 0; i < v3; i++ {
-		this.Sr25519[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPrivKey(r randyTypes, easy bool) *PrivKey {
-	this := &PrivKey{}
-	oneofNumber_Key := []int32{1, 2, 3}[r.Intn(3)]
-	switch oneofNumber_Key {
-	case 1:
-		this.Key = NewPopulatedPrivKey_Ed25519(r, easy)
-	case 2:
-		this.Key = NewPopulatedPrivKey_Secp256K1(r, easy)
-	case 3:
-		this.Key = NewPopulatedPrivKey_Sr25519(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedPrivKey_Ed25519(r randyTypes, easy bool) *PrivKey_Ed25519 {
-	this := &PrivKey_Ed25519{}
-	v4 := r.Intn(100)
-	this.Ed25519 = make(github_com_tendermint_tendermint_crypto_ed25519.PrivKey, v4)
-	for i := 0; i < v4; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPrivKey_Secp256K1(r randyTypes, easy bool) *PrivKey_Secp256K1 {
-	this := &PrivKey_Secp256K1{}
-	v5 := r.Intn(100)
-	this.Secp256K1 = make(github_com_tendermint_tendermint_crypto_secp256k1.PrivKey, v5)
-	for i := 0; i < v5; i++ {
-		this.Secp256K1[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPrivKey_Sr25519(r randyTypes, easy bool) *PrivKey_Sr25519 {
-	this := &PrivKey_Sr25519{}
-	v6 := r.Intn(100)
-	this.Sr25519 = make(github_com_tendermint_tendermint_crypto_sr25519.PrivKey, v6)
-	for i := 0; i < v6; i++ {
-		this.Sr25519[i] = byte(r.Intn(256))
-	}
-	return this
-}
-func NewPopulatedPubKeyMultiSigThreshold(r randyTypes, easy bool) *PubKeyMultiSigThreshold {
-	this := &PubKeyMultiSigThreshold{}
-	this.K = uint64(uint64(r.Uint32()))
-	if r.Intn(5) != 0 {
-		v7 := r.Intn(5)
-		this.PubKeys = make([]PubKey, v7)
-		for i := 0; i < v7; i++ {
-			v8 := NewPopulatedPubKey(r, easy)
-			this.PubKeys[i] = *v8
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyTypes interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneTypes(r randyTypes) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringTypes(r randyTypes) string {
-	v9 := r.Intn(100)
-	tmps := make([]rune, v9)
-	for i := 0; i < v9; i++ {
-		tmps[i] = randUTF8RuneTypes(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedTypes(r randyTypes, maxFieldNumber int) (dAtA []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		dAtA = randFieldTypes(dAtA, r, fieldNumber, wire)
-	}
-	return dAtA
-}
-func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v10 := r.Int63()
-		if r.Intn(2) == 0 {
-			v10 *= -1
-		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v10))
-	case 1:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		ll := r.Intn(100)
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(ll))
-		for j := 0; j < ll; j++ {
-			dAtA = append(dAtA, byte(r.Intn(256)))
-		}
-	default:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return dAtA
-}
-func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	dAtA = append(dAtA, uint8(v))
-	return dAtA
 }
 func (m *PubKey) Size() (n int) {
 	if m == nil {

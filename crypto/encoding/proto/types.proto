@@ -6,10 +6,6 @@ option go_package = "github.com/tendermint/tendermint/crypto/encoding/proto";
 import "third_party/proto/gogoproto/gogo.proto";
 import "third_party/proto/cosmos-proto/cosmos.proto";
 
-option (gogoproto.populate_all) = true;
-option (gogoproto.equal_all)    = true;
-option (gogoproto.testgen_all)  = true;
-
 message PubKey {
   option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PubKey";
   oneof key {
@@ -19,10 +15,9 @@ message PubKey {
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PubKey"];
     bytes sr25519 = 3
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
-    // TODO: implement
-    // PubKeyMultiSigThreshold multisig = 4;
-    // [(gogoproto.casttype) =
-    //      "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
+    //   PubKeyMultiSigThreshold multisig = 4
+    //       [(gogoproto.casttype) =
+    //            "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
   }
 }
 

@@ -15,8 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
-type byter interface {
-	Bytes() []byte
+type aminoMarshler interface {
 	AminoMarshal() ([]byte, error)
 	AminoUnmarshal([]byte) error
 }
@@ -25,7 +24,7 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
 	bz, err := cdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
-	if byterSrc, ok := src.(byter); ok {
+	if byterSrc, ok := src.(aminoMarshler); ok {
 		// Make sure this is compatible with current (Bytes()) encoding.
 		aminoBytes, err := byterSrc.AminoMarshal()
 		assert.NoError(t, err)
@@ -53,37 +52,6 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 	err = cdc.UnmarshalJSON(js, dst)
 	require.Nil(t, err, "%+v", err)
 }
-
-// ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
-//nolint:govet
-//TODO: Fix this with the new proto encoding of keys which are []byte
-// TODO: make a issue for this or add it to the meta-issue
-// func ExamplePrintRegisteredTypes() {
-// 	cdc.PrintTypes(os.Stdout)
-// 	// Output: | Type | Name | Prefix | Length | Notes |
-// 	//| ---- | ---- | ------ | ----- | ------ |
-// 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
-// 	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
-// 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-// 	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
-// 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
-// 	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
-// 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
-// }
-
-/*
-New encoding of keys is listed below
-
-| Type | Name | Prefix | Length | Notes |
-| ---- | ---- | ------ | ----- | ------ |
-| PubKey | tendermint/PubKeyEd25519 | 0x1624DE64 | variable |  |
-| PubKey | tendermint/PubKeySr25519 | 0x0DFB1005 | variable |  |
-| PubKey | tendermint/PubKeySecp256k1 | 0xEB5AE987 | variable |  |
-| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
-| PrivKey | tendermint/PrivKeyEd25519 | 0xA3288910 | variable |  |
-| PrivKey | tendermint/PrivKeySr25519 | 0x2F82D78B | variable |  |
-| PrivKey | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | variable |  |
-*/
 
 func TestKeyEncodings(t *testing.T) {
 	cases := []struct {
