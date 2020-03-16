@@ -172,7 +172,7 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize int) *PartSet {
+func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	if b == nil {
 		return nil
 	}

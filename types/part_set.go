@@ -20,17 +20,14 @@ var (
 )
 
 type Part struct {
-	Index int32              `json:"index"`
+	Index uint32             `json:"index"`
 	Bytes tmbytes.HexBytes   `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 }
 
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
-	if part.Index < 0 {
-		return errors.New("negative Index")
-	}
-	if len(part.Bytes) > BlockPartSizeBytes {
+	if len(part.Bytes) > int(BlockPartSizeBytes) {
 		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
 	}
 	if err := part.Proof.ValidateBasic(); err != nil {
@@ -66,9 +63,6 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 
 // ValidateBasic performs basic validation.
 func (psh PartSetHeader) ValidateBasic() error {
-	if psh.Total < 0 {
-		return errors.New("negative Total")
-	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
 		return errors.Wrap(err, "Wrong Hash")
@@ -79,35 +73,36 @@ func (psh PartSetHeader) ValidateBasic() error {
 //-------------------------------------
 
 type PartSet struct {
-	total int32
+	total uint32
 	hash  []byte
 
 	mtx           sync.Mutex
 	parts         []*Part
 	partsBitArray *bits.BitArray
-	count         int32
+	count         uint32
 }
 
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
-func NewPartSetFromData(data []byte, partSize int) *PartSet {
+// CONTRACT: partSize is greater than zero.
+func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 	// divide data into 4kb parts.
-	total := (len(data) + partSize - 1) / partSize
+	total := (uint32(len(data)) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	partsBytes := make([][]byte, total)
-	partsBitArray := bits.NewBitArray(total)
-	for i := 0; i < total; i++ {
+	partsBitArray := bits.NewBitArray(int(total))
+	for i := uint32(0); i < total; i++ {
 		part := &Part{
-			Index: int32(i),
-			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
+			Index: i,
+			Bytes: data[i*partSize : tmmath.MinInt(len(data), int((i+1)*partSize))],
 		}
 		parts[i] = part
 		partsBytes[i] = part.Bytes
-		partsBitArray.SetIndex(i, true)
+		partsBitArray.SetIndex(int(i), true)
 	}
 	// Compute merkle proofs
 	root, proofs := merkle.SimpleProofsFromByteSlices(partsBytes)
-	for i := 0; i < total; i++ {
+	for i := uint32(0); i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
@@ -167,14 +162,14 @@ func (ps *PartSet) HashesTo(hash []byte) bool {
 	return bytes.Equal(ps.hash, hash)
 }
 
-func (ps *PartSet) Count() int32 {
+func (ps *PartSet) Count() uint32 {
 	if ps == nil {
 		return 0
 	}
 	return ps.count
 }
 
-func (ps *PartSet) Total() int32 {
+func (ps *PartSet) Total() uint32 {
 	if ps == nil {
 		return 0
 	}

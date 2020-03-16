@@ -174,9 +174,10 @@ func verifyNewHeaderAndVals(
 	}
 
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
-		return errors.Errorf("expected new header validators (%X) to match those that were supplied (%X)",
+		return errors.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
 			untrustedHeader.ValidatorsHash,
 			untrustedVals.Hash(),
+			untrustedHeader.Height,
 		)
 	}
 

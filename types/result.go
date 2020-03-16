@@ -28,22 +28,22 @@ func (r *PartSetHeader) UnmarshalJSON(b []byte) error {
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *Header) MarshalJSON() ([]byte, error) {
+func (r *ProtoHeader) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *Header) UnmarshalJSON(b []byte) error {
+func (r *ProtoHeader) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *Version) MarshalJSON() ([]byte, error) {
+func (r *ProtoVersion) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *Version) UnmarshalJSON(b []byte) error {
+func (r *ProtoVersion) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }

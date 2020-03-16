@@ -30,16 +30,6 @@ func (r *Pair) UnmarshalJSON(b []byte) error {
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *KI64Pair) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
-}
-
-func (r *KI64Pair) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
-}
-
 // Some compile time assertions to ensure we don't
 // have accidental runtime surprises later on.
 // jsonEncodingRoundTripper ensures that asserted
@@ -51,4 +41,3 @@ type jsonRoundTripper interface {
 }
 
 var _ jsonRoundTripper = (*Pair)(nil)
-var _ jsonRoundTripper = (*KI64Pair)(nil)

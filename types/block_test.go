@@ -110,7 +110,7 @@ func TestBlockMakePartSet(t *testing.T) {
 
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, int32(1), partSet.Total())
+	assert.EqualValues(t, 1, partSet.Total())
 }
 
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
@@ -128,7 +128,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, int32(3), partSet.Total())
+	assert.EqualValues(t, 3, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -178,7 +178,7 @@ func makeBlockIDRandom() BlockID {
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
-func makeBlockID(hash []byte, partSetSize int32, partSetHash []byte) BlockID {
+func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
 		psH = make([]byte, tmhash.Size)
@@ -475,9 +475,10 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		vi := int32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
-				addr := vals[vi].GetPubKey().Address()
+				pubKey, err := vals[vi].GetPubKey()
+				require.NoError(t, err)
 				vote := &Vote{
-					ValidatorAddress: addr,
+					ValidatorAddress: pubKey.Address(),
 					ValidatorIndex:   vi,
 					Height:           height - 1,
 					Round:            round,
@@ -570,8 +571,8 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	invalidBlockID := BlockID{
 		Hash: []byte{0},
 		PartsHeader: PartSetHeader{
-			Total: -1,
-			Hash:  bytes.HexBytes{},
+			Total: 1,
+			Hash:  []byte{0},
 		},
 	}
 
