@@ -288,7 +288,11 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 
 func (c *baseRPCClient) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
 	result := new(ctypes.ResultConsensusParams)
-	_, err := c.caller.Call("consensus_params", map[string]interface{}{"height": height}, result)
+	params := make(map[string]interface{}, 0)
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call("consensus_params", params, result)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +330,11 @@ func (c *baseRPCClient) Genesis() (*ctypes.ResultGenesis, error) {
 
 func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 	result := new(ctypes.ResultBlock)
-	_, err := c.caller.Call("block", map[string]interface{}{"height": height}, result)
+	params := make(map[string]interface{}, 0)
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call("block", params, result)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +343,11 @@ func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 
 func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	result := new(ctypes.ResultBlockResults)
-	_, err := c.caller.Call("block_results", map[string]interface{}{"height": height}, result)
+	params := make(map[string]interface{}, 0)
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call("block_results", params, result)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +356,11 @@ func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults,
 
 func (c *baseRPCClient) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
-	_, err := c.caller.Call("commit", map[string]interface{}{"height": height}, result)
+	params := make(map[string]interface{}, 0)
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call("commit", params, result)
 	if err != nil {
 		return nil, err
 	}
@@ -383,11 +399,14 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, or
 
 func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.caller.Call("validators", map[string]interface{}{
-		"height":   height,
+	params := map[string]interface{}{
 		"page":     page,
 		"per_page": perPage,
-	}, result)
+	}
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call("validators", params, result)
 	if err != nil {
 		return nil, err
 	}
