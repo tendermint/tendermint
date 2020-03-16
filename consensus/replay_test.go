@@ -1103,7 +1103,6 @@ func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
 }
 
-func (bs *mockBlockStore) DeleteBlock(height int64) (bool, error)   { return false, nil }
 func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) { return 0, nil }
 
 //---------------------------------------

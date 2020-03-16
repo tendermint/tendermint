@@ -24,6 +24,8 @@ Currently the precommit signatures are duplicated in the Block parts as
 well as the Commit.  In the future this may change, perhaps by moving
 the Commit data outside the Block. (TODO)
 
+The store can be assumed to contain all contiguous blocks between base and height (inclusive).
+
 // NOTE: BlockStore methods will panic if they encounter errors
 // deserializing loaded data, indicating probable corruption on disk.
 */
@@ -31,6 +33,7 @@ type BlockStore struct {
 	db dbm.DB
 
 	mtx    sync.RWMutex
+	base   int64
 	height int64
 }
 
@@ -39,36 +42,17 @@ type BlockStore struct {
 func NewBlockStore(db dbm.DB) *BlockStore {
 	bsjson := LoadBlockStoreStateJSON(db)
 	return &BlockStore{
+		base:   bsjson.Base,
 		height: bsjson.Height,
 		db:     db,
 	}
 }
 
-// DeleteBlock removes a block and its metadata. Returns true if the block existed.
-func (bs *BlockStore) DeleteBlock(height int64) (bool, error) {
-	if height == bs.Height() {
-		return false, errors.New("cannot delete the latest blockstore height")
-	}
-	meta := bs.LoadBlockMeta(height)
-	if meta == nil {
-		return false, nil
-	}
-
-	batch := bs.db.NewBatch()
-	defer batch.Close()
-
-	batch.Delete(calcBlockMetaKey(height))
-	batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
-	batch.Delete(calcBlockCommitKey(height))
-	batch.Delete(calcSeenCommitKey(height))
-	for i := 0; i < meta.BlockID.PartsHeader.Total; i++ {
-		batch.Delete(calcBlockPartKey(height, i))
-	}
-	err := batch.WriteSync()
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+// Base returns the first known contiguous block height.
+func (bs *BlockStore) Base() int64 {
+	bs.mtx.RLock()
+	defer bs.mtx.RUnlock()
+	return bs.base
 }
 
 // Height returns the last known contiguous block height.
@@ -198,28 +182,67 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
-// PruneBlocks removes block up to and including a height. It returns the number of blocks pruned.
+// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+	bs.mtx.RLock()
 	if height >= bs.height {
+		bs.mtx.RUnlock()
 		return 0, fmt.Errorf("Cannot prune the latest height %v", bs.height)
 	}
+	base := bs.base
+	bs.mtx.RUnlock()
+	if base == 0 {
+		base = 1
+	}
+	if base > height {
+		return 0, fmt.Errorf("Cannot prune to height %v, it is lower than base height %v",
+			height, base)
+	}
 
-	// FIXME Since the key encoding does not preserve the order of blocks (by height), we have no
-	// choice but to abort on the first missing block, since iterating to 0 will not scale.
-	// See: https://github.com/tendermint/tendermint/issues/4567
 	pruned := uint64(0)
-	for i := height; i > 0; i-- {
-		existed, err := bs.DeleteBlock(i)
+	for h := base; h < height; h++ {
+		existed, err := bs.deleteBlock(h)
 		if err != nil {
-			return 0, fmt.Errorf("failed to prune block %v: %w", i, err)
+			return 0, fmt.Errorf("failed to prune block %v: %w", h, err)
 		}
-		if !existed {
-			break
+		bs.mtx.Lock()
+		bs.base++
+		bs.mtx.Unlock()
+		if existed {
+			pruned++
 		}
-		pruned++
 	}
 
 	return pruned, nil
+}
+
+// deleteBlock removes a block and its metadata. Returns true if the block existed.
+// Not exported, to enforce the invariant that all blocks between base and height must exist,
+// so the only way to delete blocks is via PruneBlocks().
+func (bs *BlockStore) deleteBlock(height int64) (bool, error) {
+	if height == bs.Height() {
+		return false, errors.New("cannot delete the latest blockstore height")
+	}
+	meta := bs.LoadBlockMeta(height)
+	if meta == nil {
+		return false, nil
+	}
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+
+	batch.Delete(calcBlockMetaKey(height))
+	batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
+	batch.Delete(calcBlockCommitKey(height))
+	batch.Delete(calcSeenCommitKey(height))
+	for i := 0; i < meta.BlockID.PartsHeader.Total; i++ {
+		batch.Delete(calcBlockPartKey(height, i))
+	}
+	err := batch.WriteSync()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
@@ -312,6 +335,7 @@ var blockStoreKey = []byte("blockStore")
 
 // BlockStoreStateJSON is the block store state JSON structure.
 type BlockStoreStateJSON struct {
+	Base   int64 `json:"base"`
 	Height int64 `json:"height"`
 }
 
@@ -333,6 +357,7 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	}
 	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
+			Base:   0,
 			Height: 0,
 		}
 	}
