@@ -1,11 +1,13 @@
 package client_test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -28,6 +30,7 @@ func TestHeaderEvents(t *testing.T) {
 	for i, c := range GetClients() {
 		i, c := i, c // capture params
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
+
 			// start for this test it if it wasn't already running
 			if !c.IsRunning() {
 				// if so, then we start it, listen, and stop it.
@@ -134,4 +137,22 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 // Test Local client resubscribes upon subscription error.
 func TestClientsResubscribe(t *testing.T) {
 	// TODO(melekes)
+}
+
+func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
+	c := getHTTPClient()
+
+	// on Subscribe
+	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeader).String())
+	assert.Error(t, err)
+
+	// on Unsubscribe
+	err = c.Unsubscribe(context.Background(), "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeader).String())
+	assert.Error(t, err)
+
+	// on UnsubscribeAll
+	err = c.UnsubscribeAll(context.Background(), "TestHeaderEvents")
+	assert.Error(t, err)
 }
