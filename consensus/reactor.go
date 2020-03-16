@@ -802,15 +802,17 @@ OUTER_LOOP:
 		// Maybe send Height/CatchupCommitRound/CatchupCommit.
 		{
 			prs := ps.GetRoundState()
-			if prs.CatchupCommitRound != -1 && 0 < prs.Height && prs.Height <= conR.conS.blockStore.Height() {
-				commit := conR.conS.LoadCommit(prs.Height)
-				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
-					Height:  prs.Height,
-					Round:   commit.Round,
-					Type:    types.PrecommitType,
-					BlockID: commit.BlockID,
-				}))
-				time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
+			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= conR.conS.blockStore.Height() &&
+				prs.Height >= conR.conS.blockStore.Base() {
+				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
+					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+						Height:  prs.Height,
+						Round:   commit.Round,
+						Type:    types.PrecommitType,
+						BlockID: commit.BlockID,
+					}))
+					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
+				}
 			}
 		}
 
