@@ -191,8 +191,22 @@ easy to reference the pull request where a change was introduced.
 
 - ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
-- squash merge pull request
+- [squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
+
+### Git Commit Style
+
+We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
+
+\```
+cmd/debug: execute p.Signal only when p is not nil
+
+[potentially longer description in the body]
+
+Fixes #nnnn
+\```
+
+Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
 ### Release Procedure
 
