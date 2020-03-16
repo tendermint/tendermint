@@ -17,7 +17,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
-			ValidatorIndex:   i,
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
 			Type:             PrecommitType,
@@ -74,16 +74,21 @@ func MakeVote(
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
+func MakeBlock(height int64, txs Txs, lastCommit *Commit, evidence []EvidenceI) *Block {
+	// Handle going from the evidence Inteface to Evidence type (protobuf)
+	evi := make([]Evidence, len(evidence))
+	for i := range evidence {
+		evi[i].SetEvidenceI(evidence[i])
+	}
 	block := &Block{
 		TmBlock: TmBlock{
 			Header: Header{
 				Height: height,
 			},
 			Data: Data{
-				Txs: txs,
+				Txs: txs.Bytes(),
 			},
-			Evidence:   EvidenceData{Evidence: evidence},
+			Evidence:   EvidenceData{Evidence: evi},
 			LastCommit: lastCommit,
 		},
 	}

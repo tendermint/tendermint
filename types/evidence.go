@@ -13,6 +13,8 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
 const (
@@ -22,12 +24,12 @@ const (
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
 type ErrEvidenceInvalid struct {
-	Evidence   Evidence
+	Evidence   EvidenceI
 	ErrorValue error
 }
 
 // NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
-func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
+func NewErrEvidenceInvalid(ev EvidenceI, err error) *ErrEvidenceInvalid {
 	return &ErrEvidenceInvalid{ev, err}
 }
 
@@ -54,6 +56,41 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 //-------------------------------------------
 
+// Hash returns the hash of the data.
+func (data *EvidenceData) Hash() tmbytes.HexBytes {
+	if data.hash == nil {
+		evidenceBzs := make([][]byte, len(data.Evidence))
+		for i := 0; i < len(data.Evidence); i++ {
+			evidenceI := data.Evidence[i].GetEvidenceI()
+			evidenceBzs[i] = evidenceI.Bytes()
+		}
+		data.hash = merkle.SimpleHashFromByteSlices(evidenceBzs)
+	}
+	return data.hash
+}
+
+// StringIndented returns a string representation of the evidence.
+func (data *EvidenceData) StringIndented(indent string) string {
+	if data == nil {
+		return "nil-Evidence"
+	}
+	evStrings := make([]string, tmmath.MinInt(len(data.Evidence), 21))
+	for i, ev := range data.Evidence {
+		if i == 20 {
+			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidence))
+			break
+		}
+		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
+	}
+	return fmt.Sprintf(`EvidenceData{
+%s  %v
+%s}#%v`,
+		indent, strings.Join(evStrings, "\n"+indent+"  "),
+		indent, data.hash)
+}
+
+//-------------------------------------------
+
 // Evidence represents any provable malicious activity by a validator
 type EvidenceI interface {
 	Height() int64                                     // height of the equivocation
@@ -69,7 +106,7 @@ type EvidenceI interface {
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Evidence)(nil), nil)
+	cdc.RegisterInterface((*EvidenceI)(nil), nil)
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
 }
 
@@ -141,7 +178,7 @@ func (dve *DuplicateVoteEvidence) Address() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Bytes() []byte {
-	return cdcEncode(dve)
+	return cdcEncode(dve) //TODO: change to []byte
 }
 
 // Hash returns the hash of the evidence.
@@ -301,6 +338,7 @@ func (e MockEvidence) String() string {
 
 //-------------------------------------------
 
+//TODO: deprecated (remove)
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []EvidenceI
 

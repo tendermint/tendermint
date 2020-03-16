@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -41,12 +40,12 @@ func TestBlockAddEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
-	evList := []Evidence{ev}
+	evList := []EvidenceI{ev}
 
 	block := MakeBlock(h, txs, commit, evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
-	require.NotNil(t, block.EvidenceHash)
+	require.NotNil(t, block.Evidence.Hash)
 }
 
 func TestBlockValidateBasic(t *testing.T) {
@@ -61,7 +60,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
-	evList := []Evidence{ev}
+	evList := []EvidenceI{ev}
 
 	testCases := []struct {
 		testName      string
@@ -69,22 +68,22 @@ func TestBlockValidateBasic(t *testing.T) {
 		expErr        bool
 	}{
 		{"Make Block", func(blk *Block) {}, false},
-		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
-		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
+		{"Make Block w/ proposer Addr", func(blk *Block) { blk.Header.ProposerAddress = valSet.GetProposer().Address }, false},
+		{"Negative Height", func(blk *Block) { blk.Header.Height = -1 }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
 			blk.LastCommit.Signatures = commit.Signatures[:commit.Size()/2]
 			blk.LastCommit.hash = nil // clear hash or change wont be noticed
 		}, true},
-		{"Remove LastCommitHash", func(blk *Block) { blk.LastCommitHash = []byte("something else") }, true},
+		{"Remove LastCommitHash", func(blk *Block) { blk.Header.LastCommitHash = []byte("something else") }, true},
 		{"Tampered Data", func(blk *Block) {
 			blk.Data.Txs[0] = Tx("something else")
 			blk.Data.hash = nil // clear hash or change wont be noticed
 		}, true},
 		{"Tampered DataHash", func(blk *Block) {
-			blk.DataHash = tmrand.Bytes(len(blk.DataHash))
+			blk.Header.DataHash = tmrand.Bytes(len(blk.Header.DataHash))
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
-			blk.EvidenceHash = []byte("something else")
+			blk.Header.EvidenceHash = []byte("something else")
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -92,7 +91,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		i := i
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
-			block.ProposerAddress = valSet.GetProposer().Address
+			block.Header.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
 			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
@@ -124,7 +123,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
-	evList := []Evidence{ev}
+	evList := []EvidenceI{ev}
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
@@ -141,10 +140,10 @@ func TestBlockHashesTo(t *testing.T) {
 	require.NoError(t, err)
 
 	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
-	evList := []Evidence{ev}
+	evList := []EvidenceI{ev}
 
 	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
-	block.ValidatorsHash = valSet.Hash()
+	block.Header.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
 	assert.True(t, block.HashesTo(block.Hash()))
@@ -255,7 +254,7 @@ func TestHeaderHash(t *testing.T) {
 		expectHash bytes.HexBytes
 	}{
 		{"Generates expected hash", &Header{
-			Version:            version.Consensus{Block: 1, App: 2},
+			Version:            Version{Block: 1, App: 2},
 			ChainID:            "chainId",
 			Height:             3,
 			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
@@ -272,7 +271,7 @@ func TestHeaderHash(t *testing.T) {
 		}, hexBytesFromString("ABDC78921B18A47EE6BEF5E31637BADB0F3E587E3C0F4DB2D1E93E9FF0533862")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
-			Version:            version.Consensus{Block: 1, App: 2},
+			Version:            Version{Block: 1, App: 2},
 			ChainID:            "chainId",
 			Height:             3,
 			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
@@ -326,7 +325,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		Version:            Version{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
@@ -440,7 +439,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	for i := 0; i < len(vals); i++ {
 		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
-		vote3 := commit.GetVote(i)
+		vote3 := commit.GetVote(int32(i))
 
 		vote1bz := cdc.MustMarshalBinaryBare(vote1)
 		vote2bz := cdc.MustMarshalBinaryBare(vote2)

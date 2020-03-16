@@ -27,7 +27,17 @@ func (tx Tx) String() string {
 }
 
 // Txs is a slice of Tx.
-type Txs []Tx //TODO: see about change this to [][]byte
+type Txs []Tx
+
+// Bytes returns the [][]byte form of []Tx
+// this is because golang does not allow type casting slices without unsafe
+func (txs Txs) Bytes() [][]byte {
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
+}
 
 // Hash returns the Merkle root hash of the transaction hashes.
 // i.e. the leaves of the tree are the hashes of the txs.

@@ -91,15 +91,15 @@ message Vote {
   option (gogoproto.goproto_stringer) = false;
 
   SignedMsgType type     = 1;
-  int64         height   = 2;
-  int32         round    = 3;
+  uint64        height   = 2;
+  uint32        round    = 3;
   BlockID       block_id = 4
       [(gogoproto.customname) = 'BlockID', (gogoproto.nullable) = false];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes validator_address = 6;
-  int32 validator_index   = 7;  // TODO: double check what size can be used
-  bytes signature         = 8;
+  bytes  validator_address = 6;
+  uint32 validator_index   = 7;  // TODO: double check what size can be used
+  bytes  signature         = 8;
 }
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
@@ -143,7 +143,8 @@ message TmCommit {
   // NOTE: can't memoize in constructor because constructor isn't used for
   // unmarshaling.
   bytes                           hash      = 5 [(gogoproto.customname) = "hash"];
-  tendermint.libs.bits.TmBitArray bit_array = 6 [(gogoproto.customname) = "bitArray"];
+  tendermint.libs.bits.TmBitArray bit_array = 6
+      [(gogoproto.customname) = "bitArray"];  // TODO: test with `customtype`
 }
 
 // CommitSig is a part of the Vote included in a Commit.
@@ -161,5 +162,5 @@ message TmBlock {
   Header       header     = 1 [(gogoproto.nullable) = false];
   Data         data       = 2 [(gogoproto.nullable) = false];
   EvidenceData evidence   = 3 [(gogoproto.nullable) = false];
-  TmCommit     LastCommit = 4 [(gogoproto.casttype) = "Commit"];  // TODO: see if this makes sense
+  TmCommit     LastCommit = 4 [(gogoproto.customtype) = "Commit"];
 }

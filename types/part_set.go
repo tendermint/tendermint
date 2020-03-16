@@ -106,11 +106,11 @@ func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
-		total:         int32(total),
+		total:         total,
 		hash:          root,
 		parts:         parts,
 		partsBitArray: partsBitArray,
-		count:         int32(total),
+		count:         total,
 	}
 }
 

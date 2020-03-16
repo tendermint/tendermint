@@ -735,6 +735,13 @@ func (data *Data) Hash() tmbytes.HexBytes {
 		return (Txs{}).Hash()
 	}
 	if data.hash == nil {
+		/*
+			we have [][]byte and need to hash it
+				hasing it means: hasing each tx (checksum) then SimpleHashFromByteSlices()
+
+			txs is []Tx which cannot be cast to [][]byte
+				1. loop through the txs, make its []Tx then call hash
+		*/
 		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}
 	return data.hash
@@ -751,42 +758,12 @@ func (data *Data) StringIndented(indent string) string {
 			txStrings[i] = fmt.Sprintf("... (%v total)", len(data.Txs))
 			break
 		}
-		txStrings[i] = fmt.Sprintf("%X (%d bytes)", tx.Hash(), len(tx))
+		txStrings[i] = fmt.Sprintf("%X (%d bytes)", Tx(tx).Hash(), len(tx))
 	}
 	return fmt.Sprintf(`Data{
 %s  %v
 %s}#%v`,
 		indent, strings.Join(txStrings, "\n"+indent+"  "),
-		indent, data.hash)
-}
-
-//-----------------------------------------------------------------------------
-
-// Hash returns the hash of the data.
-func (data *EvidenceData) Hash() tmbytes.HexBytes {
-	if data.hash == nil {
-		data.hash = data.Evidence.Hash()
-	}
-	return data.hash
-}
-
-// StringIndented returns a string representation of the evidence.
-func (data *EvidenceData) StringIndented(indent string) string {
-	if data == nil {
-		return "nil-Evidence"
-	}
-	evStrings := make([]string, tmmath.MinInt(len(data.Evidence), 21))
-	for i, ev := range data.Evidence {
-		if i == 20 {
-			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidence))
-			break
-		}
-		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
-	}
-	return fmt.Sprintf(`EvidenceData{
-%s  %v
-%s}#%v`,
-		indent, strings.Join(evStrings, "\n"+indent+"  "),
 		indent, data.hash)
 }
 
