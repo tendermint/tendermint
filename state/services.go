@@ -14,6 +14,7 @@ import (
 
 // BlockStore defines the interface used by the ConsensusState.
 type BlockStore interface {
+	Base() int64
 	Height() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta

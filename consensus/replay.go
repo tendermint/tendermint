@@ -288,6 +288,7 @@ func (h *Handshaker) ReplayBlocks(
 	appBlockHeight int64,
 	proxyApp proxy.AppConns,
 ) ([]byte, error) {
+	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
 	h.logger.Info(
@@ -298,6 +299,12 @@ func (h *Handshaker) ReplayBlocks(
 		storeBlockHeight,
 		"stateHeight",
 		stateBlockHeight)
+
+	// If the app's block height is lower than the blockstore base, then we can't replay.
+	if appBlockHeight < storeBlockBase {
+		return nil, fmt.Errorf("unable to replay blocks: blockstore base %v lower than app height %v",
+			storeBlockBase, appBlockHeight)
+	}
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
