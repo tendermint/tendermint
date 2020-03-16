@@ -551,18 +551,6 @@ func (commit *Commit) Type() byte {
 	return byte(PrecommitType)
 }
 
-// GetHeight returns height of the commit.
-// Implements VoteSetReader.
-// func (commit *Commit) GetHeight() int64 {
-// 	return commit.Height
-// }
-
-// GetRound returns height of the commit.
-// Implements VoteSetReader.
-// func (commit *Commit) GetRound() int32 {
-// 	return commit.Round
-// }
-
 // Size returns the number of signatures in the commit.
 // Implements VoteSetReader.
 func (commit *Commit) Size() int {

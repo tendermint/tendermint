@@ -91,8 +91,8 @@ message Vote {
   option (gogoproto.goproto_stringer) = false;
 
   SignedMsgType type     = 1;
-  uint64        height   = 2;
-  uint32        round    = 3;
+  int64         height   = 2;
+  int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.customname) = 'BlockID', (gogoproto.nullable) = false];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
@@ -134,17 +134,19 @@ message TmCommit {
   // ValidatorSet order.
   // Any peer with a block can gossip signatures by index with a peer without
   // recalculating the active ValidatorSet.
-  uint64  height   = 1;
-  uint32  round    = 2;
+  int64   height   = 1;
+  int32   round    = 2;
   BlockID block_id = 3 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
   repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
 
   // Memoized in first call to corresponding method.
   // NOTE: can't memoize in constructor because constructor isn't used for
   // unmarshaling.
-  bytes                           hash      = 5 [(gogoproto.customname) = "hash"];
-  tendermint.libs.bits.TmBitArray bit_array = 6
-      [(gogoproto.customname) = "bitArray"];  // TODO: test with `customtype`
+  bytes  hash      = 5 [(gogoproto.customname) = "hash"];
+  string bit_array = 6 [
+    (gogoproto.customname) = "bitArray",
+    (gogoproto.customtype) = "github.com/tendermint/tendermint/libs/bits.BitArray"
+  ];
 }
 
 // CommitSig is a part of the Vote included in a Commit.

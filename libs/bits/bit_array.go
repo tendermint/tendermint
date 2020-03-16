@@ -418,3 +418,29 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 	*bA = *bA2 //nolint:govet
 	return nil
 }
+
+func (bA *BitArray) Marshal() ([]byte, error) {
+	if bA == nil {
+		return []byte("null"), nil
+	}
+
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	panic("not implemented")
+}
+func (bA *BitArray) MarshalBitArrayo(data []byte) (n int, err error) {
+	panic("not implemented")
+}
+func (bA *BitArray) Unmarshal(data []byte) error {
+	panic("not implemented")
+}
+
+// // only required if the compare option is set
+// func (t BitArray) Compare(other BitArray) int {}
+
+// // only required if the equal option is set
+// func (t BitArray) Equal(other BitArray) bool {}
+
+// // only required if populate option is set
+// func NewPopulatedT(r randyThetest) *BitArray {}
