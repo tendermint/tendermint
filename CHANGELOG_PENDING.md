@@ -1,11 +1,10 @@
-## v0.33.2
+## v0.33.3
 
 \*\*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -21,8 +20,7 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)
+- [privval] \#4534 Add `error` as a return value on`GetPubKey()`
+
 ### BUG FIXES:
-
-- [rpc] [\#4437](https://github.com/tendermint/tendermint/pull/4437) Fix tx_search pagination with ordered results (@erikgrinaker)
-
-- [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)

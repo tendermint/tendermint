@@ -7,7 +7,7 @@ order: 4
 ## XXX
 
 This page is undergoing deprecation. All content is being moved to the new [home
-of the ABCI specification](../spec/abci/README.md).
+of the ABCI specification](https://github.com/tendermint/spec/tree/master/spec/abci).
 
 ## ABCI Design
 

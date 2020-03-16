@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	crand "crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/binary"
 	"io"
 	"math"
@@ -38,7 +37,6 @@ const (
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
-	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
 
 	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
 	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
@@ -358,19 +356,14 @@ func deriveSecrets(
 
 // computeDHSecret computes a Diffie-Hellman shared secret key
 // from our own local private key and the other's public key.
-//
-// It returns an error if the computed shared secret is all zeroes.
-func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {
-	shrKey = new([32]byte)
-	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
-
-	// reject if the returned shared secret is all zeroes
-	// related to: https://github.com/tendermint/tendermint/issues/3010
-	zero := new([32]byte)
-	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
-		return nil, ErrSharedSecretIsZero
+func computeDHSecret(remPubKey, locPrivKey *[32]byte) (*[32]byte, error) {
+	shrKey, err := curve25519.X25519(locPrivKey[:], remPubKey[:])
+	if err != nil {
+		return nil, err
 	}
-	return
+	var shrKeyArray [32]byte
+	copy(shrKeyArray[:], shrKey)
+	return &shrKeyArray, nil
 }
 
 func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {

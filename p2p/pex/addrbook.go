@@ -60,9 +60,12 @@ type AddrBook interface {
 	// Mark address
 	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
-	MarkBad(*p2p.NetAddress)
+	MarkBad(*p2p.NetAddress, time.Duration) // Move peer to bad peers list
+	// Add bad peers back to addrBook
+	ReinstateBadPeers()
 
 	IsGood(*p2p.NetAddress) bool
+	IsBanned(*p2p.NetAddress) bool
 
 	// Send a selection of addresses to peers
 	GetSelection() []*p2p.NetAddress
@@ -88,6 +91,7 @@ type addrBook struct {
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
+	badPeers   map[p2p.ID]*knownAddress // blacklisted peers
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -110,12 +114,13 @@ func newHashKey() []byte {
 
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
+func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 	am := &addrBook{
 		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
 		privateIDs:        make(map[p2p.ID]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
+		badPeers:          make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 		hashKey:           newHashKey(),
@@ -214,12 +219,7 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ka := a.addrLookup[addr.ID]
-	if ka == nil {
-		return
-	}
-	a.Logger.Info("Remove address from book", "addr", addr)
-	a.removeFromAllBuckets(ka)
+	a.removeAddress(addr)
 }
 
 // IsGood returns true if peer was ever marked as good and haven't
@@ -229,6 +229,15 @@ func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 	defer a.mtx.Unlock()
 
 	return a.addrLookup[addr.ID].isOld()
+}
+
+// IsBanned returns true if the peer is currently banned
+func (a *addrBook) IsBanned(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	_, ok := a.badPeers[addr.ID]
+	a.mtx.Unlock()
+
+	return ok
 }
 
 // HasAddress returns true if the address is in the book.
@@ -333,10 +342,28 @@ func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 	ka.markAttempt()
 }
 
-// MarkBad implements AddrBook. Currently it just ejects the address.
-// TODO: black list for some amount of time
-func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
-	a.RemoveAddress(addr)
+// MarkBad implements AddrBook. Kicks address out from book, places
+// the address in the badPeers pool.
+func (a *addrBook) MarkBad(addr *p2p.NetAddress, banTime time.Duration) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	if a.addBadPeer(addr, banTime) {
+		a.removeAddress(addr)
+	}
+}
+
+func (a *addrBook) ReinstateBadPeers() {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	for _, ka := range a.badPeers {
+		if !ka.isBanned() {
+			bucket := a.calcNewBucket(ka.Addr, ka.Src)
+			a.addToNewBucket(ka, bucket)
+			delete(a.badPeers, ka.ID())
+			a.Logger.Info("Reinstated address", "addr", ka.Addr)
+		}
+	}
 }
 
 // GetSelection implements AddrBook.
@@ -601,6 +628,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
+	if _, ok := a.badPeers[addr.ID]; ok {
+		return ErrAddressBanned{addr}
+	}
+
 	if _, ok := a.privateIDs[addr.ID]; ok {
 		return ErrAddrBookPrivate{addr}
 	}
@@ -742,6 +773,32 @@ func (a *addrBook) moveToOld(ka *knownAddress) error {
 		}
 	}
 	return nil
+}
+
+func (a *addrBook) removeAddress(addr *p2p.NetAddress) {
+	ka := a.addrLookup[addr.ID]
+	if ka == nil {
+		return
+	}
+	a.Logger.Info("Remove address from book", "addr", addr)
+	a.removeFromAllBuckets(ka)
+}
+
+func (a *addrBook) addBadPeer(addr *p2p.NetAddress, banTime time.Duration) bool {
+	// check it exists in addrbook
+	ka := a.addrLookup[addr.ID]
+	// check address is not already there
+	if ka == nil {
+		return false
+	}
+
+	if _, alreadyBadPeer := a.badPeers[addr.ID]; !alreadyBadPeer {
+		// add to bad peer list
+		ka.ban(banTime)
+		a.badPeers[addr.ID] = ka
+		a.Logger.Info("Add address to blacklist", "addr", addr)
+	}
+	return true
 }
 
 //---------------------------------------------------------------------

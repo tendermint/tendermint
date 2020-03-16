@@ -67,7 +67,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 		return nil, err
 	}
 
-	results, err := txIndexer.Search(q)
+	results, err := txIndexer.Search(ctx.Context(), q)
 	if err != nil {
 		return nil, err
 	}

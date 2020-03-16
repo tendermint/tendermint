@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -118,10 +119,12 @@ func TestTxSearch(t *testing.T) {
 		{"account.number CONTAINS 'Iv'", 0},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(query.MustParse(tc.q))
+			results, err := indexer.Search(ctx, query.MustParse(tc.q))
 			assert.NoError(t, err)
 
 			assert.Len(t, results, tc.resultsLength)
@@ -130,6 +133,25 @@ func TestTxSearch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTxSearchWithCancelation(t *testing.T) {
+	allowedKeys := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
+
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
+	})
+	err := indexer.Index(txResult)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	results, err := indexer.Search(ctx, query.MustParse("account.number = 1"))
+	assert.NoError(t, err)
+	assert.Empty(t, results)
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
@@ -192,10 +214,12 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		{"sender = 'addr1'", []*types.TxResult{txResult2}},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(query.MustParse(tc.q))
+			results, err := indexer.Search(ctx, query.MustParse(tc.q))
 			require.NoError(t, err)
 			require.Equal(t, results, tc.results)
 		})
@@ -214,7 +238,9 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
 
-	results, err := indexer.Search(query.MustParse("account.number >= 1"))
+	ctx := context.Background()
+
+	results, err := indexer.Search(ctx, query.MustParse("account.number >= 1"))
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)
@@ -268,7 +294,9 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	err = indexer.Index(txResult4)
 	require.NoError(t, err)
 
-	results, err := indexer.Search(query.MustParse("account.number >= 1"))
+	ctx := context.Background()
+
+	results, err := indexer.Search(ctx, query.MustParse("account.number >= 1"))
 	assert.NoError(t, err)
 
 	require.Len(t, results, 3)

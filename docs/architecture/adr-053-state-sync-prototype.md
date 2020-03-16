@@ -6,6 +6,14 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
 
 * 2020-01-28: Initial draft (Erik Grinaker)
 
+* 2020-02-18: Updates after initial prototype (Erik Grinaker)
+    * ABCI: added missing `reason` fields.
+    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
+    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
+    * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
+    * Added experimental prototype info.
+    * Added open questions and implementation plan.
+
 ## Context
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
@@ -34,14 +42,14 @@ A node can have multiple snapshots taken at various heights. Snapshots can be ta
 message Snapshot {
     uint64 height = 1;   // The height at which the snapshot was taken
     uint32 format = 2;   // The application-specific snapshot format
-    uint64 chunks = 3;   // The number of chunks in the snapshot
+    uint32 chunks = 3;   // The number of chunks in the snapshot
     bytes metadata = 4;  // Arbitrary application metadata
 }
 
 message SnapshotChunk {
     uint64 height = 1;   // The height of the corresponding snapshot
     uint32 format = 2;   // The application-specific snapshot format
-    uint64 chunk = 3;    // The chunk index (zero-based)
+    uint32 chunk = 3;    // The chunk index (one-based)
     bytes data = 4;      // Serialized application state in an arbitrary format
     bytes checksum = 5;  // SHA-1 checksum of data
 }
@@ -64,11 +72,13 @@ message ResponseListSnapshots {
 // Offers a snapshot to the application
 message RequestOfferSnapshot {
     Snapshot snapshot = 1;
+    bytes app_hash = 2;
 }
 
 message ResponseOfferSnapshot {
     bool accepted = 1;
-    enum reason {             // Reason why snapshot was rejected
+    Reason reason = 2;        // Reason why snapshot was rejected
+    enum Reason {
         unknown = 0;          // Unknown or generic reason
         invalid_height = 1;   // Height is rejected: avoid this height
         invalid_format = 2;   // Format is rejected: avoid this format
@@ -79,7 +89,7 @@ message ResponseOfferSnapshot {
 message RequestGetSnapshotChunk {
     uint64 height = 1;
     uint32 format = 2;
-    uint64 chunk = 3;
+    uint32 chunk = 3;
 }
 
 message ResponseGetSnapshotChunk {
@@ -89,12 +99,12 @@ message ResponseGetSnapshotChunk {
 // Applies a snapshot chunk
 message RequestApplySnapshotChunk {
     SnapshotChunk chunk = 1;
-    bytes chain_hash = 2;
 }
 
 message ResponseApplySnapshotChunk {
     bool applied = 1;
-    enum reason {           // Reason why chunk failed
+    Reason reason = 2;      // Reason why chunk failed
+    enum Reason {
         unknown = 0;        // Unknown or generic reason
         verify_failed = 1;  // Chunk verification failed
     }
@@ -165,24 +175,13 @@ The Gaia data structure consists of a set of named IAVL trees. A root hash is co
 
 IAVL trees are versioned, but a snapshot only contains the version relevant for the snapshot height. All historical versions are ignored.
 
-IAVL trees are insertion-order dependent, so key/value pairs must be stored in an appropriate insertion order to produce the same tree branching structure and thus the same Merkle hashes.
+IAVL trees are insertion-order dependent, so key/value pairs must be set in an appropriate insertion order to produce the same tree branching structure. This insertion order can be found by doing a breadth-first scan of all nodes (including inner nodes) and collecting unique keys in order. However, the node hash also depends on the node's version, so snapshots must contain the inner nodes' version numbers as well.
 
-A chunk corresponds to a subtree key range within an IAVL tree, in insertion order, along with the Merkle proof from the root of the subtree all the way up to the root of the multistore (including the Merkle proof for the surrounding multistore.
+For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks is done, only a final app hash comparison at the end of the snapshot restoration.
 
-```go
-struct SnapshotChunk {
-    Store   string            // Name (key) of IAVL store in outer MultiStore
-    Keys    [][]byte          // Snapshotted keys in insertion order
-    Values  [][]byte          // Snapshotted values corresponding to Keys
-    Proof   []merkle.ProofOp  // Merkle proof from subtree root to MultiStore root
-}
-```
+For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-This chunk structure is believed to be sufficient to reconstruct an identical IAVL tree by applying separate chunks, but this may require the chunks to be ordered in a certain way; further research is needed.
-
-We do not use IAVL RangeProofs, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
-
-Chunks should be built greedily by collecting key/value pairs constituting a complete subtree up to some size limit (e.g. 32 MB), then serialized. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting node data up to some size limit (e.g. 32 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
 
 ### Snapshot Scheduling
 
@@ -192,17 +191,127 @@ Taking consistent snapshots of IAVL trees is greatly simplified by them being ve
 
 Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
 
+## Experimental Prototype
+
+An experimental but functional state sync prototype is available in the `erik/statesync-prototype` branches of the Tendermint, IAVL, Cosmos SDK, and Gaia repositories. To fetch the necessary branches:
+
+```sh
+$ mkdir statesync
+$ cd statesync
+$ git clone git@github.com:tendermint/tendermint -b erik/statesync-prototype
+$ git clone git@github.com:tendermint/iavl -b erik/statesync-prototype
+$ git clone git@github.com:cosmos/cosmos-sdk -b erik/statesync-prototype
+$ git clone git@github.com:cosmos/gaia -b erik/statesync-prototype
+```
+
+To spin up three nodes of a four-node testnet:
+
+```sh
+$ cd gaia
+$ ./tools/start.sh
+```
+
+Wait for the first snapshot to be taken at height 3, then (in a separate terminal) start the fourth node with state sync enabled:
+
+```sh
+$ ./tools/sync.sh
+```
+
+To stop the testnet, run:
+
+```sh
+$ ./tools/stop.sh
+```
+
 ## Open Questions
 
-* Is it possible to reconstruct an identical IAVL tree given separate subtrees in an appropriate order, or is more data needed about the branch structure?
+* Should we have a simpler scheme for discovering snapshots? E.g. announce supported formats, and have peer supply latest available snapshot.
 
-* Should we punish nodes that provide invalid snapshots?
+    Downsides: app has to announce supported formats, having a single snapshot per peer may make fewer peers available for chosen snapshot.
+
+## Resolved Questions
 
 * Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
 
+    > Yes, this is as intended. Maybe backfill blocks later.
+
+* Do we need incremental chunk verification for first version?
+
+    > No, we'll start simple. Can add chunk verification via a new snapshot format without any breaking changes in Tendermint. For adversarial conditions, maybe consider support for whitelisting peers to download chunks from.
+
+* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
+
+    > Mandatory, to keep things simple for now. It will therefore be a breaking change and push the release. For apps using the Cosmos SDK, we can provide a default implementation that does not serve snapshots and errors when trying to apply them.
+
+* How can we make sure `ListSnapshots` data is valid? An adversary can provide fake/invalid snapshots to DoS peers.
+
+    > For now, just pick snapshots that are available on a large number of peers. Maybe support whitelisting. We may consider e.g. placing snapshot manifests on the blockchain later.
+
+* Should we punish nodes that provide invalid snapshots? How?
+
+    > No, these are full nodes not validators, so we can't punish them. Just disconnect from them and ignore them.
+
+* Should we call these snapshots? The SDK already uses the term "snapshot" for `PruningOptions.SnapshotEvery`, and state sync will introduce additional SDK options for snapshot scheduling and pruning that are not related to IAVL snapshotting or pruning.
+
+    > Yes. Hopefully these concepts are distinct enough that we can refer to state sync snapshots and IAVL snapshots without too much confusion.
+
+* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
+
+    > As a first approach, store metadata in a database and chunks in the filesystem.
+
+* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
+
+    > After commit.
+
+* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+
+    > We should remove the v1 reactor completely once v2 has stabilized.
+
+* Should `ListSnapshots` be a streaming API instead of a request/response API?
+
+    > No, just use a max message size.
+
+## Implementation Plan
+
+### Core Tasks
+
+* **Tendermint:** light client P2P transport [#4456](https://github.com/tendermint/tendermint/issues/4456)
+
+* **IAVL:** export/import API [#210](https://github.com/tendermint/iavl/issues/210)
+
+* **Cosmos SDK:** snapshotting, scheduling, and pruning [#5689](https://github.com/cosmos/cosmos-sdk/issues/5689)
+
+* **Tendermint:** support starting with a truncated block history
+
+* **Tendermint:** state sync reactor and ABCI interface [#828](https://github.com/tendermint/tendermint/issues/828)
+
+* **Cosmos SDK:** snapshot ABCI implementation [#5690](https://github.com/cosmos/cosmos-sdk/issues/5690)
+
+### Nice-to-Haves
+
+* **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus)
+
+    > Let's do a time-boxed prototype (a few days) and see how much work it will be.
+
+  * Notify P2P peers about channel changes [#4394](https://github.com/tendermint/tendermint/issues/4394)
+
+  * Check peers have certain channels [#1148](https://github.com/tendermint/tendermint/issues/1148)
+
+* **Tendermint:** prune blockchain history [#3652](https://github.com/tendermint/tendermint/issues/3652)
+
+* **Tendermint:** allow genesis to start from non-zero height [#2543](https://github.com/tendermint/tendermint/issues/2543)
+
+### Follow-up Tasks
+
+* **Tendermint:** light client verification for fast sync [#4457](https://github.com/tendermint/tendermint/issues/4457)
+
+* **Tendermint:** allow start with only blockstore [#3713](https://github.com/tendermint/tendermint/issues/3713)
+
+* **Tendermint:** node should go back to fast-syncing when lagging significantly [#129](https://github.com/tendermint/tendermint/issues/129)
+
 ## Status
 
-Proposed
+Accepted
 
 ## References
 

@@ -584,10 +584,6 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	return nil
 }
 
-func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
-	return sw.IsPeerPersistent
-}
-
 func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 	for _, pa := range sw.persistentPeersAddrs {
 		if pa.Equals(na) {

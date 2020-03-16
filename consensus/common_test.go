@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 
 	"path"
 
@@ -71,7 +73,7 @@ type validatorStub struct {
 
 var testMinPower int64 = 10
 
-func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -82,17 +84,23 @@ func (vs *validatorStub) signVote(
 	voteType types.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
-	addr := vs.PrivValidator.GetPubKey().Address()
+
+	pubKey, err := vs.PrivValidator.GetPubKey()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get pubkey")
+	}
+
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
-		ValidatorAddress: addr,
+		ValidatorAddress: pubKey.Address(),
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
-	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
+
+	err = vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
@@ -136,7 +144,15 @@ func (vss ValidatorStubsByAddress) Len() int {
 }
 
 func (vss ValidatorStubsByAddress) Less(i, j int) bool {
-	return bytes.Compare(vss[i].GetPubKey().Address(), vss[j].GetPubKey().Address()) == -1
+	vssi, err := vss[i].GetPubKey()
+	if err != nil {
+		panic(err)
+	}
+	vssj, err := vss[j].GetPubKey()
+	if err != nil {
+		panic(err)
+	}
+	return bytes.Compare(vssi.Address(), vssj.Address()) == -1
 }
 
 func (vss ValidatorStubsByAddress) Swap(i, j int) {
@@ -199,7 +215,9 @@ func signAddVotes(
 
 func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	address := privVal.GetPubKey().Address()
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	address := pubKey.Address()
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(address); vote == nil {
 		panic("Failed to find prevote from validator")
@@ -217,7 +235,9 @@ func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub,
 
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	address := privVal.GetPubKey().Address()
+	pv, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	address := pv.Address()
 	var vote *types.Vote
 	if vote = votes.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")
@@ -237,7 +257,9 @@ func validatePrecommit(
 	lockedBlockHash []byte,
 ) {
 	precommits := cs.Votes.Precommits(thisRound)
-	address := privVal.GetPubKey().Address()
+	pv, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	address := pv.Address()
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")
@@ -385,7 +407,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = NewValidatorStub(privVals[i], i)
+		vss[i] = newValidatorStub(privVals[i], i)
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)

@@ -77,7 +77,7 @@ type Group struct {
 
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
-func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
+func OpenGroup(headPath string, groupOptions ...func(*Group)) (*Group, error) {
 	dir, err := filepath.Abs(filepath.Dir(headPath))
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 		return nil, err
 	}
 
-	g = &Group{
+	g := &Group{
 		ID:                 "group:" + head.ID,
 		Head:               head,
 		headBuf:            bufio.NewWriterSize(head, 4096*10),
@@ -109,7 +109,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
 	g.maxIndex = gInfo.MaxIndex
-	return
+	return g, nil
 }
 
 // GroupCheckDuration allows you to overwrite default groupCheckDuration.
