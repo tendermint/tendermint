@@ -22,3 +22,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#4534 Add `error` as a return value on`GetPubKey()`
 
 ### BUG FIXES:
+
+- [rpc] \#4568 Fix panic when `Subscribe` is called, but HTTP client is not running (@melekes)
+  `Subscribe`, `Unsubscribe(All)` methods return an error now.
