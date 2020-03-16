@@ -183,8 +183,10 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	}
 
 	// The address must have been an active validator at the height.
+	//
 	// NOTE: we will ignore evidence from H if the key was not a validator
 	// at H, even if it is a validator at some nearby H'
+	//
 	// XXX: this makes lite-client bisection as is unsafe
 	// See https://github.com/tendermint/tendermint/issues/3244
 	ev := evidence

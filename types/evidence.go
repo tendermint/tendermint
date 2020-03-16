@@ -71,6 +71,7 @@ type Evidence interface {
 func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Evidence)(nil), nil)
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
+	cdc.RegisterConcrete(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence", nil)
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
@@ -348,8 +349,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 // observes two (or more) conflicting headers, both having 1/3+ of the voting
 // power of the currently trusted validator set.
 type ConflictingHeadersEvidence struct {
-	H1 SignedHeader
-	H2 SignedHeader
+	H1 SignedHeader `json:"h_1"`
+	H2 SignedHeader `json:"h_2"`
 }
 
 func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
@@ -374,6 +375,12 @@ func (ev ConflictingHeadersEvidence) Hash() []byte {
 }
 
 func (ev ConflictingHeadersEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	if chainID != ev.H1.ChainID {
+		return errors.New("header #1 is from a different chain")
+	}
+	if chainID != ev.H2.ChainID {
+		return errors.New("header #2 is from a different chain")
+	}
 	return nil
 }
 
@@ -386,12 +393,15 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {
-	// if err := ev.H1.ValidateBasic(chainID); err != nil {
-	// 	return fmt.Errorf("h1: %w", err)
-	// }
-	// if err := ev.H2.ValidateBasic(chainID); err != nil {
-	// 	return fmt.Errorf("h2: %w", err)
-	// }
+	if ev.H1.ChainID != ev.H2.ChainID {
+		return errors.New("headers are from different chains")
+	}
+	if err := ev.H1.ValidateBasic(ev.H1.ChainID); err != nil {
+		return fmt.Errorf("h1: %w", err)
+	}
+	if err := ev.H2.ValidateBasic(ev.H2.ChainID); err != nil {
+		return fmt.Errorf("h2: %w", err)
+	}
 	if ev.H1.Height != ev.H2.Height {
 		return errors.New("headers are from different heights")
 	}

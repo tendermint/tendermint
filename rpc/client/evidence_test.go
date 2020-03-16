@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/privval"
@@ -140,5 +141,53 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 			_, err := c.BroadcastEvidence(fake)
 			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
+	}
+}
+
+func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
+	var (
+		config  = rpctest.GetConfig()
+		chainID = config.ChainID()
+		pv      = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	)
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		h1, err := c.Commit(nil)
+		require.NoError(t, err)
+		require.NotNil(t, h1.SignedHeader.Header)
+
+		// Create an alternative header with a different AppHash.
+		h2 := h1.SignedHeader
+		h2.AppHash = []byte("app_hash2")
+		blockID := types.BlockID{
+			Hash:        h2.Hash(),
+			PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+		}
+		vote := &types.Vote{
+			ValidatorAddress: pv.Key.Address,
+			ValidatorIndex:   0,
+			Height:           h1.Height,
+			Round:            h1.Commit.Round,
+			Timestamp:        h1.Time,
+			Type:             types.PrecommitType,
+			BlockID:          blockID,
+		}
+		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
+		require.NoError(t, err)
+		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h1.Time)
+
+		t.Logf("h1 AppHash: %X", h1.AppHash)
+		t.Logf("h2 AppHash: %X", h2.AppHash)
+
+		ev := types.ConflictingHeadersEvidence{
+			H1: h1.SignedHeader,
+			H2: h2,
+		}
+
+		result, err := c.BroadcastEvidence(ev)
+		require.NoError(t, err, "BroadcastEvidence(%s) failed", ev)
+		assert.Equal(t, ev.Hash(), result.Hash, "expected result hash to match evidence hash")
 	}
 }
