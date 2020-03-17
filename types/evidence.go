@@ -54,15 +54,15 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 //-------------------------------------------
 
-// Evidence represents any provable malicious activity by a validator
+// Evidence represents any provable malicious activity by a validator(s).
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
+	Height() int64                                        // height of the equivocation
+	Time() time.Time                                      // time of the equivocation
+	Addresses() [][]byte                                  // address of the equivocating validators
+	Bytes() []byte                                        // bytes which comprise the evidence
+	Hash() []byte                                         // hash of the evidence
+	Verify(chainID string, pubKeys []crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool                                  // check equality of evidence
 
 	ValidateBasic() error
 	String() string
@@ -144,8 +144,8 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 }
 
 // Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.PubKey.Address()
+func (dve *DuplicateVoteEvidence) Addresses() [][]byte {
+	return [][]byte{dve.PubKey.Address()}
 }
 
 // Hash returns the hash of the evidence.
@@ -159,8 +159,12 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 }
 
 // Verify returns an error if the two votes aren't conflicting.
-// To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+//
+// To be conflicting, they must be from the same validator, for the same H/R/S,
+// but for different blocks.
+func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error {
+	pubKey := pubKeys[0]
+
 	// H/R/S must be the same
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
@@ -286,9 +290,9 @@ func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) Moc
 		EvidenceAddress: address}
 }
 
-func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
-func (e MockEvidence) Time() time.Time { return e.EvidenceTime }
-func (e MockEvidence) Address() []byte { return e.EvidenceAddress }
+func (e MockEvidence) Height() int64       { return e.EvidenceHeight }
+func (e MockEvidence) Time() time.Time     { return e.EvidenceTime }
+func (e MockEvidence) Addresses() [][]byte { return [][]byte{e.EvidenceAddress} }
 func (e MockEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x-%s",
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
@@ -297,7 +301,7 @@ func (e MockEvidence) Bytes() []byte {
 	return []byte(fmt.Sprintf("%d-%x-%s",
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
-func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
+func (e MockEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error { return nil }
 func (e MockEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
@@ -359,8 +363,8 @@ func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 func (ev ConflictingHeadersEvidence) Time() time.Time { return ev.H1.Time }
 
 // XXX: multiple validators misbehaved
-func (ev ConflictingHeadersEvidence) Address() []byte {
-	return []byte{}
+func (ev ConflictingHeadersEvidence) Addresses() [][]byte {
+	return [][]byte{}
 }
 
 func (ev ConflictingHeadersEvidence) Bytes() []byte {
@@ -374,7 +378,7 @@ func (ev ConflictingHeadersEvidence) Hash() []byte {
 	return tmhash.Sum(bz)
 }
 
-func (ev ConflictingHeadersEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (ev ConflictingHeadersEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error {
 	if chainID != ev.H1.ChainID {
 		return errors.New("header #1 is from a different chain")
 	}
