@@ -76,7 +76,7 @@ type RoundState struct {
 	Proposal           *types.Proposal     `json:"proposal"`
 	ProposalBlock      *types.Block        `json:"proposal_block"`
 	ProposalBlockParts *types.PartSet      `json:"proposal_block_parts"`
-	LockedRound        int                 `json:"locked_round"`
+	LockedRound        int32               `json:"locked_round"`
 	LockedBlock        *types.Block        `json:"locked_block"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
 

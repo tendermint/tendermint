@@ -439,7 +439,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	for i := 0; i < len(vals); i++ {
 		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
-		vote3 := commit.GetVote(int32(i))
+		vote3 := commit.GetVote(uint32(i))
 
 		vote1bz := cdc.MustMarshalBinaryBare(vote1)
 		vote2bz := cdc.MustMarshalBinaryBare(vote2)
@@ -471,7 +471,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	for _, tc := range testCases {
 		voteSet, valSet, vals := randVoteSet(height-1, round, PrecommitType, tc.numValidators, 1)
 
-		vi := int32(0)
+		vi := uint32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
 				pubKey, err := vals[vi].GetPubKey()

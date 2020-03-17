@@ -127,8 +127,8 @@ func (state *pcState) handle(event Event) (Event, error) {
 		}
 
 		// enqueue block if height is higher than state height, else ignore it
-		if event.block.Height > state.height() {
-			state.enqueue(event.peerID, event.block, event.block.Height)
+		if event.block.Header.Height > state.height() {
+			state.enqueue(event.peerID, event.block, event.block.Header.Height)
 		}
 		return noOp, nil
 
@@ -147,25 +147,25 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstPartsHeader := firstParts.Header()
 		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 
-		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Header.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
 			state.purgePeer(secondItem.peerID)
 			return pcBlockVerificationFailure{
-					height: first.Height, firstPeerID: firstItem.peerID, secondPeerID: secondItem.peerID},
+					height: first.Header.Height, firstPeerID: firstItem.peerID, secondPeerID: secondItem.peerID},
 				nil
 		}
 
 		state.context.saveBlock(first, firstParts, second.LastCommit)
 
 		if err := state.context.applyBlock(firstID, first); err != nil {
-			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Header.Height, first.Hash(), err))
 		}
 
-		delete(state.queue, first.Height)
+		delete(state.queue, first.Header.Height)
 		state.blocksSynced++
 
-		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
+		return pcBlockProcessed{height: first.Header.Height, peerID: firstItem.peerID}, nil
 
 	}
 

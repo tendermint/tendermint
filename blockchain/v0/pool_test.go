@@ -40,7 +40,7 @@ func (p testPeer) runInputRoutine() {
 
 // Request desired, pretend like we got the block immediately.
 func (p testPeer) simulateInput(input inputData) {
-	block := &types.Block{Header: types.Header{Height: input.request.Height}}
+	block := &types.Block{TmBlock: types.TmBlock{Header: types.Header{Height: input.request.Height}}}
 	input.pool.AddBlock(input.request.PeerID, block, 123)
 	// TODO: uncommenting this creates a race which is detected by:
 	// https://github.com/golang/go/blob/2bd767b1022dd3254bcec469f0ee164024726486/src/testing/testing.go#L854-L856

@@ -245,7 +245,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	requester := pool.requesters[block.Height]
+	requester := pool.requesters[block.Header.Height]
 	if requester == nil {
 		pool.Logger.Info(
 			"peer sent us a block we didn't expect",
@@ -254,8 +254,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			"curHeight",
 			pool.height,
 			"blockHeight",
-			block.Height)
-		diff := pool.height - block.Height
+			block.Header.Height)
+		diff := pool.height - block.Header.Height
 		if diff < 0 {
 			diff *= -1
 		}
@@ -272,7 +272,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			peer.decrPending(blockSize)
 		}
 	} else {
-		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
+		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Header.Height)
 		pool.sendError(errors.New("invalid peer"), peerID)
 	}
 }

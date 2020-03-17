@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func randVoteSet(
 }
 
 // Convenience: Return new vote with different validator address/index
-func withValidator(vote *Vote, addr []byte, idx int32) *Vote {
+func withValidator(vote *Vote, addr []byte, idx uint32) *Vote {
 	vote = vote.Copy()
 	vote.ValidatorAddress = addr
 	vote.ValidatorIndex = idx
@@ -120,8 +121,8 @@ func Test2_3Majority(t *testing.T) {
 	voteSet, _, privValidators := randVoteSet(height, round, PrevoteType, 10, 1)
 
 	voteProto := &Vote{
-		ValidatorAddress: nil, // NOTE: must fill in
-		ValidatorIndex:   -1,  // NOTE: must fill in
+		ValidatorAddress: nil,            // NOTE: must fill in
+		ValidatorIndex:   math.MaxUint32, // NOTE: must fill in
 		Height:           height,
 		Round:            round,
 		Type:             PrevoteType,
@@ -129,7 +130,7 @@ func Test2_3Majority(t *testing.T) {
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 	// 6 out of 10 voted for nil.
-	for i := int32(0); i < 6; i++ {
+	for i := uint32(0); i < 6; i++ {
 		pubKey, err := privValidators[i].GetPubKey()
 		require.NoError(t, err)
 		addr := pubKey.Address()
@@ -186,8 +187,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
-		ValidatorAddress: nil, // NOTE: must fill in
-		ValidatorIndex:   -1,  // NOTE: must fill in
+		ValidatorAddress: nil,            // NOTE: must fill in
+		ValidatorIndex:   math.MaxUint32, // NOTE: must fill in
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
@@ -196,7 +197,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	}
 
 	// 66 out of 100 voted for nil.
-	for i := int32(0); i < 66; i++ {
+	for i := uint32(0); i < 66; i++ {
 		pubKey, err := privValidators[i].GetPubKey()
 		require.NoError(t, err)
 		addr := pubKey.Address()
@@ -300,7 +301,7 @@ func TestBadVotes(t *testing.T) {
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
-		ValidatorIndex:   -1,
+		ValidatorIndex:   math.MaxUint32,
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
@@ -377,7 +378,7 @@ func TestConflicts(t *testing.T) {
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
-		ValidatorIndex:   -1,
+		ValidatorIndex:   math.MaxUint32,
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
@@ -519,7 +520,7 @@ func TestMakeCommit(t *testing.T) {
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
-		ValidatorIndex:   -1,
+		ValidatorIndex:   math.MaxUint32,
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
@@ -528,7 +529,7 @@ func TestMakeCommit(t *testing.T) {
 	}
 
 	// 6 out of 10 voted for some block.
-	for i := int32(0); i < 6; i++ {
+	for i := uint32(0); i < 6; i++ {
 		pv, err := privValidators[i].GetPubKey()
 		assert.NoError(t, err)
 		addr := pv.Address()

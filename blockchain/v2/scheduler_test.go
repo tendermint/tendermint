@@ -1252,7 +1252,7 @@ func TestScSelectPeer(t *testing.T) {
 
 // makeScBlock makes an empty block.
 func makeScBlock(height int64) *types.Block {
-	return &types.Block{Header: types.Header{Height: height}}
+	return &types.Block{TmBlock: types.TmBlock{Header: types.Header{Height: height}}}
 }
 
 // used in place of assert.Equal(t, want, actual) to avoid failures due to

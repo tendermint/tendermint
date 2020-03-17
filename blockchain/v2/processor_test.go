@@ -27,7 +27,7 @@ type params struct {
 
 // makePcBlock makes an empty block.
 func makePcBlock(height int64) *types.Block {
-	return &types.Block{Header: types.Header{Height: height}}
+	return &types.Block{TmBlock: types.TmBlock{Header: types.Header{Height: height}}}
 }
 
 // makeState takes test parameters and creates a specific processor state.

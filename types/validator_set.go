@@ -233,14 +233,14 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 
 // GetByAddress returns an index of the validator with address and validator
 // itself if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
+func (vals *ValidatorSet) GetByAddress(address []byte) (index uint32, val *Validator) {
 	idx := sort.Search(len(vals.Validators), func(i int) bool {
 		return bytes.Compare(address, vals.Validators[i].Address) <= 0
 	})
 	if idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address) {
-		return int32(idx), vals.Validators[idx].Copy()
+		return uint32(idx), vals.Validators[idx].Copy()
 	}
-	return -1, nil
+	return math.MaxUint32, nil
 }
 
 // GetByIndex returns the validator's address and validator itself by index.
@@ -647,7 +647,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		val := vals.Validators[idx]
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+		voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -726,7 +726,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		seen[int(oldIdx)] = true
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+		voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -786,7 +786,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			seenVals[int(valIdx)] = idx
 
 			// Validate signature.
-			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}

@@ -248,12 +248,12 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			event: blockResponseEv,
 			data: bReactorEventData{
 				peerID: src.ID(),
-				height: msg.Block.Height,
+				height: msg.Block.Header.Height,
 				block:  msg.Block,
 				length: len(msgBytes),
 			},
 		}
-		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
+		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Header.Height)
 		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcStatusResponseMessage:

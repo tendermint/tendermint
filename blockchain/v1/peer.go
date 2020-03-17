@@ -100,19 +100,19 @@ func (peer *BpPeer) AddBlock(block *types.Block, recvSize int) error {
 	if block == nil || recvSize < 0 {
 		panic("bad parameters")
 	}
-	existingBlock, ok := peer.blocks[block.Height]
+	existingBlock, ok := peer.blocks[block.Header.Height]
 	if !ok {
-		peer.logger.Error("unsolicited block", "blockHeight", block.Height, "peer", peer.ID)
+		peer.logger.Error("unsolicited block", "blockHeight", block.Header.Height, "peer", peer.ID)
 		return errMissingBlock
 	}
 	if existingBlock != nil {
-		peer.logger.Error("already have a block for height", "height", block.Height)
+		peer.logger.Error("already have a block for height", "height", block.Header.Height)
 		return errDuplicateBlock
 	}
 	if peer.NumPendingBlockRequests == 0 {
 		panic("peer does not have pending requests")
 	}
-	peer.blocks[block.Height] = block
+	peer.blocks[block.Header.Height] = block
 	peer.NumPendingBlockRequests--
 	if peer.NumPendingBlockRequests == 0 {
 		peer.stopMonitor()

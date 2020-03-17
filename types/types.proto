@@ -5,7 +5,6 @@ option  go_package = "github.com/tendermint/tendermint/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 import "third_party/proto/cosmos-proto/cosmos.proto";
-import "libs/bits/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
@@ -129,7 +128,8 @@ message EvidenceData {
 
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
-message TmCommit {
+message Commit {
+  option (gogoproto.sizer) = false;
   // NOTE: The signatures are in order of address to preserve the bonded
   // ValidatorSet order.
   // Any peer with a block can gossip signatures by index with a peer without
@@ -164,5 +164,5 @@ message TmBlock {
   Header       header     = 1 [(gogoproto.nullable) = false];
   Data         data       = 2 [(gogoproto.nullable) = false];
   EvidenceData evidence   = 3 [(gogoproto.nullable) = false];
-  TmCommit     LastCommit = 4 [(gogoproto.customtype) = "Commit"];
+  Commit       LastCommit = 4;
 }

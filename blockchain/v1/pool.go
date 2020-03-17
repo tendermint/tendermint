@@ -246,11 +246,11 @@ func (pool *BlockPool) sendRequest(height int64) bool {
 func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) error {
 	peer, ok := pool.peers[peerID]
 	if !ok {
-		pool.logger.Error("block from unknown peer", "height", block.Height, "peer", peerID)
+		pool.logger.Error("block from unknown peer", "height", block.Header.Height, "peer", peerID)
 		return errBadDataFromPeer
 	}
-	if wantPeerID, ok := pool.blocks[block.Height]; ok && wantPeerID != peerID {
-		pool.logger.Error("block received from wrong peer", "height", block.Height,
+	if wantPeerID, ok := pool.blocks[block.Header.Height]; ok && wantPeerID != peerID {
+		pool.logger.Error("block received from wrong peer", "height", block.Header.Height,
 			"peer", peerID, "expected_peer", wantPeerID)
 		return errBadDataFromPeer
 	}

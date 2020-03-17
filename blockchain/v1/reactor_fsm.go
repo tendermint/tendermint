@@ -92,7 +92,7 @@ func (msg *bcReactorMessage) String() string {
 		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerID, msg.data.height)
 	case blockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v block.height=%v length=%v",
-			msg.data.peerID, msg.data.block.Height, msg.data.length)
+			msg.data.peerID, msg.data.block.Header.Height, msg.data.length)
 	case processedBlockEv:
 		dataStr = fmt.Sprintf("error=%v", msg.data.err)
 	case makeRequestsEv:
@@ -256,7 +256,7 @@ func init() {
 				return waitForBlock, err
 
 			case blockResponseEv:
-				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
+				fsm.logger.Debug("blockResponseEv", "H", data.block.Header.Height)
 				err := fsm.pool.AddBlock(data.peerID, data.block, data.length)
 				if err != nil {
 					// A block was received that was unsolicited, from unexpected peer, or that we already have it.
@@ -273,7 +273,7 @@ func init() {
 				if data.err != nil {
 					first, second, _ := fsm.pool.FirstTwoBlocksAndPeers()
 					fsm.logger.Error("error processing block", "err", data.err,
-						"first", first.block.Height, "second", second.block.Height)
+						"first", first.block.Header.Height, "second", second.block.Header.Height)
 					fsm.logger.Error("send peer error for", "peer", first.peer.ID)
 					fsm.toBcR.sendPeerError(data.err, first.peer.ID)
 					fsm.logger.Error("send peer error for", "peer", second.peer.ID)

@@ -65,15 +65,15 @@ func ResetConfig(name string) *cfg.Config {
 // validator stub (a kvstore consensus peer we control)
 
 type validatorStub struct {
-	Index  int // Validator index. NOTE: we don't assume validator set changes.
+	Index  uint32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
-	Round  int
+	Round  int32
 	types.PrivValidator
 }
 
 var testMinPower int64 = 10
 
-func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex uint32) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -158,9 +158,9 @@ func (vss ValidatorStubsByAddress) Less(i, j int) bool {
 func (vss ValidatorStubsByAddress) Swap(i, j int) {
 	it := vss[i]
 	vss[i] = vss[j]
-	vss[i].Index = i
+	vss[i].Index = uint32(i)
 	vss[j] = it
-	vss[j].Index = j
+	vss[j].Index = uint32(j)
 }
 
 //-------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ func signAddVotes(
 	addVotes(to, votes...)
 }
 
-func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub, blockHash []byte) {
+func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ func validatePrecommit(
 	t *testing.T,
 	cs *State,
 	thisRound,
-	lockRound int,
+	lockRound int32,
 	privVal *validatorStub,
 	votedBlockHash,
 	lockedBlockHash []byte,
@@ -300,7 +300,7 @@ func validatePrevoteAndPrecommit(
 	t *testing.T,
 	cs *State,
 	thisRound,
-	lockRound int,
+	lockRound int32,
 	privVal *validatorStub,
 	votedBlockHash,
 	lockedBlockHash []byte,
@@ -407,7 +407,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = newValidatorStub(privVals[i], i)
+		vss[i] = newValidatorStub(privVals[i], uint32(i))
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
@@ -535,8 +535,8 @@ func ensureNewBlock(blockCh <-chan tmpubsub.Message, height int64) {
 			panic(fmt.Sprintf("expected a EventDataNewBlock, got %T. Wrong subscription channel?",
 				msg.Data()))
 		}
-		if blockEvent.Block.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, blockEvent.Block.Height))
+		if blockEvent.Block.Header.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, blockEvent.Block.Header.Height))
 		}
 	}
 }
@@ -587,15 +587,15 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int,
 	}
 }
 
-func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int) {
+func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureVote(voteCh, height, round, types.PrecommitType)
 }
 
-func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int) {
+func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureVote(voteCh, height, round, types.PrevoteType)
 }
 
-func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int,
+func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
 	voteType types.SignedMsgType) {
 	select {
 	case <-time.After(ensureTimeout):

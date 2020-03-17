@@ -311,17 +311,17 @@ FOR_LOOP:
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
 			err := state.Validators.VerifyCommit(
-				chainID, firstID, first.Height, second.LastCommit)
+				chainID, firstID, first.Header.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
-				peerID := bcR.pool.RedoRequest(first.Height)
+				peerID := bcR.pool.RedoRequest(first.Header.Height)
 				peer := bcR.Switch.Peers().Get(peerID)
 				if peer != nil {
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
 					bcR.Switch.StopPeerForError(peer, fmt.Errorf("blockchainReactor validation error: %v", err))
 				}
-				peerID2 := bcR.pool.RedoRequest(second.Height)
+				peerID2 := bcR.pool.RedoRequest(second.Header.Height)
 				peer2 := bcR.Switch.Peers().Get(peerID2)
 				if peer2 != nil && peer2 != peer {
 					// NOTE: we've already removed the peer's request, but we
@@ -341,7 +341,7 @@ FOR_LOOP:
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
-					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Header.Height, first.Hash(), err))
 				}
 				blocksSynced++
 
@@ -439,7 +439,7 @@ func (m *bcBlockResponseMessage) ValidateBasic() error {
 }
 
 func (m *bcBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Header.Height)
 }
 
 //-------------------------------------
