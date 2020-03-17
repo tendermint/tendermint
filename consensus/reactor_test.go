@@ -154,8 +154,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		addr := privVals[vIdx].GetPubKey().Address()
-		evpool := newMockEvidencePool(addr)
+		pubKey, err := privVals[vIdx].GetPubKey()
+		require.NoError(t, err)
+		evpool := newMockEvidencePool(pubKey.Address())
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -333,7 +334,9 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		addr := css[i].privValidator.GetPubKey().Address()
+		pubKey, err := css[i].privValidator.GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
 		activeVals[string(addr)] = struct{}{}
 	}
 
@@ -345,7 +348,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Debug("---------------------------- Testing changing the voting power of one validator a few times")
 
-	val1PubKey := css[0].privValidator.GetPubKey()
+	val1PubKey, err := css[0].privValidator.GetPubKey()
+	require.NoError(t, err)
 	val1PubKeyABCI := types.TM2PB.PubKey(val1PubKey)
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
@@ -412,8 +416,9 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		addr := css[i].privValidator.GetPubKey().Address()
-		activeVals[string(addr)] = struct{}{}
+		pubKey, err := css[i].privValidator.GetPubKey()
+		require.NoError(t, err)
+		activeVals[string(pubKey.Address())] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -424,7 +429,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding one validator")
 
-	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 
@@ -451,7 +457,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
 
-	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
@@ -471,11 +478,13 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
 
-	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
+	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
-	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
+	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
@@ -718,7 +727,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(types.MaxBlockPartsCount + 1) },
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
 			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
@@ -804,7 +813,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	}
 
 	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
-	message.Part.Index = -1
+	message.Part.Index = 1
 
 	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 }
@@ -855,8 +864,8 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	invalidBlockID := types.BlockID{
 		Hash: bytes.HexBytes{},
 		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  bytes.HexBytes{},
+			Total: 1,
+			Hash:  []byte{0},
 		},
 	}
 
@@ -903,11 +912,11 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 			msg.BlockID = types.BlockID{
 				Hash: bytes.HexBytes{},
 				PartsHeader: types.PartSetHeader{
-					Total: -1,
-					Hash:  bytes.HexBytes{},
+					Total: 1,
+					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: negative Total"},
+		}, "wrong BlockID: wrong PartsHeader: Wrong Hash"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

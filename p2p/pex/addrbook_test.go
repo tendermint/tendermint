@@ -7,10 +7,10 @@ import (
 	"math"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -343,7 +343,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 		}
 	}
 
-	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
+	got, expected := int((float64(good)/float64(len(selection)))*100), 100-biasTowardsNewAddrs
 
 	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
@@ -394,6 +394,33 @@ func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []st
 		private[i] = string(addr.ID)
 	}
 	return addrs, private
+}
+
+func TestBanBadPeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addr := randIPv4Address(t)
+	_ = book.AddAddress(addr, addr)
+
+	book.MarkBad(addr, 1*time.Second)
+	// addr should not reachable
+	assert.False(t, book.HasAddress(addr))
+	assert.True(t, book.IsBanned(addr))
+
+	err := book.AddAddress(addr, addr)
+	// book should not add address from the blacklist
+	assert.Error(t, err)
+
+	time.Sleep(1 * time.Second)
+	book.ReinstateBadPeers()
+	// address should be reinstated in the new bucket
+	assert.EqualValues(t, 1, book.Size())
+	assert.True(t, book.HasAddress(addr))
+	assert.False(t, book.IsGood(addr))
 }
 
 func TestAddrBookEmpty(t *testing.T) {

@@ -16,11 +16,12 @@ message PubKey {
     bytes sr25519 = 3
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
     PubKeyMultisigThreshold multisig = 4
-        [(gogoproto.customtype) =
+        [(gogoproto.casttype) =
              "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
   }
 }
 
+// PrivKey is not for sending data of the wire. This type is used for internal purposes only.
 message PrivKey {
   option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PrivKey";
   oneof key {
@@ -34,7 +35,6 @@ message PrivKey {
 }
 
 message PubKeyMultisigThreshold {
-  option (gogoproto.sizer) = true;
   uint32          k        = 1;
   repeated PubKey pub_keys = 2 [(gogoproto.nullable) = false];
 }

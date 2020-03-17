@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
@@ -50,6 +50,9 @@ const (
 	// Especially in the beginning, node should have more trusted peers than
 	// untrusted.
 	biasToSelectNewPeers = 30 // 70 to select good peers
+
+	// if a peer is marked bad, it will be banned for at least this time period
+	defaultBanTime = 24 * time.Hour
 )
 
 type errMaxAttemptsToDial struct {
@@ -494,6 +497,12 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	if r.book.NeedMoreAddrs() {
+		// Check if banned nodes can be reinstated
+		r.book.ReinstateBadPeers()
+	}
+
+	if r.book.NeedMoreAddrs() {
+
 		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
@@ -525,11 +534,7 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
-		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
-		// failed to connect to. Then we can clean up attemptsToDial, which acts as
-		// a blacklist currently.
-		// https://github.com/tendermint/tendermint/issues/3572
-		r.book.MarkBad(addr)
+		r.book.MarkBad(addr, defaultBanTime)
 		return errMaxAttemptsToDial{}
 	}
 
@@ -741,7 +746,7 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
 	switch err.(type) {
 	case p2p.ErrSwitchAuthenticationFailure:
-		book.MarkBad(addr)
+		book.MarkBad(addr, defaultBanTime)
 	default:
 		book.MarkAttempt(addr)
 	}

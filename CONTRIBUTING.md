@@ -110,12 +110,10 @@ To generate new stubs based off of your changes you can run `make proto-gen` aft
 
 To install `protoc`, download an appropriate release (https://github.com/protocolbuffers/protobuf) and then move the provided binaries into your PATH (follow instructions in README included with the download).
 
-To install `gogoproto`, do the following:
+We use an extension of `gogoproto` called `gocosmos_out` to install it, do the following:
 
 ```sh
-$ go get github.com/gogo/protobuf/gogoproto
-$ cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
-$ make install
+$ make protoc-gen-cosmos
 ```
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
