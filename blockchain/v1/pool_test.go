@@ -501,7 +501,7 @@ func TestBlockPoolFirstTwoBlocksAndPeers(t *testing.T) {
 				block := pool.peers[peer].blocks[tt.firstWanted]
 				assert.Equal(t, block, gotFirst.block,
 					"BlockPool.FirstTwoBlocksAndPeers() gotFirst = %v, want %v",
-					tt.firstWanted, gotFirst.block.Height)
+					tt.firstWanted, gotFirst.block.Header.Height)
 			}
 
 			if tt.secondWanted != 0 {
@@ -509,7 +509,7 @@ func TestBlockPoolFirstTwoBlocksAndPeers(t *testing.T) {
 				block := pool.peers[peer].blocks[tt.secondWanted]
 				assert.Equal(t, block, gotSecond.block,
 					"BlockPool.FirstTwoBlocksAndPeers() gotFirst = %v, want %v",
-					tt.secondWanted, gotSecond.block.Height)
+					tt.secondWanted, gotSecond.block.Header.Height)
 			}
 		})
 	}

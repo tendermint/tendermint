@@ -69,7 +69,7 @@ func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 }
 
 func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
-	ml.blocks[block.Height] = block
+	ml.blocks[block.Header.Height] = block
 }
 
 type mockBlockApplier struct {

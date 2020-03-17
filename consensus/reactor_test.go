@@ -198,17 +198,17 @@ func TestReactorWithEvidence(t *testing.T) {
 // is for a given validator at block 1.
 type mockEvidencePool struct {
 	height int
-	ev     []types.Evidence
+	ev     []types.EvidenceI
 }
 
 func newMockEvidencePool(val []byte) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), 1, val)},
+		ev: []types.EvidenceI{types.NewMockEvidence(1, time.Now().UTC(), 1, val)},
 	}
 }
 
 // NOTE: maxBytes is ignored
-func (m *mockEvidencePool) PendingEvidence(maxBytes int64) []types.Evidence {
+func (m *mockEvidencePool) PendingEvidence(maxBytes int64) []types.EvidenceI {
 	if m.height > 0 {
 		return m.ev
 	}
@@ -540,7 +540,7 @@ func waitForAndValidateBlock(
 		css[j].Logger.Debug("waitForAndValidateBlock")
 		msg := <-blocksSubs[j].Out()
 		newBlock := msg.Data().(types.EventDataNewBlock).Block
-		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
+		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Header.Height)
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
@@ -565,7 +565,7 @@ func waitForAndValidateBlockWithTx(
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx", "ntxs", ntxs)
 			msg := <-blocksSubs[j].Out()
 			newBlock := msg.Data().(types.EventDataNewBlock).Block
-			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
+			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Header.Height)
 			err := validateBlock(newBlock, activeVals)
 			assert.Nil(t, err)
 
@@ -601,13 +601,13 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			msg := <-blocksSubs[j].Out()
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
-				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
+				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Header.Height)
 				break LOOP
 			} else {
 				css[j].Logger.Debug(
 					"waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping",
 					"height",
-					newBlock.Height)
+					newBlock.Header.Height)
 			}
 		}
 

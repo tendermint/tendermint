@@ -420,10 +420,10 @@ func (bcR *BlockchainReactor) processBlock() error {
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err = bcR.state.Validators.VerifyCommit(chainID, firstID, first.Height, second.LastCommit)
+	err = bcR.state.Validators.VerifyCommit(chainID, firstID, first.Header.Height, second.LastCommit)
 	if err != nil {
 		bcR.Logger.Error("error during commit verification", "err", err,
-			"first", first.Height, "second", second.Height)
+			"first", first.Header.Height, "second", second.Header.Height)
 		return errBlockVerificationFailure
 	}
 
@@ -431,7 +431,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
-		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Header.Height, first.Hash(), err))
 	}
 
 	return nil
@@ -582,7 +582,7 @@ func (m *bcBlockResponseMessage) ValidateBasic() error {
 }
 
 func (m *bcBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Header.Height)
 }
 
 //-------------------------------------

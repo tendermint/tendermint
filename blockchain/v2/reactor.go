@@ -64,7 +64,7 @@ func (m *bcBlockResponseMessage) ValidateBasic() error {
 }
 
 func (m *bcBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Header.Height)
 }
 
 //-------------------------------------

@@ -65,11 +65,11 @@ func newMockProcessorContext(
 
 func (mpc *mockPContext) applyBlock(blockID types.BlockID, block *types.Block) error {
 	for _, h := range mpc.applicationBL {
-		if h == block.Height {
+		if h == block.Header.Height {
 			return fmt.Errorf("generic application error")
 		}
 	}
-	mpc.state.LastBlockHeight = block.Height
+	mpc.state.LastBlockHeight = block.Header.Height
 	return nil
 }
 
