@@ -15,9 +15,9 @@ message PubKey {
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PubKey"];
     bytes sr25519 = 3
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
-    //   PubKeyMultiSigThreshold multisig = 4
-    //       [(gogoproto.casttype) =
-    //            "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
+    PubKeyMultisigThreshold multisig = 4
+        [(gogoproto.customtype) =
+             "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
   }
 }
 
@@ -33,8 +33,8 @@ message PrivKey {
   }
 }
 
-message PubKeyMultiSigThreshold {
+message PubKeyMultisigThreshold {
   option (gogoproto.sizer) = true;
-  uint64          k        = 1;
+  uint32          k        = 1;
   repeated PubKey pub_keys = 2 [(gogoproto.nullable) = false];
 }

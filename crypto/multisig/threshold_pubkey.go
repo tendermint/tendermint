@@ -6,7 +6,7 @@ import (
 
 // PubKeyMultisigThreshold implements a K of N threshold multisig.
 type PubKeyMultisigThreshold struct {
-	K       uint            `json:"threshold"`
+	K       uint32          `json:"threshold"`
 	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
@@ -26,7 +26,7 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 			panic("nil pubkey")
 		}
 	}
-	return PubKeyMultisigThreshold{uint(k), pubkeys}
+	return PubKeyMultisigThreshold{uint32(k), pubkeys}
 }
 
 // VerifyBytes expects sig to be an amino encoded version of a MultiSignature.
@@ -93,4 +93,40 @@ func (pk PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
 		}
 	}
 	return true
+}
+
+//------------------------------
+
+// Methods needed for useing gogoproto.customtype
+// These is no clean way of getting multisg type into the types.proto
+// have two representations of the type is needed
+
+func (t PubKeyMultisigThreshold) Marshal() ([]byte, error) {
+	panic("Not Implemented!")
+}
+func (t *PubKeyMultisigThreshold) MarshalTo(data []byte) (n int, err error) {
+	panic("Not Implemented!")
+}
+func (t *PubKeyMultisigThreshold) Unmarshal(data []byte) error {
+	panic("Not Implemented!")
+}
+func (t *PubKeyMultisigThreshold) Size() int {
+	panic("Not Implemented!")
+}
+
+func (t PubKeyMultisigThreshold) MarshalJSON() ([]byte, error) {
+	panic("Not Implemented!")
+}
+func (t *PubKeyMultisigThreshold) UnmarshalJSON(data []byte) error {
+	panic("Not Implemented!")
+}
+
+// only required if the compare option is set
+func (t PubKeyMultisigThreshold) Compare(other PubKeyMultisigThreshold) int {
+	panic("Not Implemented!")
+}
+
+// only required if the equal option is set
+func (t PubKeyMultisigThreshold) Equal(other PubKeyMultisigThreshold) bool {
+	panic("Not Implemented!")
 }
