@@ -165,6 +165,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Hash:        h2.Hash(),
 			PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
 		}
+		h2.Commit.BlockID = blockID
 		vote := &types.Vote{
 			ValidatorAddress: pv.Key.Address,
 			ValidatorIndex:   0,
