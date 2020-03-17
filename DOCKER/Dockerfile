@@ -22,17 +22,32 @@ RUN apk update && \
 # Run the container with tmuser by default. (UID=100, GID=1000)
 USER tmuser
 
-# Expose the data directory as a volume since there's mutable state in there
-VOLUME [ $TMHOME ]
-
 WORKDIR $TMHOME
 
 # p2p and rpc port
-EXPOSE 26656 26657
+EXPOSE 26656 26657 26660
 
 ENTRYPOINT ["/usr/bin/tendermint"]
-CMD ["node", "--moniker=`hostname`"]
+CMD ["node"]
 STOPSIGNAL SIGTERM
 
 ARG BINARY=tendermint
 COPY $BINARY /usr/bin/tendermint
+
+# Create default configuration for docker run.
+RUN /usr/bin/tendermint init && \
+    sed -i \
+      -e 's/^proxy_app\s*=.*/proxy_app = "kvstore"/' \
+      -e 's/^moniker\s*=.*/moniker = "dockernode"/' \
+      -e 's/^addr_book_strict\s*=.*/addr_book_strict = false/' \
+      -e 's/^timeout_commit\s*=.*/timeout_commit = "500ms"/' \
+      -e 's/^index_all_tags\s*=.*/index_all_tags = true/' \
+      -e 's/^prometheus\s*=.*/prometheus = true/' \
+      $TMHOME/config/config.toml && \
+    sed -i \
+      -e 's/^\s*"chain_id":.*/  "chain_id": "dockerchain",/' \
+      $TMHOME/config/genesis.json
+
+# Expose the data directory as a volume since there's mutable state in there
+VOLUME [ $TMHOME ]
+
