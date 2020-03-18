@@ -290,7 +290,7 @@ func TestProposerSelection3(t *testing.T) {
 		mod := (tmrand.Int() % 5) + 1
 		if tmrand.Int()%mod > 0 {
 			// sometimes its up to 5
-			times = int32((tmrand.Int() % 4) + 1)
+			times = (tmrand.Int32() % 4) + 1
 		}
 		vset.IncrementProposerPriority(times)
 
@@ -1172,7 +1172,7 @@ func applyChangesToValSet(t *testing.T, wantErr bool, valSet *ValidatorSet, vals
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
-	const nMaxElections = 5000
+	const nMaxElections int32 = 5000
 
 	testCases := []testVSetCfg{
 		0: { // remove high power validator, keep old equal lower power validators
@@ -1226,9 +1226,9 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 	}
 }
 
-func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
+func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int32) {
 	// Run election up to nMaxElections times, sort validators by priorities
-	valSet.IncrementProposerPriority(int32(tmrand.Int()%nMaxElections + 1))
+	valSet.IncrementProposerPriority(tmrand.Int32()%nMaxElections + 1)
 	origValsPriSorted := validatorListCopy(valSet.Validators)
 	sort.Sort(validatorsByPriority(origValsPriSorted))
 
