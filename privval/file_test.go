@@ -48,10 +48,10 @@ func TestResetValidator(t *testing.T) {
 	assert.Equal(t, privVal.LastSignState, emptyState)
 
 	// test vote
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 	voteType := byte(types.PrevoteType)
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
+	vote := newVote(privVal.Key.Address, 0, round, height, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(t, err, "expected no error signing vote")
 
@@ -165,11 +165,11 @@ func TestSignVote(t *testing.T) {
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
 
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 	voteType := byte(types.PrevoteType)
 
 	// sign a vote for first time
-	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
+	vote := newVote(privVal.Key.Address, 0, round, height, voteType, block1)
 	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
@@ -179,10 +179,10 @@ func TestSignVote(t *testing.T) {
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Key.Address, 0, height, round-1, voteType, block1),   // round regression
-		newVote(privVal.Key.Address, 0, height-1, round, voteType, block1),   // height regression
-		newVote(privVal.Key.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
-		newVote(privVal.Key.Address, 0, height, round, voteType, block2),     // different block
+		newVote(privVal.Key.Address, 0, round-1, height, voteType, block1),   // round regression
+		newVote(privVal.Key.Address, 0, round, height-1, voteType, block1),   // height regression
+		newVote(privVal.Key.Address, 0, round+4, height-2, voteType, block1), // height regression and different round
+		newVote(privVal.Key.Address, 0, round, height, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -210,7 +210,7 @@ func TestSignProposal(t *testing.T) {
 
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{Total: 10, Hash: []byte{3, 2, 1}}}
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
@@ -251,7 +251,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 	chainID := "mychainid"
 
 	// test proposal
@@ -279,7 +279,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	{
 		voteType := byte(types.PrevoteType)
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
+		vote := newVote(privVal.Key.Address, 0, round, height, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
@@ -300,7 +300,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx, round int32, height int64, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
@@ -312,7 +312,7 @@ func newVote(addr types.Address, idx int, height int64, round int, typ byte, blo
 	}
 }
 
-func newProposal(height int64, round int, blockID types.BlockID) *types.Proposal {
+func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
 	return &types.Proposal{
 		Height:    height,
 		Round:     round,
