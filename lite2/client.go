@@ -24,6 +24,11 @@ const (
 
 	defaultPruningSize      = 1000
 	defaultMaxRetryAttempts = 10
+	// For bisection, when using the cache of headers from the previous batch,
+	// they will always be at a height greater than 1/2 (normal bisection) so to
+	// find something in between the range, 9/16 is used.
+	bisectionNumerator   = 9
+	bisectionDenominator = 16
 )
 
 // Option sets a parameter for the light client.
@@ -449,29 +454,6 @@ func (c *Client) compareWithLatestHeight(height int64) (int64, error) {
 	return height, nil
 }
 
-// LastTrustedHeight returns a last trusted height. -1 and nil are returned if
-// there are no trusted headers.
-//
-// Safe for concurrent use by multiple goroutines.
-func (c *Client) LastTrustedHeight() (int64, error) {
-	return c.trustedStore.LastSignedHeaderHeight()
-}
-
-// FirstTrustedHeight returns a first trusted height. -1 and nil are returned if
-// there are no trusted headers.
-//
-// Safe for concurrent use by multiple goroutines.
-func (c *Client) FirstTrustedHeight() (int64, error) {
-	return c.trustedStore.FirstSignedHeaderHeight()
-}
-
-// ChainID returns the chain ID the light client was configured with.
-//
-// Safe for concurrent use by multiple goroutines.
-func (c *Client) ChainID() string {
-	return c.chainID
-}
-
 // VerifyHeaderAtHeight fetches header and validators at the given height
 // and calls VerifyHeader. It returns header immediately if such exists in
 // trustedStore (no verification is needed).
@@ -504,16 +486,17 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 
 // VerifyHeader verifies new header against the trusted state. It returns
 // immediately if newHeader exists in trustedStore (no verification is
-// needed).
+// needed). Else it performs one of the two types of verification:
 //
 // SequentialVerification: verifies that 2/3 of the trusted validator set has
 // signed the new header. If the headers are not adjacent, **all** intermediate
-// headers will be requested.
+// headers will be requested. Intermediate headers are not saved to database.
 //
 // SkippingVerification(trustLevel): verifies that {trustLevel} of the trusted
 // validator set has signed the new header. If it's not the case and the
 // headers are not adjacent, bisection is performed and necessary (not all)
 // intermediate headers will be requested. See the specification for details.
+// Intermediate headers are not saved to database.
 // https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
 //
 // It returns ErrOldHeaderExpired if the latest trusted header expired.
@@ -584,65 +567,6 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	return c.updateTrustedHeaderAndVals(newHeader, newVals)
 }
 
-// Primary returns the primary provider.
-//
-// NOTE: provider may be not safe for concurrent access.
-func (c *Client) Primary() provider.Provider {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-	return c.primary
-}
-
-// Witnesses returns the witness providers.
-//
-// NOTE: providers may be not safe for concurrent access.
-func (c *Client) Witnesses() []provider.Provider {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-	return c.witnesses
-}
-
-// Cleanup removes all the data (headers and validator sets) stored. Note: the
-// client must be stopped at this point.
-func (c *Client) Cleanup() error {
-	c.logger.Info("Removing all the data")
-	c.latestTrustedHeader = nil
-	c.latestTrustedVals = nil
-	return c.trustedStore.Prune(0)
-}
-
-// cleanupAfter deletes all headers & validator sets after +height+. It also
-// resets latestTrustedHeader to the latest header.
-func (c *Client) cleanupAfter(height int64) error {
-	nextHeight := height
-
-	for {
-		h, err := c.trustedStore.SignedHeaderAfter(nextHeight)
-		if err == store.ErrSignedHeaderNotFound {
-			break
-		} else if err != nil {
-			return errors.Wrapf(err, "failed to get header after %d", nextHeight)
-		}
-
-		err = c.trustedStore.DeleteSignedHeaderAndValidatorSet(h.Height)
-		if err != nil {
-			c.logger.Error("can't remove a trusted header & validator set", "err", err,
-				"height", h.Height)
-		}
-
-		nextHeight = h.Height
-	}
-
-	c.latestTrustedHeader = nil
-	c.latestTrustedVals = nil
-	err := c.restoreTrustedHeaderAndVals()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // see VerifyHeader
 func (c *Client) sequence(
 	initiallyTrustedHeader *types.SignedHeader,
@@ -707,6 +631,10 @@ func (c *Client) sequence(
 }
 
 // see VerifyHeader
+// Bisection finds the middle header between a trusted and new header, reiterating the action until it
+// verifies a header. A cache of headers requested by the primary is kept such that when a
+// verification is made, and the light client tries again to verify the new header in the middle,
+// the light client does not need to ask for all the same headers again.
 func (c *Client) bisection(
 	initiallyTrustedHeader *types.SignedHeader,
 	initiallyTrustedVals *types.ValidatorSet,
@@ -714,13 +642,13 @@ func (c *Client) bisection(
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
-	type HeaderSet struct {
-		sh  *types.SignedHeader
-		val *types.ValidatorSet
+	type headerSet struct {
+		sh     *types.SignedHeader
+		valSet *types.ValidatorSet
 	}
 
 	var (
-		headerCache = []HeaderSet{{newHeader, newVals}}
+		headerCache = []headerSet{{newHeader, newVals}}
 		depth       = 0
 
 		trustedHeader = initiallyTrustedHeader
@@ -734,33 +662,33 @@ func (c *Client) bisection(
 			"newHeight", headerCache[depth].sh.Height,
 			"newHash", hash2str(headerCache[depth].sh.Hash()))
 
-		err := Verify(c.chainID, trustedHeader, trustedVals, headerCache[depth].sh, headerCache[depth].val,
+		err := Verify(c.chainID, trustedHeader, trustedVals, headerCache[depth].sh, headerCache[depth].valSet,
 			c.trustingPeriod, now, c.trustLevel)
 		switch err.(type) {
 		case nil:
+			// Have we verified the last header
 			if depth == 0 {
 				return nil
 			}
-
-			// Update the lower bound to the previous upper bound
-			trustedHeader, trustedVals = headerCache[depth].sh, headerCache[depth].val
-			// Remove the untrusted header at the lower bound in the header cache
+			// If not, update the lower bound to the previous upper bound
+			trustedHeader, trustedVals = headerCache[depth].sh, headerCache[depth].valSet
+			// Remove the untrusted header at the lower bound in the header cache - it's no longer useful
 			headerCache = headerCache[:depth]
-			// Update the upper bound to the untrustedHeader by setting depth to 0
+			// Reset the cache depth so that we start from the upper bound again
 			depth = 0
 
 		case ErrNewValSetCantBeTrusted:
+			// do add another header to the end of the cache
 			if depth == len(headerCache)-1 {
-				pivotHeight := (headerCache[depth].sh.Height + trustedHeader.Height) / 2
+				pivotHeight := (headerCache[depth].sh.Height + trustedHeader.
+					Height) * bisectionNumerator / bisectionDenominator
 				interimHeader, interimVals, err := c.fetchHeaderAndValsAtHeight(pivotHeight)
 				if err != nil {
 					return err
 				}
-				depth++
-				headerCache = append(headerCache, HeaderSet{interimHeader, interimVals})
-			} else { // depth is less than length - 1
-				depth++
+				headerCache = append(headerCache, headerSet{interimHeader, interimVals})
 			}
+			depth++
 
 		case ErrInvalidHeader:
 			c.logger.Error("primary sent invalid header -> replacing", "err", err)
@@ -779,6 +707,88 @@ func (c *Client) bisection(
 				trustedHeader.Height, headerCache[depth].sh.Height)
 		}
 	}
+}
+
+// LastTrustedHeight returns a last trusted height. -1 and nil are returned if
+// there are no trusted headers.
+//
+// Safe for concurrent use by multiple goroutines.
+func (c *Client) LastTrustedHeight() (int64, error) {
+	return c.trustedStore.LastSignedHeaderHeight()
+}
+
+// FirstTrustedHeight returns a first trusted height. -1 and nil are returned if
+// there are no trusted headers.
+//
+// Safe for concurrent use by multiple goroutines.
+func (c *Client) FirstTrustedHeight() (int64, error) {
+	return c.trustedStore.FirstSignedHeaderHeight()
+}
+
+// ChainID returns the chain ID the light client was configured with.
+//
+// Safe for concurrent use by multiple goroutines.
+func (c *Client) ChainID() string {
+	return c.chainID
+}
+
+// Primary returns the primary provider.
+//
+// NOTE: provider may be not safe for concurrent access.
+func (c *Client) Primary() provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.primary
+}
+
+// Witnesses returns the witness providers.
+//
+// NOTE: providers may be not safe for concurrent access.
+func (c *Client) Witnesses() []provider.Provider {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+	return c.witnesses
+}
+
+// Cleanup removes all the data (headers and validator sets) stored. Note: the
+// client must be stopped at this point.
+func (c *Client) Cleanup() error {
+	c.logger.Info("Removing all the data")
+	c.latestTrustedHeader = nil
+	c.latestTrustedVals = nil
+	return c.trustedStore.Prune(0)
+}
+
+// cleanupAfter deletes all headers & validator sets after +height+. It also
+// resets latestTrustedHeader to the latest header.
+func (c *Client) cleanupAfter(height int64) error {
+	nextHeight := height
+
+	for {
+		h, err := c.trustedStore.SignedHeaderAfter(nextHeight)
+		if err == store.ErrSignedHeaderNotFound {
+			break
+		} else if err != nil {
+			return errors.Wrapf(err, "failed to get header after %d", nextHeight)
+		}
+
+		err = c.trustedStore.DeleteSignedHeaderAndValidatorSet(h.Height)
+		if err != nil {
+			c.logger.Error("can't remove a trusted header & validator set", "err", err,
+				"height", h.Height)
+		}
+
+		nextHeight = h.Height
+	}
+
+	c.latestTrustedHeader = nil
+	c.latestTrustedVals = nil
+	err := c.restoreTrustedHeaderAndVals()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
