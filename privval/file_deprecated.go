@@ -58,7 +58,7 @@ func (oldFilePV *OldFilePV) Upgrade(keyFilePath, stateFilePath string) *FilePV {
 
 	pvState := FilePVLastSignState{
 		Height:    oldFilePV.LastHeight,
-		Round:     int(oldFilePV.LastRound),
+		Round:     oldFilePV.LastRound,
 		Step:      oldFilePV.LastStep,
 		Signature: oldFilePV.LastSignature,
 		SignBytes: oldFilePV.LastSignBytes,

@@ -423,7 +423,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 		Height: vote.Height,
 		Round:  vote.Round,
 		Type:   vote.Type,
-		Index:  int32(vote.ValidatorIndex),
+		Index:  vote.ValidatorIndex,
 	}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 	/*
