@@ -92,7 +92,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	// create some fixed values
 	serialized := `{
 		"height": "1",
-		"round": "1",
+		"round": 1,
 		"step": 1
 	}`
 

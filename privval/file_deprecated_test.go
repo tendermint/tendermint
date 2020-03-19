@@ -43,7 +43,6 @@ func TestLoadAndUpgrade(t *testing.T) {
 	newKeyFile, err := ioutil.TempFile("", "priv_validator_key*.json")
 	defer os.Remove(newKeyFile.Name())
 	require.NoError(t, err)
-
 	oldPV, err := privval.LoadOldFilePV(oldFilePath)
 	assert.NoError(t, err)
 	newPV := oldPV.Upgrade(newKeyFile.Name(), newStateFile.Name())
@@ -67,7 +66,7 @@ func assertEqualPV(t *testing.T, oldPV *privval.OldFilePV, newPV *privval.FilePV
 	assert.Equal(t, oldPV.PrivKey, newPV.Key.PrivKey)
 
 	assert.Equal(t, oldPV.LastHeight, newPV.LastSignState.Height)
-	assert.Equal(t, oldPV.LastRound, newPV.LastSignState.Round)
+	assert.EqualValues(t, oldPV.LastRound, newPV.LastSignState.Round)
 	assert.Equal(t, oldPV.LastSignature, newPV.LastSignState.Signature)
 	assert.Equal(t, oldPV.LastSignBytes, newPV.LastSignState.SignBytes)
 	assert.Equal(t, oldPV.LastStep, newPV.LastSignState.Step)

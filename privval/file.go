@@ -70,7 +70,7 @@ func (pvKey FilePVKey) Save() {
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
 	Height    int64            `json:"height"`
-	Round     int              `json:"round"`
+	Round     int32            `json:"round"`
 	Step      int8             `json:"step"`
 	Signature []byte           `json:"signature,omitempty"`
 	SignBytes tmbytes.HexBytes `json:"signbytes,omitempty"`
@@ -92,11 +92,11 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 	}
 
 	if lss.Height == height {
-		if lss.Round > int(round) {
+		if lss.Round > round {
 			return false, fmt.Errorf("round regression at height %v. Got %v, last round %v", height, round, lss.Round)
 		}
 
-		if lss.Round == int(round) {
+		if lss.Round == round {
 			if lss.Step > step {
 				return false, fmt.Errorf(
 					"step regression at height %v round %v. Got %v, last step %v",
@@ -379,7 +379,7 @@ func (pv *FilePV) saveSigned(height int64, round int32, step int8,
 	signBytes []byte, sig []byte) {
 
 	pv.LastSignState.Height = height
-	pv.LastSignState.Round = int(round)
+	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
 	pv.LastSignState.Signature = sig
 	pv.LastSignState.SignBytes = signBytes
