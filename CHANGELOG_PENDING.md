@@ -12,6 +12,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+- P2P Protocol
+
+  - [blockchain] Add `Base` to blockchain reactor `bcStatusRequestMessage` and `bcStatusResponseMessage`
+
 - Go API
 
 ### FEATURES:

@@ -126,7 +126,7 @@ func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
 	return sio.switchedToConsensus
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
 }
 
 type testReactorParams struct {

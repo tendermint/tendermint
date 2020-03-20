@@ -70,11 +70,15 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
+	Base   int64
 	Height int64
 }
 
 // ValidateBasic performs basic validation.
 func (m *bcStatusRequestMessage) ValidateBasic() error {
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
@@ -82,17 +86,21 @@ func (m *bcStatusRequestMessage) ValidateBasic() error {
 }
 
 func (m *bcStatusRequestMessage) String() string {
-	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
 }
 
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
+	Base   int64
 	Height int64
 }
 
 // ValidateBasic performs basic validation.
 func (m *bcStatusResponseMessage) ValidateBasic() error {
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
@@ -100,12 +108,13 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 }
 
 func (m *bcStatusResponseMessage) String() string {
-	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
 }
 
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
+	Base() int64
 	Height() int64
 }
 
@@ -265,6 +274,7 @@ type bcStatusResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
+	base   int64
 	height int64
 }
 
@@ -336,7 +346,7 @@ func (r *BlockchainReactor) demux() {
 		case <-doProcessBlockCh:
 			r.processor.send(rProcessBlock{})
 		case <-doStatusCh:
-			r.io.broadcastStatusRequest(r.SyncHeight())
+			r.io.broadcastStatusRequest(r.store.Base(), r.SyncHeight())
 
 		// Events from peers
 		case event := <-r.events:
@@ -482,7 +492,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case *bcStatusResponseMessage:
-		r.events <- bcStatusResponse{peerID: src.ID(), height: msg.Height}
+		r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
 
 	case *bcBlockResponseMessage:
 		r.events <- bcBlockResponse{

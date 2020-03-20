@@ -15,6 +15,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// FIXME The v1 reactor has not been updated to handle truncated block histories. The v1 reactor
+// must either be removed or updated before merging.
+
 const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
