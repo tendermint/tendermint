@@ -21,6 +21,11 @@ type (
 		AppHeight  int64
 	}
 
+	ErrAppBlockHeightBelowBase struct {
+		AppHeight int64
+		StoreBase int64
+	}
+
 	ErrLastStateMismatch struct {
 		Height int64
 		Core   []byte
@@ -61,6 +66,11 @@ func (e ErrBlockHashMismatch) Error() string {
 func (e ErrAppBlockHeightTooHigh) Error() string {
 	return fmt.Sprintf("App block height (%d) is higher than core (%d)", e.AppHeight, e.CoreHeight)
 }
+
+func (e ErrAppBlockHeightBelowBase) Error() string {
+	return fmt.Sprintf("App block height (%d) is below block store base (%d)", e.AppHeight, e.StoreBase)
+}
+
 func (e ErrLastStateMismatch) Error() string {
 	return fmt.Sprintf(
 		"Latest tendermint block (%d) LastAppHash (%X) does not match app's AppHash (%X)",
