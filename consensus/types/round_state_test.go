@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"

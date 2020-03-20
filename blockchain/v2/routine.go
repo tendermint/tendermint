@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Workiva/go-datastructures/queue"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 

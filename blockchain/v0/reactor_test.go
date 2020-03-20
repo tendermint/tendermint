@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/store"
 
 	"github.com/stretchr/testify/assert"
+
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -20,7 +23,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var config *cfg.Config

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
