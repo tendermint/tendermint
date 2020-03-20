@@ -882,7 +882,10 @@ func (cs *State) needProofBlock(height int64) bool {
 	}
 
 	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	return lastBlockMeta == nil || !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	if lastBlockMeta == nil {
+		panic("needProofBlock: last block meta not found")
+	}
+	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
