@@ -490,6 +490,10 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	if seenCommit == nil {
+		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
+			state.LastBlockHeight))
+	}
 	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
@@ -878,7 +882,7 @@ func (cs *State) needProofBlock(height int64) bool {
 	}
 
 	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	return lastBlockMeta == nil || !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
@@ -1421,7 +1425,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Prune the blockStore.
 	if cs.config.RetainBlocks > 0 && uint64(cs.blockStore.Height()) > cs.config.RetainBlocks {
-		newBase := cs.blockStore.Height() - int64(cs.config.RetainBlocks) + 1 // +1 since not inclusive
+		newBase := cs.blockStore.Height() - int64(cs.config.RetainBlocks) + 1
 		pruned, err := cs.blockStore.PruneBlocks(newBase)
 		if err != nil {
 			cs.Logger.Error(fmt.Sprintf("Failed to prune blocks to height %v", newBase), "err", err.Error())
@@ -1558,9 +1562,11 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 	if height > 1 {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-		cs.metrics.BlockIntervalSeconds.Set(
-			block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
-		)
+		if lastBlockMeta != nil {
+			cs.metrics.BlockIntervalSeconds.Set(
+				block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+			)
+		}
 	}
 
 	cs.metrics.NumTxs.Set(float64(len(block.Data.Txs)))
