@@ -7,9 +7,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/tendermint/tendermint/store"
-
 	"github.com/stretchr/testify/assert"
 
 	dbm "github.com/tendermint/tm-db"
@@ -21,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
