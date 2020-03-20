@@ -362,7 +362,7 @@ func createBlockchainReactor(config *cfg.Config,
 	switch config.FastSync.Version {
 	case "v0":
 		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-    // TODO(tessr): allow configuring blockchain reactor v2 f
+		// TODO(tessr): allow configuring blockchain reactor v2 f
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -1089,7 +1089,7 @@ func makeNodeInfo(
 	switch config.FastSync.Version {
 	case "v0":
 		bcChannel = bcv0.BlockchainChannel
-	// TODO(tessr): allow configuring blockchain reactor v2 
+	// TODO(tessr): allow configuring blockchain reactor v2
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
