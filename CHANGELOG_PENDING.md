@@ -14,11 +14,13 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - P2P Protocol
 
-  - [blockchain] Add `Base` to blockchain reactor `bcStatusRequestMessage` and `bcStatusResponseMessage`
+  - [blockchain] Add `Base` to blockchain reactor messages `tendermint/blockchain/StatusRequest` and `tendermint/blockchain/StatusResponse`
 
 - Go API
 
 ### FEATURES:
+
+- [consensus] Add `retain_blocks` config option to automatically prune old blocks
 
 ### IMPROVEMENTS:
 
