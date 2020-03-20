@@ -8,7 +8,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BREAKING CHANGES:
 
-- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via `retain_blocks`) such that all blocks before the block store base will be missing.
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via `retain_blocks`) such that all blocks up to the block store base will be missing. All blocks between the base and latest height will be present.
 
 - CLI/RPC/Config
 
@@ -24,11 +24,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [consensus] Add `retain_blocks` config option to automatically prune old blocks
 
-- [rpc] Add `/status` fields for the earliest block available on the node
+- [rpc] Add `/status` response fields for the earliest block available on the node
 
 ### IMPROVEMENTS:
 
 - [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)
+
 - [privval] \#4534 Add `error` as a return value on`GetPubKey()`
 
 ### BUG FIXES:
