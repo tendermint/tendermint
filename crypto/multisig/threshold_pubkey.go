@@ -6,7 +6,7 @@ import (
 
 // PubKeyMultisigThreshold implements a K of N threshold multisig.
 type PubKeyMultisigThreshold struct {
-	K       uint32          `json:"threshold"`
+	K       uint            `json:"threshold"`
 	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
@@ -26,7 +26,7 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 			panic("nil pubkey")
 		}
 	}
-	return PubKeyMultisigThreshold{uint32(k), pubkeys}
+	return PubKeyMultisigThreshold{uint(k), pubkeys}
 }
 
 // VerifyBytes expects sig to be an amino encoded version of a MultiSignature.
