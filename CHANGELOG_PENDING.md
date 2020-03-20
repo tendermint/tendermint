@@ -8,6 +8,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BREAKING CHANGES:
 
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via `retain_blocks`) such that all blocks before the block store base will be missing.
+
 - CLI/RPC/Config
 
 - Apps
@@ -21,6 +23,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### FEATURES:
 
 - [consensus] Add `retain_blocks` config option to automatically prune old blocks
+
+- [rpc] Add `/status` fields for the earliest block available on the node
 
 ### IMPROVEMENTS:
 

@@ -61,12 +61,17 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 
 // Info about the node's syncing state
 type SyncInfo struct {
-	LatestBlockHash     bytes.HexBytes `json:"latest_block_hash"`
-	LatestAppHash       bytes.HexBytes `json:"latest_app_hash"`
-	LatestBlockHeight   int64          `json:"latest_block_height"`
-	LatestBlockTime     time.Time      `json:"latest_block_time"`
+	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
+	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
+	LatestBlockHeight int64          `json:"latest_block_height"`
+	LatestBlockTime   time.Time      `json:"latest_block_time"`
+
+	EarliestBlockHash   bytes.HexBytes `json:"earliest_block_hash"`
+	EarliestAppHash     bytes.HexBytes `json:"earliest_app_hash"`
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
-	CatchingUp          bool           `json:"catching_up"`
+	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
+
+	CatchingUp bool `json:"catching_up"`
 }
 
 // Info about the node's validator
