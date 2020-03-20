@@ -70,8 +70,8 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
-	Base   int64
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
@@ -92,8 +92,8 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
-	Base   int64
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
