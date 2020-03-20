@@ -22,6 +22,10 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	} else {
 		latestHeight = consensusState.GetLastHeight()
 	}
+	earliestBlockHeight := blockStore.Base()
+	if earliestBlockHeight == 0 {
+		earliestBlockHeight = 1
+	}
 
 	var (
 		latestBlockMeta     *types.BlockMeta
@@ -46,11 +50,12 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	result := &ctypes.ResultStatus{
 		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
-			LatestBlockHash:   latestBlockHash,
-			LatestAppHash:     latestAppHash,
-			LatestBlockHeight: latestHeight,
-			LatestBlockTime:   latestBlockTime,
-			CatchingUp:        consensusReactor.FastSync(),
+			LatestBlockHash:     latestBlockHash,
+			LatestAppHash:       latestAppHash,
+			LatestBlockHeight:   latestHeight,
+			LatestBlockTime:     latestBlockTime,
+			EarliestBlockHeight: earliestBlockHeight,
+			CatchingUp:          consensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),
