@@ -144,8 +144,8 @@ func TestScMaxHeights(t *testing.T) {
 			sc: scheduler{
 				height: 1,
 				peers: map[p2p.ID]*scPeer{
-					"P1": {height: -1, state: peerStateNew},
-					"P2": {height: -1, state: peerStateNew}},
+					"P1": {base: -1, height: -1, state: peerStateNew},
+					"P2": {base: -1, height: -1, state: peerStateNew}},
 			},
 			wantMax: 0,
 		},
@@ -193,15 +193,15 @@ func TestScAddPeer(t *testing.T) {
 			name:       "add first peer",
 			fields:     scTestParams{},
 			args:       args{peerID: "P1"},
-			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}},
+			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {base: -1, height: -1, state: peerStateNew}}},
 		},
 		{
 			name:   "add second peer",
-			fields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}},
+			fields: scTestParams{peers: map[string]*scPeer{"P1": {base: -1, height: -1, state: peerStateNew}}},
 			args:   args{peerID: "P2"},
 			wantFields: scTestParams{peers: map[string]*scPeer{
-				"P1": {height: -1, state: peerStateNew},
-				"P2": {height: -1, state: peerStateNew}}},
+				"P1": {base: -1, height: -1, state: peerStateNew},
+				"P2": {base: -1, height: -1, state: peerStateNew}}},
 		},
 		{
 			name:       "attempt to add duplicate peer",
@@ -2055,7 +2055,7 @@ func TestScHandle(t *testing.T) {
 					args:      args{event: bcAddNewPeer{peerID: "P1"}},
 					wantEvent: noOpEvent{},
 					wantSc: &scTestParams{startTime: now, peers: map[string]*scPeer{
-						"P1": {height: -1, state: peerStateNew}}, height: 1},
+						"P1": {base: -1, height: -1, state: peerStateNew}}, height: 1},
 				},
 				{ // set height of P1
 					args:      args{event: bcStatusResponse{peerID: "P1", time: tick[0], height: 3}},
