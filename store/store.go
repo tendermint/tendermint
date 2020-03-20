@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/types"
@@ -185,7 +186,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	bs.mtx.RLock()
-	if height >= bs.height {
+	if height > bs.height {
 		bs.mtx.RUnlock()
 		return 0, fmt.Errorf("Cannot prune the latest height %v", bs.height)
 	}
@@ -200,51 +201,54 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	}
 
 	pruned := uint64(0)
-	for h := base; h < height; h++ {
-		existed, err := bs.deleteBlock(h)
-		if err != nil {
-			return 0, fmt.Errorf("failed to prune block %v: %w", h, err)
-		}
-		bs.mtx.Lock()
-		bs.base++
-		bs.mtx.Unlock()
-		if existed {
-			pruned++
-		}
-	}
-
-	bs.saveState()
-
-	return pruned, nil
-}
-
-// deleteBlock removes a block and its metadata. Returns true if the block existed.
-// Not exported, to enforce the invariant that all blocks between base and height must exist,
-// so the only way to delete blocks is via PruneBlocks().
-func (bs *BlockStore) deleteBlock(height int64) (bool, error) {
-	if height == bs.Height() {
-		return false, errors.New("cannot delete the latest blockstore height")
-	}
-	meta := bs.LoadBlockMeta(height)
-	if meta == nil {
-		return false, nil
-	}
-
 	batch := bs.db.NewBatch()
 	defer batch.Close()
+	flush := func(batch db.Batch, base int64) error {
+		// We can't trust batches to be atomic, so update base first to make sure noone
+		// tries to access missing blocks.
+		bs.mtx.Lock()
+		bs.base = base
+		bs.mtx.Unlock()
+		bs.saveState()
 
-	batch.Delete(calcBlockMetaKey(height))
-	batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
-	batch.Delete(calcBlockCommitKey(height))
-	batch.Delete(calcSeenCommitKey(height))
-	for i := 0; i < meta.BlockID.PartsHeader.Total; i++ {
-		batch.Delete(calcBlockPartKey(height, i))
+		err := batch.WriteSync()
+		if err != nil {
+			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
+		}
+		batch.Close()
+		return nil
 	}
-	err := batch.WriteSync()
+
+	for h := base; h < height; h++ {
+		meta := bs.LoadBlockMeta(h)
+		if meta == nil { // assume already deleted
+			continue
+		}
+		batch.Delete(calcBlockMetaKey(h))
+		batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
+		batch.Delete(calcBlockCommitKey(h))
+		batch.Delete(calcSeenCommitKey(h))
+		for p := 0; p < meta.BlockID.PartsHeader.Total; p++ {
+			batch.Delete(calcBlockPartKey(h, p))
+		}
+		pruned++
+
+		// flush every 1000 blocks to avoid batches becoming too large
+		if pruned%1000 == 0 && pruned > 0 {
+			err := flush(batch, h)
+			if err != nil {
+				return 0, err
+			}
+			batch = bs.db.NewBatch()
+			defer batch.Close()
+		}
+	}
+
+	err := flush(batch, height)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return true, nil
+	return pruned, nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
