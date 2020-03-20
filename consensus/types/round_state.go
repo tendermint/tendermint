@@ -123,7 +123,7 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		Votes:             votesJSON,
 		Proposer: types.ValidatorInfo{
 			Address: addr,
-			Index:   int(idx),
+			Index:   idx,
 		},
 	}
 }
@@ -135,11 +135,11 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 
 	return types.EventDataNewRound{
 		Height: rs.Height,
-		Round:  int(rs.Round),
+		Round:  rs.Round,
 		Step:   rs.Step.String(),
 		Proposer: types.ValidatorInfo{
 			Address: addr,
-			Index:   int(idx),
+			Index:   idx,
 		},
 	}
 }
@@ -155,7 +155,7 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 
 	return types.EventDataCompleteProposal{
 		Height:  rs.Height,
-		Round:   int(rs.Round),
+		Round:   rs.Round,
 		Step:    rs.Step.String(),
 		BlockID: blockID,
 	}
@@ -165,7 +165,7 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	return types.EventDataRoundState{
 		Height: rs.Height,
-		Round:  int(rs.Round),
+		Round:  rs.Round,
 		Step:   rs.Step.String(),
 	}
 }

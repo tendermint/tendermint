@@ -469,7 +469,7 @@ func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int32, timeo
 		if roundStateEvent.Height != height {
 			panic(fmt.Sprintf("expected height %v, got %v", height, roundStateEvent.Height))
 		}
-		if roundStateEvent.Round != int(round) {
+		if roundStateEvent.Round != round {
 			panic(fmt.Sprintf("expected round %v, got %v", round, roundStateEvent.Round))
 		}
 		// TODO: We could check also for a step at this point!
@@ -489,7 +489,7 @@ func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int32) 
 		if newRoundEvent.Height != height {
 			panic(fmt.Sprintf("expected height %v, got %v", height, newRoundEvent.Height))
 		}
-		if newRoundEvent.Round != int(round) {
+		if newRoundEvent.Round != round {
 			panic(fmt.Sprintf("expected round %v, got %v", round, newRoundEvent.Round))
 		}
 	}
@@ -514,7 +514,7 @@ func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round i
 		if proposalEvent.Height != height {
 			panic(fmt.Sprintf("expected height %v, got %v", height, proposalEvent.Height))
 		}
-		if proposalEvent.Round != int(round) {
+		if proposalEvent.Round != round {
 			panic(fmt.Sprintf("expected round %v, got %v", round, proposalEvent.Round))
 		}
 	}
@@ -578,7 +578,7 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int3
 		if proposalEvent.Height != height {
 			panic(fmt.Sprintf("expected height %v, got %v", height, proposalEvent.Height))
 		}
-		if proposalEvent.Round != int(round) {
+		if proposalEvent.Round != round {
 			panic(fmt.Sprintf("expected round %v, got %v", round, proposalEvent.Round))
 		}
 		if !proposalEvent.BlockID.Equals(propID) {
