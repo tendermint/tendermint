@@ -11,30 +11,15 @@ message PubKey {
   oneof key {
     bytes ed25519 = 1
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PubKey"];
-    bytes secp256k1 = 2
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PubKey"];
-    bytes sr25519 = 3
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
-    //   PubKeyMultisigThreshold multisig = 4
-    //       [(gogoproto.casttype) =
-    //            "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];
   }
 }
 
-// PrivKey is not for sending data of the wire. This type is used for internal purposes only.
+// PrivKey is not for sending data of the wire.
+// WARNING: This type is used for internal purposes only.
 message PrivKey {
   option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PrivKey";
   oneof key {
     bytes ed25519 = 1
         [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PrivKey"];
-    bytes secp256k1 = 2
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PrivKey"];
-    bytes sr25519 = 3
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PrivKey"];
   }
-}
-
-message PubKeyMultisigThreshold {
-  uint32          k        = 1;
-  repeated PubKey pub_keys = 2 [(gogoproto.nullable) = false];
 }

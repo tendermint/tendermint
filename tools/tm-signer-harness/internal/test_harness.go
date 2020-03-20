@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -199,7 +200,8 @@ func (th *TestHarness) TestPublicKey() error {
 		return err
 	}
 	th.logger.Info("Remote", "pubKey", sck)
-	if fpvk != sck {
+	fmt.Println(sck, fpvk)
+	if !bytes.Equal(fpvk.Bytes(), sck.Bytes()) {
 		th.logger.Error("FAILED: Local and remote public keys do not match")
 		return newTestHarnessError(ErrTestPublicKeyFailed, nil, "")
 	}
