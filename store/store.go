@@ -188,7 +188,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	bs.mtx.RLock()
 	if height > bs.height {
 		bs.mtx.RUnlock()
-		return 0, fmt.Errorf("Cannot prune the latest height %v", bs.height)
+		return 0, fmt.Errorf("cannot prune the latest height %v", bs.height)
 	}
 	base := bs.base
 	bs.mtx.RUnlock()
@@ -196,7 +196,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		base = 1
 	}
 	if base > height {
-		return 0, fmt.Errorf("Cannot prune to height %v, it is lower than base height %v",
+		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
 			height, base)
 	}
 

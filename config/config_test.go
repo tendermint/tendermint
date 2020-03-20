@@ -135,6 +135,7 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 }
 
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
+	// nolint: lll
 	testcases := map[string]struct {
 		modify    func(*ConsensusConfig)
 		expectErr bool
@@ -162,6 +163,7 @@ func TestConsensusConfig_ValidateBasic(t *testing.T) {
 		"RetainBlocks 2":                       {func(c *ConsensusConfig) { c.RetainBlocks = 2 }, false},
 	}
 	for desc, tc := range testcases {
+		tc := tc // appease linter
 		t.Run(desc, func(t *testing.T) {
 			cfg := DefaultConsensusConfig()
 			tc.modify(cfg)
