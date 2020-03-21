@@ -4,7 +4,7 @@ about: Create a task/proposal to refactor the codebase
 
 ---
 
-<!-- < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < ☺ 
+<!-- < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < 
 v                            ✰  Thanks for opening an issue! ✰    
 v    Before smashing the submit button please review the template.
 v    Word of caution: poorly thought-out proposals may be rejected 
