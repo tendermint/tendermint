@@ -24,7 +24,7 @@ USER tmuser
 
 WORKDIR $TMHOME
 
-# p2p and rpc port
+# p2p, rpc and prometheus port
 EXPOSE 26656 26657 26660
 
 ENTRYPOINT ["/usr/bin/tendermint"]
@@ -42,6 +42,7 @@ RUN /usr/bin/tendermint init && \
       -e 's/^addr_book_strict\s*=.*/addr_book_strict = false/' \
       -e 's/^timeout_commit\s*=.*/timeout_commit = "500ms"/' \
       -e 's/^index_all_tags\s*=.*/index_all_tags = true/' \
+      -e 's,^laddr = "tcp://127.0.0.1:26657",laddr = "tcp://0.0.0.0:26657",' \
       -e 's/^prometheus\s*=.*/prometheus = true/' \
       $TMHOME/config/config.toml && \
     sed -i \
