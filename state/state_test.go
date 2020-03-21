@@ -372,7 +372,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 
 	// assert frequencies match expected (max off by 1)
 	for i, freq := range freqs {
-		_, val := valSet.GetByIndex(int32(i))
+		_, val := valSet.GetByIndex(uint32(i))
 		expectFreq := int(val.VotingPower) * runMult
 		gotFreq := freq
 		abs := int(math.Abs(float64(expectFreq - gotFreq)))
@@ -428,8 +428,10 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	assert.NoError(t, err)
 
 	require.Equal(t, len(updatedState2.NextValidators.Validators), 2)
-	_, updatedVal1 := updatedState2.NextValidators.GetByAddress(val1PubKey.Address())
-	_, addedVal2 := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
+	_, updatedVal1, err := updatedState2.NextValidators.GetByAddress(val1PubKey.Address())
+	assert.NoError(t, err)
+	_, addedVal2, err := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
+	assert.NoError(t, err)
 
 	// adding a validator should not lead to a ProposerPriority equal to zero (unless the combination of averaging and
 	// incrementing would cause so; which is not the case here)
@@ -467,10 +469,14 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	assert.NoError(t, err)
 
 	require.Equal(t, len(updatedState3.NextValidators.Validators), 2)
-	_, prevVal1 := updatedState3.Validators.GetByAddress(val1PubKey.Address())
-	_, prevVal2 := updatedState3.Validators.GetByAddress(val2PubKey.Address())
-	_, updatedVal1 = updatedState3.NextValidators.GetByAddress(val1PubKey.Address())
-	_, updatedVal2 := updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
+	_, prevVal1, err := updatedState3.Validators.GetByAddress(val1PubKey.Address())
+	assert.NoError(t, err)
+	_, prevVal2, err := updatedState3.Validators.GetByAddress(val2PubKey.Address())
+	assert.NoError(t, err)
+	_, updatedVal1, err = updatedState3.NextValidators.GetByAddress(val1PubKey.Address())
+	assert.NoError(t, err)
+	_, updatedVal2, err := updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
+	assert.NoError(t, err)
 
 	// 2. Scale
 	// old prios: v1(10):-38, v2(1):39

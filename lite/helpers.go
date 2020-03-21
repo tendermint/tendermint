@@ -1,6 +1,8 @@
 package lite
 
 import (
+	"fmt"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
@@ -85,16 +87,21 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i], blockID)
-		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
+		vote, err := makeVote(header, vset, pkz[i], blockID)
+		if err == nil {
+			commitSigs[vote.ValidatorIndex] = vote.CommitSig()
+		}
 	}
 
 	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 
-func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey, blockID types.BlockID) *types.Vote {
+func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey, blockID types.BlockID) (*types.Vote, error) {
 	addr := key.PubKey().Address()
-	idx, _ := valset.GetByAddress(addr)
+	idx, _, err := valset.GetByAddress(addr)
+	if err != nil {
+		return nil, fmt.Errorf("addressL %v, is not associated with a validator, err: %w", addr, err)
+	}
 	vote := &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
@@ -106,14 +113,13 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)
-	// TODO Consider reworking makeVote API to return an error
 	sig, err := key.Sign(signBytes)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not sign bytes, err: %w", err)
 	}
 	vote.Signature = sig
 
-	return vote
+	return vote, nil
 }
 
 func genHeader(chainID string, height int64, txs types.Txs,

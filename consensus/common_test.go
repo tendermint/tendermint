@@ -65,7 +65,7 @@ func ResetConfig(name string) *cfg.Config {
 // validator stub (a kvstore consensus peer we control)
 
 type validatorStub struct {
-	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
+	Index  uint32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
 	Round  int32
 	types.PrivValidator
@@ -73,7 +73,7 @@ type validatorStub struct {
 
 var testMinPower int64 = 10
 
-func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex uint32) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -158,9 +158,9 @@ func (vss ValidatorStubsByAddress) Less(i, j int) bool {
 func (vss ValidatorStubsByAddress) Swap(i, j int) {
 	it := vss[i]
 	vss[i] = vss[j]
-	vss[i].Index = int32(i)
+	vss[i].Index = uint32(i)
 	vss[j] = it
-	vss[j].Index = int32(j)
+	vss[j].Index = uint32(j)
 }
 
 //-------------------------------------------------------------------------------
@@ -407,7 +407,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = newValidatorStub(privVals[i], int32(i))
+		vss[i] = newValidatorStub(privVals[i], uint32(i))
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)

@@ -74,6 +74,8 @@ type VoteSet struct {
 	peerMaj23s    map[P2PID]BlockID      // Maj23 for each peer
 }
 
+var _ VoteSetReader = (*VoteSet)(nil)
+
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
@@ -214,7 +216,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey.
-func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok bool) {
+func (voteSet *VoteSet) getVote(valIndex uint32, blockKey string) (vote *Vote, ok bool) {
 	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
 		return existing, true
 	}
@@ -364,7 +366,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex uint32) *Vote {
 	if voteSet == nil {
 		return nil
 	}
@@ -379,9 +381,9 @@ func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	valIndex, val := voteSet.valSet.GetByAddress(address)
-	if val == nil {
-		panic("GetByAddress(address) returned nil")
+	valIndex, _, err := voteSet.valSet.GetByAddress(address)
+	if err != nil {
+		panic(fmt.Errorf("address: %s is not associated with a validator, err: %w", address, err))
 	}
 	return voteSet.votes[valIndex]
 }
@@ -604,7 +606,7 @@ func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	}
 }
 
-func (vs *blockVotes) getByIndex(index int32) *Vote {
+func (vs *blockVotes) getByIndex(index uint32) *Vote {
 	if vs == nil {
 		return nil
 	}
@@ -620,6 +622,6 @@ type VoteSetReader interface {
 	Type() byte
 	Size() int
 	BitArray() *bits.BitArray
-	GetByIndex(int32) *Vote
+	GetByIndex(uint32) *Vote
 	IsCommit() bool
 }

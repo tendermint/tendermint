@@ -360,8 +360,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
-		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
-		if idx < 0 {
+		_, _, err := state.NextValidators.GetByAddress(pubkey.Address())
+		if err != nil {
 			t.Fatalf("can't find address %v in the set %v", pubkey.Address(), state.NextValidators)
 		}
 	}

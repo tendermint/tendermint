@@ -29,13 +29,11 @@ func TestValidatorSetBasic(t *testing.T) {
 
 	assert.EqualValues(t, vset, vset.Copy())
 	assert.False(t, vset.HasAddress([]byte("some val")))
-	idx, val := vset.GetByAddress([]byte("some val"))
-	assert.EqualValues(t, -1, idx)
+	idx, val, err := vset.GetByAddress([]byte("some val"))
+	assert.Error(t, err)
+	assert.EqualValues(t, 0, idx)
 	assert.Nil(t, val)
-	addr, val := vset.GetByIndex(-100)
-	assert.Nil(t, addr)
-	assert.Nil(t, val)
-	addr, val = vset.GetByIndex(0)
+	addr, val := vset.GetByIndex(0)
 	assert.Nil(t, addr)
 	assert.Nil(t, val)
 	addr, val = vset.GetByIndex(100)
@@ -51,7 +49,8 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 
 	assert.True(t, vset.HasAddress(val.Address))
-	idx, _ = vset.GetByAddress(val.Address)
+	idx, _, err = vset.GetByAddress(val.Address)
+	assert.NoError(t, err)
 	assert.EqualValues(t, 0, idx)
 	addr, _ = vset.GetByIndex(0)
 	assert.Equal(t, []byte(val.Address), addr)
@@ -64,13 +63,15 @@ func TestValidatorSetBasic(t *testing.T) {
 	// update
 	val = randValidator(vset.TotalVotingPower())
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
-	_, val = vset.GetByAddress(val.Address)
+	_, val, err = vset.GetByAddress(val.Address)
+	assert.NoError(t, err)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
 
 	val.ProposerPriority = 0
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
-	_, val = vset.GetByAddress(val.Address)
+	_, val, err = vset.GetByAddress(val.Address)
+	assert.NoError(t, err)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
 }
@@ -427,7 +428,8 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 		// work on copy to have the old ProposerPriorities:
 		newVset := tc.vs.CopyIncrementProposerPriority(tc.times)
 		for _, val := range tc.vs.Validators {
-			_, updatedVal := newVset.GetByAddress(val.Address)
+			_, updatedVal, err := newVset.GetByAddress(val.Address)
+			assert.NoError(t, err)
 			assert.Equal(t, updatedVal.ProposerPriority, val.ProposerPriority-tc.avg, "test case: %v", i)
 		}
 	}

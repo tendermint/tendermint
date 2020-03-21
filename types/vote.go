@@ -52,7 +52,7 @@ type Vote struct {
 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time     `json:"timestamp"`
 	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int32         `json:"validator_index"`
+	ValidatorIndex   uint32        `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
 }
 
