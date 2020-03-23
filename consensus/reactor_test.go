@@ -827,14 +827,13 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 	testCases := []struct { // nolint: maligned
 		expectErr     bool
 		messageRound  int32
-		messageIndex  int32
+		messageIndex  uint32
 		messageHeight int64
 		testName      string
 		messageType   types.SignedMsgType
 	}{
 		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
-		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
 		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
 		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
 	}

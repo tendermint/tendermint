@@ -626,7 +626,7 @@ func makeEvidences(
 	// different index
 	vote2 = deepcpVote(vote)
 	for i := 10; i < 20; i++ {
-		vote2.ValidatorIndex = int32(rand.Int()%100 + 1) // nolint: gosec
+		vote2.ValidatorIndex = rand.Uint32()%100 + 1 // nolint: gosec
 		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
 	}
 	// different height

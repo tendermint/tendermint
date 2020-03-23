@@ -96,7 +96,8 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 
-func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey, blockID types.BlockID) (*types.Vote, error) {
+func makeVote(header *types.Header, valset *types.ValidatorSet,
+	key crypto.PrivKey, blockID types.BlockID) (*types.Vote, error) {
 	addr := key.PubKey().Address()
 	idx, _, err := valset.GetByAddress(addr)
 	if err != nil {

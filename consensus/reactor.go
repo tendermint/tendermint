@@ -1067,7 +1067,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(int32(index)), true
+		return votes.GetByIndex(uint32(index)), true
 	}
 	return nil, false
 }
@@ -1224,7 +1224,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType types.SignedMsgType, index int32) {
+func (ps *PeerState) setHasVote(height int64, round int32, voteType types.SignedMsgType, index uint32) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1591,7 +1591,7 @@ type HasVoteMessage struct {
 	Height int64
 	Round  int32
 	Type   types.SignedMsgType
-	Index  int32
+	Index  uint32
 }
 
 // ValidateBasic performs basic validation.

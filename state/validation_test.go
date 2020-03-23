@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/mock"
 
@@ -211,7 +212,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
+		proposerIdx, _, err := state.Validators.GetByAddress(proposerAddr)
+		assert.NoError(t, err)
 		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerIdx, proposerAddr)
 		if height > 1 {
 			/*
@@ -226,7 +228,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 				evidence = append(evidence, goodEvidence)
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
-			err := blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(state, block)
 			_, ok := err.(*types.ErrEvidenceOverflow)
 			require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d", height)
 		}
@@ -243,7 +245,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 			evidence = append(evidence, goodEvidence)
 		}
 
-		var err error
 		state, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			height,

@@ -87,7 +87,8 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i], blockID)
+		vote, _ := makeVote(header, vset, pkz[i], blockID) //TODO: error here
+
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
 
