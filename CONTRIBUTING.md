@@ -187,7 +187,7 @@ easy to reference the pull request where a change was introduced.
 - make changes and update the `CHANGELOG_PENDING.md` to record your change
 - before submitting a pull request, run `git rebase` on top of the latest `master`
 
-When you have submitted a pull request label the pull request with either `R:minor` if the change can be accepted in a minor release or `R:major` if the change is meant for a major release.
+When you have submitted a pull request label the pull request with either `R:minor`, if the change can be accepted in a minor release, or `R:major`, if the change is meant for a major release.
 
 ### Pull Merge Procedure
 
@@ -232,7 +232,7 @@ Minor releases are done differently from major releases. Minor release pull requ
    - `git checkout -b cherry-picks/rc1/vX.X.x`
 
      - This is for devs to approve the commits that are entering the release candidate.
-     - There may merge conflicts.
+     - There may be merge conflicts.
 
 4. Begin cherry-picking.
 
@@ -249,7 +249,7 @@ Minor releases are done differently from major releases. Minor release pull requ
    - `git push -u origin release/vX.X.x`
      > Note this Branch is protected once pushed, you will need admin help to make any change merges into the branch.
 
-6. Merge Commit the release branch into the latest major release branch `vX.X` this will start the release process.
+6. Merge Commit the release branch into the latest major release branch `vX.X`, this will start the release process.
 
 7. Create a Pull Request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
