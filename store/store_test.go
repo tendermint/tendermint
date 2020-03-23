@@ -395,6 +395,13 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 0, bs.Base())
 	assert.EqualValues(t, 0, bs.Height())
 
+	// pruning an empty store should error, even when pruning to 0
+	_, err = bs.PruneBlocks(1)
+	require.Error(t, err)
+
+	_, err = bs.PruneBlocks(0)
+	require.Error(t, err)
+
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
 		block := makeBlock(h, state, new(types.Commit))
