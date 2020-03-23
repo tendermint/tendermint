@@ -65,20 +65,39 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
 	db := db.NewMemDB()
+	bsj := &BlockStoreStateJSON{Base: 100, Height: 1000}
+	bsj.Save(db)
+
+	retrBSJ := LoadBlockStoreStateJSON(db)
+	assert.Equal(t, *bsj, retrBSJ, "expected the retrieved DBs to match")
+}
+
+func TestLoadBlockStoreStateJSON_Empty(t *testing.T) {
+	db := db.NewMemDB()
+
+	bsj := &BlockStoreStateJSON{}
+	bsj.Save(db)
+
+	retrBSJ := LoadBlockStoreStateJSON(db)
+	assert.Equal(t, BlockStoreStateJSON{}, retrBSJ, "expected the retrieved DBs to match")
+}
+
+func TestLoadBlockStoreStateJSON_NoBase(t *testing.T) {
+	db := db.NewMemDB()
 
 	bsj := &BlockStoreStateJSON{Height: 1000}
 	bsj.Save(db)
 
 	retrBSJ := LoadBlockStoreStateJSON(db)
-
-	assert.Equal(t, *bsj, retrBSJ, "expected the retrieved DBs to match")
+	assert.Equal(t, BlockStoreStateJSON{Base: 1, Height: 1000}, retrBSJ, "expected the retrieved DBs to match")
 }
 
 func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
-	err := db.Set(blockStoreKey, []byte(`{"height": "10000"}`))
+	err := db.Set(blockStoreKey, []byte(`{"base": "100", "height": "10000"}`))
 	require.NoError(t, err)
 	bs := NewBlockStore(db)
+	require.Equal(t, int64(100), bs.Base(), "failed to properly parse blockstore")
 	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
 
 	panicCausers := []struct {
@@ -140,6 +159,7 @@ func TestMain(m *testing.M) {
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
+	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
@@ -155,7 +175,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
-	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
+	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
+	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})

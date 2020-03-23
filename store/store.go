@@ -49,14 +49,14 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	}
 }
 
-// Base returns the first known contiguous block height.
+// Base returns the first known contiguous block height, or 0 for empty block stores.
 func (bs *BlockStore) Base() int64 {
 	bs.mtx.RLock()
 	defer bs.mtx.RUnlock()
 	return bs.base
 }
 
-// Height returns the last known contiguous block height.
+// Height returns the last known contiguous block height, or 0 for empty block stores.
 func (bs *BlockStore) Height() int64 {
 	bs.mtx.RLock()
 	defer bs.mtx.RUnlock()
@@ -185,17 +185,17 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+	if height <= 0 {
+		return 0, fmt.Errorf("height must be greater than 0")
+	}
 	bs.mtx.RLock()
 	if height > bs.height {
 		bs.mtx.RUnlock()
-		return 0, fmt.Errorf("cannot prune the latest height %v", bs.height)
+		return 0, fmt.Errorf("cannot prune beyond the latest height %v", bs.height)
 	}
 	base := bs.base
 	bs.mtx.RUnlock()
-	if base == 0 {
-		base = 1
-	}
-	if base > height {
+	if height < base {
 		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
 			height, base)
 	}
@@ -296,6 +296,9 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// Done!
 	bs.mtx.Lock()
 	bs.height = height
+	if bs.base == 0 && height == 1 {
+		bs.base = 1
+	}
 	bs.mtx.Unlock()
 
 	// Save new BlockStoreStateJSON descriptor
@@ -381,6 +384,10 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	err = cdc.UnmarshalJSON(bytes, &bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
+	}
+	// Backwards compatibility with persisted data from before Base existed.
+	if bsj.Height > 0 && bsj.Base == 0 {
+		bsj.Base = 1
 	}
 	return bsj
 }
