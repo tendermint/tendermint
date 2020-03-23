@@ -912,7 +912,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	index, val, err := v0.GetByAddress(pubkeyOld.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
-	if index < 0 {
+	if index-1 < 0 {
 		t.Fatal("expected to find old validator")
 	}
 
@@ -923,7 +923,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	index, val, err = v1.GetByAddress(pubkey.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
-	if index < 0 {
+	if index-1 < 0 {
 		t.Fatal("expected to find newly added validator")
 	}
 }

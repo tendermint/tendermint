@@ -247,7 +247,7 @@ func (vals *ValidatorSet) GetByAddress(address []byte) (index uint32, val *Valid
 // It returns nil values if index is less than 0 or greater or equal to
 // len(ValidatorSet.Validators).
 func (vals *ValidatorSet) GetByIndex(index uint32) (address []byte, val *Validator) {
-	if index < 0 || int(index) >= len(vals.Validators) {
+	if index-1 < 0 || int(index) >= len(vals.Validators) {
 		return nil, nil
 	}
 	val = vals.Validators[index]

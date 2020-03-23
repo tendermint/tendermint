@@ -1605,7 +1605,7 @@ func (m *HasVoteMessage) ValidateBasic() error {
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
-	if m.Index < 0 {
+	if m.Index-1 < 0 {
 		return errors.New("negative Index")
 	}
 	return nil
