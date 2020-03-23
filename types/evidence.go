@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -54,18 +55,23 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 //-------------------------------------------
 
-// Evidence represents any provable malicious activity by a validator(s).
+// Evidence represents any provable malicious activity by a validator.
 type Evidence interface {
-	Height() int64                                        // height of the equivocation
-	Time() time.Time                                      // time of the equivocation
-	Addresses() [][]byte                                  // address of the equivocating validators
-	Bytes() []byte                                        // bytes which comprise the evidence
-	Hash() []byte                                         // hash of the evidence
-	Verify(chainID string, pubKeys []crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                                  // check equality of evidence
+	Height() int64                                     // height of the equivocation
+	Time() time.Time                                   // time of the equivocation
+	Address() []byte                                   // address of the equivocating validator
+	Bytes() []byte                                     // bytes which comprise the evidence
+	Hash() []byte                                      // hash of the evidence
+	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool                               // check equality of evidence
 
 	ValidateBasic() error
 	String() string
+}
+
+type CompositeEvidence interface {
+	VerifyComposite(chainID string, valSet *ValidatorSet) error
+	Split() []Evidence
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
@@ -144,8 +150,8 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 }
 
 // Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Addresses() [][]byte {
-	return [][]byte{dve.PubKey.Address()}
+func (dve *DuplicateVoteEvidence) Address() []byte {
+	return dve.PubKey.Address()
 }
 
 // Hash returns the hash of the evidence.
@@ -162,9 +168,7 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 //
 // To be conflicting, they must be from the same validator, for the same H/R/S,
 // but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error {
-	pubKey := pubKeys[0]
-
+func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// H/R/S must be the same
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
@@ -290,9 +294,9 @@ func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) Moc
 		EvidenceAddress: address}
 }
 
-func (e MockEvidence) Height() int64       { return e.EvidenceHeight }
-func (e MockEvidence) Time() time.Time     { return e.EvidenceTime }
-func (e MockEvidence) Addresses() [][]byte { return [][]byte{e.EvidenceAddress} }
+func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockEvidence) Time() time.Time { return e.EvidenceTime }
+func (e MockEvidence) Address() []byte { return e.EvidenceAddress }
 func (e MockEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x-%s",
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
@@ -301,7 +305,7 @@ func (e MockEvidence) Bytes() []byte {
 	return []byte(fmt.Sprintf("%d-%x-%s",
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
-func (e MockEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error { return nil }
+func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
@@ -357,14 +361,43 @@ type ConflictingHeadersEvidence struct {
 	H2 SignedHeader `json:"h_2"`
 }
 
+func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
+	evList := make([]Evidence, 0)
+
+	// maliciousHeaders := make([]SignedHeader, 0)
+	// switch {
+	// case bytes.Equal(ev.H1.Hash(), committedHeader.Hash()):
+	// case bytes.Equal(ev.H2.Hash(), committedHeader.Hash()):
+	// default:
+
+	// }
+
+	// if there are signers(H2) that are not part of validators(H1), they
+	// misbehaved as they are signing protocol messages in heights they are not
+	// validators => immediately slashable (#F4).
+
+	// if H1.Round == H2.Round, and some signers signed different precommit
+	// messages in both commits, then it is an equivocation misbehavior =>
+	// immediately slashable (#F1).
+
+	// if H1.Round != H2.Round we need to run full detection procedure => not
+	// immediately slashable.
+
+	// if ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
+	// LastResultsHash in H2 are different (incorrect application state
+	// transition), then it is a lunatic misbehavior => immediately slashable
+	// (#F5).
+
+	return evList
+}
+
 func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
 // XXX: this is not the time of equivocation
 func (ev ConflictingHeadersEvidence) Time() time.Time { return ev.H1.Time }
 
-// XXX: multiple validators misbehaved
-func (ev ConflictingHeadersEvidence) Addresses() [][]byte {
-	return [][]byte{}
+func (ev ConflictingHeadersEvidence) Address() []byte {
+	panic("use ConflictingHeadersEvidence#Split to split evidence into individual pieces")
 }
 
 func (ev ConflictingHeadersEvidence) Bytes() []byte {
@@ -378,13 +411,46 @@ func (ev ConflictingHeadersEvidence) Hash() []byte {
 	return tmhash.Sum(bz)
 }
 
-func (ev ConflictingHeadersEvidence) Verify(chainID string, pubKeys []crypto.PubKey) error {
+func (ev ConflictingHeadersEvidence) Verify(chainID string, _ crypto.PubKey) error {
+	panic("use ConflictingHeadersEvidence#VerifyComposite to verify composite evidence")
+}
+
+func (ev ConflictingHeadersEvidence) VerifyComposite(chainID string, valSet *ValidatorSet) error {
+	// ChainID must be the same
+	if ev.H1.ChainID != ev.H2.ChainID {
+		return errors.New("headers are from different chains")
+	}
 	if chainID != ev.H1.ChainID {
 		return errors.New("header #1 is from a different chain")
 	}
-	if chainID != ev.H2.ChainID {
-		return errors.New("header #2 is from a different chain")
+
+	// Height must be the same
+	if ev.H1.Height != ev.H2.Height {
+		return errors.New("headers are from different heights")
 	}
+
+	// Check signatures.
+	if len(ev.H1.Commit.Signatures) != valSet.Size() {
+		return errors.Errorf("commit #1 contains too many signatures: %d, expected %d",
+			len(ev.H1.Commit.Signatures),
+			valSet.Size())
+	}
+	if len(ev.H2.Commit.Signatures) != valSet.Size() {
+		return errors.Errorf("commit #2 contains too many signatures: %d, expected %d",
+			len(ev.H2.Commit.Signatures),
+			valSet.Size())
+	}
+
+	// Check both headers are signed by 1/3+ of voting power.
+	if err := valSet.VerifyCommitTrusting(chainID, ev.H1.Commit.BlockID, ev.H1.Height,
+		ev.H1.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
+		return errors.Wrap(err, "failed to verify H1")
+	}
+	if err := valSet.VerifyCommitTrusting(chainID, ev.H1.Commit.BlockID, ev.H1.Height,
+		ev.H1.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
+		return errors.Wrap(err, "failed to verify H2")
+	}
+
 	return nil
 }
 
@@ -397,17 +463,11 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {
-	if ev.H1.ChainID != ev.H2.ChainID {
-		return errors.New("headers are from different chains")
-	}
 	if err := ev.H1.ValidateBasic(ev.H1.ChainID); err != nil {
 		return fmt.Errorf("h1: %w", err)
 	}
 	if err := ev.H2.ValidateBasic(ev.H2.ChainID); err != nil {
 		return fmt.Errorf("h2: %w", err)
-	}
-	if ev.H1.Height != ev.H2.Height {
-		return errors.New("headers are from different heights")
 	}
 	return nil
 }

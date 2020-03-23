@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	clist "github.com/tendermint/tendermint/libs/clist"
-	"github.com/tendermint/tendermint/libs/log"
 	dbm "github.com/tendermint/tm-db"
 
+	clist "github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -96,30 +96,44 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
+	state := evpool.State()
+	valset, _ := sm.LoadValidators(evpool.stateDB, evidence.Height())
+
+	evList := []types.Evidence{evidence}
+	if ce, ok := evidence.(types.CompositeEvidence); ok {
+		if err := ce.VerifyComposite(state.ChainID, valset.Size()); err != nil {
+			return err
+		}
+		evList = ce.Split()
+	}
 
 	// TODO: check if we already have evidence for this
 	// validator at this height so we dont get spammed
 
-	if err := sm.VerifyEvidence(evpool.stateDB, evpool.State(), evidence); err != nil {
-		return err
+	for _, ev := range evList {
+		// 1) Verify against state.
+		if err := sm.VerifyEvidence(evpool.stateDB, state, ev); err != nil {
+			return err
+		}
+
+		// 2) Compute priority.
+		// fetch the validator and return its voting power as its priority
+		// TODO: something better ?
+		_, val := valset.GetByAddress(ev.Address())
+		priority := val.VotingPower
+
+		// 3) Save to store.
+		added := evpool.store.AddNewEvidence(ev, priority)
+		if !added {
+			// evidence already known, just ignore
+			return
+		}
+
+		// 4) Add evidence to clist.
+		evpool.evidenceList.PushBack(ev)
+
+		evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", ev)
 	}
-
-	// fetch the validator and return its voting power as its priority
-	// TODO: something better ?
-	valset, _ := sm.LoadValidators(evpool.stateDB, evidence.Height())
-	_, val := valset.GetByAddress(evidence.Address())
-	priority := val.VotingPower
-
-	added := evpool.store.AddNewEvidence(evidence, priority)
-	if !added {
-		// evidence already known, just ignore
-		return
-	}
-
-	evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", evidence)
-
-	// add evidence to clist
-	evpool.evidenceList.PushBack(evidence)
 
 	return nil
 }

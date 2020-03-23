@@ -99,7 +99,7 @@ A new type of evidence needs to be created:
 
 ```go
 type PhantomValidatorEvidence struct {
-  PubKey crypto.PubKey
+  Header types.Header
   Vote types.Vote
 }
 ```
