@@ -137,7 +137,7 @@ hosted at: https://docs.tendermint.com/master/
 ### Tools
 
 Benchmarking is provided by `tm-load-test`.
-The code for `tm-load-test` can be found [here](https://github.com/interchainio/tm-load-test) this binary needs to be built separately.
+The code for `tm-load-test` can be found [here](https://github.com/informalsystems/tm-load-test) this binary needs to be built separately.
 Additional documentation is found [here](/docs/tools).
 
 ### Sub-projects
