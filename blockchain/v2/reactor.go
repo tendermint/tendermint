@@ -82,6 +82,9 @@ func (m *bcStatusRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
 	return nil
 }
 
@@ -103,6 +106,9 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 	}
 	if m.Height < 0 {
 		return errors.New("negative Height")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
 	}
 	return nil
 }

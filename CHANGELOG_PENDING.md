@@ -1,5 +1,7 @@
 ## v0.33.3
 
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via the `retain_blocks` option) such that all blocks below the block store base will be missing. All blocks between the base and latest height will be present.
+
 \*\*
 
 Special thanks to external contributors on this release:
@@ -7,8 +9,6 @@ Special thanks to external contributors on this release:
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
-
-- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via `retain_blocks`) such that all blocks up to the block store base will be missing. All blocks between the base and latest height will be present.
 
 - CLI/RPC/Config
 
