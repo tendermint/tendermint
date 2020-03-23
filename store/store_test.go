@@ -392,6 +392,8 @@ func TestPruneBlocks(t *testing.T) {
 	require.NoError(t, err)
 	db := dbm.NewMemDB()
 	bs := NewBlockStore(db)
+	assert.EqualValues(t, 0, bs.Base())
+	assert.EqualValues(t, 0, bs.Height())
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
@@ -401,7 +403,7 @@ func TestPruneBlocks(t *testing.T) {
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
-	assert.EqualValues(t, 0, bs.Base())
+	assert.EqualValues(t, 1, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 
 	prunedBlock := bs.LoadBlock(1199)

@@ -342,15 +342,15 @@ func (h *Handshaker) ReplayBlocks(
 		}
 	}
 
-	// First handle edge cases and constraints on the storeBlockHeight.
+	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
 	switch {
-	// app is behind store, and store history is truncated
-	case appBlockHeight < storeBlockBase:
-		return appHash, sm.ErrAppBlockHeightBelowBase{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
-
 	case storeBlockHeight == 0:
 		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
+
+	case appBlockHeight < storeBlockBase-1:
+		// the app is too far behind truncated store (can be 1 behind since we replay the next)
+		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
 	case storeBlockHeight < appBlockHeight:
 		// the app should never be ahead of the store (but this is under app's control)

@@ -21,7 +21,7 @@ type (
 		AppHeight  int64
 	}
 
-	ErrAppBlockHeightBelowBase struct {
+	ErrAppBlockHeightTooLow struct {
 		AppHeight int64
 		StoreBase int64
 	}
@@ -67,8 +67,8 @@ func (e ErrAppBlockHeightTooHigh) Error() string {
 	return fmt.Sprintf("app block height (%d) is higher than core (%d)", e.AppHeight, e.CoreHeight)
 }
 
-func (e ErrAppBlockHeightBelowBase) Error() string {
-	return fmt.Sprintf("app block height (%d) is below block store base (%d)", e.AppHeight, e.StoreBase)
+func (e ErrAppBlockHeightTooLow) Error() string {
+	return fmt.Sprintf("app block height (%d) is too far below block store base (%d)", e.AppHeight, e.StoreBase)
 }
 
 func (e ErrLastStateMismatch) Error() string {
