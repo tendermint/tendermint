@@ -711,7 +711,6 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	// Check old voting power.
 	oldVotingPower := int64(0)
-	seen := map[uint32]bool{}
 
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -719,11 +718,10 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		}
 
 		// See if this validator is in oldVals.
-		oldIdx, val, err := oldVals.GetByAddress(commitSig.ValidatorAddress) // old tx is now 0 not -1
-		if err != nil || seen[oldIdx] {
+		_, val, err := oldVals.GetByAddress(commitSig.ValidatorAddress) // old tx is now 0 not -1
+		if err != nil {
 			continue // missing validator or double vote...
 		}
-		seen[oldIdx] = true
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
@@ -780,7 +778,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			continue // missing validator
 		}
 
-		if firstIndex, ok := seenVals[valIdx]; ok { // double vote //TODO: check if val[0] will be inadvertingly counted
+		if firstIndex, ok := seenVals[valIdx]; ok && err == nil { // double vote
 			secondIndex := idx
 			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 		}
@@ -824,26 +822,6 @@ func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
 			blockID, commit.BlockID)
 	}
 	return nil
-}
-
-//-----------------
-
-// IsErrNotEnoughVotingPowerSigned returns true if err is
-// ErrNotEnoughVotingPowerSigned.
-func IsErrNotEnoughVotingPowerSigned(err error) bool {
-	_, ok := errors.Cause(err).(ErrNotEnoughVotingPowerSigned)
-	return ok
-}
-
-// ErrNotEnoughVotingPowerSigned is returned when not enough validators signed
-// a commit.
-type ErrNotEnoughVotingPowerSigned struct {
-	Got    int64
-	Needed int64
-}
-
-func (e ErrNotEnoughVotingPowerSigned) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient voting power: got %d, needed more than %d", e.Got, e.Needed)
 }
 
 //----------------
@@ -892,25 +870,6 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
-}
-
-//----------------------------------------
-// for testing
-
-// RandValidatorSet returns a randomized validator set, useful for testing.
-// NOTE: PrivValidator are in order.
-// UNSTABLE
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
-	valz := make([]*Validator, numValidators)
-	privValidators := make([]PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privValidator := RandValidator(false, votingPower)
-		valz[i] = val
-		privValidators[i] = privValidator
-	}
-	vals := NewValidatorSet(valz)
-	sort.Sort(PrivValidatorsByAddress(privValidators))
-	return vals, privValidators
 }
 
 ///////////////////////////////////////////////////////////////////////////////
