@@ -2,6 +2,7 @@ package v2
 
 import (
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/types"
 )
 

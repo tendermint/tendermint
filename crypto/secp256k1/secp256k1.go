@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/ripemd160" // nolint: staticcheck // necessary for Bitcoin address format
 
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto"
 )
 

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"

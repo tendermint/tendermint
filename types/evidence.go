@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	amino "github.com/tendermint/go-amino"
