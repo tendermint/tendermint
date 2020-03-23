@@ -344,6 +344,10 @@ create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 
 # Number of blocks to retain. 0 retains all blocks. Must retain at least 2 blocks.
+# For Cosmos SDK-based apps, it is recommended that blocks are retained at least for
+# as long as the unbonding period (typically three weeks), since light clients need
+# these for verification. Some nodes in the network should also retain full block
+# histories, for querying, auditability, and data integrity.
 retain_blocks = {{ .Consensus.RetainBlocks }}
 
 # Reactor sleep duration parameters
