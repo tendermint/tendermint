@@ -1427,7 +1427,7 @@ func (cs *State) finalizeCommit(height int64) {
 	}
 
 	// Prune the blockStore.
-	if cs.config.RetainBlocks > 0 && cs.blockStore.Height()-cs.blockStore.Base()+1 > int64(cs.config.RetainBlocks) {
+	if cs.config.RetainBlocks > 0 && uint64(cs.blockStore.Size()) > cs.config.RetainBlocks {
 		newBase := cs.blockStore.Height() - int64(cs.config.RetainBlocks) + 1
 		pruned, err := cs.blockStore.PruneBlocks(newBase)
 		if err != nil {

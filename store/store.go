@@ -63,6 +63,16 @@ func (bs *BlockStore) Height() int64 {
 	return bs.height
 }
 
+// Size returns the number of blocks in the block store.
+func (bs *BlockStore) Size() int64 {
+	bs.mtx.RLock()
+	defer bs.mtx.RUnlock()
+	if bs.height == 0 {
+		return 0
+	}
+	return bs.height - bs.base + 1
+}
+
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {

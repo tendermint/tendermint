@@ -394,6 +394,7 @@ func TestPruneBlocks(t *testing.T) {
 	bs := NewBlockStore(db)
 	assert.EqualValues(t, 0, bs.Base())
 	assert.EqualValues(t, 0, bs.Height())
+	assert.EqualValues(t, 0, bs.Size())
 
 	// pruning an empty store should error, even when pruning to 0
 	_, err = bs.PruneBlocks(1)
@@ -412,6 +413,7 @@ func TestPruneBlocks(t *testing.T) {
 
 	assert.EqualValues(t, 1, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
+	assert.EqualValues(t, 1500, bs.Size())
 
 	prunedBlock := bs.LoadBlock(1199)
 
@@ -421,6 +423,7 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1199, pruned)
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
+	assert.EqualValues(t, 301, bs.Size())
 	assert.EqualValues(t, BlockStoreStateJSON{
 		Base:   1200,
 		Height: 1500,

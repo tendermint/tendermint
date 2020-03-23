@@ -16,6 +16,7 @@ import (
 type BlockStore interface {
 	Base() int64
 	Height() int64
+	Size() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta
 	LoadBlock(height int64) *types.Block

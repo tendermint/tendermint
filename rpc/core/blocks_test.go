@@ -116,8 +116,9 @@ type mockBlockStore struct {
 	height int64
 }
 
-func (store mockBlockStore) Base() int64                                 { return 0 }
+func (mockBlockStore) Base() int64                                       { return 1 }
 func (store mockBlockStore) Height() int64                               { return store.height }
+func (store mockBlockStore) Size() int64                                 { return store.height }
 func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta       { return nil }
 func (mockBlockStore) LoadBlock(height int64) *types.Block               { return nil }
 func (mockBlockStore) LoadBlockByHash(hash []byte) *types.Block          { return nil }
