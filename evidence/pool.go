@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
-	evtypes "github.com/tendermint/tendermint/evidence/types"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
@@ -111,7 +110,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	evList := []types.Evidence{evidence}
 
 	// Break ConflictingHeaders into smaller pieces.
-	if ce, ok := evidence.(evtypes.ConflictingHeaders); ok {
+	if ce, ok := evidence.(types.ConflictingHeadersEvidence); ok {
 		if err := ce.VerifyComposite(state.ChainID, valSet); err != nil {
 			return err
 		}
