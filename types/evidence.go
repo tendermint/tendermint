@@ -477,3 +477,49 @@ func (ev ConflictingHeadersEvidence) String() string {
 		ev.H1.Height, ev.H1.Hash(),
 		ev.H2.Height, ev.H2.Hash())
 }
+
+type PhantomValidatorEvidence struct {
+	Header    Header    `json:"header"`
+	CommitSig CommitSig `json:"commit_sig"`
+}
+
+var _ Evidence = &PhantomValidatorEvidence{}
+
+func (e PhantomValidatorEvidence) Height() int64 {
+	return e.Header.Height
+}
+
+func (e PhantomValidatorEvidence) Time() time.Time {
+	return e.Header.Time
+}
+
+func (e PhantomValidatorEvidence) Address() []byte {
+	return e.CommitSig.ValidatorAddress
+}
+
+func (e PhantomValidatorEvidence) Hash() []byte {
+	bz := make([]byte, tmhash.Size*2)
+	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
+	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
+	return tmhash.Sum(bz)
+}
+
+func (e PhantomValidatorEvidence) Bytes() []byte {
+	return cdcEncode(e)
+}
+
+func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return nil
+}
+
+func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(PhantomValidatorEvidence)
+	return e.Header.Height == e2.Header.Height &&
+		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
+}
+
+func (e PhantomValidatorEvidence) ValidateBasic() error { return nil }
+
+func (e PhantomValidatorEvidence) String() string {
+	return fmt.Sprintf("PhantomValidatorEvidence{%X voted for %d/%X}", e.Header.Height, e.Header.Hash(), e.CommitSig.ValidatorAddress)
+}
