@@ -5,16 +5,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
+	evtypes "github.com/tendermint/tendermint/evidence/types"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
-// Pool maintains a pool of valid evidence
-// in an Store.
+// Pool maintains a pool of valid evidence in an Store.
 type Pool struct {
 	logger log.Logger
 
@@ -22,17 +24,19 @@ type Pool struct {
 	evidenceList *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB dbm.DB
+	stateDB    dbm.DB
+	blockStore *store.BlockStore
 
 	// latest state
 	mtx   sync.Mutex
 	state sm.State
 }
 
-func NewPool(stateDB, evidenceDB dbm.DB) *Pool {
+func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 	store := NewStore(evidenceDB)
 	evpool := &Pool{
 		stateDB:      stateDB,
+		blockStore:   blockStore,
 		state:        sm.LoadState(stateDB),
 		logger:       log.NewNopLogger(),
 		store:        store,
@@ -74,7 +78,6 @@ func (evpool *Pool) State() sm.State {
 
 // Update loads the latest
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
-
 	// sanity check
 	if state.LastBlockHeight != block.Height {
 		panic(
@@ -95,20 +98,29 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
-	state := evpool.State()
-	valset, _ := sm.LoadValidators(evpool.stateDB, evidence.Height())
+func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
+	// TODO: check if we already have evidence for this validator(s) at
+	// this height so we dont get spammed.
 
-	evList := []types.Evidence{evidence}
-	if ce, ok := evidence.(types.CompositeEvidence); ok {
-		if err := ce.VerifyComposite(state.ChainID, valset.Size()); err != nil {
-			return err
-		}
-		evList = ce.Split()
+	state := evpool.State()
+	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	if err != nil {
+		return errors.Wrapf(err, "can't load validators at height #%d", evidence.Height())
 	}
 
-	// TODO: check if we already have evidence for this
-	// validator at this height so we dont get spammed
+	evList := []types.Evidence{evidence}
+
+	// Break ConflictingHeaders into smaller pieces.
+	if ce, ok := evidence.(evtypes.ConflictingHeaders); ok {
+		if err := ce.VerifyComposite(state.ChainID, valSet); err != nil {
+			return err
+		}
+		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
+		if blockMeta == nil {
+			return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())
+		}
+		evList = ce.Split(&blockMeta.Header, valSet)
+	}
 
 	for _, ev := range evList {
 		// 1) Verify against state.
@@ -117,16 +129,14 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
 		}
 
 		// 2) Compute priority.
-		// fetch the validator and return its voting power as its priority
-		// TODO: something better ?
-		_, val := valset.GetByAddress(ev.Address())
+		_, val := valSet.GetByAddress(ev.Address())
 		priority := val.VotingPower
 
 		// 3) Save to store.
 		added := evpool.store.AddNewEvidence(ev, priority)
 		if !added {
 			// evidence already known, just ignore
-			return
+			continue
 		}
 
 		// 4) Add evidence to clist.
