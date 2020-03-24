@@ -34,7 +34,7 @@ slashable) or the fork accountability protocol needs to be started.
 
 Check both headers are valid (`ValidateBasic`), have the same height, and
 signed by 1/3+ of the validator set that the full node had at height
-`H1.Height-1`.
+`H1.Height`.
 
 - Q: What if light client validator set is not equal to full node's validator
   set (i.e. from full node's point of view both headers are not properly signed;
