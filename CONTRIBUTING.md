@@ -222,7 +222,7 @@ Minor releases are done differently from major releases. Minor release pull requ
 
    - `git checkout vX.X`
 
-2. Create a branch off the latest release, `rc1/vX.X.x`, and push the branch.
+2. Create a release candidate branch off the most recent major release with your upcoming version specified, `rc1/vX.X.x`, and push the branch.
 
    - `git checkout -b rc1/vX.X.x`
    - `git push -u origin rc1/vX.X.x`
