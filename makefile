@@ -32,6 +32,12 @@ lint:
 	@echo "--> Running linter"
 	@golangci-lint run
 	@go mod verify
+.PHONY: lint
+
+format:
+	find . -name '*.go' -type f -not -path "*.git*" -not -name '*.pb.go' -not -name '*pb_test.go' | xargs gofmt -w -s
+	find . -name '*.go' -type f -not -path "*.git*"  -not -name '*.pb.go' -not -name '*pb_test.go' | xargs goimports -w
+.PHONY: format
 
 tools:
 	go get -v $(GOTOOLS)
@@ -57,5 +63,5 @@ clean_certs:
 	## Note the $@ here is substituted for the %.pb.go
 	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
 
+
 protoc_remotedb: remotedb/proto/defs.pb.go	
-	
