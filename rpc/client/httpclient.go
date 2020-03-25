@@ -314,7 +314,7 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 
 func (c *baseRPCClient) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
 	result := new(ctypes.ResultConsensusParams)
-	params := make(map[string]interface{}, 0)
+	params := make(map[string]interface{})
 	if height != nil {
 		params["height"] = height
 	}
@@ -356,7 +356,7 @@ func (c *baseRPCClient) Genesis() (*ctypes.ResultGenesis, error) {
 
 func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 	result := new(ctypes.ResultBlock)
-	params := make(map[string]interface{}, 0)
+	params := make(map[string]interface{})
 	if height != nil {
 		params["height"] = height
 	}
@@ -369,7 +369,7 @@ func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 
 func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	result := new(ctypes.ResultBlockResults)
-	params := make(map[string]interface{}, 0)
+	params := make(map[string]interface{})
 	if height != nil {
 		params["height"] = height
 	}
@@ -382,7 +382,7 @@ func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults,
 
 func (c *baseRPCClient) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
-	params := make(map[string]interface{}, 0)
+	params := make(map[string]interface{})
 	if height != nil {
 		params["height"] = height
 	}
