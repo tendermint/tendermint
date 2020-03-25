@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -23,7 +24,7 @@ var (
 type Proposal struct {
 	Type      SignedMsgType
 	Height    int64     `json:"height"`
-	Round     int32     `json:"round"`
+	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
 	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
@@ -54,8 +55,14 @@ func (p *Proposal) ValidateBasic() error {
 	if p.Round < 0 {
 		return errors.New("negative Round")
 	}
+	if p.Round > math.MaxInt32 {
+		panic("rounds exceeding max possible rounds")
+	}
 	if p.POLRound < -1 {
 		return errors.New("negative POLRound (exception: -1)")
+	}
+	if p.POLRound > math.MaxInt32 {
+		panic("pol_rounds exceeding max possible pol_rounds")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)

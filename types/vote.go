@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -48,11 +49,11 @@ type Address = crypto.Address
 type Vote struct {
 	Type             SignedMsgType `json:"type"`
 	Height           int64         `json:"height"`
-	Round            int32         `json:"round"`
+	Round            int32         `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time     `json:"timestamp"`
 	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int32         `json:"validator_index"`
+	ValidatorIndex   int32         `json:"validator_index"` // assume there will not be greater than 2_147_483_647 validators
 	Signature        []byte        `json:"signature"`
 }
 
@@ -143,6 +144,9 @@ func (vote *Vote) ValidateBasic() error {
 	if vote.Round < 0 {
 		return errors.New("negative Round")
 	}
+	if vote.Round > math.MaxInt32 {
+		panic("round exceeding max possible rounds")
+	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
@@ -162,6 +166,9 @@ func (vote *Vote) ValidateBasic() error {
 	}
 	if vote.ValidatorIndex < 0 {
 		return errors.New("negative ValidatorIndex")
+	}
+	if vote.ValidatorIndex > math.MaxInt32 {
+		panic("there can not be > than 2_147_483_647 validators")
 	}
 	if len(vote.Signature) == 0 {
 		return errors.New("signature is missing")
