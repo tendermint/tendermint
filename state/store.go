@@ -126,12 +126,13 @@ type ABCIResponses struct {
 }
 
 // PruneStates deletes states between the given heights (including from, excluding to). It is not
-// guaranteed to delete all states, since the first state, last checkpointed state, and states being
-// pointed to by e.g. `LastHeightChanged` must remain. The state at to must also exist.
+// guaranteed to delete all states, since the last checkpointed state and states being pointed to by
+// e.g. `LastHeightChanged` must remain. The state at to must also exist.
 //
-// The interval must be given explicitly since we cannot scan all keys; the key encoding does not
-// preserve ordering of heights, see: https://github.com/tendermint/tendermint/issues/4567
-// This will cause some old states to be left behind.
+// The from parameter is necessary since we can't do a key scan in a performant way due to the key
+// encoding not preserving ordering: https://github.com/tendermint/tendermint/issues/4567
+// This will cause some old states to be left behind when doing incremental partial prunes,
+// specifically older checkpoints and LastHeightChanged targets.
 func PruneStates(db dbm.DB, from int64, to int64) error {
 	if from <= 0 || to <= 0 {
 		return fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
