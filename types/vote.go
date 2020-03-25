@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -144,9 +143,6 @@ func (vote *Vote) ValidateBasic() error {
 	if vote.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if vote.Round > math.MaxInt32 {
-		panic("round exceeding max possible rounds")
-	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
@@ -166,9 +162,6 @@ func (vote *Vote) ValidateBasic() error {
 	}
 	if vote.ValidatorIndex < 0 {
 		return errors.New("negative ValidatorIndex")
-	}
-	if vote.ValidatorIndex > math.MaxInt32 {
-		panic("there can not be > than 2_147_483_647 validators")
 	}
 	if len(vote.Signature) == 0 {
 		return errors.New("signature is missing")

@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -55,14 +54,8 @@ func (p *Proposal) ValidateBasic() error {
 	if p.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if p.Round > math.MaxInt32 {
-		panic("rounds exceeding max possible rounds")
-	}
 	if p.POLRound < -1 {
 		return errors.New("negative POLRound (exception: -1)")
-	}
-	if p.POLRound > math.MaxInt32 {
-		panic("pol_rounds exceeding max possible pol_rounds")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)

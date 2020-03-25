@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"fmt"
-	math "math"
 	"strings"
 	"sync"
 	"time"
@@ -671,9 +670,6 @@ func (commit *Commit) ValidateBasic() error {
 	}
 	if commit.Round < 0 {
 		return errors.New("negative Round")
-	}
-	if commit.Round > math.MaxInt32 {
-		panic("rounds cannot exceed 2_147_483_647")
 	}
 
 	if commit.BlockID.IsZero() {

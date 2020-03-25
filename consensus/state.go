@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -453,6 +455,9 @@ func (cs *State) updateHeight(height int64) {
 }
 
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+	if round > math.MaxInt32 {
+		panic(fmt.Errorf("round: %v is greater than 2_147_483_647", round))
+	}
 	cs.Round = round
 	cs.Step = step
 }
@@ -850,7 +855,11 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
-	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
+	newRound, err := tmmath.SafeAddInt32(round, 1)
+	if err != nil {
+		panic(fmt.Errorf("error on increment to round, err: %w", err))
+	}
+	cs.Votes.SetRound(newRound) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
 
 	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())

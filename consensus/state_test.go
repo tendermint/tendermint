@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -175,6 +176,13 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 
 	// if we're a validator, enterPropose should not timeout
 	ensureNoNewTimeout(timeoutCh, cs.config.TimeoutPropose.Nanoseconds())
+}
+
+func TestStateEnterNewRoundOverflow(t *testing.T) {
+	cs, _ := randState(1)
+	height := cs.Height
+
+	assert.Panics(t, func() { cs.enterNewRound(height, math.MaxInt32) })
 }
 
 func TestStateBadProposal(t *testing.T) {
