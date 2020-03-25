@@ -22,7 +22,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
-- [consensus] Add `retain_blocks` config option to automatically prune old blocks
+- [consensus] Add `retain_blocks` config option to automatically prune old blocks and associated data
 
 - [rpc] Add `/status` response fields for the earliest block available on the node
 

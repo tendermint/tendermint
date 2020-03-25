@@ -1428,12 +1428,20 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Prune the blockStore.
 	if cs.config.RetainBlocks > 0 && uint64(cs.blockStore.Size()) > cs.config.RetainBlocks {
+		oldBase := cs.blockStore.Base()
 		newBase := cs.blockStore.Height() - int64(cs.config.RetainBlocks) + 1
 		pruned, err := cs.blockStore.PruneBlocks(newBase)
 		if err != nil {
 			cs.Logger.Error(fmt.Sprintf("Failed to prune blocks to height %v", newBase), "err", err.Error())
 		} else {
 			cs.Logger.Info("Pruned blocks", "pruned", pruned, "base", newBase, "height", height)
+			err = sm.PruneStates(cs.blockExec.DB(), oldBase, newBase)
+			if err != nil {
+				cs.Logger.Error(fmt.Sprintf("Failed to prune states between heights %v and %v",
+					oldBase, newBase), "err", err.Error())
+			} else {
+				cs.Logger.Info("Pruned state database", "from", oldBase, "to", newBase)
+			}
 		}
 	}
 
