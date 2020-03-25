@@ -365,29 +365,123 @@ type ConflictingHeadersEvidence struct {
 func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
-	// maliciousHeaders := make([]SignedHeader, 0)
-	// switch {
-	// case bytes.Equal(ev.H1.Hash(), committedHeader.Hash()):
-	// case bytes.Equal(ev.H2.Hash(), committedHeader.Hash()):
-	// default:
-
-	// }
-
 	// if there are signers(H2) that are not part of validators(H1), they
 	// misbehaved as they are signing protocol messages in heights they are not
 	// validators => immediately slashable (#F4).
+	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
+		for _, sig := range ev.H1.Commit.Signatures {
+			if !valSet.HasAddress(sig.ValidatorAddress) {
+				evList = append(evList, PhantomValidatorEvidence{
+					Header:    *ev.H1.Header,
+					CommitSig: sig,
+				})
+			}
+		}
+	}
+	// NOTE: Remember it's possible that both headers (H1 & H2) were not
+	// committed from this node's perspective.
+	if !bytes.Equal(committedHeader.Hash(), ev.H2.Hash()) {
+		for _, sig := range ev.H2.Commit.Signatures {
+			if !valSet.HasAddress(sig.ValidatorAddress) {
+				evList = append(evList, PhantomValidatorEvidence{
+					Header:    *ev.H2.Header,
+					CommitSig: sig,
+				})
+			}
+		}
+	}
 
 	// if H1.Round == H2.Round, and some signers signed different precommit
 	// messages in both commits, then it is an equivocation misbehavior =>
 	// immediately slashable (#F1).
+	if ev.H1.Commit.Round == ev.H2.Commit.Round {
+		for i, sigA := range ev.H1.Commit.Signatures {
+			// TODO: Replace with HasAddress once DuplicateVoteEvidence#PubKey is
+			// removed.
+			_, val := valSet.GetByAddress(sigA.ValidatorAddress)
+			if val == nil {
+				continue
+			}
 
-	// if H1.Round != H2.Round we need to run full detection procedure => not
-	// immediately slashable.
+			if sigA.Absent() {
+				continue
+			}
+			sigB := ev.H1.Commit.Signatures[i]
+			if sigB.Absent() {
+				continue
+			}
+
+			evList = append(evList, &DuplicateVoteEvidence{
+				PubKey: val.PubKey,
+				// VoteA:  sigA,
+				// VoteB:  sigB,
+			})
+		}
+
+		return evList
+	}
 
 	// if ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
 	// LastResultsHash in H2 are different (incorrect application state
 	// transition), then it is a lunatic misbehavior => immediately slashable
 	// (#F5).
+	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
+		var invalidField string
+		switch {
+		case !bytes.Equal(committedHeader.ValidatorsHash, ev.H1.ValidatorsHash):
+			invalidField = "ValidatorsHash"
+		case !bytes.Equal(committedHeader.NextValidatorsHash, ev.H1.NextValidatorsHash):
+			invalidField = "NextValidatorsHash"
+		case !bytes.Equal(committedHeader.ConsensusHash, ev.H1.ConsensusHash):
+			invalidField = "ConsensusHash"
+		case !bytes.Equal(committedHeader.AppHash, ev.H1.AppHash):
+			invalidField = "AppHash"
+		case !bytes.Equal(committedHeader.LastResultsHash, ev.H1.LastResultsHash):
+			invalidField = "LastResultsHash"
+		}
+		for _, sig := range ev.H1.Commit.Signatures {
+			if sig.Absent() {
+				continue
+			}
+			evList = append(evList, LunaticValidatorEvidence{
+				Header:             *ev.H1.Header,
+				CommitSig:          sig,
+				InvalidHeaderField: invalidField,
+			})
+		}
+	}
+	if !bytes.Equal(committedHeader.Hash(), ev.H2.Hash()) {
+		var invalidField string
+		switch {
+		case !bytes.Equal(committedHeader.ValidatorsHash, ev.H2.ValidatorsHash):
+			invalidField = "ValidatorsHash"
+		case !bytes.Equal(committedHeader.NextValidatorsHash, ev.H2.NextValidatorsHash):
+			invalidField = "NextValidatorsHash"
+		case !bytes.Equal(committedHeader.ConsensusHash, ev.H2.ConsensusHash):
+			invalidField = "ConsensusHash"
+		case !bytes.Equal(committedHeader.AppHash, ev.H2.AppHash):
+			invalidField = "AppHash"
+		case !bytes.Equal(committedHeader.LastResultsHash, ev.H2.LastResultsHash):
+			invalidField = "LastResultsHash"
+		}
+		for _, sig := range ev.H2.Commit.Signatures {
+			if sig.Absent() {
+				continue
+			}
+			evList = append(evList, LunaticValidatorEvidence{
+				Header:             *ev.H2.Header,
+				CommitSig:          sig,
+				InvalidHeaderField: invalidField,
+			})
+		}
+	}
+
+	// if H1.Round != H2.Round we need to run full detection procedure => not
+	// immediately slashable.
+	if ev.H1.Commit.Round != ev.H2.Commit.Round {
+		// evList = append(evList, PotentialAmnesiaEvidence{
+		// })
+	}
 
 	return evList
 }
