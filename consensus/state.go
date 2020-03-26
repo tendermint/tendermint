@@ -857,7 +857,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 	newRound, err := tmmath.SafeAddInt32(round, 1)
 	if err != nil {
-		panic(fmt.Errorf("error on increment to round, err: %w", err))
+		panic(fmt.Errorf("error on increment round, err: %w", err))
 	}
 	cs.Votes.SetRound(newRound) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
