@@ -9,4 +9,4 @@ jobs:
       - name: lint
         run: make proto-lint
       - name: check-breakage
-        run: make proto-check-breakiing
+        run: make proto-check-breaking-ci
