@@ -12,7 +12,7 @@ landing changes in master.
 All work on the code base should be motivated by a [Github
 Issue](https://github.com/tendermint/tendermint/issues).
 [Search](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)
-is a good place start when looking for places to contribute.  If you
+is a good place start when looking for places to contribute. If you
 would like to work on an issue which already exists, please indicate so
 by leaving a comment.
 
@@ -49,8 +49,9 @@ maintainers to take a look.
 ![Contributing flow](./docs/imgs/contributing.png)
 
 Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
-* Contributors don’t waste their time implementing/proposing features which won’t land in master.
-* Maintainers have the necessary context in order to support and review contributions.
+
+- Contributors don’t waste their time implementing/proposing features which won’t land in master.
+- Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
 
@@ -102,7 +103,7 @@ specify exactly the dependency you want to update, eg.
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will have to install the needed dependencies with `make buf`. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
 To generate new stubs based off of your changes you can run `make proto-gen` after installing `protoc` and gogoproto.
 

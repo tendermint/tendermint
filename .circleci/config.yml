@@ -72,19 +72,6 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
-  proto-lint:
-    executor: golang
-    steps:
-      - checkout
-      - run:
-          command: make proto-lint
-
-  proto-breakage:
-    executor: golang
-    steps:
-      - checkout
-      - run:
-          command: make proto-check-breaking-ci
 
   test_abci_apps:
     executor: golang
@@ -406,8 +393,6 @@ workflows:
       - test_abci_apps:
           requires:
             - setup_dependencies
-      - proto-breakage
-      - proto-lint
       - test_abci_cli:
           requires:
             - setup_dependencies
