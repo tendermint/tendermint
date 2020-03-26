@@ -1,7 +1,7 @@
 name: Proto check
 on: [pull_request]
 jobs:
-  setup-docker:
+  proto-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
