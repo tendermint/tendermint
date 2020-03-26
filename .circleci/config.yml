@@ -14,9 +14,6 @@ executors:
       - image: tendermintdev/docker-website-deployment
     environment:
       AWS_REGION: us-east-1
-  protoc:
-    docker:
-      - image: tendermintdev/docker-protoc
 
 commands:
   run_test:
@@ -76,14 +73,14 @@ jobs:
           paths:
             - "."
   proto-lint:
-    executor: protoc
+    executor: golang
     steps:
       - checkout
       - run:
           command: make proto-lint
 
   proto-breakage:
-    executor: protoc
+    executor: golang
     steps:
       - checkout
       - run:
