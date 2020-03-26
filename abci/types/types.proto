@@ -28,17 +28,21 @@ option (gogoproto.testgen_all)  = true;
 
 message Request {
   oneof value {
-    RequestEcho       echo        = 2;
-    RequestFlush      flush       = 3;
-    RequestInfo       info        = 4;
-    RequestSetOption  set_option  = 5;
-    RequestInitChain  init_chain  = 6;
-    RequestQuery      query       = 7;
-    RequestBeginBlock begin_block = 8;
-    RequestCheckTx    check_tx    = 9;
-    RequestDeliverTx  deliver_tx  = 19;
-    RequestEndBlock   end_block   = 11;
-    RequestCommit     commit      = 12;
+    RequestEcho               echo                 = 2;
+    RequestFlush              flush                = 3;
+    RequestInfo               info                 = 4;
+    RequestSetOption          set_option           = 5;
+    RequestInitChain          init_chain           = 6;
+    RequestQuery              query                = 7;
+    RequestBeginBlock         begin_block          = 8;
+    RequestCheckTx            check_tx             = 9;
+    RequestDeliverTx          deliver_tx           = 19;
+    RequestEndBlock           end_block            = 11;
+    RequestCommit             commit               = 12;
+    RequestListSnapshots      list_snapshots       = 13;
+    RequestOfferSnapshot      offer_snapshot       = 14;
+    RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    RequestApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
@@ -102,23 +106,49 @@ message RequestEndBlock {
 
 message RequestCommit {}
 
+// lists available snapshots
+message RequestListSnapshots {
+}
+
+// offers a snapshot to the application
+message RequestOfferSnapshot {
+  Snapshot snapshot = 1;
+  bytes    app_hash = 2;
+}
+
+// fetches a snapshot chunk
+message RequestLoadSnapshotChunk {
+  uint64 height = 1;
+  uint32 format = 2;
+  uint32 chunk  = 3;
+}
+
+// Applies a snapshot chunk
+message RequestApplySnapshotChunk {
+  bytes chunk = 1;
+}
+
 //----------------------------------------
 // Response types
 
 message Response {
   oneof value {
-    ResponseException  exception   = 1;
-    ResponseEcho       echo        = 2;
-    ResponseFlush      flush       = 3;
-    ResponseInfo       info        = 4;
-    ResponseSetOption  set_option  = 5;
-    ResponseInitChain  init_chain  = 6;
-    ResponseQuery      query       = 7;
-    ResponseBeginBlock begin_block = 8;
-    ResponseCheckTx    check_tx    = 9;
-    ResponseDeliverTx  deliver_tx  = 10;
-    ResponseEndBlock   end_block   = 11;
-    ResponseCommit     commit      = 12;
+    ResponseException          exception            = 1;
+    ResponseEcho               echo                 = 2;
+    ResponseFlush              flush                = 3;
+    ResponseInfo               info                 = 4;
+    ResponseSetOption          set_option           = 5;
+    ResponseInitChain          init_chain           = 6;
+    ResponseQuery              query                = 7;
+    ResponseBeginBlock         begin_block          = 8;
+    ResponseCheckTx            check_tx             = 9;
+    ResponseDeliverTx          deliver_tx           = 10;
+    ResponseEndBlock           end_block            = 11;
+    ResponseCommit             commit               = 12;
+    ResponseListSnapshots      list_snapshots       = 13;
+    ResponseOfferSnapshot      offer_snapshot       = 14;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
@@ -209,6 +239,35 @@ message ResponseCommit {
   // reserve 1
   bytes data          = 2;
   int64 retain_height = 3;
+}
+
+message ResponseListSnapshots {
+  repeated Snapshot snapshots = 1;
+}
+
+message ResponseOfferSnapshot {
+  bool   accepted = 1;
+  Reason reason   = 2;
+
+  enum Reason {             // Reason why snapshot was rejected
+      unknown        = 0;   // Unknown or generic reason
+      invalid_height = 1;   // Height is rejected: avoid this height
+      invalid_format = 2;   // Format is rejected: avoid this format
+  }
+}
+
+message ResponseLoadSnapshotChunk {
+  bytes chunk = 1;
+}
+
+message ResponseApplySnapshotChunk {
+  bool   applied = 1;
+  Reason reason  = 2;
+
+  enum Reason {            // Reason why chunk failed
+      unknown        = 0;  // Unknown or generic reason
+      verify_failed  = 1;  // Snapshot verification failed
+  }
 }
 
 //----------------------------------------
@@ -330,6 +389,16 @@ message Evidence {
 }
 
 //----------------------------------------
+// State Sync Types
+
+message Snapshot {
+  uint64         height       = 1;  // The height at which the snapshot was taken
+  uint32         format       = 2;  // The application-specific snapshot format
+  repeated bytes chunk_hashes = 3;  // SHA-256 checksums of all chunks, in order
+  bytes          metadata     = 4;  // Arbitrary application metadata
+}
+
+//----------------------------------------
 // Service Definition
 
 service ABCIApplication {
@@ -344,4 +413,8 @@ service ABCIApplication {
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+  rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
+  rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
+  rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
+  rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
 }

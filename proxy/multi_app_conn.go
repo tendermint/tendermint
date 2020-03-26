@@ -15,6 +15,7 @@ type AppConns interface {
 	Mempool() AppConnMempool
 	Consensus() AppConnConsensus
 	Query() AppConnQuery
+	Snapshot() AppConnSnapshot
 }
 
 func NewAppConns(clientCreator ClientCreator) AppConns {
@@ -33,6 +34,7 @@ type multiAppConn struct {
 	mempoolConn   AppConnMempool
 	consensusConn AppConnConsensus
 	queryConn     AppConnQuery
+	snapshotConn  AppConnSnapshot
 
 	clientCreator ClientCreator
 }
@@ -61,6 +63,11 @@ func (app *multiAppConn) Query() AppConnQuery {
 	return app.queryConn
 }
 
+// Returns the snapshot Connection
+func (app *multiAppConn) Snapshot() AppConnSnapshot {
+	return app.snapshotConn
+}
+
 func (app *multiAppConn) OnStart() error {
 	// query connection
 	querycli, err := app.clientCreator.NewABCIClient()
@@ -72,6 +79,17 @@ func (app *multiAppConn) OnStart() error {
 		return errors.Wrap(err, "Error starting ABCI client (query connection)")
 	}
 	app.queryConn = NewAppConnQuery(querycli)
+
+	// snapshot connection
+	snapshotcli, err := app.clientCreator.NewABCIClient()
+	if err != nil {
+		return errors.Wrap(err, "Error creating ABCI client (snapshot connection)")
+	}
+	snapshotcli.SetLogger(app.Logger.With("module", "abci-client", "connection", "snapshot"))
+	if err := snapshotcli.Start(); err != nil {
+		return errors.Wrap(err, "Error starting ABCI client (snapshot connection)")
+	}
+	app.snapshotConn = NewAppConnSnapshot(snapshotcli)
 
 	// mempool connection
 	memcli, err := app.clientCreator.NewABCIClient()
