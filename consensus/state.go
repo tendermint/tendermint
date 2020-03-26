@@ -837,7 +837,11 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	validators := cs.Validators
 	if cs.Round < round {
 		validators = validators.Copy()
-		validators.IncrementProposerPriority(round - cs.Round)
+		newRound, err := tmmath.SafeSubInt32(round, cs.Round)
+		if err != nil {
+			panic(fmt.Errorf("round: %v exceeds min amount of rounds, err: %w", round-cs.Round, err))
+		}
+		validators.IncrementProposerPriority(newRound)
 	}
 
 	// Setup new round
