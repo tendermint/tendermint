@@ -473,7 +473,7 @@ var testPrivValidatorKey = `{
   }
 }`
 
-var testPrivValidatorState = `{ 
+var testPrivValidatorState = `{
   "height": "0",
   "round": 0,
   "step": 0
