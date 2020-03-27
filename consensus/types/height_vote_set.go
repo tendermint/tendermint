@@ -84,10 +84,7 @@ func (hvs *HeightVoteSet) Round() int32 {
 func (hvs *HeightVoteSet) SetRound(round int32) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	newRound, err := tmmath.SafeSubInt32(hvs.round, 1)
-	if err != nil {
-		panic(fmt.Errorf("round: %v exceeds max amount of rounds, err: %w", round+1, err))
-	}
+	newRound := tmmath.SafeSubInt32(hvs.round, 1)
 	if hvs.round != 0 && (round < newRound) {
 		panic("SetRound() must increment hvs.round")
 	}
