@@ -5,26 +5,37 @@ import (
 	"math"
 )
 
-var ErrOverflowInt = errors.New("integer overflow")
+var ErrOverflowInt32 = errors.New("int32 overflow")
 
 // SafeAddInt32 adds two int32 integers
-// If there is an overflow 0, and ErrOverflowInt
-func SafeAddInt32(a, b int32) (int32, error) {
+// If there is an overflow this will panic
+func SafeAddInt32(a, b int32) int32 {
 	if b > 0 && (a > math.MaxInt32-b) {
-		return 0, ErrOverflowInt
+		panic(ErrOverflowInt32)
 	} else if b < 0 && (a < math.MinInt32-b) {
-		return 0, ErrOverflowInt
+		panic(ErrOverflowInt32)
 	}
-	return a + b, nil
+	return a + b
 }
 
 // SafeSubInt32 subtracts two int32 integers
-// If there is an overflow 0, and ErrOverflowInt
-func SafeSubInt32(a, b int32) (int32, error) {
+// If there is an overflow this will panic
+func SafeSubInt32(a, b int32) int32 {
 	if b > 0 && (a < math.MinInt32+b) {
-		return 0, ErrOverflowInt
+		panic(ErrOverflowInt32)
 	} else if b < 0 && (a > math.MaxInt32+b) {
-		return 0, ErrOverflowInt
+		panic(ErrOverflowInt32)
 	}
-	return a - b, nil
+	return a - b
+}
+
+// SafeConvertInt32 takes a int and checks if it overflows
+// If there is an overflow this will panic
+func SafeConvertInt32(a int) int32 {
+	if a > math.MaxInt32 {
+		panic(ErrOverflowInt32)
+	} else if a < math.MinInt32 {
+		panic(ErrOverflowInt32)
+	}
+	return int32(a)
 }
