@@ -130,7 +130,7 @@ func NewPEXReactor(b AddrBook, config *PEXReactorConfig) *PEXReactor {
 		lastReceivedRequests: cmn.NewCMap(),
 		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
-	r.BaseReactor = *p2p.NewBaseReactor("PEXReactor", r)
+	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
 }
 

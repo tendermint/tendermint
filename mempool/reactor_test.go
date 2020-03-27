@@ -223,3 +223,21 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 		ids.ReserveForPeer(peer)
 	})
 }
+
+func TestDontExhaustMaxActiveIDs(t *testing.T) {
+	config := cfg.TestConfig()
+	const N = 1
+	reactors := makeAndConnectReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
+	reactor := reactors[0]
+
+	for i := 0; i < maxActiveIDs+1; i++ {
+		peer := mock.NewPeer(nil)
+		reactor.Receive(MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
+		reactor.AddPeer(peer)
+	}
+}
