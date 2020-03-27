@@ -9,7 +9,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://godoc.org/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.13-blue.svg)](https://github.com/moovweb/gvm)
-[![Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)  
+[![Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
@@ -68,17 +68,16 @@ See the [install instructions](/docs/introduction/install.md)
 
 ## Contributing
 
-Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions,
-and the [contributing guidelines](CONTRIBUTING.md) when submitting code.
+Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
-Join the larger community on the [forum](https://forum.cosmos.network/) and the [chat](https://riot.im/app/#/room/#tendermint:matrix.org).
+Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
+and the [style guide](STYLE_GUIDE.md).
 
-To learn more about the structure of the software, watch the [Developer
-Sessions](/docs/DEV_SESSIONS.md) and read some [Architectural Decision
-Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+To get more active, Join the wider community at [Discord](https://discord.gg/AzefAFd) or jump onto the [Forum](https://forum.cosmos.network/).
 
-Learn more by reading the code and comparing it to the
-[specification](https://github.com/tendermint/spec).
+Learn more by reading the code and the
+[specifications](https://github.com/tendermint/spec) or watch the [Developer Sessions](/docs/DEV_SESSIONS.md) and read up on the
+[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 ## Versioning
 
