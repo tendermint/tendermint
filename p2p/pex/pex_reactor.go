@@ -141,7 +141,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		lastReceivedRequests: cmap.NewCMap(),
 		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
-	r.BaseReactor = *p2p.NewBaseReactor("Reactor", r)
+	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
 }
 
