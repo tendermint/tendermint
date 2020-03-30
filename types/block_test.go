@@ -214,7 +214,7 @@ func TestCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
-	assert.Equal(t, 1, commit.Round)
+	assert.EqualValues(t, 1, commit.Round)
 	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
@@ -377,9 +377,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {857, 1, 0, true, 0},
-		3: {858, 1, 0, false, 0},
-		4: {859, 1, 0, false, 1},
+		2: {849, 1, 0, true, 0},
+		3: {850, 1, 0, false, 0},
+		4: {851, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -406,9 +406,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {952, 1, true, 0},
-		3: {953, 1, false, 0},
-		4: {954, 1, false, 1},
+		2: {943, 1, true, 0},
+		3: {944, 1, false, 0},
+		4: {945, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -437,7 +437,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	chainID := voteSet.ChainID()
 	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
 
-	for i := 0; i < len(vals); i++ {
+	for i := int32(0); int(i) < len(vals); i++ {
 		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
 		vote3 := commit.GetVote(i)
@@ -472,7 +472,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	for _, tc := range testCases {
 		voteSet, valSet, vals := randVoteSet(height-1, round, PrecommitType, tc.numValidators, 1)
 
-		vi := 0
+		vi := int32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
 				pubKey, err := vals[vi].GetPubKey()

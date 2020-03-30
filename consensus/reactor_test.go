@@ -682,8 +682,8 @@ func capture() {
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 	testCases := []struct { // nolint: maligned
 		expectErr              bool
-		messageRound           int
-		messageLastCommitRound int
+		messageRound           int32
+		messageLastCommitRound int32
 		messageHeight          int64
 		testName               string
 		messageStep            cstypes.RoundStepType
@@ -791,7 +791,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		messageHeight int64
-		messageRound  int
+		messageRound  int32
 		messagePart   *types.Part
 		expectErr     bool
 	}{
@@ -827,8 +827,8 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 
 	testCases := []struct { // nolint: maligned
 		expectErr     bool
-		messageRound  int
-		messageIndex  int
+		messageRound  int32
+		messageIndex  int32
 		messageHeight int64
 		testName      string
 		messageType   types.SignedMsgType
@@ -872,7 +872,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 
 	testCases := []struct { // nolint: maligned
 		expectErr      bool
-		messageRound   int
+		messageRound   int32
 		messageHeight  int64
 		testName       string
 		messageType    types.SignedMsgType

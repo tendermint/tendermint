@@ -218,9 +218,9 @@ func TestMaxVoteBytes(t *testing.T) {
 
 	vote := &Vote{
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   math.MaxInt64,
+		ValidatorIndex:   math.MaxInt32,
 		Height:           math.MaxInt64,
-		Round:            math.MaxInt64,
+		Round:            math.MaxInt32,
 		Timestamp:        timestamp,
 		Type:             PrevoteType,
 		BlockID: BlockID{
