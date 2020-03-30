@@ -145,7 +145,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
-// Time return the time the evidence was created
+// Time returns the time the evidence was created.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
 	return dve.VoteA.Timestamp
 }
@@ -362,12 +362,13 @@ type ConflictingHeadersEvidence struct {
 	H2 *SignedHeader `json:"h_2"`
 }
 
-// Split breaks up ConflictingHeadersEvidence into smaller evidences:
-// PhantomValidatorEvidence, LunaticValidatorEvidence, DuplicateVoteEvidence
-// and PotentialAmnesiaEvidence.
+// Split breaks up eviddence into smaller chunks (one per validator except for
+// PotentialAmnesiaEvidence): PhantomValidatorEvidence,
+// LunaticValidatorEvidence, DuplicateVoteEvidence and
+// PotentialAmnesiaEvidence.
 //
-// committedHeader - header at height H1.Height
-// valSet - validator set at height H1.Height
+// committedHeader - header at height H1.Height == H2.Height
+// valSet - validator set at height H1.Height == H2.Height
 func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
@@ -385,27 +386,47 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 	// messages in both commits, then it is an equivocation misbehavior =>
 	// immediately slashable (#F1).
 	if ev.H1.Commit.Round == ev.H2.Commit.Round {
-		for i, sigA := range ev.H1.Commit.Signatures {
-			// TODO: Replace with HasAddress once DuplicateVoteEvidence#PubKey is
+		// Use the fact that signatures are sorted by ValidatorAddress.
+		var (
+			i = 0
+			j = 0
+		)
+		for i < len(ev.H1.Commit.Signatures) {
+			sigA := ev.H1.Commit.Signatures[i]
+			if sigA.Absent() {
+				i++
+				continue
+			}
+			// FIXME: Replace with HasAddress once DuplicateVoteEvidence#PubKey is
 			// removed.
 			_, val := valSet.GetByAddress(sigA.ValidatorAddress)
 			if val == nil {
+				i++
 				continue
 			}
 
-			if sigA.Absent() {
-				continue
-			}
-			sigB := ev.H1.Commit.Signatures[i]
-			if sigB.Absent() {
-				continue
-			}
+			for j < len(ev.H2.Commit.Signatures) {
+				sigB := ev.H2.Commit.Signatures[j]
+				if sigB.Absent() {
+					j++
+					continue
+				}
 
-			evList = append(evList, &DuplicateVoteEvidence{
-				PubKey: val.PubKey,
-				// VoteA:  sigA,
-				// VoteB:  sigB,
-			})
+				switch bytes.Compare(sigA.ValidatorAddress, sigB.ValidatorAddress) {
+				case 0:
+					evList = append(evList, &DuplicateVoteEvidence{
+						PubKey: val.PubKey,
+						VoteA:  ev.H1.Commit.GetVote(i),
+						VoteB:  ev.H2.Commit.GetVote(j),
+					})
+
+					break
+				case 1:
+					i++
+				case -1:
+					j++
+				}
+			}
 		}
 	} else {
 		// if H1.Round != H2.Round we need to run full detection procedure => not
@@ -494,6 +515,8 @@ func (ev ConflictingHeadersEvidence) Verify(chainID string, _ crypto.PubKey) err
 	panic("use ConflictingHeadersEvidence#VerifyComposite to verify composite evidence")
 }
 
+// VerifyComposite verifies that both headers belong to the same chain, same
+// height and signed by 1/3+ of validators at height H1.Height == H2.Height.
 func (ev ConflictingHeadersEvidence) VerifyComposite(chainID string, valSet *ValidatorSet) error {
 	// ChainID must be the same
 	if ev.H1.ChainID != ev.H2.ChainID {
