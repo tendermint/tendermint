@@ -23,7 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [Docker] \#4569 Default configuration added to docker image (you can still mount your own config the same way) (@greg-szabo)
 - [lite2] [\#4562](https://github.com/tendermint/tendermint/pull/4562) Cache headers when using bisection (@cmwaters)
 - [all] [\#4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized
-- [tools] \#4615 Allow developers to use docker to generate proto stubs.
+- [tools] \#4615 Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker`.
 
 ### BUG FIXES:
 
