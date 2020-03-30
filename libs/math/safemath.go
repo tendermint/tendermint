@@ -31,7 +31,7 @@ func SafeSubInt32(a, b int32) int32 {
 
 // SafeConvertInt32 takes a int and checks if it overflows
 // If there is an overflow this will panic
-func SafeConvertInt32(a int) int32 {
+func SafeConvertInt32(a int64) int32 {
 	if a > math.MaxInt32 {
 		panic(ErrOverflowInt32)
 	} else if a < math.MinInt32 {
