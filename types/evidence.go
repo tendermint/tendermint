@@ -531,16 +531,21 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(chainID string, valSet *Val
 		return errors.New("headers are from different heights")
 	}
 
-	// Check signatures.
-	if len(ev.H1.Commit.Signatures) != valSet.Size() {
-		return errors.Errorf("commit #1 contains too many signatures: %d, expected %d",
+	// Limit the number of signatures to avoid DoS attacks where a header
+	// contains too many signatures.
+	//
+	// Validator set size               = 100 [node]
+	// Max validator set size = 100 * 2 = 200 [fork?]
+	maxNumValidators := valSet.Size() * 2
+	if len(ev.H1.Commit.Signatures) > maxNumValidators {
+		return errors.Errorf("commit #1 contains too many signatures: %d, expected no more than %d",
 			len(ev.H1.Commit.Signatures),
-			valSet.Size())
+			maxNumValidators)
 	}
-	if len(ev.H2.Commit.Signatures) != valSet.Size() {
-		return errors.Errorf("commit #2 contains too many signatures: %d, expected %d",
+	if len(ev.H2.Commit.Signatures) > maxNumValidators {
+		return errors.Errorf("commit #2 contains too many signatures: %d, expected no more than %d",
 			len(ev.H2.Commit.Signatures),
-			valSet.Size())
+			maxNumValidators)
 	}
 
 	// Check both headers are signed by 1/3+ of voting power.
