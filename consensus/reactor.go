@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -57,7 +58,7 @@ func NewReactor(consensusState *State, fastSync bool, options ...ReactorOption) 
 		metrics:  NopMetrics(),
 	}
 	conR.updateFastSyncingMetric()
-	conR.BaseReactor = *p2p.NewBaseReactor("Reactor", conR)
+	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
 
 	for _, option := range options {
 		option(conR)

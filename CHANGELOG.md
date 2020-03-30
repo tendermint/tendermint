@@ -147,7 +147,7 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 
 - Apps
 
-  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
+  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/informalsystems/tm-load-test)
 
 - Go API
 
