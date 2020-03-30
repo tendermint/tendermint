@@ -54,6 +54,10 @@ proto-gen:
 	@sh scripts/protocgen.sh
 .PHONY: proto-gen
 
+proto-gen-docker:
+	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/build-proto sh ./scripts/protocgen.sh
+.PHONY: proto-gen-docker
+
 proto-lint:
 	@$(DOCKER_BUF) check lint --error-format=json
 .PHONY: proto-lint
