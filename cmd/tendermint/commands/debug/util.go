@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
 	cfg "github.com/tendermint/tendermint/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )

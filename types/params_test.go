@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 

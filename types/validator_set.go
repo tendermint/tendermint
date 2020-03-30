@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 )
@@ -73,7 +74,7 @@ func (vals *ValidatorSet) IsNilOrEmpty() bool {
 
 // CopyIncrementProposerPriority increments ProposerPriority and updates the
 // proposer on a copy, and returns it.
-func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet {
+func (vals *ValidatorSet) CopyIncrementProposerPriority(times int32) *ValidatorSet {
 	copy := vals.Copy()
 	copy.IncrementProposerPriority(times)
 	return copy
@@ -82,7 +83,7 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 // IncrementProposerPriority increments ProposerPriority of each validator and updates the
 // proposer. Panics if validator set is empty.
 // `times` must be positive.
-func (vals *ValidatorSet) IncrementProposerPriority(times int) {
+func (vals *ValidatorSet) IncrementProposerPriority(times int32) {
 	if vals.IsNilOrEmpty() {
 		panic("empty validator set")
 	}
@@ -99,7 +100,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 
 	var proposer *Validator
 	// Call IncrementProposerPriority(1) times times.
-	for i := 0; i < times; i++ {
+	for i := int32(0); i < times; i++ {
 		proposer = vals.incrementProposerPriority()
 	}
 
@@ -233,12 +234,12 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 
 // GetByAddress returns an index of the validator with address and validator
 // itself if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int, val *Validator) {
+func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
 	idx := sort.Search(len(vals.Validators), func(i int) bool {
 		return bytes.Compare(address, vals.Validators[i].Address) <= 0
 	})
 	if idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address) {
-		return idx, vals.Validators[idx].Copy()
+		return int32(idx), vals.Validators[idx].Copy()
 	}
 	return -1, nil
 }
@@ -246,8 +247,8 @@ func (vals *ValidatorSet) GetByAddress(address []byte) (index int, val *Validato
 // GetByIndex returns the validator's address and validator itself by index.
 // It returns nil values if index is less than 0 or greater or equal to
 // len(ValidatorSet.Validators).
-func (vals *ValidatorSet) GetByIndex(index int) (address []byte, val *Validator) {
-	if index < 0 || index >= len(vals.Validators) {
+func (vals *ValidatorSet) GetByIndex(index int32) (address []byte, val *Validator) {
+	if index < 0 || int(index) >= len(vals.Validators) {
 		return nil, nil
 	}
 	val = vals.Validators[index]
@@ -647,7 +648,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		val := vals.Validators[idx]
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -711,7 +712,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	// Check old voting power.
 	oldVotingPower := int64(0)
-	seen := map[int]bool{}
+	seen := map[int32]bool{}
 
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -726,7 +727,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		seen[oldIdx] = true
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -764,7 +765,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 
 	var (
 		talliedVotingPower int64
-		seenVals           = make(map[int]int, len(commit.Signatures)) // validator index -> commit index
+		seenVals           = make(map[int32]int, len(commit.Signatures)) // validator index -> commit index
 		votingPowerNeeded  = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	)
 
@@ -786,7 +787,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			seenVals[valIdx] = idx
 
 			// Validate signature.
-			voteSignBytes := commit.VoteSignBytes(chainID, idx)
+			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	amino "github.com/tendermint/go-amino"
@@ -17,7 +18,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 482
+	MaxEvidenceBytes int64 = 476
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -278,7 +279,7 @@ type MockEvidence struct {
 var _ Evidence = &MockEvidence{}
 
 // UNSTABLE
-func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) MockEvidence {
+func NewMockEvidence(height int64, eTime time.Time, idx int32, address []byte) MockEvidence {
 	return MockEvidence{
 		EvidenceHeight:  height,
 		EvidenceTime:    eTime,

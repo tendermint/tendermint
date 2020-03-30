@@ -14,6 +14,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#4382 `PartSetHeader` has become a protobuf type, `Total` has been changed from a `int` to a `int32`
 - [types] \#4382  `BlockID` has become a protobuf type
 - [types] \#4382  enum `CheckTxType` values have been made uppercase: `NEW` & `RECHECK`
+- [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
+- [types] \#4582 Proposal: `POLRound` & `Round` are now int32
+- [types] \#4582 Block: `Round` is now int32
+- [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
+- [consensus] \#4582 HeightVoteSet: `round` is now int32
 - [crypto] \#4460 Introduce `PubKey` & `PrivKey` proto types only for tendermint use.
 - [crypto] \#4460 `Ed25519`, `Secp256k1` & `Sr25519` are now []byte
 - [crypto] \#4460 `Byte()` method on all keys now return the raw bytes of the key
@@ -24,8 +29,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - secp256k1: type`PubKeySecp256k1` is now `PubKey`
     - sr25519: type `PrivKeySr25519` is now `PrivKey`
     - sr25519: type `PubKeySr25519` is now `PubKey`
-
-
+- [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
 - Apps
 
 - Go API
@@ -36,5 +40,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)
 - [privval] \#4534 Add `error` as a return value on`GetPubKey()`
+- [Docker] \#4569 Default configuration added to docker image (you can still mount your own config the same way) (@greg-szabo)
+- [lite2] [\#4562](https://github.com/tendermint/tendermint/pull/4562) Cache headers when using bisection (@cmwaters)
+- [all] [\4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized
 
 ### BUG FIXES:
+
+- [rpc] \#4568 Fix panic when `Subscribe` is called, but HTTP client is not running (@melekes)
+  `Subscribe`, `Unsubscribe(All)` methods return an error now.

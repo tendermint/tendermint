@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -124,8 +125,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
-	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
-	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
+	height1, idx1, val1 := int64(8), int32(0), state.Validators.Validators[0].Address
+	height2, idx2, val2 := int64(3), int32(1), state.Validators.Validators[1].Address
 	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
 	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
 

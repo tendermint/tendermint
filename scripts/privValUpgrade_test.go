@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/privval"
 )
 
@@ -106,7 +107,7 @@ func TestLoadAndUpgrade(t *testing.T) {
 					assert.Equal(t, oldPV.PrivKey, upgradedPV.Key.PrivKey)
 
 					assert.Equal(t, oldPV.LastHeight, upgradedPV.LastSignState.Height)
-					assert.Equal(t, oldPV.LastRound, upgradedPV.LastSignState.Round)
+					assert.EqualValues(t, oldPV.LastRound, upgradedPV.LastSignState.Round)
 					assert.Equal(t, oldPV.LastSignature, upgradedPV.LastSignState.Signature)
 					assert.Equal(t, oldPV.LastSignBytes, upgradedPV.LastSignState.SignBytes)
 					assert.Equal(t, oldPV.LastStep, upgradedPV.LastSignState.Step)

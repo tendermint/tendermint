@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -55,12 +56,12 @@ func TestByzantine(t *testing.T) {
 			// NOTE: Now, test validators are MockPV, which by default doesn't
 			// do any safety checks.
 			css[i].privValidator.(types.MockPV).DisableChecks()
-			css[i].decideProposal = func(j int) func(int64, int) {
-				return func(height int64, round int) {
+			css[i].decideProposal = func(j int32) func(int64, int32) {
+				return func(height int64, round int32) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
-			}(i)
-			css[i].doPrevote = func(height int64, round int) {}
+			}(int32(i))
+			css[i].doPrevote = func(height int64, round int32) {}
 		}
 
 		eventBus := css[i].eventBus
@@ -171,7 +172,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -208,7 +209,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Stat
 
 func sendProposalAndParts(
 	height int64,
-	round int,
+	round int32,
 	cs *State,
 	peer p2p.Peer,
 	proposal *types.Proposal,

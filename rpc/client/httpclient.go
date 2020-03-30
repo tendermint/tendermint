@@ -37,6 +37,27 @@ indefinitely until successful.
 Request batching is available for JSON RPC requests over HTTP, which conforms to
 the JSON RPC specification (https://www.jsonrpc.org/specification#batch). See
 the example for more details.
+
+Example:
+
+		c, err := NewHTTP("http://192.168.1.10:26657", "/websocket")
+		if err != nil {
+			// handle error
+		}
+
+		// call Start/Stop if you're subscribing to events
+		err = c.Start()
+		if err != nil {
+			// handle error
+		}
+		defer c.Stop()
+
+		res, err := c.Status()
+		if err != nil {
+			// handle error
+		}
+
+		// handle result
 */
 type HTTP struct {
 	remote string
@@ -121,11 +142,16 @@ func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, e
 	ctypes.RegisterAmino(cdc)
 	rc.SetCodec(cdc)
 
+	wsEvents, err := newWSEvents(cdc, remote, wsEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	httpClient := &HTTP{
 		rpc:           rc,
 		remote:        remote,
 		baseRPCClient: &baseRPCClient{caller: rc},
-		WSEvents:      newWSEvents(cdc, remote, wsEndpoint),
+		WSEvents:      wsEvents,
 	}
 
 	return httpClient, nil
@@ -406,6 +432,9 @@ func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroa
 //-----------------------------------------------------------------------------
 // WSEvents
 
+var errNotRunning = errors.New("client is not running. Use .Start() method to start")
+
+// WSEvents is a wrapper around WSClient, which implements EventsClient.
 type WSEvents struct {
 	service.BaseService
 	cdc      *amino.Codec
@@ -413,41 +442,41 @@ type WSEvents struct {
 	endpoint string
 	ws       *rpcclient.WSClient
 
-	mtx sync.RWMutex
-	// query -> chan
-	subscriptions map[string]chan ctypes.ResultEvent
+	mtx           sync.RWMutex
+	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
 }
 
-func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
-	wsEvents := &WSEvents{
+func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
+	w := &WSEvents{
 		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
 	}
+	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
-	wsEvents.BaseService = *service.NewBaseService(nil, "WSEvents", wsEvents)
-	return wsEvents
-}
-
-// OnStart implements service.Service by starting WSClient and event loop.
-func (w *WSEvents) OnStart() (err error) {
+	var err error
 	w.ws, err = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	w.ws.SetCodec(w.cdc)
 	w.ws.SetLogger(w.Logger)
 
-	err = w.ws.Start()
-	if err != nil {
+	return w, nil
+}
+
+// OnStart implements service.Service by starting WSClient and event loop.
+func (w *WSEvents) OnStart() error {
+	if err := w.ws.Start(); err != nil {
 		return err
 	}
 
 	go w.eventListener()
+
 	return nil
 }
 
@@ -459,9 +488,16 @@ func (w *WSEvents) OnStop() {
 // Subscribe implements EventsClient by using WSClient to subscribe given
 // subscriber to query. By default, returns a channel with cap=1. Error is
 // returned if it fails to subscribe.
-// Channel is never closed to prevent clients from seeing an erroneus event.
+//
+// Channel is never closed to prevent clients from seeing an erroneous event.
+//
+// It returns an error if WSEvents is not running.
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+
+	if !w.IsRunning() {
+		return nil, errNotRunning
+	}
 
 	if err := w.ws.Subscribe(ctx, query); err != nil {
 		return nil, err
@@ -484,7 +520,13 @@ func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 
 // Unsubscribe implements EventsClient by using WSClient to unsubscribe given
 // subscriber from query.
+//
+// It returns an error if WSEvents is not running.
 func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
+	if !w.IsRunning() {
+		return errNotRunning
+	}
+
 	if err := w.ws.Unsubscribe(ctx, query); err != nil {
 		return err
 	}
@@ -501,7 +543,13 @@ func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 
 // UnsubscribeAll implements EventsClient by using WSClient to unsubscribe
 // given subscriber from all the queries.
+//
+// It returns an error if WSEvents is not running.
 func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	if !w.IsRunning() {
+		return errNotRunning
+	}
+
 	if err := w.ws.UnsubscribeAll(ctx); err != nil {
 		return err
 	}
