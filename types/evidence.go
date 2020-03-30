@@ -358,37 +358,27 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 // observes two (or more) conflicting headers, both having 1/3+ of the voting
 // power of the currently trusted validator set.
 type ConflictingHeadersEvidence struct {
-	H1 SignedHeader `json:"h_1"`
-	H2 SignedHeader `json:"h_2"`
+	H1 *SignedHeader `json:"h_1"`
+	H2 *SignedHeader `json:"h_2"`
 }
 
-func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
+// Split breaks up ConflictingHeadersEvidence into smaller evidences:
+// PhantomValidatorEvidence, LunaticValidatorEvidence, DuplicateVoteEvidence
+// and PotentialAmnesiaEvidence.
+//
+// committedHeader - header at height H1.Height
+// valSet - validator set at height H1.Height
+func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
-	// if there are signers(H2) that are not part of validators(H1), they
-	// misbehaved as they are signing protocol messages in heights they are not
-	// validators => immediately slashable (#F4).
-	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
-		for _, sig := range ev.H1.Commit.Signatures {
-			if !valSet.HasAddress(sig.ValidatorAddress) {
-				evList = append(evList, PhantomValidatorEvidence{
-					Header:    *ev.H1.Header,
-					CommitSig: sig,
-				})
-			}
-		}
-	}
 	// NOTE: Remember it's possible that both headers (H1 & H2) were not
 	// committed from this node's perspective.
+
+	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
+		evList = append(evList, ev.phantomOrLunaticValidatorEvidence(ev.H1, committedHeader, valSet)...)
+	}
 	if !bytes.Equal(committedHeader.Hash(), ev.H2.Hash()) {
-		for _, sig := range ev.H2.Commit.Signatures {
-			if !valSet.HasAddress(sig.ValidatorAddress) {
-				evList = append(evList, PhantomValidatorEvidence{
-					Header:    *ev.H2.Header,
-					CommitSig: sig,
-				})
-			}
-		}
+		evList = append(evList, ev.phantomOrLunaticValidatorEvidence(ev.H2, committedHeader, valSet)...)
 	}
 
 	// if H1.Round == H2.Round, and some signers signed different precommit
@@ -417,70 +407,64 @@ func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Vali
 				// VoteB:  sigB,
 			})
 		}
+	} else {
+		// if H1.Round != H2.Round we need to run full detection procedure => not
+		// immediately slashable.
+		// evList = append(evList, PotentialAmnesiaEvidence{
+		// })
+	}
 
-		return evList
+	return evList
+}
+
+func (ev *ConflictingHeadersEvidence) phantomOrLunaticValidatorEvidence(h *SignedHeader,
+	committedHeader *Header, valSet *ValidatorSet) []Evidence {
+
+	evList := make([]Evidence, 0)
+
+	// if there are signers(H2) that are not part of validators(H1), they
+	// misbehaved as they are signing protocol messages in heights they are not
+	// validators => immediately slashable (#F4).
+	for _, sig := range h.Commit.Signatures {
+		if sig.Absent() {
+			continue
+		}
+		if !valSet.HasAddress(sig.ValidatorAddress) {
+			evList = append(evList, &PhantomValidatorEvidence{
+				Header:    h.Header,
+				CommitSig: sig,
+			})
+		}
 	}
 
 	// if ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
 	// LastResultsHash in H2 are different (incorrect application state
 	// transition), then it is a lunatic misbehavior => immediately slashable
 	// (#F5).
-	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
-		var invalidField string
-		switch {
-		case !bytes.Equal(committedHeader.ValidatorsHash, ev.H1.ValidatorsHash):
-			invalidField = "ValidatorsHash"
-		case !bytes.Equal(committedHeader.NextValidatorsHash, ev.H1.NextValidatorsHash):
-			invalidField = "NextValidatorsHash"
-		case !bytes.Equal(committedHeader.ConsensusHash, ev.H1.ConsensusHash):
-			invalidField = "ConsensusHash"
-		case !bytes.Equal(committedHeader.AppHash, ev.H1.AppHash):
-			invalidField = "AppHash"
-		case !bytes.Equal(committedHeader.LastResultsHash, ev.H1.LastResultsHash):
-			invalidField = "LastResultsHash"
-		}
-		for _, sig := range ev.H1.Commit.Signatures {
+	var invalidField string
+	switch {
+	case !bytes.Equal(committedHeader.ValidatorsHash, h.ValidatorsHash):
+		invalidField = "ValidatorsHash"
+	case !bytes.Equal(committedHeader.NextValidatorsHash, h.NextValidatorsHash):
+		invalidField = "NextValidatorsHash"
+	case !bytes.Equal(committedHeader.ConsensusHash, h.ConsensusHash):
+		invalidField = "ConsensusHash"
+	case !bytes.Equal(committedHeader.AppHash, h.AppHash):
+		invalidField = "AppHash"
+	case !bytes.Equal(committedHeader.LastResultsHash, h.LastResultsHash):
+		invalidField = "LastResultsHash"
+	}
+	if invalidField != "" {
+		for _, sig := range h.Commit.Signatures {
 			if sig.Absent() {
 				continue
 			}
 			evList = append(evList, LunaticValidatorEvidence{
-				Header:             *ev.H1.Header,
+				Header:             h.Header,
 				CommitSig:          sig,
 				InvalidHeaderField: invalidField,
 			})
 		}
-	}
-	if !bytes.Equal(committedHeader.Hash(), ev.H2.Hash()) {
-		var invalidField string
-		switch {
-		case !bytes.Equal(committedHeader.ValidatorsHash, ev.H2.ValidatorsHash):
-			invalidField = "ValidatorsHash"
-		case !bytes.Equal(committedHeader.NextValidatorsHash, ev.H2.NextValidatorsHash):
-			invalidField = "NextValidatorsHash"
-		case !bytes.Equal(committedHeader.ConsensusHash, ev.H2.ConsensusHash):
-			invalidField = "ConsensusHash"
-		case !bytes.Equal(committedHeader.AppHash, ev.H2.AppHash):
-			invalidField = "AppHash"
-		case !bytes.Equal(committedHeader.LastResultsHash, ev.H2.LastResultsHash):
-			invalidField = "LastResultsHash"
-		}
-		for _, sig := range ev.H2.Commit.Signatures {
-			if sig.Absent() {
-				continue
-			}
-			evList = append(evList, LunaticValidatorEvidence{
-				Header:             *ev.H2.Header,
-				CommitSig:          sig,
-				InvalidHeaderField: invalidField,
-			})
-		}
-	}
-
-	// if H1.Round != H2.Round we need to run full detection procedure => not
-	// immediately slashable.
-	if ev.H1.Commit.Round != ev.H2.Commit.Round {
-		// evList = append(evList, PotentialAmnesiaEvidence{
-		// })
 	}
 
 	return evList
@@ -576,7 +560,7 @@ func (ev ConflictingHeadersEvidence) String() string {
 //-------------------------------------------
 
 type PhantomValidatorEvidence struct {
-	Header    Header    `json:"header"`
+	Header    *Header   `json:"header"`
 	CommitSig CommitSig `json:"commit_sig"`
 }
 
@@ -625,7 +609,7 @@ func (e PhantomValidatorEvidence) String() string {
 //-------------------------------------------
 
 type LunaticValidatorEvidence struct {
-	Header             Header    `json:"header"`
+	Header             *Header   `json:"header"`
 	CommitSig          CommitSig `json:"commit_sig"`
 	InvalidHeaderField string    `json:"invalid_header_field"`
 }
@@ -669,5 +653,55 @@ func (e LunaticValidatorEvidence) ValidateBasic() error { return nil }
 
 func (e LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
+		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
+}
+
+//-------------------------------------------
+
+type PotentialAmnesiaEvidence struct {
+	CommitSigsA []CommitSig
+	HeaderB     *Header
+	CommitSigsB []CommitSig
+}
+
+var _ Evidence = &PotentialAmnesiaEvidence{}
+
+func (e PotentialAmnesiaEvidence) Height() int64 {
+	return e.Header.Height
+}
+
+func (e PotentialAmnesiaEvidence) Time() time.Time {
+	return e.Header.Time
+}
+
+func (e PotentialAmnesiaEvidence) Address() []byte {
+	return e.CommitSig.ValidatorAddress
+}
+
+func (e PotentialAmnesiaEvidence) Hash() []byte {
+	bz := make([]byte, tmhash.Size+crypto.AddressSize)
+	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
+	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
+	return tmhash.Sum(bz)
+}
+
+func (e PotentialAmnesiaEvidence) Bytes() []byte {
+	return cdcEncode(e)
+}
+
+func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return nil
+}
+
+func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(PotentialAmnesiaEvidence)
+	return e.Header.Height == e2.Header.Height &&
+		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
+}
+
+func (e PotentialAmnesiaEvidence) ValidateBasic() error { return nil }
+
+func (e PotentialAmnesiaEvidence) String() string {
+	return fmt.Sprintf("PotentialAmnesiaEvidence{%X voted for %d/%X, which contains invalid %s}",
 		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
 }
