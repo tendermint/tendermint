@@ -55,7 +55,8 @@ proto-gen:
 .PHONY: proto-gen
 
 proto-gen-docker:
-	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
+	@echo "Generating Protobuf files"
+	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
 .PHONY: proto-gen-docker
 
 proto-lint:
