@@ -382,57 +382,61 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 		evList = append(evList, ev.phantomOrLunaticValidatorEvidence(ev.H2, committedHeader, valSet)...)
 	}
 
-	// if H1.Round == H2.Round, and some signers signed different precommit
-	// messages in both commits, then it is an equivocation misbehavior =>
-	// immediately slashable (#F1).
-	if ev.H1.Commit.Round == ev.H2.Commit.Round {
-		// Use the fact that signatures are sorted by ValidatorAddress.
-		var (
-			i = 0
-			j = 0
-		)
-		for i < len(ev.H1.Commit.Signatures) {
-			sigA := ev.H1.Commit.Signatures[i]
-			if sigA.Absent() {
-				i++
-				continue
-			}
-			// FIXME: Replace with HasAddress once DuplicateVoteEvidence#PubKey is
-			// removed.
-			_, val := valSet.GetByAddress(sigA.ValidatorAddress)
-			if val == nil {
-				i++
+	// Use the fact that signatures are sorted by ValidatorAddress.
+	var (
+		i = 0
+		j = 0
+	)
+	for i < len(ev.H1.Commit.Signatures) {
+		sigA := ev.H1.Commit.Signatures[i]
+		if sigA.Absent() {
+			i++
+			continue
+		}
+		// FIXME: Replace with HasAddress once DuplicateVoteEvidence#PubKey is
+		// removed.
+		_, val := valSet.GetByAddress(sigA.ValidatorAddress)
+		if val == nil {
+			i++
+			continue
+		}
+
+		for j < len(ev.H2.Commit.Signatures) {
+			sigB := ev.H2.Commit.Signatures[j]
+			if sigB.Absent() {
+				j++
 				continue
 			}
 
-			for j < len(ev.H2.Commit.Signatures) {
-				sigB := ev.H2.Commit.Signatures[j]
-				if sigB.Absent() {
-					j++
-					continue
-				}
-
-				switch bytes.Compare(sigA.ValidatorAddress, sigB.ValidatorAddress) {
-				case 0:
+			switch bytes.Compare(sigA.ValidatorAddress, sigB.ValidatorAddress) {
+			case 0:
+				// if H1.Round == H2.Round, and some signers signed different precommit
+				// messages in both commits, then it is an equivocation misbehavior =>
+				// immediately slashable (#F1).
+				if ev.H1.Commit.Round == ev.H2.Commit.Round {
 					evList = append(evList, &DuplicateVoteEvidence{
 						PubKey: val.PubKey,
 						VoteA:  ev.H1.Commit.GetVote(i),
 						VoteB:  ev.H2.Commit.GetVote(j),
 					})
-
-					break
-				case 1:
-					i++
-				case -1:
-					j++
+				} else {
+					// if H1.Round != H2.Round we need to run full detection procedure => not
+					// immediately slashable.
+					evList = append(evList, &PotentialAmnesiaEvidence{
+						HeaderA: ev.H1.Header,
+						VoteA:   ev.H1.Commit.GetVote(i),
+						HeaderB: ev.H2.Header,
+						VoteB:   ev.H2.Commit.GetVote(j),
+					})
 				}
+
+				break
+			case 1:
+				i++
+			case -1:
+				j++
 			}
 		}
-	} else {
-		// if H1.Round != H2.Round we need to run full detection procedure => not
-		// immediately slashable.
-		// evList = append(evList, PotentialAmnesiaEvidence{
-		// })
 	}
 
 	return evList
@@ -687,9 +691,10 @@ func (e LunaticValidatorEvidence) String() string {
 //-------------------------------------------
 
 type PotentialAmnesiaEvidence struct {
-	CommitSigsA []CommitSig
-	HeaderB     *Header
-	CommitSigsB []CommitSig
+	HeaderA *Header
+	VoteA   *Vote
+	HeaderB *Header
+	VoteB   *Vote
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
