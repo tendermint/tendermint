@@ -46,6 +46,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 		Code: r.Code,
 		Data: r.Data,
 		Log:  r.Log,
+		Codespace:  r.Codespace,
 		Hash: tx.Hash(),
 	}, nil
 }
