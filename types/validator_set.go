@@ -719,7 +719,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		}
 
 		// See if this validator is in oldVals.
-		_, val, err := oldVals.GetByAddress(commitSig.ValidatorAddress) // old tx is now 0 not -1
+		_, val, err := oldVals.GetByAddress(commitSig.ValidatorAddress)
 		if err != nil {
 			continue // missing validator or double vote...
 		}
@@ -873,7 +873,8 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	valz[j] = it
 }
 
-// ----------------
+//----------------------------------------
+// for testing
 
 // RandValidatorSet returns a randomized validator set, useful for testing.
 // NOTE: PrivValidator are in order.

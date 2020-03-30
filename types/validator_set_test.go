@@ -293,7 +293,6 @@ func TestProposerSelection3(t *testing.T) {
 			// sometimes its up to 5
 			times = (tmrand.Int31() % 4) + 1
 		}
-		fmt.Println(times)
 		vset.IncrementProposerPriority(times)
 
 		j += times

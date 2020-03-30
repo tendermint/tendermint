@@ -689,7 +689,6 @@ func TestLargeGenesisValidator(t *testing.T) {
 
 	genesisVotingPower := types.MaxTotalVotingPower / 1000
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
-	// fmt.Println("genesis addr: ", genesisPubKey.Address())
 	genesisVal := &types.Validator{
 		Address:     genesisPubKey.Address(),
 		PubKey:      genesisPubKey,
@@ -913,9 +912,6 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	index, val, err := v0.GetByAddress(pubkeyOld.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
-	if index-1 < 0 {
-		t.Fatal("expected to find old validator")
-	}
 
 	// Load nextheight+1, it should be the new pubkey.
 	v1, err := sm.LoadValidators(stateDB, nextHeight+1)
@@ -924,9 +920,6 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	index, val, err = v1.GetByAddress(pubkey.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
-	if index-1 < 0 {
-		t.Fatal("expected to find newly added validator")
-	}
 }
 
 func TestStateMakeBlock(t *testing.T) {
