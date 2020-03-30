@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/etcd-io/bbolt"
 	"github.com/pkg/errors"
+	"go.etcd.io/bbolt"
 )
 
 var (

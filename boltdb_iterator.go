@@ -5,7 +5,7 @@ package db
 import (
 	"bytes"
 
-	"github.com/etcd-io/bbolt"
+	"go.etcd.io/bbolt"
 )
 
 // boltDBIterator allows you to iterate on range of keys/values given some

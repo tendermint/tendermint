@@ -2,7 +2,7 @@
 
 package db
 
-import "github.com/etcd-io/bbolt"
+import "go.etcd.io/bbolt"
 
 // boltDBBatch stores operations internally and dumps them to BoltDB on Write().
 type boltDBBatch struct {
