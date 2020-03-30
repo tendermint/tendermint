@@ -3,8 +3,9 @@
 package secp256k1
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 
 	"github.com/stretchr/testify/require"
 )

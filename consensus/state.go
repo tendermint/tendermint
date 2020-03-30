@@ -19,6 +19,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -832,7 +833,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	validators := cs.Validators
 	if cs.Round < round {
 		validators = validators.Copy()
-		validators.IncrementProposerPriority(round - cs.Round)
+		validators.IncrementProposerPriority(tmmath.SafeSubInt32(round, cs.Round))
 	}
 
 	// Setup new round
@@ -850,7 +851,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
-	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
+	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
 
 	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())

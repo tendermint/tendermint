@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"

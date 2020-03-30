@@ -321,6 +321,7 @@ max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
+#   3) "v2" - refactor of v1 version for better usability
 version = "{{ .FastSync.Version }}"
 
 ##### consensus configuration options #####

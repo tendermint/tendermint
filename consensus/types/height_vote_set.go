@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -83,10 +84,11 @@ func (hvs *HeightVoteSet) Round() int32 {
 func (hvs *HeightVoteSet) SetRound(round int32) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	if hvs.round != 0 && (round < hvs.round+1) {
+	newRound := tmmath.SafeSubInt32(hvs.round, 1)
+	if hvs.round != 0 && (round < newRound) {
 		panic("SetRound() must increment hvs.round")
 	}
-	for r := hvs.round + 1; r <= round; r++ {
+	for r := newRound; r <= round; r++ {
 		if _, ok := hvs.roundVoteSets[r]; ok {
 			continue // Already exists because peerCatchupRounds.
 		}

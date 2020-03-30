@@ -23,7 +23,7 @@ var (
 type Proposal struct {
 	Type      SignedMsgType
 	Height    int64     `json:"height"`
-	Round     int32     `json:"round"`
+	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
 	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
