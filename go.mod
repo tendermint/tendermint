@@ -25,7 +25,7 @@ require (
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1
 	github.com/tendermint/go-amino v0.14.1
-	github.com/tendermint/tm-db v0.5.0
+	github.com/tendermint/tm-db v0.5.1
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.28.0
