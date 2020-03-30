@@ -1068,7 +1068,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(uint32(index)), true
+		return votes.GetByIndex(tmmath.SafeConvertUint32(index)), true
 	}
 	return nil, false
 }
@@ -1605,9 +1605,6 @@ func (m *HasVoteMessage) ValidateBasic() error {
 	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
-	}
-	if m.Index-1 < 0 {
-		return errors.New("negative Index")
 	}
 	return nil
 }

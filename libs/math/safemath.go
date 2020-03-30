@@ -39,3 +39,14 @@ func SafeConvertInt32(a int64) int32 {
 	}
 	return int32(a)
 }
+
+// SafeConvertUint32 takes a int and checks if it overflows
+// If there is an overflow this will panic
+func SafeConvertUint32(a int64) uint32 {
+	if a > math.MaxUint32 {
+		panic(ErrOverflowInt32)
+	} else if a < 0 {
+		panic(ErrOverflowInt32)
+	}
+	return uint32(a)
+}
