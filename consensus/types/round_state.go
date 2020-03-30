@@ -114,7 +114,7 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	addr := rs.Validators.GetProposer().Address
 	idx, _, err := rs.Validators.GetByAddress(addr)
 	if err != nil {
-		panic(err) //TODO: see about not panicing here
+		panic(err)
 	}
 
 	return RoundStateSimple{
@@ -136,7 +136,7 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 	addr := rs.Validators.GetProposer().Address
 	idx, _, err := rs.Validators.GetByAddress(addr)
 	if err != nil {
-		panic(err) // TODO: see about not panicing
+		panic(err) // if proposer is not present in val set, panic
 	}
 
 	return types.EventDataNewRound{
