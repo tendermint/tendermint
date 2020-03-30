@@ -909,7 +909,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	v0, err := sm.LoadValidators(stateDB, nextHeight)
 	assert.Nil(t, err)
 	assert.Equal(t, valSetSize, v0.Size())
-	index, val, err := v0.GetByAddress(pubkeyOld.Address())
+	_, val, err := v0.GetByAddress(pubkeyOld.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
 
@@ -917,7 +917,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	v1, err := sm.LoadValidators(stateDB, nextHeight+1)
 	assert.Nil(t, err)
 	assert.Equal(t, valSetSize, v1.Size())
-	index, val, err = v1.GetByAddress(pubkey.Address())
+	_, val, err = v1.GetByAddress(pubkey.Address())
 	assert.NoError(t, err)
 	assert.NotNil(t, val)
 }
