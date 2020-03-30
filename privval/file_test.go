@@ -52,7 +52,7 @@ func TestResetValidator(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := byte(types.PrevoteType)
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-	vote := newVote(privVal.Key.Address, 0, round, height, voteType, blockID)
+	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(t, err, "expected no error signing vote")
 
@@ -170,7 +170,7 @@ func TestSignVote(t *testing.T) {
 	voteType := byte(types.PrevoteType)
 
 	// sign a vote for first time
-	vote := newVote(privVal.Key.Address, 0, round, height, voteType, block1)
+	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
 	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
@@ -180,10 +180,10 @@ func TestSignVote(t *testing.T) {
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Key.Address, 0, round-1, height, voteType, block1),   // round regression
-		newVote(privVal.Key.Address, 0, round, height-1, voteType, block1),   // height regression
-		newVote(privVal.Key.Address, 0, round+4, height-2, voteType, block1), // height regression and different round
-		newVote(privVal.Key.Address, 0, round, height, voteType, block2),     // different block
+		newVote(privVal.Key.Address, 0, height, round-1, voteType, block1),   // round regression
+		newVote(privVal.Key.Address, 0, height-1, round, voteType, block1),   // height regression
+		newVote(privVal.Key.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(privVal.Key.Address, 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -280,7 +280,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	{
 		voteType := byte(types.PrevoteType)
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-		vote := newVote(privVal.Key.Address, 0, round, height, voteType, blockID)
+		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
@@ -301,7 +301,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx uint32, round int32, height int64, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx uint32, height int64, round int32, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
