@@ -101,22 +101,22 @@ func TestStateProposerSelection2(t *testing.T) {
 	incrementRound(vss[1:]...)
 	incrementRound(vss[1:]...)
 
-	round := 2
+	var round int32 = 2
 	startTestRound(cs1, height, round)
 
 	ensureNewRound(newRoundCh, height, round) // wait for the new round
 
 	// everyone just votes nil. we get a new proposer each round
-	for i := 0; i < len(vss); i++ {
+	for i := int32(0); int(i) < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		pvk, err := vss[(i+round)%len(vss)].GetPubKey()
+		pvk, err := vss[int(i+round)%len(vss)].GetPubKey()
 		require.NoError(t, err)
 		addr := pvk.Address()
 		correctProposer := addr
 		if !bytes.Equal(prop.Address, correctProposer) {
 			panic(fmt.Sprintf(
 				"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
-				(i+2)%len(vss),
+				int(i+2)%len(vss),
 				prop.Address))
 		}
 
@@ -1350,7 +1350,7 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
@@ -1377,7 +1377,7 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -1411,7 +1411,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 func TestCommitFromPreviousRound(t *testing.T) {
 	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	partSize := types.BlockPartSizeBytes
 

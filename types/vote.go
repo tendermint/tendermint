@@ -13,7 +13,7 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64  = 219
+	MaxVoteBytes int64  = 211
 	nilVoteStr   string = "nil-Vote"
 )
 
@@ -49,11 +49,11 @@ type Address = crypto.Address
 type Vote struct {
 	Type             SignedMsgType `json:"type"`
 	Height           int64         `json:"height"`
-	Round            int           `json:"round"`
+	Round            int32         `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time     `json:"timestamp"`
 	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int           `json:"validator_index"`
+	ValidatorIndex   int32         `json:"validator_index"` // assume there will not be greater than 2_147_483_647 validators
 	Signature        []byte        `json:"signature"`
 }
 
@@ -183,11 +183,11 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	return &tmproto.Vote{
 		Type:             tmproto.SignedMsgType(vote.Type),
 		Height:           vote.Height,
-		Round:            int64(vote.Round),
+		Round:            vote.Round,
 		BlockID:          vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
-		ValidatorIndex:   int64(vote.ValidatorIndex),
+		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
 	}
 }
@@ -207,11 +207,11 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote := new(Vote)
 	vote.Type = SignedMsgType(pv.Type)
 	vote.Height = pv.Height
-	vote.Round = int(pv.Round)
+	vote.Round = pv.Round
 	vote.BlockID = *blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress
-	vote.ValidatorIndex = int(pv.ValidatorIndex)
+	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
 
 	return vote, vote.ValidateBasic()

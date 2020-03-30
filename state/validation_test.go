@@ -240,9 +240,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := uint32(0); i < maxNumEvidence; i++ {
+		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
 			// make different evidence for each validator
-			addr, _ := state.Validators.GetByIndex(int(i))
+			addr, _ := state.Validators.GetByIndex(i)
 			evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
 		}
 
