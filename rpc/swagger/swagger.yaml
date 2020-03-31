@@ -2947,6 +2947,9 @@ components:
             log:
               type: "string"
               example: ""
+            codespace:
+              type: "string"
+              example: "ibc"
             hash:
               type: "string"
               example: "0D33F2F03A5234F38706E43004489E061AC40A2E"
