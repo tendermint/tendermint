@@ -11,6 +11,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	maxClockDrift = 10 * time.Second
+)
+
 func TestVerifyAdjacentHeaders(t *testing.T) {
 	const (
 		chainID    = "TestVerifyAdjacentHeaders"
@@ -151,7 +155,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now)
+			err := VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, maxClockDrift)
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
@@ -265,7 +269,8 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now,
+			err := VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod,
+				tc.now, maxClockDrift,
 				DefaultTrustLevel)
 
 			switch {
@@ -295,7 +300,7 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(),
+	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(), maxClockDrift,
 		tmmath.Fraction{Numerator: 2, Denominator: 1})
 	assert.Error(t, err)
 }

@@ -29,6 +29,12 @@ const (
 	// find something in between the range, 9/16 is used.
 	bisectionNumerator   = 9
 	bisectionDenominator = 16
+
+	// 10s should cover most of the clients.
+	// References:
+	// - http://vancouver-webpages.com/time/web.html
+	// - https://blog.codinghorror.com/keeping-time-on-the-pc/
+	defaultMaxClockDrift = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -94,6 +100,14 @@ func MaxRetryAttempts(max uint16) Option {
 	}
 }
 
+// MaxClockDrift defines how much new (untrusted) header's Time can drift into
+// the future. Default: 10s.
+func MaxClockDrift(d time.Duration) Option {
+	return func(c *Client) {
+		c.maxClockDrift = d
+	}
+}
+
 // Client represents a light client, connected to a single chain, which gets
 // headers from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -105,6 +119,7 @@ type Client struct {
 	verificationMode mode
 	trustLevel       tmmath.Fraction
 	maxRetryAttempts uint16 // see MaxRetryAttempts option
+	maxClockDrift    time.Duration
 
 	// Mutex for locking during changes of the lite clients providers
 	providerMutex sync.Mutex
@@ -191,6 +206,7 @@ func NewClientFromTrustedStore(
 		verificationMode: skipping,
 		trustLevel:       DefaultTrustLevel,
 		maxRetryAttempts: defaultMaxRetryAttempts,
+		maxClockDrift:    defaultMaxClockDrift,
 		primary:          primary,
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
@@ -636,7 +652,7 @@ func (c *Client) sequence(
 			"newHash", hash2str(interimHeader.Hash()))
 
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, interimVals,
-			c.trustingPeriod, now)
+			c.trustingPeriod, now, c.maxClockDrift)
 		if err != nil {
 			err = fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
 				trustedHeader.Height, interimHeader.Height, err)
@@ -697,7 +713,7 @@ func (c *Client) bisection(
 			"newHash", hash2str(headerCache[depth].sh.Hash()))
 
 		err := Verify(c.chainID, trustedHeader, trustedVals, headerCache[depth].sh, headerCache[depth].valSet,
-			c.trustingPeriod, now, c.trustLevel)
+			c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
 		switch err.(type) {
 		case nil:
 			// Have we verified the last header
