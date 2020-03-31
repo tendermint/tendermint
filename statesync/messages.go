@@ -94,10 +94,11 @@ func (m *chunkRequestMessage) ValidateBasic() error {
 
 // chunkResponseMessage contains a single chunk from a peer
 type chunkResponseMessage struct {
-	Height uint64
-	Format uint32
-	Chunk  uint32
-	Body   []byte
+	Height  uint64
+	Format  uint32
+	Chunk   uint32
+	Body    []byte
+	Missing bool
 }
 
 // ValidateBasic implements Message.
@@ -108,7 +109,10 @@ func (m *chunkResponseMessage) ValidateBasic() error {
 	if m.Height == 0 {
 		return errors.New("height cannot be 0")
 	}
-	if m.Body == nil {
+	if m.Missing && len(m.Body) > 0 {
+		return errors.New("missing chunk cannot have a body")
+	}
+	if !m.Missing && m.Body == nil {
 		return errors.New("body cannot be nil")
 	}
 	return nil

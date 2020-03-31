@@ -2,6 +2,7 @@ package statesync
 
 import (
 	"sort"
+	"sync"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -20,15 +21,18 @@ const (
 type Reactor struct {
 	p2p.BaseReactor
 
-	pool         *snapshotPool
-	connSnapshot proxy.AppConnSnapshot
+	conn proxy.AppConnSnapshot
+
+	// These will only be set when doing a state sync
+	mtx       sync.RWMutex
+	snapshots *snapshotPool
+	chunks    *chunkPool
 }
 
 // NewReactor creates a new state sync reactor.
-func NewReactor(connSnapshot proxy.AppConnSnapshot) *Reactor {
+func NewReactor(conn proxy.AppConnSnapshot) *Reactor {
 	r := &Reactor{
-		pool:         newSnapshotPool(),
-		connSnapshot: connSnapshot,
+		conn: conn,
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("StateSync", r)
 	return r
@@ -66,7 +70,7 @@ func (r *Reactor) AddPeer(peer p2p.Peer) {
 // RemovePeer implements p2p.Reactor.
 func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	r.Logger.Debug("Removing peer from pool", "peer", peer.ID())
-	r.pool.RemovePeer(peer)
+	r.snapshots.RemovePeer(peer)
 }
 
 // Receive implements p2p.Reactor.
@@ -107,7 +111,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 
 		case *snapshotsResponseMessage:
-			if r.pool.Add(src, &snapshot{
+			if r.snapshots.Add(src, &snapshot{
 				Height:      msg.Height,
 				Format:      msg.Format,
 				ChunkHashes: msg.ChunkHashes,
@@ -115,9 +119,51 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}) {
 				r.Logger.Info("Discovered new snapshot", "height", msg.Height, "format", msg.Format)
 			}
+
+		default:
+			r.Logger.Error("Received unknown message %T", msg)
 		}
 
 	case ChunkChannel:
+		switch msg := msg.(type) {
+		case *chunkRequestMessage:
+			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
+				Height: msg.Height,
+				Format: msg.Format,
+				Chunk:  msg.Chunk,
+			})
+			if err != nil {
+				r.Logger.Error("Failed to load snapshot chunk", "height", msg.Height,
+					"format", msg.Format, "chunk", msg.Chunk, "err", err)
+				return
+			}
+			src.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkResponseMessage{
+				Height:  msg.Height,
+				Format:  msg.Format,
+				Chunk:   msg.Chunk,
+				Body:    resp.Chunk,
+				Missing: resp.Chunk == nil,
+			}))
+
+		case *chunkResponseMessage:
+			if r.chunks == nil {
+				r.Logger.Error("received unexpected chunk", "height", msg.Height,
+					"format", msg.Format, "chunk", msg.Chunk)
+				return
+			}
+			err := r.chunks.Add(&chunk{
+				Index: msg.Chunk,
+				Body:  msg.Body,
+			})
+			if err != nil {
+				r.Logger.Error("failed to add chunk", "height", msg.Height,
+					"format", msg.Format, "chunk", msg.Chunk, "err", err)
+				return
+			}
+
+		default:
+			r.Logger.Error("Received unknown message %T", msg)
+		}
 
 	default:
 		r.Logger.Error("Received message on invalid channel %v", chID)
@@ -126,7 +172,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.connSnapshot.ListSnapshotsSync(abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshotsSync(abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

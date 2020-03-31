@@ -8,7 +8,7 @@ import (
 // snapshotHash is a snapshot hash, used for e.g. map keys
 type snapshotHash [sha256.Size]byte
 
-// Snapshot contains data about a snapshot
+// snapshot contains data about a snapshot
 type snapshot struct {
 	Height      uint64
 	Format      uint32
@@ -52,4 +52,16 @@ func (s *snapshot) Hash() snapshotHash {
 	var hash snapshotHash
 	copy(hash[:], hasher.Sum(nil))
 	return hash
+}
+
+// chunk contains data about a chunk
+type chunk struct {
+	Index uint32
+	Body  []byte
+}
+
+// Hash generates a hash for the chunk body, used for verification
+func (c *chunk) Hash() []byte {
+	hash := sha256.Sum256(c.Body)
+	return hash[:]
 }

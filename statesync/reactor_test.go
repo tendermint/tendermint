@@ -28,6 +28,65 @@ func TestReactor_AddPeer(t *testing.T) {
 	peer.AssertExpectations(t)
 }
 
+func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
+	testcases := map[string]struct {
+		request        *chunkRequestMessage
+		chunk          []byte
+		expectResponse *chunkResponseMessage
+	}{
+		"chunk is returned": {
+			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			[]byte{1, 2, 3},
+			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Body: []byte{1, 2, 3}}},
+		"empty chunk is returned, as nil": {
+			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			[]byte{},
+			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Body: nil}},
+		"nil (missing) chunk is returned as missing": {
+			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			nil,
+			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Missing: true},
+		},
+	}
+
+	for name, tc := range testcases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			// Mock ABCI connection to return local snapshots
+			conn := &proxymocks.AppConnSnapshot{}
+			conn.On("LoadSnapshotChunkSync", abci.RequestLoadSnapshotChunk{
+				Height: tc.request.Height,
+				Format: tc.request.Format,
+				Chunk:  tc.request.Chunk,
+			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
+
+			// Mock peer to store response, if found
+			peer := &p2pmocks.Peer{}
+			var response *chunkResponseMessage
+			if tc.expectResponse != nil {
+				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
+					msg, err := decodeMsg(args[1].([]byte))
+					require.NoError(t, err)
+					response = msg.(*chunkResponseMessage)
+				}).Return(true)
+			}
+
+			// Start a reactor and send a chunkRequestMessage, then wait for and check response
+			r := NewReactor(conn)
+			err := r.Start()
+			require.NoError(t, err)
+			defer r.Stop()
+
+			r.Receive(ChunkChannel, peer, cdc.MustMarshalBinaryBare(tc.request))
+			time.Sleep(100 * time.Millisecond)
+			assert.Equal(t, tc.expectResponse, response)
+
+			conn.AssertExpectations(t)
+			peer.AssertExpectations(t)
+		})
+	}
+}
+
 func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 	testcases := map[string]struct {
 		snapshots       []*abci.Snapshot
