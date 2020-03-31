@@ -99,16 +99,15 @@ func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
+	VoteA *Vote
+	VoteB *Vote
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil {
 		return nil
@@ -121,9 +120,8 @@ func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *D
 		voteB = vote1
 	}
 	return &DuplicateVoteEvidence{
-		PubKey: pubkey,
-		VoteA:  voteA,
-		VoteB:  voteB,
+		VoteA: voteA,
+		VoteB: voteB,
 	}
 }
 
@@ -145,7 +143,7 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.PubKey.Address()
+	return dve.VoteA.ValidatorAddress
 }
 
 // Hash returns the hash of the evidence.
@@ -226,9 +224,6 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
-	if len(dve.PubKey.Bytes()) == 0 {
-		return errors.New("empty PubKey")
-	}
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
