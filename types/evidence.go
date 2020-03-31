@@ -174,13 +174,14 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
 		dve.VoteA.Type != dve.VoteB.Type {
-		return fmt.Errorf("duplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
+		return fmt.Errorf("h/r/s does not match: %d/%d/%v vs %d/%d/%v",
+			dve.VoteA.Height, dve.VoteA.Round, dve.VoteA.Type,
+			dve.VoteB.Height, dve.VoteB.Round, dve.VoteB.Type)
 	}
 
 	// Address must be the same
 	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X",
+		return fmt.Errorf("validator addresses do not match: %X vs %X",
 			dve.VoteA.ValidatorAddress,
 			dve.VoteB.ValidatorAddress,
 		)
@@ -189,7 +190,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// Index must be the same
 	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
 		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
+			"validator indices do not match: %d and %d",
 			dve.VoteA.ValidatorIndex,
 			dve.VoteB.ValidatorIndex,
 		)
@@ -198,7 +199,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
 		return fmt.Errorf(
-			"duplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote",
+			"block IDs are the same (%v) - not a real duplicate vote",
 			dve.VoteA.BlockID,
 		)
 	}
@@ -206,16 +207,16 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	// pubkey must match address (this should already be true, sanity check)
 	addr := dve.VoteA.ValidatorAddress
 	if !bytes.Equal(pubKey.Address(), addr) {
-		return fmt.Errorf("duplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
+		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
 			addr, pubKey, pubKey.Address())
 	}
 
 	// Signatures must be valid
 	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
-		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
+		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
 	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
-		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
+		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
 	return nil
@@ -242,10 +243,10 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
 	if err := dve.VoteA.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid VoteA: %v", err)
+		return fmt.Errorf("invalid VoteA: %w", err)
 	}
 	if err := dve.VoteB.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid VoteB: %v", err)
+		return fmt.Errorf("invalid VoteB: %w", err)
 	}
 	// Enforce Votes are lexicographically sorted on blockID
 	if strings.Compare(dve.VoteA.BlockID.Key(), dve.VoteB.BlockID.Key()) >= 0 {
@@ -423,10 +424,8 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 					// if H1.Round != H2.Round we need to run full detection procedure => not
 					// immediately slashable.
 					evList = append(evList, &PotentialAmnesiaEvidence{
-						HeaderA: ev.H1.Header,
-						VoteA:   ev.H1.Commit.GetVote(i),
-						HeaderB: ev.H2.Header,
-						VoteB:   ev.H2.Commit.GetVote(j),
+						VoteA: ev.H1.Commit.GetVote(i),
+						VoteB: ev.H2.Commit.GetVote(j),
 					})
 				}
 
@@ -691,50 +690,120 @@ func (e LunaticValidatorEvidence) String() string {
 //-------------------------------------------
 
 type PotentialAmnesiaEvidence struct {
-	HeaderA *Header
-	VoteA   *Vote
-	HeaderB *Header
-	VoteB   *Vote
+	VoteA *Vote
+	VoteB *Vote
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
 
-func (e PotentialAmnesiaEvidence) Height() int64 {
-	return e.Header.Height
+func (e *PotentialAmnesiaEvidence) Height() int64 {
+	return e.VoteA.Height
 }
 
-func (e PotentialAmnesiaEvidence) Time() time.Time {
-	return e.Header.Time
+func (e *PotentialAmnesiaEvidence) Time() time.Time {
+	if e.VoteA.Timestamp.Before(e.VoteB.Timestamp) {
+		return e.VoteA.Timestamp
+	}
+	return e.VoteB.Timestamp
 }
 
-func (e PotentialAmnesiaEvidence) Address() []byte {
-	return e.CommitSig.ValidatorAddress
+func (e *PotentialAmnesiaEvidence) Address() []byte {
+	return e.VoteA.ValidatorAddress
 }
 
-func (e PotentialAmnesiaEvidence) Hash() []byte {
-	bz := make([]byte, tmhash.Size+crypto.AddressSize)
-	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
-	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
-	return tmhash.Sum(bz)
+func (e *PotentialAmnesiaEvidence) Hash() []byte {
+	return tmhash.Sum(cdcEncode(e))
 }
 
-func (e PotentialAmnesiaEvidence) Bytes() []byte {
+func (e *PotentialAmnesiaEvidence) Bytes() []byte {
 	return cdcEncode(e)
 }
 
-func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	// H/S must be the same
+	if e.VoteA.Height != e.VoteB.Height ||
+		e.VoteA.Type != e.VoteB.Type {
+		return fmt.Errorf("h/s do not match: %d/%v vs %d/%v",
+			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
+	}
+
+	// R must be different
+	if e.VoteA.Round == e.VoteB.Round {
+		return fmt.Errorf("expected votes from different rounds, got %d", e.VoteA.Round)
+	}
+
+	// Address must be the same
+	if !bytes.Equal(e.VoteA.ValidatorAddress, e.VoteB.ValidatorAddress) {
+		return fmt.Errorf("validator addresses do not match: %X vs %X",
+			e.VoteA.ValidatorAddress,
+			e.VoteB.ValidatorAddress,
+		)
+	}
+
+	// Index must be the same
+	// https://github.com/tendermint/tendermint/issues/4619
+	// if e.VoteA.ValidatorIndex != e.VoteB.ValidatorIndex {
+	// 	return fmt.Errorf(
+	// 		"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
+	// 		e.VoteA.ValidatorIndex,
+	// 		e.VoteB.ValidatorIndex,
+	// 	)
+	// }
+
+	// BlockIDs must be different
+	if e.VoteA.BlockID.Equals(e.VoteB.BlockID) {
+		return fmt.Errorf(
+			"block IDs are the same (%v) - not a real duplicate vote",
+			e.VoteA.BlockID,
+		)
+	}
+
+	// pubkey must match address (this should already be true, sanity check)
+	addr := e.VoteA.ValidatorAddress
+	if !bytes.Equal(pubKey.Address(), addr) {
+		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
+			addr, pubKey, pubKey.Address())
+	}
+
+	// Signatures must be valid
+	if !pubKey.VerifyBytes(e.VoteA.SignBytes(chainID), e.VoteA.Signature) {
+		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
+	}
+	if !pubKey.VerifyBytes(e.VoteB.SignBytes(chainID), e.VoteB.Signature) {
+		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
+	}
+
 	return nil
 }
 
-func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(PotentialAmnesiaEvidence)
-	return e.Header.Height == e2.Header.Height &&
-		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
+func (e *PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
+	if _, ok := ev.(*PotentialAmnesiaEvidence); !ok {
+		return false
+	}
+
+	// just check their hashes
+	dveHash := tmhash.Sum(cdcEncode(e))
+	evHash := tmhash.Sum(cdcEncode(ev))
+	return bytes.Equal(dveHash, evHash)
 }
 
-func (e PotentialAmnesiaEvidence) ValidateBasic() error { return nil }
+func (e PotentialAmnesiaEvidence) ValidateBasic() error {
+	if e.VoteA == nil || e.VoteB == nil {
+		return fmt.Errorf("one or both of the votes are empty %v, %v", e.VoteA, e.VoteB)
+	}
+	if err := e.VoteA.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid VoteA: %v", err)
+	}
+	if err := e.VoteB.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid VoteB: %v", err)
+	}
+	// Enforce Votes are lexicographically sorted on blockID
+	if strings.Compare(e.VoteA.BlockID.Key(), e.VoteB.BlockID.Key()) >= 0 {
+		return errors.New("duplicate votes in invalid order")
+	}
+	return nil
+}
 
 func (e PotentialAmnesiaEvidence) String() string {
-	return fmt.Sprintf("PotentialAmnesiaEvidence{%X voted for %d/%X, which contains invalid %s}",
-		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
+	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
