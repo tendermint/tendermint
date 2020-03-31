@@ -60,8 +60,9 @@ also cross-checked with witnesses for additional security.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
 client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
-`VerifyHeader(H#X)` methods are called, it will perform a backwards
-verification from the latest header back to the header at height `X`.
+`VerifyHeader(H#X)` methods are called, these will perform either a) backwards
+verification from the latest header back to the header at height `X` or b)
+bisection verification from the first stored header to the header at height `X`.
 
 `TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
 If some header is not there, an error will be returned indicating that
