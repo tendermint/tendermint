@@ -17,7 +17,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
-			ValidatorIndex:   uint32(i),
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
 			Type:             PrecommitType,

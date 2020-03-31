@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"

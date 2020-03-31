@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tendermint/p2p"
 	tmState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

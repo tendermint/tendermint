@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 //-----------------------------------------------------------------------------
@@ -352,7 +353,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	}
 
 	return abci.LastCommitInfo{
-		Round: int32(block.LastCommit.Round),
+		Round: block.LastCommit.Round,
 		Votes: voteInfos,
 	}, byzVals
 }

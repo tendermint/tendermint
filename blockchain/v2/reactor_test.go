@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
 	cfg "github.com/tendermint/tendermint/config"
@@ -23,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 type mockPeer struct {

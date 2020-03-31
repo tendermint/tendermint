@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func TestTxFilter(t *testing.T) {
@@ -26,8 +27,8 @@ func TestTxFilter(t *testing.T) {
 		{types.Tx(tmrand.Bytes(250)), false},
 		{types.Tx(tmrand.Bytes(1811)), false},
 		{types.Tx(tmrand.Bytes(1831)), false},
-		{types.Tx(tmrand.Bytes(1843)), true},
-		{types.Tx(tmrand.Bytes(1844)), true},
+		{types.Tx(tmrand.Bytes(1851)), true},
+		{types.Tx(tmrand.Bytes(1852)), true},
 		{types.Tx(tmrand.Bytes(3000)), true},
 	}
 
@@ -36,7 +37,7 @@ func TestTxFilter(t *testing.T) {
 		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state)
+		f := sm.TxPreCheck(state) // current max size of a tx 1850
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {

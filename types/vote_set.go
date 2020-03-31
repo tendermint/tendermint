@@ -175,7 +175,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Ensure that signer is a validator.
-	lookupAddr, val := voteSet.valSet.GetByIndex(int(valIndex)) //TODO: see about lifting this conversion
+	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex) //TODO: see about lifting this conversion
 	if val == nil {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorIndex,
 			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
@@ -190,7 +190,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// If we already know of this vote, return false.
-	if existing, ok := voteSet.getVote(int(valIndex), blockKey); ok { // TODO: same here
+	if existing, ok := voteSet.getVote(valIndex, blockKey); ok { // TODO: same here
 		if bytes.Equal(existing.Signature, vote.Signature) {
 			return false, nil // duplicate
 		}
@@ -214,7 +214,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey.
-func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok bool) {
+func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok bool) {
 	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
 		return existing, true
 	}
@@ -364,7 +364,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	if voteSet == nil {
 		return nil
 	}
@@ -604,7 +604,7 @@ func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	}
 }
 
-func (vs *blockVotes) getByIndex(index int) *Vote {
+func (vs *blockVotes) getByIndex(index int32) *Vote {
 	if vs == nil {
 		return nil
 	}
@@ -616,10 +616,10 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
 	GetHeight() int64
-	GetRound() int
+	GetRound() int32
 	Type() byte
 	Size() int
 	BitArray() *bits.BitArray
-	GetByIndex(int) *Vote
+	GetByIndex(int32) *Vote
 	IsCommit() bool
 }

@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/mock"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"

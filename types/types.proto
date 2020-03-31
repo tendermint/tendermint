@@ -97,7 +97,7 @@ message Vote {
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes  validator_address = 6;
-  uint32 validator_index   = 7;  // TODO: double check what size can be used
+  int32 validator_index   = 7;  // TODO: double check what size can be used
   bytes  signature         = 8;
 }
 

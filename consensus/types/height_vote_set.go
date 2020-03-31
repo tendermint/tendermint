@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -41,9 +42,9 @@ type HeightVoteSet struct {
 	valSet  *types.ValidatorSet
 
 	mtx               sync.Mutex
-	round             int32                // max tracked round
-	roundVoteSets     map[int]RoundVoteSet // keys: [0...round]
-	peerCatchupRounds map[p2p.ID][]int     // keys: peer.ID; values: at most 2 rounds
+	round             int32                  // max tracked round
+	roundVoteSets     map[int32]RoundVoteSet // keys: [0...round]
+	peerCatchupRounds map[p2p.ID][]int32     // keys: peer.ID; values: at most 2 rounds
 }
 
 func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
@@ -60,8 +61,8 @@ func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
 
 	hvs.height = height
 	hvs.valSet = valSet
-	hvs.roundVoteSets = make(map[int]RoundVoteSet)
-	hvs.peerCatchupRounds = make(map[p2p.ID][]int)
+	hvs.roundVoteSets = make(map[int32]RoundVoteSet)
+	hvs.peerCatchupRounds = make(map[p2p.ID][]int32)
 
 	hvs.addRound(0)
 	hvs.round = 0
@@ -83,11 +84,12 @@ func (hvs *HeightVoteSet) Round() int32 {
 func (hvs *HeightVoteSet) SetRound(round int32) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	if hvs.round != 0 && (round < hvs.round+1) {
+	newRound := tmmath.SafeSubInt32(hvs.round, 1)
+	if hvs.round != 0 && (round < newRound) {
 		panic("SetRound() must increment hvs.round")
 	}
-	for r := hvs.round + 1; r <= round; r++ {
-		if _, ok := hvs.roundVoteSets[int(r)]; ok {
+	for r := newRound; r <= round; r++ {
+		if _, ok := hvs.roundVoteSets[r]; ok {
 			continue // Already exists because peerCatchupRounds.
 		}
 		hvs.addRound(r)
@@ -96,7 +98,7 @@ func (hvs *HeightVoteSet) SetRound(round int32) {
 }
 
 func (hvs *HeightVoteSet) addRound(round int32) {
-	if _, ok := hvs.roundVoteSets[int(round)]; ok {
+	if _, ok := hvs.roundVoteSets[round]; ok {
 		panic("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
@@ -160,7 +162,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int32, polBlockID types.BlockID) {
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round int32, voteType types.SignedMsgType) *types.VoteSet {
-	rvs, ok := hvs.roundVoteSets[int(round)]
+	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil
 	}
@@ -243,7 +245,7 @@ func (hvs *HeightVoteSet) toAllRoundVotes() []roundVotes {
 	totalRounds := hvs.round + 1
 	allVotes := make([]roundVotes, totalRounds)
 	// rounds 0 ~ hvs.round inclusive
-	for round := 0; round < int(totalRounds); round++ {
+	for round := int32(0); round < totalRounds; round++ {
 		allVotes[round] = roundVotes{
 			Round:              round,
 			Prevotes:           hvs.roundVoteSets[round].Prevotes.VoteStrings(),
@@ -257,7 +259,7 @@ func (hvs *HeightVoteSet) toAllRoundVotes() []roundVotes {
 }
 
 type roundVotes struct {
-	Round              int      `json:"round"`
+	Round              int32    `json:"round"`
 	Prevotes           []string `json:"prevotes"`
 	PrevotesBitArray   string   `json:"prevotes_bit_array"`
 	Precommits         []string `json:"precommits"`

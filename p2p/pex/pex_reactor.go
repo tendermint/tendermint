@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/rand"
@@ -140,7 +141,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		lastReceivedRequests: cmap.NewCMap(),
 		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
-	r.BaseReactor = *p2p.NewBaseReactor("Reactor", r)
+	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
 }
 
