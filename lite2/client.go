@@ -206,7 +206,7 @@ func NewClientFromTrustedStore(
 
 	// Validate the number of witnesses.
 	if len(c.witnesses) < 1 {
-		return nil, ErrNoWitnesses{}
+		return nil, errNoWitnesses{}
 	}
 
 	// Verify witnesses are all on the same chain.
@@ -913,7 +913,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	witnessesToRemove := make([]int, 0)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		if len(c.witnesses) == 0 {
-			return ErrNoWitnesses{}
+			return errNoWitnesses{}
 		}
 
 		for i, witness := range c.witnesses {
@@ -1014,7 +1014,7 @@ func (c *Client) replacePrimaryProvider() error {
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) <= 1 {
-		return ErrNoWitnesses{}
+		return errNoWitnesses{}
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
