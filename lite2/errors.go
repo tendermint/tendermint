@@ -39,6 +39,8 @@ func (e ErrInvalidHeader) Error() string {
 	return fmt.Sprintf("invalid header: %v", e.Reason)
 }
 
+// ErrNoWitnesses means that there are not enough witnesses connected to continue
+// running the light client
 type ErrNoWitnesses struct{}
 
 func (e ErrNoWitnesses) Error() string {

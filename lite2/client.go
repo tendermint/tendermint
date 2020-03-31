@@ -544,6 +544,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 			panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 		}
 	} else {
+		// 2) If verifying before the first trusted header, perform backwards verification
 		var firstHeaderHeight int64
 		firstHeaderHeight, err = c.FirstTrustedHeight()
 		if err != nil {
@@ -559,6 +560,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 				closestHeader = c.latestTrustedHeader
 			}
 			err = c.backwards(closestHeader, newHeader, now)
+			// 3) or if between trusted headers where the nearest has not expired, perform bisection verification, else backwards
 		} else {
 			closestHeader, err = c.trustedStore.SignedHeaderBefore(newHeader.Height)
 			if err != nil {
@@ -580,12 +582,13 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		c.logger.Error("Can't verify", "err", err)
 		return err
 	}
-
+	// 4) Compare header with other witnesses
 	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
 		c.logger.Error("Error when comparing new header with witnesses", "err", err)
 		return err
 	}
 
+	// 5) Once verified, save and return
 	return c.updateTrustedHeaderAndVals(newHeader, newVals)
 }
 
@@ -1031,7 +1034,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == nil {
 			// sanity check
 			if height > 0 && h.Height != height {
-				return nil, fmt.Errorf("expected %d height, got %d: %w", height, h.Height, err)
+				return nil, fmt.Errorf("expected %d height, got %d", height, h.Height)
 			}
 			return h, nil
 		}
