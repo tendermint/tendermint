@@ -57,7 +57,8 @@ var (
 		headerSet,
 		valSet,
 	)
-	deadNode = mockp.NewDeadMock(chainID)
+	deadNode      = mockp.NewDeadMock(chainID)
+	largeFullNode = mockp.New(GenMockNode(chainID, 10, 3, 0, bTime))
 )
 
 func TestClient_SequentialVerification(t *testing.T) {
@@ -682,62 +683,65 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 
 func TestClient_BackwardsVerification(t *testing.T) {
 	{
+		trustHeader, _ := largeFullNode.SignedHeader(6)
 		c, err := NewClient(
 			chainID,
 			TrustOptions{
-				Period: 1 * time.Hour,
-				Height: 3,
-				Hash:   h3.Hash(),
+				Period: 4 * time.Minute,
+				Height: trustHeader.Height,
+				Hash:   trustHeader.Hash(),
 			},
-			fullNode,
-			[]provider.Provider{fullNode},
+			largeFullNode,
+			[]provider.Provider{largeFullNode},
 			dbs.New(dbm.NewMemDB(), chainID),
 			Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
-		// 1) header is missing => expect no error
-		h, err := c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		// 1) verify before the trusted header using backwards => expect no error
+		h, err := c.VerifyHeaderAtHeight(5, bTime.Add(6*time.Minute))
 		require.NoError(t, err)
 		if assert.NotNil(t, h) {
-			assert.EqualValues(t, 2, h.Height)
+			assert.EqualValues(t, 5, h.Height)
 		}
 
 		// 2) untrusted header is expired but trusted header is not => expect no error
-		h, err = c.VerifyHeaderAtHeight(1, bTime.Add(1*time.Hour).Add(1*time.Second))
+		h, err = c.VerifyHeaderAtHeight(3, bTime.Add(8*time.Minute))
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 
 		// 3) already stored headers should return the header without error
-		h, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		h, err = c.VerifyHeaderAtHeight(5, bTime.Add(6*time.Minute))
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
-	}
-	{
-		c, err := NewClient(
-			chainID,
-			TrustOptions{
-				Period: 1 * time.Hour,
-				Height: 3,
-				Hash:   h3.Hash(),
-			},
-			fullNode,
-			[]provider.Provider{fullNode},
-			dbs.New(dbm.NewMemDB(), chainID),
-			Logger(log.TestingLogger()),
-		)
+
+		// 4a) First verify latest header
+		_, err = c.VerifyHeaderAtHeight(9, bTime.Add(9*time.Minute))
 		require.NoError(t, err)
 
-		// 3) trusted header has expired => expect error
-		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(4*time.Hour).Add(1*time.Second))
+		// 4b) Verify backwards using bisection => expect no error
+		_, err = c.VerifyHeaderAtHeight(7, bTime.Add(10*time.Minute))
+		assert.NoError(t, err)
+		// shouldn't have verified this header in the process
+		_, err = c.TrustedHeader(8)
 		assert.Error(t, err)
+
+		// 5) trusted header has expired => expect error
+		_, err = c.VerifyHeaderAtHeight(1, bTime.Add(20*time.Minute))
+		assert.Error(t, err)
+
+		// 6) Try bisection method, but closest header (at 7) has expired
+		// so change to backwards => expect no error
+		_, err = c.VerifyHeaderAtHeight(8, bTime.Add(12*time.Minute))
+		assert.NoError(t, err)
+
 	}
 	{
 		testCases := []struct {
 			provider provider.Provider
 		}{
 			{
-				// provides incorrect height
+				// 7) provides incorrect height
 				mockp.New(
 					chainID,
 					map[int64]*types.SignedHeader{
@@ -750,7 +754,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 				),
 			},
 			{
-				// provides incorrect hash
+				// 8) provides incorrect hash
 				mockp.New(
 					chainID,
 					map[int64]*types.SignedHeader{
