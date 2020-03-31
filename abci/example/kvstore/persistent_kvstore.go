@@ -99,6 +99,7 @@ func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (res
 		if err != nil {
 			panic(err)
 		}
+
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
 		return
