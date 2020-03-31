@@ -499,6 +499,11 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // Intermediate headers are not saved to database.
 // https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
 //
+// If the header, which is older than the currently trusted header, is
+// requested and the light client does not have it, VerifyHeader will perform:
+//		a) bisection verification if nearest trusted header is found & not expired
+//		b) backwards verification in all other cases
+//
 // It returns ErrOldHeaderExpired if the latest trusted header expired.
 //
 // If the primary provides an invalid header (ErrInvalidHeader), it is rejected
@@ -533,7 +538,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 	var err error
 
-	// 1) If going forward, perform either bisection or sequential verification
+	// 1) If going forward, perform either bisection or sequential verification.
 	if newHeader.Height >= c.latestTrustedHeader.Height {
 		switch c.verificationMode {
 		case sequential:
@@ -544,13 +549,16 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 			panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 		}
 	} else {
-		// 2) If verifying before the first trusted header, perform backwards verification
-		var firstHeaderHeight int64
+		// 2) If verifying before the first trusted header, perform backwards
+		// verification.
+		var (
+			closestHeader     *types.SignedHeader
+			firstHeaderHeight int64
+		)
 		firstHeaderHeight, err = c.FirstTrustedHeight()
 		if err != nil {
 			return fmt.Errorf("can't get first header height: %w", err)
 		}
-		var closestHeader *types.SignedHeader
 		if newHeader.Height < firstHeaderHeight {
 			closestHeader, err = c.TrustedHeader(firstHeaderHeight)
 			if err != nil {
@@ -560,8 +568,9 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 				closestHeader = c.latestTrustedHeader
 			}
 			err = c.backwards(closestHeader, newHeader, now)
-			// 3) or if between trusted headers where the nearest has not expired, perform bisection verification, else backwards
 		} else {
+			// 3) OR if between trusted headers where the nearest has not expired,
+			// perform bisection verification, else backwards.
 			closestHeader, err = c.trustedStore.SignedHeaderBefore(newHeader.Height)
 			if err != nil {
 				return fmt.Errorf("can't get signed header before height %d: %w", newHeader.Height, err)
