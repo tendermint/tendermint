@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -669,17 +671,17 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		status, err := c.Status()
 		require.NoError(t, err)
 		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-		//FIXME: fix this test
-		// ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
-		// rawpub := ed25519pub[:]
-		// result2, err := c.ABCIQuery("/val", rawpub)
-		// require.Nil(t, err, "Error querying evidence, err %v", err)
-		// qres := result2.Response
-		// require.True(t, qres.IsOK(), "Response not OK")
+		ed25519pub := pv.Key.PubKey.(ed25519.PubKeyEd25519)
+		rawpub := ed25519pub[:]
+		result2, err := c.ABCIQuery("/val", rawpub)
+		require.Nil(t, err, "Error querying evidence, err %v", err)
+		qres := result2.Response
+		require.True(t, qres.IsOK(), "Response not OK")
+		fmt.Println(qres.Value)
 
-		// var v abci.ValidatorUpdate
-		// err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
-		// require.NoError(t, err, "Error reading query result, value %v", qres.Value)
+		var v abci.ValidatorUpdate
+		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
+		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
 		// require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		// require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
