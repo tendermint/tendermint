@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	prototypes "github.com/tendermint/tendermint/proto/types"
 )
 
 func MakeCommit(blockID BlockID, height int64, round int32,
@@ -20,7 +21,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
-			Type:             PrecommitType,
+			Type:             prototypes.PrecommitType,
 			BlockID:          blockID,
 			Timestamp:        now,
 		}
@@ -62,7 +63,7 @@ func MakeVote(
 		Height:           height,
 		Round:            0,
 		Timestamp:        now,
-		Type:             PrecommitType,
+		Type:             prototypes.PrecommitType,
 		BlockID:          blockID,
 	}
 	if err := privVal.SignVote(chainID, vote); err != nil {

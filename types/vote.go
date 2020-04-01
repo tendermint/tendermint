@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	prototypes "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -46,14 +47,14 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int32         `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int32         `json:"validator_index"` // assume there will not be greater than 2_147_483_647 validators
-	Signature        []byte        `json:"signature"`
+	Type             prototypes.SignedMsgType `json:"type"`
+	Height           int64                    `json:"height"`
+	Round            int32                    `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID                  `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time                `json:"timestamp"`
+	ValidatorAddress Address                  `json:"validator_address"`
+	ValidatorIndex   int32                    `json:"validator_index"` // assume there will not be greater than 2_147_483_647 validators
+	Signature        []byte                   `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -62,12 +63,12 @@ func (vote *Vote) CommitSig() CommitSig {
 		return NewCommitSigAbsent()
 	}
 
-	var blockIDFlag BlockIDFlag
+	var blockIDFlag prototypes.BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
+		blockIDFlag = prototypes.BlockIDFlagCommit
 	case vote.BlockID.IsZero():
-		blockIDFlag = BlockIDFlagNil
+		blockIDFlag = prototypes.BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -100,9 +101,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case prototypes.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case prototypes.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")

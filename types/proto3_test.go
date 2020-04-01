@@ -22,9 +22,9 @@ func TestProtoCompatibility(t *testing.T) {
 		ChainId: "cosmos",
 		Height:  150,
 		Time:    &ProtoTimestamp{Seconds: seconds, Nanos: nanos},
-		LastBlockId: &BlockID{
+		LastBlockId: &ProtoBlockID{
 			Hash: []byte("some serious hashing"),
-			PartsHeader: PartSetHeader{
+			PartsHeader: &ProtoPartSetHeader{
 				Total: 8,
 				Hash:  []byte("some more serious hashing"),
 			},

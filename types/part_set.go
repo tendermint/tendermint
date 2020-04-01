@@ -53,6 +53,15 @@ func (part *Part) StringIndented(indent string) string {
 
 //-------------------------------------
 
+type PartSetHeader struct {
+	Total uint32           `json:"total"`
+	Hash  tmbytes.HexBytes `json:"hash"`
+}
+
+func (psh PartSetHeader) String() string {
+	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
+}
+
 func (psh PartSetHeader) IsZero() bool {
 	return psh.Total == 0 && len(psh.Hash) == 0
 }

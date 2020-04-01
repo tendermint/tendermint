@@ -18,12 +18,12 @@ var (
 	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
 )
 
-func (r *PartSetHeader) MarshalJSON() ([]byte, error) {
+func (r *ProtoPartSetHeader) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
-func (r *PartSetHeader) UnmarshalJSON(b []byte) error {
+func (r *ProtoPartSetHeader) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
@@ -68,7 +68,7 @@ type jsonRoundTripper interface {
 	json.Unmarshaler
 }
 
-var _ jsonRoundTripper = (*PartSetHeader)(nil)
+var _ jsonRoundTripper = (*ProtoPartSetHeader)(nil)
 var _ jsonRoundTripper = (*ProtoHeader)(nil)
 var _ jsonRoundTripper = (*ProtoVersion)(nil)
 var _ jsonRoundTripper = (*ProtoTimestamp)(nil)

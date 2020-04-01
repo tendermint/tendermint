@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package tendermint.types;
-option  go_package = "github.com/tendermint/tendermint/types";
+package tendermint.proto.types;
+option  go_package = "github.com/tendermint/tendermint/proto/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 
@@ -27,9 +27,8 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  option (gogoproto.equal) = true;
-  uint32 total              = 1;
-  bytes hash               = 2;
+  uint32 total = 1;
+  bytes  hash  = 2;
 }
 
 // BlockID

@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	prototypes "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -436,16 +437,16 @@ func (h *Header) StringIndented(indent string) string {
 
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
-	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress Address     `json:"validator_address"`
-	Timestamp        time.Time   `json:"timestamp"`
-	Signature        []byte      `json:"signature"`
+	BlockIDFlag      prototypes.BlockIDFlag `json:"block_id_flag"`
+	ValidatorAddress Address                `json:"validator_address"`
+	Timestamp        time.Time              `json:"timestamp"`
+	Signature        []byte                 `json:"signature"`
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
 func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
-		BlockIDFlag:      BlockIDFlagCommit,
+		BlockIDFlag:      prototypes.BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
 		Signature:        signature,
@@ -454,20 +455,20 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 
 // ForBlock returns true if CommitSig is for the block.
 func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == BlockIDFlagCommit
+	return cs.BlockIDFlag == prototypes.BlockIDFlagCommit
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
 // fields are all empty.
 func NewCommitSigAbsent() CommitSig {
 	return CommitSig{
-		BlockIDFlag: BlockIDFlagAbsent,
+		BlockIDFlag: prototypes.BlockIDFlagAbsent,
 	}
 }
 
 // Absent returns true if CommitSig is absent.
 func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == BlockIDFlagAbsent
+	return cs.BlockIDFlag == prototypes.BlockIDFlagAbsent
 }
 
 func (cs CommitSig) String() string {
@@ -483,11 +484,11 @@ func (cs CommitSig) String() string {
 func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 	var blockID BlockID
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
+	case prototypes.BlockIDFlagAbsent:
 		blockID = BlockID{}
-	case BlockIDFlagCommit:
+	case prototypes.BlockIDFlagCommit:
 		blockID = commitBlockID
-	case BlockIDFlagNil:
+	case prototypes.BlockIDFlagNil:
 		blockID = BlockID{}
 	default:
 		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
@@ -498,15 +499,15 @@ func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 // ValidateBasic performs basic validation.
 func (cs CommitSig) ValidateBasic() error {
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-	case BlockIDFlagCommit:
-	case BlockIDFlagNil:
+	case prototypes.BlockIDFlagAbsent:
+	case prototypes.BlockIDFlagCommit:
+	case prototypes.BlockIDFlagNil:
 	default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
+	case prototypes.BlockIDFlagAbsent:
 		if len(cs.ValidatorAddress) != 0 {
 			return errors.New("validator address is present")
 		}
@@ -570,7 +571,7 @@ func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSi
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, prototypes.PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
@@ -589,7 +590,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 func (commit *Commit) GetVote(valIdx int32) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             PrecommitType,
+		Type:             prototypes.PrecommitType,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -611,7 +612,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(PrecommitType)
+	return byte(prototypes.PrecommitType)
 }
 
 // GetHeight returns height of the commit.
@@ -875,12 +876,16 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 //--------------------------------------------------------------------------------
 
-// BlockID
+// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
+type BlockID struct {
+	Hash        tmbytes.HexBytes `json:"hash"`
+	PartsHeader PartSetHeader    `json:"parts"`
+}
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equal(other.PartsHeader)
+		blockID.PartsHeader.Equals(other.PartsHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -915,4 +920,9 @@ func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
 		blockID.PartsHeader.Total > 0 &&
 		len(blockID.PartsHeader.Hash) == tmhash.Size
+}
+
+// String returns a human readable string representation of the BlockID
+func (blockID BlockID) String() string {
+	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }
