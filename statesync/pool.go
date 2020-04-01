@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
 	"sort"
@@ -140,6 +141,23 @@ func (p *snapshotPool) Best() *snapshot {
 	return candidates[0]
 }
 
+// GetPeer returns a random peer for a snapshot, if any.
+func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.Peer {
+	hash := snapshot.Hash()
+	p.Lock()
+	defer p.Unlock()
+
+	if len(p.snapshotPeers[hash]) == 0 {
+		return nil
+	}
+
+	peers := make([]p2p.Peer, 0, len(p.snapshotPeers[hash]))
+	for _, peer := range p.snapshotPeers[hash] {
+		peers = append(peers, peer)
+	}
+	return peers[rand.Intn(len(peers))]
+}
+
 // Reject rejects a snapshot. Rejected snapshots will never be used again.
 func (p *snapshotPool) Reject(snapshot *snapshot) {
 	hash := snapshot.Hash()
@@ -231,24 +249,25 @@ func newChunkPool(snapshot *snapshot) (*chunkPool, error) {
 	}, nil
 }
 
-// Add adds a chunk to the pool, verifying its checksum. It ignores chunks that already exists.
-func (p *chunkPool) Add(chunk *chunk) error {
+// Add adds a chunk to the pool, verifying its checksum. It ignores chunks that already exists,
+// and returns true if the chunk was added.
+func (p *chunkPool) Add(chunk *chunk) (bool, error) {
 	if chunk.Body == nil {
-		return errors.New("cannot add chunk with nil body")
+		return false, errors.New("cannot add chunk with nil body")
 	}
 	p.Lock()
 	defer p.Unlock()
 	if p.ch == nil {
-		return errors.New("pool is closed")
+		return false, errors.New("pool is closed")
 	}
 	if chunk.Index >= uint32(len(p.snapshot.ChunkHashes)) {
-		return fmt.Errorf("received unexpected snapshot chunk %v", chunk.Index)
+		return false, fmt.Errorf("received unexpected snapshot chunk %v", chunk.Index)
 	}
 	if p.memChunks[chunk.Index] != nil || p.diskChunks[chunk.Index] != "" {
-		return nil
+		return false, nil
 	}
 	if !bytes.Equal(chunk.Hash(), p.snapshot.ChunkHashes[chunk.Index]) {
-		return fmt.Errorf("chunk %v hash mismatch, expected %x got %x", chunk.Index,
+		return false, fmt.Errorf("chunk %v hash mismatch, expected %x got %x", chunk.Index,
 			p.snapshot.ChunkHashes[chunk.Index], chunk.Hash())
 	}
 
@@ -259,7 +278,7 @@ func (p *chunkPool) Add(chunk *chunk) error {
 		path := path.Join(p.dir, strconv.FormatUint(uint64(chunk.Index), 10))
 		err := ioutil.WriteFile(path, chunk.Body, 0644)
 		if err != nil {
-			return fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
+			return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
 		}
 		p.diskChunks[chunk.Index] = path
 	}
@@ -276,7 +295,7 @@ func (p *chunkPool) Add(chunk *chunk) error {
 			close(p.ch)
 		}
 	}
-	return nil
+	return true, nil
 }
 
 // Close closes the chunk pool, cleaning up all temporary files.
@@ -295,6 +314,13 @@ func (p *chunkPool) Close() error {
 	}
 	p.snapshot = nil
 	return nil
+}
+
+// Has returns true if the chunk pool contains (or contained) a given chunk.
+func (p *chunkPool) Has(index uint32) bool {
+	p.Lock()
+	defer p.Unlock()
+	return p.nextChunk > index || p.memChunks[index] != nil || p.diskChunks[index] != ""
 }
 
 // Next returns the next chunk from the pool, or a Done error if no more chunks are available.
@@ -320,6 +346,7 @@ func (p *chunkPool) Next() (*chunk, error) {
 		if err != nil {
 			return nil, err
 		}
+		delete(p.diskChunks, index)
 		return &chunk{
 			Index: index,
 			Body:  body,

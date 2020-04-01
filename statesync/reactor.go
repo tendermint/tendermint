@@ -1,8 +1,11 @@
 package statesync
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -23,7 +26,8 @@ type Reactor struct {
 
 	conn proxy.AppConnSnapshot
 
-	// These will only be set when doing a state sync
+	// These will only be set when a state sync is in progress. They are used by the reactor
+	// to record incoming snapshots and chunks from peers.
 	mtx       sync.RWMutex
 	snapshots *snapshotPool
 	chunks    *chunkPool
@@ -63,14 +67,24 @@ func (r *Reactor) OnStart() error {
 
 // AddPeer implements p2p.Reactor.
 func (r *Reactor) AddPeer(peer p2p.Peer) {
-	r.Logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
-	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.snapshots != nil {
+		r.Logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
+		peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+	}
 }
 
 // RemovePeer implements p2p.Reactor.
 func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	r.Logger.Debug("Removing peer from pool", "peer", peer.ID())
-	r.snapshots.RemovePeer(peer)
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.snapshots != nil {
+		r.Logger.Debug("Removing peer from pool", "peer", peer.ID())
+		r.snapshots.RemovePeer(peer)
+	}
 }
 
 // Receive implements p2p.Reactor.
@@ -102,6 +116,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			for _, snapshot := range snapshots {
+				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height, "format", snapshot.Format, "peer", src.ID())
 				src.Send(chID, cdc.MustMarshalBinaryBare(&snapshotsResponseMessage{
 					Height:      snapshot.Height,
 					Format:      snapshot.Format,
@@ -111,6 +126,13 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 
 		case *snapshotsResponseMessage:
+			r.mtx.RLock()
+			defer r.mtx.RUnlock()
+			if r.snapshots == nil {
+				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
+				return
+			}
+			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
 			if r.snapshots.Add(src, &snapshot{
 				Height:      msg.Height,
 				Format:      msg.Format,
@@ -127,16 +149,17 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case ChunkChannel:
 		switch msg := msg.(type) {
 		case *chunkRequestMessage:
+			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
 			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
 				Height: msg.Height,
 				Format: msg.Format,
 				Chunk:  msg.Chunk,
 			})
 			if err != nil {
-				r.Logger.Error("Failed to load snapshot chunk", "height", msg.Height,
-					"format", msg.Format, "chunk", msg.Chunk, "err", err)
+				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "err", err)
 				return
 			}
+			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
 			src.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkResponseMessage{
 				Height:  msg.Height,
 				Format:  msg.Format,
@@ -146,19 +169,24 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}))
 
 		case *chunkResponseMessage:
+			r.mtx.RLock()
+			defer r.mtx.RUnlock()
 			if r.chunks == nil {
-				r.Logger.Error("received unexpected chunk", "height", msg.Height,
-					"format", msg.Format, "chunk", msg.Chunk)
+				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			err := r.chunks.Add(&chunk{
+			added, err := r.chunks.Add(&chunk{
 				Index: msg.Chunk,
 				Body:  msg.Body,
 			})
 			if err != nil {
-				r.Logger.Error("failed to add chunk", "height", msg.Height,
-					"format", msg.Format, "chunk", msg.Chunk, "err", err)
+				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "err", err)
 				return
+			}
+			if added {
+				r.Logger.Info("Received chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
+			} else {
+				r.Logger.Debug("Ignoring duplicate chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
 			}
 
 		default:
@@ -166,7 +194,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	default:
-		r.Logger.Error("Received message on invalid channel %v", chID)
+		r.Logger.Error("Received message on invalid channel %x", chID)
 	}
 }
 
@@ -201,4 +229,120 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 		})
 	}
 	return snapshots, nil
+}
+
+// sync runs a state sync
+func (r *Reactor) Sync() error {
+	r.Logger.Info("Starting state sync")
+
+	snapshots := newSnapshotPool()
+	r.mtx.Lock()
+	if r.snapshots != nil {
+		r.mtx.Unlock()
+		return errors.New("a state sync is already in progress")
+	}
+	r.snapshots = snapshots
+	r.mtx.Unlock()
+
+	// discover snapshots
+	r.Logger.Info("Discovering snapshots")
+	time.Sleep(10 * time.Second)
+
+	var snapshot *snapshot
+	for {
+		snapshot = snapshots.Best()
+		if snapshot == nil {
+			r.Logger.Info("No suitable snapshots found, still looking")
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		r.Logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height, "format", snapshot.Format)
+		resp, err := r.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
+			Snapshot: &abci.Snapshot{
+				Height:      snapshot.Height,
+				Format:      snapshot.Format,
+				ChunkHashes: snapshot.ChunkHashes,
+				Metadata:    snapshot.Metadata,
+			},
+			AppHash: nil, // FIXME Light client verification
+		})
+		if err != nil {
+			return fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
+				snapshot.Height, snapshot.Format, err)
+		}
+		if resp.Accepted {
+			r.Logger.Info("Snapshot accepted, restoring", "height", snapshot.Height, "format", snapshot.Format, "chunks", len(snapshot.ChunkHashes))
+			break
+		}
+		r.Logger.Info("Snapshot rejected", "height", snapshot.Height, "format", snapshot.Format)
+		switch resp.Reason {
+		case abci.ResponseOfferSnapshot_invalid_height:
+			snapshots.RejectHeight(snapshot.Height)
+		case abci.ResponseOfferSnapshot_invalid_format:
+			snapshots.RejectFormat(snapshot.Format)
+		default:
+			snapshots.Reject(snapshot)
+		}
+	}
+
+	// fetch chunks
+	chunks, err := newChunkPool(snapshot)
+	if err != nil {
+		return fmt.Errorf("failed to create chunk pool: %w", err)
+	}
+	defer chunks.Close()
+	r.mtx.Lock()
+	r.chunks = chunks
+	r.mtx.Unlock()
+
+	pending := make(chan uint32, len(snapshot.ChunkHashes))
+	for i := uint32(0); i < uint32(len(snapshot.ChunkHashes)); i++ {
+		pending <- i
+	}
+	for i := 0; i < 4; i++ {
+		go func() {
+			for index := range pending {
+				for !chunks.Has(index) {
+					peer := snapshots.GetPeer(snapshot)
+					if peer == nil {
+						r.Logger.Info("No peers found for snapshot", "height", snapshot.Height, "format", snapshot.Format)
+					} else {
+						r.Logger.Debug("Requesting chunk", "height", snapshot.Height, "format", snapshot.Format, "chunk", index, "peer", peer.ID())
+						peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
+							Height: snapshot.Height,
+							Format: snapshot.Format,
+							Chunk:  index,
+						}))
+					}
+					// wait for chunk to be returned
+					time.Sleep(10 * time.Second)
+				}
+			}
+		}()
+	}
+
+	// feed chunks to app
+	for {
+		chunk, err := chunks.Next()
+		if err == Done {
+			break
+		} else if err != nil {
+			return fmt.Errorf("failed to fetch chunks: %w", err)
+		}
+		r.Logger.Info("Applying chunk to ABCI app", "height", snapshot.Height, "format", snapshot.Format, "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
+		resp, err := r.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
+			Chunk: chunk.Body,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
+		}
+		if !resp.Applied {
+			return fmt.Errorf("failed to apply chunk %v", chunk.Index)
+		}
+	}
+
+	// Done!
+	r.Logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
+
+	return nil
 }
