@@ -2,7 +2,7 @@
 
 ## Changelog
 
-- 20202-3-31: Created
+- 20202-3-31: Created (@marbar3778)
 
 ## Context
 
@@ -20,7 +20,7 @@ There are a few options to pick from:
 
 Transition Tendermint to Protobuf because of its performance and tooling. The Ecosystem behind Protobuf is vast and has outstanding [support for many languages](https://developers.google.com/protocol-buffers/docs/tutorials).
 
-To make this move possible we will not be removing handwritten types but instead creating a `/proto` directory in which all the `.proto` files and types will live. Then where encoding is needed, on disk and over the wire, we will call util functions that will transition the types from handwritten go types to protobuf generated types.
+We will be making this possible by keeping the current types in there current form (handwritten) and creating a `/proto` directory in which all the `.proto` files will live. Where encoding is needed, on disk and over the wire, we will call util functions that will transition the types from handwritten go types to protobuf generated types.
 
 By going with this design we will enable future changes to types and allow for a more modular codebase.
 
@@ -35,6 +35,8 @@ Proposed
 - Allows for modular types in the future
 - Less refactoring
 - Allows the proto files to be pulled into the spec repo in the future.
+- Performance
+- Tooling & support in multiple languages
 
 ### Negative
 
