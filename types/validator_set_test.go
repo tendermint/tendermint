@@ -308,7 +308,7 @@ func randPubKey() crypto.PubKey {
 func randValidator(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), int64(tmrand.Uint64()%uint64((MaxTotalVotingPower-totalVotingPower))))
+	val := NewValidator(randPubKey(), int64(tmrand.Uint64()%uint64(MaxTotalVotingPower-totalVotingPower)))
 	val.ProposerPriority = tmrand.Int64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
@@ -1322,6 +1322,42 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			verifyValidatorSet(t, valSet)
 		})
 	}
+}
+
+func TestVerifyCommitTrusting(t *testing.T) {
+	trustLevel := tmmath.Fraction{Numerator: 1, Denominator: 3}
+	privKey := ed25519.GenPrivKey()
+	pubKey := privKey.PubKey()
+	v1 := NewValidator(pubKey, 1000)
+	vset := NewValidatorSet([]*Validator{
+		v1,
+		newValidator([]byte("a"), 100),
+		newValidator([]byte("b"), 100),
+	})
+
+	// good
+	var (
+		chainID = "mychainID"
+		blockID = makeBlockIDRandom()
+		height  = int64(5)
+	)
+	vote := &Vote{
+		ValidatorAddress: v1.Address,
+		ValidatorIndex:   0,
+		Height:           height,
+		Round:            0,
+		Timestamp:        tmtime.Now(),
+		Type:             PrecommitType,
+		BlockID:          blockID,
+	}
+	sig, err := privKey.Sign(vote.SignBytes(chainID))
+	assert.NoError(t, err)
+	vote.Signature = sig
+	commit := NewCommit(vote.Height, vote.Round, blockID, []CommitSig{vote.CommitSig()})
+
+	err = vset.VerifyCommitTrusting(chainID, blockID, height, commit, trustLevel)
+	assert.NoError(t, err)
+
 }
 
 //---------------------
