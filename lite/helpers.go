@@ -99,9 +99,9 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 func makeVote(header *types.Header, valset *types.ValidatorSet,
 	key crypto.PrivKey, blockID types.BlockID) (*types.Vote, error) {
 	addr := key.PubKey().Address()
-	idx, _, err := valset.GetByAddress(addr)
-	if err != nil {
-		return nil, fmt.Errorf("addressL %v, is not associated with a validator, err: %w", addr, err)
+	idx, _, ok := valset.GetByAddress(addr)
+	if !ok {
+		return nil, fmt.Errorf("address %v, is not associated with a validator", addr)
 	}
 	vote := &types.Vote{
 		ValidatorAddress: addr,

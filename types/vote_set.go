@@ -381,9 +381,9 @@ func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	valIndex, _, err := voteSet.valSet.GetByAddress(address)
-	if err != nil {
-		panic(fmt.Errorf("address: %s is not associated with a validator, err: %w", address, err))
+	valIndex, _, ok := voteSet.valSet.GetByAddress(address)
+	if !ok {
+		panic(fmt.Errorf("address: %s is not associated with a validator", address))
 	}
 	return voteSet.votes[valIndex]
 }

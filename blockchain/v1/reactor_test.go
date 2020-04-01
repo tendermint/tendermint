@@ -58,8 +58,8 @@ func makeVote(
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 
-	valIdx, _, err := valset.GetByAddress(pubKey.Address())
-	if err != nil {
+	valIdx, _, ok := valset.GetByAddress(pubKey.Address())
+	if !ok {
 		return nil
 	}
 	vote := &types.Vote{

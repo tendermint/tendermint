@@ -190,8 +190,8 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	// See https://github.com/tendermint/tendermint/issues/3244
 	ev := evidence
 	height, addr := ev.Height(), ev.Address()
-	_, val, err := valset.GetByAddress(addr)
-	if err != nil {
+	_, val, ok := valset.GetByAddress(addr)
+	if !ok {
 		return fmt.Errorf("address %X was not a validator at height %d", addr, height)
 	}
 

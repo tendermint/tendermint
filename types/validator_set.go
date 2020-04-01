@@ -234,14 +234,14 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 
 // GetByAddress returns an index of the validator with address and validator if found.
 // Otherwise, 0, nil and a error are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index uint32, val *Validator, err error) {
+func (vals *ValidatorSet) GetByAddress(address []byte) (index uint32, val *Validator, ok bool) {
 	idx := sort.Search(len(vals.Validators), func(i int) bool {
 		return bytes.Compare(address, vals.Validators[i].Address) <= 0
 	})
 	if idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address) {
-		return uint32(idx), vals.Validators[idx].Copy(), nil
+		return uint32(idx), vals.Validators[idx].Copy(), true
 	}
-	return 0, nil, fmt.Errorf("could not find validator at index: %v, %w", idx, err)
+	return 0, nil, false
 }
 
 // GetByIndex returns the validator's address and validator itself by index.
@@ -398,8 +398,8 @@ func verifyUpdates(
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
-		_, val, err := vals.GetByAddress(update.Address)
-		if err != nil {
+		_, val, ok := vals.GetByAddress(update.Address)
+		if !ok {
 			return update.VotingPower
 		}
 		return update.VotingPower - val.VotingPower
@@ -448,8 +448,8 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
-		_, val, err := vals.GetByAddress(address)
-		if err != nil {
+		_, val, ok := vals.GetByAddress(address)
+		if !ok {
 			// add val
 			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
 			// un-bond and then re-bond to reset their (potentially previously negative) ProposerPriority to zero.
@@ -513,9 +513,9 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (votingPower int64
 	removedVotingPower := int64(0)
 	for _, valUpdate := range deletes {
 		address := valUpdate.Address
-		_, val, err := vals.GetByAddress(address)
-		if err != nil {
-			return removedVotingPower, fmt.Errorf("failed to find validator %X to remove, err: %w", address, err)
+		_, val, ok := vals.GetByAddress(address)
+		if !ok {
+			return removedVotingPower, fmt.Errorf("failed to find validator %X to remove", address)
 		}
 		removedVotingPower += val.VotingPower
 	}
@@ -719,8 +719,8 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		}
 
 		// See if this validator is in oldVals.
-		_, val, err := oldVals.GetByAddress(commitSig.ValidatorAddress)
-		if err != nil {
+		_, val, ok := oldVals.GetByAddress(commitSig.ValidatorAddress)
+		if !ok {
 			continue // missing validator or double vote...
 		}
 
@@ -774,12 +774,12 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
-		valIdx, val, err := vals.GetByAddress(commitSig.ValidatorAddress)
-		if err != nil {
+		valIdx, val, okVal := vals.GetByAddress(commitSig.ValidatorAddress)
+		if !okVal {
 			continue // missing validator
 		}
 
-		if firstIndex, ok := seenVals[valIdx]; ok && err == nil { // double vote
+		if firstIndex, ok := seenVals[valIdx]; ok && okVal { // double vote
 			secondIndex := idx
 			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 		}

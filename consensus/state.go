@@ -1540,7 +1540,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 	byzantineValidatorsPower := int64(0)
 	for _, ev := range block.Evidence.Evidence {
-		if _, val, err := cs.Validators.GetByAddress(ev.Address()); err == nil {
+		if _, val, ok := cs.Validators.GetByAddress(ev.Address()); ok {
 			byzantineValidatorsPower += val.VotingPower
 		}
 	}
@@ -1887,9 +1887,9 @@ func (cs *State) signVote(
 		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 	addr := pubKey.Address()
-	valIdx, _, err := cs.Validators.GetByAddress(addr)
-	if err != nil {
-		return nil, fmt.Errorf("address: %v is not associated with an active validator, err: %w", addr, err)
+	valIdx, _, ok := cs.Validators.GetByAddress(addr)
+	if !ok {
+		return nil, fmt.Errorf("address: %v is not associated with an active validator", addr)
 	}
 
 	vote := &types.Vote{

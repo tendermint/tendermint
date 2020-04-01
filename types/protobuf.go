@@ -150,8 +150,8 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
-	_, val, err := valSet.GetByAddress(ev.Address())
-	if err != nil {
+	_, val, ok := valSet.GetByAddress(ev.Address())
+	if !ok {
 		// should already have checked this
 		panic(val)
 	}

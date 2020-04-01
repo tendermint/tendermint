@@ -56,9 +56,9 @@ func MakeVote(
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 	addr := pubKey.Address()
-	idx, _, err := valSet.GetByAddress(addr)
-	if err != nil {
-		return nil, fmt.Errorf("address: %v is not associated with a validator, err: %w", addr, err)
+	idx, _, ok := valSet.GetByAddress(addr)
+	if !ok {
+		return nil, fmt.Errorf("address: %v is not associated with a validator", addr)
 	}
 	vote := &Vote{
 		ValidatorAddress: addr,

@@ -99,9 +99,9 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 	key crypto.PrivKey, blockID types.BlockID) (*types.Vote, error) {
 
 	addr := key.PubKey().Address()
-	idx, _, err := valset.GetByAddress(addr)
-	if err != nil {
-		return nil, fmt.Errorf("addressL %v, is not associated with a validator, err: %w", addr, err)
+	idx, _, ok := valset.GetByAddress(addr)
+	if !ok {
+		return nil, fmt.Errorf("addressL %v, is not associated with a validator", addr)
 	}
 	vote := &types.Vote{
 		ValidatorAddress: addr,
@@ -116,7 +116,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 	signBytes := vote.SignBytes(header.ChainID)
 	sig, err := key.Sign(signBytes)
 	if err != nil {
-		return nil, fmt.Errorf("could not sign bytes, err: %w", err)
+		return nil, fmt.Errorf("could not sign bytes: %w", err)
 	}
 	vote.Signature = sig
 
