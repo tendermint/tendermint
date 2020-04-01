@@ -4,13 +4,13 @@ package tendermint.types;
 option  go_package = "github.com/tendermint/tendermint/types";
 
 message ProtoPartSetHeader {
-  int32 Total = 1;
-  bytes Hash  = 2;
+  int32 total = 1;
+  bytes hash  = 2;
 }
 
 message ProtoBlockID {
-  bytes              Hash        = 1;
-  ProtoPartSetHeader PartsHeader = 2;
+  bytes              hash         = 1;
+  ProtoPartSetHeader parts_header = 2;
 }
 
 // Block Header
