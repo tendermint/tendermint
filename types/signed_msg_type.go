@@ -1,13 +1,13 @@
 package types
 
 import (
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 // IsVoteTypeValid returns true if t is a valid vote type.
-func IsVoteTypeValid(t prototypes.SignedMsgType) bool {
+func IsVoteTypeValid(t tmproto.SignedMsgType) bool {
 	switch t {
-	case prototypes.PrevoteType, prototypes.PrecommitType:
+	case tmproto.PrevoteType, tmproto.PrecommitType:
 		return true
 	default:
 		return false

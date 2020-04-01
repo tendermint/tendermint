@@ -28,7 +28,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -262,7 +262,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
 		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
-			Round: 1, Index: 1, Type: prototypes.PrevoteType})
+			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	reactor.InitPeer(peer)
@@ -285,7 +285,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
 		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
-			Round: 1, Index: 1, Type: prototypes.PrevoteType})
+			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	// we should call InitPeer here
@@ -822,8 +822,8 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 
 func TestHasVoteMessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   prototypes.SignedMsgType = 0x01
-		invalidSignedMsgType prototypes.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	testCases := []struct { // nolint: maligned
@@ -832,7 +832,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		messageIndex  int32
 		messageHeight int64
 		testName      string
-		messageType   prototypes.SignedMsgType
+		messageType   tmproto.SignedMsgType
 	}{
 		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
@@ -858,8 +858,8 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 
 func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   prototypes.SignedMsgType = 0x01
-		invalidSignedMsgType prototypes.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	validBlockID := types.BlockID{}
@@ -876,7 +876,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		messageRound   int32
 		messageHeight  int64
 		testName       string
-		messageType    prototypes.SignedMsgType
+		messageType    tmproto.SignedMsgType
 		messageBlockID types.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},

@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -604,7 +604,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             prototypes.PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
@@ -617,7 +617,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		badChainID = "notmychainID"
 		badBlockID = BlockID{Hash: []byte("goodbye")}
 		badHeight  = height + 1
-		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: prototypes.BlockIDFlagAbsent}})
+		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: tmproto.BlockIDFlagAbsent}})
 	)
 
 	// test some error cases

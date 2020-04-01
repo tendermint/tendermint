@@ -7,6 +7,7 @@ import (
 	"time"
 
 	gogotypes "github.com/gogo/protobuf/types"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"

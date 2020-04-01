@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	cfg "github.com/tendermint/tendermint/config"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -66,7 +66,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             prototypes.PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()

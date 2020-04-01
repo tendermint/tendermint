@@ -12,7 +12,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -28,9 +28,9 @@ const (
 // A vote is either stepPrevote or stepPrecommit.
 func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
-	case prototypes.PrevoteType:
+	case tmproto.PrevoteType:
 		return stepPrevote
-	case prototypes.PrecommitType:
+	case tmproto.PrecommitType:
 		return stepPrecommit
 	default:
 		panic("Unknown vote type")

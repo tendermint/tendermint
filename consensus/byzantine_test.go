@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -234,8 +234,8 @@ func sendProposalAndParts(
 
 	// votes
 	cs.mtx.Lock()
-	prevote, _ := cs.signVote(prototypes.PrevoteType, blockHash, parts.Header())
-	precommit, _ := cs.signVote(prototypes.PrecommitType, blockHash, parts.Header())
+	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
+	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
 	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))

@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 type voteData struct {
@@ -29,7 +29,7 @@ func makeVote(
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             prototypes.SignedMsgType(step),
+		Type:             tmproto.SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err = val.SignVote(chainID, v)

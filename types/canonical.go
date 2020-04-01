@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -24,19 +24,19 @@ type CanonicalPartSetHeader struct {
 }
 
 type CanonicalProposal struct {
-	Type      prototypes.SignedMsgType // type alias for byte
-	Height    int64                    `binary:"fixed64"`
-	Round     int64                    `binary:"fixed64"`
-	POLRound  int64                    `binary:"fixed64"`
+	Type      tmproto.SignedMsgType // type alias for byte
+	Height    int64                 `binary:"fixed64"`
+	Round     int64                 `binary:"fixed64"`
+	POLRound  int64                 `binary:"fixed64"`
 	BlockID   CanonicalBlockID
 	Timestamp time.Time
 	ChainID   string
 }
 
 type CanonicalVote struct {
-	Type      prototypes.SignedMsgType // type alias for byte
-	Height    int64                    `binary:"fixed64"`
-	Round     int64                    `binary:"fixed64"`
+	Type      tmproto.SignedMsgType // type alias for byte
+	Height    int64                 `binary:"fixed64"`
+	Round     int64                 `binary:"fixed64"`
 	BlockID   CanonicalBlockID
 	Timestamp time.Time
 	ChainID   string
@@ -61,7 +61,7 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		Type:      prototypes.ProposalType,
+		Type:      tmproto.ProposalType,
 		Height:    proposal.Height,
 		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		POLRound:  int64(proposal.POLRound),

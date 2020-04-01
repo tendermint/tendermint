@@ -11,15 +11,15 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(byte(prototypes.PrevoteType))
+	return exampleVote(byte(tmproto.PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(byte(prototypes.PrecommitType))
+	return exampleVote(byte(tmproto.PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -29,7 +29,7 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		Type:      prototypes.SignedMsgType(t),
+		Type:      tmproto.SignedMsgType(t),
 		Height:    12345,
 		Round:     2,
 		Timestamp: stamp,
@@ -69,11 +69,11 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		1: {
-			"", &Vote{Height: 1, Round: 1, Type: prototypes.PrecommitType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrecommitType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
-				0x2,                                    // prototypes.PrecommitType
+				0x2,                                    // tmproto.PrecommitType
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -84,11 +84,11 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		2: {
-			"", &Vote{Height: 1, Round: 1, Type: prototypes.PrevoteType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrevoteType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
-				0x1,                                    // prototypes.PrevoteType
+				0x1,                                    // tmproto.PrevoteType
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -175,12 +175,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   prototypes.SignedMsgType
+		in   tmproto.SignedMsgType
 		out  bool
 	}{
-		{"Prevote", prototypes.PrevoteType, true},
-		{"Precommit", prototypes.PrevoteType, true},
-		{"InvalidType", prototypes.SignedMsgType(0x3), false},
+		{"Prevote", tmproto.PrevoteType, true},
+		{"Precommit", tmproto.PrevoteType, true},
+		{"InvalidType", tmproto.SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -223,7 +223,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt32,
 		Timestamp:        timestamp,
-		Type:             prototypes.PrevoteType,
+		Type:             tmproto.PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{

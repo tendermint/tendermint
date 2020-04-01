@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var testProposal *Proposal
@@ -114,7 +114,7 @@ func TestProposalValidateBasic(t *testing.T) {
 		expectErr        bool
 	}{
 		{"Good Proposal", func(p *Proposal) {}, false},
-		{"Invalid Type", func(p *Proposal) { p.Type = prototypes.PrecommitType }, true},
+		{"Invalid Type", func(p *Proposal) { p.Type = tmproto.PrecommitType }, true},
 		{"Invalid Height", func(p *Proposal) { p.Height = -1 }, true},
 		{"Invalid Round", func(p *Proposal) { p.Round = -1 }, true},
 		{"Invalid POLRound", func(p *Proposal) { p.POLRound = -2 }, true},

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	prototypes "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -51,7 +51,7 @@ func TestResetValidator(t *testing.T) {
 
 	// test vote
 	height, round := int64(10), int32(1)
-	voteType := byte(prototypes.PrevoteType)
+	voteType := byte(tmproto.PrevoteType)
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
@@ -168,7 +168,7 @@ func TestSignVote(t *testing.T) {
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
 
 	height, round := int64(10), int32(1)
-	voteType := byte(prototypes.PrevoteType)
+	voteType := byte(tmproto.PrevoteType)
 
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
@@ -279,7 +279,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
-		voteType := byte(prototypes.PrevoteType)
+		voteType := byte(tmproto.PrevoteType)
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
@@ -308,7 +308,7 @@ func newVote(addr types.Address, idx int32, height int64, round int32, typ byte,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            round,
-		Type:             prototypes.SignedMsgType(typ),
+		Type:             tmproto.SignedMsgType(typ),
 		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}
