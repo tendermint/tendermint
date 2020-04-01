@@ -96,3 +96,10 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 	}
 	return bz
 }
+
+func (cs Proposal) ToProto() (*tmproto.CommitSig, error) {
+	return nil, nil
+}
+func (cs *Proposal) FromProto() {
+
+}

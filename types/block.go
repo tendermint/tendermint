@@ -16,7 +16,6 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -57,29 +56,18 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("chainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
 	}
 
-	if b.Height < 0 {
-		return errors.New("negative Header.Height")
-	} else if b.Height == 0 {
-		return errors.New("zero Header.Height")
-	}
-
-	// NOTE: Timestamp validation is subtle and handled elsewhere.
-
-	if err := b.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
+	if err := b.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong Header, %w", err)
 	}
 
 	// Validate the last commit and its hash.
-	if b.Header.Height > 1 {
+	if b.Height > 1 {
 		if b.LastCommit == nil {
 			return errors.New("nil LastCommit")
 		}
 		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong LastCommit: %v", err)
 		}
-	}
-	if err := ValidateHash(b.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
 		return fmt.Errorf("wrong Header.LastCommitHash. Expected %v, got %v",
@@ -102,26 +90,6 @@ func (b *Block) ValidateBasic() error {
 		)
 	}
 
-	// Basic validation of hashes related to application data.
-	// Will validate fully against state in state#ValidateBlock.
-	if err := ValidateHash(b.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(b.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(b.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
-	}
-	// NOTE: AppHash is arbitrary length
-	if err := ValidateHash(b.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
-	}
-
-	// Validate evidence and its hash.
-	if err := ValidateHash(b.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
-	}
 	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
 	for i, ev := range b.Evidence.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
@@ -133,11 +101,6 @@ func (b *Block) ValidateBasic() error {
 			b.EvidenceHash,
 			b.Evidence.Hash(),
 		)
-	}
-
-	if len(b.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
-			crypto.AddressSize, len(b.ProposerAddress))
 	}
 
 	return nil
@@ -312,127 +275,6 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 	return maxDataBytes
 }
 
-//-----------------------------------------------------------------------------
-
-// Header defines the structure of a Tendermint block header.
-// NOTE: changes to the Header should be duplicated in:
-// - header.Hash()
-// - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
-type Header struct {
-	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
-	Time    time.Time         `json:"time"`
-
-	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
-
-	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
-
-	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	// root hash of all results from the txs from the previous block
-	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
-
-	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
-}
-
-// Populate the Header with state-derived data.
-// Call this after MakeBlock to complete the Header.
-func (h *Header) Populate(
-	version version.Consensus, chainID string,
-	timestamp time.Time, lastBlockID BlockID,
-	valHash, nextValHash []byte,
-	consensusHash, appHash, lastResultsHash []byte,
-	proposerAddress Address,
-) {
-	h.Version = version
-	h.ChainID = chainID
-	h.Time = timestamp
-	h.LastBlockID = lastBlockID
-	h.ValidatorsHash = valHash
-	h.NextValidatorsHash = nextValHash
-	h.ConsensusHash = consensusHash
-	h.AppHash = appHash
-	h.LastResultsHash = lastResultsHash
-	h.ProposerAddress = proposerAddress
-}
-
-// Hash returns the hash of the header.
-// It computes a Merkle tree from the header fields
-// ordered as they appear in the Header.
-// Returns nil if ValidatorHash is missing,
-// since a Header is not valid unless there is
-// a ValidatorsHash (corresponding to the validator set).
-func (h *Header) Hash() tmbytes.HexBytes {
-	if h == nil || len(h.ValidatorsHash) == 0 {
-		return nil
-	}
-	return merkle.SimpleHashFromByteSlices([][]byte{
-		cdcEncode(h.Version),
-		cdcEncode(h.ChainID),
-		cdcEncode(h.Height),
-		cdcEncode(h.Time),
-		cdcEncode(h.LastBlockID),
-		cdcEncode(h.LastCommitHash),
-		cdcEncode(h.DataHash),
-		cdcEncode(h.ValidatorsHash),
-		cdcEncode(h.NextValidatorsHash),
-		cdcEncode(h.ConsensusHash),
-		cdcEncode(h.AppHash),
-		cdcEncode(h.LastResultsHash),
-		cdcEncode(h.EvidenceHash),
-		cdcEncode(h.ProposerAddress),
-	})
-}
-
-// StringIndented returns a string representation of the header
-func (h *Header) StringIndented(indent string) string {
-	if h == nil {
-		return "nil-Header"
-	}
-	return fmt.Sprintf(`Header{
-%s  Version:        %v
-%s  ChainID:        %v
-%s  Height:         %v
-%s  Time:           %v
-%s  LastBlockID:    %v
-%s  LastCommit:     %v
-%s  Data:           %v
-%s  Validators:     %v
-%s  NextValidators: %v
-%s  App:            %v
-%s  Consensus:      %v
-%s  Results:        %v
-%s  Evidence:       %v
-%s  Proposer:       %v
-%s}#%v`,
-		indent, h.Version,
-		indent, h.ChainID,
-		indent, h.Height,
-		indent, h.Time,
-		indent, h.LastBlockID,
-		indent, h.LastCommitHash,
-		indent, h.DataHash,
-		indent, h.ValidatorsHash,
-		indent, h.NextValidatorsHash,
-		indent, h.AppHash,
-		indent, h.ConsensusHash,
-		indent, h.LastResultsHash,
-		indent, h.EvidenceHash,
-		indent, h.ProposerAddress,
-		indent, h.Hash())
-}
-
 //-------------------------------------
 
 // CommitSig is a part of the Vote included in a Commit.
@@ -534,6 +376,13 @@ func (cs CommitSig) ValidateBasic() error {
 	}
 
 	return nil
+}
+
+func (cs CommitSig) ToProto() (*tmproto.CommitSig, error) {
+	return nil, nil
+}
+func (cs *CommitSig) FromProto() {
+
 }
 
 //-------------------------------------
@@ -728,6 +577,13 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
+func (cs Commit) ToProto() (*tmproto.Commit, error) {
+	return nil, nil
+}
+func (cs *Commit) FromProto() {
+
+}
+
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
@@ -744,8 +600,8 @@ type SignedHeader struct {
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
 	// Make sure the header is consistent with the commit.
-	if sh.Header == nil {
-		return errors.New("signedHeader missing header")
+	if err := sh.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("signed header incorrect: %w", err)
 	}
 	if sh.Commit == nil {
 		return errors.New("signedHeader missing commit (precommit votes)")
@@ -789,6 +645,13 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent, sh.Header.StringIndented(indent+"  "),
 		indent, sh.Commit.StringIndented(indent+"  "),
 		indent)
+}
+
+func (sh SignedHeader) ToProto() (*tmproto.SignedHeader, error) {
+	return nil, nil
+}
+func (sh *SignedHeader) FromProto() {
+
 }
 
 //-----------------------------------------------------------------------------
@@ -872,6 +735,13 @@ func (data *EvidenceData) StringIndented(indent string) string {
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
 		indent, data.hash)
+}
+
+func (cs EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
+	return nil, nil
+}
+func (cs *EvidenceData) FromProto() {
+
 }
 
 //--------------------------------------------------------------------------------

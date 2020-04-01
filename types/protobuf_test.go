@@ -112,7 +112,7 @@ func TestABCIHeader(t *testing.T) {
 	// assert some fields match
 	assert.EqualValues(t, protocolVersion.Block, pbHeader.Version.Block)
 	assert.EqualValues(t, protocolVersion.App, pbHeader.Version.App)
-	assert.EqualValues(t, "chainID", pbHeader.ChainID)
+	assert.EqualValues(t, "chainID", pbHeader.ChainId)
 	assert.EqualValues(t, height, pbHeader.Height)
 	assert.EqualValues(t, timestamp, pbHeader.Time)
 	assert.EqualValues(t, lastBlockID.Hash, pbHeader.LastBlockId.Hash)

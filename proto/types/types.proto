@@ -54,7 +54,7 @@ message Header {
   option (gogoproto.equal)    = true;
   // basic block info
   Version                   version  = 1 [(gogoproto.nullable) = false];
-  string                    chain_id = 2 [(gogoproto.customname) = "ChainID"];
+  string                    chain_id = 2;
   int64                     height   = 3;
   google.protobuf.Timestamp time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
@@ -117,7 +117,8 @@ message DuplicateVoteEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types/Evidence";
+  option (cosmos_proto.interface_type) =
+      "*github.com/tendermint/tendermint/types/Evidence.Evidence";
 
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;

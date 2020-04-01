@@ -172,3 +172,50 @@ func (vote *Vote) ValidateBasic() error {
 	}
 	return nil
 }
+
+// ToProto converts the handwritten type to proto generated type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) ToProto() (*tmproto.Vote, error) {
+	err := vote.ValidateBasic()
+	if err != nil {
+		return nil, err
+	}
+
+	protoVote := tmproto.Vote{
+		Type:   vote.Type,
+		Height: vote.Height,
+		Round:  vote.Round,
+		BlockId: tmproto.BlockID{
+			Hash: vote.BlockID.Hash,
+			PartsHeader: tmproto.PartSetHeader{
+				Total: vote.BlockID.PartsHeader.Total,
+				Hash:  vote.BlockID.PartsHeader.Hash,
+			},
+		},
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   vote.ValidatorIndex,
+		Signature:        vote.Signature,
+	}
+
+	return &protoVote, nil
+}
+
+//FromProto converts a proto generetad type to a handwritten type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) FromProto(pv tmproto.Vote) {
+	vote.Type = pv.Type
+	vote.Height = pv.Height
+	vote.Round = pv.Round
+	vote.BlockID = BlockID{
+		Hash: pv.BlockId.Hash,
+		PartsHeader: PartSetHeader{
+			Total: pv.BlockId.PartsHeader.GetTotal(),
+			Hash:  pv.BlockId.PartsHeader.GetHash(),
+		},
+	}
+	vote.Timestamp = pv.Timestamp
+	vote.ValidatorAddress = pv.ValidatorAddress
+	vote.ValidatorIndex = pv.ValidatorIndex
+	vote.Signature = pv.Signature
+}

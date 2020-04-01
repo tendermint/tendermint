@@ -71,6 +71,11 @@ $(PROTOBUF):
 	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
 .PHONY: protobuf
 
+protoc-gen-gocosmos:
+	@echo "Installing protoc-gen-gocosmos..."
+	@go install github.com/regen-network/cosmos-proto/protoc-gen-gocosmos
+.PHONY: protoc-gen-gocosmos
+
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"

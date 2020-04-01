@@ -49,7 +49,7 @@ func (tm2pb) Header(header *Header) tmproto.Header {
 			Block: header.Version.Block.Uint64(),
 			App:   header.Version.App.Uint64(),
 		},
-		ChainID: header.ChainID,
+		ChainId: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
 
