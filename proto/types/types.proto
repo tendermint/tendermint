@@ -30,12 +30,18 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
+
   uint32 total = 1;
   bytes  hash  = 2;
 }
 
 // BlockID
 message BlockID {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
+
   bytes         hash         = 1;
   PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
 }
@@ -44,6 +50,8 @@ message BlockID {
 
 // Header defines the structure of a Tendermint block header.
 message Header {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
   // basic block info
   Version                   version  = 1 [(gogoproto.nullable) = false];
   string                    chain_id = 2 [(gogoproto.customname) = "ChainID"];
@@ -70,6 +78,9 @@ message Header {
 }
 
 message Version {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
+
   uint64 block = 1;
   uint64 app   = 2;
 }
@@ -87,8 +98,6 @@ message Data {
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 message Vote {
-  option (gogoproto.goproto_stringer) = false;
-
   SignedMsgType             type      = 1;
   int64                     height    = 2;
   int32                     round     = 3;
@@ -125,7 +134,6 @@ message EvidenceData {
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 message Commit {
-  option (gogoproto.sizer) = false;
   // NOTE: The signatures are in order of address to preserve the bonded
   // ValidatorSet order.
   // Any peer with a block can gossip signatures by index with a peer without
@@ -144,8 +152,6 @@ message Commit {
 
 // CommitSig is a part of the Vote included in a Commit.
 message CommitSig {
-  option (gogoproto.goproto_stringer) = false;
-
   BlockIDFlag               block_id_flag     = 1;
   bytes                     validator_address = 2;
   google.protobuf.Timestamp timestamp         = 3
