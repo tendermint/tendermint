@@ -44,6 +44,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
+	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -153,6 +154,7 @@ type Option func(*Node)
 //  - CONSENSUS
 //  - EVIDENCE
 //  - PEX
+//  - STATESYNC
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {
@@ -193,12 +195,13 @@ type Node struct {
 	bcReactor        p2p.Reactor       // for fast-syncing
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
-	consensusState   *cs.State      // latest consensus state
-	consensusReactor *cs.Reactor    // for participating in the consensus
-	pexReactor       *pex.Reactor   // for exchanging peer addresses
-	evidencePool     *evidence.Pool // tracking evidence
-	proxyApp         proxy.AppConns // connection to the application
-	rpcListeners     []net.Listener // rpc servers
+	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
+	consensusState   *cs.State          // latest consensus state
+	consensusReactor *cs.Reactor        // for participating in the consensus
+	pexReactor       *pex.Reactor       // for exchanging peer addresses
+	evidencePool     *evidence.Pool     // tracking evidence
+	proxyApp         proxy.AppConns     // connection to the application
+	rpcListeners     []net.Listener     // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
 	prometheusSrv    *http.Server
@@ -364,7 +367,11 @@ func createBlockchainReactor(config *cfg.Config,
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		r := bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		if config.StateSync.Enabled {
+			r.Disabled = true
+		}
+		bcReactor = r
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v2":
@@ -480,6 +487,7 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
+	stateSyncReactor *statesync.Reactor,
 	consensusReactor *consensus.Reactor,
 	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
@@ -497,6 +505,7 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	sw.AddReactor("STATESYNC", stateSyncReactor)
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
@@ -598,8 +607,10 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
-	if err := doHandshake(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
-		return nil, err
+	if !config.StateSync.Enabled {
+		if err := doHandshake(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+			return nil, err
+		}
 	}
 
 	// Reload the state. It will have the Version.Consensus.App set by the
@@ -623,6 +634,20 @@ func NewNode(config *cfg.Config,
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
+
+	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot())
+	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
+
+	// If the node is empty, run state sync
+	if config.StateSync.Enabled && state.LastBlockHeight == 0 && blockStore.Height() == 0 {
+		go func() {
+			logger.Info("Starting state sync")
+			err := stateSyncReactor.Sync()
+			if err != nil {
+				logger.Error("State sync failed", "err", err)
+			}
+		}()
+	}
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -673,7 +698,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactor, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -1117,6 +1142,7 @@ func makeNodeInfo(
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
+			statesync.SnapshotChannel, statesync.ChunkChannel,
 		},
 		Moniker: config.Moniker,
 		Other: p2p.DefaultNodeInfoOther{
