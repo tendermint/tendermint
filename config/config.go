@@ -65,6 +65,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
 	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
@@ -78,6 +79,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		StateSync:       DefaultStateSyncConfig(),
 		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
@@ -92,6 +94,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		StateSync:       TestStateSyncConfig(),
 		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
@@ -123,6 +126,9 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [mempool] section")
+	}
+	if err := cfg.StateSync.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [statesync] section")
 	}
 	if err := cfg.FastSync.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [fastsync] section")
@@ -703,6 +709,49 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+// StateSyncConfig
+
+// StateSyncConfig defines the configuration for the Tendermint state sync service
+type StateSyncConfig struct {
+	Enabled       bool          `mapstructure:"enabled"`
+	RPCServers    []string      `mapstructure:"rpc_servers"`
+	TrustedPeriod time.Duration `mapstructure:"trusted_period"`
+	TrustedHeight int64         `mapstructure:"trusted_height"`
+	TrustedHash   string        `mapstructure:"trusted_hash"`
+}
+
+// DefaultStateSyncConfig returns a default configuration for the state sync service
+func DefaultStateSyncConfig() *StateSyncConfig {
+	return &StateSyncConfig{
+		RPCServers:    []string{"a", "b", "c"},
+		TrustedPeriod: 1 * time.Hour,
+		TrustedHeight: 10,
+		TrustedHash:   "0xff",
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the state sync service
+func TestStateSyncConfig() *StateSyncConfig {
+	return DefaultStateSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *StateSyncConfig) ValidateBasic() error {
+	if cfg.Enabled {
+		if cfg.TrustedHeight <= 0 {
+			return errors.New("trusted_height is required")
+		}
+		if len(cfg.TrustedHash) == 0 {
+			return errors.New("trusted_hash is required")
+		}
+		if len(cfg.RPCServers) == 0 {
+			return errors.New("rpc_servers is required")
+		}
 	}
 	return nil
 }
