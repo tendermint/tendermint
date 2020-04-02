@@ -177,7 +177,7 @@ func (h Header) ValidateBasic() error {
 	return nil
 }
 
-func (h Header) ToProto() (*tmproto.Header, error) {
+func (h *Header) ToProto() (*tmproto.Header, error) {
 	err := h.ValidateBasic()
 	if err != nil {
 		return nil, err

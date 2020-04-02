@@ -4,7 +4,6 @@ package tendermint.proto.types;
 option  go_package = "github.com/tendermint/tendermint/proto/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
-// import "third_party/proto/cosmos-proto/cosmos.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/libs/bits/types.proto";
 
@@ -92,7 +91,7 @@ message Data {
   // This means that block.AppHash does not include these txs.
   repeated bytes txs = 1;
   // Volatile
-  bytes hash = 2 [(gogoproto.customname) = "hash"];
+  bytes hash = 2;
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for
@@ -117,8 +116,6 @@ message DuplicateVoteEvidence {
 }
 
 message Evidence {
-  // option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types.Evidence";
-
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
@@ -127,7 +124,7 @@ message Evidence {
 // EvidenceData contains any evidence of malicious wrong-doing by validators
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
-  bytes             hash     = 2 [(gogoproto.customname) = "hash"];
+  bytes             hash     = 2;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.

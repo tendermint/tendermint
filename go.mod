@@ -19,7 +19,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1
 	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563
-	github.com/regen-network/cosmos-proto v0.2.2
 	github.com/rs/cors v1.7.0
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v0.0.6
@@ -30,5 +29,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.28.0
-	google.golang.org/protobuf v1.20.1
+	google.golang.org/protobuf v1.20.1 // indirect
 )

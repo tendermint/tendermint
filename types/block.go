@@ -211,11 +211,41 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 	if err := b.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	protoHeader, err := b.Header.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	protoCommit, err := b.LastCommit.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	protoData, err := b.Data.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	protoEvidence, err := b.Evidence.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	protoBlock := tmproto.Block{
+		Header:     *protoHeader,
+		Data:       *protoData,
+		Evidence:   *protoEvidence,
+		LastCommit: protoCommit,
+	}
+	return &protoBlock, nil
 }
 
 func (b *Block) FromProto(bp tmproto.Block) {
 
+	b.Header.FromProto(bp.Header)
+	b.Data.FromProto(bp.Data)
+	b.Evidence.FromProto(bp.Evidence)
+	b.LastCommit.FromProto(*bp.LastCommit)
 }
 
 //-----------------------------------------------------------
@@ -657,6 +687,9 @@ type SignedHeader struct {
 // sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
+	if sh.Header == nil {
+		return errors.New("signedHeader missing header")
+	}
 	// Make sure the header is consistent with the commit.
 	if err := sh.Header.ValidateBasic(); err != nil {
 		return fmt.Errorf("signed header incorrect: %w", err)
@@ -777,6 +810,29 @@ func (data *Data) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+func (data *Data) ToProto() (*tmproto.Data, error) {
+
+	txBzs := make([][]byte, len(data.Txs))
+	for i := 0; i < len(data.Txs); i++ {
+		txBzs[i] = data.Txs[i]
+	}
+	dp := tmproto.Data{
+		Txs:  txBzs,
+		Hash: data.hash,
+	}
+
+	return &dp, nil
+}
+
+func (data *Data) FromProto(dp tmproto.Data) {
+	txBzs := make(Txs, len(data.Txs))
+	for i := 0; i < len(dp.Txs); i++ {
+		txBzs[i] = dp.Txs[i]
+	}
+	data.Txs = txBzs
+	data.hash = dp.Hash
+}
+
 //-----------------------------------------------------------------------------
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
@@ -815,11 +871,31 @@ func (data *EvidenceData) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
-func (cs EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
-	return nil, nil
-}
-func (cs *EvidenceData) FromProto() {
+func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
+	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
+	for i := 0; i < len(data.Evidence); i++ {
+		protoEvi, err := EvidenceToProto(data.Evidence[i])
+		if err != nil {
+			return nil, err
+		}
+		eviBzs[i] = *protoEvi
+	}
 
+	protoEvidence := tmproto.EvidenceData{
+		Evidence: eviBzs,
+		Hash:     data.hash,
+	}
+	return &protoEvidence, nil
+}
+func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) {
+	eviBzs := make([]Evidence, len(eviData.Evidence))
+	for i := 0; i < len(eviData.Evidence); i++ {
+		evi := EvidenceFromProto(eviData.Evidence[i])
+		eviBzs[i] = evi
+	}
+
+	data.Evidence = eviBzs
+	data.hash = eviData.Hash
 }
 
 //--------------------------------------------------------------------------------
