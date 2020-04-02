@@ -10,6 +10,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
+- [abci] \#4624 The proto type Header's chainid value has changed to `ChainId` 
 - [types] \#4382 `BlockIdFlag` and `SignedMsgType` has moved to a protobuf enum types
 - [types] \#4382 `PartSetHeader` has become a protobuf type, `Total` has been changed from a `int` to a `int32`
 - [types] \#4382 `BlockID` has become a protobuf type
@@ -20,6 +21,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
 - [consensus] \#4582 HeightVoteSet: `round` is now int32
 - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
+
 - Apps
 
 - Go API
