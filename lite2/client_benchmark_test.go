@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/lite2/provider"
 	mockp "github.com/tendermint/tendermint/lite2/provider/mock"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
@@ -25,9 +26,9 @@ var (
 )
 
 func BenchmarkSequence(b *testing.B) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: 1,
 			Hash:   genesisHeader.Hash(),
@@ -35,8 +36,8 @@ func BenchmarkSequence(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		SequentialVerification(),
+		lite.Logger(log.TestingLogger()),
+		lite.SequentialVerification(),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -52,9 +53,9 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: 1,
 			Hash:   genesisHeader.Hash(),
@@ -62,7 +63,7 @@ func BenchmarkBisection(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -79,9 +80,9 @@ func BenchmarkBisection(b *testing.B) {
 
 func BenchmarkBackwards(b *testing.B) {
 	trustedHeader, _ := benchmarkFullNode.SignedHeader(0)
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: trustedHeader.Height,
 			Hash:   trustedHeader.Hash(),
@@ -89,7 +90,7 @@ func BenchmarkBackwards(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)
