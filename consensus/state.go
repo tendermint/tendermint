@@ -1473,7 +1473,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {
-		pruned, err := cs.pruneHeights(retainHeight)
+		pruned, err := cs.pruneBlocks(retainHeight)
 		if err != nil {
 			cs.Logger.Error("Failed to prune blocks", "retainHeight", retainHeight, "err", err)
 		} else {
@@ -1499,7 +1499,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) pruneHeights(retainHeight int64) (uint64, error) {
+func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
 	base := cs.blockStore.Base()
 	if retainHeight <= base {
 		return 0, nil
