@@ -29,7 +29,7 @@ type http struct {
 // New creates a HTTP provider, which is using the rpchttp.HTTP
 // client under the hood.
 func New(chainID, remote string) (provider.Provider, error) {
-	httpClient, err := rpchttp.NewHTTP(remote, "/websocket")
+	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}

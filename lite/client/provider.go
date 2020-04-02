@@ -41,7 +41,7 @@ func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
 func NewHTTPProvider(chainID, remote string) (lite.Provider, error) {
-	httpClient, err := rpchttp.NewHTTP(remote, "/websocket")
+	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}

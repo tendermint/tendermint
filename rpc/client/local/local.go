@@ -1,4 +1,4 @@
-package client
+package local
 
 import (
 	"context"
@@ -50,7 +50,7 @@ type Local struct {
 // you can only have one node per process.  So make sure test cases
 // don't run in parallel, or try to simulate an entire network in
 // one process...
-func NewLocal(node *nm.Node) *Local {
+func New(node *nm.Node) *Local {
 	node.ConfigureRPC()
 	return &Local{
 		EventBus: node.EventBus(),

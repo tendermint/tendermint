@@ -48,7 +48,7 @@ func _TestAppProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	prt := defaultProofRuntime()
-	cl := rpclocal.NewLocal(node)
+	cl := rpclocal.New(node)
 	client.WaitForHeight(cl, 1, nil)
 
 	// This sets up our trust on the node based on some past point.
@@ -127,7 +127,7 @@ func _TestAppProofs(t *testing.T) {
 func TestTxProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	cl := rpclocal.NewLocal(node)
+	cl := rpclocal.New(node)
 	client.WaitForHeight(cl, 1, nil)
 
 	tx := kvstoreTx([]byte("key-a"), []byte("value-a"))

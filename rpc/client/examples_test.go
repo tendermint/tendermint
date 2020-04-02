@@ -19,7 +19,7 @@ func ExampleHTTP_simple() {
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewHTTP(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func ExampleHTTP_batching() {
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewHTTP(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
 		log.Fatal(err)
 	}

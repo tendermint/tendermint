@@ -33,7 +33,7 @@ import (
 
 func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewHTTP(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +43,7 @@ func getHTTPClient() *rpchttp.HTTP {
 
 func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewHTTPWithTimeout(rpcAddr, "/websocket", timeout)
+	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +52,7 @@ func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
 }
 
 func getLocalClient() *rpclocal.Local {
-	return rpclocal.NewLocal(node)
+	return rpclocal.New(node)
 }
 
 // GetClients returns a slice of clients for table-driven tests
@@ -65,7 +65,7 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		_, _ = rpchttp.NewHTTPWithClient("http://example.com", "/websocket", nil)
+		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
 		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
@@ -74,7 +74,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 
 func TestCustomHTTPClient(t *testing.T) {
 	remote := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	c, err := rpchttp.NewWithClient(remote, "/websocket", http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status()
 	require.NoError(t, err)

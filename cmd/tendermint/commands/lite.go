@@ -133,7 +133,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	rpcClient, err := rpchttp.NewHTTP(primaryAddr, "/websocket")
+	rpcClient, err := rpchttp.New(primaryAddr, "/websocket")
 	if err != nil {
 		return errors.Wrapf(err, "http client for %s", primaryAddr)
 	}
