@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"time"

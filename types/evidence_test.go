@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
@@ -106,9 +105,8 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		PubKey: secp256k1.GenPrivKey().PubKey(), // use secp because it's pubkey is longer
-		VoteA:  makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID),
-		VoteB:  makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID2),
+		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID),
+		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
@@ -158,10 +156,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			pk := secp256k1.GenPrivKey().PubKey()
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, 0x02, blockID)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, 0x02, blockID2)
-			ev := NewDuplicateVoteEvidence(pk, vote1, vote2)
+			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
