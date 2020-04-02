@@ -41,7 +41,7 @@ the example for more details.
 
 Example:
 
-		c, err := NewHTTP("http://192.168.1.10:26657", "/websocket")
+		c, err := New("http://192.168.1.10:26657", "/websocket")
 		if err != nil {
 			// handle error
 		}
@@ -107,7 +107,7 @@ var _ rpcClient = (*baseRPCClient)(nil)
 //-----------------------------------------------------------------------------
 // HTTP
 
-// NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
+// New takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
 // An error is returned on invalid remote. The function panics when remote is nil.
 func New(remote, wsEndpoint string) (*HTTP, error) {
@@ -128,7 +128,7 @@ func NewWithTimeout(remote, wsEndpoint string, timeout uint) (*HTTP, error) {
 	return NewWithClient(remote, wsEndpoint, httpClient)
 }
 
-// NewHTTPWithClient allows for setting a custom http client (See NewHTTP).
+// NewWithClient allows for setting a custom http client (See New).
 // An error is returned on invalid remote. The function panics when remote is nil.
 func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
 	if client == nil {
