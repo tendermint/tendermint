@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -21,14 +22,14 @@ type SignStatusClient interface {
 // http provider uses an RPC client (or SignStatusClient more generally) to
 // obtain the necessary information.
 type http struct {
-	chainID string
-	client  SignStatusClient
+	SignStatusClient // embed so interface can be converted to SignStatusClient for tests
+	chainID          string
 }
 
-// New creates a HTTP provider, which is using the rpcclient.HTTP
+// New creates a HTTP provider, which is using the rpchttp.HTTP
 // client under the hood.
 func New(chainID, remote string) (provider.Provider, error) {
-	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +39,8 @@ func New(chainID, remote string) (provider.Provider, error) {
 // NewWithClient allows you to provide custom SignStatusClient.
 func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
 	return &http{
-		chainID: chainID,
-		client:  client,
+		SignStatusClient: client,
+		chainID:          chainID,
 	}
 }
 
@@ -49,7 +50,7 @@ func (p *http) ChainID() string {
 }
 
 func (p *http) String() string {
-	return fmt.Sprintf("http{%s}", p.client.Remote())
+	return fmt.Sprintf("http{%s}", p.Remote())
 }
 
 // SignedHeader fetches a SignedHeader at the given height and checks the
@@ -60,7 +61,7 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, err
 	}
 
-	commit, err := p.client.Commit(h)
+	commit, err := p.SignStatusClient.Commit(h)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -90,7 +91,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	const maxPerPage = 100
-	res, err := p.client.Validators(h, 0, maxPerPage)
+	res, err := p.SignStatusClient.Validators(h, 0, maxPerPage)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -106,7 +107,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 	// Check if there are more validators.
 	for len(res.Validators) == maxPerPage {
-		res, err = p.client.Validators(h, page, maxPerPage)
+		res, err = p.SignStatusClient.Validators(h, page, maxPerPage)
 		if err != nil {
 			return nil, err
 		}
