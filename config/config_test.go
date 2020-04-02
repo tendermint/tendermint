@@ -158,9 +158,6 @@ func TestConsensusConfig_ValidateBasic(t *testing.T) {
 		"PeerGossipSleepDuration negative":     {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
 		"PeerQueryMaj23SleepDuration":          {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
 		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
-		"RetainBlocks 0":                       {func(c *ConsensusConfig) { c.RetainBlocks = 0 }, false},
-		"RetainBlocks 1":                       {func(c *ConsensusConfig) { c.RetainBlocks = 1 }, true},
-		"RetainBlocks 2":                       {func(c *ConsensusConfig) { c.RetainBlocks = 2 }, false},
 	}
 	for desc, tc := range testcases {
 		tc := tc // appease linter

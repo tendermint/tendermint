@@ -1426,25 +1426,6 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.Logger.Info("Calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
-	// Prune the blockStore.
-	if cs.config.RetainBlocks > 0 && uint64(cs.blockStore.Size()) > cs.config.RetainBlocks {
-		oldBase := cs.blockStore.Base()
-		newBase := cs.blockStore.Height() - int64(cs.config.RetainBlocks) + 1
-		pruned, err := cs.blockStore.PruneBlocks(newBase)
-		if err != nil {
-			cs.Logger.Error(fmt.Sprintf("Failed to prune blocks to height %v", newBase), "err", err.Error())
-		} else {
-			cs.Logger.Info("Pruned blocks", "pruned", pruned, "base", newBase, "height", height)
-			err = sm.PruneStates(cs.blockExec.DB(), oldBase, newBase)
-			if err != nil {
-				cs.Logger.Error(fmt.Sprintf("Failed to prune states between heights %v and %v",
-					oldBase, newBase), "err", err.Error())
-			} else {
-				cs.Logger.Info("Pruned state database", "from", oldBase, "to", newBase)
-			}
-		}
-	}
-
 	fail.Fail() // XXX
 
 	// Write EndHeightMessage{} for this height, implying that the blockstore
@@ -1489,6 +1470,16 @@ func (cs *State) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	// Prune old heights, if requested by ABCI app.
+	if stateCopy.RetainHeight > 0 {
+		pruned, err := cs.pruneHeights(stateCopy.RetainHeight)
+		if err != nil {
+			cs.Logger.Error("Failed to prune heights", "retainHeight", stateCopy.RetainHeight, "err", err)
+		} else {
+			cs.Logger.Info("Pruned heights", "pruned", pruned, "retainHeight", stateCopy.RetainHeight)
+		}
+	}
+
 	// must be called before we update state
 	cs.recordMetrics(height, block)
 
@@ -1505,6 +1496,22 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+}
+
+func (cs *State) pruneHeights(retainHeight int64) (uint64, error) {
+	base := cs.blockStore.Base()
+	if retainHeight <= base {
+		return 0, nil
+	}
+	pruned, err := cs.blockStore.PruneBlocks(retainHeight)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune block store: %w", err)
+	}
+	err = sm.PruneStates(cs.blockExec.DB(), base, retainHeight)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune state database: %w", err)
+	}
+	return pruned, nil
 }
 
 func (cs *State) recordMetrics(height int64, block *types.Block) {

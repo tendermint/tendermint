@@ -164,7 +164,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -174,8 +174,9 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
-	// Update the app hash and save the state.
+	// Update the app hash and retain height and save the state.
 	state.AppHash = appHash
+	state.RetainHeight = retainHeight
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -189,7 +190,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
-// It returns the result of calling abci.Commit (the AppHash), and an error.
+// It returns the result of calling abci.Commit (the AppHash) and the retained height (if any).
 // The Mempool must be locked during commit and update because state is
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
@@ -197,7 +198,7 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-) ([]byte, error) {
+) ([]byte, int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -206,7 +207,7 @@ func (blockExec *BlockExecutor) Commit(
 	err := blockExec.mempool.FlushAppConn()
 	if err != nil {
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Commit block, get hash back
@@ -216,7 +217,7 @@ func (blockExec *BlockExecutor) Commit(
 			"Client error during proxyAppConn.CommitSync",
 			"err", err,
 		)
-		return nil, err
+		return nil, 0, err
 	}
 	// ResponseCommit has no error code - just data
 
@@ -236,7 +237,7 @@ func (blockExec *BlockExecutor) Commit(
 		TxPostCheck(state),
 	)
 
-	return res.Data, err
+	return res.Data, res.RetainHeight, err
 }
 
 //---------------------------------------------------------

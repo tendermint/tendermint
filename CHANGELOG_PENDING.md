@@ -1,6 +1,6 @@
 ## v0.33.3
 
-- Nodes are no longer guaranteed to contain all blocks up to the latest height. The block store can now have a truncated history (via the `retain_blocks` option) such that all blocks below the block store base will be missing. All blocks between the base and latest height will be present.
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
 
 \*\*
 
@@ -16,15 +16,19 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - P2P Protocol
 
-  - [blockchain] Add `Base` to blockchain reactor messages `tendermint/blockchain/StatusRequest` and `tendermint/blockchain/StatusResponse`
-
 - Go API
 
 ### FEATURES:
 
-- [consensus] Add `retain_blocks` config option to automatically prune old blocks and associated data
+- [abci] Add `ResponseCommit.retain_height` field, which will automatically remove blocks and associated data below this height. By default, all blocks are retained.
+
+- [blockchain] Add `Base` to blockchain reactor P2P messages `StatusRequest` and `StatusResponse`
+
+- [example/kvstore] Added `RetainBlocks` option to control block retention.
 
 - [rpc] Add `/status` response fields for the earliest block available on the node
+
+- [state] Add `RetainHeight` field with latest `ResponseCommit.retain_height`.
 
 ### IMPROVEMENTS:
 

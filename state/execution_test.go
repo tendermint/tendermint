@@ -27,7 +27,9 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	app := kvstore.NewApplication()
+	app.RetainBlocks = 1
+	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -44,6 +46,8 @@ func TestApplyBlock(t *testing.T) {
 	//nolint:ineffassign
 	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
+
+	assert.EqualValues(t, state.RetainHeight, 1)
 
 	// TODO check state and mempool
 }
