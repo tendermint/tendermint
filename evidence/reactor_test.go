@@ -12,7 +12,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -205,7 +204,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 		{"Good ListMessage", func(evList *ListMessage) {}, false},
 		{"Invalid ListMessage", func(evList *ListMessage) {
 			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{PubKey: secp256k1.GenPrivKey().PubKey()})
+				&types.DuplicateVoteEvidence{VoteA: &types.Vote{}})
 		}, true},
 	}
 	for _, tc := range testCases {
