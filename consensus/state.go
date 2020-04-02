@@ -1455,7 +1455,8 @@ func (cs *State) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(
+	var retainHeight int64
+	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
 		block)
@@ -1471,12 +1472,12 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	// Prune old heights, if requested by ABCI app.
-	if stateCopy.RetainHeight > 0 {
-		pruned, err := cs.pruneHeights(stateCopy.RetainHeight)
+	if retainHeight > 0 {
+		pruned, err := cs.pruneHeights(retainHeight)
 		if err != nil {
-			cs.Logger.Error("Failed to prune heights", "retainHeight", stateCopy.RetainHeight, "err", err)
+			cs.Logger.Error("Failed to prune heights", "retainHeight", retainHeight, "err", err)
 		} else {
-			cs.Logger.Info("Pruned heights", "pruned", pruned, "retainHeight", stateCopy.RetainHeight)
+			cs.Logger.Info("Pruned heights", "pruned", pruned, "retainHeight", retainHeight)
 		}
 	}
 

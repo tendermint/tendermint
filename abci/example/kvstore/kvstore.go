@@ -65,7 +65,7 @@ type Application struct {
 	types.BaseApplication
 
 	state        State
-	RetainBlocks int64 // affects ResponseCommit.RetainHeight
+	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
 }
 
 func NewApplication() *Application {

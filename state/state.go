@@ -78,9 +78,8 @@ type State struct {
 	// Merkle root of the results from executing prev block
 	LastResultsHash []byte
 
-	// the latest AppHash and RetainHeight we've received from calling abci.Commit()
-	AppHash      []byte
-	RetainHeight int64
+	// the latest AppHash we've received from calling abci.Commit()
+	AppHash []byte
 }
 
 // Copy makes a copy of the State for mutating.
@@ -101,8 +100,7 @@ func (state State) Copy() State {
 		ConsensusParams:                  state.ConsensusParams,
 		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
 
-		AppHash:      state.AppHash,
-		RetainHeight: state.RetainHeight,
+		AppHash: state.AppHash,
 
 		LastResultsHash: state.LastResultsHash,
 	}

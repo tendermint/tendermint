@@ -151,7 +151,7 @@ type blockVerifier interface {
 
 //nolint:deadcode
 type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
 }
 
 // XXX: unify naming in this package around tmState

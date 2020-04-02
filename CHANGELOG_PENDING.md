@@ -28,8 +28,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [rpc] Add `/status` response fields for the earliest block available on the node
 
-- [state] Add `RetainHeight` field with latest `ResponseCommit.retain_height`.
-
 ### IMPROVEMENTS:
 
 - [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)

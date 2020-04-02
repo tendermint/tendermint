@@ -43,7 +43,6 @@ func TestStateCopy(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	state.RetainHeight = 100
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
@@ -75,7 +74,6 @@ func TestStateSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
-	state.RetainHeight = 100
 	sm.SaveState(stateDB, state)
 
 	loadedState := sm.LoadState(stateDB)
