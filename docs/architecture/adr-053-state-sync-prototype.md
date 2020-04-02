@@ -20,7 +20,6 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
     * ABCI: renamed `GetSnapshotChunk` to `LoadSnapshotChunk`.
     * ABCI: chunks are now exchanged simply as `bytes`.
     * ABCI: chunks are now 0-indexed, for parity with `chunk_hashes` array.
-    * ABCI: added `internal_error` reasons
     * Reduced maximum chunk size to 16 MB, and increased snapshot message size to 4 MB.
 
 ## Context
@@ -82,7 +81,6 @@ message ResponseOfferSnapshot {
         unknown        = 0;  // Unknown or generic reason
         invalid_height = 1;  // Height is rejected: avoid this height
         invalid_format = 2;  // Format is rejected: avoid this format
-        internal_error = 3;  // Something unexpected went wrong
     }
 }
 
@@ -109,7 +107,6 @@ message ResponseApplySnapshotChunk {
     enum Reason {            // Reason why chunk failed
         unknown        = 0;  // Unknown or generic reason
         verify_failed  = 1;  // Snapshot verification failed
-        internal_error = 2;  // Something unexpected went wrong
     }
 }
 ```
@@ -225,12 +222,6 @@ To stop the testnet, run:
 ```sh
 $ ./tools/stop.sh
 ```
-
-## Open Questions
-
-* Should we have a simpler scheme for discovering snapshots? E.g. announce supported formats, and have peer supply latest available snapshot.
-
-    Downsides: app has to announce supported formats, having a single snapshot per peer may make fewer peers available for chosen snapshot.
 
 ## Resolved Questions
 
