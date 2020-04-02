@@ -1328,13 +1328,12 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 
 func TestVerifyCommitTrusting(t *testing.T) {
 	var (
-		err error
+		blockID                       = makeBlockIDRandom()
+		voteSet, originalValset, vals = randVoteSet(1, 1, PrecommitType, 6, 1)
+		commit, err                   = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+		newValSet, _                  = RandValidatorSet(2, 1)
 	)
-	blockID := makeBlockIDRandom()
-	voteSet, originalValset, vals := randVoteSet(1, 1, PrecommitType, 6, 1)
-	commit, err := MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
-	newValSet, _ := RandValidatorSet(2, 1)
 
 	testCases := []struct {
 		valSet *ValidatorSet
