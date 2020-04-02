@@ -687,12 +687,9 @@ type SignedHeader struct {
 // sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
+	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
 		return errors.New("signedHeader missing header")
-	}
-	// Make sure the header is consistent with the commit.
-	if err := sh.Header.ValidateBasic(); err != nil {
-		return fmt.Errorf("signed header incorrect: %w", err)
 	}
 	if sh.Commit == nil {
 		return errors.New("signedHeader missing commit (precommit votes)")
