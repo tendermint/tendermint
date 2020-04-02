@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"sync"
@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/lite2/provider"
 	mockp "github.com/tendermint/tendermint/lite2/provider/mock"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
@@ -34,7 +35,7 @@ var (
 	h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
 		[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
 	trustPeriod  = 4 * time.Hour
-	trustOptions = TrustOptions{
+	trustOptions = lite.TrustOptions{
 		Period: 4 * time.Hour,
 		Height: 1,
 		Hash:   h1.Hash(),
@@ -140,7 +141,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := NewClient(
+			c, err := lite.NewClient(
 				chainID,
 				trustOptions,
 				mockp.New(
@@ -154,7 +155,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 					tc.vals,
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
-				SequentialVerification(),
+				lite.SequentialVerification(),
 			)
 
 			if tc.initErr {
@@ -263,7 +264,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := NewClient(
+			c, err := lite.NewClient(
 				chainID,
 				trustOptions,
 				mockp.New(
@@ -277,7 +278,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 					tc.vals,
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
-				SkippingVerification(DefaultTrustLevel),
+				lite.SkippingVerification(lite.DefaultTrustLevel),
 			)
 			if tc.initErr {
 				require.Error(t, err)
@@ -297,13 +298,13 @@ func TestClient_SkippingVerification(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
 	_, err = c.TrustedHeader(1)
@@ -330,13 +331,13 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
 			trustOptions,
 			fullNode,
 			[]provider.Provider{fullNode},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -372,9 +373,9 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			valSet,
 		)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
-			TrustOptions{
+			lite.TrustOptions{
 				Period: 4 * time.Hour,
 				Height: 1,
 				Hash:   header1.Hash(),
@@ -382,7 +383,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 			primary,
 			[]provider.Provider{primary},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -409,9 +410,9 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
-			TrustOptions{
+			lite.TrustOptions{
 				Period: 4 * time.Hour,
 				Height: 2,
 				Hash:   h2.Hash(),
@@ -419,7 +420,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			fullNode,
 			[]provider.Provider{fullNode},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -460,9 +461,9 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			valSet,
 		)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
-			TrustOptions{
+			lite.TrustOptions{
 				Period: 4 * time.Hour,
 				Height: 2,
 				Hash:   diffHeader2.Hash(),
@@ -470,7 +471,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			primary,
 			[]provider.Provider{primary},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -498,13 +499,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		err = trustedStore.SaveSignedHeaderAndValidatorSet(h2, vals)
 		require.NoError(t, err)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
 			trustOptions,
 			fullNode,
 			[]provider.Provider{fullNode},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -555,9 +556,9 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			valSet,
 		)
 
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
-			TrustOptions{
+			lite.TrustOptions{
 				Period: 4 * time.Hour,
 				Height: 1,
 				Hash:   header1.Hash(),
@@ -565,7 +566,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			primary,
 			[]provider.Provider{primary},
 			trustedStore,
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -594,13 +595,13 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
 
@@ -619,13 +620,13 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Concurrency(t *testing.T) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
 
@@ -663,14 +664,14 @@ func TestClient_Concurrency(t *testing.T) {
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		deadNode,
 		[]provider.Provider{fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		MaxRetryAttempts(1),
+		lite.Logger(log.TestingLogger()),
+		lite.MaxRetryAttempts(1),
 	)
 
 	require.NoError(t, err)
@@ -684,9 +685,9 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 func TestClient_BackwardsVerification(t *testing.T) {
 	{
 		trustHeader, _ := largeFullNode.SignedHeader(6)
-		c, err := NewClient(
+		c, err := lite.NewClient(
 			chainID,
-			TrustOptions{
+			lite.TrustOptions{
 				Period: 4 * time.Minute,
 				Height: trustHeader.Height,
 				Hash:   trustHeader.Hash(),
@@ -694,7 +695,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			largeFullNode,
 			[]provider.Provider{largeFullNode},
 			dbs.New(dbm.NewMemDB(), chainID),
-			Logger(log.TestingLogger()),
+			lite.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
 
@@ -769,9 +770,9 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			c, err := NewClient(
+			c, err := lite.NewClient(
 				chainID,
-				TrustOptions{
+				lite.TrustOptions{
 					Period: 1 * time.Hour,
 					Height: 3,
 					Hash:   h3.Hash(),
@@ -779,7 +780,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 				tc.provider,
 				[]provider.Provider{tc.provider},
 				dbs.New(dbm.NewMemDB(), chainID),
-				Logger(log.TestingLogger()),
+				lite.Logger(log.TestingLogger()),
 			)
 			require.NoError(t, err)
 
@@ -795,7 +796,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	err := db.SaveSignedHeaderAndValidatorSet(h1, vals)
 	require.NoError(t, err)
 
-	c, err := NewClientFromTrustedStore(
+	c, err := lite.NewClientFromTrustedStore(
 		chainID,
 		trustPeriod,
 		deadNode,
@@ -819,14 +820,14 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 }
 
 func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
-	_, err := NewClient(
+	_, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{deadNode, deadNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		MaxRetryAttempts(1),
+		lite.Logger(log.TestingLogger()),
+		lite.MaxRetryAttempts(1),
 	)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
@@ -862,14 +863,14 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		},
 	)
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{badProvider1, badProvider2},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		MaxRetryAttempts(1),
+		lite.Logger(log.TestingLogger()),
+		lite.MaxRetryAttempts(1),
 	)
 	// witness should have behaved properly -> no error
 	require.NoError(t, err)
@@ -889,13 +890,13 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClientTrustedValidatorSet(t *testing.T) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 
 	require.NoError(t, err)
