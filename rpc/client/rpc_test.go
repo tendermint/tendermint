@@ -582,7 +582,7 @@ func newEvidence(
 	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
 	require.NoError(t, err)
 
-	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, deepcpVote2)
+	return *types.NewDuplicateVoteEvidence(vote, deepcpVote2)
 }
 
 func makeEvidences(
@@ -671,8 +671,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		status, err := c.Status()
 		require.NoError(t, err)
 		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-
-		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
+		ed25519pub := pv.Key.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
 		result2, err := c.ABCIQuery("/val", rawpub)
 		require.Nil(t, err, "Error querying evidence, err %v", err)
@@ -688,9 +687,8 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
-				PubKey: fake.PubKey,
-				VoteA:  fake.VoteA,
-				VoteB:  fake.VoteB})
+				VoteA: fake.VoteA,
+				VoteB: fake.VoteB})
 			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
 		}
 	}
