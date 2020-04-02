@@ -110,7 +110,7 @@ func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
 		mempool: mempool,
 		ids:     newMempoolIDs(),
 	}
-	memR.BaseReactor = *p2p.NewBaseReactor("Reactor", memR)
+	memR.BaseReactor = *p2p.NewBaseReactor("Mempool", memR)
 	return memR
 }
 

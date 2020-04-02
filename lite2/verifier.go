@@ -10,10 +10,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	maxClockDrift = 10 * time.Second
-)
-
 var (
 	// DefaultTrustLevel - new header can be trusted if at least one correct
 	// validator signed it.
@@ -30,6 +26,9 @@ var (
 //	d) more than 2/3 of untrustedVals have signed h2
 //    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are non-adjacent.
+//
+// maxClockDrift defines how much untrustedHeader.Time can drift into the
+// future.
 func VerifyNonAdjacent(
 	chainID string,
 	trustedHeader *types.SignedHeader, // height=X
@@ -38,6 +37,7 @@ func VerifyNonAdjacent(
 	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
+	maxClockDrift time.Duration,
 	trustLevel tmmath.Fraction) error {
 
 	if untrustedHeader.Height == trustedHeader.Height+1 {
@@ -48,7 +48,11 @@ func VerifyNonAdjacent(
 		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
 	}
 
-	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
+	if err := verifyNewHeaderAndVals(
+		chainID,
+		untrustedHeader, untrustedVals,
+		trustedHeader,
+		now, maxClockDrift); err != nil {
 		return ErrInvalidHeader{err}
 	}
 
@@ -86,13 +90,17 @@ func VerifyNonAdjacent(
 //  d) more than 2/3 of new validators (untrustedVals) have signed h2
 //    (otherwise, ErrInvalidHeader is returned)
 //  e) headers are adjacent.
+//
+// maxClockDrift defines how much untrustedHeader.Time can drift into the
+// future.
 func VerifyAdjacent(
 	chainID string,
 	trustedHeader *types.SignedHeader, // height=X
 	untrustedHeader *types.SignedHeader, // height=X+1
 	untrustedVals *types.ValidatorSet, // height=X+1
 	trustingPeriod time.Duration,
-	now time.Time) error {
+	now time.Time,
+	maxClockDrift time.Duration) error {
 
 	if untrustedHeader.Height != trustedHeader.Height+1 {
 		return errors.New("headers must be adjacent in height")
@@ -102,7 +110,11 @@ func VerifyAdjacent(
 		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
 	}
 
-	if err := verifyNewHeaderAndVals(chainID, untrustedHeader, untrustedVals, trustedHeader, now); err != nil {
+	if err := verifyNewHeaderAndVals(
+		chainID,
+		untrustedHeader, untrustedVals,
+		trustedHeader,
+		now, maxClockDrift); err != nil {
 		return ErrInvalidHeader{err}
 	}
 
@@ -133,14 +145,15 @@ func Verify(
 	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
+	maxClockDrift time.Duration,
 	trustLevel tmmath.Fraction) error {
 
 	if untrustedHeader.Height != trustedHeader.Height+1 {
 		return VerifyNonAdjacent(chainID, trustedHeader, trustedVals, untrustedHeader, untrustedVals,
-			trustingPeriod, now, trustLevel)
+			trustingPeriod, now, maxClockDrift, trustLevel)
 	}
 
-	return VerifyAdjacent(chainID, trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now)
+	return VerifyAdjacent(chainID, trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now, maxClockDrift)
 }
 
 func verifyNewHeaderAndVals(
@@ -148,7 +161,8 @@ func verifyNewHeaderAndVals(
 	untrustedHeader *types.SignedHeader,
 	untrustedVals *types.ValidatorSet,
 	trustedHeader *types.SignedHeader,
-	now time.Time) error {
+	now time.Time,
+	maxClockDrift time.Duration) error {
 
 	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
 		return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")

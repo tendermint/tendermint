@@ -1,4 +1,4 @@
-package http
+package http_test
 
 import (
 	"os"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -33,12 +34,12 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p, err := New(chainID, rpcAddr)
+	p, err := litehttp.New(chainID, rpcAddr)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(p.(*http).client, 6, nil)
+	err = rpcclient.WaitForHeight(p.(rpcclient.StatusClient), 6, nil)
 	require.Nil(t, err)
 
 	// let's get the highest block
