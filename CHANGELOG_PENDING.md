@@ -20,18 +20,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
-- [abci] Add `ResponseCommit.retain_height` field, which will automatically remove blocks and associated data below this height. By default, all blocks are retained.
-
-- [blockchain] Add `Base` to blockchain reactor P2P messages `StatusRequest` and `StatusResponse`
-
-- [example/kvstore] Added `RetainBlocks` option to control block retention.
-
+- [abci] Add `ResponseCommit.retain_height` field, which will automatically remove blocks below this height.
 - [rpc] Add `/status` response fields for the earliest block available on the node
+- [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259)
 
 ### IMPROVEMENTS:
 
+- [blockchain] Add `Base` to blockchain reactor P2P messages `StatusRequest` and `StatusResponse`
+- [example/kvstore] Add `RetainBlocks` option to control block retention
 - [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters)
-
 - [privval] \#4534 Add `error` as a return value on`GetPubKey()`
 - [Docker] \#4569 Default configuration added to docker image (you can still mount your own config the same way) (@greg-szabo)
 

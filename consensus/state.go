@@ -1475,9 +1475,9 @@ func (cs *State) finalizeCommit(height int64) {
 	if retainHeight > 0 {
 		pruned, err := cs.pruneHeights(retainHeight)
 		if err != nil {
-			cs.Logger.Error("Failed to prune heights", "retainHeight", retainHeight, "err", err)
+			cs.Logger.Error("Failed to prune blocks", "retainHeight", retainHeight, "err", err)
 		} else {
-			cs.Logger.Info("Pruned heights", "pruned", pruned, "retainHeight", retainHeight)
+			cs.Logger.Info("Pruned blocks", "pruned", pruned, "retainHeight", retainHeight)
 		}
 	}
 

@@ -161,7 +161,7 @@ func getHeight(currentBase int64, currentHeight int64, heightPtr *int64) (int64,
 			return 0, fmt.Errorf("height must be less than or equal to the current blockchain height")
 		}
 		if height < currentBase {
-			return 0, fmt.Errorf("height %v is not available, history truncated at height %v",
+			return 0, fmt.Errorf("height %v is not available, blocks pruned at height %v",
 				height, currentBase)
 		}
 		return height, nil
