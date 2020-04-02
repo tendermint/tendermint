@@ -148,9 +148,10 @@ type ResultConsensusState struct {
 
 // CheckTx result
 type ResultBroadcastTx struct {
-	Code uint32         `json:"code"`
-	Data bytes.HexBytes `json:"data"`
-	Log  string         `json:"log"`
+	Code      uint32         `json:"code"`
+	Data      bytes.HexBytes `json:"data"`
+	Log       string         `json:"log"`
+	Codespace string         `json:"codespace"`
 
 	Hash bytes.HexBytes `json:"hash"`
 }

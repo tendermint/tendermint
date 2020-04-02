@@ -105,7 +105,10 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along 
 
 For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-To generate new stubs based off of your changes you can run `make proto-gen` after installing `protoc` and gogoproto.
+There are two ways to generate your proto stubs.
+
+1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
+2. Run `make proto-gen` after installing `protoc` and gogoproto.
 
 ### Installation Instructions
 
