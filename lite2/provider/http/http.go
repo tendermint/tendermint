@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,10 +26,10 @@ type http struct {
 	client  SignStatusClient
 }
 
-// New creates a HTTP provider, which is using the rpcclient.HTTP
+// New creates a HTTP provider, which is using the rpchttp.HTTP
 // client under the hood.
 func New(chainID, remote string) (provider.Provider, error) {
-	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	httpClient, err := rpchttp.NewHTTP(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}
