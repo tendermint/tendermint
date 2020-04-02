@@ -12,9 +12,10 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
+	tmbits "github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmprotobits "github.com/tendermint/tendermint/proto/libs/bits"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -206,6 +207,17 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+func (b *Block) ToProto() (*tmproto.Block, error) {
+	if err := b.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (b *Block) FromProto(bp tmproto.Block) {
+
+}
+
 //-----------------------------------------------------------
 // These methods are for Protobuf Compatibility
 
@@ -379,10 +391,22 @@ func (cs CommitSig) ValidateBasic() error {
 }
 
 func (cs CommitSig) ToProto() (*tmproto.CommitSig, error) {
-	return nil, nil
+	if err := cs.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	csProto := tmproto.CommitSig{
+		BlockIdFlag:      cs.BlockIDFlag,
+		ValidatorAddress: cs.ValidatorAddress,
+		Timestamp:        cs.Timestamp,
+		Signature:        cs.Signature,
+	}
+	return &csProto, nil
 }
-func (cs *CommitSig) FromProto() {
-
+func (cs *CommitSig) FromProto(csp tmproto.CommitSig) {
+	cs.BlockIDFlag = csp.BlockIdFlag
+	cs.ValidatorAddress = csp.ValidatorAddress
+	cs.Timestamp = csp.Timestamp
+	cs.Signature = csp.Signature
 }
 
 //-------------------------------------
@@ -403,7 +427,7 @@ type Commit struct {
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
 	hash     tmbytes.HexBytes
-	bitArray *bits.BitArray
+	bitArray *tmbits.BitArray
 }
 
 // NewCommit returns a new Commit.
@@ -487,9 +511,9 @@ func (commit *Commit) Size() int {
 
 // BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
 // Implements VoteSetReader.
-func (commit *Commit) BitArray() *bits.BitArray {
+func (commit *Commit) BitArray() *tmbits.BitArray {
 	if commit.bitArray == nil {
-		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
+		commit.bitArray = tmbits.NewBitArray(len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
@@ -577,10 +601,44 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
-func (cs Commit) ToProto() (*tmproto.Commit, error) {
-	return nil, nil
+func (c Commit) ToProto() (*tmproto.Commit, error) {
+	if err := c.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	csp := tmproto.Commit{
+		Height: c.Height,
+		Round:  c.Round,
+		BlockId: tmproto.BlockID{
+			Hash: c.BlockID.Hash,
+			PartsHeader: tmproto.PartSetHeader{
+				Hash:  c.BlockID.PartsHeader.Hash,
+				Total: c.BlockID.PartsHeader.Total,
+			},
+		},
+		Hash: c.hash,
+		BitArray: &tmprotobits.BitArray{
+			Bits:  int64(c.bitArray.Bits),
+			Elems: c.bitArray.Elems,
+		},
+	}
+	return &csp, nil
 }
-func (cs *Commit) FromProto() {
+func (c *Commit) FromProto(cp tmproto.Commit) {
+	c.Height = cp.Height
+	c.Round = cp.Round
+	c.BlockID = BlockID{
+		Hash: cp.BlockId.Hash,
+		PartsHeader: PartSetHeader{
+			Hash:  cp.BlockId.PartsHeader.Hash,
+			Total: cp.BlockId.PartsHeader.Total,
+		},
+	}
+	c.hash = cp.Hash
+	c.bitArray = &tmbits.BitArray{
+		Bits:  (int(cp.BitArray.Bits)),
+		Elems: cp.BitArray.Elems,
+	}
 
 }
 
@@ -648,10 +706,30 @@ func (sh SignedHeader) StringIndented(indent string) string {
 }
 
 func (sh SignedHeader) ToProto() (*tmproto.SignedHeader, error) {
-	return nil, nil
-}
-func (sh *SignedHeader) FromProto() {
+	protoHeader, err := sh.Header.ToProto()
+	if err != nil {
+		return nil, err
+	}
 
+	protoCommit, err := sh.Commit.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	shp := tmproto.SignedHeader{
+		Header: protoHeader,
+		Commit: protoCommit,
+	}
+	return &shp, nil
+}
+func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) {
+	h := Header{}
+	c := Commit{}
+
+	h.FromProto(*shp.Header)
+	c.FromProto(*shp.Commit)
+
+	sh.Header = &h
+	sh.Commit = &c
 }
 
 //-----------------------------------------------------------------------------

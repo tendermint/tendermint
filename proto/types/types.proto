@@ -4,7 +4,7 @@ package tendermint.proto.types;
 option  go_package = "github.com/tendermint/tendermint/proto/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
-import "third_party/proto/cosmos-proto/cosmos.proto";
+// import "third_party/proto/cosmos-proto/cosmos.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/libs/bits/types.proto";
 
@@ -117,8 +117,7 @@ message DuplicateVoteEvidence {
 }
 
 message Evidence {
-  option (cosmos_proto.interface_type) =
-      "*github.com/tendermint/tendermint/types/Evidence.Evidence";
+  // option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/types.Evidence";
 
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
@@ -128,27 +127,17 @@ message Evidence {
 // EvidenceData contains any evidence of malicious wrong-doing by validators
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
-  // Volatile
-  bytes hash = 2 [(gogoproto.customname) = "hash"];
+  bytes             hash     = 2 [(gogoproto.customname) = "hash"];
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
-// NOTE: Commit is empty for height 1, but never nil.
 message Commit {
-  // NOTE: The signatures are in order of address to preserve the bonded
-  // ValidatorSet order.
-  // Any peer with a block can gossip signatures by index with a peer without
-  // recalculating the active ValidatorSet.
-  int64              height     = 1;
-  int32              round      = 2;
-  BlockID            block_id   = 3 [(gogoproto.nullable) = false];
-  repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
-
-  // Memoized in first call to corresponding method.
-  // NOTE: can't memoize in constructor because constructor isn't used for
-  // unmarshaling.
-  bytes                               hash      = 5 [(gogoproto.customname) = "hash"];
-  tendermint.proto.libs.bits.BitArray bit_array = 6 [(gogoproto.customname) = "bitArray"];
+  int64                               height     = 1;
+  int32                               round      = 2;
+  BlockID                             block_id   = 3 [(gogoproto.nullable) = false];
+  repeated CommitSig                  signatures = 4 [(gogoproto.nullable) = false];
+  bytes                               hash       = 5;
+  tendermint.proto.libs.bits.BitArray bit_array  = 6;
 }
 
 // CommitSig is a part of the Vote included in a Commit.
@@ -175,7 +164,7 @@ message Proposal {
   BlockID                   block_id  = 5;
   google.protobuf.Timestamp timestamp = 7
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  repeated bytes signature = 8;
+  bytes signature = 8;
 }
 
 message SignedHeader {

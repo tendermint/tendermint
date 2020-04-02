@@ -8,12 +8,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 const (
@@ -244,6 +243,27 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	}
 	return nil
 }
+
+//-----------------------------------------------------------------
+// // MarshalEvidence
+// func MarshalEvidence(evidence Evidence) ([]byte, error) {
+// 	evi := &tmproto.Evidence{}
+// 	if err := evi.SetEvidence(evidence); err != nil {
+// 		return nil, err
+// 	}
+// 	return proto.Marshal(evi)
+// }
+
+// func UnmarshalPubKey(bz []byte) (Evidence, error) {
+// 	evi := &tmproto.Evidence{}
+
+// 	err := proto.Unmarshal(bz, evi)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return evi.GetEvidence(), nil
+// }
 
 //-----------------------------------------------------------------
 

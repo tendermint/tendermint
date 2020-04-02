@@ -97,9 +97,41 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 	return bz
 }
 
-func (cs Proposal) ToProto() (*tmproto.CommitSig, error) {
-	return nil, nil
+func (p Proposal) ToProto() (*tmproto.Proposal, error) {
+	if err := p.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	pp := tmproto.Proposal{
+		Type:     p.Type,
+		Height:   p.Height,
+		Round:    p.Round,
+		PolRound: p.POLRound,
+		BlockId: &tmproto.BlockID{
+			Hash: p.BlockID.Hash,
+			PartsHeader: tmproto.PartSetHeader{
+				Hash:  p.BlockID.PartsHeader.Hash,
+				Total: p.BlockID.PartsHeader.Total,
+			},
+		},
+		Timestamp: p.Timestamp,
+		Signature: p.Signature,
+	}
+	return &pp, nil
 }
-func (cs *Proposal) FromProto() {
+func (p *Proposal) FromProto(pp tmproto.Proposal) {
+	p.Type = pp.Type
+	p.Height = pp.Height
+	p.Round = pp.Round
+	p.POLRound = pp.PolRound
+	p.BlockID = BlockID{
+		Hash: pp.BlockId.Hash,
+		PartsHeader: PartSetHeader{
+			Hash:  pp.BlockId.PartsHeader.Hash,
+			Total: pp.BlockId.PartsHeader.Total,
+		},
+	}
+	p.Timestamp = pp.Timestamp
+	p.Signature = pp.Signature
 
 }
