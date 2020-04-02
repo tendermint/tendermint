@@ -3,11 +3,13 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math"
 	"sort"
 	"strings"
 	"testing"
 	"testing/quick"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1325,38 +1327,45 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 }
 
 func TestVerifyCommitTrusting(t *testing.T) {
-	trustLevel := tmmath.Fraction{Numerator: 1, Denominator: 3}
-	privKey := ed25519.GenPrivKey()
-	pubKey := privKey.PubKey()
-	v1 := NewValidator(pubKey, 1000)
-	vset := NewValidatorSet([]*Validator{
-		v1,
-		newValidator([]byte("a"), 100),
-		newValidator([]byte("b"), 100),
-	})
-
-	// good
 	var (
-		chainID = "mychainID"
-		blockID = makeBlockIDRandom()
-		height  = int64(5)
+		err error
 	)
-	vote := &Vote{
-		ValidatorAddress: v1.Address,
-		ValidatorIndex:   0,
-		Height:           height,
-		Round:            0,
-		Timestamp:        tmtime.Now(),
-		Type:             PrecommitType,
-		BlockID:          blockID,
-	}
-	sig, err := privKey.Sign(vote.SignBytes(chainID))
-	assert.NoError(t, err)
-	vote.Signature = sig
-	commit := NewCommit(vote.Height, vote.Round, blockID, []CommitSig{vote.CommitSig()})
+	blockID := makeBlockIDRandom()
+	voteSet, originalValset, vals := randVoteSet(1, 1, PrecommitType, 6, 1)
+	commit, err := MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+	require.NoError(t, err)
+	newValSet, _ := RandValidatorSet(2, 1)
 
-	err = vset.VerifyCommitTrusting(chainID, blockID, height, commit, trustLevel)
-	assert.NoError(t, err)
+	testCases := []struct {
+		valSet *ValidatorSet
+		err    bool
+	}{
+		// good
+		0: {
+			valSet: originalValset,
+			err:    false,
+		},
+		// bad - no overlap between validator sets
+		1: {
+			valSet: newValSet,
+			err:    true,
+		},
+		// good - first two are different but the rest of the same -> >1/3
+		2: {
+			valSet: NewValidatorSet(append(newValSet.Validators, originalValset.Validators...)),
+			err:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		err = tc.valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+			tmmath.Fraction{Numerator: 1, Denominator: 3})
+		if tc.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
 
 }
 
