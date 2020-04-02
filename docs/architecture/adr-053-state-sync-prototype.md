@@ -303,6 +303,8 @@ $ ./tools/stop.sh
 
 * **Tendermint:** node should go back to fast-syncing when lagging significantly [#129](https://github.com/tendermint/tendermint/issues/129)
 
+* **Tendermint:** backfill historical blocks [#4629](https://github.com/tendermint/tendermint/issues/4629)
+
 ## Status
 
 Accepted
