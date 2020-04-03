@@ -22,6 +22,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
@@ -597,7 +598,7 @@ func makeEvidences(
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
-		Type:             types.PrevoteType,
+		Type:             tmproto.PrevoteType,
 		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
@@ -645,7 +646,7 @@ func makeEvidences(
 	}
 	// different type
 	vote2 = deepcpVote(vote)
-	vote2.Type = types.PrecommitType
+	vote2.Type = tmproto.PrecommitType
 	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
 	// exactly same vote
 	vote2 = deepcpVote(vote)

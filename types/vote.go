@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -46,12 +47,12 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int32         `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
+	Type             tmproto.SignedMsgType `json:"type"`
+	Height           int64                 `json:"height"`
+	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time             `json:"timestamp"`
+	ValidatorAddress Address               `json:"validator_address"`
 	// assume there will not be greater than 2_147_483_647 validators
 	ValidatorIndex uint32 `json:"validator_index"`
 	Signature      []byte `json:"signature"`
@@ -63,12 +64,12 @@ func (vote *Vote) CommitSig() CommitSig {
 		return NewCommitSigAbsent()
 	}
 
-	var blockIDFlag BlockIDFlag
+	var blockIDFlag tmproto.BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
+		blockIDFlag = tmproto.BlockIDFlagCommit
 	case vote.BlockID.IsZero():
-		blockIDFlag = BlockIDFlagNil
+		blockIDFlag = tmproto.BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -101,9 +102,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case tmproto.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case tmproto.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")
@@ -167,5 +168,54 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+	return nil
+}
+
+// ToProto converts the handwritten type to proto generated type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) ToProto() *tmproto.Vote {
+
+	protoVote := tmproto.Vote{
+		Type:   vote.Type,
+		Height: vote.Height,
+		Round:  vote.Round,
+		BlockID: tmproto.BlockID{
+			Hash: vote.BlockID.Hash,
+			PartsHeader: tmproto.PartSetHeader{
+				Total: vote.BlockID.PartsHeader.Total,
+				Hash:  vote.BlockID.PartsHeader.Hash,
+			},
+		},
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   vote.ValidatorIndex,
+		Signature:        vote.Signature,
+	}
+
+	return &protoVote
+}
+
+//FromProto converts a proto generetad type to a handwritten type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) FromProto(pv tmproto.Vote) error {
+	vote.Type = pv.Type
+	vote.Height = pv.Height
+	vote.Round = pv.Round
+	vote.BlockID = BlockID{
+		Hash: pv.BlockID.Hash,
+		PartsHeader: PartSetHeader{
+			Total: pv.BlockID.PartsHeader.GetTotal(),
+			Hash:  pv.BlockID.PartsHeader.GetHash(),
+		},
+	}
+	vote.Timestamp = pv.Timestamp
+	vote.ValidatorAddress = pv.ValidatorAddress
+	vote.ValidatorIndex = pv.ValidatorIndex
+	vote.Signature = pv.Signature
+
+	if err := vote.ValidateBasic(); err != nil {
+		return err
+	}
+
 	return nil
 }

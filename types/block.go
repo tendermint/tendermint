@@ -12,10 +12,11 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
+	tmbits "github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/version"
+	tmprotobits "github.com/tendermint/tendermint/proto/libs/bits"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -56,29 +57,18 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("chainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
 	}
 
-	if b.Height < 0 {
-		return errors.New("negative Header.Height")
-	} else if b.Height == 0 {
-		return errors.New("zero Header.Height")
-	}
-
-	// NOTE: Timestamp validation is subtle and handled elsewhere.
-
-	if err := b.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
+	if err := b.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong Header, %w", err)
 	}
 
 	// Validate the last commit and its hash.
-	if b.Header.Height > 1 {
+	if b.Height > 1 {
 		if b.LastCommit == nil {
 			return errors.New("nil LastCommit")
 		}
 		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong LastCommit: %v", err)
 		}
-	}
-	if err := ValidateHash(b.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
 		return fmt.Errorf("wrong Header.LastCommitHash. Expected %v, got %v",
@@ -101,26 +91,6 @@ func (b *Block) ValidateBasic() error {
 		)
 	}
 
-	// Basic validation of hashes related to application data.
-	// Will validate fully against state in state#ValidateBlock.
-	if err := ValidateHash(b.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(b.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(b.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
-	}
-	// NOTE: AppHash is arbitrary length
-	if err := ValidateHash(b.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
-	}
-
-	// Validate evidence and its hash.
-	if err := ValidateHash(b.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
-	}
 	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
 	for i, ev := range b.Evidence.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
@@ -132,11 +102,6 @@ func (b *Block) ValidateBasic() error {
 			b.EvidenceHash,
 			b.Evidence.Hash(),
 		)
-	}
-
-	if len(b.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
-			crypto.AddressSize, len(b.ProposerAddress))
 	}
 
 	return nil
@@ -242,6 +207,37 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+func (b *Block) ToProto() (*tmproto.Block, error) {
+	protoHeader := b.Header.ToProto()
+	protoCommit := b.LastCommit.ToProto()
+	protoData := b.Data.ToProto()
+	protoEvidence, err := b.Evidence.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	protoBlock := tmproto.Block{
+		Header:     *protoHeader,
+		Data:       *protoData,
+		Evidence:   *protoEvidence,
+		LastCommit: protoCommit,
+	}
+	return &protoBlock, err
+}
+
+func (b *Block) FromProto(bp tmproto.Block) error {
+
+	b.Header.FromProto(bp.Header)
+	b.Data.FromProto(bp.Data)
+	b.Evidence.FromProto(bp.Evidence)
+	b.LastCommit.FromProto(*bp.LastCommit)
+
+	if err := b.ValidateBasic(); err != nil {
+		return err
+	}
+	return nil
+}
+
 //-----------------------------------------------------------
 // These methods are for Protobuf Compatibility
 
@@ -311,141 +307,20 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 	return maxDataBytes
 }
 
-//-----------------------------------------------------------------------------
-
-// Header defines the structure of a Tendermint block header.
-// NOTE: changes to the Header should be duplicated in:
-// - header.Hash()
-// - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
-type Header struct {
-	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
-	Time    time.Time         `json:"time"`
-
-	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
-
-	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       tmbytes.HexBytes `json:"data_hash"`        // transactions
-
-	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            tmbytes.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	// root hash of all results from the txs from the previous block
-	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
-
-	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
-}
-
-// Populate the Header with state-derived data.
-// Call this after MakeBlock to complete the Header.
-func (h *Header) Populate(
-	version version.Consensus, chainID string,
-	timestamp time.Time, lastBlockID BlockID,
-	valHash, nextValHash []byte,
-	consensusHash, appHash, lastResultsHash []byte,
-	proposerAddress Address,
-) {
-	h.Version = version
-	h.ChainID = chainID
-	h.Time = timestamp
-	h.LastBlockID = lastBlockID
-	h.ValidatorsHash = valHash
-	h.NextValidatorsHash = nextValHash
-	h.ConsensusHash = consensusHash
-	h.AppHash = appHash
-	h.LastResultsHash = lastResultsHash
-	h.ProposerAddress = proposerAddress
-}
-
-// Hash returns the hash of the header.
-// It computes a Merkle tree from the header fields
-// ordered as they appear in the Header.
-// Returns nil if ValidatorHash is missing,
-// since a Header is not valid unless there is
-// a ValidatorsHash (corresponding to the validator set).
-func (h *Header) Hash() tmbytes.HexBytes {
-	if h == nil || len(h.ValidatorsHash) == 0 {
-		return nil
-	}
-	return merkle.SimpleHashFromByteSlices([][]byte{
-		cdcEncode(h.Version),
-		cdcEncode(h.ChainID),
-		cdcEncode(h.Height),
-		cdcEncode(h.Time),
-		cdcEncode(h.LastBlockID),
-		cdcEncode(h.LastCommitHash),
-		cdcEncode(h.DataHash),
-		cdcEncode(h.ValidatorsHash),
-		cdcEncode(h.NextValidatorsHash),
-		cdcEncode(h.ConsensusHash),
-		cdcEncode(h.AppHash),
-		cdcEncode(h.LastResultsHash),
-		cdcEncode(h.EvidenceHash),
-		cdcEncode(h.ProposerAddress),
-	})
-}
-
-// StringIndented returns a string representation of the header
-func (h *Header) StringIndented(indent string) string {
-	if h == nil {
-		return "nil-Header"
-	}
-	return fmt.Sprintf(`Header{
-%s  Version:        %v
-%s  ChainID:        %v
-%s  Height:         %v
-%s  Time:           %v
-%s  LastBlockID:    %v
-%s  LastCommit:     %v
-%s  Data:           %v
-%s  Validators:     %v
-%s  NextValidators: %v
-%s  App:            %v
-%s  Consensus:      %v
-%s  Results:        %v
-%s  Evidence:       %v
-%s  Proposer:       %v
-%s}#%v`,
-		indent, h.Version,
-		indent, h.ChainID,
-		indent, h.Height,
-		indent, h.Time,
-		indent, h.LastBlockID,
-		indent, h.LastCommitHash,
-		indent, h.DataHash,
-		indent, h.ValidatorsHash,
-		indent, h.NextValidatorsHash,
-		indent, h.AppHash,
-		indent, h.ConsensusHash,
-		indent, h.LastResultsHash,
-		indent, h.EvidenceHash,
-		indent, h.ProposerAddress,
-		indent, h.Hash())
-}
-
 //-------------------------------------
 
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
-	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress Address     `json:"validator_address"`
-	Timestamp        time.Time   `json:"timestamp"`
-	Signature        []byte      `json:"signature"`
+	BlockIDFlag      tmproto.BlockIDFlag `json:"block_id_flag"`
+	ValidatorAddress Address             `json:"validator_address"`
+	Timestamp        time.Time           `json:"timestamp"`
+	Signature        []byte              `json:"signature"`
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
 func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
-		BlockIDFlag:      BlockIDFlagCommit,
+		BlockIDFlag:      tmproto.BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
 		Signature:        signature,
@@ -454,20 +329,20 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 
 // ForBlock returns true if CommitSig is for the block.
 func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == BlockIDFlagCommit
+	return cs.BlockIDFlag == tmproto.BlockIDFlagCommit
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
 // fields are all empty.
 func NewCommitSigAbsent() CommitSig {
 	return CommitSig{
-		BlockIDFlag: BlockIDFlagAbsent,
+		BlockIDFlag: tmproto.BlockIDFlagAbsent,
 	}
 }
 
 // Absent returns true if CommitSig is absent.
 func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == BlockIDFlagAbsent
+	return cs.BlockIDFlag == tmproto.BlockIDFlagAbsent
 }
 
 func (cs CommitSig) String() string {
@@ -483,11 +358,11 @@ func (cs CommitSig) String() string {
 func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 	var blockID BlockID
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
+	case tmproto.BlockIDFlagAbsent:
 		blockID = BlockID{}
-	case BlockIDFlagCommit:
+	case tmproto.BlockIDFlagCommit:
 		blockID = commitBlockID
-	case BlockIDFlagNil:
+	case tmproto.BlockIDFlagNil:
 		blockID = BlockID{}
 	default:
 		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
@@ -498,15 +373,15 @@ func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 // ValidateBasic performs basic validation.
 func (cs CommitSig) ValidateBasic() error {
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-	case BlockIDFlagCommit:
-	case BlockIDFlagNil:
+	case tmproto.BlockIDFlagAbsent:
+	case tmproto.BlockIDFlagCommit:
+	case tmproto.BlockIDFlagNil:
 	default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
 	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
+	case tmproto.BlockIDFlagAbsent:
 		if len(cs.ValidatorAddress) != 0 {
 			return errors.New("validator address is present")
 		}
@@ -535,6 +410,29 @@ func (cs CommitSig) ValidateBasic() error {
 	return nil
 }
 
+func (cs CommitSig) ToProto() *tmproto.CommitSig {
+
+	csProto := tmproto.CommitSig{
+		BlockIdFlag:      cs.BlockIDFlag,
+		ValidatorAddress: cs.ValidatorAddress,
+		Timestamp:        cs.Timestamp,
+		Signature:        cs.Signature,
+	}
+	return &csProto
+}
+func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
+	cs.BlockIDFlag = csp.BlockIdFlag
+	cs.ValidatorAddress = csp.ValidatorAddress
+	cs.Timestamp = csp.Timestamp
+	cs.Signature = csp.Signature
+
+	if err := cs.ValidateBasic(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //-------------------------------------
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -553,7 +451,7 @@ type Commit struct {
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
 	hash     tmbytes.HexBytes
-	bitArray *bits.BitArray
+	bitArray *tmbits.BitArray
 }
 
 var _ VoteSetReader = (*Commit)(nil)
@@ -572,7 +470,7 @@ func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSi
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
@@ -591,7 +489,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 func (commit *Commit) GetVote(valIdx uint32) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             PrecommitType,
+		Type:             tmproto.PrecommitType,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -613,7 +511,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx uint32) []byte {
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(PrecommitType)
+	return byte(tmproto.PrecommitType)
 }
 
 // GetHeight returns height of the commit.
@@ -639,9 +537,9 @@ func (commit *Commit) Size() int {
 
 // BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
 // Implements VoteSetReader.
-func (commit *Commit) BitArray() *bits.BitArray {
+func (commit *Commit) BitArray() *tmbits.BitArray {
 	if commit.bitArray == nil {
-		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
+		commit.bitArray = tmbits.NewBitArray(len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
@@ -729,6 +627,49 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
+func (c Commit) ToProto() *tmproto.Commit {
+
+	csp := tmproto.Commit{
+		Height: c.Height,
+		Round:  c.Round,
+		BlockID: tmproto.BlockID{
+			Hash: c.BlockID.Hash,
+			PartsHeader: tmproto.PartSetHeader{
+				Hash:  c.BlockID.PartsHeader.Hash,
+				Total: c.BlockID.PartsHeader.Total,
+			},
+		},
+		Hash: c.hash,
+		BitArray: &tmprotobits.BitArray{
+			Bits:  int64(c.bitArray.Bits),
+			Elems: c.bitArray.Elems,
+		},
+	}
+	return &csp
+}
+func (c *Commit) FromProto(cp tmproto.Commit) error {
+	c.Height = cp.Height
+	c.Round = cp.Round
+	c.BlockID = BlockID{
+		Hash: cp.BlockID.Hash,
+		PartsHeader: PartSetHeader{
+			Hash:  cp.BlockID.PartsHeader.Hash,
+			Total: cp.BlockID.PartsHeader.Total,
+		},
+	}
+	c.hash = cp.Hash
+	c.bitArray = &tmbits.BitArray{
+		Bits:  (int(cp.BitArray.Bits)),
+		Elems: cp.BitArray.Elems,
+	}
+
+	if err := c.ValidateBasic(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
@@ -792,6 +733,32 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent)
 }
 
+func (sh SignedHeader) ToProto() *tmproto.SignedHeader {
+	protoHeader := sh.Header.ToProto()
+	protoCommit := sh.Commit.ToProto()
+
+	shp := tmproto.SignedHeader{
+		Header: protoHeader,
+		Commit: protoCommit,
+	}
+	return &shp
+}
+
+func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
+	h := Header{}
+	c := Commit{}
+
+	if err := h.FromProto(*shp.Header); err != nil {
+		return err
+	}
+	c.FromProto(*shp.Commit)
+
+	sh.Header = &h
+	sh.Commit = &c
+
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 
 // Data contains the set of transactions included in the block
@@ -837,6 +804,29 @@ func (data *Data) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+func (data *Data) ToProto() *tmproto.Data {
+
+	txBzs := make([][]byte, len(data.Txs))
+	for i := 0; i < len(data.Txs); i++ {
+		txBzs[i] = data.Txs[i]
+	}
+	dp := tmproto.Data{
+		Txs:  txBzs,
+		Hash: data.hash,
+	}
+
+	return &dp
+}
+
+func (data *Data) FromProto(dp tmproto.Data) {
+	txBzs := make(Txs, len(data.Txs))
+	for i := 0; i < len(dp.Txs); i++ {
+		txBzs[i] = dp.Txs[i]
+	}
+	data.Txs = txBzs
+	data.hash = dp.Hash
+}
+
 //-----------------------------------------------------------------------------
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
@@ -875,14 +865,50 @@ func (data *EvidenceData) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
+	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
+	for i := 0; i < len(data.Evidence); i++ {
+		protoEvi, err := EvidenceToProto(data.Evidence[i])
+		if err != nil {
+			return nil, err
+		}
+		eviBzs[i] = *protoEvi
+	}
+
+	protoEvidence := tmproto.EvidenceData{
+		Evidence: eviBzs,
+		Hash:     data.hash,
+	}
+	return &protoEvidence, nil
+}
+func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
+	eviBzs := make([]Evidence, len(eviData.Evidence))
+	for i := 0; i < len(eviData.Evidence); i++ {
+		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		if err != nil {
+			return err
+		}
+		eviBzs[i] = evi
+	}
+
+	data.Evidence = eviBzs
+	data.hash = eviData.Hash
+
+	return nil
+}
+
 //--------------------------------------------------------------------------------
 
-// BlockID
+// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
+type BlockID struct {
+	Hash        tmbytes.HexBytes `json:"hash"`
+	PartsHeader PartSetHeader    `json:"parts"`
+}
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equal(other.PartsHeader)
+		blockID.PartsHeader.Equals(other.PartsHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -917,4 +943,9 @@ func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
 		blockID.PartsHeader.Total > 0 &&
 		len(blockID.PartsHeader.Hash) == tmhash.Size
+}
+
+// String returns a human readable string representation of the BlockID
+func (blockID BlockID) String() string {
+	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }

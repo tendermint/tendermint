@@ -68,5 +68,3 @@ Attacks may come through the P2P network or the RPC:
 - Correctly validating an incorrect proof
 - Incorrectly validating a correct proof
 - Syncing validator set changes
-
-

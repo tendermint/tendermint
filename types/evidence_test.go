@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 type voteData struct {
@@ -27,7 +28,7 @@ func makeVote(
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             SignedMsgType(step),
+		Type:             tmproto.SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err = val.SignVote(chainID, v)
