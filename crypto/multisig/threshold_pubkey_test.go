@@ -152,7 +152,7 @@ func TestPubKeyMultisigThresholdAminoToIface(t *testing.T) {
 
 	ab, err := cdc.MarshalBinaryLengthPrefixed(multisigKey)
 	require.NoError(t, err)
-	// like other crypto.Pubkey implementations (e.g. ed25519.PubKeyEd25519),
+	// like other crypto.Pubkey implementations (e.g. ed25519.PubKey),
 	// PubKeyMultisigThreshold should be deserializable into a crypto.PubKey:
 	var pubKey crypto.PubKey
 	err = cdc.UnmarshalBinaryLengthPrefixed(ab, &pubKey)

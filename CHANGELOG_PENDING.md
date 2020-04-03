@@ -19,6 +19,13 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#4582 Block: `Round` is now int32
 - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
 - [consensus] \#4582 HeightVoteSet: `round` is now int32
+- [crypto] \# Remove suffixes from all keys. 
+    - ed25519: type `PrivKeyEd25519` is now `PrivKey`
+    - ed25519: type `PubKeyEd25519` is now `PubKey`
+    - secp256k1: type`PrivKeySecp256k1` is now `PrivKey`
+    - secp256k1: type`PubKeySecp256k1` is now `PubKey`
+    - sr25519: type `PrivKeySr25519` is now `PrivKey`
+    - sr25519: type `PubKeySr25519` is now `PubKey`
 - [evidence] \#4617 Remove `Pubkey` from DuplicateVoteEvidence
 - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
 
