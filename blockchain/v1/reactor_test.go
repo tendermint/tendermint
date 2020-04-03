@@ -131,7 +131,7 @@ func newBlockchainReactor(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
 			panic(errors.Wrap(err, "error apply block"))
 		}

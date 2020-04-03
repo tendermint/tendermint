@@ -490,6 +490,10 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	if seenCommit == nil {
+		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
+			state.LastBlockHeight))
+	}
 	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
@@ -878,6 +882,9 @@ func (cs *State) needProofBlock(height int64) bool {
 	}
 
 	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+	if lastBlockMeta == nil {
+		panic(fmt.Sprintf("needProofBlock: last block meta for height %d not found", height-1))
+	}
 	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
@@ -1448,7 +1455,8 @@ func (cs *State) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(
+	var retainHeight int64
+	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
 		block)
@@ -1462,6 +1470,16 @@ func (cs *State) finalizeCommit(height int64) {
 	}
 
 	fail.Fail() // XXX
+
+	// Prune old heights, if requested by ABCI app.
+	if retainHeight > 0 {
+		pruned, err := cs.pruneBlocks(retainHeight)
+		if err != nil {
+			cs.Logger.Error("Failed to prune blocks", "retainHeight", retainHeight, "err", err)
+		} else {
+			cs.Logger.Info("Pruned blocks", "pruned", pruned, "retainHeight", retainHeight)
+		}
+	}
 
 	// must be called before we update state
 	cs.recordMetrics(height, block)
@@ -1479,6 +1497,22 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+}
+
+func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
+	base := cs.blockStore.Base()
+	if retainHeight <= base {
+		return 0, nil
+	}
+	pruned, err := cs.blockStore.PruneBlocks(retainHeight)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune block store: %w", err)
+	}
+	err = sm.PruneStates(cs.blockExec.DB(), base, retainHeight)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune state database: %w", err)
+	}
+	return pruned, nil
 }
 
 func (cs *State) recordMetrics(height int64, block *types.Block) {
@@ -1547,9 +1581,11 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 	if height > 1 {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-		cs.metrics.BlockIntervalSeconds.Set(
-			block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
-		)
+		if lastBlockMeta != nil {
+			cs.metrics.BlockIntervalSeconds.Set(
+				block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+			)
+		}
 	}
 
 	cs.metrics.NumTxs.Set(float64(len(block.Data.Txs)))
