@@ -77,7 +77,7 @@ The returned `retain_height` would be the lowest height that satisfies:
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
 
