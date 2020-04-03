@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-
 	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
@@ -29,7 +27,7 @@ func DecodeMsg(bz []byte) (msg Message, err error) {
 		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	bm := bcproto.Message{}
-	err = proto.Unmarshal(bz, &bm)
+	bm.Unmarshal(bz)
 	msg, err = MsgFromProto(bm)
 	return
 }
