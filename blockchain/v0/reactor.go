@@ -5,12 +5,14 @@ import (
 	"reflect"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
+	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	bc "gtihub.com/tendermint/tendermint/blockchain"
 )
 
 const (
@@ -138,7 +140,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.StatusResponseMessage{bcR.store.Height()})
+	bm, _ := bc.MsgToProto(&bc.StatusResponseMessage{bcR.store.Height()})
+	msgBytes, _ := proto.Marshal(bm)
 	peer.Send(BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
@@ -160,19 +163,21 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
-		msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.BlockResponseMessage{Block: block})
+		bm, _ := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
+		msgBytes, _ := proto.Marshal(bm)
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.NoBlockResponseMessage{Height: msg.Height})
+	bm, _ := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height}) //TODO: figureout errs
+	msgBytes, _ := proto.Marshal(bm)
 	return src.TrySend(BlockchainChannel, msgBytes)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
+	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
@@ -194,7 +199,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bc.StatusRequestMessage:
 		// Send peer our state.
-		msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.StatusResponseMessage{bcR.store.Height()})
+		bm, _ := bc.MsgToProto(&bc.StatusResponseMessage{bcR.store.Height()})
+		msgBytes, _ := proto.Marshal(bm)
 		src.TrySend(BlockchainChannel, msgBytes)
 	case *bc.StatusResponseMessage:
 		// Got a peer status. Unverified.
@@ -234,7 +240,8 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				if peer == nil {
 					continue
 				}
-				msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.BlockRequestMessage{request.Height})
+				bm, _ := bc.MsgToProto(&bc.BlockRequestMessage{request.Height})
+				msgBytes, _ := proto.Marshal(bm)
 				queued := peer.TrySend(BlockchainChannel, msgBytes)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
@@ -360,7 +367,8 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	msgBytes := bc.Cdc.MustMarshalBinaryBare(&bc.StatusRequestMessage{bcR.store.Height()})
+	bm, _ := bc.MsgToProto(&bc.StatusRequestMessage{bcR.store.Height()})
+	msgBytes, _ := proto.Marshal(bm)
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
 }

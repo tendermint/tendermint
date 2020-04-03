@@ -3,22 +3,14 @@ package blockchain
 import (
 	"errors"
 
-	amino "github.com/tendermint/go-amino"
-
 	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
 
-var Cdc = amino.NewCodec()
-
-func init() {
-	RegisterBlockchainMessages(Cdc)
-	types.RegisterBlockAmino(Cdc)
-}
-
-func MsgToProto(msg Message) (*bcproto.Message, error) {
-	switch msg := msg.(type) {
+func MsgToProto(bcm Message) (*bcproto.Message, error) {
+	switch msg := bcm.(type) {
 	case *BlockRequestMessage:
+		// bm := BlockRequestMessage{Height: msg.BlockRequest.Height}
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockRequest{
 				BlockRequest: &bcproto.BlockRequest{
@@ -27,22 +19,20 @@ func MsgToProto(msg Message) (*bcproto.Message, error) {
 			},
 		}
 		return &bm, nil
-
 	case *BlockResponseMessage:
-
-		block, err := msg.Block.ToProto()
+		b, err := msg.Block.ToProto()
 		if err != nil {
 			return nil, err
 		}
+
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockResponse{
 				BlockResponse: &bcproto.BlockResponse{
-					Block: block,
+					Block: b,
 				},
 			},
 		}
 		return &bm, nil
-
 	case *NoBlockResponseMessage:
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_NoBlockResponse{
@@ -52,8 +42,7 @@ func MsgToProto(msg Message) (*bcproto.Message, error) {
 			},
 		}
 		return &bm, nil
-
-	case *StatusRequestMessage:
+	case *StatusResponseMessage:
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_StatusRequest{
 				StatusRequest: &bcproto.StatusRequest{
@@ -62,8 +51,7 @@ func MsgToProto(msg Message) (*bcproto.Message, error) {
 			},
 		}
 		return &bm, nil
-
-	case *StatusResponseMessage:
+	case *StatusRequestMessage:
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_StatusResponse{
 				StatusResponse: &bcproto.StatusResponse{
@@ -72,13 +60,48 @@ func MsgToProto(msg Message) (*bcproto.Message, error) {
 			},
 		}
 		return &bm, nil
-
 	default:
-		return nil, errors.New("blockchain message not recognized")
+		return nil, errors.New("evidence is not recognized")
 	}
 }
 
-func MsgFromProto(bcm bcproto.Message) (*Message, error) {
-
-	return nil, err
+func MsgFromProto(bcm bcproto.Message) (Message, error) {
+	switch msg := bcm.Sum.(type) {
+	case *bcproto.Message_BlockRequest:
+		bm := BlockRequestMessage{Height: msg.BlockRequest.Height}
+		if err := bm.ValidateBasic(); err != nil {
+			return nil, err
+		}
+		return &bm, nil
+	case *bcproto.Message_NoBlockResponse:
+		bm := NoBlockResponseMessage{Height: msg.NoBlockResponse.Height}
+		if err := bm.ValidateBasic(); err != nil {
+			return nil, err
+		}
+		return &bm, nil
+	case *bcproto.Message_BlockResponse:
+		b := types.Block{}
+		if err := b.FromProto(*msg.BlockResponse.Block); err != nil {
+			return nil, err
+		}
+		bm := BlockResponseMessage{Block: &b}
+		if err := bm.ValidateBasic(); err != nil {
+			return nil, err
+		}
+		return &bm, nil
+	case *bcproto.Message_StatusRequest:
+		bm := StatusRequestMessage{Height: msg.StatusRequest.Height}
+		if err := bm.ValidateBasic(); err != nil {
+			return nil, err
+		}
+		return &bm, nil
+	case *bcproto.Message_StatusResponse:
+		bm := StatusRequestMessage{Height: msg.StatusResponse.Height}
+		if err := bm.ValidateBasic(); err != nil {
+			return nil, err
+		}
+		return &bm, nil
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
 }

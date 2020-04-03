@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
+	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -23,21 +24,13 @@ type Message interface {
 	ValidateBasic() error
 }
 
-// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
-func RegisterBlockchainMessages(cdc *amino.Codec) {
-	Cdc.RegisterInterface((*Message)(nil), nil)
-	Cdc.RegisterConcrete(&BlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
-	Cdc.RegisterConcrete(&BlockResponseMessage{}, "tendermint/blockchain/BlockResponse", nil)
-	Cdc.RegisterConcrete(&NoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
-	Cdc.RegisterConcrete(&StatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
-	Cdc.RegisterConcrete(&StatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
-}
-
-func decodeMsg(bz []byte) (msg Message, err error) {
+func DecodeMsg(bz []byte) (msg Message, err error) {
 	if len(bz) > maxMsgSize {
 		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
-	err = Cdc.UnmarshalBinaryBare(bz, &msg)
+	bm := bcproto.Message{}
+	err = proto.Unmarshal(bz, &bm)
+	msg, err = MsgFromProto(bm)
 	return
 }
 
