@@ -52,8 +52,9 @@ type Vote struct {
 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time     `json:"timestamp"`
 	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int32         `json:"validator_index"` // assume there will not be greater than 2_147_483_647 validators
-	Signature        []byte        `json:"signature"`
+	// assume there will not be greater than 2_147_483_647 validators
+	ValidatorIndex uint32 `json:"validator_index"`
+	Signature      []byte `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -159,9 +160,6 @@ func (vote *Vote) ValidateBasic() error {
 			crypto.AddressSize,
 			len(vote.ValidatorAddress),
 		)
-	}
-	if vote.ValidatorIndex < 0 {
-		return errors.New("negative ValidatorIndex")
 	}
 	if len(vote.Signature) == 0 {
 		return errors.New("signature is missing")

@@ -81,7 +81,7 @@ func validatorAtHeight(h int64) *types.Validator {
 		if err != nil {
 			return nil // should not happen
 		}
-		_, val := vals.GetByAddress(privValAddress)
+		_, val, _ := vals.GetByAddress(privValAddress)
 		return val
 	}
 

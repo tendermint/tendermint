@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -1068,7 +1069,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(int32(index)), true
+		return votes.GetByIndex(tmmath.SafeConvertUint32(int64(index))), true
 	}
 	return nil, false
 }
@@ -1225,7 +1226,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType types.SignedMsgType, index int32) {
+func (ps *PeerState) setHasVote(height int64, round int32, voteType types.SignedMsgType, index uint32) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1592,7 +1593,7 @@ type HasVoteMessage struct {
 	Height int64
 	Round  int32
 	Type   types.SignedMsgType
-	Index  int32
+	Index  uint32
 }
 
 // ValidateBasic performs basic validation.
@@ -1605,9 +1606,6 @@ func (m *HasVoteMessage) ValidateBasic() error {
 	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
-	}
-	if m.Index < 0 {
-		return errors.New("negative Index")
 	}
 	return nil
 }
