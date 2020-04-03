@@ -61,7 +61,7 @@ func ExamplePrintRegisteredTypes() {
 	//| PubKey | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
 	//| PubKey | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
 	//| PubKey | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
+	//| PubKey | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 	//| PrivKey | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
 	//| PrivKey | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
 	//| PrivKey | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
@@ -151,7 +151,7 @@ func TestPubkeyAminoName(t *testing.T) {
 		{ed25519.PubKey{}, ed25519.PubKeyAminoName, true},
 		{sr25519.PubKey{}, sr25519.PubKeyAminoName, true},
 		{secp256k1.PubKey{}, secp256k1.PubKeyAminoName, true},
-		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
+		{multisig.PubKey{}, multisig.PubKeyAminoRoute, true},
 	}
 	for i, tc := range tests {
 		got, found := PubkeyAminoName(cdc, tc.key)
@@ -232,5 +232,5 @@ func TestRegisterKeyType(t *testing.T) {
 	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
 	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyAminoName
 	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyAminoName
-	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
+	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyAminoRoute
 }
