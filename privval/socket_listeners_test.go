@@ -13,7 +13,7 @@ import (
 //-------------------------------------------
 // helper funcs
 
-func newPrivKey() ed25519.PrivKeyEd25519 {
+func newPrivKey() ed25519.PrivKey {
 	return ed25519.GenPrivKey()
 }
 

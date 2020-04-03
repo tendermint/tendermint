@@ -17,7 +17,7 @@ var cdc = amino.NewCodec()
 // nameTable is used to map public key concrete types back
 // to their registered amino names. This should eventually be handled
 // by amino. Example usage:
-// nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
+// nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
 var nameTable = make(map[reflect.Type]string, 3)
 
 func init() {
@@ -31,10 +31,10 @@ func init() {
 
 	// TODO: Have amino provide a way to go from concrete struct to route directly.
 	// Its currently a private API
-	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(sr25519.PubKeySr25519{})] = sr25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
-	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
+	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyAminoName
+	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyAminoRoute
 }
 
 // PubkeyAminoName returns the amino route of a pubkey
@@ -49,21 +49,21 @@ func PubkeyAminoName(cdc *amino.Codec, key crypto.PubKey) (string, bool) {
 func RegisterAmino(cdc *amino.Codec) {
 	// These are all written here instead of
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(ed25519.PubKeyEd25519{},
+	cdc.RegisterConcrete(ed25519.PubKey{},
 		ed25519.PubKeyAminoName, nil)
-	cdc.RegisterConcrete(sr25519.PubKeySr25519{},
+	cdc.RegisterConcrete(sr25519.PubKey{},
 		sr25519.PubKeyAminoName, nil)
-	cdc.RegisterConcrete(secp256k1.PubKeySecp256k1{},
+	cdc.RegisterConcrete(secp256k1.PubKey{},
 		secp256k1.PubKeyAminoName, nil)
-	cdc.RegisterConcrete(multisig.PubKeyMultisigThreshold{},
-		multisig.PubKeyMultisigThresholdAminoRoute, nil)
+	cdc.RegisterConcrete(multisig.PubKey{},
+		multisig.PubKeyAminoRoute, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(ed25519.PrivKeyEd25519{},
+	cdc.RegisterConcrete(ed25519.PrivKey{},
 		ed25519.PrivKeyAminoName, nil)
-	cdc.RegisterConcrete(sr25519.PrivKeySr25519{},
+	cdc.RegisterConcrete(sr25519.PrivKey{},
 		sr25519.PrivKeyAminoName, nil)
-	cdc.RegisterConcrete(secp256k1.PrivKeySecp256k1{},
+	cdc.RegisterConcrete(secp256k1.PrivKey{},
 		secp256k1.PrivKeyAminoName, nil)
 }
 
