@@ -23,22 +23,22 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type BcBlockRequestMessage struct {
+type BlockRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *BcBlockRequestMessage) Reset()         { *m = BcBlockRequestMessage{} }
-func (m *BcBlockRequestMessage) String() string { return proto.CompactTextString(m) }
-func (*BcBlockRequestMessage) ProtoMessage()    {}
-func (*BcBlockRequestMessage) Descriptor() ([]byte, []int) {
+func (m *BlockRequest) Reset()         { *m = BlockRequest{} }
+func (m *BlockRequest) String() string { return proto.CompactTextString(m) }
+func (*BlockRequest) ProtoMessage()    {}
+func (*BlockRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{0}
 }
-func (m *BcBlockRequestMessage) XXX_Unmarshal(b []byte) error {
+func (m *BlockRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BcBlockRequestMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BcBlockRequestMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -48,41 +48,41 @@ func (m *BcBlockRequestMessage) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *BcBlockRequestMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BcBlockRequestMessage.Merge(m, src)
+func (m *BlockRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockRequest.Merge(m, src)
 }
-func (m *BcBlockRequestMessage) XXX_Size() int {
+func (m *BlockRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *BcBlockRequestMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BcBlockRequestMessage.DiscardUnknown(m)
+func (m *BlockRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BcBlockRequestMessage proto.InternalMessageInfo
+var xxx_messageInfo_BlockRequest proto.InternalMessageInfo
 
-func (m *BcBlockRequestMessage) GetHeight() int64 {
+func (m *BlockRequest) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
-type BcNoBlockResponseMessage struct {
+type NoBlockResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *BcNoBlockResponseMessage) Reset()         { *m = BcNoBlockResponseMessage{} }
-func (m *BcNoBlockResponseMessage) String() string { return proto.CompactTextString(m) }
-func (*BcNoBlockResponseMessage) ProtoMessage()    {}
-func (*BcNoBlockResponseMessage) Descriptor() ([]byte, []int) {
+func (m *NoBlockResponse) Reset()         { *m = NoBlockResponse{} }
+func (m *NoBlockResponse) String() string { return proto.CompactTextString(m) }
+func (*NoBlockResponse) ProtoMessage()    {}
+func (*NoBlockResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{1}
 }
-func (m *BcNoBlockResponseMessage) XXX_Unmarshal(b []byte) error {
+func (m *NoBlockResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BcNoBlockResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *NoBlockResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BcNoBlockResponseMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_NoBlockResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -92,41 +92,41 @@ func (m *BcNoBlockResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *BcNoBlockResponseMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BcNoBlockResponseMessage.Merge(m, src)
+func (m *NoBlockResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NoBlockResponse.Merge(m, src)
 }
-func (m *BcNoBlockResponseMessage) XXX_Size() int {
+func (m *NoBlockResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *BcNoBlockResponseMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BcNoBlockResponseMessage.DiscardUnknown(m)
+func (m *NoBlockResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_NoBlockResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BcNoBlockResponseMessage proto.InternalMessageInfo
+var xxx_messageInfo_NoBlockResponse proto.InternalMessageInfo
 
-func (m *BcNoBlockResponseMessage) GetHeight() int64 {
+func (m *NoBlockResponse) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
-type BcBlockResponseMessage struct {
+type BlockResponse struct {
 	Block *types.Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
 }
 
-func (m *BcBlockResponseMessage) Reset()         { *m = BcBlockResponseMessage{} }
-func (m *BcBlockResponseMessage) String() string { return proto.CompactTextString(m) }
-func (*BcBlockResponseMessage) ProtoMessage()    {}
-func (*BcBlockResponseMessage) Descriptor() ([]byte, []int) {
+func (m *BlockResponse) Reset()         { *m = BlockResponse{} }
+func (m *BlockResponse) String() string { return proto.CompactTextString(m) }
+func (*BlockResponse) ProtoMessage()    {}
+func (*BlockResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{2}
 }
-func (m *BcBlockResponseMessage) XXX_Unmarshal(b []byte) error {
+func (m *BlockResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BcBlockResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BcBlockResponseMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -136,41 +136,41 @@ func (m *BcBlockResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *BcBlockResponseMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BcBlockResponseMessage.Merge(m, src)
+func (m *BlockResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockResponse.Merge(m, src)
 }
-func (m *BcBlockResponseMessage) XXX_Size() int {
+func (m *BlockResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *BcBlockResponseMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BcBlockResponseMessage.DiscardUnknown(m)
+func (m *BlockResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BcBlockResponseMessage proto.InternalMessageInfo
+var xxx_messageInfo_BlockResponse proto.InternalMessageInfo
 
-func (m *BcBlockResponseMessage) GetBlock() *types.Block {
+func (m *BlockResponse) GetBlock() *types.Block {
 	if m != nil {
 		return m.Block
 	}
 	return nil
 }
 
-type BcStatusRequestMessage struct {
+type StatusRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=Height,proto3" json:"Height,omitempty"`
 }
 
-func (m *BcStatusRequestMessage) Reset()         { *m = BcStatusRequestMessage{} }
-func (m *BcStatusRequestMessage) String() string { return proto.CompactTextString(m) }
-func (*BcStatusRequestMessage) ProtoMessage()    {}
-func (*BcStatusRequestMessage) Descriptor() ([]byte, []int) {
+func (m *StatusRequest) Reset()         { *m = StatusRequest{} }
+func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
+func (*StatusRequest) ProtoMessage()    {}
+func (*StatusRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{3}
 }
-func (m *BcStatusRequestMessage) XXX_Unmarshal(b []byte) error {
+func (m *StatusRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BcStatusRequestMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *StatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BcStatusRequestMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_StatusRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -180,41 +180,41 @@ func (m *BcStatusRequestMessage) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *BcStatusRequestMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BcStatusRequestMessage.Merge(m, src)
+func (m *StatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StatusRequest.Merge(m, src)
 }
-func (m *BcStatusRequestMessage) XXX_Size() int {
+func (m *StatusRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *BcStatusRequestMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BcStatusRequestMessage.DiscardUnknown(m)
+func (m *StatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StatusRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BcStatusRequestMessage proto.InternalMessageInfo
+var xxx_messageInfo_StatusRequest proto.InternalMessageInfo
 
-func (m *BcStatusRequestMessage) GetHeight() int64 {
+func (m *StatusRequest) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
-type BcStatusResponseMessage struct {
+type StatusResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *BcStatusResponseMessage) Reset()         { *m = BcStatusResponseMessage{} }
-func (m *BcStatusResponseMessage) String() string { return proto.CompactTextString(m) }
-func (*BcStatusResponseMessage) ProtoMessage()    {}
-func (*BcStatusResponseMessage) Descriptor() ([]byte, []int) {
+func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
+func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
+func (*StatusResponse) ProtoMessage()    {}
+func (*StatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{4}
 }
-func (m *BcStatusResponseMessage) XXX_Unmarshal(b []byte) error {
+func (m *StatusResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BcStatusResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *StatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BcStatusResponseMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_StatusResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -224,47 +224,47 @@ func (m *BcStatusResponseMessage) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *BcStatusResponseMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BcStatusResponseMessage.Merge(m, src)
+func (m *StatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StatusResponse.Merge(m, src)
 }
-func (m *BcStatusResponseMessage) XXX_Size() int {
+func (m *StatusResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *BcStatusResponseMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BcStatusResponseMessage.DiscardUnknown(m)
+func (m *StatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_StatusResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BcStatusResponseMessage proto.InternalMessageInfo
+var xxx_messageInfo_StatusResponse proto.InternalMessageInfo
 
-func (m *BcStatusResponseMessage) GetHeight() int64 {
+func (m *StatusResponse) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
-type BlockchainMessage struct {
+type Message struct {
 	// Types that are valid to be assigned to Sum:
-	//	*BlockchainMessage_BlockRequest
-	//	*BlockchainMessage_NoBlockResponse
-	//	*BlockchainMessage_BlockResponse
-	//	*BlockchainMessage_StatusRequest
-	//	*BlockchainMessage_StatusResponse
-	Sum isBlockchainMessage_Sum `protobuf_oneof:"sum"`
+	//	*Message_BlockRequest
+	//	*Message_NoBlockResponse
+	//	*Message_BlockResponse
+	//	*Message_StatusRequest
+	//	*Message_StatusResponse
+	Sum isMessage_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *BlockchainMessage) Reset()         { *m = BlockchainMessage{} }
-func (m *BlockchainMessage) String() string { return proto.CompactTextString(m) }
-func (*BlockchainMessage) ProtoMessage()    {}
-func (*BlockchainMessage) Descriptor() ([]byte, []int) {
+func (m *Message) Reset()         { *m = Message{} }
+func (m *Message) String() string { return proto.CompactTextString(m) }
+func (*Message) ProtoMessage()    {}
+func (*Message) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{5}
 }
-func (m *BlockchainMessage) XXX_Unmarshal(b []byte) error {
+func (m *Message) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockchainMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Message) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockchainMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Message.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -274,139 +274,138 @@ func (m *BlockchainMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *BlockchainMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockchainMessage.Merge(m, src)
+func (m *Message) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Message.Merge(m, src)
 }
-func (m *BlockchainMessage) XXX_Size() int {
+func (m *Message) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockchainMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockchainMessage.DiscardUnknown(m)
+func (m *Message) XXX_DiscardUnknown() {
+	xxx_messageInfo_Message.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockchainMessage proto.InternalMessageInfo
+var xxx_messageInfo_Message proto.InternalMessageInfo
 
-type isBlockchainMessage_Sum interface {
-	isBlockchainMessage_Sum()
+type isMessage_Sum interface {
+	isMessage_Sum()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type BlockchainMessage_BlockRequest struct {
-	BlockRequest *BcBlockRequestMessage `protobuf:"bytes,1,opt,name=block_request,json=blockRequest,proto3,oneof" json:"block_request,omitempty"`
+type Message_BlockRequest struct {
+	BlockRequest *BlockRequest `protobuf:"bytes,1,opt,name=block_request,json=blockRequest,proto3,oneof" json:"block_request,omitempty"`
 }
-type BlockchainMessage_NoBlockResponse struct {
-	NoBlockResponse *BcNoBlockResponseMessage `protobuf:"bytes,2,opt,name=no_block_response,json=noBlockResponse,proto3,oneof" json:"no_block_response,omitempty"`
+type Message_NoBlockResponse struct {
+	NoBlockResponse *NoBlockResponse `protobuf:"bytes,2,opt,name=no_block_response,json=noBlockResponse,proto3,oneof" json:"no_block_response,omitempty"`
 }
-type BlockchainMessage_BlockResponse struct {
-	BlockResponse *BcBlockResponseMessage `protobuf:"bytes,3,opt,name=block_response,json=blockResponse,proto3,oneof" json:"block_response,omitempty"`
+type Message_BlockResponse struct {
+	BlockResponse *BlockResponse `protobuf:"bytes,3,opt,name=block_response,json=blockResponse,proto3,oneof" json:"block_response,omitempty"`
 }
-type BlockchainMessage_StatusRequest struct {
-	StatusRequest *BcStatusRequestMessage `protobuf:"bytes,4,opt,name=status_request,json=statusRequest,proto3,oneof" json:"status_request,omitempty"`
+type Message_StatusRequest struct {
+	StatusRequest *StatusRequest `protobuf:"bytes,4,opt,name=status_request,json=statusRequest,proto3,oneof" json:"status_request,omitempty"`
 }
-type BlockchainMessage_StatusResponse struct {
-	StatusResponse *BcStatusResponseMessage `protobuf:"bytes,5,opt,name=status_response,json=statusResponse,proto3,oneof" json:"status_response,omitempty"`
+type Message_StatusResponse struct {
+	StatusResponse *StatusResponse `protobuf:"bytes,5,opt,name=status_response,json=statusResponse,proto3,oneof" json:"status_response,omitempty"`
 }
 
-func (*BlockchainMessage_BlockRequest) isBlockchainMessage_Sum()    {}
-func (*BlockchainMessage_NoBlockResponse) isBlockchainMessage_Sum() {}
-func (*BlockchainMessage_BlockResponse) isBlockchainMessage_Sum()   {}
-func (*BlockchainMessage_StatusRequest) isBlockchainMessage_Sum()   {}
-func (*BlockchainMessage_StatusResponse) isBlockchainMessage_Sum()  {}
+func (*Message_BlockRequest) isMessage_Sum()    {}
+func (*Message_NoBlockResponse) isMessage_Sum() {}
+func (*Message_BlockResponse) isMessage_Sum()   {}
+func (*Message_StatusRequest) isMessage_Sum()   {}
+func (*Message_StatusResponse) isMessage_Sum()  {}
 
-func (m *BlockchainMessage) GetSum() isBlockchainMessage_Sum {
+func (m *Message) GetSum() isMessage_Sum {
 	if m != nil {
 		return m.Sum
 	}
 	return nil
 }
 
-func (m *BlockchainMessage) GetBlockRequest() *BcBlockRequestMessage {
-	if x, ok := m.GetSum().(*BlockchainMessage_BlockRequest); ok {
+func (m *Message) GetBlockRequest() *BlockRequest {
+	if x, ok := m.GetSum().(*Message_BlockRequest); ok {
 		return x.BlockRequest
 	}
 	return nil
 }
 
-func (m *BlockchainMessage) GetNoBlockResponse() *BcNoBlockResponseMessage {
-	if x, ok := m.GetSum().(*BlockchainMessage_NoBlockResponse); ok {
+func (m *Message) GetNoBlockResponse() *NoBlockResponse {
+	if x, ok := m.GetSum().(*Message_NoBlockResponse); ok {
 		return x.NoBlockResponse
 	}
 	return nil
 }
 
-func (m *BlockchainMessage) GetBlockResponse() *BcBlockResponseMessage {
-	if x, ok := m.GetSum().(*BlockchainMessage_BlockResponse); ok {
+func (m *Message) GetBlockResponse() *BlockResponse {
+	if x, ok := m.GetSum().(*Message_BlockResponse); ok {
 		return x.BlockResponse
 	}
 	return nil
 }
 
-func (m *BlockchainMessage) GetStatusRequest() *BcStatusRequestMessage {
-	if x, ok := m.GetSum().(*BlockchainMessage_StatusRequest); ok {
+func (m *Message) GetStatusRequest() *StatusRequest {
+	if x, ok := m.GetSum().(*Message_StatusRequest); ok {
 		return x.StatusRequest
 	}
 	return nil
 }
 
-func (m *BlockchainMessage) GetStatusResponse() *BcStatusResponseMessage {
-	if x, ok := m.GetSum().(*BlockchainMessage_StatusResponse); ok {
+func (m *Message) GetStatusResponse() *StatusResponse {
+	if x, ok := m.GetSum().(*Message_StatusResponse); ok {
 		return x.StatusResponse
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*BlockchainMessage) XXX_OneofWrappers() []interface{} {
+func (*Message) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlockchainMessage_BlockRequest)(nil),
-		(*BlockchainMessage_NoBlockResponse)(nil),
-		(*BlockchainMessage_BlockResponse)(nil),
-		(*BlockchainMessage_StatusRequest)(nil),
-		(*BlockchainMessage_StatusResponse)(nil),
+		(*Message_BlockRequest)(nil),
+		(*Message_NoBlockResponse)(nil),
+		(*Message_BlockResponse)(nil),
+		(*Message_StatusRequest)(nil),
+		(*Message_StatusResponse)(nil),
 	}
 }
 
 func init() {
-	proto.RegisterType((*BcBlockRequestMessage)(nil), "tendermint.proto.blockchain.BcBlockRequestMessage")
-	proto.RegisterType((*BcNoBlockResponseMessage)(nil), "tendermint.proto.blockchain.BcNoBlockResponseMessage")
-	proto.RegisterType((*BcBlockResponseMessage)(nil), "tendermint.proto.blockchain.BcBlockResponseMessage")
-	proto.RegisterType((*BcStatusRequestMessage)(nil), "tendermint.proto.blockchain.BcStatusRequestMessage")
-	proto.RegisterType((*BcStatusResponseMessage)(nil), "tendermint.proto.blockchain.BcStatusResponseMessage")
-	proto.RegisterType((*BlockchainMessage)(nil), "tendermint.proto.blockchain.BlockchainMessage")
+	proto.RegisterType((*BlockRequest)(nil), "tendermint.proto.blockchain.BlockRequest")
+	proto.RegisterType((*NoBlockResponse)(nil), "tendermint.proto.blockchain.NoBlockResponse")
+	proto.RegisterType((*BlockResponse)(nil), "tendermint.proto.blockchain.BlockResponse")
+	proto.RegisterType((*StatusRequest)(nil), "tendermint.proto.blockchain.StatusRequest")
+	proto.RegisterType((*StatusResponse)(nil), "tendermint.proto.blockchain.StatusResponse")
+	proto.RegisterType((*Message)(nil), "tendermint.proto.blockchain.Message")
 }
 
 func init() { proto.RegisterFile("proto/blockchain/msgs.proto", fileDescriptor_ecf660069f8bb334) }
 
 var fileDescriptor_ecf660069f8bb334 = []byte{
-	// 370 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xc1, 0x4e, 0xc2, 0x40,
-	0x10, 0x86, 0x5b, 0x2b, 0x1c, 0x46, 0x81, 0xd0, 0x44, 0x20, 0x12, 0x1b, 0xd3, 0x93, 0xa7, 0x56,
-	0x40, 0x5f, 0xa0, 0x27, 0x12, 0x83, 0x87, 0x7a, 0xd2, 0x98, 0x10, 0x5a, 0x37, 0x6d, 0xa3, 0xdd,
-	0x45, 0x66, 0x7b, 0xf0, 0x2d, 0x7c, 0x2c, 0x8f, 0x1c, 0x3d, 0x1a, 0x78, 0x08, 0xaf, 0x86, 0xdd,
-	0x52, 0x68, 0x21, 0xd2, 0x4b, 0xd3, 0x9d, 0x9d, 0xff, 0x9b, 0x7f, 0xff, 0xcd, 0x42, 0x77, 0x3a,
-	0x63, 0x9c, 0xd9, 0xde, 0x1b, 0xf3, 0x5f, 0xfd, 0x70, 0x12, 0x51, 0x3b, 0xc6, 0x00, 0x2d, 0x51,
-	0xd5, 0xbb, 0x9c, 0xd0, 0x17, 0x32, 0x8b, 0x23, 0xca, 0x65, 0xc5, 0xda, 0xf4, 0x9d, 0xb7, 0xa5,
-	0x92, 0x7f, 0x4c, 0x09, 0xca, 0xaf, 0xec, 0x31, 0x6d, 0x38, 0x73, 0x7c, 0x67, 0xd5, 0xe8, 0x92,
-	0xf7, 0x84, 0x20, 0x1f, 0x11, 0xc4, 0x49, 0x40, 0xf4, 0x16, 0x54, 0x43, 0x12, 0x05, 0x21, 0xef,
-	0xa8, 0x97, 0xea, 0x95, 0xe6, 0xa6, 0x2b, 0xb3, 0x0f, 0x1d, 0xc7, 0xbf, 0x67, 0xa9, 0x04, 0xa7,
-	0x8c, 0x22, 0x39, 0xa4, 0x19, 0x41, 0x2b, 0x1b, 0x92, 0x57, 0x0c, 0xa0, 0x22, 0x5c, 0x0a, 0xc1,
-	0x49, 0xff, 0xc2, 0xda, 0x39, 0x84, 0x34, 0x2b, 0xc5, 0xb2, 0xd7, 0xbc, 0x5e, 0xe1, 0x1e, 0xf8,
-	0x84, 0x27, 0xb8, 0x6b, 0x7a, 0x98, 0x33, 0x20, 0x57, 0x66, 0x0f, 0xda, 0x1b, 0x45, 0x39, 0xcf,
-	0xbf, 0x1a, 0x34, 0x9d, 0x2c, 0xc0, 0x75, 0xf7, 0x23, 0xd4, 0x84, 0x87, 0xf1, 0x4c, 0x0e, 0x4e,
-	0x7d, 0xf7, 0xad, 0x7f, 0xc2, 0xb7, 0xf6, 0x06, 0x3c, 0x54, 0xdc, 0x53, 0x6f, 0xab, 0xac, 0xfb,
-	0xd0, 0xa4, 0x6c, 0xbc, 0xa6, 0x4b, 0x93, 0x9d, 0x23, 0x81, 0xbf, 0x3d, 0x80, 0xdf, 0x7f, 0x1d,
-	0x43, 0xc5, 0x6d, 0xd0, 0xfc, 0x8e, 0xfe, 0x0c, 0xf5, 0xc2, 0x04, 0x4d, 0x4c, 0x18, 0x94, 0x3b,
-	0x40, 0x91, 0x5f, 0xf3, 0x8a, 0x74, 0x14, 0x21, 0x67, 0xf1, 0x1c, 0x97, 0xa2, 0xef, 0xbb, 0xcb,
-	0x15, 0x1d, 0xb7, 0xeb, 0xfa, 0x18, 0x1a, 0x19, 0x3d, 0x35, 0x5f, 0x11, 0xf8, 0x9b, 0x92, 0xf8,
-	0xa2, 0xfb, 0x3a, 0xe6, 0x36, 0x9c, 0x0a, 0x68, 0x98, 0xc4, 0xce, 0xdd, 0xd7, 0xc2, 0x50, 0xe7,
-	0x0b, 0x43, 0xfd, 0x59, 0x18, 0xea, 0xe7, 0xd2, 0x50, 0xe6, 0x4b, 0x43, 0xf9, 0x5e, 0x1a, 0xca,
-	0x53, 0x2f, 0x88, 0x78, 0x98, 0x78, 0x96, 0xcf, 0x62, 0x7b, 0x33, 0x72, 0xfb, 0xb7, 0xf8, 0x40,
-	0xbd, 0xaa, 0xa8, 0x0c, 0xfe, 0x02, 0x00, 0x00, 0xff, 0xff, 0x0a, 0x1f, 0x5a, 0xf1, 0xbb, 0x03,
-	0x00, 0x00,
+	// 360 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xc1, 0x4e, 0xea, 0x40,
+	0x14, 0x86, 0xdb, 0xdb, 0x0b, 0x26, 0x47, 0x0a, 0x91, 0x85, 0x12, 0x89, 0x8d, 0xe9, 0x42, 0x41,
+	0xcd, 0x10, 0xe5, 0x0d, 0x88, 0x0b, 0x12, 0xa3, 0x31, 0x25, 0x71, 0xc1, 0x86, 0x50, 0x9c, 0xb4,
+	0x8d, 0x76, 0x06, 0x39, 0xd3, 0x85, 0x6f, 0xe1, 0x23, 0xb9, 0x74, 0xc9, 0xd2, 0xa5, 0x81, 0x17,
+	0x31, 0xcc, 0x94, 0xd2, 0xd6, 0x88, 0xdd, 0x10, 0xe6, 0xe4, 0x9f, 0xef, 0x7c, 0xf9, 0x27, 0x85,
+	0xe6, 0x74, 0xc6, 0x05, 0xef, 0xb8, 0xcf, 0x7c, 0xf2, 0x34, 0xf1, 0xc7, 0x01, 0xeb, 0x84, 0xe8,
+	0x21, 0x91, 0xd3, 0x7a, 0x53, 0x50, 0xf6, 0x48, 0x67, 0x61, 0xc0, 0x84, 0x9a, 0x90, 0x4d, 0xee,
+	0xf0, 0x40, 0xdd, 0x14, 0xaf, 0x53, 0x8a, 0xea, 0x57, 0x65, 0xec, 0x13, 0xa8, 0xf4, 0x56, 0x31,
+	0x87, 0xbe, 0x44, 0x14, 0x45, 0x7d, 0x1f, 0xca, 0x3e, 0x0d, 0x3c, 0x5f, 0x34, 0xf4, 0x63, 0xbd,
+	0x65, 0x38, 0xf1, 0xc9, 0x6e, 0x43, 0xed, 0x8e, 0xc7, 0x49, 0x9c, 0x72, 0x86, 0xf4, 0xd7, 0xe8,
+	0x35, 0x98, 0xd9, 0x60, 0x17, 0x4a, 0x52, 0x45, 0xe6, 0x76, 0xaf, 0x8e, 0xc8, 0x0f, 0x53, 0x65,
+	0xa4, 0x6e, 0xa9, 0xac, 0x7d, 0x0a, 0xe6, 0x40, 0x8c, 0x45, 0x84, 0x29, 0xb3, 0x7e, 0x66, 0x9d,
+	0x3a, 0xd9, 0x2d, 0xa8, 0xae, 0x83, 0x7f, 0x88, 0xbd, 0x1b, 0xb0, 0x73, 0x4b, 0x11, 0xc7, 0x1e,
+	0xad, 0xdf, 0x83, 0x29, 0xf7, 0x8c, 0x66, 0x0a, 0x1f, 0xbb, 0xb5, 0xc9, 0x96, 0x16, 0x49, 0xba,
+	0xa9, 0xbe, 0xe6, 0x54, 0xdc, 0x74, 0x73, 0x43, 0xd8, 0x63, 0x7c, 0xb4, 0x86, 0x2a, 0x95, 0xc6,
+	0x3f, 0x49, 0xbd, 0xd8, 0x4a, 0xcd, 0xf5, 0xda, 0xd7, 0x9c, 0x1a, 0xcb, 0x55, 0x3d, 0x80, 0x6a,
+	0x0e, 0x6c, 0x48, 0xf0, 0x59, 0x11, 0xdd, 0x04, 0x6b, 0xba, 0x79, 0x28, 0xca, 0xe2, 0x92, 0x0e,
+	0xfe, 0x17, 0x80, 0x66, 0x1e, 0x65, 0x05, 0xc5, 0xcc, 0x2b, 0x3d, 0x40, 0x2d, 0x81, 0xc6, 0xaa,
+	0x25, 0x49, 0x3d, 0x2f, 0x44, 0x4d, 0x5c, 0xab, 0x98, 0x99, 0xf4, 0x4a, 0x60, 0x60, 0x14, 0xf6,
+	0x6e, 0x3e, 0x16, 0x96, 0x3e, 0x5f, 0x58, 0xfa, 0xd7, 0xc2, 0xd2, 0xdf, 0x96, 0x96, 0x36, 0x5f,
+	0x5a, 0xda, 0xe7, 0xd2, 0xd2, 0x86, 0x97, 0x5e, 0x20, 0xfc, 0xc8, 0x25, 0x13, 0x1e, 0x76, 0x36,
+	0x9b, 0xd2, 0x7f, 0xf3, 0x1f, 0x8f, 0x5b, 0x96, 0x93, 0xee, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0x71, 0x6e, 0xf3, 0xc2, 0x57, 0x03, 0x00, 0x00,
 }
 
-func (m *BcBlockRequestMessage) Marshal() (dAtA []byte, err error) {
+func (m *BlockRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -416,12 +415,12 @@ func (m *BcBlockRequestMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BcBlockRequestMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BcBlockRequestMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -434,7 +433,7 @@ func (m *BcBlockRequestMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BcNoBlockResponseMessage) Marshal() (dAtA []byte, err error) {
+func (m *NoBlockResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -444,12 +443,12 @@ func (m *BcNoBlockResponseMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BcNoBlockResponseMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *NoBlockResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BcNoBlockResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *NoBlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -462,7 +461,7 @@ func (m *BcNoBlockResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *BcBlockResponseMessage) Marshal() (dAtA []byte, err error) {
+func (m *BlockResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -472,12 +471,12 @@ func (m *BcBlockResponseMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BcBlockResponseMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BcBlockResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -497,7 +496,7 @@ func (m *BcBlockResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *BcStatusRequestMessage) Marshal() (dAtA []byte, err error) {
+func (m *StatusRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -507,12 +506,12 @@ func (m *BcStatusRequestMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BcStatusRequestMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *StatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BcStatusRequestMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *StatusRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -525,7 +524,7 @@ func (m *BcStatusRequestMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *BcStatusResponseMessage) Marshal() (dAtA []byte, err error) {
+func (m *StatusResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -535,12 +534,12 @@ func (m *BcStatusResponseMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BcStatusResponseMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *StatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BcStatusResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *StatusResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -553,7 +552,7 @@ func (m *BcStatusResponseMessage) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockchainMessage) Marshal() (dAtA []byte, err error) {
+func (m *Message) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -563,12 +562,12 @@ func (m *BlockchainMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockchainMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -585,12 +584,12 @@ func (m *BlockchainMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockchainMessage_BlockRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_BlockRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage_BlockRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_BlockRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.BlockRequest != nil {
 		{
@@ -606,12 +605,12 @@ func (m *BlockchainMessage_BlockRequest) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockchainMessage_NoBlockResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_NoBlockResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage_NoBlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_NoBlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.NoBlockResponse != nil {
 		{
@@ -627,12 +626,12 @@ func (m *BlockchainMessage_NoBlockResponse) MarshalToSizedBuffer(dAtA []byte) (i
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockchainMessage_BlockResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_BlockResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage_BlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_BlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.BlockResponse != nil {
 		{
@@ -648,12 +647,12 @@ func (m *BlockchainMessage_BlockResponse) MarshalToSizedBuffer(dAtA []byte) (int
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockchainMessage_StatusRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_StatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage_StatusRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_StatusRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.StatusRequest != nil {
 		{
@@ -669,12 +668,12 @@ func (m *BlockchainMessage_StatusRequest) MarshalToSizedBuffer(dAtA []byte) (int
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockchainMessage_StatusResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_StatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockchainMessage_StatusResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_StatusResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.StatusResponse != nil {
 		{
@@ -701,7 +700,7 @@ func encodeVarintMsgs(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *BcBlockRequestMessage) Size() (n int) {
+func (m *BlockRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -713,7 +712,7 @@ func (m *BcBlockRequestMessage) Size() (n int) {
 	return n
 }
 
-func (m *BcNoBlockResponseMessage) Size() (n int) {
+func (m *NoBlockResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -725,7 +724,7 @@ func (m *BcNoBlockResponseMessage) Size() (n int) {
 	return n
 }
 
-func (m *BcBlockResponseMessage) Size() (n int) {
+func (m *BlockResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -738,7 +737,7 @@ func (m *BcBlockResponseMessage) Size() (n int) {
 	return n
 }
 
-func (m *BcStatusRequestMessage) Size() (n int) {
+func (m *StatusRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -750,7 +749,7 @@ func (m *BcStatusRequestMessage) Size() (n int) {
 	return n
 }
 
-func (m *BcStatusResponseMessage) Size() (n int) {
+func (m *StatusResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -762,7 +761,7 @@ func (m *BcStatusResponseMessage) Size() (n int) {
 	return n
 }
 
-func (m *BlockchainMessage) Size() (n int) {
+func (m *Message) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -774,7 +773,7 @@ func (m *BlockchainMessage) Size() (n int) {
 	return n
 }
 
-func (m *BlockchainMessage_BlockRequest) Size() (n int) {
+func (m *Message_BlockRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -786,7 +785,7 @@ func (m *BlockchainMessage_BlockRequest) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockchainMessage_NoBlockResponse) Size() (n int) {
+func (m *Message_NoBlockResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -798,7 +797,7 @@ func (m *BlockchainMessage_NoBlockResponse) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockchainMessage_BlockResponse) Size() (n int) {
+func (m *Message_BlockResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -810,7 +809,7 @@ func (m *BlockchainMessage_BlockResponse) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockchainMessage_StatusRequest) Size() (n int) {
+func (m *Message_StatusRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -822,7 +821,7 @@ func (m *BlockchainMessage_StatusRequest) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockchainMessage_StatusResponse) Size() (n int) {
+func (m *Message_StatusResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -841,7 +840,7 @@ func sovMsgs(x uint64) (n int) {
 func sozMsgs(x uint64) (n int) {
 	return sovMsgs(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *BcBlockRequestMessage) Unmarshal(dAtA []byte) error {
+func (m *BlockRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -864,10 +863,10 @@ func (m *BcBlockRequestMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BcBlockRequestMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BcBlockRequestMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -913,7 +912,7 @@ func (m *BcBlockRequestMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BcNoBlockResponseMessage) Unmarshal(dAtA []byte) error {
+func (m *NoBlockResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -936,10 +935,10 @@ func (m *BcNoBlockResponseMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BcNoBlockResponseMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: NoBlockResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BcNoBlockResponseMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: NoBlockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -985,7 +984,7 @@ func (m *BcNoBlockResponseMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BcBlockResponseMessage) Unmarshal(dAtA []byte) error {
+func (m *BlockResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1008,10 +1007,10 @@ func (m *BcBlockResponseMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BcBlockResponseMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BcBlockResponseMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1074,7 +1073,7 @@ func (m *BcBlockResponseMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BcStatusRequestMessage) Unmarshal(dAtA []byte) error {
+func (m *StatusRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1097,10 +1096,10 @@ func (m *BcStatusRequestMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BcStatusRequestMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: StatusRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BcStatusRequestMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: StatusRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1146,7 +1145,7 @@ func (m *BcStatusRequestMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BcStatusResponseMessage) Unmarshal(dAtA []byte) error {
+func (m *StatusResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1169,10 +1168,10 @@ func (m *BcStatusResponseMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BcStatusResponseMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: StatusResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BcStatusResponseMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: StatusResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1218,7 +1217,7 @@ func (m *BcStatusResponseMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
+func (m *Message) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1241,10 +1240,10 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockchainMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: Message: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockchainMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Message: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1276,11 +1275,11 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BcBlockRequestMessage{}
+			v := &BlockRequest{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &BlockchainMessage_BlockRequest{v}
+			m.Sum = &Message_BlockRequest{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -1311,11 +1310,11 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BcNoBlockResponseMessage{}
+			v := &NoBlockResponse{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &BlockchainMessage_NoBlockResponse{v}
+			m.Sum = &Message_NoBlockResponse{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -1346,11 +1345,11 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BcBlockResponseMessage{}
+			v := &BlockResponse{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &BlockchainMessage_BlockResponse{v}
+			m.Sum = &Message_BlockResponse{v}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -1381,11 +1380,11 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BcStatusRequestMessage{}
+			v := &StatusRequest{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &BlockchainMessage_StatusRequest{v}
+			m.Sum = &Message_StatusRequest{v}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -1416,11 +1415,11 @@ func (m *BlockchainMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BcStatusResponseMessage{}
+			v := &StatusResponse{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &BlockchainMessage_StatusResponse{v}
+			m.Sum = &Message_StatusResponse{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
