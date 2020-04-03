@@ -1,4 +1,4 @@
-## v0.33.3
+## v0.33.4
 
 - Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
 
