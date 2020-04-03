@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,15 +61,15 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true).(*addrBook)
+	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.saveToFile(fname)
+	book.Save()
 
-	book = NewAddrBook(fname, true).(*addrBook)
+	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
-	assert.Zero(t, book.Size())
+	assert.True(t, book.Empty())
 
 	// 100 addresses
 	randAddrs := randNetAddressPairs(t, 100)
@@ -78,11 +79,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	}
 
 	assert.Equal(t, 100, book.Size())
-	book.saveToFile(fname)
+	book.Save()
 
-	book = NewAddrBook(fname, true).(*addrBook)
+	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
 	assert.Equal(t, 100, book.Size())
 }
@@ -93,19 +94,15 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true).(*addrBook)
+	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
 		book.AddAddress(addr, src)
 
-		ka := book.addrLookup[addr.ID]
-		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
-
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
-		}
+		ka := book.HasAddress(addr)
+		assert.True(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
 	}
 }
 
@@ -347,7 +344,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 		}
 	}
 
-	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
+	got, expected := int((float64(good)/float64(len(selection)))*100), 100-biasTowardsNewAddrs
 
 	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
@@ -398,6 +395,33 @@ func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []st
 		private[i] = string(addr.ID)
 	}
 	return addrs, private
+}
+
+func TestBanBadPeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addr := randIPv4Address(t)
+	_ = book.AddAddress(addr, addr)
+
+	book.MarkBad(addr, 1*time.Second)
+	// addr should not reachable
+	assert.False(t, book.HasAddress(addr))
+	assert.True(t, book.IsBanned(addr))
+
+	err := book.AddAddress(addr, addr)
+	// book should not add address from the blacklist
+	assert.Error(t, err)
+
+	time.Sleep(1 * time.Second)
+	book.ReinstateBadPeers()
+	// address should be reinstated in the new bucket
+	assert.EqualValues(t, 1, book.Size())
+	assert.True(t, book.HasAddress(addr))
+	assert.False(t, book.IsGood(addr))
 }
 
 func TestAddrBookEmpty(t *testing.T) {

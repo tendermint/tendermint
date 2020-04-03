@@ -28,3 +28,21 @@ type ErrNewValSetCantBeTrusted struct {
 func (e ErrNewValSetCantBeTrusted) Error() string {
 	return fmt.Sprintf("cant trust new val set: %v", e.Reason)
 }
+
+// ErrInvalidHeader means the header either failed the basic validation or
+// commit is not signed by 2/3+.
+type ErrInvalidHeader struct {
+	Reason error
+}
+
+func (e ErrInvalidHeader) Error() string {
+	return fmt.Sprintf("invalid header: %v", e.Reason)
+}
+
+// errNoWitnesses means that there are not enough witnesses connected to
+// continue running the light client.
+type errNoWitnesses struct{}
+
+func (e errNoWitnesses) Error() string {
+	return fmt.Sprint("no witnesses connected. please reset light client")
+}

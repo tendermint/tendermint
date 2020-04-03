@@ -61,7 +61,9 @@ func assertEqualPV(t *testing.T, oldPV *privval.OldFilePV, newPV *privval.FilePV
 	assert.Equal(t, oldPV.Address, newPV.Key.Address)
 	assert.Equal(t, oldPV.Address, newPV.GetAddress())
 	assert.Equal(t, oldPV.PubKey, newPV.Key.PubKey)
-	assert.Equal(t, oldPV.PubKey, newPV.GetPubKey())
+	npv, err := newPV.GetPubKey()
+	require.NoError(t, err)
+	assert.Equal(t, oldPV.PubKey, npv)
 	assert.Equal(t, oldPV.PrivKey, newPV.Key.PrivKey)
 
 	assert.Equal(t, oldPV.LastHeight, newPV.LastSignState.Height)

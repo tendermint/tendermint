@@ -27,6 +27,7 @@ type BpPeer struct {
 	logger log.Logger
 	ID     p2p.ID
 
+	Base                    int64                  // the peer reported base
 	Height                  int64                  // the peer reported height
 	NumPendingBlockRequests int                    // number of requests still waiting for block responses
 	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
@@ -38,14 +39,15 @@ type BpPeer struct {
 }
 
 // NewBpPeer creates a new peer.
-func NewBpPeer(
-	peerID p2p.ID, height int64, onErr func(err error, peerID p2p.ID), params *BpPeerParams) *BpPeer {
+func NewBpPeer(peerID p2p.ID, base int64, height int64,
+	onErr func(err error, peerID p2p.ID), params *BpPeerParams) *BpPeer {
 
 	if params == nil {
 		params = BpPeerDefaultParams()
 	}
 	return &BpPeer{
 		ID:     peerID,
+		Base:   base,
 		Height: height,
 		blocks: make(map[int64]*types.Block, maxRequestsPerPeer),
 		logger: log.NewNopLogger(),

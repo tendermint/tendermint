@@ -12,7 +12,7 @@ landing changes in master.
 All work on the code base should be motivated by a [Github
 Issue](https://github.com/tendermint/tendermint/issues).
 [Search](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)
-is a good place start when looking for places to contribute.  If you
+is a good place start when looking for places to contribute. If you
 would like to work on an issue which already exists, please indicate so
 by leaving a comment.
 
@@ -49,8 +49,9 @@ maintainers to take a look.
 ![Contributing flow](./docs/imgs/contributing.png)
 
 Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
-* Contributors don’t waste their time implementing/proposing features which won’t land in master.
-* Maintainers have the necessary context in order to support and review contributions.
+
+- Contributors don’t waste their time implementing/proposing features which won’t land in master.
+- Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
 
@@ -100,7 +101,28 @@ specify exactly the dependency you want to update, eg.
 
 ## Protobuf
 
-When working with [protobuf](https://developers.google.com/protocol-buffers) there are a few things you should know. We use [buf](https://buf.build/) for our linting and breaking changes checking. If you would like to run linting and check if the changes you have made are breaking then you will have to install the needed dependencies with `make buf`. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`. To generate new stubs based off of your changes you can run `make proto-gen` (you can do this outside of GOPATH).
+We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
+
+For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+
+There are two ways to generate your proto stubs.
+
+1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
+2. Run `make proto-gen` after installing `protoc` and gogoproto.
+
+### Installation Instructions
+
+To install `protoc`, download an appropriate release (https://github.com/protocolbuffers/protobuf) and then move the provided binaries into your PATH (follow instructions in README included with the download).
+
+To install `gogoproto`, do the following:
+
+```sh
+$ go get github.com/gogo/protobuf/gogoproto
+$ cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
+$ make install
+```
+
+You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
 
 ## Vagrant
 
@@ -172,8 +194,22 @@ easy to reference the pull request where a change was introduced.
 
 - ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
-- squash merge pull request
+- [squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
+
+### Git Commit Style
+
+We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
+
+\```
+cmd/debug: execute p.Signal only when p is not nil
+
+[potentially longer description in the body]
+
+Fixes #nnnn
+\```
+
+Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
 ### Release Procedure
 

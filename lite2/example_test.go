@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
@@ -48,9 +49,9 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
@@ -58,18 +59,12 @@ func ExampleClient_Update() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0), // NOTE: value should be greater than zero
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	err = c.Start()
-	if err != nil {
-		stdlog.Fatal(err)
-	}
 	defer func() {
-		c.Stop()
 		c.Cleanup()
 	}()
 
@@ -78,17 +73,13 @@ func ExampleClient_Update() {
 	// XXX: 30 * time.Minute clock drift is needed because a) Tendermint strips
 	// monotonic component (see types/time/time.go) b) single instance is being
 	// run.
-	err = c.Update(time.Now().Add(30 * time.Minute))
+	// https://github.com/tendermint/tendermint/issues/4489
+	h, err := c.Update(time.Now().Add(30 * time.Minute))
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	h, err := c.TrustedHeader(0)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-
-	if h.Height > 2 {
+	if h != nil && h.Height > 2 {
 		fmt.Println("successful update")
 	} else {
 		fmt.Println("update failed")
@@ -127,17 +118,16 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // TODO: primary should not be used here
+		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		UpdatePeriod(0),
 		// Logger(log.TestingLogger()),
 	)
 	if err != nil {
