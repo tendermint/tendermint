@@ -7,6 +7,10 @@ a newer version of Tendermint Core.
 
 <Overview>
 
+### Go API
+
+- `rpc/client` HTTP and local clients have been moved into `http` and `local` subpackages
+
 ### Protobuf Changes
 
 When upgrading to version <version #> you will have to fetch the `third_party` directory along with the updated proto files.
