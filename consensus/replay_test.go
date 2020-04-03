@@ -307,7 +307,8 @@ var (
 // 0 - all synced up
 // 1 - saved block but app and state are behind
 // 2 - save block and committed but state is behind
-var modes = []uint{0, 1, 2}
+// 3 - save block and committed with truncated block store and state behind
+var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
@@ -531,10 +532,10 @@ func TestHandshakeReplayAll(t *testing.T) {
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 1, m, false)
+		testHandshakeReplay(t, config, 2, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 1, m, true)
+		testHandshakeReplay(t, config, 2, m, true)
 	}
 }
 
@@ -637,7 +638,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		stateDB = dbm.NewMemDB()
 		genisisState = sim.GenesisState
 		config = sim.Config
-		chain = sim.Chain
+		chain = append([]*types.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
 		store = newMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
@@ -685,6 +686,15 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		buildAppStateFromChain(proxyApp, stateDB1, genisisState, chain, nBlocks, mode)
 	}
 
+	// Prune block store if requested
+	expectError := false
+	if mode == 3 {
+		pruned, err := store.PruneBlocks(2)
+		require.NoError(t, err)
+		require.EqualValues(t, 1, pruned)
+		expectError = int64(nBlocks) < 2
+	}
+
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	handshaker := NewHandshaker(stateDB, state, store, genDoc)
@@ -693,7 +703,11 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
 	defer proxyApp.Stop()
-	if err := handshaker.Handshake(proxyApp); err != nil {
+	err := handshaker.Handshake(proxyApp)
+	if expectError {
+		require.Error(t, err)
+		return
+	} else if err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
 
@@ -728,7 +742,7 @@ func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.Ap
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{Hash: blk.Hash(), PartsHeader: blk.MakePartSet(testPartSize).Header()}
-	newState, err := blockExec.ApplyBlock(st, blkID, blk)
+	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
 	if err != nil {
 		panic(err)
 	}
@@ -758,17 +772,19 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 			block := chain[i]
 			state = applyBlock(stateDB, state, block, proxyApp)
 		}
-	case 1, 2:
+	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
 			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 
-		if mode == 2 {
+		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
 			state = applyBlock(stateDB, state, chain[nBlocks-1], proxyApp)
 		}
+	default:
+		panic(fmt.Sprintf("unknown mode %v", mode))
 	}
 
 }
@@ -806,7 +822,7 @@ func buildTMStateFromChain(
 			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 
-	case 1, 2:
+	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
@@ -816,6 +832,8 @@ func buildTMStateFromChain(
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
 		applyBlock(stateDB, state, chain[len(chain)-1], proxyApp)
+	default:
+		panic(fmt.Sprintf("unknown mode %v", mode))
 	}
 
 	return state
@@ -1075,14 +1093,17 @@ type mockBlockStore struct {
 	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
+	base    int64
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
 func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
-	return &mockBlockStore{config, params, nil, nil}
+	return &mockBlockStore{config, params, nil, nil, 0}
 }
 
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
+func (bs *mockBlockStore) Base() int64                         { return bs.base }
+func (bs *mockBlockStore) Size() int64                         { return bs.Height() - bs.Base() + 1 }
 func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain[height-1] }
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
@@ -1102,6 +1123,17 @@ func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 }
 func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
+}
+
+func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
+	pruned := uint64(0)
+	for i := int64(0); i < height-1; i++ {
+		bs.chain[i] = nil
+		bs.commits[i] = nil
+		pruned++
+	}
+	bs.base = height
+	return pruned, nil
 }
 
 //---------------------------------------
