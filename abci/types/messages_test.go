@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/kv"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func TestMarshalJSON(t *testing.T) {
@@ -61,7 +62,7 @@ func TestWriteReadMessageSimple(t *testing.T) {
 
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
-		&Header{
+		&tmproto.Header{
 			Height:  4,
 			ChainID: "test",
 		},
@@ -73,7 +74,7 @@ func TestWriteReadMessage(t *testing.T) {
 		err := WriteMessage(c, buf)
 		assert.Nil(t, err)
 
-		msg := new(Header)
+		msg := new(tmproto.Header)
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 

@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 //-------------------------------------------------------
@@ -42,9 +43,9 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) abci.Header {
-	return abci.Header{
-		Version: abci.Version{
+func (tm2pb) Header(header *Header) tmproto.Header {
+	return tmproto.Header{
+		Version: tmproto.Version{
 			Block: header.Version.Block.Uint64(),
 			App:   header.Version.App.Uint64(),
 		},
@@ -52,7 +53,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 		Height:  header.Height,
 		Time:    header.Time,
 
-		LastBlockId: TM2PB.BlockID(header.LastBlockID),
+		LastBlockID: TM2PB.BlockID(header.LastBlockID),
 
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
@@ -75,16 +76,16 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
-func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
-	return abci.BlockID{
+func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
+	return tmproto.BlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
 	}
 }
 
-func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
-	return abci.PartSetHeader{
-		Total: int32(header.Total),
+func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
+	return tmproto.PartSetHeader{
+		Total: uint32(header.Total),
 		Hash:  header.Hash,
 	}
 }

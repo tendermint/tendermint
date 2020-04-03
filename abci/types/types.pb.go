@@ -7,6 +7,11 @@ import (
 	bytes "bytes"
 	context "context"
 	fmt "fmt"
+	io "io"
+	math "math"
+	math_bits "math/bits"
+	time "time"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
@@ -15,13 +20,10 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	merkle "github.com/tendermint/tendermint/crypto/merkle"
 	kv "github.com/tendermint/tendermint/libs/kv"
+	types "github.com/tendermint/tendermint/proto/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	io "io"
-	math "math"
-	math_bits "math/bits"
-	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -649,11 +651,11 @@ func (m *RequestBeginBlock) GetHash() []byte {
 	return nil
 }
 
-func (m *RequestBeginBlock) GetHeader() Header {
+func (m *RequestBeginBlock) GetHeader() types.Header {
 	if m != nil {
 		return m.Header
 	}
-	return Header{}
+	return types.Header{}
 }
 
 func (m *RequestBeginBlock) GetLastCommitInfo() LastCommitInfo {
@@ -2474,7 +2476,7 @@ func (m *Validator) Reset()         { *m = Validator{} }
 func (m *Validator) String() string { return proto.CompactTextString(m) }
 func (*Validator) ProtoMessage()    {}
 func (*Validator) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f1eaa49c51fa1ac, []int{35}
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{31}
 }
 func (m *Validator) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2527,7 +2529,7 @@ func (m *ValidatorUpdate) Reset()         { *m = ValidatorUpdate{} }
 func (m *ValidatorUpdate) String() string { return proto.CompactTextString(m) }
 func (*ValidatorUpdate) ProtoMessage()    {}
 func (*ValidatorUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f1eaa49c51fa1ac, []int{36}
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{32}
 }
 func (m *ValidatorUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2580,7 +2582,7 @@ func (m *VoteInfo) Reset()         { *m = VoteInfo{} }
 func (m *VoteInfo) String() string { return proto.CompactTextString(m) }
 func (*VoteInfo) ProtoMessage()    {}
 func (*VoteInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f1eaa49c51fa1ac, []int{37}
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{33}
 }
 func (m *VoteInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2632,7 +2634,7 @@ func (m *PubKey) Reset()         { *m = PubKey{} }
 func (m *PubKey) String() string { return proto.CompactTextString(m) }
 func (*PubKey) ProtoMessage()    {}
 func (*PubKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f1eaa49c51fa1ac, []int{38}
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{34}
 }
 func (m *PubKey) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2687,7 +2689,7 @@ func (m *Evidence) Reset()         { *m = Evidence{} }
 func (m *Evidence) String() string { return proto.CompactTextString(m) }
 func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f1eaa49c51fa1ac, []int{39}
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{35}
 }
 func (m *Evidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2816,14 +2818,6 @@ func init() {
 	golang_proto.RegisterType((*LastCommitInfo)(nil), "tendermint.abci.types.LastCommitInfo")
 	proto.RegisterType((*Event)(nil), "tendermint.abci.types.Event")
 	golang_proto.RegisterType((*Event)(nil), "tendermint.abci.types.Event")
-	proto.RegisterType((*Header)(nil), "tendermint.abci.types.Header")
-	golang_proto.RegisterType((*Header)(nil), "tendermint.abci.types.Header")
-	proto.RegisterType((*Version)(nil), "tendermint.abci.types.Version")
-	golang_proto.RegisterType((*Version)(nil), "tendermint.abci.types.Version")
-	proto.RegisterType((*BlockID)(nil), "tendermint.abci.types.BlockID")
-	golang_proto.RegisterType((*BlockID)(nil), "tendermint.abci.types.BlockID")
-	proto.RegisterType((*PartSetHeader)(nil), "tendermint.abci.types.PartSetHeader")
-	golang_proto.RegisterType((*PartSetHeader)(nil), "tendermint.abci.types.PartSetHeader")
 	proto.RegisterType((*Validator)(nil), "tendermint.abci.types.Validator")
 	golang_proto.RegisterType((*Validator)(nil), "tendermint.abci.types.Validator")
 	proto.RegisterType((*ValidatorUpdate)(nil), "tendermint.abci.types.ValidatorUpdate")
@@ -7060,7 +7054,7 @@ func (m *Event) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Header) Marshal() (dAtA []byte, err error) {
+func (m *Validator) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -7070,12 +7064,12 @@ func (m *Header) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Header) MarshalTo(dAtA []byte) (int, error) {
+func (m *Validator) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Validator) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -7166,15 +7160,43 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ChainID) > 0 {
-		i -= len(m.ChainID)
-		copy(dAtA[i:], m.ChainID)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.ChainID)))
+	if len(m.Address) > 0 {
+		i -= len(m.Address)
+		copy(dAtA[i:], m.Address)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Address)))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ValidatorUpdate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ValidatorUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ValidatorUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.App != 0 {
+		i = encodeVarintTypes(dAtA, i, uint64(m.App))
+		i--
+		dAtA[i] = 0x10
 	}
 	{
-		size, err := m.Version.MarshalToSizedBuffer(dAtA[:i])
+		size, err := m.PubKey.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -7186,7 +7208,7 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Version) Marshal() (dAtA []byte, err error) {
+func (m *VoteInfo) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -7196,45 +7218,12 @@ func (m *Version) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Version) MarshalTo(dAtA []byte) (int, error) {
+func (m *VoteInfo) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Version) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.App != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.App))
-		i--
-		dAtA[i] = 0x10
-	}
-	if m.Block != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.Block))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockID) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockID) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockID) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *VoteInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -7472,12 +7461,12 @@ func (m *Evidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	n41, err41 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Time, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Time):])
-	if err41 != nil {
-		return 0, err41
+	n37, err37 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Time, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Time):])
+	if err37 != nil {
+		return 0, err37
 	}
-	i -= n41
-	i = encodeVarintTypes(dAtA, i, uint64(n41))
+	i -= n37
+	i = encodeVarintTypes(dAtA, i, uint64(n37))
 	i--
 	dAtA[i] = 0x22
 	if m.Height != 0 {
@@ -7688,7 +7677,7 @@ func NewPopulatedRequestBeginBlock(r randyTypes, easy bool) *RequestBeginBlock {
 	for i := 0; i < v6; i++ {
 		this.Hash[i] = byte(r.Intn(256))
 	}
-	v7 := NewPopulatedHeader(r, easy)
+	v7 := types.NewPopulatedHeader(r, easy)
 	this.Header = *v7
 	v8 := NewPopulatedLastCommitInfo(r, easy)
 	this.LastCommitInfo = *v8
@@ -8256,9 +8245,9 @@ func NewPopulatedPartSetHeader(r randyTypes, easy bool) *PartSetHeader {
 
 func NewPopulatedValidator(r randyTypes, easy bool) *Validator {
 	this := &Validator{}
-	v52 := r.Intn(100)
-	this.Address = make([]byte, v52)
-	for i := 0; i < v52; i++ {
+	v37 := r.Intn(100)
+	this.Address = make([]byte, v37)
+	for i := 0; i < v37; i++ {
 		this.Address[i] = byte(r.Intn(256))
 	}
 	this.Power = int64(r.Int63())
@@ -8272,8 +8261,8 @@ func NewPopulatedValidator(r randyTypes, easy bool) *Validator {
 
 func NewPopulatedValidatorUpdate(r randyTypes, easy bool) *ValidatorUpdate {
 	this := &ValidatorUpdate{}
-	v53 := NewPopulatedPubKey(r, easy)
-	this.PubKey = *v53
+	v38 := NewPopulatedPubKey(r, easy)
+	this.PubKey = *v38
 	this.Power = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.Power *= -1
@@ -8285,8 +8274,8 @@ func NewPopulatedValidatorUpdate(r randyTypes, easy bool) *ValidatorUpdate {
 
 func NewPopulatedVoteInfo(r randyTypes, easy bool) *VoteInfo {
 	this := &VoteInfo{}
-	v54 := NewPopulatedValidator(r, easy)
-	this.Validator = *v54
+	v39 := NewPopulatedValidator(r, easy)
+	this.Validator = *v39
 	this.SignedLastBlock = bool(bool(r.Intn(2) == 0))
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -8296,9 +8285,9 @@ func NewPopulatedVoteInfo(r randyTypes, easy bool) *VoteInfo {
 func NewPopulatedPubKey(r randyTypes, easy bool) *PubKey {
 	this := &PubKey{}
 	this.Type = string(randStringTypes(r))
-	v55 := r.Intn(100)
-	this.Data = make([]byte, v55)
-	for i := 0; i < v55; i++ {
+	v40 := r.Intn(100)
+	this.Data = make([]byte, v40)
+	for i := 0; i < v40; i++ {
 		this.Data[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -8309,14 +8298,14 @@ func NewPopulatedPubKey(r randyTypes, easy bool) *PubKey {
 func NewPopulatedEvidence(r randyTypes, easy bool) *Evidence {
 	this := &Evidence{}
 	this.Type = string(randStringTypes(r))
-	v56 := NewPopulatedValidator(r, easy)
-	this.Validator = *v56
+	v41 := NewPopulatedValidator(r, easy)
+	this.Validator = *v41
 	this.Height = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.Height *= -1
 	}
-	v57 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
-	this.Time = *v57
+	v42 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
+	this.Time = *v42
 	this.TotalVotingPower = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.TotalVotingPower *= -1
@@ -8345,9 +8334,9 @@ func randUTF8RuneTypes(r randyTypes) rune {
 	return rune(ru + 61)
 }
 func randStringTypes(r randyTypes) string {
-	v58 := r.Intn(100)
-	tmps := make([]rune, v58)
-	for i := 0; i < v58; i++ {
+	v43 := r.Intn(100)
+	tmps := make([]rune, v43)
+	for i := 0; i < v43; i++ {
 		tmps[i] = randUTF8RuneTypes(r)
 	}
 	return string(tmps)
@@ -8369,11 +8358,11 @@ func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte
 	switch wire {
 	case 0:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v59 := r.Int63()
+		v44 := r.Int63()
 		if r.Intn(2) == 0 {
-			v59 *= -1
+			v44 *= -1
 		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v59))
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v44))
 	case 1:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
 		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -9259,28 +9248,32 @@ func (m *Event) Size() (n int) {
 	return n
 }
 
-func (m *Header) Size() (n int) {
+func (m *Validator) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = m.Version.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	l = len(m.ChainID)
+	l = len(m.Address)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if m.Height != 0 {
-		n += 1 + sovTypes(uint64(m.Height))
+	if m.Power != 0 {
+		n += 1 + sovTypes(uint64(m.Power))
 	}
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.Time)
+	return n
+}
+
+func (m *ValidatorUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = m.PubKey.Size()
 	n += 1 + l + sovTypes(uint64(l))
-	l = m.LastBlockId.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	l = len(m.LastCommitHash)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
+	if m.Power != 0 {
+		n += 1 + sovTypes(uint64(m.Power))
 	}
 	l = len(m.DataHash)
 	if l > 0 {

@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -182,7 +183,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			Height:           height,
 			Round:            0,
 			Timestamp:        tmtime.Now(),
-			Type:             types.PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 		}
 		err = badPrivVal.SignVote(chainID, goodVote)

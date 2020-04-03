@@ -7,6 +7,7 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 import "third_party/proto/gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
 import "libs/kv/types.proto";
+import "proto/types/types.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 
@@ -76,10 +77,10 @@ message RequestQuery {
 }
 
 message RequestBeginBlock {
-  bytes             hash                 = 1;
-  Header            header               = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo    last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
+  bytes                         hash                 = 1;
+  tendermint.proto.types.Header header               = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo                last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Evidence             byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {

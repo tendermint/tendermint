@@ -1,6 +1,7 @@
 package sr25519
 
 import (
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 )
 
@@ -14,3 +15,15 @@ const (
 	// Sr25519 point, and a field element. Both of which are 32 bytes.
 	SignatureSize = 64
 )
+
+var cdc = amino.NewCodec()
+
+func init() {
+	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
+	cdc.RegisterConcrete(PubKey{},
+		PubKeyAminoName, nil)
+
+	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
+	cdc.RegisterConcrete(PrivKey{},
+		PrivKeyAminoName, nil)
+}
