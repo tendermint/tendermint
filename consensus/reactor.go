@@ -1069,7 +1069,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(tmmath.SafeConvertUint32(index)), true
+		return votes.GetByIndex(tmmath.SafeConvertUint32(int64(index))), true
 	}
 	return nil, false
 }
