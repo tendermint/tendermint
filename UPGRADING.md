@@ -9,7 +9,7 @@ a newer version of Tendermint Core.
 
 ### Go API
 
-- `rpc/client` HTTP and local clients have been moved into `http` and `local` subpackages
+- `rpc/client` HTTP and local clients have been moved into `http` and `local` subpackages, and their constructors have been renamed to `New()`.
 
 ### Protobuf Changes
 
