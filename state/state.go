@@ -171,9 +171,9 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 		if commitSig.Absent() {
 			continue
 		}
-		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
+		_, validator, ok := validators.GetByAddress(commitSig.ValidatorAddress)
 		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-		if validator != nil {
+		if ok {
 			totalVotingPower += validator.VotingPower
 			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
 		}

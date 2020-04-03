@@ -274,7 +274,7 @@ type MockEvidence struct {
 var _ Evidence = &MockEvidence{}
 
 // UNSTABLE
-func NewMockEvidence(height int64, eTime time.Time, idx int32, address []byte) MockEvidence {
+func NewMockEvidence(height int64, eTime time.Time, idx uint32, address []byte) MockEvidence {
 	return MockEvidence{
 		EvidenceHeight:  height,
 		EvidenceTime:    eTime,

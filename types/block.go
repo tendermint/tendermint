@@ -556,6 +556,8 @@ type Commit struct {
 	bitArray *bits.BitArray
 }
 
+var _ VoteSetReader = (*Commit)(nil)
+
 // NewCommit returns a new Commit.
 func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSig) *Commit {
 	return &Commit{
@@ -575,7 +577,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
 		}
-		added, err := voteSet.AddVote(commit.GetVote(int32(idx)))
+		added, err := voteSet.AddVote(commit.GetVote(uint32(idx)))
 		if !added || err != nil {
 			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -586,7 +588,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 // GetVote converts the CommitSig for the given valIdx to a Vote.
 // Returns nil if the precommit at valIdx is nil.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) GetVote(valIdx int32) *Vote {
+func (commit *Commit) GetVote(valIdx uint32) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
 		Type:             PrecommitType,
@@ -604,7 +606,7 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
+func (commit *Commit) VoteSignBytes(chainID string, valIdx uint32) []byte {
 	return commit.GetVote(valIdx).SignBytes(chainID)
 }
 
@@ -652,7 +654,7 @@ func (commit *Commit) BitArray() *bits.BitArray {
 // GetByIndex returns the vote corresponding to a given validator index.
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
-func (commit *Commit) GetByIndex(valIdx int32) *Vote {
+func (commit *Commit) GetByIndex(valIdx uint32) *Vote {
 	return commit.GetVote(valIdx)
 }
 

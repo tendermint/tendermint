@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -211,7 +212,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
+		proposerIdx, _, ok := state.Validators.GetByAddress(proposerAddr)
+		assert.True(t, ok)
 		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerIdx, proposerAddr)
 		if height > 1 {
 			/*

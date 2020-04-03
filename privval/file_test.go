@@ -301,7 +301,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx int32, height int64, round int32, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx uint32, height int64, round int32, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,

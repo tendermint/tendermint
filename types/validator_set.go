@@ -232,23 +232,23 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 	return idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address)
 }
 
-// GetByAddress returns an index of the validator with address and validator
-// itself if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
+// GetByAddress returns an index of the validator with address and validator if found.
+// Otherwise, 0, nil and a error are returned.
+func (vals *ValidatorSet) GetByAddress(address []byte) (index uint32, val *Validator, ok bool) {
 	idx := sort.Search(len(vals.Validators), func(i int) bool {
 		return bytes.Compare(address, vals.Validators[i].Address) <= 0
 	})
 	if idx < len(vals.Validators) && bytes.Equal(vals.Validators[idx].Address, address) {
-		return int32(idx), vals.Validators[idx].Copy()
+		return uint32(idx), vals.Validators[idx].Copy(), true
 	}
-	return -1, nil
+	return 0, nil, false
 }
 
 // GetByIndex returns the validator's address and validator itself by index.
 // It returns nil values if index is less than 0 or greater or equal to
 // len(ValidatorSet.Validators).
-func (vals *ValidatorSet) GetByIndex(index int32) (address []byte, val *Validator) {
-	if index < 0 || int(index) >= len(vals.Validators) {
+func (vals *ValidatorSet) GetByIndex(index uint32) (address []byte, val *Validator) {
+	if int(index) >= len(vals.Validators) {
 		return nil, nil
 	}
 	val = vals.Validators[index]
@@ -398,11 +398,11 @@ func verifyUpdates(
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
-		_, val := vals.GetByAddress(update.Address)
-		if val != nil {
-			return update.VotingPower - val.VotingPower
+		_, val, ok := vals.GetByAddress(update.Address)
+		if !ok {
+			return update.VotingPower
 		}
-		return update.VotingPower
+		return update.VotingPower - val.VotingPower
 	}
 
 	updatesCopy := validatorListCopy(updates)
@@ -448,8 +448,8 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
-		_, val := vals.GetByAddress(address)
-		if val == nil {
+		_, val, ok := vals.GetByAddress(address)
+		if !ok {
 			// add val
 			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
 			// un-bond and then re-bond to reset their (potentially previously negative) ProposerPriority to zero.
@@ -513,8 +513,8 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (votingPower int64
 	removedVotingPower := int64(0)
 	for _, valUpdate := range deletes {
 		address := valUpdate.Address
-		_, val := vals.GetByAddress(address)
-		if val == nil {
+		_, val, ok := vals.GetByAddress(address)
+		if !ok {
 			return removedVotingPower, fmt.Errorf("failed to find validator %X to remove", address)
 		}
 		removedVotingPower += val.VotingPower
@@ -648,7 +648,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		val := vals.Validators[idx]
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+		voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -712,7 +712,6 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	// Check old voting power.
 	oldVotingPower := int64(0)
-	seen := map[int32]bool{}
 
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -720,14 +719,13 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		}
 
 		// See if this validator is in oldVals.
-		oldIdx, val := oldVals.GetByAddress(commitSig.ValidatorAddress)
-		if val == nil || seen[oldIdx] {
-			continue // missing or double vote...
+		_, val, ok := oldVals.GetByAddress(commitSig.ValidatorAddress)
+		if !ok {
+			continue // missing validator or double vote...
 		}
-		seen[oldIdx] = true
 
 		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+		voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
@@ -765,7 +763,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 
 	var (
 		talliedVotingPower int64
-		seenVals           = make(map[int32]int, len(commit.Signatures)) // validator index -> commit index
+		seenVals           = make(map[uint32]int, len(commit.Signatures)) // validator index -> commit index
 		votingPowerNeeded  = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	)
 
@@ -776,18 +774,21 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
-		valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
-
-		if firstIndex, ok := seenVals[valIdx]; ok { // double vote
-			secondIndex := idx
-			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+		valIdx, val, ok := vals.GetByAddress(commitSig.ValidatorAddress)
+		if !ok {
+			continue // missing validator
 		}
 
-		if val != nil {
+		if ok {
+			if firstIndex, ok := seenVals[valIdx]; ok { // double vote
+				secondIndex := idx
+				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+			}
+
 			seenVals[valIdx] = idx
 
 			// Validate signature.
-			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			voteSignBytes := commit.VoteSignBytes(chainID, uint32(idx))
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
 				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
@@ -822,26 +823,6 @@ func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
 			blockID, commit.BlockID)
 	}
 	return nil
-}
-
-//-----------------
-
-// IsErrNotEnoughVotingPowerSigned returns true if err is
-// ErrNotEnoughVotingPowerSigned.
-func IsErrNotEnoughVotingPowerSigned(err error) bool {
-	_, ok := errors.Cause(err).(ErrNotEnoughVotingPowerSigned)
-	return ok
-}
-
-// ErrNotEnoughVotingPowerSigned is returned when not enough validators signed
-// a commit.
-type ErrNotEnoughVotingPowerSigned struct {
-	Got    int64
-	Needed int64
-}
-
-func (e ErrNotEnoughVotingPowerSigned) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient voting power: got %d, needed more than %d", e.Got, e.Needed)
 }
 
 //----------------
