@@ -73,7 +73,7 @@ func (err ErrAddressBanned) Error() string {
 	return fmt.Sprintf("Address: %v is currently banned", err.Addr)
 }
 
-// ErrUnsolicitedList is thrown when a peer provides a list of addresses that have not been asked for -> Disconnect and MarkBad
+// ErrUnsolicitedList is thrown when a peer provides a list of addresses that have not been asked for.
 type ErrUnsolicitedList struct {
 	Peer Peer
 }
