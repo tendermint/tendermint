@@ -104,9 +104,9 @@ message Vote {
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes validator_address = 6;
-  int32 validator_index   = 7;
-  bytes signature         = 8;
+  bytes  validator_address = 6;
+  uint32 validator_index   = 7;
+  bytes  signature         = 8;
 }
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting

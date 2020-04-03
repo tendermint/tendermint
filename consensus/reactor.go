@@ -1227,7 +1227,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType types.SignedMsgType, index uint32) {
+func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index uint32) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1593,7 +1593,7 @@ func (m *VoteMessage) String() string {
 type HasVoteMessage struct {
 	Height int64
 	Round  int32
-	Type   types.SignedMsgType
+	Type   tmproto.SignedMsgType
 	Index  uint32
 }
 
