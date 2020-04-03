@@ -142,7 +142,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKey{%X}", pubKey[:])
+	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
 }
 
 // nolint: golint
