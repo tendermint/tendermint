@@ -13,7 +13,7 @@ import (
 func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 	var kp pc.PublicKey
 	switch k := k.(type) {
-	case ed25519.PubKeyEd25519:
+	case ed25519.PubKey:
 		kp = pc.PublicKey{
 			Sum: &pc.PublicKey_Ed25519{
 				Ed25519: k[:],
@@ -29,11 +29,11 @@ func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
 	switch k := k.Sum.(type) {
 	case *pc.PublicKey_Ed25519:
-		if len(k.Ed25519) != ed25519.PubKeyEd25519Size {
+		if len(k.Ed25519) != ed25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
-				len(k.Ed25519), ed25519.PubKeyEd25519Size)
+				len(k.Ed25519), ed25519.PubKeySize)
 		}
-		var pk ed25519.PubKeyEd25519
+		var pk ed25519.PubKey
 		copy(pk[:], k.Ed25519)
 		return pk, nil
 	default:
@@ -45,7 +45,7 @@ func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
 func PrivKeyToProto(k crypto.PrivKey) (pc.PrivateKey, error) {
 	var kp pc.PrivateKey
 	switch k := k.(type) {
-	case ed25519.PrivKeyEd25519:
+	case ed25519.PrivKey:
 		kp = pc.PrivateKey{
 			Sum: &pc.PrivateKey_Ed25519{
 				Ed25519: k[:],
@@ -62,11 +62,11 @@ func PrivKeyFromProto(k pc.PrivateKey) (crypto.PrivKey, error) {
 	switch k := k.Sum.(type) {
 	case *pc.PrivateKey_Ed25519:
 
-		if len(k.Ed25519) != ed25519.PubKeyEd25519Size {
+		if len(k.Ed25519) != ed25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
-				len(k.Ed25519), ed25519.PubKeyEd25519Size)
+				len(k.Ed25519), ed25519.PubKeySize)
 		}
-		var pk ed25519.PrivKeyEd25519
+		var pk ed25519.PrivKey
 		copy(pk[:], k.Ed25519)
 		return pk, nil
 	default:
