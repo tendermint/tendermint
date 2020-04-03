@@ -125,6 +125,102 @@ type ABCIResponses struct {
 	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
 }
 
+// PruneStates deletes states between the given heights (including from, excluding to). It is not
+// guaranteed to delete all states, since the last checkpointed state and states being pointed to by
+// e.g. `LastHeightChanged` must remain. The state at to must also exist.
+//
+// The from parameter is necessary since we can't do a key scan in a performant way due to the key
+// encoding not preserving ordering: https://github.com/tendermint/tendermint/issues/4567
+// This will cause some old states to be left behind when doing incremental partial prunes,
+// specifically older checkpoints and LastHeightChanged targets.
+func PruneStates(db dbm.DB, from int64, to int64) error {
+	if from <= 0 || to <= 0 {
+		return fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
+	}
+	if from >= to {
+		return fmt.Errorf("from height %v must be lower than to height %v", from, to)
+	}
+	valInfo := loadValidatorsInfo(db, to)
+	if valInfo == nil {
+		return fmt.Errorf("validators at height %v not found", to)
+	}
+	paramsInfo := loadConsensusParamsInfo(db, to)
+	if paramsInfo == nil {
+		return fmt.Errorf("consensus params at height %v not found", to)
+	}
+
+	keepVals := make(map[int64]bool)
+	if valInfo.ValidatorSet == nil {
+		keepVals[valInfo.LastHeightChanged] = true
+		keepVals[lastStoredHeightFor(to, valInfo.LastHeightChanged)] = true // keep last checkpoint too
+	}
+	keepParams := make(map[int64]bool)
+	if paramsInfo.ConsensusParams.Equals(&types.ConsensusParams{}) {
+		keepParams[paramsInfo.LastHeightChanged] = true
+	}
+
+	batch := db.NewBatch()
+	defer batch.Close()
+	pruned := uint64(0)
+	var err error
+
+	// We have to delete in reverse order, to avoid deleting previous heights that have validator
+	// sets and consensus params that we may need to retrieve.
+	for h := to - 1; h >= from; h-- {
+		// For heights we keep, we must make sure they have the full validator set or consensus
+		// params, otherwise they will panic if they're retrieved directly (instead of
+		// indirectly via a LastHeightChanged pointer).
+		if keepVals[h] {
+			v := loadValidatorsInfo(db, h)
+			if v.ValidatorSet == nil {
+				v.ValidatorSet, err = LoadValidators(db, h)
+				if err != nil {
+					return err
+				}
+				v.LastHeightChanged = h
+				batch.Set(calcValidatorsKey(h), v.Bytes())
+			}
+		} else {
+			batch.Delete(calcValidatorsKey(h))
+		}
+
+		if keepParams[h] {
+			p := loadConsensusParamsInfo(db, h)
+			if p.ConsensusParams.Equals(&types.ConsensusParams{}) {
+				p.ConsensusParams, err = LoadConsensusParams(db, h)
+				if err != nil {
+					return err
+				}
+				p.LastHeightChanged = h
+				batch.Set(calcConsensusParamsKey(h), p.Bytes())
+			}
+		} else {
+			batch.Delete(calcConsensusParamsKey(h))
+		}
+
+		batch.Delete(calcABCIResponsesKey(h))
+		pruned++
+
+		// avoid batches growing too large by flushing to database regularly
+		if pruned%1000 == 0 && pruned > 0 {
+			err := batch.Write()
+			if err != nil {
+				return err
+			}
+			batch.Close()
+			batch = db.NewBatch()
+			defer batch.Close()
+		}
+	}
+
+	err = batch.WriteSync()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
 	resDeliverTxs := make([]*abci.ResponseDeliverTx, len(block.Data.Txs))

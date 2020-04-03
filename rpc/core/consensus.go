@@ -18,7 +18,7 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	// The latest validator that we know is the
 	// NextValidator of the last block.
 	height := consensusState.GetState().LastBlockHeight + 1
-	height, err := getHeight(height, heightPtr)
+	height, err := getHeight(blockStore.Base(), height, heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
 func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	height := consensusState.GetState().LastBlockHeight + 1
-	height, err := getHeight(height, heightPtr)
+	height, err := getHeight(blockStore.Base(), height, heightPtr)
 	if err != nil {
 		return nil, err
 	}
