@@ -26,6 +26,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - secp256k1: type`PubKeySecp256k1` is now `PubKey`
     - sr25519: type `PrivKeySr25519` is now `PrivKey`
     - sr25519: type `PubKeySr25519` is now `PubKey`
+    - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
 - [evidence] \#4617 Remove `Pubkey` from DuplicateVoteEvidence
 - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
 
