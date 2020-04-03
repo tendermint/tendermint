@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -103,7 +104,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
@@ -193,7 +194,7 @@ func makeApplyBlock(
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 

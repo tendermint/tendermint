@@ -8,12 +8,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -82,6 +82,44 @@ func RegisterMockEvidences(cdc *amino.Codec) {
 const (
 	MaxEvidenceBytesDenominator = 10
 )
+
+func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
+	switch evi := evidence.(type) {
+	case *DuplicateVoteEvidence:
+		vote_b := evi.VoteB.ToProto()
+		vote_a := evi.VoteA.ToProto()
+		return &tmproto.Evidence{
+			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
+				DuplicateVoteEvidence: &tmproto.DuplicateVoteEvidence{
+					VoteA: vote_a,
+					VoteB: vote_b,
+				},
+			},
+		}, nil
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
+}
+
+func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
+
+	switch evi := evidence.Sum.(type) {
+	case *tmproto.Evidence_DuplicateVoteEvidence:
+		vote_a := Vote{}
+		vote_a.FromProto(*evi.DuplicateVoteEvidence.VoteA)
+		vote_b := Vote{}
+		vote_a.FromProto(*evi.DuplicateVoteEvidence.VoteB)
+
+		dve := DuplicateVoteEvidence{
+			VoteA: &vote_a,
+			VoteB: &vote_b,
+		}
+
+		return &dve, nil
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
+}
 
 // MaxEvidencePerBlock returns the maximum number of evidences
 // allowed in the block and their maximum total size (limitted to 1/10th
