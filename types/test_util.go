@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,7 +20,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
-			ValidatorIndex:   int32(i),
+			ValidatorIndex:   uint32(i),
 			Height:           height,
 			Round:            round,
 			Type:             tmproto.PrecommitType,
@@ -54,10 +55,13 @@ func MakeVote(
 ) (*Vote, error) {
 	pubKey, err := privVal.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 	addr := pubKey.Address()
-	idx, _ := valSet.GetByAddress(addr)
+	idx, _, ok := valSet.GetByAddress(addr)
+	if !ok {
+		return nil, fmt.Errorf("address: %v is not associated with a validator", addr)
+	}
 	vote := &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,

@@ -438,7 +438,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	chainID := voteSet.ChainID()
 	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
 
-	for i := int32(0); int(i) < len(vals); i++ {
+	for i := uint32(0); int(i) < len(vals); i++ {
 		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
 		vote3 := commit.GetVote(i)
@@ -473,7 +473,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	for _, tc := range testCases {
 		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators, 1)
 
-		vi := int32(0)
+		vi := uint32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
 				pubKey, err := vals[vi].GetPubKey()

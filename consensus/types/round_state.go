@@ -112,7 +112,10 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	}
 
 	addr := rs.Validators.GetProposer().Address
-	idx, _ := rs.Validators.GetByAddress(addr)
+	idx, _, ok := rs.Validators.GetByAddress(addr)
+	if !ok {
+		panic(fmt.Errorf("could not find validator with address %v", addr))
+	}
 
 	return RoundStateSimple{
 		HeightRoundStep:   fmt.Sprintf("%d/%d/%d", rs.Height, rs.Round, rs.Step),
@@ -131,7 +134,10 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 // NewRoundEvent returns the RoundState with proposer information as an event.
 func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 	addr := rs.Validators.GetProposer().Address
-	idx, _ := rs.Validators.GetByAddress(addr)
+	idx, _, ok := rs.Validators.GetByAddress(addr)
+	if !ok {
+		panic(fmt.Errorf("could not find validator for address %v", addr)) // if proposer is not present in val set, panic
+	}
 
 	return types.EventDataNewRound{
 		Height: rs.Height,
