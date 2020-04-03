@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -140,8 +138,14 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	bm, _ := bc.MsgToProto(&bc.StatusResponseMessage{bcR.store.Height()})
-	msgBytes, _ := proto.Marshal(bm)
+	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
+	if err != nil {
+		panic(err)
+	}
+	msgBytes, err := bm.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	peer.Send(BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
@@ -164,14 +168,20 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		bm, _ := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
-		msgBytes, _ := proto.Marshal(bm)
+		msgBytes, _ := bm.Marshal()
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	bm, _ := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height}) //TODO: figureout errs
-	msgBytes, _ := proto.Marshal(bm)
+	bm, err := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height}) //TODO: figure out errs
+	if err != nil {
+		panic(err)
+	}
+	msgBytes, err := bm.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	return src.TrySend(BlockchainChannel, msgBytes)
 }
 
@@ -199,8 +209,14 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bc.StatusRequestMessage:
 		// Send peer our state.
-		bm, _ := bc.MsgToProto(&bc.StatusResponseMessage{bcR.store.Height()})
-		msgBytes, _ := proto.Marshal(bm)
+		bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
+		if err != nil {
+			panic(err)
+		}
+		msgBytes, err := bm.Marshal()
+		if err != nil {
+			panic(err)
+		}
 		src.TrySend(BlockchainChannel, msgBytes)
 	case *bc.StatusResponseMessage:
 		// Got a peer status. Unverified.
@@ -240,8 +256,14 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				if peer == nil {
 					continue
 				}
-				bm, _ := bc.MsgToProto(&bc.BlockRequestMessage{request.Height})
-				msgBytes, _ := proto.Marshal(bm)
+				bm, err := bc.MsgToProto(&bc.BlockRequestMessage{Height: request.Height})
+				if err != nil {
+					panic(err)
+				}
+				msgBytes, err := bm.Marshal()
+				if err != nil {
+					panic(err)
+				}
 				queued := peer.TrySend(BlockchainChannel, msgBytes)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
@@ -367,8 +389,14 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bm, _ := bc.MsgToProto(&bc.StatusRequestMessage{bcR.store.Height()})
-	msgBytes, _ := proto.Marshal(bm)
+	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{Height: bcR.store.Height()})
+	if err != nil {
+		panic(err)
+	}
+	msgBytes, err := bm.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
 }
