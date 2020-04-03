@@ -208,24 +208,9 @@ func (b *Block) StringShort() string {
 }
 
 func (b *Block) ToProto() (*tmproto.Block, error) {
-	if err := b.ValidateBasic(); err != nil {
-		return nil, err
-	}
-	protoHeader, err := b.Header.ToProto()
-	if err != nil {
-		return nil, err
-	}
-
-	protoCommit, err := b.LastCommit.ToProto()
-	if err != nil {
-		return nil, err
-	}
-
-	protoData, err := b.Data.ToProto()
-	if err != nil {
-		return nil, err
-	}
-
+	protoHeader := b.Header.ToProto()
+	protoCommit := b.LastCommit.ToProto()
+	protoData := b.Data.ToProto()
 	protoEvidence, err := b.Evidence.ToProto()
 	if err != nil {
 		return nil, err
@@ -237,15 +222,20 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 		Evidence:   *protoEvidence,
 		LastCommit: protoCommit,
 	}
-	return &protoBlock, nil
+	return &protoBlock, err
 }
 
-func (b *Block) FromProto(bp tmproto.Block) {
+func (b *Block) FromProto(bp tmproto.Block) error {
 
 	b.Header.FromProto(bp.Header)
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(bp.Evidence)
 	b.LastCommit.FromProto(*bp.LastCommit)
+
+	if err := b.ValidateBasic(); err != nil {
+		return err
+	}
+	return nil
 }
 
 //-----------------------------------------------------------
@@ -420,23 +410,27 @@ func (cs CommitSig) ValidateBasic() error {
 	return nil
 }
 
-func (cs CommitSig) ToProto() (*tmproto.CommitSig, error) {
-	if err := cs.ValidateBasic(); err != nil {
-		return nil, err
-	}
+func (cs CommitSig) ToProto() *tmproto.CommitSig {
+
 	csProto := tmproto.CommitSig{
 		BlockIdFlag:      cs.BlockIDFlag,
 		ValidatorAddress: cs.ValidatorAddress,
 		Timestamp:        cs.Timestamp,
 		Signature:        cs.Signature,
 	}
-	return &csProto, nil
+	return &csProto
 }
-func (cs *CommitSig) FromProto(csp tmproto.CommitSig) {
+func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 	cs.BlockIDFlag = csp.BlockIdFlag
 	cs.ValidatorAddress = csp.ValidatorAddress
 	cs.Timestamp = csp.Timestamp
 	cs.Signature = csp.Signature
+
+	if err := cs.ValidateBasic(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //-------------------------------------
@@ -631,15 +625,12 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
-func (c Commit) ToProto() (*tmproto.Commit, error) {
-	if err := c.ValidateBasic(); err != nil {
-		return nil, err
-	}
+func (c Commit) ToProto() *tmproto.Commit {
 
 	csp := tmproto.Commit{
 		Height: c.Height,
 		Round:  c.Round,
-		BlockId: tmproto.BlockID{
+		BlockID: tmproto.BlockID{
 			Hash: c.BlockID.Hash,
 			PartsHeader: tmproto.PartSetHeader{
 				Hash:  c.BlockID.PartsHeader.Hash,
@@ -652,16 +643,16 @@ func (c Commit) ToProto() (*tmproto.Commit, error) {
 			Elems: c.bitArray.Elems,
 		},
 	}
-	return &csp, nil
+	return &csp
 }
-func (c *Commit) FromProto(cp tmproto.Commit) {
+func (c *Commit) FromProto(cp tmproto.Commit) error {
 	c.Height = cp.Height
 	c.Round = cp.Round
 	c.BlockID = BlockID{
-		Hash: cp.BlockId.Hash,
+		Hash: cp.BlockID.Hash,
 		PartsHeader: PartSetHeader{
-			Hash:  cp.BlockId.PartsHeader.Hash,
-			Total: cp.BlockId.PartsHeader.Total,
+			Hash:  cp.BlockID.PartsHeader.Hash,
+			Total: cp.BlockID.PartsHeader.Total,
 		},
 	}
 	c.hash = cp.Hash
@@ -670,6 +661,11 @@ func (c *Commit) FromProto(cp tmproto.Commit) {
 		Elems: cp.BitArray.Elems,
 	}
 
+	if err := c.ValidateBasic(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -735,31 +731,30 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent)
 }
 
-func (sh SignedHeader) ToProto() (*tmproto.SignedHeader, error) {
-	protoHeader, err := sh.Header.ToProto()
-	if err != nil {
-		return nil, err
-	}
+func (sh SignedHeader) ToProto() *tmproto.SignedHeader {
+	protoHeader := sh.Header.ToProto()
+	protoCommit := sh.Commit.ToProto()
 
-	protoCommit, err := sh.Commit.ToProto()
-	if err != nil {
-		return nil, err
-	}
 	shp := tmproto.SignedHeader{
 		Header: protoHeader,
 		Commit: protoCommit,
 	}
-	return &shp, nil
+	return &shp
 }
-func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) {
+
+func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
 	h := Header{}
 	c := Commit{}
 
-	h.FromProto(*shp.Header)
+	if err := h.FromProto(*shp.Header); err != nil {
+		return err
+	}
 	c.FromProto(*shp.Commit)
 
 	sh.Header = &h
 	sh.Commit = &c
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -807,7 +802,7 @@ func (data *Data) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
-func (data *Data) ToProto() (*tmproto.Data, error) {
+func (data *Data) ToProto() *tmproto.Data {
 
 	txBzs := make([][]byte, len(data.Txs))
 	for i := 0; i < len(data.Txs); i++ {
@@ -818,7 +813,7 @@ func (data *Data) ToProto() (*tmproto.Data, error) {
 		Hash: data.hash,
 	}
 
-	return &dp, nil
+	return &dp
 }
 
 func (data *Data) FromProto(dp tmproto.Data) {
@@ -884,15 +879,20 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	}
 	return &protoEvidence, nil
 }
-func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) {
+func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
 	eviBzs := make([]Evidence, len(eviData.Evidence))
 	for i := 0; i < len(eviData.Evidence); i++ {
-		evi := EvidenceFromProto(eviData.Evidence[i])
+		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		if err != nil {
+			return err
+		}
 		eviBzs[i] = evi
 	}
 
 	data.Evidence = eviBzs
 	data.hash = eviData.Hash
+
+	return nil
 }
 
 //--------------------------------------------------------------------------------

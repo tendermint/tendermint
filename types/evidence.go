@@ -86,14 +86,8 @@ const (
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	switch evi := evidence.(type) {
 	case *DuplicateVoteEvidence:
-		vote_b, err := evi.VoteB.ToProto()
-		if err != nil {
-			return nil, err
-		}
-		vote_a, err := evi.VoteA.ToProto()
-		if err != nil {
-			return nil, err
-		}
+		vote_b := evi.VoteB.ToProto()
+		vote_a := evi.VoteA.ToProto()
 		return &tmproto.Evidence{
 			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
 				DuplicateVoteEvidence: &tmproto.DuplicateVoteEvidence{
@@ -103,11 +97,11 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 			},
 		}, nil
 	default:
-		panic("evidence is not recognized")
+		return nil, errors.New("evidence is not recognized")
 	}
 }
 
-func EvidenceFromProto(evidence tmproto.Evidence) Evidence {
+func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
@@ -116,14 +110,14 @@ func EvidenceFromProto(evidence tmproto.Evidence) Evidence {
 		vote_b := Vote{}
 		vote_a.FromProto(*evi.DuplicateVoteEvidence.VoteB)
 
-		dupi := DuplicateVoteEvidence{
+		dve := DuplicateVoteEvidence{
 			VoteA: &vote_a,
 			VoteB: &vote_b,
 		}
 
-		return &dupi
+		return &dve, nil
 	default:
-		panic("evidence is not recognized")
+		return nil, errors.New("evidence is not recognized")
 	}
 }
 

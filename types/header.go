@@ -177,19 +177,16 @@ func (h Header) ValidateBasic() error {
 	return nil
 }
 
-func (h *Header) ToProto() (*tmproto.Header, error) {
-	err := h.ValidateBasic()
-	if err != nil {
-		return nil, err
-	}
+func (h *Header) ToProto() *tmproto.Header {
+
 	ph := tmproto.Header{
 		Version: tmproto.Version{
 			Block: h.Version.Block.Uint64(),
 			App:   h.Version.App.Uint64(),
 		},
-		ChainId: h.ChainID,
+		ChainID: h.ChainID,
 		Time:    h.Time,
-		LastBlockId: tmproto.BlockID{
+		LastBlockID: tmproto.BlockID{
 			Hash: h.LastBlockID.Hash,
 			PartsHeader: tmproto.PartSetHeader{
 				Hash:  h.LastBlockID.PartsHeader.Hash,
@@ -203,21 +200,21 @@ func (h *Header) ToProto() (*tmproto.Header, error) {
 		LastResultsHash:    h.LastResultsHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
-	return &ph, nil
+	return &ph
 }
 
-func (h *Header) FromProto(ph tmproto.Header) {
+func (h *Header) FromProto(ph tmproto.Header) error {
 	h.Version = version.Consensus{
 		Block: version.Protocol(ph.Version.Block),
 		App:   version.Protocol(ph.Version.App),
 	}
-	h.ChainID = ph.ChainId
+	h.ChainID = ph.ChainID
 	h.Time = ph.Time
 	h.LastBlockID = BlockID{
-		Hash: ph.LastBlockId.Hash,
+		Hash: ph.LastBlockID.Hash,
 		PartsHeader: PartSetHeader{
-			Hash:  ph.LastBlockId.PartsHeader.Hash,
-			Total: ph.LastBlockId.PartsHeader.Total,
+			Hash:  ph.LastBlockID.PartsHeader.Hash,
+			Total: ph.LastBlockID.PartsHeader.Total,
 		},
 	}
 	h.ValidatorsHash = ph.ValidatorsHash
@@ -226,4 +223,11 @@ func (h *Header) FromProto(ph tmproto.Header) {
 	h.AppHash = ph.AppHash
 	h.LastResultsHash = ph.LastResultsHash
 	h.ProposerAddress = ph.ProposerAddress
+
+	err := h.ValidateBasic()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

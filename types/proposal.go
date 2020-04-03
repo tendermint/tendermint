@@ -97,17 +97,14 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 	return bz
 }
 
-func (p Proposal) ToProto() (*tmproto.Proposal, error) {
-	if err := p.ValidateBasic(); err != nil {
-		return nil, err
-	}
+func (p Proposal) ToProto() *tmproto.Proposal {
 
 	pp := tmproto.Proposal{
 		Type:     p.Type,
 		Height:   p.Height,
 		Round:    p.Round,
 		PolRound: p.POLRound,
-		BlockId: &tmproto.BlockID{
+		BlockID: &tmproto.BlockID{
 			Hash: p.BlockID.Hash,
 			PartsHeader: tmproto.PartSetHeader{
 				Hash:  p.BlockID.PartsHeader.Hash,
@@ -117,21 +114,25 @@ func (p Proposal) ToProto() (*tmproto.Proposal, error) {
 		Timestamp: p.Timestamp,
 		Signature: p.Signature,
 	}
-	return &pp, nil
+	return &pp
 }
-func (p *Proposal) FromProto(pp tmproto.Proposal) {
+func (p *Proposal) FromProto(pp tmproto.Proposal) error {
 	p.Type = pp.Type
 	p.Height = pp.Height
 	p.Round = pp.Round
 	p.POLRound = pp.PolRound
 	p.BlockID = BlockID{
-		Hash: pp.BlockId.Hash,
+		Hash: pp.BlockID.Hash,
 		PartsHeader: PartSetHeader{
-			Hash:  pp.BlockId.PartsHeader.Hash,
-			Total: pp.BlockId.PartsHeader.Total,
+			Hash:  pp.BlockID.PartsHeader.Hash,
+			Total: pp.BlockID.PartsHeader.Total,
 		},
 	}
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature
 
+	if err := p.ValidateBasic(); err != nil {
+		return err
+	}
+	return nil
 }
