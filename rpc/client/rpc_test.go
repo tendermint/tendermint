@@ -673,7 +673,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		status, err := c.Status()
 		require.NoError(t, err)
 		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-		ed25519pub := pv.Key.PubKey.(ed25519.PubKeyEd25519)
+		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
 		rawpub := ed25519pub[:]
 		result2, err := c.ABCIQuery("/val", rawpub)
 		require.Nil(t, err, "Error querying evidence, err %v", err)
