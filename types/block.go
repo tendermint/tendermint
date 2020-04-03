@@ -900,11 +900,15 @@ func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
 //--------------------------------------------------------------------------------
 
 // BlockID
+type BlockID struct {
+	Hash        tmbytes.HexBytes `json:"hash"`
+	PartsHeader PartSetHeader    `json:"parts"`
+}
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equal(other.PartsHeader)
+		blockID.PartsHeader.Equals(other.PartsHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -939,4 +943,9 @@ func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
 		blockID.PartsHeader.Total > 0 &&
 		len(blockID.PartsHeader.Hash) == tmhash.Size
+}
+
+// String returns a human readable string representation of the BlockID
+func (blockID BlockID) String() string {
+	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }
