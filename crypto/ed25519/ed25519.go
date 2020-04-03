@@ -66,7 +66,7 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 	}
 
 	if !initialized {
-		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
+		panic("Expected ed25519 PrivKey to include concatenated pubkey bytes")
 	}
 
 	pubkeyBytes := make([]byte, PubKeySize)
@@ -142,7 +142,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
+	return fmt.Sprintf("PubKey{%X}", pubKey[:])
 }
 
 // nolint: golint

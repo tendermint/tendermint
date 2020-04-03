@@ -96,7 +96,6 @@ func genPrivKey(rand io.Reader) PrivKey {
 // that 32 byte output to create the private key.
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-//TODO: write test
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 	var bz [PrivKeySize]byte

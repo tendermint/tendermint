@@ -107,11 +107,11 @@ func GenPrivKeySecp256k1(secret []byte) PrivKey {
 
 var _ crypto.PubKey = PubKey{}
 
-// PubKeySecp256k1Size is comprised of 32 bytes for one field element
+// PubKeySize is comprised of 32 bytes for one field element
 // (the x-coordinate), plus one byte for the parity of the y-coordinate.
 const PubKeySize = 33
 
-// PubKeySecp256k1 implements crypto.PubKey.
+// PubKey implements crypto.PubKey.
 // It is the compressed form of the pubkey. The first byte depends is a 0x02 byte
 // if the y-coordinate is the lexicographically largest of the two associated with
 // the x-coordinate. Otherwise the first byte is a 0x03.
@@ -139,7 +139,7 @@ func (pubKey PubKey) Bytes() []byte {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeySecp256k1{%X}", []byte(pubKey))
+	return fmt.Sprintf("PubKey{%X}", []byte(pubKey))
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
