@@ -1,0 +1,36 @@
+syntax = "proto3";
+package tendermint.proto.blockchain;
+
+option go_package = "github.com/tendermint/tendermint/proto/blockchain";
+
+import "proto/types/types.proto";
+
+message BcBlockRequestMessage {
+  int64 height = 1;
+}
+
+message BcNoBlockResponseMessage {
+  int64 height = 1;
+}
+
+message BcBlockResponseMessage {
+  tendermint.proto.types.Block block = 1;
+}
+
+message BcStatusRequestMessage {
+  int64 Height = 1;
+}
+
+message BcStatusResponseMessage {
+  int64 height = 1;
+}
+
+message BlockchainMessage {
+  oneof sum {
+    BcBlockRequestMessage    block_request     = 1;
+    BcNoBlockResponseMessage no_block_response = 2;
+    BcBlockResponseMessage   block_response    = 3;
+    BcStatusRequestMessage   status_request    = 4;
+    BcStatusResponseMessage  status_response   = 5;
+  }
+}
