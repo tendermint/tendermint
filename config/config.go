@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -725,14 +726,18 @@ type StateSyncConfig struct {
 	TrustedHash   string        `mapstructure:"trusted_hash"`
 }
 
+func (cfg *StateSyncConfig) TrustedHashBytes() []byte {
+	// validated in ValidateBasic, so we can safely panic here
+	bytes, err := hex.DecodeString(cfg.TrustedHash)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
-	return &StateSyncConfig{
-		RPCServers:    []string{"a", "b", "c"},
-		TrustedPeriod: 1 * time.Hour,
-		TrustedHeight: 10,
-		TrustedHash:   "0xff",
-	}
+	return &StateSyncConfig{}
 }
 
 // TestFastSyncConfig returns a default configuration for the state sync service
@@ -743,14 +748,30 @@ func TestStateSyncConfig() *StateSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
 	if cfg.Enabled {
+		// FIXME Parse and validate URL, in particular handle lack of scheme
+		if len(cfg.RPCServers) == 0 {
+			return errors.New("rpc_servers is required")
+		}
+		if len(cfg.RPCServers) < 2 {
+			return errors.New("at least two rpc_servers entries is required")
+		}
+		for _, server := range cfg.RPCServers {
+			if len(server) == 0 {
+				return errors.New("found empty rpc_servers entry")
+			}
+		}
+		if cfg.TrustedPeriod <= 0 {
+			return errors.New("trusted_period is required")
+		}
 		if cfg.TrustedHeight <= 0 {
 			return errors.New("trusted_height is required")
 		}
 		if len(cfg.TrustedHash) == 0 {
 			return errors.New("trusted_hash is required")
 		}
-		if len(cfg.RPCServers) == 0 {
-			return errors.New("rpc_servers is required")
+		_, err := hex.DecodeString(cfg.TrustedHash)
+		if err != nil {
+			return fmt.Errorf("invalid trusted_hash: %w", err)
 		}
 	}
 	return nil

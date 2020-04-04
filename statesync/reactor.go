@@ -1,6 +1,8 @@
 package statesync
 
 import (
+	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -8,8 +10,10 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -149,7 +153,8 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case ChunkChannel:
 		switch msg := msg.(type) {
 		case *chunkRequestMessage:
-			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
+			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Chunk, "peer", src.ID())
 			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
 				Height: msg.Height,
 				Format: msg.Format,
@@ -180,13 +185,16 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				Body:  msg.Body,
 			})
 			if err != nil {
-				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "err", err)
+				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Chunk, "err", err)
 				return
 			}
 			if added {
-				r.Logger.Info("Received chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
+				r.Logger.Info("Received chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Chunk, "peer", src.ID())
 			} else {
-				r.Logger.Debug("Ignoring duplicate chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
+				r.Logger.Debug("Ignoring duplicate chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Chunk, "peer", src.ID())
 			}
 
 		default:
@@ -232,7 +240,7 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 }
 
 // sync runs a state sync
-func (r *Reactor) Sync() error {
+func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 	r.Logger.Info("Starting state sync")
 
 	snapshots := newSnapshotPool()
@@ -249,11 +257,20 @@ func (r *Reactor) Sync() error {
 	time.Sleep(10 * time.Second)
 
 	var snapshot *snapshot
+	var header *types.SignedHeader
+	var err error
 	for {
 		snapshot = snapshots.Best()
 		if snapshot == nil {
 			r.Logger.Info("No suitable snapshots found, still looking")
 			time.Sleep(10 * time.Second)
+			continue
+		}
+		r.Logger.Info("Fetching snapshot app hash using light client", "height", snapshot.Height, "format", snapshot.Format)
+		header, err = lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
+		if err != nil {
+			r.Logger.Error("Failed to verify header, ignoring height", "height", snapshot.Height, "err", err)
+			snapshots.RejectHeight(snapshot.Height)
 			continue
 		}
 		r.Logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height, "format", snapshot.Format)
@@ -264,14 +281,15 @@ func (r *Reactor) Sync() error {
 				ChunkHashes: snapshot.ChunkHashes,
 				Metadata:    snapshot.Metadata,
 			},
-			AppHash: nil, // FIXME Light client verification
+			AppHash: header.AppHash.Bytes(), // FIXME Light client verification
 		})
 		if err != nil {
 			return fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
 				snapshot.Height, snapshot.Format, err)
 		}
 		if resp.Accepted {
-			r.Logger.Info("Snapshot accepted, restoring", "height", snapshot.Height, "format", snapshot.Format, "chunks", len(snapshot.ChunkHashes))
+			r.Logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
+				"format", snapshot.Format, "chunks", len(snapshot.ChunkHashes))
 			break
 		}
 		r.Logger.Info("Snapshot rejected", "height", snapshot.Height, "format", snapshot.Format)
@@ -305,9 +323,11 @@ func (r *Reactor) Sync() error {
 				for !chunks.Has(index) {
 					peer := snapshots.GetPeer(snapshot)
 					if peer == nil {
-						r.Logger.Info("No peers found for snapshot", "height", snapshot.Height, "format", snapshot.Format)
+						r.Logger.Info("No peers found for snapshot", "height", snapshot.Height,
+							"format", snapshot.Format)
 					} else {
-						r.Logger.Debug("Requesting chunk", "height", snapshot.Height, "format", snapshot.Format, "chunk", index, "peer", peer.ID())
+						r.Logger.Debug("Requesting chunk", "height", snapshot.Height,
+							"format", snapshot.Format, "chunk", index, "peer", peer.ID())
 						peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
 							Height: snapshot.Height,
 							Format: snapshot.Format,
@@ -321,7 +341,7 @@ func (r *Reactor) Sync() error {
 		}()
 	}
 
-	// feed chunks to app
+	// Feed chunks to app
 	for {
 		chunk, err := chunks.Next()
 		if err == Done {
@@ -329,7 +349,8 @@ func (r *Reactor) Sync() error {
 		} else if err != nil {
 			return fmt.Errorf("failed to fetch chunks: %w", err)
 		}
-		r.Logger.Info("Applying chunk to ABCI app", "height", snapshot.Height, "format", snapshot.Format, "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
+		r.Logger.Info("Applying chunk to ABCI app", "height", snapshot.Height,
+			"format", snapshot.Format, "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
 		resp, err := r.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
 			Chunk: chunk.Body,
 		})
@@ -340,6 +361,18 @@ func (r *Reactor) Sync() error {
 			return fmt.Errorf("failed to apply chunk %v", chunk.Index)
 		}
 	}
+
+	// Verify app hash.
+	resp, err := query.InfoSync(proxy.RequestInfo)
+	if err != nil {
+		return fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
+	}
+	if !bytes.Equal(header.AppHash.Bytes(), resp.LastBlockAppHash) {
+		return fmt.Errorf("app_hash verification failed, expected %x got %x",
+			header.AppHash.Bytes(), resp.LastBlockAppHash)
+	}
+	r.Logger.Debug("Verified state snapshot app hash", "height", snapshot.Height, "format", snapshot.Format,
+		"hash", hex.EncodeToString(resp.LastBlockAppHash))
 
 	// Done!
 	r.Logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)

@@ -31,6 +31,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	lite "github.com/tendermint/tendermint/lite2"
+	litedb "github.com/tendermint/tendermint/lite2/store/db"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -611,12 +613,12 @@ func NewNode(config *cfg.Config,
 		if err := doHandshake(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
 			return nil, err
 		}
-	}
 
-	// Reload the state. It will have the Version.Consensus.App set by the
-	// Handshake, and may have other modifications as well (ie. depending on
-	// what happened during block replay).
-	state = sm.LoadState(stateDB)
+		// Reload the state. It will have the Version.Consensus.App set by the
+		// Handshake, and may have other modifications as well (ie. depending on
+		// what happened during block replay).
+		state = sm.LoadState(stateDB)
+	}
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
@@ -642,9 +644,20 @@ func NewNode(config *cfg.Config,
 	if config.StateSync.Enabled && state.LastBlockHeight == 0 && blockStore.Height() == 0 {
 		go func() {
 			logger.Info("Starting state sync")
-			err := stateSyncReactor.Sync()
+			lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
+				Period: config.StateSync.TrustedPeriod,
+				Height: config.StateSync.TrustedHeight,
+				Hash:   config.StateSync.TrustedHashBytes(),
+			}, config.StateSync.RPCServers[0], config.StateSync.RPCServers[1:],
+				litedb.New(dbm.NewMemDB(), ""), lite.Logger(stateSyncReactor.Logger))
+			if err != nil {
+				logger.Error("Failed to set up light client for state sync", "err", err)
+				return
+			}
+			err = stateSyncReactor.Sync(lc, proxyApp.Query())
 			if err != nil {
 				logger.Error("State sync failed", "err", err)
+				return
 			}
 		}()
 	}
