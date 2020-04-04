@@ -13,6 +13,7 @@ import (
 	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -240,17 +241,26 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 }
 
 // sync runs a state sync
-func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
+func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery) (sm.State, error) {
 	r.Logger.Info("Starting state sync")
 
 	snapshots := newSnapshotPool()
 	r.mtx.Lock()
 	if r.snapshots != nil {
 		r.mtx.Unlock()
-		return errors.New("a state sync is already in progress")
+		return state, errors.New("a state sync is already in progress")
 	}
 	r.snapshots = snapshots
 	r.mtx.Unlock()
+
+	defer func() {
+		r.mtx.Lock()
+		if r.chunks != nil {
+			r.chunks.Close()
+		}
+		r.snapshots = nil
+		r.mtx.Unlock()
+	}()
 
 	// discover snapshots
 	r.Logger.Info("Discovering snapshots")
@@ -284,7 +294,7 @@ func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 			AppHash: header.AppHash.Bytes(), // FIXME Light client verification
 		})
 		if err != nil {
-			return fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
+			return state, fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
 				snapshot.Height, snapshot.Format, err)
 		}
 		if resp.Accepted {
@@ -306,7 +316,7 @@ func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 	// fetch chunks
 	chunks, err := newChunkPool(snapshot)
 	if err != nil {
-		return fmt.Errorf("failed to create chunk pool: %w", err)
+		return state, fmt.Errorf("failed to create chunk pool: %w", err)
 	}
 	defer chunks.Close()
 	r.mtx.Lock()
@@ -347,7 +357,7 @@ func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 		if err == Done {
 			break
 		} else if err != nil {
-			return fmt.Errorf("failed to fetch chunks: %w", err)
+			return state, fmt.Errorf("failed to fetch chunks: %w", err)
 		}
 		r.Logger.Info("Applying chunk to ABCI app", "height", snapshot.Height,
 			"format", snapshot.Format, "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
@@ -355,20 +365,20 @@ func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 			Chunk: chunk.Body,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
+			return state, fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
 		}
 		if !resp.Applied {
-			return fmt.Errorf("failed to apply chunk %v", chunk.Index)
+			return state, fmt.Errorf("failed to apply chunk %v", chunk.Index)
 		}
 	}
 
 	// Verify app hash.
 	resp, err := query.InfoSync(proxy.RequestInfo)
 	if err != nil {
-		return fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
+		return state, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
 	}
 	if !bytes.Equal(header.AppHash.Bytes(), resp.LastBlockAppHash) {
-		return fmt.Errorf("app_hash verification failed, expected %x got %x",
+		return state, fmt.Errorf("app_hash verification failed, expected %x got %x",
 			header.AppHash.Bytes(), resp.LastBlockAppHash)
 	}
 	r.Logger.Debug("Verified state snapshot app hash", "height", snapshot.Height, "format", snapshot.Format,
@@ -377,5 +387,5 @@ func (r *Reactor) Sync(lc *lite.Client, query proxy.AppConnQuery) error {
 	// Done!
 	r.Logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
 
-	return nil
+	return state, nil
 }

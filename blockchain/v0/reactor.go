@@ -56,7 +56,6 @@ func (e peerError) Error() string {
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	p2p.BaseReactor
-	Disabled bool
 
 	// immutable
 	initialState sm.State
@@ -111,13 +110,22 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
-	if !bcR.Disabled && bcR.fastSync {
-		err := bcR.pool.Start()
-		if err != nil {
-			return err
-		}
-		go bcR.poolRoutine()
+	if bcR.fastSync {
+		return bcR.SwitchToFastSync(bcR.initialState)
 	}
+	return nil
+}
+
+// SwitchToFastSync is called by the state sync reactor when switching to fast sync.
+func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
+	bcR.fastSync = true
+	bcR.initialState = state
+
+	err := bcR.pool.Start()
+	if err != nil {
+		return err
+	}
+	go bcR.poolRoutine()
 	return nil
 }
 

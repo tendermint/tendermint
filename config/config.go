@@ -137,10 +137,18 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
 	}
-	return errors.Wrap(
-		cfg.Instrumentation.ValidateBasic(),
-		"Error in [instrumentation] section",
-	)
+	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [instrumentation] section")
+	}
+	if cfg.StateSync.Enabled {
+		if !cfg.FastSyncMode {
+			return errors.New("state sync requires fast sync to be enabled")
+		}
+		if cfg.FastSync.Version != "v0" {
+			return fmt.Errorf("state sync requires fastsync = v0, got %v", cfg.FastSync.Version)
+		}
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
