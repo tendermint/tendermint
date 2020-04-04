@@ -121,6 +121,7 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 	bcR.fastSync = true
 	bcR.initialState = state
 
+	bcR.pool.height = state.LastBlockHeight + 1
 	err := bcR.pool.Start()
 	if err != nil {
 		return err

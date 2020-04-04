@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -241,7 +242,7 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 }
 
 // sync runs a state sync
-func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery) (sm.State, error) {
+func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Client, query proxy.AppConnQuery) (sm.State, error) {
 	r.Logger.Info("Starting state sync")
 
 	snapshots := newSnapshotPool()
@@ -267,7 +268,7 @@ func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery
 	time.Sleep(10 * time.Second)
 
 	var snapshot *snapshot
-	var header *types.SignedHeader
+	var nextHeader *types.SignedHeader
 	var err error
 	for {
 		snapshot = snapshots.Best()
@@ -277,7 +278,7 @@ func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery
 			continue
 		}
 		r.Logger.Info("Fetching snapshot app hash using light client", "height", snapshot.Height, "format", snapshot.Format)
-		header, err = lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
+		nextHeader, err = lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
 		if err != nil {
 			r.Logger.Error("Failed to verify header, ignoring height", "height", snapshot.Height, "err", err)
 			snapshots.RejectHeight(snapshot.Height)
@@ -291,7 +292,7 @@ func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery
 				ChunkHashes: snapshot.ChunkHashes,
 				Metadata:    snapshot.Metadata,
 			},
-			AppHash: header.AppHash.Bytes(), // FIXME Light client verification
+			AppHash: nextHeader.AppHash.Bytes(),
 		})
 		if err != nil {
 			return state, fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
@@ -377,15 +378,43 @@ func (r *Reactor) Sync(state sm.State, lc *lite.Client, query proxy.AppConnQuery
 	if err != nil {
 		return state, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
 	}
-	if !bytes.Equal(header.AppHash.Bytes(), resp.LastBlockAppHash) {
+	if !bytes.Equal(nextHeader.AppHash.Bytes(), resp.LastBlockAppHash) {
 		return state, fmt.Errorf("app_hash verification failed, expected %x got %x",
-			header.AppHash.Bytes(), resp.LastBlockAppHash)
+			nextHeader.AppHash.Bytes(), resp.LastBlockAppHash)
 	}
 	r.Logger.Debug("Verified state snapshot app hash", "height", snapshot.Height, "format", snapshot.Format,
 		"hash", hex.EncodeToString(resp.LastBlockAppHash))
 
 	// Done!
 	r.Logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
+
+	// Update the state
+	header, err := lc.VerifyHeaderAtHeight(int64(snapshot.Height), time.Now())
+	if err != nil {
+		return state, fmt.Errorf("Failed to verify header at height %v: %w", snapshot.Height, err)
+	}
+
+	state = state.Copy()
+	state.LastBlockHeight = header.Height
+	state.LastBlockTime = header.Time
+	state.LastBlockID = header.Commit.BlockID
+
+	state.LastValidators, _, err = lc.TrustedValidatorSet(int64(snapshot.Height))
+	if err != nil {
+		return state, fmt.Errorf("Failed to fetch validator set at height %v: %w", snapshot.Height, err)
+	}
+	state.Validators, _, err = lc.TrustedValidatorSet(int64(snapshot.Height + 1))
+	if err != nil {
+		return state, fmt.Errorf("Failed to fetch validator set at height %v: %w", snapshot.Height+1, err)
+	}
+	state.NextValidators = state.Validators.Copy()
+	state.LastHeightValidatorsChanged = header.Height + 1
+
+	state.AppHash = nextHeader.AppHash
+	state.LastResultsHash = nextHeader.LastResultsHash
+
+	// FIXME We totally shouldn't be storing this here, ask blockchain reactor to fetch it for us
+	blockStore.SaveSeenCommit(header.Height, header.Commit)
 
 	return state, nil
 }
