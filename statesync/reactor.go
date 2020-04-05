@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -139,12 +138,18 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
-			if r.snapshots.Add(src, &snapshot{
+			added, err := r.snapshots.Add(src, &snapshot{
 				Height:      msg.Height,
 				Format:      msg.Format,
 				ChunkHashes: msg.ChunkHashes,
 				Metadata:    msg.Metadata,
-			}) {
+			})
+			if err != nil {
+				r.Logger.Error("Failed to add snapshot too pool", "height", msg.Height,
+					"format", msg.Format, "peer", src.ID(), "err", err)
+				return
+			}
+			if added {
 				r.Logger.Info("Discovered new snapshot", "height", msg.Height, "format", msg.Format)
 			}
 
@@ -245,7 +250,7 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Client, query proxy.AppConnQuery) (sm.State, error) {
 	r.Logger.Info("Starting state sync")
 
-	snapshots := newSnapshotPool()
+	snapshots := newSnapshotPool(lc)
 	r.mtx.Lock()
 	if r.snapshots != nil {
 		r.mtx.Unlock()
@@ -268,7 +273,6 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 	time.Sleep(10 * time.Second)
 
 	var snapshot *snapshot
-	var nextHeader *types.SignedHeader
 	var err error
 	for {
 		snapshot = snapshots.Best()
@@ -278,12 +282,6 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 			continue
 		}
 		r.Logger.Info("Fetching snapshot app hash using light client", "height", snapshot.Height, "format", snapshot.Format)
-		nextHeader, err = lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
-		if err != nil {
-			r.Logger.Error("Failed to verify header, ignoring height", "height", snapshot.Height, "err", err)
-			snapshots.RejectHeight(snapshot.Height)
-			continue
-		}
 		r.Logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height, "format", snapshot.Format)
 		resp, err := r.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
 			Snapshot: &abci.Snapshot{
@@ -292,7 +290,7 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 				ChunkHashes: snapshot.ChunkHashes,
 				Metadata:    snapshot.Metadata,
 			},
-			AppHash: nextHeader.AppHash.Bytes(),
+			AppHash: snapshot.trustedAppHash,
 		})
 		if err != nil {
 			return state, fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
@@ -317,7 +315,7 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 	// fetch chunks
 	chunks, err := newChunkQueue(snapshot)
 	if err != nil {
-		return state, fmt.Errorf("failed to create chunk pool: %w", err)
+		return state, fmt.Errorf("failed to create chunk queue: %w", err)
 	}
 	defer chunks.Close()
 	r.mtx.Lock()
@@ -378,9 +376,9 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 	if err != nil {
 		return state, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
 	}
-	if !bytes.Equal(nextHeader.AppHash.Bytes(), resp.LastBlockAppHash) {
+	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		return state, fmt.Errorf("app_hash verification failed, expected %x got %x",
-			nextHeader.AppHash.Bytes(), resp.LastBlockAppHash)
+			snapshot.trustedAppHash, resp.LastBlockAppHash)
 	}
 	r.Logger.Debug("Verified state snapshot app hash", "height", snapshot.Height, "format", snapshot.Format,
 		"hash", hex.EncodeToString(resp.LastBlockAppHash))
@@ -390,6 +388,10 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 
 	// Update the state
 	header, err := lc.VerifyHeaderAtHeight(int64(snapshot.Height), time.Now())
+	if err != nil {
+		return state, fmt.Errorf("Failed to verify header at height %v: %w", snapshot.Height, err)
+	}
+	nextHeader, err := lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
 	if err != nil {
 		return state, fmt.Errorf("Failed to verify header at height %v: %w", snapshot.Height, err)
 	}

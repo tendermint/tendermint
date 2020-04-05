@@ -6,7 +6,9 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"time"
 
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -25,7 +27,7 @@ type snapshot struct {
 	ChunkHashes [][]byte
 	Metadata    []byte
 
-	appHash []byte // found by
+	trustedAppHash []byte // populated by light client
 }
 
 // Hash generates a snapshot hash, used for lookups. It takes into account not only the height
@@ -48,6 +50,8 @@ func (s *snapshot) Hash() snapshotHash {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
+	lc *lite.Client
+
 	sync.Mutex
 	snapshots     map[snapshotHash]*snapshot
 	snapshotPeers map[snapshotHash]map[p2p.ID]p2p.Peer
@@ -64,8 +68,9 @@ type snapshotPool struct {
 }
 
 // newSnapshotPool creates a new snapshot pool.
-func newSnapshotPool() *snapshotPool {
+func newSnapshotPool(lc *lite.Client) *snapshotPool {
 	return &snapshotPool{
+		lc:                lc,
 		snapshots:         make(map[snapshotHash]*snapshot),
 		snapshotPeers:     make(map[snapshotHash]map[p2p.ID]p2p.Peer),
 		formatIndex:       make(map[uint32]map[snapshotHash]bool),
@@ -78,23 +83,32 @@ func newSnapshotPool() *snapshotPool {
 }
 
 // Add adds a snapshot to the pool, unless the peer has already sent recentSnapshots snapshots. It
-// returns true if this was a new, non-blacklisted snapshot.
-func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) bool {
+// returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
+// the light client, and the expected app hash is set for the snapshot.
+func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
+	// FIXME Check if the light client deduplicates concurrent requests for the same height.
+	// Otherwise we'll have to manage this ourself.
+	appHash, err := p.fetchTrustedAppHash(snapshot.Height)
+	if err != nil {
+		return false, err
+	}
+	snapshot.trustedAppHash = appHash
 	hash := snapshot.Hash()
+
 	p.Lock()
 	defer p.Unlock()
 
 	switch {
 	case p.formatBlacklist[snapshot.Format]:
-		return false
+		return false, nil
 	case p.heightBlacklist[snapshot.Height]:
-		return false
+		return false, nil
 	case p.snapshotBlacklist[hash]:
-		return false
+		return false, nil
 	case p.snapshots[hash] != nil:
-		return false
+		return false, nil
 	case len(p.peerIndex[peer.ID()]) >= recentSnapshots:
-		return false
+		return false, nil
 	}
 
 	p.snapshots[hash] = snapshot
@@ -119,7 +133,7 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) bool {
 	}
 	p.heightIndex[snapshot.Height][hash] = true
 
-	return true
+	return true, nil
 }
 
 // Best returns the "best" currently known snapshot, if any. The current heuristic is very naïve,
@@ -221,6 +235,16 @@ func (p *snapshotPool) RemovePeer(peer p2p.Peer) {
 		}
 	}
 	delete(p.peerIndex, peer.ID())
+}
+
+// fetchTrustedAppHash fetches the app hash for a given height using the light client.
+func (p *snapshotPool) fetchTrustedAppHash(height uint64) ([]byte, error) {
+	// we have to fetch the next height, which contains the app hash for the previous height.
+	header, err := p.lc.VerifyHeaderAtHeight(int64(height+1), time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return header.AppHash, nil
 }
 
 // removeSnapshot removes a snapshot. The caller must hold the mutex lock.
