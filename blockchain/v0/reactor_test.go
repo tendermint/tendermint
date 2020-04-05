@@ -155,7 +155,7 @@ func TestNoBlockResponse(t *testing.T) {
 		height   int64
 		existent bool
 	}{
-		{maxBlockHeight + 2, false},
+		// {maxBlockHeight + 2, false},
 		{10, true},
 		{1, true},
 		{100, false},

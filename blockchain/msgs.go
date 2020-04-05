@@ -10,11 +10,11 @@ import (
 
 const (
 	// NOTE: keep up to date with bcBlockResponseMessage
-	bcBlockResponseMessagePrefixSize   = 4
-	bcBlockResponseMessageFieldKeySize = 1
-	maxMsgSize                         = types.MaxBlockSizeBytes +
-		bcBlockResponseMessagePrefixSize +
-		bcBlockResponseMessageFieldKeySize
+	BlockResponseMessagePrefixSize   = 4
+	BlockResponseMessageFieldKeySize = 1
+	MaxMsgSize                       = types.MaxBlockSizeBytes +
+		BlockResponseMessagePrefixSize +
+		BlockResponseMessageFieldKeySize
 )
 
 // BlockchainMessage is a generic message for this reactor.
@@ -23,8 +23,8 @@ type Message interface {
 }
 
 func DecodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+	if len(bz) > MaxMsgSize {
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), MaxMsgSize)
 	}
 	bm := bcproto.Message{}
 	bm.Unmarshal(bz)

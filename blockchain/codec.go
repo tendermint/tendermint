@@ -61,47 +61,35 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		}
 		return &bm, nil
 	default:
-		return nil, errors.New("evidence is not recognized")
+		return nil, errors.New("message is not recognized")
 	}
 }
 
 func MsgFromProto(bcm bcproto.Message) (Message, error) {
+	var bm Message
 	switch msg := bcm.Sum.(type) {
 	case *bcproto.Message_BlockRequest:
-		bm := BlockRequestMessage{Height: msg.BlockRequest.Height}
-		if err := bm.ValidateBasic(); err != nil {
-			return nil, err
-		}
-		return &bm, nil
+		bm = &BlockRequestMessage{Height: msg.BlockRequest.Height}
 	case *bcproto.Message_NoBlockResponse:
-		bm := NoBlockResponseMessage{Height: msg.NoBlockResponse.Height}
-		if err := bm.ValidateBasic(); err != nil {
-			return nil, err
-		}
-		return &bm, nil
+		bm = &NoBlockResponseMessage{Height: msg.NoBlockResponse.Height}
+
 	case *bcproto.Message_BlockResponse:
 		b := types.Block{}
 		if err := b.FromProto(*msg.BlockResponse.Block); err != nil {
 			return nil, err
 		}
-		bm := BlockResponseMessage{Block: &b}
-		if err := bm.ValidateBasic(); err != nil {
-			return nil, err
-		}
-		return &bm, nil
+		bm = &BlockResponseMessage{Block: &b}
 	case *bcproto.Message_StatusRequest:
-		bm := StatusRequestMessage{Height: msg.StatusRequest.Height}
-		if err := bm.ValidateBasic(); err != nil {
-			return nil, err
-		}
-		return &bm, nil
+		bm = &StatusRequestMessage{Height: msg.StatusRequest.Height}
 	case *bcproto.Message_StatusResponse:
-		bm := StatusRequestMessage{Height: msg.StatusResponse.Height}
-		if err := bm.ValidateBasic(); err != nil {
-			return nil, err
-		}
-		return &bm, nil
+		bm = &StatusRequestMessage{Height: msg.StatusResponse.Height}
 	default:
-		return nil, errors.New("evidence is not recognized")
+		return nil, errors.New("message is not recognized")
 	}
+
+	if err := bm.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	return bm, nil
 }

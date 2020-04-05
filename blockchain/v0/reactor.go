@@ -27,13 +27,6 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
-
-	// NOTE: keep up to date with bcBlockResponseMessage
-	bcBlockResponseMessagePrefixSize   = 4
-	bcBlockResponseMessageFieldKeySize = 1
-	maxMsgSize                         = types.MaxBlockSizeBytes +
-		bcBlockResponseMessagePrefixSize +
-		bcBlockResponseMessageFieldKeySize
 )
 
 type consensusReactor interface {
@@ -131,7 +124,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            10,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxMsgSize,
+			RecvMessageCapacity: bc.MaxMsgSize,
 		},
 	}
 }
