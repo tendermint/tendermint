@@ -1,31 +1,50 @@
 package statesync
 
 import (
-	"bytes"
-	"errors"
+	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
-	"path"
 	"sort"
-	"strconv"
 	"sync"
 
 	"github.com/tendermint/tendermint/p2p"
 )
 
 const (
-	// recentSnapshots is the number of recent snapshots to send and receive
+	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
-
-	// number of chunks to buffer in memory, before spooling to disk
-	bufferChunks = 4
 )
 
-var (
-	Done = errors.New("iterator is done")
-)
+// snapshotHash is a snapshot hash, used for lookups.
+type snapshotHash [sha256.Size]byte
+
+// snapshot contains data about a snapshot.
+type snapshot struct {
+	Height      uint64
+	Format      uint32
+	ChunkHashes [][]byte
+	Metadata    []byte
+
+	appHash []byte // found by
+}
+
+// Hash generates a snapshot hash, used for lookups. It takes into account not only the height
+// and format, but also the chunk hashes and metadata in case peers have generated snapshots in a
+// non-deterministic manner such that chunks from different peers wouldn't fit together.
+func (s *snapshot) Hash() snapshotHash {
+	// Hash.Write() never returns an error.
+	hasher := sha256.New()
+	hasher.Write([]byte(fmt.Sprintf("%v:%v", s.Height, s.Format)))
+	if s.Metadata != nil {
+		hasher.Write(s.Metadata)
+	}
+	for _, chunkHash := range s.ChunkHashes {
+		hasher.Write(chunkHash)
+	}
+	var hash snapshotHash
+	copy(hash[:], hasher.Sum(nil))
+	return hash
+}
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
@@ -218,139 +237,4 @@ func (p *snapshotPool) removeSnapshot(hash snapshotHash) {
 		delete(p.peerIndex[peerID], hash)
 	}
 	delete(p.snapshotPeers, hash)
-}
-
-// chunkPool manages chunks for a state sync process, ordering them as necessary. It acts as an
-// iterator over an ordered sequence of chunks, but callers can add chunks out-of-order and it will
-// be spooled in memory or on disk as appropriate.
-type chunkPool struct {
-	sync.Mutex
-	snapshot   *snapshot
-	dir        string
-	nextChunk  uint32
-	memChunks  map[uint32]*chunk
-	diskChunks map[uint32]string
-	ch         chan uint32
-}
-
-// newChunkPool creates a new chunk pool for a snapshot, using the OS temp dir for storage.
-// Callers must call Close() when done.
-func newChunkPool(snapshot *snapshot) (*chunkPool, error) {
-	dir, err := ioutil.TempDir("", "tm-statesync")
-	if err != nil {
-		return nil, fmt.Errorf("unable to create temp dir for snapshot chunks: %w", err)
-	}
-	return &chunkPool{
-		snapshot:   snapshot,
-		dir:        dir,
-		memChunks:  make(map[uint32]*chunk),
-		diskChunks: make(map[uint32]string),
-		ch:         make(chan uint32, len(snapshot.ChunkHashes)),
-	}, nil
-}
-
-// Add adds a chunk to the pool, verifying its checksum. It ignores chunks that already exists,
-// and returns true if the chunk was added.
-func (p *chunkPool) Add(chunk *chunk) (bool, error) {
-	if chunk.Body == nil {
-		return false, errors.New("cannot add chunk with nil body")
-	}
-	p.Lock()
-	defer p.Unlock()
-	if p.ch == nil {
-		return false, errors.New("pool is closed")
-	}
-	if chunk.Index >= uint32(len(p.snapshot.ChunkHashes)) {
-		return false, fmt.Errorf("received unexpected snapshot chunk %v", chunk.Index)
-	}
-	if p.memChunks[chunk.Index] != nil || p.diskChunks[chunk.Index] != "" {
-		return false, nil
-	}
-	if !bytes.Equal(chunk.Hash(), p.snapshot.ChunkHashes[chunk.Index]) {
-		return false, fmt.Errorf("chunk %v hash mismatch, expected %x got %x", chunk.Index,
-			p.snapshot.ChunkHashes[chunk.Index], chunk.Hash())
-	}
-
-	// Save the chunk in memory if it is an upcoming one, otherwise spool to disk.
-	if chunk.Index < p.nextChunk+bufferChunks {
-		p.memChunks[chunk.Index] = chunk
-	} else {
-		path := path.Join(p.dir, strconv.FormatUint(uint64(chunk.Index), 10))
-		err := ioutil.WriteFile(path, chunk.Body, 0644)
-		if err != nil {
-			return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
-		}
-		p.diskChunks[chunk.Index] = path
-	}
-
-	// If this is the next chunk we've been waiting for, pass the next sequence of available chunks
-	// through the channel to signal readiness. We can't pass the contents, since they may be
-	// spooled to disk, and we don't want to block here while loading them.
-	if chunk.Index == p.nextChunk {
-		for i := chunk.Index; p.memChunks[i] != nil || p.diskChunks[i] != ""; i++ {
-			p.ch <- i
-			p.nextChunk++
-		}
-		if p.nextChunk >= uint32(len(p.snapshot.ChunkHashes)) {
-			close(p.ch)
-		}
-	}
-	return true, nil
-}
-
-// Close closes the chunk pool, cleaning up all temporary files.
-func (p *chunkPool) Close() error {
-	p.Lock()
-	defer p.Unlock()
-	if p.snapshot == nil {
-		return nil
-	}
-	err := os.RemoveAll(p.dir)
-	if err != nil {
-		return fmt.Errorf("failed to clean up state sync tempdir %v: %w", p.dir, err)
-	}
-	if p.nextChunk < uint32(len(p.snapshot.ChunkHashes)) {
-		close(p.ch)
-	}
-	p.snapshot = nil
-	return nil
-}
-
-// Has returns true if the chunk pool contains (or contained) a given chunk.
-func (p *chunkPool) Has(index uint32) bool {
-	p.Lock()
-	defer p.Unlock()
-	return p.nextChunk > index || p.memChunks[index] != nil || p.diskChunks[index] != ""
-}
-
-// Next returns the next chunk from the pool, or a Done error if no more chunks are available.
-// It blocks until the chunk is available.
-func (p *chunkPool) Next() (*chunk, error) {
-	index, ok := <-p.ch
-	if !ok {
-		return nil, Done
-	}
-	p.Lock()
-	defer p.Unlock()
-
-	if c, ok := p.memChunks[index]; ok {
-		delete(p.memChunks, index)
-		return c, nil
-
-	} else if path, ok := p.diskChunks[index]; ok {
-		body, err := ioutil.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load chunk %v from file %v: %w", index, path, err)
-		}
-		err = os.Remove(path)
-		if err != nil {
-			return nil, err
-		}
-		delete(p.diskChunks, index)
-		return &chunk{
-			Index: index,
-			Body:  body,
-		}, nil
-	}
-	return nil, fmt.Errorf("chunk %v not found", index)
 }

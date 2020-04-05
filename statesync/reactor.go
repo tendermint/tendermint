@@ -36,7 +36,7 @@ type Reactor struct {
 	// to record incoming snapshots and chunks from peers.
 	mtx       sync.RWMutex
 	snapshots *snapshotPool
-	chunks    *chunkPool
+	chunks    *chunkQueue
 }
 
 // NewReactor creates a new state sync reactor.
@@ -315,7 +315,7 @@ func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Cl
 	}
 
 	// fetch chunks
-	chunks, err := newChunkPool(snapshot)
+	chunks, err := newChunkQueue(snapshot)
 	if err != nil {
 		return state, fmt.Errorf("failed to create chunk pool: %w", err)
 	}
