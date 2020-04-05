@@ -1,8 +1,6 @@
 package statesync
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -22,6 +20,8 @@ const (
 	SnapshotChannel = byte(0x60)
 	// ChunkChannel exchanges chunk contents
 	ChunkChannel = byte(0x61)
+	// discoveryTime is the time to spend discovering snapshots
+	discoveryTime = 10 * time.Second
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
@@ -31,11 +31,10 @@ type Reactor struct {
 
 	conn proxy.AppConnSnapshot
 
-	// These will only be set when a state sync is in progress. They are used by the reactor
-	// to record incoming snapshots and chunks from peers.
-	mtx       sync.RWMutex
-	snapshots *snapshotPool
-	chunks    *chunkQueue
+	// This will only be set when a state sync is in progress. It is used to feed received
+	// snapshots and chunks to the sync.
+	mtx    sync.RWMutex
+	syncer *syncer
 }
 
 // NewReactor creates a new state sync reactor.
@@ -75,7 +74,7 @@ func (r *Reactor) AddPeer(peer p2p.Peer) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.snapshots != nil {
+	if r.syncer != nil {
 		r.Logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
 		peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
 	}
@@ -86,9 +85,9 @@ func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.snapshots != nil {
+	if r.syncer != nil {
 		r.Logger.Debug("Removing peer from pool", "peer", peer.ID())
-		r.snapshots.RemovePeer(peer)
+		r.syncer.snapshots.RemovePeer(peer)
 	}
 }
 
@@ -133,12 +132,12 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *snapshotsResponseMessage:
 			r.mtx.RLock()
 			defer r.mtx.RUnlock()
-			if r.snapshots == nil {
+			if r.syncer == nil {
 				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
 				return
 			}
 			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
-			added, err := r.snapshots.Add(src, &snapshot{
+			added, err := r.syncer.AddSnapshot(src, &snapshot{
 				Height:      msg.Height,
 				Format:      msg.Format,
 				ChunkHashes: msg.ChunkHashes,
@@ -183,11 +182,11 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *chunkResponseMessage:
 			r.mtx.RLock()
 			defer r.mtx.RUnlock()
-			if r.chunks == nil {
+			if r.syncer == nil {
 				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			added, err := r.chunks.Add(&chunk{
+			added, err := r.syncer.AddChunk(&chunk{
 				Index: msg.Chunk,
 				Body:  msg.Body,
 			})
@@ -247,176 +246,33 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 }
 
 // sync runs a state sync
-func (r *Reactor) Sync(state sm.State, blockStore *store.BlockStore, lc *lite.Client, query proxy.AppConnQuery) (sm.State, error) {
+func (r *Reactor) Sync(initialState sm.State, lc *lite.Client, query proxy.AppConnQuery) (sm.State, *types.Commit, error) {
 	r.Logger.Info("Starting state sync")
-
-	snapshots := newSnapshotPool(lc)
 	r.mtx.Lock()
-	if r.snapshots != nil {
+	if r.syncer != nil {
 		r.mtx.Unlock()
-		return state, errors.New("a state sync is already in progress")
+		return initialState, nil, errors.New("a state sync is already in progress")
 	}
-	r.snapshots = snapshots
+	r.syncer = newSyncer(r.Logger, r.conn, lc)
 	r.mtx.Unlock()
-
 	defer func() {
 		r.mtx.Lock()
-		if r.chunks != nil {
-			r.chunks.Close()
-		}
-		r.snapshots = nil
+		r.syncer = nil
 		r.mtx.Unlock()
 	}()
 
-	// discover snapshots
-	r.Logger.Info("Discovering snapshots")
-	time.Sleep(10 * time.Second)
-
-	var snapshot *snapshot
-	var err error
 	for {
-		snapshot = snapshots.Best()
-		if snapshot == nil {
-			r.Logger.Info("No suitable snapshots found, still looking")
-			time.Sleep(10 * time.Second)
+		r.Logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
+		time.Sleep(discoveryTime)
+
+		newState, commit, err := r.syncer.Sync(initialState, query)
+		if err == errNoSnapshots {
 			continue
 		}
-		r.Logger.Info("Fetching snapshot app hash using light client", "height", snapshot.Height, "format", snapshot.Format)
-		r.Logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height, "format", snapshot.Format)
-		resp, err := r.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
-			Snapshot: &abci.Snapshot{
-				Height:      snapshot.Height,
-				Format:      snapshot.Format,
-				ChunkHashes: snapshot.ChunkHashes,
-				Metadata:    snapshot.Metadata,
-			},
-			AppHash: snapshot.trustedAppHash,
-		})
 		if err != nil {
-			return state, fmt.Errorf("failed to offer snapshot at height %v format %v: %w",
-				snapshot.Height, snapshot.Format, err)
+			return initialState, nil, err
 		}
-		if resp.Accepted {
-			r.Logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
-				"format", snapshot.Format, "chunks", len(snapshot.ChunkHashes))
-			break
-		}
-		r.Logger.Info("Snapshot rejected", "height", snapshot.Height, "format", snapshot.Format)
-		switch resp.Reason {
-		case abci.ResponseOfferSnapshot_invalid_height:
-			snapshots.RejectHeight(snapshot.Height)
-		case abci.ResponseOfferSnapshot_invalid_format:
-			snapshots.RejectFormat(snapshot.Format)
-		default:
-			snapshots.Reject(snapshot)
-		}
-	}
 
-	// fetch chunks
-	chunks, err := newChunkQueue(snapshot)
-	if err != nil {
-		return state, fmt.Errorf("failed to create chunk queue: %w", err)
+		return newState, commit, nil
 	}
-	defer chunks.Close()
-	r.mtx.Lock()
-	r.chunks = chunks
-	r.mtx.Unlock()
-
-	pending := make(chan uint32, len(snapshot.ChunkHashes))
-	for i := uint32(0); i < uint32(len(snapshot.ChunkHashes)); i++ {
-		pending <- i
-	}
-	for i := 0; i < 4; i++ {
-		go func() {
-			for index := range pending {
-				for !chunks.Has(index) {
-					peer := snapshots.GetPeer(snapshot)
-					if peer == nil {
-						r.Logger.Info("No peers found for snapshot", "height", snapshot.Height,
-							"format", snapshot.Format)
-					} else {
-						r.Logger.Debug("Requesting chunk", "height", snapshot.Height,
-							"format", snapshot.Format, "chunk", index, "peer", peer.ID())
-						peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
-							Height: snapshot.Height,
-							Format: snapshot.Format,
-							Chunk:  index,
-						}))
-					}
-					// wait for chunk to be returned
-					time.Sleep(10 * time.Second)
-				}
-			}
-		}()
-	}
-
-	// Feed chunks to app
-	for {
-		chunk, err := chunks.Next()
-		if err == Done {
-			break
-		} else if err != nil {
-			return state, fmt.Errorf("failed to fetch chunks: %w", err)
-		}
-		r.Logger.Info("Applying chunk to ABCI app", "height", snapshot.Height,
-			"format", snapshot.Format, "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
-		resp, err := r.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
-			Chunk: chunk.Body,
-		})
-		if err != nil {
-			return state, fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
-		}
-		if !resp.Applied {
-			return state, fmt.Errorf("failed to apply chunk %v", chunk.Index)
-		}
-	}
-
-	// Verify app hash.
-	resp, err := query.InfoSync(proxy.RequestInfo)
-	if err != nil {
-		return state, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
-	}
-	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
-		return state, fmt.Errorf("app_hash verification failed, expected %x got %x",
-			snapshot.trustedAppHash, resp.LastBlockAppHash)
-	}
-	r.Logger.Debug("Verified state snapshot app hash", "height", snapshot.Height, "format", snapshot.Format,
-		"hash", hex.EncodeToString(resp.LastBlockAppHash))
-
-	// Done!
-	r.Logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
-
-	// Update the state
-	header, err := lc.VerifyHeaderAtHeight(int64(snapshot.Height), time.Now())
-	if err != nil {
-		return state, fmt.Errorf("Failed to verify header at height %v: %w", snapshot.Height, err)
-	}
-	nextHeader, err := lc.VerifyHeaderAtHeight(int64(snapshot.Height+1), time.Now())
-	if err != nil {
-		return state, fmt.Errorf("Failed to verify header at height %v: %w", snapshot.Height, err)
-	}
-
-	state = state.Copy()
-	state.LastBlockHeight = header.Height
-	state.LastBlockTime = header.Time
-	state.LastBlockID = header.Commit.BlockID
-
-	state.LastValidators, _, err = lc.TrustedValidatorSet(int64(snapshot.Height))
-	if err != nil {
-		return state, fmt.Errorf("Failed to fetch validator set at height %v: %w", snapshot.Height, err)
-	}
-	state.Validators, _, err = lc.TrustedValidatorSet(int64(snapshot.Height + 1))
-	if err != nil {
-		return state, fmt.Errorf("Failed to fetch validator set at height %v: %w", snapshot.Height+1, err)
-	}
-	state.NextValidators = state.Validators.Copy()
-	state.LastHeightValidatorsChanged = header.Height + 1
-
-	state.AppHash = nextHeader.AppHash
-	state.LastResultsHash = nextHeader.LastResultsHash
-
-	// FIXME We totally shouldn't be storing this here, ask blockchain reactor to fetch it for us
-	blockStore.SaveSeenCommit(header.Height, header.Commit)
-
-	return state, nil
 }

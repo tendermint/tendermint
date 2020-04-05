@@ -42,12 +42,13 @@ func (c *chunk) Hash() []byte {
 // be spooled in memory or on disk as appropriate.
 type chunkQueue struct {
 	sync.Mutex
-	snapshot   *snapshot
+	hashes     [][]byte
 	dir        string
 	nextChunk  uint32
 	memChunks  map[uint32]*chunk
 	diskChunks map[uint32]string
-	ch         chan uint32
+	chReady    chan uint32
+	waiters    map[uint32][]chan<- bool
 }
 
 // newChunkQueue creates a new chunk queue for a snapshot, using the OS temp dir for storage.
@@ -58,11 +59,12 @@ func newChunkQueue(snapshot *snapshot) (*chunkQueue, error) {
 		return nil, fmt.Errorf("unable to create temp dir for snapshot chunks: %w", err)
 	}
 	return &chunkQueue{
-		snapshot:   snapshot,
+		hashes:     snapshot.ChunkHashes,
 		dir:        dir,
 		memChunks:  make(map[uint32]*chunk),
 		diskChunks: make(map[uint32]string),
-		ch:         make(chan uint32, len(snapshot.ChunkHashes)),
+		chReady:    make(chan uint32, len(snapshot.ChunkHashes)),
+		waiters:    make(map[uint32][]chan<- bool),
 	}, nil
 }
 
@@ -74,18 +76,18 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 	}
 	p.Lock()
 	defer p.Unlock()
-	if p.ch == nil {
+	if p.chReady == nil {
 		return false, errors.New("chunk queue is closed")
 	}
-	if chunk.Index >= uint32(len(p.snapshot.ChunkHashes)) {
+	if chunk.Index >= uint32(len(p.hashes)) {
 		return false, fmt.Errorf("received unexpected snapshot chunk %v", chunk.Index)
 	}
 	if p.memChunks[chunk.Index] != nil || p.diskChunks[chunk.Index] != "" {
 		return false, nil
 	}
-	if !bytes.Equal(chunk.Hash(), p.snapshot.ChunkHashes[chunk.Index]) {
+	if !bytes.Equal(chunk.Hash(), p.hashes[chunk.Index]) {
 		return false, fmt.Errorf("chunk %v hash mismatch, expected %x got %x", chunk.Index,
-			p.snapshot.ChunkHashes[chunk.Index], chunk.Hash())
+			p.hashes[chunk.Index], chunk.Hash())
 	}
 
 	// Save the chunk in memory if it is an upcoming one, otherwise spool to disk.
@@ -105,13 +107,20 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 	// spooled to disk, and we don't want to block here while loading them.
 	if chunk.Index == p.nextChunk {
 		for i := chunk.Index; p.memChunks[i] != nil || p.diskChunks[i] != ""; i++ {
-			p.ch <- i
+			p.chReady <- i
 			p.nextChunk++
 		}
-		if p.nextChunk >= uint32(len(p.snapshot.ChunkHashes)) {
-			close(p.ch)
+		if p.nextChunk >= uint32(len(p.hashes)) {
+			close(p.chReady)
 		}
 	}
+
+	// Signal any waiters.
+	for _, waiter := range p.waiters[chunk.Index] {
+		waiter <- true
+	}
+	delete(p.waiters, chunk.Index)
+
 	return true, nil
 }
 
@@ -119,17 +128,24 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 func (p *chunkQueue) Close() error {
 	p.Lock()
 	defer p.Unlock()
-	if p.snapshot == nil {
+	if p.hashes == nil {
 		return nil
 	}
+	if p.nextChunk < uint32(len(p.hashes)) {
+		close(p.chReady)
+	}
+	for _, waiters := range p.waiters {
+		for _, waiter := range waiters {
+			waiter <- false
+			close(waiter)
+		}
+	}
+	p.waiters = nil
+	p.hashes = nil
 	err := os.RemoveAll(p.dir)
 	if err != nil {
 		return fmt.Errorf("failed to clean up state sync tempdir %v: %w", p.dir, err)
 	}
-	if p.nextChunk < uint32(len(p.snapshot.ChunkHashes)) {
-		close(p.ch)
-	}
-	p.snapshot = nil
 	return nil
 }
 
@@ -143,7 +159,7 @@ func (p *chunkQueue) Has(index uint32) bool {
 // Next returns the next chunk from the queue, or a Done error if no more chunks are available.
 // It blocks until the chunk is available.
 func (p *chunkQueue) Next() (*chunk, error) {
-	index, ok := <-p.ch
+	index, ok := <-p.chReady
 	if !ok {
 		return nil, Done
 	}
@@ -170,4 +186,34 @@ func (p *chunkQueue) Next() (*chunk, error) {
 		}, nil
 	}
 	return nil, fmt.Errorf("chunk %v not found", index)
+}
+
+// Total returns the total number of chunks that are expected.
+func (p *chunkQueue) Total() uint32 {
+	p.Lock()
+	defer p.Unlock()
+	return uint32(len(p.hashes))
+}
+
+// WaitFor returns a channel that receives true when the chunk arrives in the pool, or false when
+// the pool is closed.
+func (p *chunkQueue) WaitFor(index uint32) <-chan bool {
+	ch := make(chan bool, 1)
+	p.Lock()
+	if p.nextChunk > index {
+		ch <- true
+		p.Unlock()
+		return ch
+	}
+	if p.hashes == nil {
+		ch <- false
+		p.Unlock()
+		return ch
+	}
+	if p.waiters[index] == nil {
+		p.waiters[index] = make([]chan<- bool, 0)
+	}
+	p.waiters[index] = append(p.waiters[index], ch)
+	p.Unlock()
+	return ch
 }

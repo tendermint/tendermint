@@ -662,7 +662,8 @@ func NewNode(config *cfg.Config,
 				logger.Error("Failed to set up light client for state sync", "err", err)
 				return
 			}
-			state, err = stateSyncReactor.Sync(state, blockStore, lc, proxyApp.Query())
+			var commit *types.Commit
+			state, commit, err = stateSyncReactor.Sync(state, lc, proxyApp.Query())
 			if err != nil {
 				logger.Error("State sync failed", "err", err)
 				return
@@ -670,6 +671,7 @@ func NewNode(config *cfg.Config,
 			sm.SaveState(stateDB, state)
 			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight, state.LastBlockHeight, state.Validators)
 			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight+1, state.LastBlockHeight+1, state.NextValidators)
+			blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 
 			bcR, ok := stateSyncReactor.Switch.Reactor("BLOCKCHAIN").(*bcv0.BlockchainReactor)
 			if !ok {
