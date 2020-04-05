@@ -12,10 +12,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-const (
-	// recentSnapshots is the number of recent snapshots to send and receive per peer.
-	recentSnapshots = 10
-)
+const ()
 
 // snapshotHash is a snapshot hash, used for lookups.
 type snapshotHash [sha256.Size]byte

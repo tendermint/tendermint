@@ -24,23 +24,21 @@ const (
 	chunkTimeout = 10 * time.Second
 )
 
-var (
-	// errNoSnapshots is returned by Sync() when no viable snapshots are found in the pool.
-	errNoSnapshots = errors.New("no viable snapshots found")
-)
+// errNoSnapshots is returned by Sync() when no viable snapshots are found in the pool.
+var errNoSnapshots = errors.New("no viable snapshots found")
 
-// syncer runs a state sync against an ABCI app. It relies on the reactor for peer communication.
-// Typical usage goes something like this:
+// syncer runs a state sync against an ABCI app. Typical usage:
 //
 // 1) Create the syncer: newSyncer(...)
 // 2) Discover snapshots, and feed them via syncer.AddSnapshot()
 // 3) Start a sync via Sync()
 // 4) Concurrently feed chunks via syncer.AddChunk()
-// 5) When done, bootstrap node with new state and commit
+// 5) Bootstrap node with the returned state and commit
 type syncer struct {
 	logger    log.Logger
 	lc        *lite.Client
 	conn      proxy.AppConnSnapshot
+	connQuery proxy.AppConnQuery
 	snapshots *snapshotPool
 
 	mtx    sync.RWMutex
@@ -48,11 +46,13 @@ type syncer struct {
 }
 
 // newSyncer creates a new syncer.
-func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, lc *lite.Client) *syncer {
+func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
+	lc *lite.Client) *syncer {
 	return &syncer{
 		logger:    logger,
 		lc:        lc,
 		conn:      conn,
+		connQuery: connQuery,
 		snapshots: newSnapshotPool(lc),
 		chunks:    nil,
 	}
@@ -92,7 +92,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 }
 
 // AddPeer adds a peer to the sync. For now we just keep it simple and send a single request
-// for snapshots.
+// for snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
 	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
@@ -104,13 +104,9 @@ func (s *syncer) RemovePeer(peer p2p.Peer) {
 	s.snapshots.RemovePeer(peer)
 }
 
-// Sync executes a sync, returning the latest state and block header. The caller must bootstrap the
-// node with the new state and latest commit.
-//
-// The caller must give the syncer time to discover new snapshots via AddSnapshot() before starting
-// the sync, and concurrently feed chunks to the syncer via AddChunk. It returns errNoSnapshots if
-// no viable snapshots were found, in which case the caller may want to continue discovery.
-func (s *syncer) Sync(state sm.State, query proxy.AppConnQuery) (sm.State, *types.Commit, error) {
+// Sync executes a sync, returning the latest state and block commit which the caller must use to
+// bootstrap the node. It returns errNoSnapshots if no viable snapshots are found.
+func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 	// Start state sync.
 	snapshot, chunks, err := s.startSync()
 	if err != nil {
@@ -146,7 +142,7 @@ func (s *syncer) Sync(state sm.State, query proxy.AppConnQuery) (sm.State, *type
 		} else if err != nil {
 			return state, nil, fmt.Errorf("failed to fetch chunk: %w", err)
 		}
-		s.logger.Info("Applying chunk to ABCI app", "chunk", chunk.Index, "total", chunks.Total())
+		s.logger.Info("Applying chunk to ABCI app", "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
 		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{Chunk: chunk.Body})
 		if err != nil {
 			return state, nil, fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
@@ -157,7 +153,7 @@ func (s *syncer) Sync(state sm.State, query proxy.AppConnQuery) (sm.State, *type
 	}
 
 	// Snapshot should now be restored, verify it.
-	resp, err := query.InfoSync(proxy.RequestInfo)
+	resp, err := s.connQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return state, nil, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
 	}
@@ -227,7 +223,7 @@ func (s *syncer) startSync() (*snapshot, *chunkQueue, error) {
 
 	chunks, err := newChunkQueue(snapshot)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create snapshot chunk queue: %w", err)
+		return nil, nil, fmt.Errorf("failed to create chunk queue: %w", err)
 	}
 	s.chunks = chunks
 	return snapshot, chunks, nil

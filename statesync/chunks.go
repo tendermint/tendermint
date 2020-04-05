@@ -12,17 +12,13 @@ import (
 	"sync"
 )
 
-const (
-	// bufferChunks is the number of queued chunks to buffer in memory, before spooling to disk.
-	bufferChunks = 4
-)
+// bufferChunks is the number of queued chunks to buffer in memory, before spooling to disk.
+const bufferChunks = 4
 
-var (
-	// Done is returned by chunkQueue.Next when all chunks have been returned.
-	Done = errors.New("iterator is done")
-)
+// Done is returned by chunkQueue.Next when all chunks have been returned.
+var Done = errors.New("iterator is done")
 
-// chunk contains data about a chunk.
+// chunk contains data for a chunk.
 type chunk struct {
 	Index uint32
 	Body  []byte
@@ -38,11 +34,11 @@ func (c *chunk) Hash() []byte {
 }
 
 // chunkQueue manages chunks for a state sync process, ordering them as necessary. It acts as an
-// iterator over an ordered sequence of chunks, but callers can add chunks out-of-order and it will
+// iterator over an ordered sequence of chunks. Callers can add chunks out-of-order and they will
 // be spooled in memory or on disk as appropriate.
 type chunkQueue struct {
 	sync.Mutex
-	hashes     [][]byte
+	hashes     [][]byte // if this is nil, the queue has been closed
 	dir        string
 	nextChunk  uint32
 	memChunks  map[uint32]*chunk
@@ -58,6 +54,9 @@ func newChunkQueue(snapshot *snapshot) (*chunkQueue, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create temp dir for snapshot chunks: %w", err)
 	}
+	if len(snapshot.ChunkHashes) == 0 {
+		return nil, errors.New("snapshot has no chunks")
+	}
 	return &chunkQueue{
 		hashes:     snapshot.ChunkHashes,
 		dir:        dir,
@@ -68,7 +67,7 @@ func newChunkQueue(snapshot *snapshot) (*chunkQueue, error) {
 	}, nil
 }
 
-// Add adds a chunk to the queue, verifying its hash. It ignores chunks that already exists,
+// Add adds a chunk to the queue, verifying its hash. It ignores chunks that already exist,
 // returning false.
 func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 	if chunk.Body == nil {
@@ -76,11 +75,11 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 	}
 	p.Lock()
 	defer p.Unlock()
-	if p.chReady == nil {
+	if p.hashes == nil {
 		return false, errors.New("chunk queue is closed")
 	}
 	if chunk.Index >= uint32(len(p.hashes)) {
-		return false, fmt.Errorf("received unexpected snapshot chunk %v", chunk.Index)
+		return false, fmt.Errorf("received unexpected chunk %v", chunk.Index)
 	}
 	if p.memChunks[chunk.Index] != nil || p.diskChunks[chunk.Index] != "" {
 		return false, nil
@@ -102,9 +101,11 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 		p.diskChunks[chunk.Index] = path
 	}
 
-	// If this is the next chunk we've been waiting for, pass the next sequence of available chunks
-	// through the channel to signal readiness. We can't pass the contents, since they may be
-	// spooled to disk, and we don't want to block here while loading them.
+	// If this is the next expected chunk, pass any ready chunks to Next() via channel, and close
+	// the channel when all chunks have been passed.
+	//
+	// We don't pass chunk contents, since they may be spooled to disk, and loading all of them
+	// here first would block other callers and use a ton of memory.
 	if chunk.Index == p.nextChunk {
 		for i := chunk.Index; p.memChunks[i] != nil || p.diskChunks[i] != ""; i++ {
 			p.chReady <- i
@@ -115,7 +116,7 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 		}
 	}
 
-	// Signal any waiters.
+	// Signal any waiters that the chunk has arrived.
 	for _, waiter := range p.waiters[chunk.Index] {
 		waiter <- true
 	}
@@ -137,7 +138,6 @@ func (p *chunkQueue) Close() error {
 	for _, waiters := range p.waiters {
 		for _, waiter := range waiters {
 			waiter <- false
-			close(waiter)
 		}
 	}
 	p.waiters = nil
@@ -147,13 +147,6 @@ func (p *chunkQueue) Close() error {
 		return fmt.Errorf("failed to clean up state sync tempdir %v: %w", p.dir, err)
 	}
 	return nil
-}
-
-// Has returns true if the chunk queue contains (or contained) a given chunk.
-func (p *chunkQueue) Has(index uint32) bool {
-	p.Lock()
-	defer p.Unlock()
-	return p.nextChunk > index || p.memChunks[index] != nil || p.diskChunks[index] != ""
 }
 
 // Next returns the next chunk from the queue, or a Done error if no more chunks are available.
@@ -166,18 +159,18 @@ func (p *chunkQueue) Next() (*chunk, error) {
 	p.Lock()
 	defer p.Unlock()
 
-	if c, ok := p.memChunks[index]; ok {
+	if chunk, ok := p.memChunks[index]; ok {
 		delete(p.memChunks, index)
-		return c, nil
-
-	} else if path, ok := p.diskChunks[index]; ok {
+		return chunk, nil
+	}
+	if path, ok := p.diskChunks[index]; ok {
 		body, err := ioutil.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load chunk %v from file %v: %w", index, path, err)
 		}
 		err = os.Remove(path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to remove chunk %v: %w", index, err)
 		}
 		delete(p.diskChunks, index)
 		return &chunk{
@@ -188,32 +181,22 @@ func (p *chunkQueue) Next() (*chunk, error) {
 	return nil, fmt.Errorf("chunk %v not found", index)
 }
 
-// Total returns the total number of chunks that are expected.
-func (p *chunkQueue) Total() uint32 {
-	p.Lock()
-	defer p.Unlock()
-	return uint32(len(p.hashes))
-}
-
 // WaitFor returns a channel that receives true when the chunk arrives in the pool, or false when
 // the pool is closed.
 func (p *chunkQueue) WaitFor(index uint32) <-chan bool {
-	ch := make(chan bool, 1)
 	p.Lock()
-	if p.nextChunk > index {
-		ch <- true
-		p.Unlock()
-		return ch
-	}
-	if p.hashes == nil {
+	defer p.Unlock()
+	ch := make(chan bool, 1)
+	switch {
+	case p.hashes == nil:
 		ch <- false
-		p.Unlock()
-		return ch
+	case p.nextChunk > index:
+		ch <- true
+	default:
+		if p.waiters[index] == nil {
+			p.waiters[index] = make([]chan<- bool, 0)
+		}
+		p.waiters[index] = append(p.waiters[index], ch)
 	}
-	if p.waiters[index] == nil {
-		p.waiters[index] = make([]chan<- bool, 0)
-	}
-	p.waiters[index] = append(p.waiters[index], ch)
-	p.Unlock()
 	return ch
 }

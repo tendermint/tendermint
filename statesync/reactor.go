@@ -22,6 +22,8 @@ const (
 	ChunkChannel = byte(0x61)
 	// discoveryTime is the time to spend discovering snapshots
 	discoveryTime = 10 * time.Second
+	// recentSnapshots is the number of recent snapshots to send and receive per peer.
+	recentSnapshots = 10
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
@@ -118,7 +120,8 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			for _, snapshot := range snapshots {
-				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height, "format", snapshot.Format, "peer", src.ID())
+				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
+					"format", snapshot.Format, "peer", src.ID())
 				src.Send(chID, cdc.MustMarshalBinaryBare(&snapshotsResponseMessage{
 					Height:      snapshot.Height,
 					Format:      snapshot.Format,
@@ -162,10 +165,12 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				Chunk:  msg.Chunk,
 			})
 			if err != nil {
-				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "err", err)
+				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Chunk, "err", err)
 				return
 			}
-			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Chunk, "peer", src.ID())
+			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Chunk, "peer", src.ID())
 			src.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkResponseMessage{
 				Height:  msg.Height,
 				Format:  msg.Format,
@@ -234,14 +239,14 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 }
 
 // Sync runs a state sync, returning the new state and last commit at the snapshot height.
-// The caller must store the new state and commit in state database and block store.
+// The caller must store the state and commit in the state database and block store.
 func (r *Reactor) Sync(initialState sm.State, lc *lite.Client) (sm.State, *types.Commit, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return initialState, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, lc)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, lc)
 	r.mtx.Unlock()
 
 	defer func() {
@@ -251,12 +256,12 @@ func (r *Reactor) Sync(initialState sm.State, lc *lite.Client) (sm.State, *types
 	}()
 
 	// Wait for snapshots to be discovered before starting the sync. If there are no viable
-	// snapshots available, try to discover some more.
+	// snapshots available, wait to discover some more.
 	for {
 		r.Logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 
-		newState, commit, err := r.syncer.Sync(initialState, r.connQuery)
+		newState, commit, err := r.syncer.Sync(initialState)
 		if err == errNoSnapshots {
 			continue
 		}
