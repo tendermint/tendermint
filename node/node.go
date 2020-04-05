@@ -569,7 +569,9 @@ func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, config 
 		Period: config.TrustedPeriod,
 		Height: config.TrustedHeight,
 		Hash:   config.TrustedHashBytes(),
-	}, config.RPCServers[0], config.RPCServers[1:], litedb.New(dbm.NewMemDB(), ""), lite.Logger(ssR.Logger))
+	}, config.RPCServers[0], config.RPCServers[1:], litedb.New(dbm.NewMemDB(), ""),
+		// The light client is very chatty, so we use a separate module to silence it at statesync:info.
+		lite.Logger(ssR.Logger.With("module", "lite")))
 	if err != nil {
 		return fmt.Errorf("failed to set up light client: %w", err)
 	}

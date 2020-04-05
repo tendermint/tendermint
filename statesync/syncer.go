@@ -71,7 +71,7 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Info("Received chunk", "chunk", chunk.Index)
+		s.logger.Debug("Received chunk", "chunk", chunk.Index)
 	} else {
 		s.logger.Debug("Ignoring duplicate chunk", "chunk", chunk.Index)
 	}
@@ -204,7 +204,7 @@ func (s *syncer) startSync() (*snapshot, *chunkQueue, error) {
 			return nil, nil, fmt.Errorf("failed to offer snapshot: %w", err)
 		}
 		if resp.Accepted {
-			s.logger.Info("Snapshot accepted", "height", snapshot.Height,
+			s.logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
 				"format", snapshot.Format, "chunks", len(snapshot.ChunkHashes))
 			break
 		}
