@@ -10,9 +10,12 @@ import (
 )
 
 const (
+	// snapshotMsgSize is the maximum size of a snapshotResponseMessage
 	snapshotMsgSize = int(4e6)
-	chunkMsgSize    = int(16e6)
-	maxMsgSize      = chunkMsgSize
+	// chunkMsgSize is the maximum size of a chunkResponseMessage
+	chunkMsgSize = int(16e6)
+	// maxMsgSize is the maximum size of any message
+	maxMsgSize = chunkMsgSize
 )
 
 var cdc = amino.NewCodec()
@@ -26,7 +29,7 @@ func init() {
 	types.RegisterBlockAmino(cdc)
 }
 
-// decodeMsg decodes a message
+// decodeMsg decodes a message.
 func decodeMsg(bz []byte) (Message, error) {
 	if len(bz) > maxMsgSize {
 		return nil, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
@@ -39,20 +42,23 @@ func decodeMsg(bz []byte) (Message, error) {
 	return msg, nil
 }
 
-// Message is a message sent and received by the reactor
+// Message is a message sent and received by the reactor.
 type Message interface {
 	ValidateBasic() error
 }
 
-// snapshotsRequestMessage requests recent snapshots from a peer
+// snapshotsRequestMessage requests recent snapshots from a peer.
 type snapshotsRequestMessage struct{}
 
 // ValidateBasic implements Message.
 func (m *snapshotsRequestMessage) ValidateBasic() error {
+	if m == nil {
+		return errors.New("nil message")
+	}
 	return nil
 }
 
-// SnapshotResponseMessage contains information about a single snapshot
+// SnapshotResponseMessage contains information about a single snapshot.
 type snapshotsResponseMessage struct {
 	Height      uint64
 	Format      uint32
@@ -74,7 +80,7 @@ func (m *snapshotsResponseMessage) ValidateBasic() error {
 	return nil
 }
 
-// chunkRequestMessage requests a single chunk from a peer
+// chunkRequestMessage requests a single chunk from a peer.
 type chunkRequestMessage struct {
 	Height uint64
 	Format uint32
@@ -92,7 +98,7 @@ func (m *chunkRequestMessage) ValidateBasic() error {
 	return nil
 }
 
-// chunkResponseMessage contains a single chunk from a peer
+// chunkResponseMessage contains a single chunk from a peer.
 type chunkResponseMessage struct {
 	Height  uint64
 	Format  uint32
