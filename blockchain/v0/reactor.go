@@ -41,7 +41,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, uint64)
+	SwitchToConsensus(sm.State, bool)
 }
 
 type peerError struct {
@@ -111,7 +111,11 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 // OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	if bcR.fastSync {
-		return bcR.SwitchToFastSync(bcR.initialState)
+		err := bcR.pool.Start()
+		if err != nil {
+			return err
+		}
+		go bcR.poolRoutine(false)
 	}
 	return nil
 }
@@ -126,7 +130,7 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 	if err != nil {
 		return err
 	}
-	go bcR.poolRoutine()
+	go bcR.poolRoutine(true)
 	return nil
 }
 
@@ -223,7 +227,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
-func (bcR *BlockchainReactor) poolRoutine() {
+// switched indicates whether the reactor was switched from state sync, or started normally.
+func (bcR *BlockchainReactor) poolRoutine(switched bool) {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
@@ -283,7 +288,7 @@ FOR_LOOP:
 				bcR.pool.Stop()
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToConsensus(state, blocksSynced)
+					conR.SwitchToConsensus(state, blocksSynced > 0 || switched)
 				}
 				// else {
 				// should only happen during testing
