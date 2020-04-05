@@ -668,8 +668,8 @@ func NewNode(config *cfg.Config,
 				return
 			}
 			sm.SaveState(stateDB, state)
-			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight, state.Validators)
-			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight+1, state.NextValidators)
+			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight, state.LastBlockHeight, state.Validators)
+			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight+1, state.LastBlockHeight+1, state.NextValidators)
 
 			bcR, ok := stateSyncReactor.Switch.Reactor("BLOCKCHAIN").(*bcv0.BlockchainReactor)
 			if !ok {

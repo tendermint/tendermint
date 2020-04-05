@@ -343,8 +343,8 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 }
 
 // FIXME Is this really necessary?
-func SaveValidatorsInfo(db dbm.DB, height int64, valSet *types.ValidatorSet) {
-	saveValidatorsInfo(db, height, height, valSet)
+func SaveValidatorsInfo(db dbm.DB, height int64, lastHeightChanged int64, valSet *types.ValidatorSet) {
+	saveValidatorsInfo(db, height, lastHeightChanged, valSet)
 }
 
 // saveValidatorsInfo persists the validator set.
