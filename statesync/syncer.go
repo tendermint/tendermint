@@ -66,13 +66,42 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 	if s.chunks == nil {
 		return false, errors.New("no state sync in progress")
 	}
-	return s.chunks.Add(chunk)
+	added, err := s.chunks.Add(chunk)
+	if err != nil {
+		return false, err
+	}
+	if added {
+		s.logger.Info("Received chunk", "chunk", chunk.Index)
+	} else {
+		s.logger.Debug("Ignoring duplicate chunk", "chunk", chunk.Index)
+	}
+	return added, nil
 }
 
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
 func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	return s.snapshots.Add(peer, snapshot)
+	added, err := s.snapshots.Add(peer, snapshot)
+	if err != nil {
+		return false, err
+	}
+	if added {
+		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format)
+	}
+	return added, nil
+}
+
+// AddPeer adds a peer to the sync. For now we just keep it simple and send a single request
+// for snapshots.
+func (s *syncer) AddPeer(peer p2p.Peer) {
+	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
+	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+}
+
+// RemovePeer removes a peer from the pool.
+func (s *syncer) RemovePeer(peer p2p.Peer) {
+	s.logger.Debug("Removing peer from sync", "peer", peer.ID())
+	s.snapshots.RemovePeer(peer)
 }
 
 // Sync executes a sync, returning the latest state and block header. The caller must bootstrap the

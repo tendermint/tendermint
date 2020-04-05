@@ -114,6 +114,17 @@ func saveState(db dbm.DB, state State, key []byte) {
 	db.SetSync(key, state.Bytes())
 }
 
+// BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
+func BootstrapState(db dbm.DB, state State) error {
+	height := state.LastBlockHeight
+	saveValidatorsInfo(db, height, height, state.LastValidators)
+	saveValidatorsInfo(db, height+1, height+1, state.Validators)
+	saveValidatorsInfo(db, height+2, height+2, state.NextValidators)
+	saveConsensusParamsInfo(db, height+1, height+1, state.ConsensusParams)
+	db.SetSync(stateKey, state.Bytes())
+	return nil
+}
+
 //------------------------------------------------------------------------
 
 // ABCIResponses retains the responses
@@ -340,11 +351,6 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	// TODO: ensure that buf is completely read.
 
 	return v
-}
-
-// FIXME Is this really necessary?
-func SaveValidatorsInfo(db dbm.DB, height int64, lastHeightChanged int64, valSet *types.ValidatorSet) {
-	saveValidatorsInfo(db, height, lastHeightChanged, valSet)
 }
 
 // saveValidatorsInfo persists the validator set.

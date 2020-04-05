@@ -23,7 +23,7 @@ func TestReactor_AddPeer(t *testing.T) {
 		assert.Equal(t, &snapshotsRequestMessage{}, msg)
 	}).Return(true)
 
-	r := NewReactor(nil)
+	r := NewReactor(nil, nil)
 	r.AddPeer(peer)
 	peer.AssertExpectations(t)
 }
@@ -72,7 +72,7 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 			}
 
 			// Start a reactor and send a chunkRequestMessage, then wait for and check response
-			r := NewReactor(conn)
+			r := NewReactor(conn, nil)
 			err := r.Start()
 			require.NoError(t, err)
 			defer r.Stop()
@@ -144,7 +144,7 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 			}
 
 			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactor(conn)
+			r := NewReactor(conn, nil)
 			err := r.Start()
 			require.NoError(t, err)
 			defer r.Stop()

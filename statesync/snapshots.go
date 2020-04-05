@@ -87,7 +87,8 @@ func newSnapshotPool(lc *lite.Client) *snapshotPool {
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	// FIXME Check if the light client deduplicates concurrent requests for the same height.
-	// Otherwise we'll have to manage this ourself.
+	// Otherwise we'll have to manage this ourself. We should probably do some better error
+	// handling here too.
 	appHash, err := p.fetchTrustedAppHash(snapshot.Height)
 	if err != nil {
 		return false, err

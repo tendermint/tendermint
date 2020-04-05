@@ -369,8 +369,7 @@ func createBlockchainReactor(config *cfg.Config,
 
 	switch config.FastSync.Version {
 	case "v0":
-		r := bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-		bcReactor = r
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v2":
@@ -561,6 +560,42 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	return pexReactor
 }
 
+// startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
+func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, config *cfg.StateSyncConfig,
+	stateDB dbm.DB, blockStore *store.BlockStore, state sm.State) error {
+	ssR.Logger.Info("Starting state sync")
+
+	lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
+		Period: config.TrustedPeriod,
+		Height: config.TrustedHeight,
+		Hash:   config.TrustedHashBytes(),
+	}, config.RPCServers[0], config.RPCServers[1:], litedb.New(dbm.NewMemDB(), ""), lite.Logger(ssR.Logger))
+	if err != nil {
+		return fmt.Errorf("failed to set up light client: %w", err)
+	}
+
+	go func() {
+		state, commit, err := ssR.Sync(state, lc)
+		if err != nil {
+			ssR.Logger.Error("State sync failed", "err", err)
+			return
+		}
+		err = sm.BootstrapState(stateDB, state)
+		if err != nil {
+			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
+			return
+		}
+		blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
+
+		err = bcR.SwitchToFastSync(state)
+		if err != nil {
+			ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+			return
+		}
+	}()
+	return nil
+}
+
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -621,7 +656,7 @@ func NewNode(config *cfg.Config,
 	// Determine whether we should do state and/or fast sync.
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
-	stateSync := config.StateSync.Enabled
+	stateSync := config.StateSync.Enabled && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -645,45 +680,6 @@ func NewNode(config *cfg.Config,
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
-
-	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot())
-	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
-
-	if stateSync {
-		go func() {
-			logger.Info("Starting state sync")
-			lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
-				Period: config.StateSync.TrustedPeriod,
-				Height: config.StateSync.TrustedHeight,
-				Hash:   config.StateSync.TrustedHashBytes(),
-			}, config.StateSync.RPCServers[0], config.StateSync.RPCServers[1:],
-				litedb.New(dbm.NewMemDB(), ""), lite.Logger(stateSyncReactor.Logger))
-			if err != nil {
-				logger.Error("Failed to set up light client for state sync", "err", err)
-				return
-			}
-			var commit *types.Commit
-			state, commit, err = stateSyncReactor.Sync(state, lc, proxyApp.Query())
-			if err != nil {
-				logger.Error("State sync failed", "err", err)
-				return
-			}
-			sm.SaveState(stateDB, state)
-			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight, state.LastBlockHeight, state.Validators)
-			sm.SaveValidatorsInfo(stateDB, state.LastBlockHeight+1, state.LastBlockHeight+1, state.NextValidators)
-			blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
-
-			bcR, ok := stateSyncReactor.Switch.Reactor("BLOCKCHAIN").(*bcv0.BlockchainReactor)
-			if !ok {
-				logger.Error("Failed to switch to fast sync, reactor not found")
-				return
-			}
-			err = bcR.SwitchToFastSync(state)
-			if err != nil {
-				logger.Error("Failed to switch to fast sync", "err", err)
-			}
-		}()
-	}
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -717,6 +713,21 @@ func NewNode(config *cfg.Config,
 		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
+
+	// Set up state sync reactor, and schedule a sync if requested.
+	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
+	// we should clean this whole thing up. See:
+	// https://github.com/tendermint/tendermint/issues/4644
+	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query())
+	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
+
+	if stateSync {
+		err := startStateSync(stateSyncReactor, bcReactor.(*bcv0.BlockchainReactor),
+			config.StateSync, stateDB, blockStore, state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start state sync: %w", err)
+		}
+	}
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
