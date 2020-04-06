@@ -27,7 +27,7 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockResponse{
 				BlockResponse: &bcproto.BlockResponse{
-					Block: &b,
+					Block: b,
 				},
 			},
 		}
