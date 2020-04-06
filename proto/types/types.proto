@@ -174,13 +174,12 @@ message SignedHeader {
 message ValidatorSet {
   repeated Validator validators         = 1;
   Validator          proposer           = 2;
-  int64              total_voting_power = 3;  // TODO: change to uint64
+  uint64             total_voting_power = 3;
 }
 
 message Validator {
-  bytes                             address     = 1;
-  tendermint.proto.crypto.PublicKey pub_key     = 2;
-  int64                             VotingPower = 3;  // TODO: change to uint64
-
-  int64 proposer_priority = 4;
+  bytes                             address           = 1;
+  tendermint.proto.crypto.PublicKey pub_key           = 2;
+  uint64                            VotingPower       = 3;
+  int64                             proposer_priority = 4;
 }
