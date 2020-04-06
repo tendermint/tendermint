@@ -10,7 +10,6 @@ import (
 func MsgToProto(bcm Message) (*bcproto.Message, error) {
 	switch msg := bcm.(type) {
 	case *BlockRequestMessage:
-		// bm := BlockRequestMessage{Height: msg.BlockRequest.Height}
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockRequest{
 				BlockRequest: &bcproto.BlockRequest{
@@ -28,7 +27,7 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockResponse{
 				BlockResponse: &bcproto.BlockResponse{
-					Block: b,
+					Block: &b,
 				},
 			},
 		}
@@ -44,8 +43,8 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		return &bm, nil
 	case *StatusResponseMessage:
 		bm := bcproto.Message{
-			Sum: &bcproto.Message_StatusRequest{
-				StatusRequest: &bcproto.StatusRequest{
+			Sum: &bcproto.Message_StatusResponse{
+				StatusResponse: &bcproto.StatusResponse{
 					Height: msg.Height,
 				},
 			},
@@ -53,8 +52,8 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		return &bm, nil
 	case *StatusRequestMessage:
 		bm := bcproto.Message{
-			Sum: &bcproto.Message_StatusResponse{
-				StatusResponse: &bcproto.StatusResponse{
+			Sum: &bcproto.Message_StatusRequest{
+				StatusRequest: &bcproto.StatusRequest{
 					Height: msg.Height,
 				},
 			},
@@ -82,7 +81,7 @@ func MsgFromProto(bcm bcproto.Message) (Message, error) {
 	case *bcproto.Message_StatusRequest:
 		bm = &StatusRequestMessage{Height: msg.StatusRequest.Height}
 	case *bcproto.Message_StatusResponse:
-		bm = &StatusRequestMessage{Height: msg.StatusResponse.Height}
+		bm = &StatusResponseMessage{Height: msg.StatusResponse.Height}
 	default:
 		return nil, errors.New("message is not recognized")
 	}

@@ -133,10 +133,12 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
 	if err != nil {
+		fmt.Println("haha")
 		panic(err)
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
+		fmt.Println("blalba")
 		panic(err)
 	}
 	peer.Send(BlockchainChannel, msgBytes)
@@ -160,14 +162,20 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
-		bm, _ := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
-		msgBytes, _ := bm.Marshal()
+		bm, err := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
+		if err != nil {
+			panic(err)
+		}
+		msgBytes, err := bm.Marshal()
+		if err != nil {
+			panic(err)
+		}
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	bm, err := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height}) //TODO: figure out errs
+	bm, err := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height})
 	if err != nil {
 		panic(err)
 	}

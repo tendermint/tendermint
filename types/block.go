@@ -207,13 +207,13 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
-func (b *Block) ToProto() (*tmproto.Block, error) {
+func (b *Block) ToProto() (tmproto.Block, error) {
 	protoHeader := b.Header.ToProto()
 	protoCommit := b.LastCommit.ToProto()
 	protoData := b.Data.ToProto()
 	protoEvidence, err := b.Evidence.ToProto()
 	if err != nil {
-		return nil, err
+		return tmproto.Block{}, err
 	}
 
 	protoBlock := tmproto.Block{
@@ -222,7 +222,7 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 		Evidence:   *protoEvidence,
 		LastCommit: protoCommit,
 	}
-	return &protoBlock, err
+	return protoBlock, nil
 }
 
 func (b *Block) FromProto(bp tmproto.Block) error {

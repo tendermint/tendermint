@@ -322,15 +322,6 @@ func (r *BlockchainReactor) Stop() error {
 	return nil
 }
 
-const (
-	// NOTE: keep up to date with bcBlockResponseMessage
-	bcBlockResponseMessagePrefixSize   = 4
-	bcBlockResponseMessageFieldKeySize = 1
-	maxMsgSize                         = types.MaxBlockSizeBytes +
-		bcBlockResponseMessagePrefixSize +
-		bcBlockResponseMessageFieldKeySize
-)
-
 // Receive implements Reactor by handling different message types.
 func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := bc.DecodeMsg(msgBytes)
@@ -411,7 +402,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            10,
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxMsgSize,
+			RecvMessageCapacity: bc.MaxMsgSize,
 		},
 	}
 }
