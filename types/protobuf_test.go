@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -35,7 +34,6 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 	}
 	pk2, err := cryptoencoding.PubKeyFromProto(abciPubKey)
 	if err != nil {
-		fmt.Println("here")
 		return err
 	}
 	assert.Equal(t, pk, pk2)

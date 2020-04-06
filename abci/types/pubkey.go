@@ -11,7 +11,10 @@ const (
 
 func Ed25519ValidatorUpdate(pk []byte, power int64) ValidatorUpdate {
 	pke := ed25519.PubKey(pk)
-	pkp, _ := cryptoencoding.PubKeyToProto(pke)
+	pkp, err := cryptoencoding.PubKeyToProto(pke)
+	if err != nil {
+		panic(err)
+	}
 
 	return ValidatorUpdate{
 		// Address:

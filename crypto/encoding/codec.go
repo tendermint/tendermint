@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -20,7 +19,6 @@ func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 			},
 		}
 	default:
-		fmt.Println(k)
 		return kp, errors.New("toproto: key type is not supported")
 	}
 	return kp, nil

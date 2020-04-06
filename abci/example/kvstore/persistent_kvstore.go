@@ -167,7 +167,10 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 }
 
 func MakeValSetChangeTx(pubkey pc.PublicKey, power int64) []byte {
-	pk, _ := cryptoencoding.PubKeyFromProto(pubkey)
+	pk, err := cryptoencoding.PubKeyFromProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
 	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
 	return []byte(fmt.Sprintf("val:%s!%d", pubStr, power))
 }
@@ -212,13 +215,12 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
-	pk, _ := cryptoencoding.PubKeyFromProto(v.PubKey)
+	pk, err := cryptoencoding.PubKeyFromProto(v.PubKey)
+	if err != nil {
+		panic("err testing")
+	}
 	key := []byte("val:" + pk.String())
 
-	// key := []byte("val:" + string(v.PubKey.Data))
-
-	// pubkey := make(ed25519.PubKey, ed25519.PubKeySize)
-	// copy(pubkey, v.PubKey.Data)
 	if v.Power == 0 {
 		// remove validator
 		hasKey, err := app.app.state.db.Has(key)
@@ -232,7 +234,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
 		app.app.state.db.Delete(key)
-		delete(app.valAddrToPubKeyMap, string(pk.Address()))
+		delete(app.valAddrToPubKeyMap, pk.Address().String())
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
@@ -242,7 +244,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
 		app.app.state.db.Set(key, value.Bytes())
-		app.valAddrToPubKeyMap[string(pk.Address())] = v.PubKey
+		app.valAddrToPubKeyMap[pk.Address().String()] = v.PubKey
 	}
 
 	// we only update the changes array if we successfully updated the tree
