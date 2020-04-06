@@ -10,6 +10,8 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
+	reflect "reflect"
+	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -27,9 +29,8 @@ type BlockRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *BlockRequest) Reset()         { *m = BlockRequest{} }
-func (m *BlockRequest) String() string { return proto.CompactTextString(m) }
-func (*BlockRequest) ProtoMessage()    {}
+func (m *BlockRequest) Reset()      { *m = BlockRequest{} }
+func (*BlockRequest) ProtoMessage() {}
 func (*BlockRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{0}
 }
@@ -71,9 +72,8 @@ type NoBlockResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *NoBlockResponse) Reset()         { *m = NoBlockResponse{} }
-func (m *NoBlockResponse) String() string { return proto.CompactTextString(m) }
-func (*NoBlockResponse) ProtoMessage()    {}
+func (m *NoBlockResponse) Reset()      { *m = NoBlockResponse{} }
+func (*NoBlockResponse) ProtoMessage() {}
 func (*NoBlockResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{1}
 }
@@ -115,9 +115,8 @@ type BlockResponse struct {
 	Block *types.Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
 }
 
-func (m *BlockResponse) Reset()         { *m = BlockResponse{} }
-func (m *BlockResponse) String() string { return proto.CompactTextString(m) }
-func (*BlockResponse) ProtoMessage()    {}
+func (m *BlockResponse) Reset()      { *m = BlockResponse{} }
+func (*BlockResponse) ProtoMessage() {}
 func (*BlockResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{2}
 }
@@ -159,9 +158,8 @@ type StatusRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=Height,proto3" json:"Height,omitempty"`
 }
 
-func (m *StatusRequest) Reset()         { *m = StatusRequest{} }
-func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
-func (*StatusRequest) ProtoMessage()    {}
+func (m *StatusRequest) Reset()      { *m = StatusRequest{} }
+func (*StatusRequest) ProtoMessage() {}
 func (*StatusRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{3}
 }
@@ -203,9 +201,8 @@ type StatusResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
-func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
-func (*StatusResponse) ProtoMessage()    {}
+func (m *StatusResponse) Reset()      { *m = StatusResponse{} }
+func (*StatusResponse) ProtoMessage() {}
 func (*StatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{4}
 }
@@ -253,9 +250,8 @@ type Message struct {
 	Sum isMessage_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *Message) Reset()         { *m = Message{} }
-func (m *Message) String() string { return proto.CompactTextString(m) }
-func (*Message) ProtoMessage()    {}
+func (m *Message) Reset()      { *m = Message{} }
+func (*Message) ProtoMessage() {}
 func (*Message) Descriptor() ([]byte, []int) {
 	return fileDescriptor_ecf660069f8bb334, []int{5}
 }
@@ -288,6 +284,7 @@ var xxx_messageInfo_Message proto.InternalMessageInfo
 
 type isMessage_Sum interface {
 	isMessage_Sum()
+	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -379,32 +376,415 @@ func init() {
 func init() { proto.RegisterFile("proto/blockchain/msgs.proto", fileDescriptor_ecf660069f8bb334) }
 
 var fileDescriptor_ecf660069f8bb334 = []byte{
-	// 360 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xc1, 0x4e, 0xea, 0x40,
-	0x14, 0x86, 0xdb, 0xdb, 0x0b, 0x26, 0x47, 0x0a, 0x91, 0x85, 0x12, 0x89, 0x8d, 0xe9, 0x42, 0x41,
-	0xcd, 0x10, 0xe5, 0x0d, 0x88, 0x0b, 0x12, 0xa3, 0x31, 0x25, 0x71, 0xc1, 0x86, 0x50, 0x9c, 0xb4,
-	0x8d, 0x76, 0x06, 0x39, 0xd3, 0x85, 0x6f, 0xe1, 0x23, 0xb9, 0x74, 0xc9, 0xd2, 0xa5, 0x81, 0x17,
-	0x31, 0xcc, 0x94, 0xd2, 0xd6, 0x88, 0xdd, 0x10, 0xe6, 0xe4, 0x9f, 0xef, 0x7c, 0xf9, 0x27, 0x85,
-	0xe6, 0x74, 0xc6, 0x05, 0xef, 0xb8, 0xcf, 0x7c, 0xf2, 0x34, 0xf1, 0xc7, 0x01, 0xeb, 0x84, 0xe8,
-	0x21, 0x91, 0xd3, 0x7a, 0x53, 0x50, 0xf6, 0x48, 0x67, 0x61, 0xc0, 0x84, 0x9a, 0x90, 0x4d, 0xee,
-	0xf0, 0x40, 0xdd, 0x14, 0xaf, 0x53, 0x8a, 0xea, 0x57, 0x65, 0xec, 0x13, 0xa8, 0xf4, 0x56, 0x31,
-	0x87, 0xbe, 0x44, 0x14, 0x45, 0x7d, 0x1f, 0xca, 0x3e, 0x0d, 0x3c, 0x5f, 0x34, 0xf4, 0x63, 0xbd,
-	0x65, 0x38, 0xf1, 0xc9, 0x6e, 0x43, 0xed, 0x8e, 0xc7, 0x49, 0x9c, 0x72, 0x86, 0xf4, 0xd7, 0xe8,
-	0x35, 0x98, 0xd9, 0x60, 0x17, 0x4a, 0x52, 0x45, 0xe6, 0x76, 0xaf, 0x8e, 0xc8, 0x0f, 0x53, 0x65,
-	0xa4, 0x6e, 0xa9, 0xac, 0x7d, 0x0a, 0xe6, 0x40, 0x8c, 0x45, 0x84, 0x29, 0xb3, 0x7e, 0x66, 0x9d,
-	0x3a, 0xd9, 0x2d, 0xa8, 0xae, 0x83, 0x7f, 0x88, 0xbd, 0x1b, 0xb0, 0x73, 0x4b, 0x11, 0xc7, 0x1e,
-	0xad, 0xdf, 0x83, 0x29, 0xf7, 0x8c, 0x66, 0x0a, 0x1f, 0xbb, 0xb5, 0xc9, 0x96, 0x16, 0x49, 0xba,
-	0xa9, 0xbe, 0xe6, 0x54, 0xdc, 0x74, 0x73, 0x43, 0xd8, 0x63, 0x7c, 0xb4, 0x86, 0x2a, 0x95, 0xc6,
-	0x3f, 0x49, 0xbd, 0xd8, 0x4a, 0xcd, 0xf5, 0xda, 0xd7, 0x9c, 0x1a, 0xcb, 0x55, 0x3d, 0x80, 0x6a,
-	0x0e, 0x6c, 0x48, 0xf0, 0x59, 0x11, 0xdd, 0x04, 0x6b, 0xba, 0x79, 0x28, 0xca, 0xe2, 0x92, 0x0e,
-	0xfe, 0x17, 0x80, 0x66, 0x1e, 0x65, 0x05, 0xc5, 0xcc, 0x2b, 0x3d, 0x40, 0x2d, 0x81, 0xc6, 0xaa,
-	0x25, 0x49, 0x3d, 0x2f, 0x44, 0x4d, 0x5c, 0xab, 0x98, 0x99, 0xf4, 0x4a, 0x60, 0x60, 0x14, 0xf6,
-	0x6e, 0x3e, 0x16, 0x96, 0x3e, 0x5f, 0x58, 0xfa, 0xd7, 0xc2, 0xd2, 0xdf, 0x96, 0x96, 0x36, 0x5f,
-	0x5a, 0xda, 0xe7, 0xd2, 0xd2, 0x86, 0x97, 0x5e, 0x20, 0xfc, 0xc8, 0x25, 0x13, 0x1e, 0x76, 0x36,
-	0x9b, 0xd2, 0x7f, 0xf3, 0x1f, 0x8f, 0x5b, 0x96, 0x93, 0xee, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0x71, 0x6e, 0xf3, 0xc2, 0x57, 0x03, 0x00, 0x00,
+	// 384 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xb1, 0x4e, 0xc2, 0x40,
+	0x18, 0xc7, 0xef, 0xac, 0x60, 0xf2, 0x49, 0x21, 0x32, 0x28, 0x91, 0x78, 0x31, 0x1d, 0x14, 0xd4,
+	0x94, 0x28, 0x6f, 0x40, 0x1c, 0x58, 0x34, 0xa6, 0x24, 0x0e, 0x2c, 0x84, 0xe2, 0xa5, 0x6d, 0xb4,
+	0x2d, 0x72, 0xd7, 0xc1, 0xcd, 0x47, 0xf0, 0x31, 0x7c, 0x0c, 0x47, 0x47, 0x46, 0x46, 0x29, 0x8b,
+	0x23, 0x8f, 0x60, 0xb8, 0x2b, 0xa5, 0xad, 0x11, 0x59, 0x9a, 0xde, 0x97, 0xff, 0xfd, 0xee, 0x97,
+	0xff, 0xe5, 0xa0, 0x3a, 0x1c, 0xf9, 0xdc, 0x6f, 0x98, 0x4f, 0xfe, 0xe0, 0x71, 0x60, 0xf7, 0x1d,
+	0xaf, 0xe1, 0x32, 0x8b, 0xe9, 0x62, 0x5a, 0xae, 0x72, 0xea, 0x3d, 0xd0, 0x91, 0xeb, 0x78, 0x5c,
+	0x4e, 0xf4, 0x55, 0xee, 0xf0, 0x40, 0xee, 0xe4, 0x2f, 0x43, 0xca, 0xe4, 0x57, 0x66, 0xb4, 0x13,
+	0x28, 0xb4, 0x16, 0x31, 0x83, 0x3e, 0x07, 0x94, 0xf1, 0xf2, 0x3e, 0xe4, 0x6d, 0xea, 0x58, 0x36,
+	0xaf, 0xe0, 0x63, 0x5c, 0x53, 0x8c, 0x68, 0xa5, 0xd5, 0xa1, 0x74, 0xeb, 0x47, 0x49, 0x36, 0xf4,
+	0x3d, 0x46, 0xff, 0x8c, 0x5e, 0x83, 0x9a, 0x0e, 0x36, 0x21, 0x27, 0x54, 0x44, 0x6e, 0xf7, 0xea,
+	0x48, 0xff, 0x65, 0x2a, 0x8d, 0xe4, 0x2e, 0x99, 0xd5, 0x4e, 0x41, 0xed, 0xf0, 0x3e, 0x0f, 0x58,
+	0xc2, 0xac, 0x9d, 0x3a, 0x4e, 0xae, 0xb4, 0x1a, 0x14, 0x97, 0xc1, 0x7f, 0xc4, 0x3e, 0x14, 0xd8,
+	0xb9, 0xa1, 0x8c, 0xf5, 0x2d, 0x5a, 0xbe, 0x03, 0x55, 0x9c, 0xd3, 0x1b, 0x49, 0x7c, 0xe4, 0x56,
+	0xd7, 0xd7, 0xb4, 0xa8, 0x27, 0x9b, 0x6a, 0x23, 0xa3, 0x60, 0x26, 0x9b, 0xeb, 0xc2, 0x9e, 0xe7,
+	0xf7, 0x96, 0x50, 0xa9, 0x52, 0xd9, 0x12, 0xd4, 0x8b, 0xb5, 0xd4, 0x4c, 0xaf, 0x6d, 0x64, 0x94,
+	0xbc, 0x4c, 0xd5, 0x1d, 0x28, 0x66, 0xc0, 0x8a, 0x00, 0x9f, 0x6d, 0xa2, 0x1b, 0x63, 0x55, 0x33,
+	0x0b, 0x65, 0xa2, 0xb8, 0xb8, 0x83, 0xed, 0x0d, 0xa0, 0xa9, 0x4b, 0x59, 0x40, 0x59, 0xea, 0x96,
+	0xee, 0xa1, 0x14, 0x43, 0x23, 0xd5, 0x9c, 0xa0, 0x9e, 0x6f, 0x44, 0x8d, 0x5d, 0x8b, 0x2c, 0x35,
+	0x69, 0xe5, 0x40, 0x61, 0x81, 0xdb, 0xb2, 0xc6, 0x53, 0x82, 0x26, 0x53, 0x82, 0xe6, 0x53, 0x82,
+	0x5f, 0x43, 0x82, 0xdf, 0x43, 0x82, 0x3f, 0x43, 0x82, 0xc7, 0x21, 0xc1, 0x5f, 0x21, 0xc1, 0xdf,
+	0x21, 0x41, 0xf3, 0x90, 0xe0, 0xb7, 0x19, 0x41, 0xe3, 0x19, 0x41, 0x93, 0x19, 0x41, 0xdd, 0x4b,
+	0xcb, 0xe1, 0x76, 0x60, 0xea, 0x03, 0xdf, 0x6d, 0xac, 0x2c, 0x92, 0xbf, 0xd9, 0x87, 0x65, 0xe6,
+	0xc5, 0xa4, 0xf9, 0x13, 0x00, 0x00, 0xff, 0xff, 0x63, 0x03, 0x62, 0xc1, 0x73, 0x03, 0x00, 0x00,
 }
 
+func (this *BlockRequest) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*BlockRequest)
+	if !ok {
+		that2, ok := that.(BlockRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Height != that1.Height {
+		return false
+	}
+	return true
+}
+func (this *NoBlockResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*NoBlockResponse)
+	if !ok {
+		that2, ok := that.(NoBlockResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Height != that1.Height {
+		return false
+	}
+	return true
+}
+func (this *BlockResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*BlockResponse)
+	if !ok {
+		that2, ok := that.(BlockResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.Block.Equal(that1.Block) {
+		return false
+	}
+	return true
+}
+func (this *StatusRequest) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*StatusRequest)
+	if !ok {
+		that2, ok := that.(StatusRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Height != that1.Height {
+		return false
+	}
+	return true
+}
+func (this *StatusResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*StatusResponse)
+	if !ok {
+		that2, ok := that.(StatusResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Height != that1.Height {
+		return false
+	}
+	return true
+}
+func (this *Message) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message)
+	if !ok {
+		that2, ok := that.(Message)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if that1.Sum == nil {
+		if this.Sum != nil {
+			return false
+		}
+	} else if this.Sum == nil {
+		return false
+	} else if !this.Sum.Equal(that1.Sum) {
+		return false
+	}
+	return true
+}
+func (this *Message_BlockRequest) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_BlockRequest)
+	if !ok {
+		that2, ok := that.(Message_BlockRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.BlockRequest.Equal(that1.BlockRequest) {
+		return false
+	}
+	return true
+}
+func (this *Message_NoBlockResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_NoBlockResponse)
+	if !ok {
+		that2, ok := that.(Message_NoBlockResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.NoBlockResponse.Equal(that1.NoBlockResponse) {
+		return false
+	}
+	return true
+}
+func (this *Message_BlockResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_BlockResponse)
+	if !ok {
+		that2, ok := that.(Message_BlockResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.BlockResponse.Equal(that1.BlockResponse) {
+		return false
+	}
+	return true
+}
+func (this *Message_StatusRequest) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_StatusRequest)
+	if !ok {
+		that2, ok := that.(Message_StatusRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.StatusRequest.Equal(that1.StatusRequest) {
+		return false
+	}
+	return true
+}
+func (this *Message_StatusResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_StatusResponse)
+	if !ok {
+		that2, ok := that.(Message_StatusResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.StatusResponse.Equal(that1.StatusResponse) {
+		return false
+	}
+	return true
+}
+func (this *BlockRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&blockchain.BlockRequest{")
+	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NoBlockResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&blockchain.NoBlockResponse{")
+	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *BlockResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&blockchain.BlockResponse{")
+	if this.Block != nil {
+		s = append(s, "Block: "+fmt.Sprintf("%#v", this.Block)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *StatusRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&blockchain.StatusRequest{")
+	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *StatusResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&blockchain.StatusResponse{")
+	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Message) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 9)
+	s = append(s, "&blockchain.Message{")
+	if this.Sum != nil {
+		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Message_BlockRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&blockchain.Message_BlockRequest{` +
+		`BlockRequest:` + fmt.Sprintf("%#v", this.BlockRequest) + `}`}, ", ")
+	return s
+}
+func (this *Message_NoBlockResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&blockchain.Message_NoBlockResponse{` +
+		`NoBlockResponse:` + fmt.Sprintf("%#v", this.NoBlockResponse) + `}`}, ", ")
+	return s
+}
+func (this *Message_BlockResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&blockchain.Message_BlockResponse{` +
+		`BlockResponse:` + fmt.Sprintf("%#v", this.BlockResponse) + `}`}, ", ")
+	return s
+}
+func (this *Message_StatusRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&blockchain.Message_StatusRequest{` +
+		`StatusRequest:` + fmt.Sprintf("%#v", this.StatusRequest) + `}`}, ", ")
+	return s
+}
+func (this *Message_StatusResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&blockchain.Message_StatusResponse{` +
+		`StatusResponse:` + fmt.Sprintf("%#v", this.StatusResponse) + `}`}, ", ")
+	return s
+}
+func valueToGoStringMsgs(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
 func (m *BlockRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -839,6 +1219,124 @@ func sovMsgs(x uint64) (n int) {
 }
 func sozMsgs(x uint64) (n int) {
 	return sovMsgs(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *BlockRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&BlockRequest{`,
+		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NoBlockResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NoBlockResponse{`,
+		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *BlockResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&BlockResponse{`,
+		`Block:` + strings.Replace(fmt.Sprintf("%v", this.Block), "Block", "types.Block", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StatusRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StatusRequest{`,
+		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StatusResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StatusResponse{`,
+		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message{`,
+		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_BlockRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_BlockRequest{`,
+		`BlockRequest:` + strings.Replace(fmt.Sprintf("%v", this.BlockRequest), "BlockRequest", "BlockRequest", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_NoBlockResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_NoBlockResponse{`,
+		`NoBlockResponse:` + strings.Replace(fmt.Sprintf("%v", this.NoBlockResponse), "NoBlockResponse", "NoBlockResponse", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_BlockResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_BlockResponse{`,
+		`BlockResponse:` + strings.Replace(fmt.Sprintf("%v", this.BlockResponse), "BlockResponse", "BlockResponse", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_StatusRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_StatusRequest{`,
+		`StatusRequest:` + strings.Replace(fmt.Sprintf("%v", this.StatusRequest), "StatusRequest", "StatusRequest", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_StatusResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_StatusResponse{`,
+		`StatusResponse:` + strings.Replace(fmt.Sprintf("%v", this.StatusResponse), "StatusResponse", "StatusResponse", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringMsgs(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *BlockRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
