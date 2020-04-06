@@ -215,6 +215,10 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	pk, _ := cryptoencoding.PubKeyFromProto(v.PubKey)
 	key := []byte("val:" + pk.String())
 
+	// key := []byte("val:" + string(v.PubKey.Data))
+
+	// pubkey := make(ed25519.PubKey, ed25519.PubKeySize)
+	// copy(pubkey, v.PubKey.Data)
 	if v.Power == 0 {
 		// remove validator
 		hasKey, err := app.app.state.db.Has(key)

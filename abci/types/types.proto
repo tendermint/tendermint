@@ -85,8 +85,8 @@ message RequestBeginBlock {
 }
 
 enum CheckTxType {
-  NEW     = 0;
-  RECHECK = 1;
+  NEW     = 0 [(gogoproto.enumvalue_customname) = "CheckTxType_NEW"];
+  RECHECK = 1 [(gogoproto.enumvalue_customname) = "CheckTxType_RECHECK"];
 }
 
 message RequestCheckTx {
