@@ -581,19 +581,22 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 
-	if commit.BlockID.IsZero() {
-		return errors.New("commit cannot be for nil block")
-	}
+	// Check that commit.Height is greater than 1
+	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
+	if commit.Height >= 1 {
+		if commit.BlockID.IsZero() {
+			return errors.New("commit cannot be for nil block")
+		}
 
-	if len(commit.Signatures) == 0 {
-		return errors.New("no signatures in commit")
-	}
-	for i, commitSig := range commit.Signatures {
-		if err := commitSig.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+		if len(commit.Signatures) == 0 {
+			return errors.New("no signatures in commit")
+		}
+		for i, commitSig := range commit.Signatures {
+			if err := commitSig.ValidateBasic(); err != nil {
+				return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -679,7 +682,6 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
-	fmt.Println(cp.BlockID.String())
 	if err := commit.BlockID.FromProto(cp.BlockID); err != nil {
 		return err
 	}
@@ -964,7 +966,6 @@ func (blockID BlockID) ValidateBasic() error {
 
 // IsZero returns true if this is the BlockID of a nil block.
 func (blockID BlockID) IsZero() bool {
-	fmt.Println(len(blockID.Hash), blockID.Hash, "blalba")
 	return len(blockID.Hash) == 0 &&
 		blockID.PartsHeader.IsZero()
 }
