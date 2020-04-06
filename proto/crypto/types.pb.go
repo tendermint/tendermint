@@ -140,8 +140,10 @@ var xxx_messageInfo_PrivateKey proto.InternalMessageInfo
 
 type isPrivateKey_Sum interface {
 	isPrivateKey_Sum()
+	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
+	Compare(interface{}) int
 }
 
 type PrivateKey_Ed25519 struct {
@@ -179,21 +181,20 @@ func init() {
 func init() { proto.RegisterFile("proto/crypto/types.proto", fileDescriptor_036a81ccdadf92c8) }
 
 var fileDescriptor_036a81ccdadf92c8 = []byte{
-	// 209 bytes of a gzipped FileDescriptorProto
+	// 207 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x28, 0x28, 0xca, 0x2f,
 	0xc9, 0xd7, 0x4f, 0x2e, 0xaa, 0x2c, 0x28, 0xc9, 0xd7, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x03,
 	0x0b, 0x09, 0x89, 0x97, 0xa4, 0xe6, 0xa5, 0xa4, 0x16, 0xe5, 0x66, 0xe6, 0x95, 0x40, 0x44, 0xf4,
 	0x20, 0x8a, 0xa4, 0xd4, 0x4a, 0x32, 0x32, 0x8b, 0x52, 0xe2, 0x0b, 0x12, 0x8b, 0x4a, 0x2a, 0xf5,
-	0x21, 0xda, 0xd3, 0xf3, 0xd3, 0xf3, 0x11, 0x2c, 0x88, 0x72, 0x25, 0x1b, 0x2e, 0xce, 0x80, 0xd2,
+	0x21, 0xda, 0xd3, 0xf3, 0xd3, 0xf3, 0x11, 0x2c, 0x88, 0x72, 0x25, 0x3d, 0x2e, 0xce, 0x80, 0xd2,
 	0xa4, 0x9c, 0xcc, 0x64, 0xef, 0xd4, 0x4a, 0x21, 0x29, 0x2e, 0xf6, 0xd4, 0x14, 0x23, 0x53, 0x53,
-	0x43, 0x4b, 0x09, 0x46, 0x05, 0x46, 0x0d, 0x1e, 0x0f, 0x86, 0x20, 0x98, 0x80, 0x15, 0xcf, 0x8e,
-	0x05, 0xf2, 0x8c, 0x2f, 0x40, 0x78, 0xa1, 0x3c, 0xa3, 0x13, 0x2b, 0x17, 0x73, 0x71, 0x69, 0xae,
-	0x92, 0x3e, 0x17, 0x57, 0x40, 0x51, 0x66, 0x59, 0x62, 0x49, 0x2a, 0x01, 0xed, 0x50, 0x0d, 0x4e,
-	0xee, 0x27, 0x1e, 0xc9, 0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0, 0x91, 0x1c, 0xe3, 0x84, 0xc7,
-	0x72, 0x0c, 0x17, 0x1e, 0xcb, 0x31, 0xdc, 0x78, 0x2c, 0xc7, 0x10, 0xa5, 0x9b, 0x9e, 0x59, 0x92,
-	0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x8f, 0xf0, 0x14, 0x32, 0x13, 0x39, 0x10, 0x92, 0xd8,
-	0xc0, 0x3c, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd2, 0x82, 0xae, 0x07, 0x1b, 0x01, 0x00,
-	0x00,
+	0x43, 0x4b, 0x09, 0x46, 0x05, 0x46, 0x0d, 0x1e, 0x0f, 0x86, 0x20, 0x98, 0x80, 0x13, 0x2b, 0x17,
+	0x73, 0x71, 0x69, 0xae, 0x92, 0x3e, 0x17, 0x57, 0x40, 0x51, 0x66, 0x59, 0x62, 0x49, 0x2a, 0x71,
+	0x1a, 0x9c, 0x82, 0x7f, 0x3c, 0x94, 0x63, 0x5c, 0xf1, 0x48, 0x8e, 0xf1, 0xc4, 0x23, 0x39, 0xc6,
+	0x0b, 0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58, 0x8e, 0x61, 0xc5, 0x63, 0x39,
+	0xc6, 0x0b, 0x8f, 0xe5, 0x18, 0x6e, 0x3c, 0x96, 0x63, 0x88, 0xd2, 0x4d, 0xcf, 0x2c, 0xc9, 0x28,
+	0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5, 0x47, 0x78, 0x09, 0x99, 0x89, 0x1c, 0x04, 0x49, 0x6c, 0x60,
+	0x9e, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x70, 0x12, 0xb3, 0x43, 0x19, 0x01, 0x00, 0x00,
 }
 
 func (this *PublicKey) Compare(that interface{}) int {
@@ -284,6 +285,94 @@ func (this *PublicKey_Ed25519) Compare(that interface{}) int {
 	}
 	return 0
 }
+func (this *PrivateKey) Compare(that interface{}) int {
+	if that == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	}
+
+	that1, ok := that.(*PrivateKey)
+	if !ok {
+		that2, ok := that.(PrivateKey)
+		if ok {
+			that1 = &that2
+		} else {
+			return 1
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	} else if this == nil {
+		return -1
+	}
+	if that1.Sum == nil {
+		if this.Sum != nil {
+			return 1
+		}
+	} else if this.Sum == nil {
+		return -1
+	} else {
+		thisType := -1
+		switch this.Sum.(type) {
+		case *PrivateKey_Ed25519:
+			thisType = 0
+		default:
+			panic(fmt.Sprintf("compare: unexpected type %T in oneof", this.Sum))
+		}
+		that1Type := -1
+		switch that1.Sum.(type) {
+		case *PrivateKey_Ed25519:
+			that1Type = 0
+		default:
+			panic(fmt.Sprintf("compare: unexpected type %T in oneof", that1.Sum))
+		}
+		if thisType == that1Type {
+			if c := this.Sum.Compare(that1.Sum); c != 0 {
+				return c
+			}
+		} else if thisType < that1Type {
+			return -1
+		} else if thisType > that1Type {
+			return 1
+		}
+	}
+	return 0
+}
+func (this *PrivateKey_Ed25519) Compare(that interface{}) int {
+	if that == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	}
+
+	that1, ok := that.(*PrivateKey_Ed25519)
+	if !ok {
+		that2, ok := that.(PrivateKey_Ed25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return 1
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	} else if this == nil {
+		return -1
+	}
+	if c := bytes.Compare(this.Ed25519, that1.Ed25519); c != 0 {
+		return c
+	}
+	return 0
+}
 func (this *PublicKey) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -322,6 +411,60 @@ func (this *PublicKey_Ed25519) Equal(that interface{}) bool {
 	that1, ok := that.(*PublicKey_Ed25519)
 	if !ok {
 		that2, ok := that.(PublicKey_Ed25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
+		return false
+	}
+	return true
+}
+func (this *PrivateKey) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*PrivateKey)
+	if !ok {
+		that2, ok := that.(PrivateKey)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if that1.Sum == nil {
+		if this.Sum != nil {
+			return false
+		}
+	} else if this.Sum == nil {
+		return false
+	} else if !this.Sum.Equal(that1.Sum) {
+		return false
+	}
+	return true
+}
+func (this *PrivateKey_Ed25519) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*PrivateKey_Ed25519)
+	if !ok {
+		that2, ok := that.(PrivateKey_Ed25519)
 		if ok {
 			that1 = &that2
 		} else {
@@ -466,6 +609,27 @@ func NewPopulatedPublicKey_Ed25519(r randyTypes, easy bool) *PublicKey_Ed25519 {
 	}
 	return this
 }
+func NewPopulatedPrivateKey(r randyTypes, easy bool) *PrivateKey {
+	this := &PrivateKey{}
+	oneofNumber_Sum := []int32{1}[r.Intn(1)]
+	switch oneofNumber_Sum {
+	case 1:
+		this.Sum = NewPopulatedPrivateKey_Ed25519(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedPrivateKey_Ed25519(r randyTypes, easy bool) *PrivateKey_Ed25519 {
+	this := &PrivateKey_Ed25519{}
+	v2 := r.Intn(100)
+	this.Ed25519 = make([]byte, v2)
+	for i := 0; i < v2; i++ {
+		this.Ed25519[i] = byte(r.Intn(256))
+	}
+	return this
+}
 
 type randyTypes interface {
 	Float32() float32
@@ -486,9 +650,9 @@ func randUTF8RuneTypes(r randyTypes) rune {
 	return rune(ru + 61)
 }
 func randStringTypes(r randyTypes) string {
-	v2 := r.Intn(100)
-	tmps := make([]rune, v2)
-	for i := 0; i < v2; i++ {
+	v3 := r.Intn(100)
+	tmps := make([]rune, v3)
+	for i := 0; i < v3; i++ {
 		tmps[i] = randUTF8RuneTypes(r)
 	}
 	return string(tmps)
@@ -510,11 +674,11 @@ func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte
 	switch wire {
 	case 0:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v3 := r.Int63()
+		v4 := r.Int63()
 		if r.Intn(2) == 0 {
-			v3 *= -1
+			v4 *= -1
 		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v3))
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v4))
 	case 1:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
 		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
