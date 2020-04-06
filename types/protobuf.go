@@ -93,7 +93,10 @@ func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
 
 // XXX: panics on unknown pubkey type
 func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
-	pk, _ := cryptoencoding.PubKeyToProto(val.PubKey)
+	pk, err := cryptoencoding.PubKeyToProto(val.PubKey)
+	if err != nil {
+		panic(err)
+	}
 	return abci.ValidatorUpdate{
 		PubKey: pk,
 		Power:  val.VotingPower,
