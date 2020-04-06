@@ -137,62 +137,59 @@ func (h Header) ValidateBasic() error {
 	}
 
 	if h.Height < 0 {
-		return errors.New("negative Header.Height")
+		return errors.New("negative Height")
 	} else if h.Height == 0 {
-		return errors.New("zero Header.Height")
+		return errors.New("zero Height")
 	}
 
 	if err := h.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
+		return fmt.Errorf("wrong LastBlockID: %v", err)
 	}
 	if err := ValidateHash(h.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
+		return fmt.Errorf("wrong LastCommitHash: %v", err)
 	}
 
 	// Basic validation of hashes related to application data.
 	// Will validate fully against state in state#ValidateBlock.
 	if err := ValidateHash(h.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
+		return fmt.Errorf("wrong ValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(h.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
+		return fmt.Errorf("wrong NextValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(h.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
+		return fmt.Errorf("wrong ConsensusHash: %v", err)
 	}
 	// NOTE: AppHash is arbitrary length
 	if err := ValidateHash(h.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
+		return fmt.Errorf("wrong LastResultsHash: %v", err)
 	}
 
 	if err := ValidateHash(h.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
+		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
 	if len(h.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
+		return fmt.Errorf("expected len(ProposerAddress) to be %d, got %d",
 			crypto.AddressSize, len(h.ProposerAddress))
 	}
 
 	return nil
 }
 
-func (h *Header) ToProto() *tmproto.Header {
+func (h Header) ToProto() *tmproto.Header {
 
 	ph := tmproto.Header{
 		Version: tmproto.Version{
 			Block: h.Version.Block.Uint64(),
 			App:   h.Version.App.Uint64(),
 		},
-		ChainID: h.ChainID,
-		Time:    h.Time,
-		LastBlockID: tmproto.BlockID{
-			Hash: h.LastBlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  h.LastBlockID.PartsHeader.Hash,
-				Total: h.LastBlockID.PartsHeader.Total,
-			},
-		},
+		ChainID:            h.ChainID,
+		Height:             h.Height,
+		Time:               h.Time,
+		LastBlockID:        h.LastBlockID.ToProto(),
+		LastCommitHash:     h.LastCommitHash,
+		DataHash:           h.DataHash,
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
@@ -209,20 +206,19 @@ func (h *Header) FromProto(ph tmproto.Header) error {
 		App:   version.Protocol(ph.Version.App),
 	}
 	h.ChainID = ph.ChainID
+	h.Height = ph.Height
 	h.Time = ph.Time
-	h.LastBlockID = BlockID{
-		Hash: ph.LastBlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  ph.LastBlockID.PartsHeader.Hash,
-			Total: ph.LastBlockID.PartsHeader.Total,
-		},
+	if err := h.LastBlockID.FromProto(ph.LastBlockID); err != nil {
+		return err
 	}
-	h.ValidatorsHash = ph.ValidatorsHash
-	h.NextValidatorsHash = ph.NextValidatorsHash
-	h.ConsensusHash = ph.ConsensusHash
-	h.AppHash = ph.AppHash
-	h.LastResultsHash = ph.LastResultsHash
-	h.ProposerAddress = ph.ProposerAddress
+	h.LastCommitHash = ph.GetLastCommitHash()
+	h.DataHash = ph.GetDataHash()
+	h.ValidatorsHash = ph.GetValidatorsHash()
+	h.NextValidatorsHash = ph.GetNextValidatorsHash()
+	h.ConsensusHash = ph.GetConsensusHash()
+	h.AppHash = ph.GetAppHash()
+	h.LastResultsHash = ph.GetLastResultsHash()
+	h.ProposerAddress = ph.GetProposerAddress()
 
 	err := h.ValidateBasic()
 	if err != nil {

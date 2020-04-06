@@ -98,19 +98,14 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 }
 
 func (p Proposal) ToProto() *tmproto.Proposal {
+	pb := p.BlockID.ToProto()
 
 	pp := tmproto.Proposal{
-		Type:     p.Type,
-		Height:   p.Height,
-		Round:    p.Round,
-		PolRound: p.POLRound,
-		BlockID: &tmproto.BlockID{
-			Hash: p.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  p.BlockID.PartsHeader.Hash,
-				Total: p.BlockID.PartsHeader.Total,
-			},
-		},
+		Type:      p.Type,
+		Height:    p.Height,
+		Round:     p.Round,
+		PolRound:  p.POLRound,
+		BlockID:   &pb,
 		Timestamp: p.Timestamp,
 		Signature: p.Signature,
 	}
@@ -121,12 +116,8 @@ func (p *Proposal) FromProto(pp tmproto.Proposal) error {
 	p.Height = pp.Height
 	p.Round = pp.Round
 	p.POLRound = pp.PolRound
-	p.BlockID = BlockID{
-		Hash: pp.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  pp.BlockID.PartsHeader.Hash,
-			Total: pp.BlockID.PartsHeader.Total,
-		},
+	if err := p.BlockID.FromProto(*pp.BlockID); err != nil {
+		return err
 	}
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature

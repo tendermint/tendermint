@@ -74,7 +74,7 @@ func MsgFromProto(bcm bcproto.Message) (Message, error) {
 
 	case *bcproto.Message_BlockResponse:
 		b := types.Block{}
-		if err := b.FromProto(*msg.BlockResponse.Block); err != nil {
+		if err := b.FromProto(msg.BlockResponse.Block); err != nil {
 			return nil, err
 		}
 		bm = &BlockResponseMessage{Block: &b}

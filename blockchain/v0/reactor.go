@@ -133,12 +133,10 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
 	if err != nil {
-		fmt.Println("haha")
 		panic(err)
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
-		fmt.Println("blalba")
 		panic(err)
 	}
 	peer.Send(BlockchainChannel, msgBytes)

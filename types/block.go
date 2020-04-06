@@ -225,16 +225,25 @@ func (b *Block) ToProto() (tmproto.Block, error) {
 	return protoBlock, nil
 }
 
-func (b *Block) FromProto(bp tmproto.Block) error {
+func (b *Block) FromProto(bp *tmproto.Block) error {
+	if bp == nil {
+		return errors.New("fromproto: nil block")
+	}
 
 	b.Header.FromProto(bp.Header)
 	b.Data.FromProto(bp.Data)
-	b.Evidence.FromProto(bp.Evidence)
-	b.LastCommit.FromProto(*bp.LastCommit)
-
-	if err := b.ValidateBasic(); err != nil {
+	if err := b.Evidence.FromProto(bp.Evidence); err != nil {
 		return err
 	}
+	var lc = new(Commit)
+	if err := lc.FromProto(bp.LastCommit); err != nil {
+		return err
+	}
+	b.LastCommit = lc
+
+	// if err := b.ValidateBasic(); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -627,43 +636,64 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
-func (c Commit) ToProto() *tmproto.Commit {
+func (commit Commit) ToProto() *tmproto.Commit {
+	commitSigs := make([]tmproto.CommitSig, len(commit.Signatures))
+	for i := 0; i < len(commit.Signatures); i++ {
+		commitSigs[i] = *commit.Signatures[i].ToProto()
+	}
+
+	if commit.bitArray == nil {
+		csp := tmproto.Commit{
+			Height:     commit.Height,
+			Round:      commit.Round,
+			BlockID:    commit.BlockID.ToProto(),
+			Signatures: commitSigs,
+			Hash:       commit.hash,
+			BitArray:   &tmprotobits.BitArray{},
+		}
+		return &csp
+	}
 
 	csp := tmproto.Commit{
-		Height: c.Height,
-		Round:  c.Round,
-		BlockID: tmproto.BlockID{
-			Hash: c.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  c.BlockID.PartsHeader.Hash,
-				Total: c.BlockID.PartsHeader.Total,
-			},
-		},
-		Hash: c.hash,
+		Height:     commit.Height,
+		Round:      commit.Round,
+		BlockID:    commit.BlockID.ToProto(),
+		Signatures: commitSigs,
+		Hash:       commit.hash,
 		BitArray: &tmprotobits.BitArray{
-			Bits:  int64(c.bitArray.Bits),
-			Elems: c.bitArray.Elems,
+			Bits:  int64(commit.bitArray.Bits),
+			Elems: commit.bitArray.Elems,
 		},
 	}
 	return &csp
 }
-func (c *Commit) FromProto(cp tmproto.Commit) error {
-	c.Height = cp.Height
-	c.Round = cp.Round
-	c.BlockID = BlockID{
-		Hash: cp.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  cp.BlockID.PartsHeader.Hash,
-			Total: cp.BlockID.PartsHeader.Total,
-		},
-	}
-	c.hash = cp.Hash
-	c.bitArray = &tmbits.BitArray{
-		Bits:  (int(cp.BitArray.Bits)),
-		Elems: cp.BitArray.Elems,
+
+func (commit *Commit) FromProto(cp *tmproto.Commit) error {
+
+	commitSigs := make([]CommitSig, len(cp.Signatures))
+	for i := 0; i < len(cp.Signatures); i++ {
+		if err := commitSigs[i].FromProto(cp.Signatures[i]); err != nil {
+			return err
+		}
 	}
 
-	if err := c.ValidateBasic(); err != nil {
+	commit.Height = cp.Height
+	commit.Round = cp.Round
+	fmt.Println(cp.BlockID.String())
+	if err := commit.BlockID.FromProto(cp.BlockID); err != nil {
+		return err
+	}
+	commit.hash = cp.Hash
+	commit.Signatures = commitSigs
+
+	if cp.BitArray != nil {
+		commit.bitArray = &tmbits.BitArray{
+			Bits:  int(cp.BitArray.Bits),
+			Elems: cp.BitArray.Elems,
+		}
+	}
+
+	if err := commit.ValidateBasic(); err != nil {
 		return err
 	}
 
@@ -751,7 +781,7 @@ func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
 	if err := h.FromProto(*shp.Header); err != nil {
 		return err
 	}
-	c.FromProto(*shp.Commit)
+	c.FromProto(shp.Commit)
 
 	sh.Header = &h
 	sh.Commit = &c
@@ -819,7 +849,7 @@ func (data *Data) ToProto() *tmproto.Data {
 }
 
 func (data *Data) FromProto(dp tmproto.Data) {
-	txBzs := make(Txs, len(data.Txs))
+	txBzs := make(Txs, len(dp.GetTxs()))
 	for i := 0; i < len(dp.Txs); i++ {
 		txBzs[i] = dp.Txs[i]
 	}
@@ -934,6 +964,7 @@ func (blockID BlockID) ValidateBasic() error {
 
 // IsZero returns true if this is the BlockID of a nil block.
 func (blockID BlockID) IsZero() bool {
+	fmt.Println(len(blockID.Hash), blockID.Hash, "blalba")
 	return len(blockID.Hash) == 0 &&
 		blockID.PartsHeader.IsZero()
 }
@@ -948,4 +979,28 @@ func (blockID BlockID) IsComplete() bool {
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+}
+
+func (blockID BlockID) ToProto() tmproto.BlockID {
+	bi := tmproto.BlockID{
+		Hash: blockID.Hash,
+		PartsHeader: tmproto.PartSetHeader{
+			Hash:  blockID.PartsHeader.Hash,
+			Total: blockID.PartsHeader.Total,
+		},
+	}
+	return bi
+}
+
+func (blockID *BlockID) FromProto(bip tmproto.BlockID) error {
+	blockID.Hash = bip.Hash
+	blockID.PartsHeader = PartSetHeader{
+		Hash:  bip.PartsHeader.Hash,
+		Total: bip.PartsHeader.Total,
+	}
+
+	if err := blockID.ValidateBasic(); err != nil {
+		return err
+	}
+	return nil
 }

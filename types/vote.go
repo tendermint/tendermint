@@ -176,16 +176,10 @@ func (vote *Vote) ValidateBasic() error {
 func (vote *Vote) ToProto() *tmproto.Vote {
 
 	protoVote := tmproto.Vote{
-		Type:   vote.Type,
-		Height: vote.Height,
-		Round:  vote.Round,
-		BlockID: tmproto.BlockID{
-			Hash: vote.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Total: vote.BlockID.PartsHeader.Total,
-				Hash:  vote.BlockID.PartsHeader.Hash,
-			},
-		},
+		Type:             vote.Type,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		BlockID:          vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
 		ValidatorIndex:   vote.ValidatorIndex,
@@ -201,12 +195,8 @@ func (vote *Vote) FromProto(pv tmproto.Vote) error {
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
-	vote.BlockID = BlockID{
-		Hash: pv.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Total: pv.BlockID.PartsHeader.GetTotal(),
-			Hash:  pv.BlockID.PartsHeader.GetHash(),
-		},
+	if err := vote.BlockID.FromProto(pv.BlockID); err != nil {
+		return err
 	}
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress

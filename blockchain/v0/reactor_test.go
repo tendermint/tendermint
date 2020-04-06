@@ -87,7 +87,7 @@ func newBlockchainReactor(
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil) //TODO setting empty BlockID Here
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
