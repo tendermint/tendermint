@@ -39,6 +39,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [all] [\#4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized
 - [lite2] [\#4575](https://github.com/tendermint/tendermint/pull/4575) Use bisection for within-range verification (@cmwaters)
 - [tools] \#4615 Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker`.
+- [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement and call `Header#ValidateBasic` during `Block` and `SignedHeader` validation.
 
 ### BUG FIXES:
 
