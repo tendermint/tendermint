@@ -785,28 +785,32 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 		return errors.New("signedHeader missing commit (precommit votes)")
 	}
 
-	// Check ChainID.
+	if err := sh.Header.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "header.ValidateBasic failed during SignedHeader.ValidateBasic")
+	}
+
+	// validate ChainID
 	if sh.ChainID != chainID {
-		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'",
-			sh.ChainID, chainID)
+		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'", sh.ChainID, chainID)
 	}
-	// Check Height.
+
+	// validate Height
 	if sh.Commit.Height != sh.Height {
-		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v",
-			sh.Height, sh.Commit.Height)
+		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v", sh.Height, sh.Commit.Height)
 	}
-	// Check Hash.
+
+	// validate Hash
 	hhash := sh.Hash()
 	chash := sh.Commit.BlockID.Hash
 	if !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("signedHeader commit signs block %X, header is block %X",
-			chash, hhash)
+		return fmt.Errorf("signedHeader commit signs block %X, header is block %X", chash, hhash)
 	}
-	// ValidateBasic on the Commit.
-	err := sh.Commit.ValidateBasic()
-	if err != nil {
+
+	// validate commit
+	if err := sh.Commit.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "commit.ValidateBasic failed during SignedHeader.ValidateBasic")
 	}
+
 	return nil
 }
 
