@@ -685,7 +685,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		require.EqualValues(t, rawpub, v.PubKey.GetEd25519(), "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {

@@ -24,6 +24,7 @@ type PubKey interface {
 	Bytes() []byte
 	VerifyBytes(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
+	String() string
 }
 
 type PrivKey interface {

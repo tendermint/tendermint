@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/version"
 )
@@ -20,15 +22,24 @@ import (
 func TestABCIPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
 	pkSecp := secp256k1.GenPrivKey().PubKey()
-	testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
-	testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
+	err := testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
+	assert.NoError(t, err)
+	err = testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
+	assert.Error(t, err)
 }
 
-func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) {
-	abciPubKey := TM2PB.PubKey(pk)
-	pk2, err := PB2TM.PubKey(abciPubKey)
-	assert.Nil(t, err)
+func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
+	abciPubKey, err := cryptoencoding.PubKeyToProto(pk)
+	if err != nil {
+		return err
+	}
+	pk2, err := cryptoencoding.PubKeyFromProto(abciPubKey)
+	if err != nil {
+		fmt.Println("here")
+		return err
+	}
 	assert.Equal(t, pk, pk2)
+	return nil
 }
 
 func TestABCIValidators(t *testing.T) {
@@ -54,13 +65,6 @@ func TestABCIValidators(t *testing.T) {
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
-
-	// val with incorrect pubkey data
-	abciVal = TM2PB.ValidatorUpdate(tmVal)
-	abciVal.PubKey.Data = []byte("incorrect!")
-	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
-	assert.NotNil(t, err)
-	assert.Nil(t, tmVals)
 }
 
 func TestABCIConsensusParams(t *testing.T) {
@@ -154,6 +158,7 @@ func (pubKeyEddie) Address() Address                        { return []byte{} }
 func (pubKeyEddie) Bytes() []byte                           { return []byte{} }
 func (pubKeyEddie) VerifyBytes(msg []byte, sig []byte) bool { return false }
 func (pubKeyEddie) Equals(crypto.PubKey) bool               { return false }
+func (pubKeyEddie) String() string                          { return "" }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := ed25519.GenPrivKey().PubKey()

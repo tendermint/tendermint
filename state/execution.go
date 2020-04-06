@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
+	pc "github.com/tendermint/tendermint/proto/crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -370,7 +372,14 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
-		thisKeyType := valUpdate.PubKey.Type
+		var thisKeyType string
+		switch valUpdate.PubKey.Sum.(type) {
+		case *pc.PublicKey_Ed25519:
+			thisKeyType = types.ABCIPubKeyTypeEd25519
+		default:
+			return errors.New("key type is not supported")
+		}
+
 		if !params.IsValidPubkeyType(thisKeyType) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)

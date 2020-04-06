@@ -170,6 +170,7 @@ func (key testPub) Bytes() []byte {
 }
 func (key testPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
 func (key testPub) Equals(other crypto.PubKey) bool         { return true }
+func (key testPub) String() string                          { return "" }
 
 var (
 	privAminoName = "registerTest/Priv"
