@@ -110,7 +110,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	evList := []types.Evidence{evidence}
 
 	// Break ConflictingHeaders into smaller pieces.
-	if ce, ok := evidence.(types.ConflictingHeadersEvidence); ok {
+	if ce, ok := evidence.(types.CompositeEvidence); ok {
 		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 		if blockMeta == nil {
 			return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())

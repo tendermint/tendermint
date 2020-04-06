@@ -363,6 +363,9 @@ type ConflictingHeadersEvidence struct {
 	H2 *SignedHeader `json:"h_2"`
 }
 
+var _ Evidence = &ConflictingHeadersEvidence{}
+var _ CompositeEvidence = &ConflictingHeadersEvidence{}
+
 // Split breaks up eviddence into smaller chunks (one per validator except for
 // PotentialAmnesiaEvidence): PhantomValidatorEvidence,
 // LunaticValidatorEvidence, DuplicateVoteEvidence and
