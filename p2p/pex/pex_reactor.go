@@ -286,7 +286,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		// If we asked for addresses, add them to the book
 		if err := r.ReceiveAddrs(msg.Addrs, src); err != nil {
 			r.Switch.StopPeerForError(src, err)
-			if _, ok := err.(ErrUnsolicitedList); ok {
+			if err == ErrUnsolicitedList {
 				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
 			}
 			return
@@ -348,7 +348,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return ErrUnsolicitedList{src}
+		return ErrUnsolicitedList
 	}
 	r.requestsSent.Delete(id)
 

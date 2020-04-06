@@ -1,6 +1,7 @@
 package pex
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -74,10 +75,4 @@ func (err ErrAddressBanned) Error() string {
 }
 
 // ErrUnsolicitedList is thrown when a peer provides a list of addresses that have not been asked for.
-type ErrUnsolicitedList struct {
-	Peer Peer
-}
-
-func (err ErrUnsolicitedList) Error() string {
-	return fmt.Sprintf("unsolicited pexAddrsMessage from peer: %v", err.Peer.ID())
-}
+var ErrUnsolicitedList = errors.New("unsolicited pexAddrsMessage")
