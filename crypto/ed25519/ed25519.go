@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	amino "github.com/tendermint/go-amino"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -20,29 +19,24 @@ var _ crypto.PrivKey = PrivKey{}
 const (
 	PrivKeyAminoName = "tendermint/PrivKeyEd25519"
 	PubKeyAminoName  = "tendermint/PubKeyEd25519"
+	// PubKeySize is is the size, in bytes, of public keys as used in this package.
+	PubKeySize = 32
+	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
+	PrivateKeySize = 64
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
 	SignatureSize = 64
+	// SeedSize is the size, in bytes, of private key seeds. These are the
+	// private key representations used by RFC 8032.
+	SeedSize = 32
 )
 
-var cdc = amino.NewCodec()
-
-func init() {
-	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(PubKey{},
-		PubKeyAminoName, nil)
-
-	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(PrivKey{},
-		PrivKeyAminoName, nil)
-}
-
 // PrivKey implements crypto.PrivKey.
-type PrivKey [64]byte
+type PrivKey []byte
 
-// Bytes marshals the privkey using amino encoding.
+// Bytes returns the privkey byte format.
 func (privKey PrivKey) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(privKey)
+	return []byte(privKey)
 }
 
 // Sign produces a signature on the provided message.
@@ -53,18 +47,18 @@ func (privKey PrivKey) Bytes() []byte {
 // If these conditions aren't met, Sign will panic or produce an
 // incorrect signature.
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
-	signatureBytes := ed25519.Sign(privKey[:], msg)
+	signatureBytes := ed25519.Sign(ed25519.PrivateKey(privKey), msg)
 	return signatureBytes, nil
 }
 
 // PubKey gets the corresponding public key from the private key.
+//
+// Panics if the private key is not initialized.
 func (privKey PrivKey) PubKey() crypto.PubKey {
-	privKeyBytes := [64]byte(privKey)
+	// If the latter 32 bytes of the privkey are all zero, privkey is not
+	// initialized.
 	initialized := false
-	// If the latter 32 bytes of the privkey are all zero, compute the pubkey
-	// otherwise privkey is initialized and we can use the cached value inside
-	// of the private key.
-	for _, v := range privKeyBytes[32:] {
+	for _, v := range privKey[32:] {
 		if v != 0 {
 			initialized = true
 			break
@@ -75,8 +69,8 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 		panic("Expected ed25519 PrivKey to include concatenated pubkey bytes")
 	}
 
-	var pubkeyBytes [PubKeySize]byte
-	copy(pubkeyBytes[:], privKeyBytes[32:])
+	pubkeyBytes := make([]byte, PubKeySize)
+	copy(pubkeyBytes, privKey[32:])
 	return PubKey(pubkeyBytes)
 }
 
@@ -99,16 +93,14 @@ func GenPrivKey() PrivKey {
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKey {
-	seed := make([]byte, 32)
+	seed := make([]byte, SeedSize)
+
 	_, err := io.ReadFull(rand, seed)
 	if err != nil {
 		panic(err)
 	}
 
-	privKey := ed25519.NewKeyFromSeed(seed)
-	var privKeyEd PrivKey
-	copy(privKeyEd[:], privKey)
-	return privKeyEd
+	return PrivKey(ed25519.NewKeyFromSeed(seed))
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -118,34 +110,27 @@ func genPrivKey(rand io.Reader) PrivKey {
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
-	privKey := ed25519.NewKeyFromSeed(seed)
-	var privKeyEd PrivKey
-	copy(privKeyEd[:], privKey)
-	return privKeyEd
+	return PrivKey(ed25519.NewKeyFromSeed(seed))
 }
 
 //-------------------------------------
 
 var _ crypto.PubKey = PubKey{}
 
-// PubKeySize is the number of bytes in an Ed25519 signature.
-const PubKeySize = 32
-
-// PubKey implements crypto.PubKey for the Ed25519 signature scheme.
-type PubKey [PubKeySize]byte
+// PubKeyEd25519 implements crypto.PubKey for the Ed25519 signature scheme.
+type PubKey []byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKey) Address() crypto.Address {
-	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
+	if len(pubKey) != PubKeySize {
+		panic("pubkey is incorrect size")
+	}
+	return crypto.Address(tmhash.SumTruncated(pubKey))
 }
 
-// Bytes marshals the PubKey using amino encoding.
+// Bytes returns the PubKey byte format.
 func (pubKey PubKey) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return []byte(pubKey)
 }
 
 func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
@@ -153,11 +138,11 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 	if len(sig) != SignatureSize {
 		return false
 	}
-	return ed25519.Verify(pubKey[:], msg, sig)
+	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKey{%X}", pubKey[:])
+	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
