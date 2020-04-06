@@ -111,12 +111,12 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
 	// Break ConflictingHeaders into smaller pieces.
 	if ce, ok := evidence.(types.ConflictingHeadersEvidence); ok {
-		if err := ce.VerifyComposite(state.ChainID, valSet); err != nil {
-			return err
-		}
 		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 		if blockMeta == nil {
 			return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())
+		}
+		if err := ce.VerifyComposite(&blockMeta.Header, valSet); err != nil {
+			return err
 		}
 		evList = ce.Split(&blockMeta.Header, valSet)
 	}

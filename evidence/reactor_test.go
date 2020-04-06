@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -39,7 +40,8 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 	for i := 0; i < N; i++ {
 
 		evidenceDB := dbm.NewMemDB()
-		pool := NewPool(stateDBs[i], evidenceDB)
+		blockStoreDB := dbm.NewMemDB()
+		pool := NewPool(stateDBs[i], evidenceDB, store.NewBlockStore(blockStoreDB))
 		reactors[i] = NewReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}

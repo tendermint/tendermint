@@ -71,8 +71,8 @@ type Evidence interface {
 }
 
 type CompositeEvidence interface {
-	VerifyComposite(chainID string, valSet *ValidatorSet) error
-	Split() []Evidence
+	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
+	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
@@ -356,8 +356,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 //-------------------------------------------
 
 // ConflictingHeadersEvidence is primarily used by the light client when it
-// observes two (or more) conflicting headers, both having 1/3+ of the voting
-// power of the currently trusted validator set.
+// observes two conflicting headers, both having 1/3+ of the voting power of
+// the currently trusted validator set.
 type ConflictingHeadersEvidence struct {
 	H1 *SignedHeader `json:"h_1"`
 	H2 *SignedHeader `json:"h_2"`
@@ -369,18 +369,61 @@ type ConflictingHeadersEvidence struct {
 // PotentialAmnesiaEvidence.
 //
 // committedHeader - header at height H1.Height == H2.Height
-// valSet - validator set at height H1.Height == H2.Height
+// valSet					 - validator set at height H1.Height == H2.Height
 func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
-	// NOTE: Remember it's possible that both headers (H1 & H2) were not
-	// committed from this node's perspective.
-
-	if !bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
-		evList = append(evList, ev.phantomOrLunaticValidatorEvidence(ev.H1, committedHeader, valSet)...)
+	var alternativeHeader *SignedHeader
+	if bytes.Equal(committedHeader.Hash(), ev.H1.Hash()) {
+		alternativeHeader = ev.H2
+	} else {
+		alternativeHeader = ev.H1
 	}
-	if !bytes.Equal(committedHeader.Hash(), ev.H2.Hash()) {
-		evList = append(evList, ev.phantomOrLunaticValidatorEvidence(ev.H2, committedHeader, valSet)...)
+
+	// If there are signers(alternativeHeader) that are not part of
+	// validators(committedHeader), they misbehaved as they are signing protocol
+	// messages in heights they are not validators => immediately slashable
+	// (#F4).
+	for _, sig := range alternativeHeader.Commit.Signatures {
+		if sig.Absent() {
+			continue
+		}
+		if !valSet.HasAddress(sig.ValidatorAddress) {
+			evList = append(evList, &PhantomValidatorEvidence{
+				Header:    alternativeHeader.Header,
+				CommitSig: sig,
+			})
+		}
+	}
+
+	// If ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
+	// LastResultsHash in alternativeHeader are different (incorrect application
+	// state transition), then it is a lunatic misbehavior => immediately
+	// slashable (#F5).
+	var invalidField string
+	switch {
+	case !bytes.Equal(committedHeader.ValidatorsHash, alternativeHeader.ValidatorsHash):
+		invalidField = "ValidatorsHash"
+	case !bytes.Equal(committedHeader.NextValidatorsHash, alternativeHeader.NextValidatorsHash):
+		invalidField = "NextValidatorsHash"
+	case !bytes.Equal(committedHeader.ConsensusHash, alternativeHeader.ConsensusHash):
+		invalidField = "ConsensusHash"
+	case !bytes.Equal(committedHeader.AppHash, alternativeHeader.AppHash):
+		invalidField = "AppHash"
+	case !bytes.Equal(committedHeader.LastResultsHash, alternativeHeader.LastResultsHash):
+		invalidField = "LastResultsHash"
+	}
+	if invalidField != "" {
+		for _, sig := range alternativeHeader.Commit.Signatures {
+			if sig.Absent() {
+				continue
+			}
+			evList = append(evList, LunaticValidatorEvidence{
+				Header:             alternativeHeader.Header,
+				CommitSig:          sig,
+				InvalidHeaderField: invalidField,
+			})
+		}
 	}
 
 	// Use the fact that signatures are sorted by ValidatorAddress.
@@ -441,59 +484,6 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 	return evList
 }
 
-func (ev *ConflictingHeadersEvidence) phantomOrLunaticValidatorEvidence(h *SignedHeader,
-	committedHeader *Header, valSet *ValidatorSet) []Evidence {
-
-	evList := make([]Evidence, 0)
-
-	// if there are signers(H2) that are not part of validators(H1), they
-	// misbehaved as they are signing protocol messages in heights they are not
-	// validators => immediately slashable (#F4).
-	for _, sig := range h.Commit.Signatures {
-		if sig.Absent() {
-			continue
-		}
-		if !valSet.HasAddress(sig.ValidatorAddress) {
-			evList = append(evList, &PhantomValidatorEvidence{
-				Header:    h.Header,
-				CommitSig: sig,
-			})
-		}
-	}
-
-	// if ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
-	// LastResultsHash in H2 are different (incorrect application state
-	// transition), then it is a lunatic misbehavior => immediately slashable
-	// (#F5).
-	var invalidField string
-	switch {
-	case !bytes.Equal(committedHeader.ValidatorsHash, h.ValidatorsHash):
-		invalidField = "ValidatorsHash"
-	case !bytes.Equal(committedHeader.NextValidatorsHash, h.NextValidatorsHash):
-		invalidField = "NextValidatorsHash"
-	case !bytes.Equal(committedHeader.ConsensusHash, h.ConsensusHash):
-		invalidField = "ConsensusHash"
-	case !bytes.Equal(committedHeader.AppHash, h.AppHash):
-		invalidField = "AppHash"
-	case !bytes.Equal(committedHeader.LastResultsHash, h.LastResultsHash):
-		invalidField = "LastResultsHash"
-	}
-	if invalidField != "" {
-		for _, sig := range h.Commit.Signatures {
-			if sig.Absent() {
-				continue
-			}
-			evList = append(evList, LunaticValidatorEvidence{
-				Header:             h.Header,
-				CommitSig:          sig,
-				InvalidHeaderField: invalidField,
-			})
-		}
-	}
-
-	return evList
-}
-
 func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
 // XXX: this is not the time of equivocation
@@ -520,18 +510,25 @@ func (ev ConflictingHeadersEvidence) Verify(chainID string, _ crypto.PubKey) err
 
 // VerifyComposite verifies that both headers belong to the same chain, same
 // height and signed by 1/3+ of validators at height H1.Height == H2.Height.
-func (ev ConflictingHeadersEvidence) VerifyComposite(chainID string, valSet *ValidatorSet) error {
-	// ChainID must be the same
-	if ev.H1.ChainID != ev.H2.ChainID {
-		return errors.New("headers are from different chains")
+func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error {
+	var alternativeHeader *SignedHeader
+	switch {
+	case bytes.Equal(committedHeader.Hash(), ev.H1.Hash()):
+		alternativeHeader = ev.H2
+	case bytes.Equal(committedHeader.Hash(), ev.H2.Hash()):
+		alternativeHeader = ev.H1
+	default:
+		return errors.New("none of the headers are committed from this node's perspective")
 	}
-	if chainID != ev.H1.ChainID {
-		return errors.New("header #1 is from a different chain")
+
+	// ChainID must be the same
+	if committedHeader.ChainID != alternativeHeader.ChainID {
+		return errors.New("alt header is from a different chain")
 	}
 
 	// Height must be the same
-	if ev.H1.Height != ev.H2.Height {
-		return errors.New("headers are from different heights")
+	if committedHeader.Height != alternativeHeader.Height {
+		return errors.New("alt header is from a different height")
 	}
 
 	// Limit the number of signatures to avoid DoS attacks where a header
@@ -540,25 +537,17 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(chainID string, valSet *Val
 	// Validator set size               = 100 [node]
 	// Max validator set size = 100 * 2 = 200 [fork?]
 	maxNumValidators := valSet.Size() * 2
-	if len(ev.H1.Commit.Signatures) > maxNumValidators {
-		return errors.Errorf("commit #1 contains too many signatures: %d, expected no more than %d",
-			len(ev.H1.Commit.Signatures),
-			maxNumValidators)
-	}
-	if len(ev.H2.Commit.Signatures) > maxNumValidators {
-		return errors.Errorf("commit #2 contains too many signatures: %d, expected no more than %d",
-			len(ev.H2.Commit.Signatures),
+	if len(alternativeHeader.Commit.Signatures) > maxNumValidators {
+		return errors.Errorf("alt commit contains too many signatures: %d, expected no more than %d",
+			len(alternativeHeader.Commit.Signatures),
 			maxNumValidators)
 	}
 
-	// Check both headers are signed by 1/3+ of voting power.
-	if err := valSet.VerifyCommitTrusting(chainID, ev.H1.Commit.BlockID, ev.H1.Height,
-		ev.H1.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
-		return errors.Wrap(err, "failed to verify H1")
-	}
-	if err := valSet.VerifyCommitTrusting(chainID, ev.H1.Commit.BlockID, ev.H1.Height,
-		ev.H1.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
-		return errors.Wrap(err, "failed to verify H2")
+	// Header must be signed by at least 1/3+ of voting power of currently
+	// trusted validator set.
+	if err := valSet.VerifyCommitTrusting(alternativeHeader.ChainID, alternativeHeader.Commit.BlockID, alternativeHeader.Height,
+		alternativeHeader.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
+		return errors.Wrap(err, "alt header does not have 1/3+ of voting power of our validator set")
 	}
 
 	return nil
@@ -569,7 +558,7 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ev.H1.Hash(), ev2T.H1.Hash()) && bytes.Equal(ev.H2.Hash(), ev2T.H2.Hash())
+	return bytes.Equal(ev.H1.Hash(), ev2T.H1.Hash())
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {

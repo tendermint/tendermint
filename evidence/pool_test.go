@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -61,7 +62,8 @@ func TestEvidencePool(t *testing.T) {
 		height       = int64(5)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
-		pool         = NewPool(stateDB, evidenceDB)
+		blockStoreDB = dbm.NewMemDB()
+		pool         = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
@@ -100,7 +102,8 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 		lastBlockTime = time.Now()
 		stateDB       = initializeValidatorState(valAddr, height)
 		evidenceDB    = dbm.NewMemDB()
-		pool          = NewPool(stateDB, evidenceDB)
+		blockStoreDB  = dbm.NewMemDB()
+		pool          = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
 	)
 
 	// evidence not seen yet:
@@ -123,7 +126,8 @@ func TestAddEvidence(t *testing.T) {
 		height       = int64(100002)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
-		pool         = NewPool(stateDB, evidenceDB)
+		blockStoreDB = dbm.NewMemDB()
+		pool         = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
