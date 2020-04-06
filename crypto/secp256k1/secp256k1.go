@@ -30,9 +30,7 @@ func (privKey PrivKey) Bytes() []byte {
 // generator point to get the pubkey.
 func (privKey PrivKey) PubKey() crypto.PubKey {
 	_, pubkeyObject := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey)
-	pubkeyBytes := make([]byte, PubKeySize)
-	copy(pubkeyBytes, pubkeyObject.SerializeCompressed())
-	return PubKey(pubkeyBytes)
+	return PubKey(pubkeyObject.SerializeCompressed())
 }
 
 // Equals - you probably don't need to use this.
