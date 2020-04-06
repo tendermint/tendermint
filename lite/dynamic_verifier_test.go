@@ -10,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -129,9 +130,11 @@ func TestDynamicVerify(t *testing.T) {
 
 func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
 	height++
-	consHash := []byte("special-params")
-	appHash := []byte(fmt.Sprintf("h=%d", height))
-	resHash := []byte(fmt.Sprintf("res=%d", height))
+
+	consHash := tmhash.Sum([]byte("special-params"))
+	appHash := tmhash.Sum([]byte(fmt.Sprintf("h=%d", height)))
+	resHash := tmhash.Sum([]byte(fmt.Sprintf("res=%d", height)))
+
 	return keys.GenFullCommit(
 		chainID, height, nil,
 		vals, nextVals,
