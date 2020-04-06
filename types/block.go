@@ -931,7 +931,7 @@ func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
 
 //--------------------------------------------------------------------------------
 
-// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
+// BlockID
 type BlockID struct {
 	Hash        tmbytes.HexBytes `json:"hash"`
 	PartsHeader PartSetHeader    `json:"parts"`
