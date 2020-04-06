@@ -137,7 +137,7 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
-		bcR.Logger.Error("could not marshal msg", "err", err)
+		panic(err)
 	}
 	peer.Send(BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
@@ -166,7 +166,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 		}
 		msgBytes, err := bm.Marshal()
 		if err != nil {
-			bcR.Logger.Error("could not marshal msg", "err", err)
+			panic(err)
 		}
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
@@ -179,7 +179,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
-		bcR.Logger.Error("could not marshal msg", "err", err)
+		panic(err)
 	}
 	return src.TrySend(BlockchainChannel, msgBytes)
 }
@@ -214,7 +214,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 		msgBytes, err := bm.Marshal()
 		if err != nil {
-			bcR.Logger.Error("could not marhsal message", "err", err)
+			panic(err)
 		}
 		src.TrySend(BlockchainChannel, msgBytes)
 	case *bc.StatusResponseMessage:
@@ -261,7 +261,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				}
 				msgBytes, err := bm.Marshal()
 				if err != nil {
-					bcR.Logger.Error("could not marshal msg", "err", err)
+					panic(err)
 				}
 				queued := peer.TrySend(BlockchainChannel, msgBytes)
 				if !queued {
@@ -394,7 +394,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
-		bcR.Logger.Error("could not marshal msg", "err", err)
+		panic(err)
 	}
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
