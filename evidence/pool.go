@@ -124,7 +124,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	for _, ev := range evList {
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev); err != nil {
-			return err
+			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 
 		// 2) Compute priority.

@@ -79,6 +79,9 @@ func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Evidence)(nil), nil)
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
 	cdc.RegisterConcrete(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence", nil)
+	cdc.RegisterConcrete(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence", nil)
+	cdc.RegisterConcrete(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence", nil)
+	cdc.RegisterConcrete(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence", nil)
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
@@ -136,7 +139,7 @@ func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *D
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
 
 }
 
@@ -434,6 +437,7 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 		i = 0
 		j = 0
 	)
+OUTER_LOOP:
 	for i < len(ev.H1.Commit.Signatures) {
 		sigA := ev.H1.Commit.Signatures[i]
 		if sigA.Absent() {
@@ -475,9 +479,12 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 					})
 				}
 
-				break
+				i++
+				j++
+				continue OUTER_LOOP
 			case 1:
 				i++
+				continue OUTER_LOOP
 			case -1:
 				j++
 			}
@@ -682,8 +689,8 @@ func (e LunaticValidatorEvidence) String() string {
 //-------------------------------------------
 
 type PotentialAmnesiaEvidence struct {
-	VoteA *Vote
-	VoteB *Vote
+	VoteA *Vote `json:"vote_a"`
+	VoteB *Vote `json:"vote_b"`
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}

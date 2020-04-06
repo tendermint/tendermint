@@ -154,18 +154,36 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
+		time.Sleep(1 * time.Second)
+
 		h1, err := c.Commit(nil)
 		require.NoError(t, err)
 		require.NotNil(t, h1.SignedHeader.Header)
 
 		// Create an alternative header with a different AppHash.
-		h2 := h1.SignedHeader
-		h2.AppHash = []byte("app_hash2")
-		blockID := types.BlockID{
+		h2 := &types.SignedHeader{
+			Header: &types.Header{
+				Version:            h1.Version,
+				ChainID:            h1.ChainID,
+				Height:             h1.Height,
+				Time:               h1.Time,
+				LastBlockID:        h1.LastBlockID,
+				LastCommitHash:     h1.LastCommitHash,
+				DataHash:           h1.DataHash,
+				ValidatorsHash:     h1.ValidatorsHash,
+				NextValidatorsHash: h1.NextValidatorsHash,
+				ConsensusHash:      h1.ConsensusHash,
+				AppHash:            crypto.CRandBytes(32),
+				LastResultsHash:    h1.LastResultsHash,
+				EvidenceHash:       h1.EvidenceHash,
+				ProposerAddress:    h1.ProposerAddress,
+			},
+			Commit: types.NewCommit(h1.Height, h1.Commit.Round, h1.Commit.BlockID, h1.Commit.Signatures),
+		}
+		h2.Commit.BlockID = types.BlockID{
 			Hash:        h2.Hash(),
 			PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
 		}
-		h2.Commit.BlockID = blockID
 		vote := &types.Vote{
 			ValidatorAddress: pv.Key.Address,
 			ValidatorIndex:   0,
@@ -173,7 +191,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Round:            h1.Commit.Round,
 			Timestamp:        h1.Time,
 			Type:             types.PrecommitType,
-			BlockID:          blockID,
+			BlockID:          h2.Commit.BlockID,
 		}
 		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
 		require.NoError(t, err)
@@ -184,7 +202,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 
 		ev := types.ConflictingHeadersEvidence{
 			H1: &h1.SignedHeader,
-			H2: &h2,
+			H2: h2,
 		}
 
 		result, err := c.BroadcastEvidence(ev)
