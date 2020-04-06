@@ -178,8 +178,9 @@ message ValidatorSet {
 }
 
 message Validator {
-  bytes                             address           = 1;
-  tendermint.proto.crypto.PublicKey pub_key           = 2;
-  int64                             VotingPower       = 3;  // TODO: change to uint64
-  int64                             proposer_priority = 4;  // TODO: change to uint64
+  bytes                             address     = 1;
+  tendermint.proto.crypto.PublicKey pub_key     = 2;
+  int64                             VotingPower = 3;  // TODO: change to uint64
+
+  int64 proposer_priority = 4;
 }
