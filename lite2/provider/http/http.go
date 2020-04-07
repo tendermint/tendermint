@@ -26,13 +26,19 @@ type http struct {
 	chainID          string
 }
 
-// New creates a HTTP provider, which is using the rpchttp.HTTP
-// client under the hood.
+// New creates a HTTP provider, which is using the rpchttp.HTTP client under the
+// hood. If no scheme is provided in the remote URL, http will be used by default.
 func New(chainID, remote string) (provider.Provider, error) {
+	// ensure URL scheme is set (default HTTP) when not provided
+	if !strings.Contains(remote, "://") {
+		remote = "http://" + remote
+	}
+
 	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}
+
 	return NewWithClient(chainID, httpClient), nil
 }
 
