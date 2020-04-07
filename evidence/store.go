@@ -64,21 +64,6 @@ type Info struct {
 	Evidence  types.Evidence
 }
 
-func (i Info) ToProto() (*ep.Info, error) {
-
-	evi, err := types.EvidenceToProto(i.Evidence)
-	if err != nil {
-		return nil, err
-	}
-
-	ei := ep.Info{
-		Committed: i.Committed,
-		Priority:  i.Priority,
-		Evidence:  *evi,
-	}
-	return &ei, nil
-}
-
 func (i *Info) FromProto(ip ep.Info) error {
 	i.Committed = ip.Committed
 	i.Priority = ip.Priority
@@ -145,12 +130,13 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 		if err != nil {
 			panic(err)
 		}
-		var ei Info
-		err = ei.FromProto(ip)
+
+		evi, err := types.EvidenceFromProto(ip.Evidence)
 		if err != nil {
 			panic(err)
 		}
-		evidence = append(evidence, ei.Evidence)
+
+		evidence = append(evidence, evi)
 	}
 	return evidence
 }
@@ -167,18 +153,16 @@ func (store *Store) GetInfo(height int64, hash []byte) Info {
 		return Info{}
 	}
 	var ip ep.Info
-	err = ip.Unmarshal(val)
-	if err != nil {
+	if err = ip.Unmarshal(val); err != nil {
 		panic(err)
 	}
 
-	var ei Info
-	err = ei.FromProto(ip)
-	if err != nil {
+	var ep Info
+	if err = ep.FromProto(ip); err != nil {
 		panic(err)
 	}
 
-	return ei
+	return ep
 }
 
 // AddNewEvidence adds the given evidence to the database.
@@ -190,14 +174,15 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool
 		return false
 	}
 
-	ei = Info{
-		Committed: false,
-		Priority:  priority,
-		Evidence:  evidence,
-	}
-	ip, err := ei.ToProto()
+	evi, err := types.EvidenceToProto(evidence)
 	if err != nil {
 		panic(err)
+	}
+
+	ip := ep.Info{
+		Committed: false,
+		Priority:  priority,
+		Evidence:  *evi,
 	}
 
 	eiBytes, err := ip.Marshal()
@@ -239,17 +224,18 @@ func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	store.db.Delete(pendingKey)
 
 	// committed Info doens't need priority
-	ei := Info{
+	evi, err := types.EvidenceToProto(evidence)
+	if err != nil {
+		panic(err)
+	}
+
+	ip := ep.Info{
 		Committed: true,
-		Evidence:  evidence,
+		Evidence:  *evi,
 		Priority:  0,
 	}
 
 	lookupKey := keyLookup(evidence)
-	ip, err := ei.ToProto()
-	if err != nil {
-		panic(err)
-	}
 	eip, err := ip.Marshal()
 	if err != nil {
 		panic(err)
