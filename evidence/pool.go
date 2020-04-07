@@ -95,28 +95,29 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
+func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
-	// TODO: check if we already have evidence for this
-	// validator at this height so we dont get spammed
+	// check if evidence is already stored
+	if evpool.store.Has(evidence) {
+		return ErrEvidenceAlreadyStored{}
+	}
 
 	if err := sm.VerifyEvidence(evpool.stateDB, evpool.State(), evidence); err != nil {
-		return err
+		return ErrInvalidEvidence{err}
 	}
 
 	// fetch the validator and return its voting power as its priority
 	// TODO: something better ?
-	valset, _ := sm.LoadValidators(evpool.stateDB, evidence.Height())
-	_, val, ok := valset.GetByAddress(evidence.Address())
-	if !ok {
-		return fmt.Errorf("address: %v is not associated with a validator", evidence.Address())
+	valset, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	if err != nil {
+		return err
 	}
+	_, val, _ := valset.GetByAddress(evidence.Address())
 	priority := val.VotingPower
 
-	added := evpool.store.AddNewEvidence(evidence, priority)
-	if !added {
-		// evidence already known, just ignore
-		return
+	_, err = evpool.store.AddNewEvidence(evidence, priority)
+	if err != nil {
+		return err
 	}
 
 	evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", evidence)
