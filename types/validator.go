@@ -7,7 +7,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
@@ -106,7 +105,7 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	vp := tmproto.Validator{
 		Address:          v.Address,
 		PubKey:           pk,
-		VotingPower:      tmmath.SafeConvertUint64(v.VotingPower),
+		VotingPower:      v.VotingPower,
 		ProposerPriority: v.ProposerPriority,
 	}
 
@@ -121,7 +120,7 @@ func (v *Validator) FromProto(vp tmproto.Validator) error {
 
 	v.Address = vp.Address
 	v.PubKey = pk
-	v.VotingPower = tmmath.SafeConvertInt64(vp.VotingPower)
+	v.VotingPower = vp.VotingPower
 	v.ProposerPriority = vp.ProposerPriority
 
 	return nil
