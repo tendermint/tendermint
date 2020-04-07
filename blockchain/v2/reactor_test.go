@@ -123,12 +123,6 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) 
 	sio.switchedToConsensus = true
 }
 
-func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
-	sio.mtx.Lock()
-	defer sio.mtx.Unlock()
-	return sio.switchedToConsensus
-}
-
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
 }
 
