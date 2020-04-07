@@ -182,7 +182,7 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (boo
 
 	evi, err := types.EvidenceToProto(evidence)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 
 	ip := ep.Info{
@@ -197,7 +197,6 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (boo
 	}
 
 	// add it to the store
-	var err error
 	key := keyOutqueue(evidence, priority)
 	if err = store.db.Set(key, eiBytes); err != nil {
 		return false, err
