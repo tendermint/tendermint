@@ -5,6 +5,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	ep "github.com/tendermint/tendermint/proto/evidence"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,12 +26,6 @@ Schema for indexing evidence (note you need both height and hash to find a piece
 "evidence-outqueue"/<priority>/<evidence-height>/<evidence-hash> -> Info
 "evidence-pending"/<evidence-height>/<evidence-hash> -> Info
 */
-
-type Info struct {
-	Committed bool
-	Priority  int64
-	Evidence  types.Evidence
-}
 
 const (
 	baseKeyLookup   = "evidence-lookup"   // all evidence
@@ -61,6 +56,40 @@ func keyPending(evidence types.Evidence) []byte {
 
 func _key(format string, o ...interface{}) []byte {
 	return []byte(fmt.Sprintf(format, o...))
+}
+
+type Info struct {
+	Committed bool
+	Priority  int64
+	Evidence  types.Evidence
+}
+
+func (i Info) ToProto() (*ep.Info, error) {
+
+	evi, err := types.EvidenceToProto(i.Evidence)
+	if err != nil {
+		return nil, err
+	}
+
+	ei := ep.Info{
+		Committed: i.Committed,
+		Priority:  i.Priority,
+		Evidence:  *evi,
+	}
+	return &ei, nil
+}
+
+func (i *Info) FromProto(ip ep.Info) error {
+	i.Committed = ip.Committed
+	i.Priority = ip.Priority
+
+	evi, err := types.EvidenceFromProto(ip.Evidence)
+	if err != nil {
+		return err
+	}
+	i.Evidence = evi
+
+	return nil
 }
 
 // Store is a store of all the evidence we've seen, including
@@ -111,8 +140,13 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 		}
 		count++
 
+		var ip ep.Info
+		err := ip.Unmarshal(val)
+		if err != nil {
+			panic(err)
+		}
 		var ei Info
-		err := cdc.UnmarshalBinaryBare(val, &ei)
+		err = ei.FromProto(ip)
 		if err != nil {
 			panic(err)
 		}
@@ -132,11 +166,18 @@ func (store *Store) GetInfo(height int64, hash []byte) Info {
 	if len(val) == 0 {
 		return Info{}
 	}
-	var ei Info
-	err = cdc.UnmarshalBinaryBare(val, &ei)
+	var ip ep.Info
+	err = ip.Unmarshal(val)
 	if err != nil {
 		panic(err)
 	}
+
+	var ei Info
+	err = ei.FromProto(ip)
+	if err != nil {
+		panic(err)
+	}
+
 	return ei
 }
 
@@ -154,7 +195,15 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool
 		Priority:  priority,
 		Evidence:  evidence,
 	}
-	eiBytes := cdc.MustMarshalBinaryBare(ei)
+	ip, err := ei.ToProto()
+	if err != nil {
+		panic(err)
+	}
+
+	eiBytes, err := ip.Marshal()
+	if err != nil {
+		panic(err)
+	}
 
 	// add it to the store
 	key := keyOutqueue(evidence, priority)
@@ -197,7 +246,15 @@ func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	}
 
 	lookupKey := keyLookup(evidence)
-	store.db.SetSync(lookupKey, cdc.MustMarshalBinaryBare(ei))
+	ip, err := ei.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	eip, err := ip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	store.db.SetSync(lookupKey, eip)
 }
 
 //---------------------------------------------------

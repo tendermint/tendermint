@@ -606,6 +606,7 @@ func (m *DuplicateVoteEvidence) GetVoteB() *Vote {
 	return nil
 }
 
+// MockEvidence is used for testing pruposes
 type MockEvidence struct {
 	EvidenceHeight  int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
 	EvidenceTime    time.Time `protobuf:"bytes,2,opt,name=evidence_time,json=evidenceTime,proto3,stdtime" json:"evidence_time"`
