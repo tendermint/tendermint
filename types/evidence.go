@@ -424,12 +424,13 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 			if sig.Absent() {
 				continue
 			}
-			evList = append(evList, LunaticValidatorEvidence{
+			evList = append(evList, &LunaticValidatorEvidence{
 				Header:             alternativeHeader.Header,
 				CommitSig:          sig,
 				InvalidHeaderField: invalidField,
 			})
 		}
+		return evList
 	}
 
 	// Use the fact that signatures are sorted by ValidatorAddress.
@@ -646,11 +647,11 @@ type LunaticValidatorEvidence struct {
 
 var _ Evidence = &LunaticValidatorEvidence{}
 
-func (e LunaticValidatorEvidence) Height() int64 {
+func (e *LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
 }
 
-func (e LunaticValidatorEvidence) Time() time.Time {
+func (e *LunaticValidatorEvidence) Time() time.Time {
 	return e.Header.Time
 }
 
@@ -658,30 +659,61 @@ func (e LunaticValidatorEvidence) Address() []byte {
 	return e.CommitSig.ValidatorAddress
 }
 
-func (e LunaticValidatorEvidence) Hash() []byte {
+func (e *LunaticValidatorEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+crypto.AddressSize)
 	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
 	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
 	return tmhash.Sum(bz)
 }
 
-func (e LunaticValidatorEvidence) Bytes() []byte {
+func (e *LunaticValidatorEvidence) Bytes() []byte {
 	return cdcEncode(e)
 }
 
 func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	// chainID must be the same
+	if chainID != e.Header.ChainID {
+		return fmt.Errorf("chainID do not match: %s vs %s",
+			chainID,
+			e.Header.ChainID,
+		)
+	}
+
+	// if !pubKey.VerifyBytes(vote.SignBytes(chainID), e.CommitSig.Signature) {
+	// 	return errors.New("invalid signature")
+	// }
+
 	return nil
 }
 
-func (e LunaticValidatorEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(LunaticValidatorEvidence)
-	return e.Header.Height == e2.Header.Height &&
+func (e *LunaticValidatorEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(*LunaticValidatorEvidence)
+	return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
 }
 
-func (e LunaticValidatorEvidence) ValidateBasic() error { return nil }
+func (e *LunaticValidatorEvidence) ValidateBasic() error {
+	// if err := e.Header.ValidateBasic(); err != nil {
+	// 	return fmt.Errorf("invalid header: %v", err)
+	// }
 
-func (e LunaticValidatorEvidence) String() string {
+	if err := e.CommitSig.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid signature: %v", err)
+	}
+
+	if !e.CommitSig.ForBlock() {
+		return errors.New("signature is absent or nil")
+	}
+
+	switch e.InvalidHeaderField {
+	case "ValidatorsHash", "NextValidatorsHash", "ConsensusHash", "AppHash", "LastResultsHash":
+		return nil
+	default:
+		return errors.New("unknown invalid header field")
+	}
+}
+
+func (e *LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
 		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
 }
