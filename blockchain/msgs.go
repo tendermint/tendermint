@@ -90,8 +90,14 @@ type StatusRequestMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *StatusRequestMessage) ValidateBasic() error {
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
 	if m.Height < 0 {
 		return errors.New("negative Height")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
 	}
 	return nil
 }
@@ -109,8 +115,14 @@ type StatusResponseMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *StatusResponseMessage) ValidateBasic() error {
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
 	if m.Height < 0 {
 		return errors.New("negative Height")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
 	}
 	return nil
 }
