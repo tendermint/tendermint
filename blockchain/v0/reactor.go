@@ -155,7 +155,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
+func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
@@ -209,8 +209,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bc.StatusRequestMessage:
 		// Send peer our state.
 		bm, err := bc.MsgToProto(&bc.StatusResponseMessage{
+			Height: bcR.store.Height(),
 			Base:   bcR.store.Base(),
-			Height: bcR.store.Height(), 
 		})
 		if err != nil {
 			bcR.Logger.Error("could not convert msg to protobut", "err", err)
@@ -223,7 +223,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bc.StatusResponseMessage:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
-	case *bcNoBlockResponseMessage:
+	case *bc.NoBlockResponseMessage:
 		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -395,7 +395,7 @@ FOR_LOOP:
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{
 		Base:   bcR.store.Base(),
-		Height: bcR.store.Height()
+		Height: bcR.store.Height(),
 	})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to proto", "err", err)

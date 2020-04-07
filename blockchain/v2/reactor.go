@@ -363,7 +363,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case *bc.StatusResponseMessage:
-		r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base,,height: msg.Height}
+		r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
 
 	case *bc.BlockResponseMessage:
 		r.events <- bcBlockResponse{

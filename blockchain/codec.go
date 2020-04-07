@@ -46,6 +46,7 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 			Sum: &bcproto.Message_StatusResponse{
 				StatusResponse: &bcproto.StatusResponse{
 					Height: msg.Height,
+					Base:   msg.Base,
 				},
 			},
 		}
@@ -55,6 +56,7 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 			Sum: &bcproto.Message_StatusRequest{
 				StatusRequest: &bcproto.StatusRequest{
 					Height: msg.Height,
+					Base:   msg.Base,
 				},
 			},
 		}

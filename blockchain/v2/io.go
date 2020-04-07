@@ -133,7 +133,7 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, blocksSynced int) {
 	}
 }
 
-func (sio *switchIO) broadcastStatusRequest(height int64) {
+func (sio *switchIO) broadcastStatusRequest(base, height int64) {
 	bm, _ := bc.MsgToProto(&bc.StatusRequestMessage{Base: base, Height: height})
 	msgBytes, _ := bm.Marshal()
 	// XXX: maybe we should use an io specific peer list here
