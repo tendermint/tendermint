@@ -81,9 +81,15 @@ func MsgFromProto(bcm bcproto.Message) (Message, error) {
 		}
 		bm = &BlockResponseMessage{Block: &b}
 	case *bcproto.Message_StatusRequest:
-		bm = &StatusRequestMessage{Height: msg.StatusRequest.Height}
+		bm = &StatusRequestMessage{
+			Height: msg.StatusRequest.Height,
+			Base:   msg.StatusRequest.Base,
+		}
 	case *bcproto.Message_StatusResponse:
-		bm = &StatusResponseMessage{Height: msg.StatusResponse.Height}
+		bm = &StatusResponseMessage{
+			Height: msg.StatusResponse.Height,
+			Base:   msg.StatusResponse.Base,
+		}
 	default:
 		return nil, errors.New("message is not recognized")
 	}
