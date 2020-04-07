@@ -276,6 +276,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			// Check we're not receiving requests too frequently.
 			if err := r.receiveRequest(src); err != nil {
 				r.Switch.StopPeerForError(src, err)
+				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
 				return
 			}
 			r.SendAddrs(src, r.book.GetSelection())
@@ -285,6 +286,9 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		// If we asked for addresses, add them to the book
 		if err := r.ReceiveAddrs(msg.Addrs, src); err != nil {
 			r.Switch.StopPeerForError(src, err)
+			if err == ErrUnsolicitedList {
+				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			}
 			return
 		}
 	default:
@@ -344,7 +348,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return errors.New("unsolicited pexAddrsMessage")
+		return ErrUnsolicitedList
 	}
 	r.requestsSent.Delete(id)
 

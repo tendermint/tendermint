@@ -131,7 +131,9 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
+	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height()})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 	}
@@ -143,7 +145,7 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
-	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
+	// bcStatusResponseMessage from the peer and call pool.SetPeerRange
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -153,9 +155,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
-// According to the Tendermint spec, if all nodes are honest,
-// no node should be requesting for a block that's non-existent.
-func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
+func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
@@ -208,7 +208,10 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bc.StatusRequestMessage:
 		// Send peer our state.
-		bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: bcR.store.Height()})
+		bm, err := bc.MsgToProto(&bc.StatusResponseMessage{
+			Base:   bcR.store.Base(),
+			Height: bcR.store.Height(), 
+		})
 		if err != nil {
 			bcR.Logger.Error("could not convert msg to protobut", "err", err)
 		}
@@ -219,7 +222,9 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		src.TrySend(BlockchainChannel, msgBytes)
 	case *bc.StatusResponseMessage:
 		// Got a peer status. Unverified.
-		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
+		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
+	case *bcNoBlockResponseMessage:
+		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -364,7 +369,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
@@ -386,9 +391,12 @@ FOR_LOOP:
 	}
 }
 
-// BroadcastStatusRequest broadcasts `BlockStore` height.
+// BroadcastStatusRequest broadcasts `BlockStore` base and height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{Height: bcR.store.Height()})
+	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height()
+	})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to proto", "err", err)
 	}
