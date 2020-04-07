@@ -116,6 +116,7 @@ message DuplicateVoteEvidence {
   Vote vote_b = 2;
 }
 
+// MockEvidence is used for testing pruposes
 message MockEvidence {
   int64                     evidence_height = 1;
   google.protobuf.Timestamp evidence_time   = 2

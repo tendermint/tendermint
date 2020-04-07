@@ -1,27 +1,13 @@
 package evidence
 
 import (
-	amino "github.com/tendermint/go-amino"
-
-	cryptoamino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	ep "github.com/tendermint/tendermint/proto/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-var cdc = amino.NewCodec()
-
-func init() {
-	RegisterMessages(cdc)
-	cryptoamino.RegisterAmino(cdc)
-	types.RegisterEvidences(cdc)
-}
-
-// For testing purposes only
-func RegisterMockEvidences() {
-	types.RegisterMockEvidences(cdc)
-}
-
+// MsgToProto takes a listMessage
+// returns the modules proto message and a error
 func MsgToProto(lm *ListMessage) (*ep.List, error) {
 	evi := make([]tmproto.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {
@@ -40,6 +26,8 @@ func MsgToProto(lm *ListMessage) (*ep.List, error) {
 	return &epl, nil
 }
 
+// MsgFromProto takes a list of evidences
+// returns the modules message (ListMessage) and a error
 func MsgFromProto(pl ep.List) (*ListMessage, error) {
 	evi := make([]types.Evidence, len(pl.Evidence))
 	for i := 0; i < len(pl.Evidence); i++ {

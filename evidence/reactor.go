@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
-
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -229,12 +227,6 @@ type PeerState interface {
 // Message is a message sent or received by the Reactor.
 type Message interface {
 	ValidateBasic() error
-}
-
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&ListMessage{},
-		"tendermint/evidence/ListMessage", nil)
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
