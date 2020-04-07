@@ -116,9 +116,17 @@ message DuplicateVoteEvidence {
   Vote vote_b = 2;
 }
 
+message MockEvidence {
+  int64                     evidence_height = 1;
+  google.protobuf.Timestamp evidence_time   = 2
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes evidence_address = 3;
+}
+
 message Evidence {
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
+    MockEvidence          mock_evidence           = 2;
   }
 }
 
