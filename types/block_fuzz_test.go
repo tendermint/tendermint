@@ -15,9 +15,9 @@ import (
 // 	for i := 0; i < 10000; i++ {
 // 		fmt.Println(i)
 // 		fuzzer.Fuzz(block)
-// bp, err := block.ToProto()
-// b := Block{}
-// _ = b.FromProto(bp)
+// 		bp := block.ToProto()
+// 		b := Block{}
+// 		_ = b.FromProto(bp)
 // 	}
 // }
 
