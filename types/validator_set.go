@@ -778,12 +778,12 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		// check for each vote if its validator is already known.
 		valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
 
-		if firstIndex, ok := seenVals[valIdx]; ok { // double vote
-			secondIndex := idx
-			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
-		}
-
 		if val != nil {
+			// check for double vote of validator on the same commit
+			if firstIndex, ok := seenVals[valIdx]; ok {
+				secondIndex := idx
+				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+			}
 			seenVals[valIdx] = idx
 
 			// Validate signature.
