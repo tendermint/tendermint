@@ -41,10 +41,10 @@ type Store interface {
 	// If the store is empty, -1 and nil error are returned.
 	FirstSignedHeaderHeight() (int64, error)
 
-	// SignedHeaderAfter returns the SignedHeader after the certain height.
+	// SignedHeaderBefore returns the SignedHeader before a certain height.
 	//
 	// height must be > 0 && <= LastSignedHeaderHeight.
-	SignedHeaderAfter(height int64) (*types.SignedHeader, error)
+	SignedHeaderBefore(height int64) (*types.SignedHeader, error)
 
 	// Prune removes headers & the associated validator sets when Store reaches a
 	// defined size (number of header & validator set pairs).

@@ -284,16 +284,17 @@ func (pool *BlockPool) MaxPeerHeight() int64 {
 	return pool.maxPeerHeight
 }
 
-// SetPeerHeight sets the peer's alleged blockchain height.
-func (pool *BlockPool) SetPeerHeight(peerID p2p.ID, height int64) {
+// SetPeerRange sets the peer's alleged blockchain base and height.
+func (pool *BlockPool) SetPeerRange(peerID p2p.ID, base int64, height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	peer := pool.peers[peerID]
 	if peer != nil {
+		peer.base = base
 		peer.height = height
 	} else {
-		peer = newBPPeer(pool, peerID, height)
+		peer = newBPPeer(pool, peerID, base, height)
 		peer.setLogger(pool.Logger.With("peer", peerID))
 		pool.peers[peerID] = peer
 	}
@@ -346,9 +347,9 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 	pool.maxPeerHeight = max
 }
 
-// Pick an available peer with at least the given minHeight.
+// Pick an available peer with the given height available.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(minHeight int64) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -360,7 +361,7 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int64) *bpPeer {
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
 		}
-		if peer.height < minHeight {
+		if height < peer.base || height > peer.height {
 			continue
 		}
 		peer.incrPending()
@@ -432,6 +433,7 @@ type bpPeer struct {
 	didTimeout  bool
 	numPending  int32
 	height      int64
+	base        int64
 	pool        *BlockPool
 	id          p2p.ID
 	recvMonitor *flow.Monitor
@@ -441,10 +443,11 @@ type bpPeer struct {
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID p2p.ID, height int64) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID p2p.ID, base int64, height int64) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
+		base:       base,
 		height:     height,
 		numPending: 0,
 		logger:     log.NewNopLogger(),

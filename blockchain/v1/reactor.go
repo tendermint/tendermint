@@ -169,7 +169,10 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	peer.Send(BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
@@ -196,7 +199,10 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcStatusRequestMessage, src p2p.Peer) (queued bool) {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	return src.TrySend(BlockchainChannel, msgBytes)
 }
 
@@ -430,7 +436,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
@@ -441,7 +447,10 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 }
 
@@ -590,6 +599,7 @@ func (m *bcBlockResponseMessage) String() string {
 
 type bcStatusRequestMessage struct {
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
@@ -597,17 +607,24 @@ func (m *bcStatusRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
 	return nil
 }
 
 func (m *bcStatusRequestMessage) String() string {
-	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
 }
 
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
@@ -615,9 +632,15 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
 	return nil
 }
 
 func (m *bcStatusResponseMessage) String() string {
-	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
 }

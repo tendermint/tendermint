@@ -58,6 +58,7 @@ func NewFSM(height int64, toBcR bcReactor) *BcReactorFSM {
 type bReactorEventData struct {
 	peerID         p2p.ID
 	err            error        // for peer error: timeout, slow; for processed block event if error occurred
+	base           int64        // for status response
 	height         int64        // for status response; for processed block event
 	block          *types.Block // for block response
 	stateName      string       // for state timeout events
@@ -89,7 +90,7 @@ func (msg *bcReactorMessage) String() string {
 	case startFSMEv:
 		dataStr = ""
 	case statusResponseEv:
-		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerID, msg.data.height)
+		dataStr = fmt.Sprintf("peer=%v base=%v height=%v", msg.data.peerID, msg.data.base, msg.data.height)
 	case blockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v block.height=%v length=%v",
 			msg.data.peerID, msg.data.block.Height, msg.data.length)
@@ -213,7 +214,7 @@ func init() {
 				return finished, errNoTallerPeer
 
 			case statusResponseEv:
-				if err := fsm.pool.UpdatePeer(data.peerID, data.height); err != nil {
+				if err := fsm.pool.UpdatePeer(data.peerID, data.base, data.height); err != nil {
 					if fsm.pool.NumPeers() == 0 {
 						return waitForPeer, err
 					}
@@ -246,7 +247,7 @@ func init() {
 			switch ev {
 
 			case statusResponseEv:
-				err := fsm.pool.UpdatePeer(data.peerID, data.height)
+				err := fsm.pool.UpdatePeer(data.peerID, data.base, data.height)
 				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, err
 				}
