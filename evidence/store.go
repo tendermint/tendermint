@@ -140,16 +140,22 @@ func (store *Store) GetInfo(height int64, hash []byte) Info {
 	return ei
 }
 
+// Has checks if the evidence is already stored
+func (store *Store) Has(evidence types.Evidence) bool {
+	key := keyLookup(evidence)
+	ok, _ := store.db.Has(key)
+	return ok
+}
+
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
-func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool {
+func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (bool, error) {
 	// check if we already have seen it
-	ei := store.getInfo(evidence)
-	if ei.Evidence != nil {
-		return false
+	if store.Has(evidence) {
+		return false, nil
 	}
 
-	ei = Info{
+	ei := Info{
 		Committed: false,
 		Priority:  priority,
 		Evidence:  evidence,
@@ -157,16 +163,23 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool
 	eiBytes := cdc.MustMarshalBinaryBare(ei)
 
 	// add it to the store
+	var err error
 	key := keyOutqueue(evidence, priority)
-	store.db.Set(key, eiBytes)
+	if err = store.db.Set(key, eiBytes); err != nil {
+		return false, err
+	}
 
 	key = keyPending(evidence)
-	store.db.Set(key, eiBytes)
+	if err = store.db.Set(key, eiBytes); err != nil {
+		return false, err
+	}
 
 	key = keyLookup(evidence)
-	store.db.SetSync(key, eiBytes)
+	if err = store.db.SetSync(key, eiBytes); err != nil {
+		return false, err
+	}
 
-	return true
+	return true, nil
 }
 
 // MarkEvidenceAsBroadcasted removes evidence from Outqueue.

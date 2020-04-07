@@ -40,6 +40,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [lite2] [\#4575](https://github.com/tendermint/tendermint/pull/4575) Use bisection for within-range verification (@cmwaters)
 - [tools] \#4615 Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker`.
 - [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement and call `Header#ValidateBasic` during `Block` and `SignedHeader` validation.
+- [p2p] [\#4621](https://github.com/tendermint/tendermint/pull/4621) ban peers when messages are unsolicited or too frequent (@cmwaters)
+- [evidence] [\#4632](https://github.com/tendermint/tendermint/pull/4632) Inbound evidence checked if already existing (@cmwaters)
 
 ### BUG FIXES:
 

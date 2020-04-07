@@ -144,8 +144,11 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
+	peerAddr := peer.SocketAddr()
 	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
+	book.AddAddress(peerAddr, peerAddr)
+	require.True(t, book.HasAddress(peerAddr))
 
 	id := string(peer.ID())
 	msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
@@ -164,6 +167,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	r.Receive(PexChannel, peer, msg)
 	assert.False(t, r.lastReceivedRequests.Has(id))
 	assert.False(t, sw.Peers().Has(peer.ID()))
+	assert.True(t, book.IsBanned(peerAddr))
 }
 
 func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
@@ -192,9 +196,10 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.False(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	// receiving more addrs causes a disconnect
+	// receiving more unsolicited addrs causes a disconnect and ban
 	r.Receive(PexChannel, peer, msg)
 	assert.False(t, sw.Peers().Has(peer.ID()))
+	assert.True(t, book.IsBanned(peer.SocketAddr()))
 }
 
 func TestCheckSeeds(t *testing.T) {
