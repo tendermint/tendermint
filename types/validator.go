@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
+	ce "github.com/tendermint/tendermint/crypto/encoding"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 // Volatile state for each Validator
@@ -92,6 +95,36 @@ func (v *Validator) Bytes() []byte {
 		v.PubKey,
 		v.VotingPower,
 	})
+}
+
+func (v *Validator) ToProto() (*tmproto.Validator, error) {
+	pk, err := ce.PubKeyToProto(v.PubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	vp := tmproto.Validator{
+		Address:          v.Address,
+		PubKey:           pk,
+		VotingPower:      tmmath.SafeConvertUint64(v.VotingPower),
+		ProposerPriority: v.ProposerPriority,
+	}
+
+	return &vp, nil
+}
+
+func (v *Validator) FromProto(vp tmproto.Validator) error {
+	pk, err := ce.PubKeyFromProto(vp.PubKey)
+	if err != nil {
+		return err
+	}
+
+	v.Address = vp.Address
+	v.PubKey = pk
+	v.VotingPower = tmmath.SafeConvertInt64(vp.VotingPower)
+	v.ProposerPriority = vp.ProposerPriority
+
+	return nil
 }
 
 //----------------------------------------
