@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -331,6 +332,48 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 			break
 		}
 	}
+}
+
+func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
+	valsProto := make([]tmproto.Validator, len(vals.Validators))
+	for i := 0; i < len(vals.Validators); i++ {
+		valp, err := vals.Validators[i].ToProto()
+		if err != nil {
+			return nil, err
+		}
+		valsProto[i] = *valp
+	}
+
+	valProposer, err := vals.Proposer.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	vp := tmproto.ValidatorSet{
+		Validators:       valsProto,
+		Proposer:         *valProposer,
+		TotalVotingPower: tmmath.SafeConvertUint64(vals.TotalVotingPower()),
+	}
+
+	return &vp, nil
+}
+
+func (vals *ValidatorSet) FromProto(vp tmproto.ValidatorSet) error {
+	valsProto := make([]Validator, len(vp.Validators))
+	for i := 0; i < len(vp.Validators); i++ {
+		err := valsProto[i].FromProto(vp.Validators[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	err := vals.Proposer.FromProto(vp.GetProposer())
+	if err != nil {
+		return err
+	}
+
+	vals.totalVotingPower = tmmath.SafeConvertInt64(vp.GetTotalVotingPower())
+
+	return nil
 }
 
 // Checks changes against duplicates, splits the changes in updates and
