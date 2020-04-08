@@ -580,6 +580,14 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {
+	if ev.H1 == nil {
+		return errors.New("first header is missing")
+	}
+
+	if ev.H2 == nil {
+		return errors.New("second header is missing")
+	}
+
 	if err := ev.H1.ValidateBasic(ev.H1.ChainID); err != nil {
 		return fmt.Errorf("h1: %w", err)
 	}
@@ -660,6 +668,14 @@ func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
 }
 
 func (e PhantomValidatorEvidence) ValidateBasic() error {
+	if e.Header == nil {
+		return errors.New("empty header")
+	}
+
+	if e.Vote == nil {
+		return errors.New("empty vote")
+	}
+
 	// if err := e.Header.ValidateBasic(); err != nil {
 	// 	return fmt.Errorf("invalid header: %v", err)
 	// }
@@ -753,6 +769,14 @@ func (e LunaticValidatorEvidence) Equal(ev Evidence) bool {
 }
 
 func (e LunaticValidatorEvidence) ValidateBasic() error {
+	if e.Header == nil {
+		return errors.New("empty header")
+	}
+
+	if e.Vote == nil {
+		return errors.New("empty vote")
+	}
+
 	// if err := e.Header.ValidateBasic(); err != nil {
 	// 	return fmt.Errorf("invalid header: %v", err)
 	// }
