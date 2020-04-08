@@ -318,7 +318,39 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 }
 
 func TestPotentialAmnesiaEvidence(t *testing.T) {
-	// TODO
+	const (
+		chainID       = "TestPotentialAmnesiaEvidence"
+		height  int64 = 37
+	)
+
+	var (
+		val      = NewMockPV()
+		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID)
+		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2)
+	)
+
+	ev := &PotentialAmnesiaEvidence{
+		VoteA: vote2,
+		VoteB: vote1,
+	}
+
+	assert.Equal(t, height, ev.Height())
+	// assert.Equal(t, bTime, ev.Time())
+	assert.EqualValues(t, vote1.ValidatorAddress, ev.Address())
+	assert.NotEmpty(t, ev.Hash())
+	assert.NotEmpty(t, ev.Bytes())
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	assert.NoError(t, ev.Verify(chainID, pubKey))
+	assert.Error(t, ev.Verify("other", pubKey))
+	privKey2 := ed25519.GenPrivKey()
+	pubKey2 := privKey2.PubKey()
+	assert.Error(t, ev.Verify("other", pubKey2))
+	assert.True(t, ev.Equal(ev))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
 }
 
 func makeHeaderRandom() *Header {

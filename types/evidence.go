@@ -843,44 +843,6 @@ func (e PotentialAmnesiaEvidence) Bytes() []byte {
 }
 
 func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	// H/S must be the same
-	if e.VoteA.Height != e.VoteB.Height ||
-		e.VoteA.Type != e.VoteB.Type {
-		return fmt.Errorf("h/s do not match: %d/%v vs %d/%v",
-			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
-	}
-
-	// R must be different
-	if e.VoteA.Round == e.VoteB.Round {
-		return fmt.Errorf("expected votes from different rounds, got %d", e.VoteA.Round)
-	}
-
-	// Address must be the same
-	if !bytes.Equal(e.VoteA.ValidatorAddress, e.VoteB.ValidatorAddress) {
-		return fmt.Errorf("validator addresses do not match: %X vs %X",
-			e.VoteA.ValidatorAddress,
-			e.VoteB.ValidatorAddress,
-		)
-	}
-
-	// Index must be the same
-	// https://github.com/tendermint/tendermint/issues/4619
-	// if e.VoteA.ValidatorIndex != e.VoteB.ValidatorIndex {
-	// 	return fmt.Errorf(
-	// 		"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
-	// 		e.VoteA.ValidatorIndex,
-	// 		e.VoteB.ValidatorIndex,
-	// 	)
-	// }
-
-	// BlockIDs must be different
-	if e.VoteA.BlockID.Equals(e.VoteB.BlockID) {
-		return fmt.Errorf(
-			"block IDs are the same (%v) - not a real duplicate vote",
-			e.VoteA.BlockID,
-		)
-	}
-
 	// pubkey must match address (this should already be true, sanity check)
 	addr := e.VoteA.ValidatorAddress
 	if !bytes.Equal(pubKey.Address(), addr) {
@@ -903,10 +865,10 @@ func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
 	switch ev.(type) {
 	case PotentialAmnesiaEvidence:
 		e2 := ev.(PotentialAmnesiaEvidence)
-		return bytes.Equal(e.Hash(), e2.Hash())	
+		return bytes.Equal(e.Hash(), e2.Hash())
 	case *PotentialAmnesiaEvidence:
 		e2 := ev.(*PotentialAmnesiaEvidence)
-		return bytes.Equal(e.Hash(), e2.Hash())	
+		return bytes.Equal(e.Hash(), e2.Hash())
 	default:
 		return false
 	}
@@ -926,6 +888,45 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 	if strings.Compare(e.VoteA.BlockID.Key(), e.VoteB.BlockID.Key()) >= 0 {
 		return errors.New("amnesia votes in invalid order")
 	}
+
+	// H/S must be the same
+	if e.VoteA.Height != e.VoteB.Height ||
+		e.VoteA.Type != e.VoteB.Type {
+		return fmt.Errorf("h/s do not match: %d/%v vs %d/%v",
+			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
+	}
+
+	// R must be different
+	if e.VoteA.Round == e.VoteB.Round {
+		return fmt.Errorf("expected votes from different rounds, got %d", e.VoteA.Round)
+	}
+
+	// Address must be the same
+	if !bytes.Equal(e.VoteA.ValidatorAddress, e.VoteB.ValidatorAddress) {
+		return fmt.Errorf("validator addresses do not match: %X vs %X",
+			e.VoteA.ValidatorAddress,
+			e.VoteB.ValidatorAddress,
+		)
+	}
+
+	// Index must be the same
+	// https://github.com/tendermint/tendermint/issues/4619
+	if e.VoteA.ValidatorIndex != e.VoteB.ValidatorIndex {
+		return fmt.Errorf(
+			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
+			e.VoteA.ValidatorIndex,
+			e.VoteB.ValidatorIndex,
+		)
+	}
+
+	// BlockIDs must be different
+	if e.VoteA.BlockID.Equals(e.VoteB.BlockID) {
+		return fmt.Errorf(
+			"block IDs are the same (%v) - not a real duplicate vote",
+			e.VoteA.BlockID,
+		)
+	}
+
 	return nil
 }
 
