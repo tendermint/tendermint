@@ -217,6 +217,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		})
 		if err != nil {
 			bcR.Logger.Error("could not convert msg to protobut", "err", err)
+			return
 		}
 		msgBytes, err := bm.Marshal()
 		if err != nil {
