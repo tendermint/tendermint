@@ -817,31 +817,32 @@ type PotentialAmnesiaEvidence struct {
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
+var _ Evidence = PotentialAmnesiaEvidence{}
 
-func (e *PotentialAmnesiaEvidence) Height() int64 {
+func (e PotentialAmnesiaEvidence) Height() int64 {
 	return e.VoteA.Height
 }
 
-func (e *PotentialAmnesiaEvidence) Time() time.Time {
+func (e PotentialAmnesiaEvidence) Time() time.Time {
 	if e.VoteA.Timestamp.Before(e.VoteB.Timestamp) {
 		return e.VoteA.Timestamp
 	}
 	return e.VoteB.Timestamp
 }
 
-func (e *PotentialAmnesiaEvidence) Address() []byte {
+func (e PotentialAmnesiaEvidence) Address() []byte {
 	return e.VoteA.ValidatorAddress
 }
 
-func (e *PotentialAmnesiaEvidence) Hash() []byte {
+func (e PotentialAmnesiaEvidence) Hash() []byte {
 	return tmhash.Sum(cdcEncode(e))
 }
 
-func (e *PotentialAmnesiaEvidence) Bytes() []byte {
+func (e PotentialAmnesiaEvidence) Bytes() []byte {
 	return cdcEncode(e)
 }
 
-func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// H/S must be the same
 	if e.VoteA.Height != e.VoteB.Height ||
 		e.VoteA.Type != e.VoteB.Type {
@@ -898,15 +899,17 @@ func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) 
 	return nil
 }
 
-func (e *PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
-	if _, ok := ev.(*PotentialAmnesiaEvidence); !ok {
+func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
+	switch ev.(type) {
+	case PotentialAmnesiaEvidence:
+		e2 := ev.(PotentialAmnesiaEvidence)
+		return bytes.Equal(e.Hash(), e2.Hash())	
+	case *PotentialAmnesiaEvidence:
+		e2 := ev.(*PotentialAmnesiaEvidence)
+		return bytes.Equal(e.Hash(), e2.Hash())	
+	default:
 		return false
 	}
-
-	// just check their hashes
-	dveHash := tmhash.Sum(cdcEncode(e))
-	evHash := tmhash.Sum(cdcEncode(ev))
-	return bytes.Equal(dveHash, evHash)
 }
 
 func (e PotentialAmnesiaEvidence) ValidateBasic() error {
@@ -921,7 +924,7 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 	}
 	// Enforce Votes are lexicographically sorted on blockID
 	if strings.Compare(e.VoteA.BlockID.Key(), e.VoteB.BlockID.Key()) >= 0 {
-		return errors.New("duplicate votes in invalid order")
+		return errors.New("amnesia votes in invalid order")
 	}
 	return nil
 }
