@@ -105,15 +105,15 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	evList := []types.Evidence{evidence}
+	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
+	if blockMeta == nil {
+		return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())
+	}
 
 	// Break ConflictingHeaders into smaller pieces.
 	if ce, ok := evidence.(types.CompositeEvidence); ok {
 		evpool.logger.Info("Breaking up composite evidence", "ev", evidence)
 
-		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
-		if blockMeta == nil {
-			return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())
-		}
 		if err := ce.VerifyComposite(&blockMeta.Header, valSet); err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		}
 
 		// 1) Verify against state.
-		if err := sm.VerifyEvidence(evpool.stateDB, state, ev); err != nil {
+		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, &blockMeta.Header); err != nil {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 

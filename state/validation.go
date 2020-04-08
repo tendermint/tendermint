@@ -132,7 +132,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 	// Validate all evidence.
 	for _, ev := range block.Evidence.Evidence {
-		if err := VerifyEvidence(stateDB, state, ev); err != nil {
+		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 		if evidencePool != nil && evidencePool.IsCommitted(ev) {
@@ -158,7 +158,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 // - it is from a key who was a validator at the given height
 // - it is internally consistent
 // - it was properly signed by the alleged equivocator
-func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error {
+func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, committedHeader *types.Header) error {
 	var (
 		height         = state.LastBlockHeight
 		evidenceParams = state.ConsensusParams.Evidence
@@ -176,6 +176,33 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 			evidence.Time(), state.LastBlockTime.Add(evidenceParams.MaxAgeDuration))
 	}
 
+	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
+		switch ev.InvalidHeaderField {
+		case "ValidatorsHash":
+			if bytes.Equal(committedHeader.ValidatorsHash, ev.Header.ValidatorsHash) {
+				return errors.New("validators_hash matches committed hash")
+			}
+		case "NextValidatorsHash":
+			if bytes.Equal(committedHeader.NextValidatorsHash, ev.Header.NextValidatorsHash) {
+				return errors.New("next_validators_hash matches committed hash")
+			}
+		case "ConsensusHash":
+			if bytes.Equal(committedHeader.ConsensusHash, ev.Header.ConsensusHash) {
+				return errors.New("consensus_hash matches committed hash")
+			}
+		case "AppHash":
+			if bytes.Equal(committedHeader.AppHash, ev.Header.AppHash) {
+				return errors.New("app_hash matches committed hash")
+			}
+		case "LastResultsHash":
+			if bytes.Equal(committedHeader.LastResultsHash, ev.Header.LastResultsHash) {
+				return errors.New("last_results_hash matches committed hash")
+			}
+		default:
+			return errors.New("unknown invalid_header_field")
+		}
+	}
+
 	valset, err := LoadValidators(stateDB, evidence.Height())
 	if err != nil {
 		// TODO: if err is just that we cant find it cuz we pruned, ignore.
@@ -183,17 +210,48 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 		return err
 	}
 
-	// The address must have been an active validator at the height.
-	//
-	// NOTE: we will ignore evidence from H if the key was not a validator
-	// at H, even if it is a validator at some nearby H'
-	//
-	// XXX: this makes lite-client bisection as is unsafe
-	// See https://github.com/tendermint/tendermint/issues/3244
 	addr := evidence.Address()
-	_, val := valset.GetByAddress(addr)
-	if val == nil {
-		return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
+	var val *types.Validator
+
+	if _, ok := evidence.(*types.PhantomValidatorEvidence); ok {
+		_, val = valset.GetByAddress(addr)
+		if val != nil {
+			return fmt.Errorf("address %X is a validator at height %d", addr, evidence.Height())
+		}
+
+		// TODO: something smarter here
+		height := evidence.Height() - 1
+		numBlocks := evidenceParams.MaxAgeNumBlocks
+		for height > 0 && numBlocks > 0 {
+			valset, err := LoadValidators(stateDB, height)
+			if err != nil {
+				return fmt.Errorf("can't load vals at height %d", height)
+			}
+
+			_, val = valset.GetByAddress(addr)
+			if val != nil {
+				break
+			}
+
+			height--
+			numBlocks--
+		}
+
+		if val == nil {
+			return fmt.Errorf("phantom validator %X not found", addr)
+		}
+	} else {
+		// The address must have been an active validator at the height.
+		//
+		// NOTE: we will ignore evidence from H if the key was not a validator
+		// at H, even if it is a validator at some nearby H'
+		//
+		// XXX: this makes lite-client bisection as is unsafe
+		// See https://github.com/tendermint/tendermint/issues/3244
+		_, val = valset.GetByAddress(addr)
+		if val == nil {
+			return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
+		}
 	}
 
 	if err := evidence.Verify(state.ChainID, val.PubKey); err != nil {
