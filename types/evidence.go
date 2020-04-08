@@ -368,6 +368,8 @@ type ConflictingHeadersEvidence struct {
 
 var _ Evidence = &ConflictingHeadersEvidence{}
 var _ CompositeEvidence = &ConflictingHeadersEvidence{}
+var _ Evidence = ConflictingHeadersEvidence{}
+var _ CompositeEvidence = ConflictingHeadersEvidence{}
 
 // Split breaks up eviddence into smaller chunks (one per validator except for
 // PotentialAmnesiaEvidence): PhantomValidatorEvidence,
@@ -376,7 +378,7 @@ var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 //
 // committedHeader - header at height H1.Height == H2.Height
 // valSet					 - validator set at height H1.Height == H2.Height
-func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
+func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
 	var alternativeHeader *SignedHeader
@@ -390,14 +392,14 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 	// validators(committedHeader), they misbehaved as they are signing protocol
 	// messages in heights they are not validators => immediately slashable
 	// (#F4).
-	for _, sig := range alternativeHeader.Commit.Signatures {
+	for i, sig := range alternativeHeader.Commit.Signatures {
 		if sig.Absent() {
 			continue
 		}
 		if !valSet.HasAddress(sig.ValidatorAddress) {
 			evList = append(evList, &PhantomValidatorEvidence{
-				Header:    alternativeHeader.Header,
-				CommitSig: sig,
+				Header: alternativeHeader.Header,
+				Vote:   alternativeHeader.Commit.GetVote(i),
 			})
 		}
 	}
@@ -591,11 +593,12 @@ func (ev ConflictingHeadersEvidence) String() string {
 //-------------------------------------------
 
 type PhantomValidatorEvidence struct {
-	Header    *Header   `json:"header"`
-	CommitSig CommitSig `json:"commit_sig"`
+	Header *Header `json:"header"`
+	Vote   *Vote   `json:"vote"`
 }
 
 var _ Evidence = &PhantomValidatorEvidence{}
+var _ Evidence = PhantomValidatorEvidence{}
 
 func (e PhantomValidatorEvidence) Height() int64 {
 	return e.Header.Height
@@ -606,13 +609,13 @@ func (e PhantomValidatorEvidence) Time() time.Time {
 }
 
 func (e PhantomValidatorEvidence) Address() []byte {
-	return e.CommitSig.ValidatorAddress
+	return e.Vote.ValidatorAddress
 }
 
 func (e PhantomValidatorEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+crypto.AddressSize)
 	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
-	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
+	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
 	return tmhash.Sum(bz)
 }
 
@@ -621,20 +624,62 @@ func (e PhantomValidatorEvidence) Bytes() []byte {
 }
 
 func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	// chainID must be the same
+	if chainID != e.Header.ChainID {
+		return fmt.Errorf("chainID do not match: %s vs %s",
+			chainID,
+			e.Header.ChainID,
+		)
+	}
+
+	if !pubKey.VerifyBytes(e.Vote.SignBytes(chainID), e.Vote.Signature) {
+		return errors.New("invalid signature")
+	}
+
 	return nil
 }
 
 func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(PhantomValidatorEvidence)
-	return e.Header.Height == e2.Header.Height &&
-		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
+	switch ev.(type) {
+	case PhantomValidatorEvidence:
+		e2 := ev.(PhantomValidatorEvidence)
+		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
+	case *PhantomValidatorEvidence:
+		e2 := ev.(*PhantomValidatorEvidence)
+		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
+	default:
+		return false
+	}
 }
 
-func (e PhantomValidatorEvidence) ValidateBasic() error { return nil }
+func (e PhantomValidatorEvidence) ValidateBasic() error {
+	// if err := e.Header.ValidateBasic(); err != nil {
+	// 	return fmt.Errorf("invalid header: %v", err)
+	// }
+
+	if err := e.Vote.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid signature: %v", err)
+	}
+
+	if !e.Vote.BlockID.IsComplete() {
+		return errors.New("expected vote for block")
+	}
+
+	if e.Header.Height != e.Vote.Height {
+		return fmt.Errorf("header and vote have different heights: %d vs %d",
+			e.Header.Height,
+			e.Vote.Height,
+		)
+	}
+
+	return nil
+}
 
 func (e PhantomValidatorEvidence) String() string {
 	return fmt.Sprintf("PhantomValidatorEvidence{%X voted for %d/%X}",
-		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash())
+		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash())
 }
 
 //-------------------------------------------
@@ -646,12 +691,13 @@ type LunaticValidatorEvidence struct {
 }
 
 var _ Evidence = &LunaticValidatorEvidence{}
+var _ Evidence = LunaticValidatorEvidence{}
 
-func (e *LunaticValidatorEvidence) Height() int64 {
+func (e LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
 }
 
-func (e *LunaticValidatorEvidence) Time() time.Time {
+func (e LunaticValidatorEvidence) Time() time.Time {
 	return e.Header.Time
 }
 
@@ -659,14 +705,14 @@ func (e LunaticValidatorEvidence) Address() []byte {
 	return e.Vote.ValidatorAddress
 }
 
-func (e *LunaticValidatorEvidence) Hash() []byte {
+func (e LunaticValidatorEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+crypto.AddressSize)
 	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
 	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
 	return tmhash.Sum(bz)
 }
 
-func (e *LunaticValidatorEvidence) Bytes() []byte {
+func (e LunaticValidatorEvidence) Bytes() []byte {
 	return cdcEncode(e)
 }
 
@@ -686,13 +732,22 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	return nil
 }
 
-func (e *LunaticValidatorEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(*LunaticValidatorEvidence)
-	return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
-		bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
+func (e LunaticValidatorEvidence) Equal(ev Evidence) bool {
+	switch ev.(type) {
+	case LunaticValidatorEvidence:
+		e2 := ev.(LunaticValidatorEvidence)
+		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
+	case *LunaticValidatorEvidence:
+		e2 := ev.(*LunaticValidatorEvidence)
+		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
+	default:
+		return false
+	}
 }
 
-func (e *LunaticValidatorEvidence) ValidateBasic() error {
+func (e LunaticValidatorEvidence) ValidateBasic() error {
 	// if err := e.Header.ValidateBasic(); err != nil {
 	// 	return fmt.Errorf("invalid header: %v", err)
 	// }
@@ -720,7 +775,7 @@ func (e *LunaticValidatorEvidence) ValidateBasic() error {
 	}
 }
 
-func (e *LunaticValidatorEvidence) String() string {
+func (e LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
 		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
 }
