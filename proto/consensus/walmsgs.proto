@@ -1,0 +1,16 @@
+syntax = "proto3";
+package tendermint.proto.consensus;
+
+option go_package = "github.com/tendermint/tendermint/proto/consensus";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/consensus/msgs.proto";
+
+message msgInfo {
+  Message msg = 1 [(gogoproto.nullable) = false];
+  // p2p.ID  peer_id = 2;
+}
+
+message EndHeightMessage {
+  int64 height = 1;
+}

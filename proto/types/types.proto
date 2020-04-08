@@ -6,7 +6,8 @@ option  go_package = "github.com/tendermint/tendermint/proto/types";
 import "third_party/proto/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/libs/bits/types.proto";
-import "proto/crypto/types.proto";
+import "proto/crypto/keys/types.proto";
+import "proto/crypto/merkle/types.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
@@ -35,6 +36,12 @@ message PartSetHeader {
 
   uint32 total = 1;
   bytes  hash  = 2;
+}
+
+message Parts {
+  uint32                                     index = 1;
+  bytes                                      bytes = 2;
+  tendermint.proto.crypto.merkle.SimpleProof proof = 3 [(gogoproto.nullable) = false];
 }
 
 // BlockID
@@ -187,8 +194,8 @@ message ValidatorSet {
 }
 
 message Validator {
-  bytes                             address           = 1;
-  tendermint.proto.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
-  int64                             VotingPower       = 3;
-  int64                             proposer_priority = 4;
+  bytes                                  address           = 1;
+  tendermint.proto.crypto.keys.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
+  int64                                  VotingPower       = 3;
+  int64                                  proposer_priority = 4;
 }
