@@ -567,11 +567,16 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 }
 
 func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
-	ev2T, ok := ev2.(ConflictingHeadersEvidence)
-	if !ok {
+	switch ev2.(type) {
+	case ConflictingHeadersEvidence:
+		e2 := ev2.(ConflictingHeadersEvidence)
+		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash())
+	case *ConflictingHeadersEvidence:
+		e2 := ev2.(*ConflictingHeadersEvidence)
+		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash())
+	default:
 		return false
 	}
-	return bytes.Equal(ev.H1.Hash(), ev2T.H1.Hash())
 }
 
 func (ev ConflictingHeadersEvidence) ValidateBasic() error {
