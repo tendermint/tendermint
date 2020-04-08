@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
 	cfg "github.com/tendermint/tendermint/config"
@@ -23,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 type mockPeer struct {
@@ -76,9 +77,11 @@ type mockBlockApplier struct {
 }
 
 // XXX: Add whitelist/blacklist?
-func (mba *mockBlockApplier) ApplyBlock(state sm.State, blockID types.BlockID, block *types.Block) (sm.State, error) {
+func (mba *mockBlockApplier) ApplyBlock(
+	state sm.State, blockID types.BlockID, block *types.Block,
+) (sm.State, int64, error) {
 	state.LastBlockHeight++
-	return state, nil
+	return state, 0, nil
 }
 
 type mockSwitchIo struct {
@@ -120,13 +123,7 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) 
 	sio.switchedToConsensus = true
 }
 
-func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
-	sio.mtx.Lock()
-	defer sio.mtx.Unlock()
-	return sio.switchedToConsensus
-}
-
-func (sio *mockSwitchIo) broadcastStatusRequest(height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
 }
 
 type testReactorParams struct {
@@ -510,7 +507,7 @@ func newReactorStore(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
 			panic(errors.Wrap(err, "error apply block"))
 		}

@@ -14,6 +14,14 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
     * Added experimental prototype info.
     * Added open questions and implementation plan.
 
+* 2020-03-29: Strengthened and simplified ABCI interface (Erik Grinaker)
+    * ABCI: replaced `chunks` with `chunk_hashes` in `Snapshot`.
+    * ABCI: removed `SnapshotChunk` message.
+    * ABCI: renamed `GetSnapshotChunk` to `LoadSnapshotChunk`.
+    * ABCI: chunks are now exchanged simply as `bytes`.
+    * ABCI: chunks are now 0-indexed, for parity with `chunk_hashes` array.
+    * Reduced maximum chunk size to 16 MB, and increased snapshot message size to 4 MB.
+
 ## Context
 
 State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
@@ -36,28 +44,18 @@ This describes the snapshot/restore process seen from Tendermint. The interface 
 
 ### Snapshot Data Structure
 
-A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. MessagePack as format `1` and Protobuf as format `2`, or similarly for schema versioning). Each snapshot consists of multiple chunks containing the actual state data, allowing parallel downloads and reduced memory usage.
+A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. MessagePack as format `1` and Protobuf as format `2`, or similarly for schema versioning). Each snapshot consists of multiple chunks containing the actual state data, for parallel downloads and reduced memory usage.
 
 ```proto
 message Snapshot {
-    uint64 height = 1;   // The height at which the snapshot was taken
-    uint32 format = 2;   // The application-specific snapshot format
-    uint32 chunks = 3;   // The number of chunks in the snapshot
-    bytes metadata = 4;  // Arbitrary application metadata
-}
-
-message SnapshotChunk {
-    uint64 height = 1;   // The height of the corresponding snapshot
-    uint32 format = 2;   // The application-specific snapshot format
-    uint32 chunk = 3;    // The chunk index (one-based)
-    bytes data = 4;      // Serialized application state in an arbitrary format
-    bytes checksum = 5;  // SHA-1 checksum of data
+    uint64         height       = 1;  // The height at which the snapshot was taken
+    uint32         format       = 2;  // The application-specific snapshot format
+    repeated bytes chunk_hashes = 3;  // SHA-256 checksums of all chunks, in order
+    bytes          metadata     = 4;  // Arbitrary application metadata
 }
 ```
 
-Chunk verification data must be encoded along with the state data in the `data` field.
-
-Chunk `data` cannot be larger than 64 MB, and snapshot `metadata` cannot be larger than 64 KB.
+Chunks are exchanged simply as `bytes`, and cannot be larger than 16 MB. `Snapshot` messages should be less than 4 MB.
 
 ### ABCI Interface
 
@@ -72,41 +70,43 @@ message ResponseListSnapshots {
 // Offers a snapshot to the application
 message RequestOfferSnapshot {
     Snapshot snapshot = 1;
-    bytes app_hash = 2;
+    bytes    app_hash = 2;
 }
 
 message ResponseOfferSnapshot {
-    bool accepted = 1;
-    Reason reason = 2;        // Reason why snapshot was rejected
-    enum Reason {
-        unknown = 0;          // Unknown or generic reason
-        invalid_height = 1;   // Height is rejected: avoid this height
-        invalid_format = 2;   // Format is rejected: avoid this format
+    bool   accepted = 1;
+    Reason reason = 2;
+
+    enum Reason {            // Reason why snapshot was rejected
+        unknown        = 0;  // Unknown or generic reason
+        invalid_height = 1;  // Height is rejected: avoid this height
+        invalid_format = 2;  // Format is rejected: avoid this format
     }
 }
 
-// Fetches a snapshot chunk
-message RequestGetSnapshotChunk {
+// Loads a snapshot chunk
+message RequestLoadSnapshotChunk {
     uint64 height = 1;
     uint32 format = 2;
-    uint32 chunk = 3;
+    uint32 chunk  = 3; // Zero-indexed
 }
 
-message ResponseGetSnapshotChunk {
-    SnapshotChunk chunk = 1;
+message ResponseLoadSnapshotChunk {
+    bytes chunk = 1;
 }
 
 // Applies a snapshot chunk
 message RequestApplySnapshotChunk {
-    SnapshotChunk chunk = 1;
+    bytes chunk = 1;
 }
 
 message ResponseApplySnapshotChunk {
-    bool applied = 1;
-    Reason reason = 2;      // Reason why chunk failed
-    enum Reason {
-        unknown = 0;        // Unknown or generic reason
-        verify_failed = 1;  // Chunk verification failed
+    bool   applied = 1;
+    Reason reason  = 2;      // Reason why chunk failed
+
+    enum Reason {            // Reason why chunk failed
+        unknown        = 0;  // Unknown or generic reason
+        verify_failed  = 1;  // Snapshot verification failed
     }
 }
 ```
@@ -139,19 +139,19 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 3. The node contacts a set of full nodes, and verifies the trusted block header using the given hash via the light client.
 
-4. The node requests available snapshots via `RequestListSnapshots`. Snapshots with `metadata` greater than 64 KB are rejected.
+4. The node requests available snapshots via P2P from peers, via `RequestListSnapshots`. Peers will return the 10 most recent snapshots, one message per snapshot.
 
-5. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
+5. The node aggregates snapshots from multiple peers, ordered by height and format (in reverse). If there are `chunk_hashes` mismatches between different snapshots, the one hosted by the largest amount of peers is chosen. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
 
     * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
-    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOffsetSnapshot` call (via `invalid_height` or `invalid_format`).
+    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOfferSnapshot` call (via `invalid_height` or `invalid_format`).
 
     * The application accepts the `RequestOfferSnapshot` call.
 
-6. The node downloads chunks in parallel from multiple peers via `RequestGetSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunks with `data` greater than 64 MB are rejected.
+6. The node downloads chunks in parallel from multiple peers, via `RequestLoadSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunk messages cannot exceed 16 MB.
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`, along with the chain's app hash at the snapshot height for verification. If the chunk is rejected the node should retry it. If it was rejected with `verify_failed`, it should be refetched from a different source. If an internal error occurred, `ResponseException` should be returned and state sync should be aborted.
+7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`.
 
 8. Once all chunks have been applied, the node compares the app hash to the chain app hash, and if they do not match it either errors or discards the state and starts over.
 
@@ -167,7 +167,7 @@ This describes the snapshot process seen from Gaia, using format version `1`. Th
 
 In the initial version there is no snapshot metadata, so it is set to an empty byte buffer.
 
-Once all chunks have been successfully built, snapshot metadata should be serialized and stored in the file system as e.g. `snapshots/<height>/<format>/metadata`, and served via `RequestListSnapshots`.
+Once all chunks have been successfully built, snapshot metadata should be stored in a database and served via `RequestListSnapshots`.
 
 ### Snapshot Chunk Format
 
@@ -181,7 +181,7 @@ For the initial prototype, each chunk consists of a complete dump of all node da
 
 For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
 
-Chunks should be built greedily by collecting node data up to some size limit (e.g. 32 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>/data`, along with a SHA-1 checksum in `snapshots/<height>/<format>/<chunk>/checksum`, and served via `RequestGetSnapshotChunk`.
+Chunks should be built greedily by collecting node data up to some size limit (e.g. 10 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>`, and a SHA-256 checksum is stored along with the snapshot metadata.
 
 ### Snapshot Scheduling
 
@@ -222,12 +222,6 @@ To stop the testnet, run:
 ```sh
 $ ./tools/stop.sh
 ```
-
-## Open Questions
-
-* Should we have a simpler scheme for discovering snapshots? E.g. announce supported formats, and have peer supply latest available snapshot.
-
-    Downsides: app has to announce supported formats, having a single snapshot per peer may make fewer peers available for chosen snapshot.
 
 ## Resolved Questions
 
@@ -308,6 +302,8 @@ $ ./tools/stop.sh
 * **Tendermint:** allow start with only blockstore [#3713](https://github.com/tendermint/tendermint/issues/3713)
 
 * **Tendermint:** node should go back to fast-syncing when lagging significantly [#129](https://github.com/tendermint/tendermint/issues/129)
+
+* **Tendermint:** backfill historical blocks [#4629](https://github.com/tendermint/tendermint/issues/4629)
 
 ## Status
 

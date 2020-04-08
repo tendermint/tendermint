@@ -14,9 +14,6 @@ executors:
       - image: tendermintdev/docker-website-deployment
     environment:
       AWS_REGION: us-east-1
-  protoc:
-    docker:
-      - image: tendermintdev/docker-protoc
 
 commands:
   run_test:
@@ -75,19 +72,6 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
-  proto-lint:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-lint
-
-  proto-breakage:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-check-breaking-ci
 
   test_abci_apps:
     executor: golang
@@ -409,8 +393,6 @@ workflows:
       - test_abci_apps:
           requires:
             - setup_dependencies
-      - proto-breakage
-      - proto-lint
       - test_abci_cli:
           requires:
             - setup_dependencies

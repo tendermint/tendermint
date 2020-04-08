@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -63,7 +64,8 @@ var _ types.Application = (*Application)(nil)
 type Application struct {
 	types.BaseApplication
 
-	state State
+	state        State
+	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
 }
 
 func NewApplication() *Application {
@@ -118,7 +120,12 @@ func (app *Application) Commit() types.ResponseCommit {
 	app.state.AppHash = appHash
 	app.state.Height++
 	saveState(app.state)
-	return types.ResponseCommit{Data: appHash}
+
+	resp := types.ResponseCommit{Data: appHash}
+	if app.RetainBlocks > 0 && app.state.Height >= app.RetainBlocks {
+		resp.RetainHeight = app.state.Height - app.RetainBlocks + 1
+	}
+	return resp
 }
 
 // Returns an associated value or nil if missing.

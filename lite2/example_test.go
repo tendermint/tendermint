@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/lite2/provider"
 	httpp "github.com/tendermint/tendermint/lite2/provider/http"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
@@ -48,9 +49,9 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
@@ -117,9 +118,9 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
 			Hash:   header.Hash(),
