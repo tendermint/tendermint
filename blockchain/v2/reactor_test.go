@@ -124,7 +124,8 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) 
 	sio.switchedToConsensus = true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) error {
+	return nil
 }
 
 type testReactorParams struct {

@@ -56,7 +56,7 @@ func TestStatusRequestMessageValidateBasic(t *testing.T) {
 		{"Valid Request Message", 0, 0, false},
 		{"Valid Request Message", 1, 1, false},
 		{"Invalid Request Message", -1, -1, true},
-		{"Invalid Request Message", 1, 0, true},
+		{"Invalid Request Message", 1, 2, true},
 	}
 
 	for _, tc := range testCases {

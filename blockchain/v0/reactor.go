@@ -136,6 +136,7 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 		Height: bcR.store.Height()})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
+		return
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
@@ -163,6 +164,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 		bm, err := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
 		if err != nil {
 			bcR.Logger.Error("could not convert msg to protobuf", "err", err)
+			return false
 		}
 		msgBytes, err := bm.Marshal()
 		if err != nil {
@@ -176,6 +178,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bc.BlockRequestMessage,
 	bm, err := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: msg.Height})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
+		return false
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {
@@ -263,6 +266,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				bm, err := bc.MsgToProto(&bc.BlockRequestMessage{Height: request.Height})
 				if err != nil {
 					bcR.Logger.Error("could not convert msg to proto", "err", err)
+					continue
 				}
 				msgBytes, err := bm.Marshal()
 				if err != nil {
@@ -399,6 +403,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to proto", "err", err)
+		return fmt.Errorf("could not convert msg to proto: %w", err)
 	}
 	msgBytes, err := bm.Marshal()
 	if err != nil {

@@ -15,7 +15,7 @@ type iIO interface {
 	sendBlockNotFound(height int64, peerID p2p.ID) error
 	sendStatusResponse(height int64, peerID p2p.ID) error
 
-	broadcastStatusRequest(base int64, height int64)
+	broadcastStatusRequest(base int64, height int64) error
 
 	trySwitchToConsensus(state state.State, blocksSynced int)
 }
@@ -133,9 +133,17 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, blocksSynced int) {
 	}
 }
 
-func (sio *switchIO) broadcastStatusRequest(base, height int64) {
-	bm, _ := bc.MsgToProto(&bc.StatusRequestMessage{Base: base, Height: height})
-	msgBytes, _ := bm.Marshal()
+func (sio *switchIO) broadcastStatusRequest(base, height int64) error {
+	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{Base: base, Height: height})
+	if err != nil {
+		return err
+	}
+	msgBytes, err := bm.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	// XXX: maybe we should use an io specific peer list here
 	sio.sw.Broadcast(BlockchainChannel, msgBytes)
+
+	return nil
 }
