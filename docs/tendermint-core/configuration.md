@@ -262,7 +262,7 @@ max_tx_bytes = 1048576
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v2" - refactor of a reafactor of v0 version for better testability
+#   2) "v2" - refactor of a reafactor of v0 for better testability
 version = "v0"
 
 ##### consensus configuration options #####
