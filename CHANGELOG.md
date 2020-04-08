@@ -1,5 +1,7 @@
 # Changelog
 
+*Tendermint 0.31 release series has reached End-Of-Life and is no longer supported.*
+
 ## v0.31.12
 
 *April 6, 2020*
