@@ -1,0 +1,12 @@
+syntax = "proto3";
+package tendermint.proto.consensus;
+
+option go_package = "github.com/tendermint/tendermint/proto/consensus";
+
+message NewRoundStepMessage {
+  int64 height = 1;
+  int32 round  = 2;
+  // Step                  cstypes.RoundStepType
+  int64 seconds_since_start_time = 4;
+  int32 last_commit_round        = 5;
+}
