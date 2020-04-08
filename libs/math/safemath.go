@@ -62,13 +62,3 @@ func SafeConvertUint64(a int64) uint64 {
 	}
 	return uint64(a)
 }
-
-// SafeConvertInt64 takes an int64 and checks if it overflows
-// there is not a need to check if its below the minimum int64
-// If there is an overflow this will panic
-func SafeConvertInt64(a uint64) int64 {
-	if a > math.MaxInt64 {
-		panic(ErrOverflowInt64)
-	}
-	return int64(a)
-}

@@ -126,6 +126,10 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 	cfg := TestFastSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
 
+	// tamper with version
+	cfg.Version = "v2"
+	assert.NoError(t, cfg.ValidateBasic())
+
 	cfg.Version = "invalid"
 	assert.Error(t, cfg.ValidateBasic())
 }

@@ -117,9 +117,18 @@ message DuplicateVoteEvidence {
   Vote vote_b = 2;
 }
 
+// MockEvidence is used for testing pruposes
+message MockEvidence {
+  int64                     evidence_height = 1;
+  google.protobuf.Timestamp evidence_time   = 2
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes evidence_address = 3;
+}
+
 message Evidence {
   oneof sum {
     DuplicateVoteEvidence duplicate_vote_evidence = 1;
+    MockEvidence          mock_evidence           = 2;
   }
 }
 
@@ -174,12 +183,12 @@ message SignedHeader {
 message ValidatorSet {
   repeated Validator validators         = 1 [(gogoproto.nullable) = false];
   Validator          proposer           = 2 [(gogoproto.nullable) = false];
-  uint64             total_voting_power = 3;
+  int64              total_voting_power = 3;
 }
 
 message Validator {
   bytes                             address           = 1;
   tendermint.proto.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
-  uint64                            VotingPower       = 3;
+  int64                             VotingPower       = 3;
   int64                             proposer_priority = 4;
 }
