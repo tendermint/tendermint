@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	ep "github.com/tendermint/tendermint/proto/evidence"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -133,7 +134,15 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		ev := next.Value.(types.Evidence)
 		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
 		if msg != nil {
-			success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			pm, err := MsgToProto(msg)
+			if err != nil {
+				panic(err)
+			}
+			msgBytes, err := proto.Marshal(pm)
+			if err != nil {
+				panic(err)
+			}
+			success := peer.Send(EvidenceChannel, msgBytes)
 			retry = !success
 		}
 
@@ -164,7 +173,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 func (evR Reactor) checkSendEvidenceMessage(
 	peer p2p.Peer,
 	ev types.Evidence,
-) (msg Message, retry bool) {
+) (msg *ListMessage, retry bool) {
 
 	// make sure the peer is up to date
 	evHeight := ev.Height()
@@ -229,14 +238,10 @@ type Message interface {
 	ValidateBasic() error
 }
 
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&ListMessage{},
-		"tendermint/evidence/ListMessage", nil)
-}
-
 func decodeMsg(bz []byte) (msg Message, err error) {
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
+	lm := ep.List{}
+	proto.Unmarshal(bz, &lm)
+	msg, err = MsgFromProto(lm)
 	return
 }
 

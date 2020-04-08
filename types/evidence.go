@@ -10,6 +10,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -1247,6 +1248,56 @@ func (e ProofOfLockChange) String() string {
 		e.Votes[0].Round)
 }
 
+func (e ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
+
+	plc := new(tmproto.ProofOfLockChange)
+	pbvotes := make([]*tmproto.Vote, len(e.Votes))
+	for i, v := range e.Votes {
+		vpb := v.ToProto()
+		pbvotes[i] = vpb
+	}
+
+	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	plc.Votes = pbvotes
+	plc.PubKey = &pk
+
+	return plc, nil
+}
+
+func ProofOfLockChangeFromProto(plc *tmproto.ProofOfLockChange) (ProofOfLockChange, error) {
+	if plc == nil {
+		return ProofOfLockChange{}, errors.New("nil proof of lock change")
+	}
+
+	e := new(ProofOfLockChange)
+	votes := make([]Vote, len(plc.Votes))
+	for i, v := range plc.Votes {
+		vpb, err := VoteFromProto(v)
+		if err != nil {
+			return ProofOfLockChange{}, err
+		}
+		votes[i] = *vpb
+	}
+
+	if plc.PubKey == nil {
+		return ProofOfLockChange{}, errors.New("proofoflockchange: pubkey cannot be empty")
+	}
+
+	pk, err := cryptoenc.PubKeyFromProto(*plc.PubKey)
+	if err != nil {
+		return ProofOfLockChange{}, err
+	}
+
+	e.Votes = votes
+	e.PubKey = pk
+
+	return *e, e.ValidateBasic()
+}
+
 //-----------------------------------------------------------------
 
 // UNSTABLE
@@ -1287,7 +1338,8 @@ func NewMockEvidence(height int64, eTime time.Time, address []byte) MockEvidence
 	return MockEvidence{
 		EvidenceHeight:  height,
 		EvidenceTime:    eTime,
-		EvidenceAddress: address}
+		EvidenceAddress: address,
+	}
 }
 
 func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
