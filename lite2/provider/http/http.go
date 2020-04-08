@@ -53,7 +53,7 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, err
 	}
 
-	commit, err := p.SignStatusClient.Commit(h)
+	commit, err := p.RemoteClient.Commit(h)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -83,7 +83,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	const maxPerPage = 100
-	res, err := p.SignStatusClient.Validators(h, 0, maxPerPage)
+	res, err := p.RemoteClient.Validators(h, 0, maxPerPage)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -99,7 +99,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 	// Check if there are more validators.
 	for len(res.Validators) == maxPerPage {
-		res, err = p.SignStatusClient.Validators(h, page, maxPerPage)
+		res, err = p.RemoteClient.Validators(h, page, maxPerPage)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.
 func (p *http) ReportEvidence(ev types.Evidence) error {
-	_, err := p.client.BroadcastEvidence(ev)
+	_, err := p.RemoteClient.BroadcastEvidence(ev)
 	return err
 }
 
