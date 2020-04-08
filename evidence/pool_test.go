@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -14,13 +13,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
-
-func TestMain(m *testing.M) {
-	types.RegisterMockEvidences(cdc)
-
-	code := m.Run()
-	os.Exit(code)
-}
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	stateDB := dbm.NewMemDB()
