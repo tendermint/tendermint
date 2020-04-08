@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 type voteData struct {
@@ -181,48 +182,33 @@ func TestMockBadEvidenceValidateBasic(t *testing.T) {
 
 func TestLunaticValidatorEvidence(t *testing.T) {
 	const (
-		chainID       = "mychain"
-		height  int64 = 3
+		height int64 = 3
 	)
 
 	var (
 		blockID  = makeBlockIDRandom()
+		header   = makeHeaderRandom()
 		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-
-		h = &Header{
-			ChainID:            chainID,
-			Height:             height,
-			Time:               bTime,
-			LastBlockID:        BlockID{},
-			LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-			DataHash:           crypto.CRandBytes(tmhash.Size),
-			ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-			NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-			ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-			AppHash:            crypto.CRandBytes(tmhash.Size),
-			LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-			EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-			ProposerAddress:    crypto.CRandBytes(tmhash.Size),
-		}
-
-		val  = NewMockPV()
-		vote = makeVote(t, val, chainID, 0, height, 0, 1, blockID)
+		val      = NewMockPV()
+		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID)
 	)
 
+	header.Time = bTime
+
 	ev := &LunaticValidatorEvidence{
-		Header:             h,
-		CommitSig:          vote.CommitSig(),
+		Header:             header,
+		Vote:               vote,
 		InvalidHeaderField: "AppHash",
 	}
 
-	assert.Equal(t, height, ev.Height())
+	assert.Equal(t, header.Height, ev.Height())
 	assert.Equal(t, bTime, ev.Time())
 	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
-	assert.Equal(t, []byte{0x11, 0x93, 0x2c, 0x7b, 0xb4, 0xec, 0x45, 0x18, 0xf3, 0xd3, 0x66, 0x4b, 0x3, 0xd, 0x40, 0x64, 0xdd, 0x1, 0xba, 0x1d, 0x8c, 0xb3, 0xab, 0x5d, 0x81, 0xa0, 0xa3, 0xfe, 0xb5, 0xc6, 0x6b, 0x71}, ev.Hash())
+	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
-	assert.NoError(t, ev.Verify(chainID, pubKey))
+	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
 	assert.Error(t, ev.Verify("other", pubKey))
 	privKey2 := ed25519.GenPrivKey()
 	pubKey2 := privKey2.PubKey()
@@ -230,4 +216,22 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 	assert.True(t, ev.Equal(ev))
 	assert.NoError(t, ev.ValidateBasic())
 	assert.NotEmpty(t, ev.String())
+}
+
+func makeHeaderRandom() *Header {
+	return &Header{
+		ChainID:            tmrand.Str(12),
+		Height:             int64(tmrand.Uint16()) + 1,
+		Time:               time.Now(),
+		LastBlockID:        BlockID{},
+		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
+		DataHash:           crypto.CRandBytes(tmhash.Size),
+		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
+		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
+		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
+		AppHash:            crypto.CRandBytes(tmhash.Size),
+		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
+		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+		ProposerAddress:    crypto.CRandBytes(tmhash.Size),
+	}
 }

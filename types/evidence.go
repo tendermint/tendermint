@@ -420,13 +420,13 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 		invalidField = "LastResultsHash"
 	}
 	if invalidField != "" {
-		for _, sig := range alternativeHeader.Commit.Signatures {
+		for i, sig := range alternativeHeader.Commit.Signatures {
 			if sig.Absent() {
 				continue
 			}
 			evList = append(evList, &LunaticValidatorEvidence{
 				Header:             alternativeHeader.Header,
-				CommitSig:          sig,
+				Vote:               alternativeHeader.Commit.GetVote(i),
 				InvalidHeaderField: invalidField,
 			})
 		}
@@ -640,9 +640,9 @@ func (e PhantomValidatorEvidence) String() string {
 //-------------------------------------------
 
 type LunaticValidatorEvidence struct {
-	Header             *Header   `json:"header"`
-	CommitSig          CommitSig `json:"commit_sig"`
-	InvalidHeaderField string    `json:"invalid_header_field"`
+	Header             *Header `json:"header"`
+	Vote               *Vote   `json:"vote"`
+	InvalidHeaderField string  `json:"invalid_header_field"`
 }
 
 var _ Evidence = &LunaticValidatorEvidence{}
@@ -656,13 +656,13 @@ func (e *LunaticValidatorEvidence) Time() time.Time {
 }
 
 func (e LunaticValidatorEvidence) Address() []byte {
-	return e.CommitSig.ValidatorAddress
+	return e.Vote.ValidatorAddress
 }
 
 func (e *LunaticValidatorEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+crypto.AddressSize)
 	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
-	copy(bz[tmhash.Size:], e.CommitSig.ValidatorAddress.Bytes())
+	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
 	return tmhash.Sum(bz)
 }
 
@@ -679,9 +679,9 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 		)
 	}
 
-	// if !pubKey.VerifyBytes(vote.SignBytes(chainID), e.CommitSig.Signature) {
-	// 	return errors.New("invalid signature")
-	// }
+	if !pubKey.VerifyBytes(e.Vote.SignBytes(chainID), e.Vote.Signature) {
+		return errors.New("invalid signature")
+	}
 
 	return nil
 }
@@ -689,7 +689,7 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 func (e *LunaticValidatorEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(*LunaticValidatorEvidence)
 	return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
-		bytes.Equal(e.CommitSig.ValidatorAddress, e2.CommitSig.ValidatorAddress)
+		bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 }
 
 func (e *LunaticValidatorEvidence) ValidateBasic() error {
@@ -697,12 +697,19 @@ func (e *LunaticValidatorEvidence) ValidateBasic() error {
 	// 	return fmt.Errorf("invalid header: %v", err)
 	// }
 
-	if err := e.CommitSig.ValidateBasic(); err != nil {
+	if err := e.Vote.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid signature: %v", err)
 	}
 
-	if !e.CommitSig.ForBlock() {
-		return errors.New("signature is absent or nil")
+	if !e.Vote.BlockID.IsComplete() {
+		return errors.New("expected vote for block")
+	}
+
+	if e.Header.Height != e.Vote.Height {
+		return fmt.Errorf("header and vote have different heights: %d vs %d",
+			e.Header.Height,
+			e.Vote.Height,
+		)
 	}
 
 	switch e.InvalidHeaderField {
@@ -715,7 +722,7 @@ func (e *LunaticValidatorEvidence) ValidateBasic() error {
 
 func (e *LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
-		e.CommitSig.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
+		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
 }
 
 //-------------------------------------------

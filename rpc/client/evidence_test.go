@@ -178,7 +178,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 				EvidenceHash:       h1.EvidenceHash,
 				ProposerAddress:    h1.ProposerAddress,
 			},
-			Commit: types.NewCommit(h1.Height, h1.Commit.Round, h1.Commit.BlockID, h1.Commit.Signatures),
+			Commit: types.NewCommit(h1.Height, 1, h1.Commit.BlockID, h1.Commit.Signatures),
 		}
 		h2.Commit.BlockID = types.BlockID{
 			Hash:        h2.Hash(),
@@ -187,15 +187,15 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 		vote := &types.Vote{
 			ValidatorAddress: pv.Key.Address,
 			ValidatorIndex:   0,
-			Height:           h1.Height,
-			Round:            h1.Commit.Round,
-			Timestamp:        h1.Time,
+			Height:           h2.Height,
+			Round:            h2.Commit.Round,
+			Timestamp:        h2.Time,
 			Type:             types.PrecommitType,
 			BlockID:          h2.Commit.BlockID,
 		}
 		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
 		require.NoError(t, err)
-		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h1.Time)
+		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h2.Time)
 
 		t.Logf("h1 AppHash: %X", h1.AppHash)
 		t.Logf("h2 AppHash: %X", h2.AppHash)
