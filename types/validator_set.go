@@ -351,7 +351,7 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	vp := tmproto.ValidatorSet{
 		Validators:       valsProto,
 		Proposer:         *valProposer,
-		TotalVotingPower: tmmath.SafeConvertUint64(vals.TotalVotingPower()),
+		TotalVotingPower: vals.TotalVotingPower(),
 	}
 
 	return &vp, nil
@@ -371,7 +371,7 @@ func (vals *ValidatorSet) FromProto(vp tmproto.ValidatorSet) error {
 		return err
 	}
 
-	vals.totalVotingPower = tmmath.SafeConvertInt64(vp.GetTotalVotingPower())
+	vals.totalVotingPower = vp.GetTotalVotingPower()
 
 	return nil
 }
