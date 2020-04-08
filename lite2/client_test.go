@@ -927,14 +927,14 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 		},
 	)
 
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
 		fullNode,
 		[]provider.Provider{fullNode2},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		MaxRetryAttempts(1),
+		lite.Logger(log.TestingLogger()),
+		lite.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 
@@ -945,7 +945,7 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 	}
 
 	// Check evidence was sent to both full nodes.
-	ev := types.ConflictingHeadersEvidence{H1: *h2, H2: *altH2}
+	ev := types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
 	assert.True(t, fullNode2.HasEvidence(ev))
 	assert.True(t, fullNode.HasEvidence(ev))
 }
