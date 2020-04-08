@@ -3,6 +3,7 @@ package tendermint.proto.blockchain;
 
 option go_package = "github.com/tendermint/tendermint/proto/blockchain";
 
+import "third_party/proto/gogoproto/gogo.proto";
 import "proto/types/types.proto";
 
 message BlockRequest {
@@ -14,7 +15,7 @@ message NoBlockResponse {
 }
 
 message BlockResponse {
-  tendermint.proto.types.Block block = 1;
+  tendermint.proto.types.Block block = 1 [(gogoproto.nullable) = false];
 }
 
 message StatusRequest {

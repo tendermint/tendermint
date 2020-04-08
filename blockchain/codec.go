@@ -27,7 +27,7 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 		bm := bcproto.Message{
 			Sum: &bcproto.Message_BlockResponse{
 				BlockResponse: &bcproto.BlockResponse{
-					Block: b,
+					Block: *b,
 				},
 			},
 		}
@@ -76,7 +76,7 @@ func MsgFromProto(bcm bcproto.Message) (Message, error) {
 
 	case *bcproto.Message_BlockResponse:
 		b := types.Block{}
-		if err := b.FromProto(msg.BlockResponse.Block); err != nil {
+		if err := b.FromProto(&msg.BlockResponse.Block); err != nil {
 			return nil, err
 		}
 		bm = &BlockResponseMessage{Block: &b}
