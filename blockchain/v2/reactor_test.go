@@ -77,7 +77,9 @@ type mockBlockApplier struct {
 }
 
 // XXX: Add whitelist/blacklist?
-func (mba *mockBlockApplier) ApplyBlock(state sm.State, blockID types.BlockID, block *types.Block) (sm.State, int64, error) {
+func (mba *mockBlockApplier) ApplyBlock(
+	state sm.State, blockID types.BlockID, block *types.Block,
+) (sm.State, int64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
 }
@@ -119,12 +121,6 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) 
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
-}
-
-func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
-	sio.mtx.Lock()
-	defer sio.mtx.Unlock()
-	return sio.switchedToConsensus
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {

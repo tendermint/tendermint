@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -8,11 +9,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/lite2/provider/http"
 	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
+
+func TestNewProvider(t *testing.T) {
+	c, err := http.New("chain-test", "192.168.0.1:26657")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://192.168.0.1:26657}")
+
+	c, err = http.New("chain-test", "http://153.200.0.1:26657")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1:26657}")
+
+	c, err = http.New("chain-test", "153.200.0.1")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
+}
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewApplication()

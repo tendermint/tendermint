@@ -140,8 +140,7 @@ type Client struct {
 	// See ConfirmationFunction option
 	confirmationFn func(action string) bool
 
-	routinesWaitGroup sync.WaitGroup
-	quit              chan struct{}
+	quit chan struct{}
 
 	logger log.Logger
 }

@@ -98,9 +98,6 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	// TODO: check if we already have evidence for this validator(s) at
-	// this height so we dont get spammed.
-
 	state := evpool.State()
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
@@ -124,6 +121,11 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
+		// check if evidence is already stored
+		if evpool.store.Has(evidence) {
+			return ErrEvidenceAlreadyStored{}
+		}
+
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev); err != nil {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
@@ -134,10 +136,9 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		priority := val.VotingPower
 
 		// 3) Save to store.
-		added := evpool.store.AddNewEvidence(ev, priority)
-		if !added {
-			// evidence already known, just ignore
-			continue
+		_, err := evpool.store.AddNewEvidence(ev, priority)
+		if err != nil {
+			return fmt.Errorf("failed to add new evidence %v: %w", ev, err)
 		}
 
 		// 4) Add evidence to clist.
