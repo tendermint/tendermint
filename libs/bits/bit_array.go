@@ -422,6 +422,10 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 
 // ToProto converts BitArray to protobuf
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
+	if bA == nil {
+		return &tmprotobits.BitArray{}
+	}
+
 	return &tmprotobits.BitArray{
 		Bits:  int64(bA.Bits),
 		Elems: bA.Elems,
@@ -430,6 +434,13 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 
 // FromProto sets a protobuf BitArray to the given pointer.
 func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) {
+	if bA == nil || protoBitArray == nil {
+		bA = nil
+		return
+	}
+
 	bA.Bits = int(protoBitArray.Bits)
-	bA.Elems = protoBitArray.Elems
+	if len(protoBitArray.Elems) > 0 {
+		bA.Elems = protoBitArray.Elems
+	}
 }

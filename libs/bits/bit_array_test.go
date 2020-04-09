@@ -265,3 +265,28 @@ func TestJSONMarshalUnmarshal(t *testing.T) {
 		})
 	}
 }
+
+func TestProtoBuf(t *testing.T) {
+	testCases := []struct {
+		msg     string
+		bA1     *BitArray
+		bA2     *BitArray
+		expPass bool
+	}{
+		{"sucess empty", &BitArray{}, &BitArray{}, true},
+		{"sucess nil", nil, nil, true},
+		{"success", NewBitArray(1), NewBitArray(1), true},
+		{"success", NewBitArray(1), NewBitArray(2), true},
+		{"nil BitArray 2", NewBitArray(1), nil, false},
+		{"nil BitArray 1", nil, NewBitArray(1), false},
+	}
+	for _, tc := range testCases {
+		protoBA := tc.bA1.ToProto()
+		tc.bA2.FromProto(protoBA)
+		if tc.expPass {
+			require.Equal(t, tc.bA1, tc.bA2, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bA1, tc.bA2, tc.msg)
+		}
+	}
+}

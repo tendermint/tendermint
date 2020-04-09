@@ -77,6 +77,9 @@ func (c Consensus) ToProto() tmproto.Version {
 
 // FromProto sets a protobuf Version to the given pointer.
 func (c *Consensus) FromProto(version tmproto.Version) {
+	if c == nil {
+		return
+	}
 	c.Block = Protocol(version.Block)
 	c.App = Protocol(version.App)
 }
