@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -331,6 +332,48 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 			break
 		}
 	}
+}
+
+func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
+	valsProto := make([]tmproto.Validator, len(vals.Validators))
+	for i := 0; i < len(vals.Validators); i++ {
+		valp, err := vals.Validators[i].ToProto()
+		if err != nil {
+			return nil, err
+		}
+		valsProto[i] = *valp
+	}
+
+	valProposer, err := vals.Proposer.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	vp := tmproto.ValidatorSet{
+		Validators:       valsProto,
+		Proposer:         *valProposer,
+		TotalVotingPower: vals.TotalVotingPower(),
+	}
+
+	return &vp, nil
+}
+
+func (vals *ValidatorSet) FromProto(vp tmproto.ValidatorSet) error {
+	valsProto := make([]Validator, len(vp.Validators))
+	for i := 0; i < len(vp.Validators); i++ {
+		err := valsProto[i].FromProto(vp.Validators[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	err := vals.Proposer.FromProto(vp.GetProposer())
+	if err != nil {
+		return err
+	}
+
+	vals.totalVotingPower = vp.GetTotalVotingPower()
+
+	return nil
 }
 
 // Checks changes against duplicates, splits the changes in updates and
@@ -775,16 +818,13 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
 		valIdx, val, ok := vals.GetByAddress(commitSig.ValidatorAddress)
-		if !ok {
-			continue // missing validator
-		}
 
 		if ok {
-			if firstIndex, ok := seenVals[valIdx]; ok { // double vote
+			// check for double vote of validator on the same commit
+			if firstIndex, ok := seenVals[valIdx]; ok {
 				secondIndex := idx
 				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
-
 			seenVals[valIdx] = idx
 
 			// Validate signature.

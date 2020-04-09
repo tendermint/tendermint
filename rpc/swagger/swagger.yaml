@@ -1123,6 +1123,18 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+          earliest_block_hash:
+            type: string
+            example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+          earliest_app_hash:
+            type: string
+            example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+          earliest_block_height:
+            type: string
+            example: "1262196"
+          earliest_block_time:
+            type: string
+            example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
           example: false

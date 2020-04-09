@@ -86,18 +86,30 @@ const (
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	switch evi := evidence.(type) {
 	case *DuplicateVoteEvidence:
-		vote_b := evi.VoteB.ToProto()
-		vote_a := evi.VoteA.ToProto()
-		return &tmproto.Evidence{
+		voteB := evi.VoteB.ToProto()
+		voteA := evi.VoteA.ToProto()
+		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
 				DuplicateVoteEvidence: &tmproto.DuplicateVoteEvidence{
-					VoteA: vote_a,
-					VoteB: vote_b,
+					VoteA: voteA,
+					VoteB: voteB,
 				},
 			},
-		}, nil
+		}
+		return tp, nil
+	case MockEvidence:
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_MockEvidence{
+				MockEvidence: &tmproto.MockEvidence{
+					EvidenceHeight:  evi.Height(),
+					EvidenceTime:    evi.Time(),
+					EvidenceAddress: evi.Address(),
+				},
+			},
+		}
+		return tp, nil
 	default:
-		return nil, errors.New("evidence is not recognized")
+		return nil, errors.New("toproto: evidence is not recognized")
 	}
 }
 
@@ -105,17 +117,24 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
-		vote_a := Vote{}
-		vote_a.FromProto(*evi.DuplicateVoteEvidence.VoteA)
-		vote_b := Vote{}
-		vote_a.FromProto(*evi.DuplicateVoteEvidence.VoteB)
+		voteA := Vote{}
+		voteA.FromProto(*evi.DuplicateVoteEvidence.GetVoteA())
+		voteB := Vote{}
+		voteB.FromProto(*evi.DuplicateVoteEvidence.GetVoteB())
 
 		dve := DuplicateVoteEvidence{
-			VoteA: &vote_a,
-			VoteB: &vote_b,
+			VoteA: &voteA,
+			VoteB: &voteB,
 		}
 
 		return &dve, nil
+	case *tmproto.Evidence_MockEvidence:
+		me := MockEvidence{
+			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
+			EvidenceAddress: evi.MockEvidence.GetEvidenceAddress(),
+			EvidenceTime:    evi.MockEvidence.GetEvidenceTime(),
+		}
+		return me, nil
 	default:
 		return nil, errors.New("evidence is not recognized")
 	}
@@ -316,7 +335,8 @@ func NewMockEvidence(height int64, eTime time.Time, idx uint32, address []byte) 
 	return MockEvidence{
 		EvidenceHeight:  height,
 		EvidenceTime:    eTime,
-		EvidenceAddress: address}
+		EvidenceAddress: address,
+	}
 }
 
 func (e MockEvidence) Height() int64   { return e.EvidenceHeight }

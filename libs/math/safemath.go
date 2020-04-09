@@ -6,6 +6,9 @@ import (
 )
 
 var ErrOverflowInt32 = errors.New("int32 overflow")
+var ErrOverflowUint32 = errors.New("uint32 overflow")
+var ErrOverflowUint64 = errors.New("uint64 overflow")
+var ErrOverflowInt64 = errors.New("int64 overflow")
 
 // SafeAddInt32 adds two int32 integers
 // If there is an overflow this will panic
@@ -40,13 +43,22 @@ func SafeConvertInt32(a int64) int32 {
 	return int32(a)
 }
 
-// SafeConvertUint32 takes a int and checks if it overflows
+// SafeConvertUint32 takes an int64 and checks if it overflows
 // If there is an overflow this will panic
 func SafeConvertUint32(a int64) uint32 {
 	if a > math.MaxUint32 {
-		panic(ErrOverflowInt32)
+		panic(ErrOverflowUint32)
 	} else if a < 0 {
-		panic(ErrOverflowInt32)
+		panic(ErrOverflowUint32)
 	}
 	return uint32(a)
+}
+
+// SafeConvertUint64 takes an int64 and checks if it overflows
+// If there is an overflow this will panic
+func SafeConvertUint64(a int64) uint64 {
+	if a < 0 {
+		panic(ErrOverflowUint64)
+	}
+	return uint64(a)
 }

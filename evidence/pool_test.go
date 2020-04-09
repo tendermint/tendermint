@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -14,13 +13,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
-
-func TestMain(m *testing.M) {
-	types.RegisterMockEvidences(cdc)
-
-	code := m.Run()
-	os.Exit(code)
-}
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	stateDB := dbm.NewMemDB()
@@ -70,7 +62,7 @@ func TestEvidencePool(t *testing.T) {
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	// err: evidence created at 2019-01-01 00:00:00 +0000 UTC has expired. Evidence can not be older than: ...
 
 	var wg sync.WaitGroup
@@ -81,14 +73,14 @@ func TestEvidencePool(t *testing.T) {
 	}()
 
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	wg.Wait()
 
 	assert.Equal(t, 1, pool.evidenceList.Len())
 
-	// if we send it again, it shouldnt change the size
+	// if we send it again, it shouldnt add and return an error
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
 

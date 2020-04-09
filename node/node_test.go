@@ -248,7 +248,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// Make EvidencePool
 	types.RegisterMockEvidencesGlobal() // XXX!
-	evidence.RegisterMockEvidences()
+	// evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
 	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(logger)
@@ -258,7 +258,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
+		ev := types.NewMockEvidence(1, time.Now(), 1, proposerAddr)
 		err := evidencePool.AddEvidence(ev)
 		assert.NoError(t, err)
 	}

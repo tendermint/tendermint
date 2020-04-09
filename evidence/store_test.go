@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -21,11 +22,13 @@ func TestStoreAddDuplicate(t *testing.T) {
 	priority := int64(10)
 	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
 
-	added := store.AddNewEvidence(ev, priority)
+	added, err := store.AddNewEvidence(ev, priority)
+	require.NoError(t, err)
 	assert.True(added)
 
 	// cant add twice
-	added = store.AddNewEvidence(ev, priority)
+	added, err = store.AddNewEvidence(ev, priority)
+	require.NoError(t, err)
 	assert.False(added)
 }
 
@@ -40,7 +43,8 @@ func TestStoreCommitDuplicate(t *testing.T) {
 
 	store.MarkEvidenceAsCommitted(ev)
 
-	added := store.AddNewEvidence(ev, priority)
+	added, err := store.AddNewEvidence(ev, priority)
+	require.NoError(t, err)
 	assert.False(added)
 }
 
@@ -59,7 +63,8 @@ func TestStoreMark(t *testing.T) {
 	priority := int64(10)
 	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
 
-	added := store.AddNewEvidence(ev, priority)
+	added, err := store.AddNewEvidence(ev, priority)
+	require.NoError(t, err)
 	assert.True(added)
 
 	// get the evidence. verify. should be uncommitted
@@ -116,7 +121,8 @@ func TestStorePriority(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		added := store.AddNewEvidence(c.ev, c.priority)
+		added, err := store.AddNewEvidence(c.ev, c.priority)
+		require.NoError(t, err)
 		assert.True(added)
 	}
 

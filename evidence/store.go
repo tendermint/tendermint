@@ -5,6 +5,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	ep "github.com/tendermint/tendermint/proto/evidence"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,12 +26,6 @@ Schema for indexing evidence (note you need both height and hash to find a piece
 "evidence-outqueue"/<priority>/<evidence-height>/<evidence-hash> -> Info
 "evidence-pending"/<evidence-height>/<evidence-hash> -> Info
 */
-
-type Info struct {
-	Committed bool
-	Priority  int64
-	Evidence  types.Evidence
-}
 
 const (
 	baseKeyLookup   = "evidence-lookup"   // all evidence
@@ -61,6 +56,25 @@ func keyPending(evidence types.Evidence) []byte {
 
 func _key(format string, o ...interface{}) []byte {
 	return []byte(fmt.Sprintf(format, o...))
+}
+
+type Info struct {
+	Committed bool
+	Priority  int64
+	Evidence  types.Evidence
+}
+
+func (i *Info) FromProto(ip ep.Info) error {
+	i.Committed = ip.Committed
+	i.Priority = ip.Priority
+
+	evi, err := types.EvidenceFromProto(ip.Evidence)
+	if err != nil {
+		return err
+	}
+	i.Evidence = evi
+
+	return nil
 }
 
 // Store is a store of all the evidence we've seen, including
@@ -111,12 +125,18 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 		}
 		count++
 
-		var ei Info
-		err := cdc.UnmarshalBinaryBare(val, &ei)
+		var ip ep.Info
+		err := ip.Unmarshal(val)
 		if err != nil {
 			panic(err)
 		}
-		evidence = append(evidence, ei.Evidence)
+
+		evi, err := types.EvidenceFromProto(ip.Evidence)
+		if err != nil {
+			panic(err)
+		}
+
+		evidence = append(evidence, evi)
 	}
 	return evidence
 }
@@ -132,41 +152,67 @@ func (store *Store) GetInfo(height int64, hash []byte) Info {
 	if len(val) == 0 {
 		return Info{}
 	}
-	var ei Info
-	err = cdc.UnmarshalBinaryBare(val, &ei)
-	if err != nil {
+	var ip ep.Info
+	if err = ip.Unmarshal(val); err != nil {
 		panic(err)
 	}
-	return ei
+
+	var ep Info
+	if err = ep.FromProto(ip); err != nil {
+		panic(err)
+	}
+
+	return ep
+}
+
+// Has checks if the evidence is already stored
+func (store *Store) Has(evidence types.Evidence) bool {
+	key := keyLookup(evidence)
+	ok, _ := store.db.Has(key)
+	return ok
 }
 
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
-func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool {
+func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (bool, error) {
 	// check if we already have seen it
-	ei := store.getInfo(evidence)
-	if ei.Evidence != nil {
-		return false
+	if store.Has(evidence) {
+		return false, nil
 	}
 
-	ei = Info{
+	evi, err := types.EvidenceToProto(evidence)
+	if err != nil {
+		return false, err
+	}
+
+	ip := ep.Info{
 		Committed: false,
 		Priority:  priority,
-		Evidence:  evidence,
+		Evidence:  *evi,
 	}
-	eiBytes := cdc.MustMarshalBinaryBare(ei)
+
+	eiBytes, err := ip.Marshal()
+	if err != nil {
+		panic(err)
+	}
 
 	// add it to the store
 	key := keyOutqueue(evidence, priority)
-	store.db.Set(key, eiBytes)
+	if err = store.db.Set(key, eiBytes); err != nil {
+		return false, err
+	}
 
 	key = keyPending(evidence)
-	store.db.Set(key, eiBytes)
+	if err = store.db.Set(key, eiBytes); err != nil {
+		return false, err
+	}
 
 	key = keyLookup(evidence)
-	store.db.SetSync(key, eiBytes)
+	if err = store.db.SetSync(key, eiBytes); err != nil {
+		return false, err
+	}
 
-	return true
+	return true, nil
 }
 
 // MarkEvidenceAsBroadcasted removes evidence from Outqueue.
@@ -190,14 +236,23 @@ func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	store.db.Delete(pendingKey)
 
 	// committed Info doens't need priority
-	ei := Info{
+	evi, err := types.EvidenceToProto(evidence)
+	if err != nil {
+		panic(err)
+	}
+
+	ip := ep.Info{
 		Committed: true,
-		Evidence:  evidence,
+		Evidence:  *evi,
 		Priority:  0,
 	}
 
 	lookupKey := keyLookup(evidence)
-	store.db.SetSync(lookupKey, cdc.MustMarshalBinaryBare(ei))
+	eip, err := ip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	store.db.SetSync(lookupKey, eip)
 }
 
 //---------------------------------------------------

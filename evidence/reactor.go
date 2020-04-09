@@ -5,11 +5,10 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
-
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	ep "github.com/tendermint/tendermint/proto/evidence"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -82,10 +81,18 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *ListMessage:
 		for _, ev := range msg.Evidence {
 			err := evR.evpool.AddEvidence(ev)
-			if err != nil {
-				evR.Logger.Info("Evidence is not valid", "evidence", msg.Evidence, "err", err)
+			switch err.(type) {
+			case ErrInvalidEvidence:
+				evR.Logger.Error("Evidence is not valid", "evidence", msg.Evidence, "err", err)
 				// punish peer
 				evR.Switch.StopPeerForError(src, err)
+				return
+			case ErrEvidenceAlreadyStored:
+				evR.Logger.Debug("Evidence already exists", "evidence", msg.Evidence)
+			case nil:
+			default:
+				evR.Logger.Error("Evidence has not been added", "evidence", msg.Evidence, "err", err)
+				return
 			}
 		}
 	default:
@@ -126,7 +133,15 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		ev := next.Value.(types.Evidence)
 		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
 		if msg != nil {
-			success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			pm, err := MsgToProto(msg)
+			if err != nil {
+				panic(err)
+			}
+			msgBytes, err := pm.Marshal()
+			if err != nil {
+				panic(err)
+			}
+			success := peer.Send(EvidenceChannel, msgBytes)
 			retry = !success
 		}
 
@@ -157,7 +172,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 func (evR Reactor) checkSendEvidenceMessage(
 	peer p2p.Peer,
 	ev types.Evidence,
-) (msg Message, retry bool) {
+) (msg *ListMessage, retry bool) {
 
 	// make sure the peer is up to date
 	evHeight := ev.Height()
@@ -222,17 +237,14 @@ type Message interface {
 	ValidateBasic() error
 }
 
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&ListMessage{},
-		"tendermint/evidence/ListMessage", nil)
-}
-
 func decodeMsg(bz []byte) (msg Message, err error) {
 	if len(bz) > maxMsgSize {
 		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
+
+	lm := ep.List{}
+	lm.Unmarshal(bz)
+	msg, err = MsgFromProto(lm)
 	return
 }
 
