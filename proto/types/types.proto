@@ -192,3 +192,10 @@ message Validator {
   int64                             VotingPower       = 3;
   int64                             proposer_priority = 4;
 }
+
+message BlockMeta {
+  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  int64   block_size = 2;
+  Header  header     = 3 [(gogoproto.nullable) = false];
+  int64   num_txs    = 4;
+}
