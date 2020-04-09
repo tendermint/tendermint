@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,6 +132,50 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	_, err = mt.Accept(peerConfig{})
 	if _, ok := err.(ErrFilterTimeout); !ok {
 		t.Errorf("expected ErrFilterTimeout")
+	}
+}
+
+func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
+	mt := newMultiplexTransport(
+		emptyNodeInfo(),
+		NodeKey{
+			PrivKey: ed25519.GenPrivKey(),
+		},
+	)
+	id := mt.nodeKey.ID()
+
+	MultiplexTransportMaxIncomingConnections(0)(mt)
+
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mt.Listen(*addr); err != nil {
+		t.Fatal(err)
+	}
+
+	errc := make(chan error)
+
+	go func() {
+		addr := NewNetAddress(id, mt.listener.Addr())
+
+		_, err := addr.Dial()
+		if err != nil {
+			errc <- err
+			return
+		}
+
+		close(errc)
+	}()
+
+	if err := <-errc; err != nil {
+		t.Errorf("connection failed: %v", err)
+	}
+
+	_, err = mt.Accept(peerConfig{})
+	if err == nil || !strings.Contains(err.Error(), "connection reset by peer") {
+		t.Errorf("expected connection reset by peer error, got %v", err)
 	}
 }
 
