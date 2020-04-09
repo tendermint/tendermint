@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var (
@@ -55,16 +56,16 @@ func makeParams(
 	pubkeyTypes []string,
 ) ConsensusParams {
 	return ConsensusParams{
-		Block: BlockParams{
+		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: EvidenceParams{
+		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
-		Validator: ValidatorParams{
+		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
 		},
 	}

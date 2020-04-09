@@ -1,6 +1,10 @@
 package types
 
-import "reflect"
+import (
+	"reflect"
+
+	tmproto "github.com/tendermint/tendermint/proto/types"
+)
 
 // Go lacks a simple and safe way to see if something is a typed nil.
 // See:
@@ -26,4 +30,13 @@ func isEmpty(o interface{}) bool {
 	default:
 		return false
 	}
+}
+
+func IsValidPubkeyType(pubkeyType string, vp tmproto.ValidatorParams) bool {
+	for i := 0; i < len(vp.PubKeyTypes); i++ {
+		if vp.PubKeyTypes[i] == pubkeyType {
+			return true
+		}
+	}
+	return false
 }

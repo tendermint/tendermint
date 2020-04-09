@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -114,7 +115,7 @@ func TestPruneStates(t *testing.T) {
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
 					ConsensusParams: types.ConsensusParams{
-						Block: types.BlockParams{MaxBytes: 10e6},
+						Block: tmproto.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,
@@ -156,7 +157,7 @@ func TestPruneStates(t *testing.T) {
 				params, err := sm.LoadConsensusParams(db, h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equals(&types.ConsensusParams{}))
+					require.False(t, params.Equal(&types.ConsensusParams{}))
 				} else {
 					require.Error(t, err, "params height %v", h)
 					require.Equal(t, sm.ErrNoConsensusParamsForHeight{Height: h}, err)

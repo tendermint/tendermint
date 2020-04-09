@@ -10,6 +10,8 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
+	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -252,7 +254,7 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-) (*ABCIResponses, error) {
+) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -362,7 +364,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params types.ValidatorParams) error {
+	params tmproto.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
@@ -374,7 +376,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
-		if !params.IsValidPubkeyType(thisKeyType) {
+		if !types.IsValidPubkeyType(thisKeyType, params) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
@@ -387,7 +389,7 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -440,7 +442,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
+		LastResultsHash:                  ABCIResponsesResultsHash(*abciResponses),
 		AppHash:                          nil,
 	}, nil
 }
@@ -452,7 +454,7 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	eventBus.PublishEventNewBlock(types.EventDataNewBlock{

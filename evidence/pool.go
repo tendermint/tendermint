@@ -9,6 +9,7 @@ import (
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -106,6 +107,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		return ErrInvalidEvidence{err}
 	}
 
+	fmt.Println("here")
 	// fetch the validator and return its voting power as its priority
 	// TODO: something better ?
 	valset, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
@@ -151,7 +153,7 @@ func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 func (evpool *Pool) removeEvidence(
 	height int64,
 	lastBlockTime time.Time,
-	params types.EvidenceParams,
+	params tmproto.EvidenceParams,
 	blockEvidenceMap map[string]struct{}) {
 
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {

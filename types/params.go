@@ -8,6 +8,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -24,9 +25,9 @@ const (
 // ConsensusParams contains consensus critical parameters that determine the
 // validity of blocks.
 type ConsensusParams struct {
-	Block     BlockParams     `json:"block"`
-	Evidence  EvidenceParams  `json:"evidence"`
-	Validator ValidatorParams `json:"validator"`
+	Block     tmproto.BlockParams     `json:"block"`
+	Evidence  tmproto.EvidenceParams  `json:"evidence"`
+	Validator tmproto.ValidatorParams `json:"validator"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -35,28 +36,6 @@ type ConsensusParams struct {
 type HashedParams struct {
 	BlockMaxBytes int64
 	BlockMaxGas   int64
-}
-
-// BlockParams define limits on the block size and gas plus minimum time
-// between blocks.
-type BlockParams struct {
-	MaxBytes int64 `json:"max_bytes"`
-	MaxGas   int64 `json:"max_gas"`
-	// Minimum time increment between consecutive blocks (in milliseconds)
-	// Not exposed to the application.
-	TimeIotaMs int64 `json:"time_iota_ms"`
-}
-
-// EvidenceParams determine how we handle evidence of malfeasance.
-type EvidenceParams struct {
-	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
-	MaxAgeDuration  time.Duration `json:"max_age_duration"`
-}
-
-// ValidatorParams restrict the public key types validators can use.
-// NOTE: uses ABCI pubkey naming, not Amino names.
-type ValidatorParams struct {
-	PubKeyTypes []string `json:"pub_key_types"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -69,8 +48,8 @@ func DefaultConsensusParams() *ConsensusParams {
 }
 
 // DefaultBlockParams returns a default BlockParams.
-func DefaultBlockParams() BlockParams {
-	return BlockParams{
+func DefaultBlockParams() tmproto.BlockParams {
+	return tmproto.BlockParams{
 		MaxBytes:   22020096, // 21MB
 		MaxGas:     -1,
 		TimeIotaMs: 1000, // 1s
@@ -78,8 +57,8 @@ func DefaultBlockParams() BlockParams {
 }
 
 // DefaultEvidenceParams Params returns a default EvidenceParams.
-func DefaultEvidenceParams() EvidenceParams {
-	return EvidenceParams{
+func DefaultEvidenceParams() tmproto.EvidenceParams {
+	return tmproto.EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
 	}
@@ -87,17 +66,8 @@ func DefaultEvidenceParams() EvidenceParams {
 
 // DefaultValidatorParams returns a default ValidatorParams, which allows
 // only ed25519 pubkeys.
-func DefaultValidatorParams() ValidatorParams {
-	return ValidatorParams{[]string{ABCIPubKeyTypeEd25519}}
-}
-
-func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
-	for i := 0; i < len(params.PubKeyTypes); i++ {
-		if params.PubKeyTypes[i] == pubkeyType {
-			return true
-		}
-	}
-	return false
+func DefaultValidatorParams() tmproto.ValidatorParams {
+	return tmproto.ValidatorParams{PubKeyTypes: []string{ABCIPubKeyTypeEd25519}}
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their

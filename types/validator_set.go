@@ -357,20 +357,30 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	return &vp, nil
 }
 
-func (vals *ValidatorSet) FromProto(vp tmproto.ValidatorSet) error {
-	valsProto := make([]Validator, len(vp.Validators))
+func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
+	if vp == nil {
+		return errors.New("valSet is empty")
+	}
+
+	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
-		err := valsProto[i].FromProto(vp.Validators[i])
+		vi := Validator{}
+		err := vi.FromProto(vp.Validators[i])
+		if err != nil {
+			return err
+		}
+
+		valsProto[i] = &vi
+	}
+
+	if isTypedNil(vp.Proposer) {
+		err := vals.Proposer.FromProto(vp.GetProposer())
 		if err != nil {
 			return err
 		}
 	}
 
-	err := vals.Proposer.FromProto(vp.GetProposer())
-	if err != nil {
-		return err
-	}
-
+	vals.Validators = valsProto
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 
 	return nil

@@ -11,6 +11,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -156,12 +158,12 @@ func makeConsensusParams(
 	evidenceAge int64,
 ) types.ConsensusParams {
 	return types.ConsensusParams{
-		Block: types.BlockParams{
+		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: types.EvidenceParams{
+		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
@@ -171,10 +173,10 @@ func makeConsensusParams(
 func makeHeaderPartsResponsesValPubKeyChange(
 	state sm.State,
 	pubkey crypto.PubKey,
-) (types.Header, types.BlockID, *sm.ABCIResponses) {
+) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
@@ -195,10 +197,10 @@ func makeHeaderPartsResponsesValPubKeyChange(
 func makeHeaderPartsResponsesValPowerChange(
 	state sm.State,
 	power int64,
-) (types.Header, types.BlockID, *sm.ABCIResponses) {
+) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
@@ -218,10 +220,10 @@ func makeHeaderPartsResponsesValPowerChange(
 func makeHeaderPartsResponsesParams(
 	state sm.State,
 	params types.ConsensusParams,
-) (types.Header, types.BlockID, *sm.ABCIResponses) {
+) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses

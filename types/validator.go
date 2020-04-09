@@ -99,6 +99,7 @@ func (v *Validator) Bytes() []byte {
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	pk, err := ce.PubKeyToProto(v.PubKey)
 	if err != nil {
+		fmt.Println("pk empty", v.PubKey)
 		return nil, err
 	}
 

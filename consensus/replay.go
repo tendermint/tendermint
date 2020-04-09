@@ -17,6 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -513,7 +514,7 @@ Did you reset Tendermint without resetting your application's data?`,
 // mockProxyApp uses ABCIResponses to give the right results
 // Useful because we don't want to call Commit() twice for the same block on the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppConnConsensus {
+func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
 	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
@@ -531,7 +532,7 @@ type mockProxyApp struct {
 
 	appHash       []byte
 	txCount       int
-	abciResponses *sm.ABCIResponses
+	abciResponses *tmstate.ABCIResponses
 }
 
 func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
