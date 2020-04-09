@@ -161,7 +161,10 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) NewValidatorUpdate(pubkey crypto.PubKey, power int64) abci.ValidatorUpdate {
-	pubkeyABCI, _ := cryptoencoding.PubKeyToProto(pubkey)
+	pubkeyABCI, err := cryptoencoding.PubKeyToProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
 	return abci.ValidatorUpdate{
 		PubKey: pubkeyABCI,
 		Power:  power,

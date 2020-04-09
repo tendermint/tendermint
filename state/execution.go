@@ -145,6 +145,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Save the results before we commit.
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
+	fmt.Println("ahh")
 
 	fail.Fail() // XXX
 

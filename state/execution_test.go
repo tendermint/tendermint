@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -344,8 +345,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	state, _, err = blockExec.ApplyBlock(state, blockID, block)
+	fmt.Println("here")
 	require.Nil(t, err)
-
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
 		_, _, ok := state.NextValidators.GetByAddress(pubkey.Address())
