@@ -15,7 +15,6 @@ import (
 	tmbits "github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmprotobits "github.com/tendermint/tendermint/proto/libs/bits"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -207,6 +206,7 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+// ToProto converts Block to protobuf
 func (b *Block) ToProto() (*tmproto.Block, error) {
 	protoHeader := b.Header.ToProto()
 	protoCommit := b.LastCommit.ToProto()
@@ -225,17 +225,15 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 	return &protoBlock, err
 }
 
+// FromProto sets a protobuf Block to the given pointer.
+// It returns an error if the block is invalid.
 func (b *Block) FromProto(bp tmproto.Block) error {
-
 	b.Header.FromProto(bp.Header)
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(bp.Evidence)
 	b.LastCommit.FromProto(*bp.LastCommit)
 
-	if err := b.ValidateBasic(); err != nil {
-		return err
-	}
-	return nil
+	return b.ValidateBasic()
 }
 
 //-----------------------------------------------------------
@@ -410,27 +408,25 @@ func (cs CommitSig) ValidateBasic() error {
 	return nil
 }
 
+// ToProto converts CommitSig to protobuf
 func (cs CommitSig) ToProto() *tmproto.CommitSig {
-
-	csProto := tmproto.CommitSig{
+	return &tmproto.CommitSig{
 		BlockIdFlag:      cs.BlockIDFlag,
 		ValidatorAddress: cs.ValidatorAddress,
 		Timestamp:        cs.Timestamp,
 		Signature:        cs.Signature,
 	}
-	return &csProto
 }
+
+// FromProto sets a protobuf CommitSig to the given pointer.
+// It returns an error if the CommitSig is invalid.
 func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 	cs.BlockIDFlag = csp.BlockIdFlag
 	cs.ValidatorAddress = csp.ValidatorAddress
 	cs.Timestamp = csp.Timestamp
 	cs.Signature = csp.Signature
 
-	if err := cs.ValidateBasic(); err != nil {
-		return err
-	}
-
-	return nil
+	return cs.ValidateBasic()
 }
 
 //-------------------------------------
@@ -627,47 +623,38 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
-func (c Commit) ToProto() *tmproto.Commit {
-
-	csp := tmproto.Commit{
-		Height: c.Height,
-		Round:  c.Round,
-		BlockID: tmproto.BlockID{
-			Hash: c.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  c.BlockID.PartsHeader.Hash,
-				Total: c.BlockID.PartsHeader.Total,
-			},
-		},
-		Hash: c.hash,
-		BitArray: &tmprotobits.BitArray{
-			Bits:  int64(c.bitArray.Bits),
-			Elems: c.bitArray.Elems,
-		},
+// ToProto converts Commit to protobuf
+func (commit Commit) ToProto() *tmproto.Commit {
+	return &tmproto.Commit{
+		Height:   commit.Height,
+		Round:    commit.Round,
+		BlockID:  commit.BlockID.ToProto(),
+		Hash:     commit.hash,
+		BitArray: commit.bitArray.ToProto(),
 	}
-	return &csp
 }
-func (c *Commit) FromProto(cp tmproto.Commit) error {
-	c.Height = cp.Height
-	c.Round = cp.Round
-	c.BlockID = BlockID{
-		Hash: cp.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  cp.BlockID.PartsHeader.Hash,
-			Total: cp.BlockID.PartsHeader.Total,
-		},
-	}
-	c.hash = cp.Hash
-	c.bitArray = &tmbits.BitArray{
-		Bits:  (int(cp.BitArray.Bits)),
-		Elems: cp.BitArray.Elems,
-	}
 
-	if err := c.ValidateBasic(); err != nil {
+// FromProto sets a protobuf Commit to the given pointer.
+// It returns an error if the commit is invalid.
+func (commit *Commit) FromProto(cp tmproto.Commit) error {
+	var (
+		blockID  *BlockID
+		bitArray *tmbits.BitArray
+	)
+
+	if err := blockID.FromProto(cp.BlockID); err != nil {
 		return err
 	}
 
-	return nil
+	bitArray.FromProto(cp.BitArray)
+
+	commit.Height = cp.Height
+	commit.Round = cp.Round
+	commit.BlockID = *blockID
+	commit.hash = cp.Hash
+	commit.bitArray = bitArray
+
+	return commit.ValidateBasic()
 }
 
 //-----------------------------------------------------------------------------
@@ -733,28 +720,31 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent)
 }
 
+// ToProto converts SignedHeader to protobuf
 func (sh SignedHeader) ToProto() *tmproto.SignedHeader {
-	protoHeader := sh.Header.ToProto()
-	protoCommit := sh.Commit.ToProto()
-
-	shp := tmproto.SignedHeader{
-		Header: protoHeader,
-		Commit: protoCommit,
+	return &tmproto.SignedHeader{
+		Header: sh.Header.ToProto(),
+		Commit: sh.Commit.ToProto(),
 	}
-	return &shp
 }
 
+// FromProto sets a protobuf SignedHeader to the given pointer.
+// It returns an error if the hader or the commit is invalid.
 func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
-	h := Header{}
-	c := Commit{}
+	var (
+		h *Header
+		c *Commit
+	)
 
 	if err := h.FromProto(*shp.Header); err != nil {
 		return err
 	}
-	c.FromProto(*shp.Commit)
+	if err := c.FromProto(*shp.Commit); err != nil {
+		return err
+	}
 
-	sh.Header = &h
-	sh.Commit = &c
+	sh.Header = h
+	sh.Commit = c
 
 	return nil
 }
@@ -804,6 +794,7 @@ func (data *Data) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+// ToProto converts Data to protobuf
 func (data *Data) ToProto() *tmproto.Data {
 
 	txBzs := make([][]byte, len(data.Txs))
@@ -818,6 +809,7 @@ func (data *Data) ToProto() *tmproto.Data {
 	return &dp
 }
 
+// FromProto sets a protobuf Data to the given pointer.
 func (data *Data) FromProto(dp tmproto.Data) {
 	txBzs := make(Txs, len(data.Txs))
 	for i := 0; i < len(dp.Txs); i++ {
@@ -865,6 +857,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+// ToProto converts EvidenceData to protobuf
 func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
 	for i := 0; i < len(data.Evidence); i++ {
@@ -881,6 +874,8 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	}
 	return &protoEvidence, nil
 }
+
+// FromProto sets a protobuf EvidenceData to the given pointer.
 func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
 	eviBzs := make([]Evidence, len(eviData.Evidence))
 	for i := 0; i < len(eviData.Evidence); i++ {
@@ -948,4 +943,23 @@ func (blockID BlockID) IsComplete() bool {
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+}
+
+// ToProto converts BlockID to protobuf
+func (blockID *BlockID) ToProto() tmproto.BlockID {
+	return tmproto.BlockID{
+		Hash:        blockID.Hash,
+		PartsHeader: blockID.PartsHeader.ToProto(),
+	}
+}
+
+// FromProto sets a protobuf BlockID to the given pointer.
+// It returns an error if the block id is invalid.
+func (blockID *BlockID) FromProto(bID tmproto.BlockID) error {
+	var ph *PartSetHeader
+	ph.FromProto(bID.PartsHeader)
+	blockID.PartsHeader = *ph
+	blockID.Hash = bID.Hash
+
+	return blockID.ValidateBasic()
 }

@@ -177,22 +177,13 @@ func (h Header) ValidateBasic() error {
 	return nil
 }
 
+// ToProto converts Header to protobuf
 func (h *Header) ToProto() *tmproto.Header {
-
-	ph := tmproto.Header{
-		Version: tmproto.Version{
-			Block: h.Version.Block.Uint64(),
-			App:   h.Version.App.Uint64(),
-		},
-		ChainID: h.ChainID,
-		Time:    h.Time,
-		LastBlockID: tmproto.BlockID{
-			Hash: h.LastBlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  h.LastBlockID.PartsHeader.Hash,
-				Total: h.LastBlockID.PartsHeader.Total,
-			},
-		},
+	return &tmproto.Header{
+		Version:            h.Version.ToProto(),
+		ChainID:            h.ChainID,
+		Time:               h.Time,
+		LastBlockID:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
@@ -200,23 +191,26 @@ func (h *Header) ToProto() *tmproto.Header {
 		LastResultsHash:    h.LastResultsHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
-	return &ph
 }
 
+// FromProto sets a protobuf Header to the given pointer.
+// It returns an error if the header is invalid.
 func (h *Header) FromProto(ph tmproto.Header) error {
-	h.Version = version.Consensus{
-		Block: version.Protocol(ph.Version.Block),
-		App:   version.Protocol(ph.Version.App),
+	var (
+		blockID     *BlockID
+		versionCons *version.Consensus
+	)
+
+	if err := blockID.FromProto(ph.LastBlockID); err != nil {
+		return err
 	}
+
+	versionCons.FromProto(ph.Version)
+
+	h.Version = *versionCons
 	h.ChainID = ph.ChainID
 	h.Time = ph.Time
-	h.LastBlockID = BlockID{
-		Hash: ph.LastBlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  ph.LastBlockID.PartsHeader.Hash,
-			Total: ph.LastBlockID.PartsHeader.Total,
-		},
-	}
+	h.LastBlockID = *blockID
 	h.ValidatorsHash = ph.ValidatorsHash
 	h.NextValidatorsHash = ph.NextValidatorsHash
 	h.ConsensusHash = ph.ConsensusHash
@@ -224,10 +218,5 @@ func (h *Header) FromProto(ph tmproto.Header) error {
 	h.LastResultsHash = ph.LastResultsHash
 	h.ProposerAddress = ph.ProposerAddress
 
-	err := h.ValidateBasic()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.ValidateBasic()
 }

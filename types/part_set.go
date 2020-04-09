@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var (
@@ -77,6 +78,20 @@ func (psh PartSetHeader) ValidateBasic() error {
 		return errors.Wrap(err, "Wrong Hash")
 	}
 	return nil
+}
+
+// ToProto converts BloPartSetHeaderckID to protobuf
+func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
+	return tmproto.PartSetHeader{
+		Total: psh.Total,
+		Hash:  psh.Hash,
+	}
+}
+
+// FromProto sets a protobuf PartSetHeader to the given pointer
+func (psh *PartSetHeader) FromProto(protoPartSetHeader tmproto.PartSetHeader) {
+	psh.Total = protoPartSetHeader.Total
+	psh.Hash = protoPartSetHeader.Hash
 }
 
 //-------------------------------------

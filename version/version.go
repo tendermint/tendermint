@@ -1,5 +1,7 @@
 package version
 
+import tmproto "github.com/tendermint/tendermint/proto/types"
+
 var (
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
@@ -63,4 +65,18 @@ type App struct {
 type Consensus struct {
 	Block Protocol `json:"block"`
 	App   Protocol `json:"app"`
+}
+
+// ToProto converts Consensus to protobuf
+func (c Consensus) ToProto() tmproto.Version {
+	return tmproto.Version{
+		Block: c.Block.Uint64(),
+		App:   c.App.Uint64(),
+	}
+}
+
+// FromProto sets a protobuf Version to the given pointer.
+func (c *Consensus) FromProto(version tmproto.Version) {
+	c.Block = Protocol(version.Block)
+	c.App = Protocol(version.App)
 }

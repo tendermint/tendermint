@@ -97,42 +97,38 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 	return bz
 }
 
+// ToProto converts Proposal to protobuf
 func (p Proposal) ToProto() *tmproto.Proposal {
+	blockID := p.BlockID.ToProto()
 
 	pp := tmproto.Proposal{
-		Type:     p.Type,
-		Height:   p.Height,
-		Round:    p.Round,
-		PolRound: p.POLRound,
-		BlockID: &tmproto.BlockID{
-			Hash: p.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  p.BlockID.PartsHeader.Hash,
-				Total: p.BlockID.PartsHeader.Total,
-			},
-		},
+		Type:      p.Type,
+		Height:    p.Height,
+		Round:     p.Round,
+		PolRound:  p.POLRound,
+		BlockID:   &blockID,
 		Timestamp: p.Timestamp,
 		Signature: p.Signature,
 	}
 	return &pp
 }
+
+// FromProto sets a protobuf Proposal to the given pointer.
+// It returns an error if the proposal is invalid.
 func (p *Proposal) FromProto(pp tmproto.Proposal) error {
+	var blockID *BlockID
+
+	if err := blockID.FromProto(*pp.BlockID); err != nil {
+		return err
+	}
+
 	p.Type = pp.Type
 	p.Height = pp.Height
 	p.Round = pp.Round
 	p.POLRound = pp.PolRound
-	p.BlockID = BlockID{
-		Hash: pp.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  pp.BlockID.PartsHeader.Hash,
-			Total: pp.BlockID.PartsHeader.Total,
-		},
-	}
+	p.BlockID = *blockID
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature
 
-	if err := p.ValidateBasic(); err != nil {
-		return err
-	}
-	return nil
+	return p.ValidateBasic()
 }
