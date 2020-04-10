@@ -121,7 +121,14 @@ data into the new chain.
 However, any bump in the PATCH version should be compatible with existing histories
 (if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
 
-For more information on upgrading, see [UPGRADING.md](./UPGRADING.md)
+For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
+
+### Supported Versions
+
+Because we are a small core team, we only ship patch updates, including security updates, 
+to the most recent minor release and the second-most recent minor release. Consequently, 
+we strongly recommend keeping Tendermint up-to-date. Upgrading instructions can be found 
+in [UPGRADING.md](./UPGRADING.md).
 
 ## Resources
 
