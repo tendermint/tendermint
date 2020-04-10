@@ -471,6 +471,11 @@ func createTransport(
 	}
 
 	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
+
+	// Limit the number of incoming connections.
+	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
+
 	return transport, peerFilters
 }
 
