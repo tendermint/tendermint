@@ -1,0 +1,45 @@
+name: Tests
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+
+jobs:
+  cleanup-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: rokroskar/workflow-run-cleanup-action@master
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
+
+  test_abci_apps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2-beta
+      - name: abci_app test
+        run: abci/tests/test_app/test.sh
+      # if this test fails, fix it and update the docs at:
+      # https://github.com/tendermint/tendermint/blob/master/docs/abci-cli.md
+  test_abci_cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2-beta
+      - name: abci_cli test
+        run: sh abci/tests/test_cli/test.sh
+  test_apps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2-beta
+      - run: sh test/app/test.sh
+  test_persistence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2-beta
+      - run: sh test/persist/test_failure_indcies.sh
