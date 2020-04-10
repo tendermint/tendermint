@@ -949,3 +949,30 @@ func (blockID BlockID) IsComplete() bool {
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }
+
+func (blockID BlockID) ToProto() *tmproto.BlockID {
+
+	pb := &tmproto.BlockID{
+		Hash:        blockID.Hash,
+		PartsHeader: *blockID.PartsHeader.ToProto(),
+	}
+
+	return pb
+}
+
+func (blockID *BlockID) FromProto(pb *tmproto.BlockID) error {
+	if blockID == nil {
+		blockID = &BlockID{}
+	}
+
+	var ph PartSetHeader
+
+	if err := ph.FromProto(&pb.PartsHeader); err != nil {
+		return err
+	}
+
+	blockID.Hash = pb.Hash
+	blockID.PartsHeader = ph
+
+	return nil
+}

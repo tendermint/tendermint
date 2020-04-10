@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var (
@@ -76,6 +77,27 @@ func (psh PartSetHeader) ValidateBasic() error {
 	if err := ValidateHash(psh.Hash); err != nil {
 		return errors.Wrap(err, "Wrong Hash")
 	}
+	return nil
+}
+
+func (psh PartSetHeader) ToProto() *tmproto.PartSetHeader {
+
+	pb := &tmproto.PartSetHeader{
+		Total: psh.Total,
+		Hash:  psh.Hash,
+	}
+
+	return pb
+}
+
+func (psh *PartSetHeader) FromProto(pb *tmproto.PartSetHeader) error {
+	if psh == nil {
+		psh = &PartSetHeader{}
+	}
+
+	psh.Hash = pb.Hash
+	psh.Total = pb.Total
+
 	return nil
 }
 

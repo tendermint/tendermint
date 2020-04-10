@@ -24,7 +24,7 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{
+	txResult := &abci.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
@@ -47,7 +47,7 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{
+	txResult2 := &abci.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx2,
@@ -75,7 +75,7 @@ func TestTxSearch(t *testing.T) {
 		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
 		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
-	hash := txResult.Tx.Hash()
+	hash := types.Tx(txResult.Tx).Hash()
 
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestTxSearch(t *testing.T) {
 
 			assert.Len(t, results, tc.resultsLength)
 			if tc.resultsLength > 0 {
-				assert.Equal(t, []*types.TxResult{txResult}, results)
+				assert.Equal(t, []*abci.TxResult{txResult}, results)
 			}
 		})
 	}
@@ -162,7 +162,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	txResult1 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
 	})
-	hash1 := txResult1.Tx.Hash()
+	hash1 := types.Tx(txResult1.Tx).Hash()
 
 	err := indexer.Index(txResult1)
 	require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	txResult2 := txResultWithEvents(nil)
 	txResult2.Tx = types.Tx("HELLO WORLD 2")
 
-	hash2 := txResult2.Tx.Hash()
+	hash2 := types.Tx(txResult2.Tx).Hash()
 	b := indexer.store.NewBatch()
 
 	rawBytes, err := cdc.MarshalBinaryBare(txResult2)
@@ -191,27 +191,27 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 
 	testCases := []struct {
 		q       string
-		results []*types.TxResult
+		results []*abci.TxResult
 	}{
 		// search by hash
-		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
+		{fmt.Sprintf("tx.hash = '%X'", hash1), []*abci.TxResult{txResult1}},
 		// search by hash
-		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
+		{fmt.Sprintf("tx.hash = '%X'", hash2), []*abci.TxResult{txResult2}},
 		// search by exact match (one key)
-		{"account.number = 1", []*types.TxResult{txResult1}},
-		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
+		{"account.number = 1", []*abci.TxResult{txResult1}},
+		{"account.number >= 1 AND account.number <= 5", []*abci.TxResult{txResult1}},
 		// search by range (lower bound)
-		{"account.number >= 1", []*types.TxResult{txResult1}},
+		{"account.number >= 1", []*abci.TxResult{txResult1}},
 		// search by range (upper bound)
-		{"account.number <= 5", []*types.TxResult{txResult1}},
+		{"account.number <= 5", []*abci.TxResult{txResult1}},
 		// search using not allowed key
-		{"not_allowed = 'boom'", []*types.TxResult{}},
+		{"not_allowed = 'boom'", []*abci.TxResult{}},
 		// search for not existing tx result
-		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
+		{"account.number >= 2 AND account.number <= 5", []*abci.TxResult{}},
 		// search using not existing key
-		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
+		{"account.date >= TIME 2013-05-03T14:45:00Z", []*abci.TxResult{}},
 		// search by deprecated key
-		{"sender = 'addr1'", []*types.TxResult{txResult2}},
+		{"sender = 'addr1'", []*abci.TxResult{txResult2}},
 	}
 
 	ctx := context.Background()
@@ -244,7 +244,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)
-	assert.Equal(t, []*types.TxResult{txResult}, results)
+	assert.Equal(t, []*abci.TxResult{txResult}, results)
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
@@ -302,9 +302,9 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.Len(t, results, 3)
 }
 
-func txResultWithEvents(events []abci.Event) *types.TxResult {
+func txResultWithEvents(events []abci.Event) *abci.TxResult {
 	tx := types.Tx("HELLO WORLD")
-	return &types.TxResult{
+	return &abci.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
@@ -331,7 +331,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
 		tx := tmrand.Bytes(250)
-		txResult := &types.TxResult{
+		txResult := &abci.TxResult{
 			Height: 1,
 			Index:  txIndex,
 			Tx:     tx,
