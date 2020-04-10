@@ -262,7 +262,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	for i := 0; i < numEv; i++ {
 		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// fill the mempool with more txs

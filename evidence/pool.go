@@ -104,18 +104,20 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	evList := []types.Evidence{evidence}
-	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
-	if blockMeta == nil {
-		return fmt.Errorf("don't have block meta at height #%d", evidence.Height())
-	}
 
 	// Break ConflictingHeaders into smaller pieces.
 	if ce, ok := evidence.(types.CompositeEvidence); ok {
 		evpool.logger.Info("Breaking up composite evidence", "ev", evidence)
 
+		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
+		if blockMeta == nil {
+			return fmt.Errorf("don't have block meta at height #%d", evidence.Height())
+		}
+
 		if err := ce.VerifyComposite(&blockMeta.Header, valSet); err != nil {
 			return err
 		}
+
 		evList = ce.Split(&blockMeta.Header, valSet)
 	}
 
@@ -125,8 +127,18 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return ErrEvidenceAlreadyStored{}
 		}
 
+		// For lunatic validator evidence, a header needs to be fetched.
+		var header *types.Header
+		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
+			blockMeta := evpool.blockStore.LoadBlockMeta(ev.Height())
+			if blockMeta == nil {
+				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
+			}
+			header = &blockMeta.Header
+		}
+
 		// 1) Verify against state.
-		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, &blockMeta.Header); err != nil {
+		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 
