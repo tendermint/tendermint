@@ -2,11 +2,11 @@ package evidence
 
 import (
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -29,18 +29,23 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	// create validator set and state
 	valSet := &types.ValidatorSet{
 		Validators: []*types.Validator{
-			{Address: valAddr},
+			{Address: valAddr, VotingPower: 0},
 		},
 	}
 	state := sm.State{
-		LastBlockHeight:             0,
+		LastBlockHeight:             height,
 		LastBlockTime:               tmtime.Now(),
+		LastValidators:              valSet,
 		Validators:                  valSet,
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
+				MaxBytes: 22020096,
+				MaxGas:   -1,
+			},
 			Evidence: types.EvidenceParams{
-				MaxAgeNumBlocks: 10000,
+				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  48 * time.Hour,
 			},
 		},
@@ -56,35 +61,41 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 }
 
 func TestEvidencePool(t *testing.T) {
-
 	var (
 		valAddr      = []byte("val1")
-		height       = int64(5)
+		height       = int64(1)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		pool         = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		pool         = NewPool(stateDB, evidenceDB, blockStore)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	)
 
-	goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
-	badEvidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
+		goodEvidence = types.NewMockEvidence(height, time.Now(), 0, valAddr)
+		badEvidence  = types.NewMockEvidence(height, evidenceTime, 0, valAddr)
+	)
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
-	assert.Error(t, err)
-	// err: evidence created at 2019-01-01 00:00:00 +0000 UTC has expired. Evidence can not be older than: ...
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "has expired. Evidence can not be older than")
+	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	// good evidence
+	evAdded := make(chan struct{})
 	go func() {
 		<-pool.EvidenceWaitChan()
-		wg.Done()
+		close(evAdded)
 	}()
 
 	err = pool.AddEvidence(goodEvidence)
-	assert.NoError(t, err)
-	wg.Wait()
+	require.NoError(t, err)
+
+	select {
+	case <-evAdded:
+	case <-time.After(5 * time.Second):
+		t.Fatal("evidence was not added after 5s")
+	}
 
 	assert.Equal(t, 1, pool.evidenceList.Len())
 
@@ -95,15 +106,15 @@ func TestEvidencePool(t *testing.T) {
 }
 
 func TestEvidencePoolIsCommitted(t *testing.T) {
-	// Initialization:
 	var (
 		valAddr       = []byte("validator_address")
-		height        = int64(42)
+		height        = int64(1)
 		lastBlockTime = time.Now()
 		stateDB       = initializeValidatorState(valAddr, height)
 		evidenceDB    = dbm.NewMemDB()
 		blockStoreDB  = dbm.NewMemDB()
-		pool          = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
+		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		pool          = NewPool(stateDB, evidenceDB, blockStore)
 	)
 
 	// evidence not seen yet:
@@ -120,14 +131,14 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 }
 
 func TestAddEvidence(t *testing.T) {
-
 	var (
 		valAddr      = []byte("val1")
-		height       = int64(100002)
+		height       = int64(30)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		pool         = NewPool(stateDB, evidenceDB, store.NewBlockStore(blockStoreDB))
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		pool         = NewPool(stateDB, evidenceDB, blockStore)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
@@ -146,10 +157,43 @@ func TestAddEvidence(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
-		ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
-		err := pool.AddEvidence(ev)
-		if tc.expErr {
-			assert.Error(t, err)
-		}
+		t.Run(tc.evDescription, func(t *testing.T) {
+			ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
+			err := pool.AddEvidence(ev)
+			if tc.expErr {
+				assert.Error(t, err)
+				t.Log(err)
+			}
+		})
 	}
+}
+
+// initializeBlockStore creates a block storage and populates it w/ a dummy
+// block at +height+.
+func initializeBlockStore(db dbm.DB, state sm.State, height int64, valAddr []byte) *store.BlockStore {
+	makeCommit := func(height int64, valAddr []byte) *types.Commit {
+		commitSigs := []types.CommitSig{{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: valAddr,
+			Timestamp:        time.Now(),
+			Signature:        []byte("Signature"),
+		}}
+		return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+	}
+
+	blockStore := store.NewBlockStore(db)
+
+	for i := int64(1); i <= height; i++ {
+		lastCommit := makeCommit(i-1, valAddr)
+		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
+			state.Validators.GetProposer().Address)
+
+		const parts = 1
+		partSet := block.MakePartSet(parts)
+
+		seenCommit := makeCommit(i, valAddr)
+		blockStore.SaveBlock(block, partSet, seenCommit)
+	}
+
+	return blockStore
 }

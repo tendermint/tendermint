@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
@@ -101,13 +100,13 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	state := evpool.State()
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
-		return errors.Wrapf(err, "can't load validators at height #%d", evidence.Height())
+		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
 	}
 
 	evList := []types.Evidence{evidence}
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return errors.Wrapf(err, "don't have block at height #%d", evidence.Height())
+		return fmt.Errorf("don't have block meta at height #%d", evidence.Height())
 	}
 
 	// Break ConflictingHeaders into smaller pieces.
