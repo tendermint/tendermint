@@ -82,6 +82,10 @@ func (psh PartSetHeader) ValidateBasic() error {
 
 // ToProto converts BloPartSetHeaderckID to protobuf
 func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
+	if psh == nil {
+		return tmproto.PartSetHeader{}
+	}
+
 	return tmproto.PartSetHeader{
 		Total: psh.Total,
 		Hash:  psh.Hash,
@@ -90,6 +94,9 @@ func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
 
 // FromProto sets a protobuf PartSetHeader to the given pointer
 func (psh *PartSetHeader) FromProto(protoPartSetHeader tmproto.PartSetHeader) {
+	if psh == nil {
+		psh = &PartSetHeader{}
+	}
 	psh.Total = protoPartSetHeader.Total
 	psh.Hash = protoPartSetHeader.Hash
 }

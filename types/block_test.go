@@ -599,3 +599,97 @@ func TestBlockIDValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestCommitProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	privVal := NewMockPV()
+	pk, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	vals := NewValidator(pk, 100)
+	now := time.Now().UTC()
+	votes := NewVoteSet("chain", 1, 2, tmproto.PrecommitType, NewValidatorSet([]*Validator{vals}))
+	commit, err := MakeCommit(blockID, 1, 2, votes, []PrivValidator{privVal}, now)
+	require.NoError(t, err)
+	commit.Signatures = []CommitSig{{BlockIDFlag: tmproto.BlockIDFlagCommit, ValidatorAddress: pk.Address(), Timestamp: now, Signature: []byte("sig")}}
+
+	testCases := []struct {
+		msg     string
+		c1      Commit
+		c2      *Commit
+		expPass bool
+	}{
+		{"sucess 0 ", *commit, &Commit{}, true},
+		{"sucess 1", *commit, commit, true},
+		{"sucess Commit nil", *commit, nil, true},
+		{"not equal", Commit{}, commit, false},
+		{"fail Commit ValidateBasic", Commit{}, &Commit{}, false},
+	}
+	for _, tc := range testCases {
+		protoCommit := tc.c1.ToProto()
+		err := tc.c2.FromProto(*protoCommit)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, &tc.c1, tc.c2, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+			require.NotEqual(t, &tc.c1, tc.c2, tc.msg)
+		}
+	}
+}
+
+func TestSignedHeaderProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	testCases := []struct {
+		msg     string
+		bid1    *BlockID
+		bid2    *BlockID
+		expPass bool
+	}{
+		{"sucess", &blockID, &BlockID{}, true},
+		{"sucess", &BlockID{}, &blockID, true},
+		{"sucess BlockID empty", &BlockID{}, &BlockID{}, true},
+		{"sucess BlockID nil", nil, nil, true},
+		{"not equal", nil, &blockID, false},
+	}
+	for _, tc := range testCases {
+		protoBlockID := tc.bid1.ToProto()
+
+		err := tc.bid2.FromProto(protoBlockID)
+
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.bid1, tc.bid2, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bid1, tc.bid2, tc.msg)
+		}
+	}
+}
+
+func TestBlockIDProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	testCases := []struct {
+		msg     string
+		bid1    *BlockID
+		bid2    *BlockID
+		expPass bool
+	}{
+		{"sucess", &blockID, &BlockID{}, true},
+		{"sucess", &BlockID{}, &blockID, true},
+		{"sucess BlockID empty", &BlockID{}, &BlockID{}, true},
+		{"sucess BlockID nil", nil, nil, true},
+		{"not equal", nil, &blockID, false},
+	}
+	for _, tc := range testCases {
+		protoBlockID := tc.bid1.ToProto()
+
+		err := tc.bid2.FromProto(protoBlockID)
+
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.bid1, tc.bid2, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bid1, tc.bid2, tc.msg)
+		}
+	}
+}

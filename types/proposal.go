@@ -119,17 +119,16 @@ func (p *Proposal) FromProto(pp tmproto.Proposal) error {
 		p = &Proposal{}
 	}
 
-	var blockID *BlockID
+	var blockID BlockID
 
-	if err := blockID.FromProto(*pp.BlockID); err != nil {
-		return err
-	}
+	// error checked in proposal ValidateBasic
+	_ = blockID.FromProto(*pp.BlockID)
 
 	p.Type = pp.Type
 	p.Height = pp.Height
 	p.Round = pp.Round
 	p.POLRound = pp.PolRound
-	p.BlockID = *blockID
+	p.BlockID = blockID
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature
 

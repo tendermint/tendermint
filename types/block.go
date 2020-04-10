@@ -638,12 +638,18 @@ func (commit *Commit) StringIndented(indent string) string {
 
 // ToProto converts Commit to protobuf
 func (commit Commit) ToProto() *tmproto.Commit {
+	sigs := make([]tmproto.CommitSig, len(commit.Signatures))
+	for i := range commit.Signatures {
+		sigs[i] = *commit.Signatures[i].ToProto()
+	}
+
 	return &tmproto.Commit{
-		Height:   commit.Height,
-		Round:    commit.Round,
-		BlockID:  commit.BlockID.ToProto(),
-		Hash:     commit.hash,
-		BitArray: commit.bitArray.ToProto(),
+		Height:     commit.Height,
+		Round:      commit.Round,
+		BlockID:    commit.BlockID.ToProto(),
+		Signatures: sigs,
+		Hash:       commit.hash,
+		BitArray:   commit.bitArray.ToProto(),
 	}
 }
 
@@ -651,23 +657,31 @@ func (commit Commit) ToProto() *tmproto.Commit {
 // It returns an error if the commit is invalid.
 func (commit *Commit) FromProto(cp tmproto.Commit) error {
 	var (
-		blockID  *BlockID
+		blockID  BlockID
 		bitArray *tmbits.BitArray
 	)
-
-	if commit == nil {
-		commit = &Commit{}
-	}
 
 	if err := blockID.FromProto(cp.BlockID); err != nil {
 		return err
 	}
 
+	if commit == nil {
+		commit = &Commit{}
+	}
+
 	bitArray.FromProto(cp.BitArray)
+
+	sigs := make([]CommitSig, len(cp.Signatures))
+	for i := range cp.Signatures {
+		if err := sigs[i].FromProto(cp.Signatures[i]); err != nil {
+			return err
+		}
+	}
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
-	commit.BlockID = *blockID
+	commit.BlockID = blockID
+	commit.Signatures = sigs
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -999,10 +1013,10 @@ func (blockID *BlockID) FromProto(bID tmproto.BlockID) error {
 		blockID = &BlockID{}
 	}
 
-	var ph *PartSetHeader
+	var ph PartSetHeader
 	ph.FromProto(bID.PartsHeader)
 
-	blockID.PartsHeader = *ph
+	blockID.PartsHeader = ph
 	blockID.Hash = bID.Hash
 
 	return blockID.ValidateBasic()
