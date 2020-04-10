@@ -639,29 +639,24 @@ func TestCommitProtoBuf(t *testing.T) {
 }
 
 func TestSignedHeaderProtoBuf(t *testing.T) {
-	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
 	testCases := []struct {
 		msg     string
-		bid1    *BlockID
-		bid2    *BlockID
+		sh1     SignedHeader
+		sh2     *SignedHeader
 		expPass bool
 	}{
-		{"sucess", &blockID, &BlockID{}, true},
-		{"sucess", &BlockID{}, &blockID, true},
-		{"sucess BlockID empty", &BlockID{}, &BlockID{}, true},
-		{"sucess BlockID nil", nil, nil, true},
-		{"not equal", nil, &blockID, false},
+		{"nil", SignedHeader{}, nil, true},
 	}
 	for _, tc := range testCases {
-		protoBlockID := tc.bid1.ToProto()
-
-		err := tc.bid2.FromProto(protoBlockID)
+		protoSignedHeader := tc.sh1.ToProto()
+		err := tc.sh2.FromProto(protoSignedHeader)
 
 		if tc.expPass {
-			require.NoError(t, err)
-			require.Equal(t, tc.bid1, tc.bid2, tc.msg)
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, &tc.sh1, tc.sh2, tc.msg)
 		} else {
-			require.NotEqual(t, tc.bid1, tc.bid2, tc.msg)
+			require.Error(t, err, tc.msg)
+			require.NotEqual(t, &tc.sh1, tc.sh2, tc.msg)
 		}
 	}
 }

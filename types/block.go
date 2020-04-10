@@ -209,7 +209,7 @@ func (b *Block) StringShort() string {
 // ToProto converts Block to protobuf
 func (b *Block) ToProto() (*tmproto.Block, error) {
 	if b == nil {
-		return nil, errors.New("block is nil")
+		return nil, nil
 	}
 
 	protoHeader := b.Header.ToProto()
@@ -234,7 +234,7 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 // It returns an error if the block is invalid.
 func (b *Block) FromProto(bp tmproto.Block) error {
 	if b == nil {
-		b = &Block{}
+		b = &Block{LastCommit: &Commit{}}
 	}
 
 	b.Header.FromProto(bp.Header)
@@ -752,8 +752,12 @@ func (sh SignedHeader) StringIndented(indent string) string {
 }
 
 // ToProto converts SignedHeader to protobuf
-func (sh SignedHeader) ToProto() *tmproto.SignedHeader {
-	return &tmproto.SignedHeader{
+func (sh SignedHeader) ToProto() tmproto.SignedHeader {
+	if sh.Header == nil || sh.Commit == nil {
+		return tmproto.SignedHeader{Header: nil, Commit: nil}
+	}
+
+	return tmproto.SignedHeader{
 		Header: sh.Header.ToProto(),
 		Commit: sh.Commit.ToProto(),
 	}
@@ -771,11 +775,16 @@ func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
 		sh = &SignedHeader{}
 	}
 
-	if err := h.FromProto(*shp.Header); err != nil {
-		return err
+	if shp.Header != nil {
+		if err := h.FromProto(*shp.Header); err != nil {
+			return err
+		}
 	}
-	if err := c.FromProto(*shp.Commit); err != nil {
-		return err
+
+	if shp.Commit != nil {
+		if err := c.FromProto(*shp.Commit); err != nil {
+			return err
+		}
 	}
 
 	sh.Header = h
