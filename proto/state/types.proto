@@ -6,6 +6,7 @@ option go_package = "github.com/tendermint/tendermint/proto/state";
 import "third_party/proto/gogoproto/gogo.proto";
 import "abci/types/types.proto";
 import "proto/types/types.proto";
+import "proto/types/validator.proto";
 import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
 

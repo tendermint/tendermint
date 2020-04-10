@@ -1,0 +1,22 @@
+syntax = "proto3";
+package tendermint.proto.types;
+
+option go_package = "github.com/tendermint/tendermint/proto/types";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/types/types.proto";
+import "proto/types/evidence.proto";
+
+message Block {
+  Header                              header      = 1 [(gogoproto.nullable) = false];
+  Data                                data        = 2 [(gogoproto.nullable) = false];
+  tendermint.proto.types.EvidenceData evidence    = 3 [(gogoproto.nullable) = false];
+  Commit                              last_commit = 4;
+}
+
+message BlockMeta {
+  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  int64   block_size = 2;
+  Header  header     = 3 [(gogoproto.nullable) = false];
+  int64   num_txs    = 4;
+}
