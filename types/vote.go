@@ -173,8 +173,8 @@ func (vote *Vote) ValidateBasic() error {
 
 // ToProto converts the handwritten type to proto generated type
 // return type, nil if everything converts safely, otherwise nil, error
-func (vote *Vote) ToProto() *tmproto.Vote {
-	protoVote := tmproto.Vote{
+func (vote Vote) ToProto() *tmproto.Vote {
+	return &tmproto.Vote{
 		Type:             vote.Type,
 		Height:           vote.Height,
 		Round:            vote.Round,
@@ -184,14 +184,16 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
 	}
-
-	return &protoVote
 }
 
 //FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
 func (vote *Vote) FromProto(pv tmproto.Vote) error {
 	var blockID *BlockID
+
+	if vote == nil {
+		return nil
+	}
 
 	if err := blockID.FromProto(pv.BlockID); err != nil {
 		return err

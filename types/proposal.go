@@ -101,7 +101,7 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 func (p Proposal) ToProto() *tmproto.Proposal {
 	blockID := p.BlockID.ToProto()
 
-	pp := tmproto.Proposal{
+	return &tmproto.Proposal{
 		Type:      p.Type,
 		Height:    p.Height,
 		Round:     p.Round,
@@ -110,12 +110,15 @@ func (p Proposal) ToProto() *tmproto.Proposal {
 		Timestamp: p.Timestamp,
 		Signature: p.Signature,
 	}
-	return &pp
 }
 
 // FromProto sets a protobuf Proposal to the given pointer.
 // It returns an error if the proposal is invalid.
 func (p *Proposal) FromProto(pp tmproto.Proposal) error {
+	if p == nil {
+		p = &Proposal{}
+	}
+
 	var blockID *BlockID
 
 	if err := blockID.FromProto(*pp.BlockID); err != nil {
