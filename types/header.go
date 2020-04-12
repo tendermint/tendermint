@@ -197,6 +197,7 @@ func (h Header) ToProto() *tmproto.Header {
 		LastResultsHash:    h.LastResultsHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
+
 	return &ph
 }
 

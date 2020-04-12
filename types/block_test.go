@@ -599,3 +599,30 @@ func TestBlockIDValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockProto(t *testing.T) {
+	block := MakeBlock(1, []Tx{[]byte("tx1"), []byte("tx2")}, &Commit{}, nil)
+	block.Header.ProposerAddress = []byte("12345678901234567890")
+
+	tc := []struct {
+		name    string
+		block   *Block
+		wantErr bool
+	}{
+		{"block", block, false},
+		{"empty block", &Block{}, false},
+	}
+
+	for _, tt := range tc {
+		bp, err := tt.block.ToProto()
+		if tt.wantErr {
+			assert.True(t, (err == nil), tt.wantErr, tt.name)
+			return
+		}
+
+		b := Block{}
+		b.FromProto(bp)
+		assert.Equal(t, tt.block, &b)
+	}
+
+}

@@ -8,6 +8,10 @@ import (
 )
 
 func MsgToProto(bcm Message) (*bcproto.Message, error) {
+	if bcm == nil {
+		return nil, errors.New("message is nil")
+	}
+
 	switch msg := bcm.(type) {
 	case *BlockRequestMessage:
 		bm := bcproto.Message{
@@ -67,13 +71,13 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 }
 
 func MsgFromProto(bcm bcproto.Message) (Message, error) {
+
 	var bm Message
 	switch msg := bcm.Sum.(type) {
 	case *bcproto.Message_BlockRequest:
 		bm = &BlockRequestMessage{Height: msg.BlockRequest.Height}
 	case *bcproto.Message_NoBlockResponse:
 		bm = &NoBlockResponseMessage{Height: msg.NoBlockResponse.Height}
-
 	case *bcproto.Message_BlockResponse:
 		b := types.Block{}
 		if err := b.FromProto(&msg.BlockResponse.Block); err != nil {

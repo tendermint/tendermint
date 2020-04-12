@@ -209,18 +209,23 @@ func (b *Block) StringShort() string {
 
 func (b *Block) ToProto() (*tmproto.Block, error) {
 	protoHeader := b.Header.ToProto()
-	protoCommit := b.LastCommit.ToProto()
 	protoData := b.Data.ToProto()
 	protoEvidence, err := b.Evidence.ToProto()
 	if err != nil {
 		return nil, err
+	}
+	lc := new(tmproto.Commit)
+	if b.LastCommit != nil {
+		lc = b.LastCommit.ToProto()
+	} else {
+		lc = nil
 	}
 
 	protoBlock := tmproto.Block{
 		Header:     *protoHeader,
 		Data:       *protoData,
 		Evidence:   *protoEvidence,
-		LastCommit: protoCommit,
+		LastCommit: lc,
 	}
 	return &protoBlock, nil
 }
@@ -235,11 +240,14 @@ func (b *Block) FromProto(bp *tmproto.Block) error {
 	if err := b.Evidence.FromProto(bp.Evidence); err != nil {
 		return err
 	}
-	var lc = new(Commit)
-	if err := lc.FromProto(bp.LastCommit); err != nil {
-		return err
+
+	if bp.LastCommit != nil {
+		var lc = new(Commit)
+		if err := lc.FromProto(bp.LastCommit); err != nil {
+			return err
+		}
+		b.LastCommit = lc
 	}
-	b.LastCommit = lc
 
 	if err := b.ValidateBasic(); err != nil {
 		return err
@@ -641,45 +649,31 @@ func (commit *Commit) StringIndented(indent string) string {
 }
 
 func (commit Commit) ToProto() *tmproto.Commit {
-	commitSigs := make([]tmproto.CommitSig, len(commit.Signatures))
-	for i := 0; i < len(commit.Signatures); i++ {
-		commitSigs[i] = *commit.Signatures[i].ToProto()
-	}
+	cp := new(tmproto.Commit)
+	cp.Height = commit.Height
+	cp.Round = commit.Round
+	cp.BlockID = commit.BlockID.ToProto()
+	cp.Hash = commit.hash
 
-	if commit.bitArray == nil {
-		csp := tmproto.Commit{
-			Height:     commit.Height,
-			Round:      commit.Round,
-			BlockID:    commit.BlockID.ToProto(),
-			Signatures: commitSigs,
-			Hash:       commit.hash,
-			BitArray:   &tmprotobits.BitArray{},
+	if len(commit.Signatures) > 0 {
+		commitSigs := make([]tmproto.CommitSig, len(commit.Signatures))
+		for i := 0; i < len(commit.Signatures); i++ {
+			commitSigs[i] = *commit.Signatures[i].ToProto()
 		}
-		return &csp
+		cp.Signatures = commitSigs
 	}
 
-	csp := tmproto.Commit{
-		Height:     commit.Height,
-		Round:      commit.Round,
-		BlockID:    commit.BlockID.ToProto(),
-		Signatures: commitSigs,
-		Hash:       commit.hash,
-		BitArray: &tmprotobits.BitArray{
+	if commit.bitArray != nil {
+		cp.BitArray = &tmprotobits.BitArray{
 			Bits:  int64(commit.bitArray.Bits),
 			Elems: commit.bitArray.Elems,
-		},
+		}
 	}
-	return &csp
+
+	return cp
 }
 
 func (commit *Commit) FromProto(cp *tmproto.Commit) error {
-
-	commitSigs := make([]CommitSig, len(cp.Signatures))
-	for i := 0; i < len(cp.Signatures); i++ {
-		if err := commitSigs[i].FromProto(cp.Signatures[i]); err != nil {
-			return err
-		}
-	}
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
@@ -687,7 +681,16 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 		return err
 	}
 	commit.hash = cp.Hash
-	commit.Signatures = commitSigs
+
+	if cp.Signatures != nil {
+		commitSigs := make([]CommitSig, len(cp.Signatures))
+		for i := 0; i < len(cp.Signatures); i++ {
+			if err := commitSigs[i].FromProto(cp.Signatures[i]); err != nil {
+				return err
+			}
+		}
+		commit.Signatures = commitSigs
+	}
 
 	if cp.BitArray != nil {
 		commit.bitArray = &tmbits.BitArray{
@@ -838,25 +841,27 @@ func (data *Data) StringIndented(indent string) string {
 }
 
 func (data *Data) ToProto() *tmproto.Data {
-
-	txBzs := make([][]byte, len(data.Txs))
-	for i := 0; i < len(data.Txs); i++ {
-		txBzs[i] = data.Txs[i]
+	d := new(tmproto.Data)
+	d.Hash = data.hash
+	if data.Txs != nil {
+		txBzs := make([][]byte, len(data.Txs))
+		for i := 0; i < len(data.Txs); i++ {
+			txBzs[i] = data.Txs[i]
+		}
+		d.Txs = txBzs
 	}
-	dp := tmproto.Data{
-		Txs:  txBzs,
-		Hash: data.hash,
-	}
 
-	return &dp
+	return d
 }
 
 func (data *Data) FromProto(dp tmproto.Data) {
-	txBzs := make(Txs, len(dp.GetTxs()))
-	for i := 0; i < len(dp.Txs); i++ {
-		txBzs[i] = dp.Txs[i]
+	if dp.Txs != nil {
+		txBzs := make(Txs, len(dp.GetTxs()))
+		for i := 0; i < len(dp.Txs); i++ {
+			txBzs[i] = dp.Txs[i]
+		}
+		data.Txs = txBzs
 	}
-	data.Txs = txBzs
 	data.hash = dp.Hash
 }
 
@@ -899,33 +904,43 @@ func (data *EvidenceData) StringIndented(indent string) string {
 }
 
 func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
-	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
-	for i := 0; i < len(data.Evidence); i++ {
-		protoEvi, err := EvidenceToProto(data.Evidence[i])
-		if err != nil {
-			return nil, err
+	evi := new(tmproto.EvidenceData)
+
+	if len(data.Evidence) > 0 {
+		eviBzs := make([]tmproto.Evidence, len(data.Evidence))
+		for i := 0; i < len(data.Evidence); i++ {
+			protoEvi, err := EvidenceToProto(data.Evidence[i])
+			if err != nil {
+				return nil, err
+			}
+			eviBzs[i] = *protoEvi
 		}
-		eviBzs[i] = *protoEvi
+		evi.Evidence = eviBzs
 	}
 
-	protoEvidence := tmproto.EvidenceData{
-		Evidence: eviBzs,
-		Hash:     data.hash,
+	if data.hash != nil {
+		evi.Hash = data.hash
 	}
-	return &protoEvidence, nil
+
+	return evi, nil
 }
+
 func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
-	eviBzs := make([]Evidence, len(eviData.Evidence))
-	for i := 0; i < len(eviData.Evidence); i++ {
-		evi, err := EvidenceFromProto(eviData.Evidence[i])
-		if err != nil {
-			return err
-		}
-		eviBzs[i] = evi
+	if len(eviData.Hash) > 0 {
+		data.hash = eviData.GetHash()
 	}
 
-	data.Evidence = eviBzs
-	data.hash = eviData.Hash
+	if len(eviData.Evidence) > 0 {
+		eviBzs := make([]Evidence, len(eviData.Evidence))
+		for i := 0; i < len(eviData.Evidence); i++ {
+			evi, err := EvidenceFromProto(eviData.Evidence[i])
+			if err != nil {
+				return err
+			}
+			eviBzs[i] = evi
+		}
+		data.Evidence = eviBzs
+	}
 
 	return nil
 }
