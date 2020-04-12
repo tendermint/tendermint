@@ -249,7 +249,6 @@ func NewABCIResponses(block *types.Block) *tmstate.ABCIResponses {
 		// This makes Amino encoding/decoding consistent.
 		resDeliverTxs = nil
 	}
-	fmt.Println(len(block.Data.Txs))
 	return &tmstate.ABCIResponses{
 		DeliverTxs: resDeliverTxs,
 	}
@@ -291,7 +290,6 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	fmt.Println(abciResponses)
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
