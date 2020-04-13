@@ -1,6 +1,8 @@
 package types
 
 import (
+	"bytes"
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -14,6 +16,69 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
+
+// UNSTABLE
+type MockRandomEvidence struct {
+	MockEvidence
+	randBytes []byte
+}
+
+var _ Evidence = &MockRandomEvidence{}
+
+// UNSTABLE
+func NewMockRandomEvidence(height int64, eTime time.Time, address []byte, randBytes []byte) MockRandomEvidence {
+	return MockRandomEvidence{
+		MockEvidence{
+			EvidenceHeight:  height,
+			EvidenceTime:    eTime,
+			EvidenceAddress: address}, randBytes,
+	}
+}
+
+func (e MockRandomEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
+}
+
+// UNSTABLE
+type MockEvidence struct {
+	EvidenceHeight  int64
+	EvidenceTime    time.Time
+	EvidenceAddress []byte
+}
+
+var _ Evidence = &MockEvidence{}
+
+// UNSTABLE
+func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) MockEvidence {
+	return MockEvidence{
+		EvidenceHeight:  height,
+		EvidenceTime:    eTime,
+		EvidenceAddress: address}
+}
+
+func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
+func (e MockEvidence) Time() time.Time { return e.EvidenceTime }
+func (e MockEvidence) Address() []byte { return e.EvidenceAddress }
+func (e MockEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
+}
+func (e MockEvidence) Bytes() []byte {
+	return []byte(fmt.Sprintf("%d-%x-%s",
+		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
+}
+func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
+func (e MockEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(MockEvidence)
+	return e.EvidenceHeight == e2.EvidenceHeight &&
+		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
+}
+func (e MockEvidence) ValidateBasic() error { return nil }
+func (e MockEvidence) String() string {
+	return fmt.Sprintf("Evidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
+}
+
+//-----------------------------------------------------------------
 
 type voteData struct {
 	vote1 *Vote
