@@ -177,29 +177,8 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	}
 
 	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
-		switch ev.InvalidHeaderField {
-		case "ValidatorsHash":
-			if bytes.Equal(committedHeader.ValidatorsHash, ev.Header.ValidatorsHash) {
-				return errors.New("validators_hash matches committed hash")
-			}
-		case "NextValidatorsHash":
-			if bytes.Equal(committedHeader.NextValidatorsHash, ev.Header.NextValidatorsHash) {
-				return errors.New("next_validators_hash matches committed hash")
-			}
-		case "ConsensusHash":
-			if bytes.Equal(committedHeader.ConsensusHash, ev.Header.ConsensusHash) {
-				return errors.New("consensus_hash matches committed hash")
-			}
-		case "AppHash":
-			if bytes.Equal(committedHeader.AppHash, ev.Header.AppHash) {
-				return errors.New("app_hash matches committed hash")
-			}
-		case "LastResultsHash":
-			if bytes.Equal(committedHeader.LastResultsHash, ev.Header.LastResultsHash) {
-				return errors.New("last_results_hash matches committed hash")
-			}
-		default:
-			return errors.New("unknown invalid_header_field")
+		if err := ev.VerifyHeader(committedHeader); err != nil {
+			return err
 		}
 	}
 

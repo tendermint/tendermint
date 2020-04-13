@@ -20,6 +20,14 @@ import (
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 484
+
+	// An invalid field in the header from LunaticValidatorEvidence.
+	// Must be a function of the ABCI application state.
+	ValidatorsHashField     = "ValidatorsHash"
+	NextValidatorsHashField = "NextValidatorsHash"
+	ConsensusHashField      = "ConsensusHash"
+	AppHashField            = "AppHash"
+	LastResultsHashField    = "LastResultsHash"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -807,6 +815,39 @@ func (e LunaticValidatorEvidence) ValidateBasic() error {
 func (e LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
 		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
+}
+
+func (e LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
+	matchErr := func(field string) error {
+		return fmt.Errorf("%s matches committed hash", field)
+	}
+
+	switch e.InvalidHeaderField {
+	case ValidatorsHashField:
+		if bytes.Equal(committedHeader.ValidatorsHash, e.Header.ValidatorsHash) {
+			return matchErr(ValidatorsHashField)
+		}
+	case NextValidatorsHashField:
+		if bytes.Equal(committedHeader.NextValidatorsHash, e.Header.NextValidatorsHash) {
+			return matchErr(NextValidatorsHashField)
+		}
+	case ConsensusHashField:
+		if bytes.Equal(committedHeader.ConsensusHash, e.Header.ConsensusHash) {
+			return matchErr(ConsensusHashField)
+		}
+	case AppHashField:
+		if bytes.Equal(committedHeader.AppHash, e.Header.AppHash) {
+			return matchErr(AppHashField)
+		}
+	case LastResultsHashField:
+		if bytes.Equal(committedHeader.LastResultsHash, e.Header.LastResultsHash) {
+			return matchErr(LastResultsHashField)
+		}
+	default:
+		return errors.New("unknown InvalidHeaderField")
+	}
+
+	return nil
 }
 
 //-------------------------------------------
