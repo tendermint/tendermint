@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -50,12 +51,16 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p, err := litehttp.New(chainID, rpcAddr)
+
+	c, err := rpchttp.New(rpcAddr, "/websocket")
+	require.Nil(t, err)
+
+	p := litehttp.NewWithClient(chainID, c)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(p.(rpcclient.StatusClient), 6, nil)
+	err = rpcclient.WaitForHeight(c, 6, nil)
 	require.Nil(t, err)
 
 	// let's get the highest block

@@ -1,8 +1,6 @@
 package types
 
 import (
-	"bytes"
-	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -16,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
-
 
 type voteData struct {
 	vote1 *Vote
