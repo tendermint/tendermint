@@ -4,11 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tendermint/tendermint/libs/cli"
-
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	nm "github.com/tendermint/tendermint/node"
 )
 
@@ -29,6 +28,7 @@ func main() {
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
 		debug.DebugCmd,
+		cli.NewCompletionCmd(rootCmd, true),
 	)
 
 	// NOTE:
