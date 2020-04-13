@@ -3,6 +3,7 @@
 ## Changelog
 * 18-02-2020: Initial draft
 * 24-02-2020: Second version
+* 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
 
 ## Context
 
@@ -25,6 +26,11 @@ type ConflictingHeadersEvidence struct {
   H2 types.SignedHeader
 }
 ```
+
+_Remark_: Theoretically, only the header, which differs from what a full node
+has, needs to be sent. But sending two headers a) makes an evidence easily
+verifiable b) simplifies retransmission (since the full node does not have to
+query each receiver about which header it has: A or B)
 
 When a full node receives the `ConflictingHeadersEvidence` evidence, it should
 a) validate it b) figure out if malicious behaviour is obvious (immediately
@@ -53,6 +59,9 @@ signed by 1/3+ of the validator set that the full node had at height
 ### Figuring out if malicious behaviour is immediately slashable
 
 Let's say H1 was committed from this full node's perspective (see Appendix A).
+_If neither of the headers (H1 and H2) were committed from the full node's
+perspective, the evidence must be rejected._
+
 Intersect validator sets of H1 and H2.
 
 * if there are signers(H2) that are not part of validators(H1), they misbehaved as
@@ -153,6 +162,22 @@ This includes `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
 `AppHash`, and `LastResultsHash`. These should all match what's in the header
 for the block that was actually committed at the corresponding height, and
 should thus be easy to check.
+
+### F2. Amnesia
+
+```go
+type PotentialAmnesiaEvidence struct {
+	VoteA types.Vote
+	VoteB types.Vote
+}
+```
+
+To punish this attack, votes under question needs to be sent. Fork
+accountability process should then use this evidence to request additional
+information from offended validators and construct a new type of evidence to
+punish those who conducted an amnesia attack.
+
+See ADR-056 for the architecture of the fork accountability procedure.
 
 ## Status
 
