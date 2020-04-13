@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +9,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -17,11 +17,12 @@ import (
 )
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
+	pk := ed25519.GenPrivKey()
 	stateDB := dbm.NewMemDB()
 	// create validator set and state
 	valSet := &types.ValidatorSet{
 		Validators: []*types.Validator{
-			{Address: valAddr},
+			{Address: valAddr, PubKey: pk.PubKey()},
 		},
 	}
 	state := sm.State{
@@ -57,7 +58,6 @@ func TestEvidencePool(t *testing.T) {
 		pool         = NewPool(stateDB, evidenceDB)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
-	fmt.Println("ba")
 	goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
 	badEvidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
 

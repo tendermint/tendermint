@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -97,20 +98,23 @@ func (v *Validator) Bytes() []byte {
 }
 
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
-	pk, err := ce.PubKeyToProto(v.PubKey)
-	if err != nil {
-		fmt.Println("pk empty", v.PubKey)
-		return nil, err
+	if v == nil {
+		return nil, errors.New("validator is missing")
 	}
 
-	vp := tmproto.Validator{
-		Address:          v.Address,
-		PubKey:           pk,
-		VotingPower:      v.VotingPower,
-		ProposerPriority: v.ProposerPriority,
+	var pv = new(tmproto.Validator)
+	pv.Address = v.Address
+	pv.VotingPower = v.VotingPower
+	pv.ProposerPriority = v.ProposerPriority
+	if v.PubKey != nil {
+		pk, err := ce.PubKeyToProto(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		pv.PubKey = pk
 	}
 
-	return &vp, nil
+	return pv, nil
 }
 
 func (v *Validator) FromProto(vp tmproto.Validator) error {

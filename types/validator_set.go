@@ -335,26 +335,31 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
-	valsProto := make([]tmproto.Validator, len(vals.Validators))
-	for i := 0; i < len(vals.Validators); i++ {
-		valp, err := vals.Validators[i].ToProto()
+	var vsp = new(tmproto.ValidatorSet)
+
+	vsp.TotalVotingPower = vals.TotalVotingPower()
+	if vals.Validators != nil {
+		valsProto := make([]tmproto.Validator, len(vals.Validators))
+		for i := 0; i < len(vals.Validators); i++ {
+			valp, err := vals.Validators[i].ToProto()
+			if err != nil {
+				return nil, err
+			}
+			valsProto[i] = *valp
+		}
+
+		vsp.Validators = valsProto
+	}
+
+	if vals.Proposer != nil {
+		valProposer, err := vals.Proposer.ToProto()
 		if err != nil {
 			return nil, err
 		}
-		valsProto[i] = *valp
+		vsp.Proposer = *valProposer
 	}
 
-	valProposer, err := vals.Proposer.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	vp := tmproto.ValidatorSet{
-		Validators:       valsProto,
-		Proposer:         *valProposer,
-		TotalVotingPower: vals.TotalVotingPower(),
-	}
-
-	return &vp, nil
+	return vsp, nil
 }
 
 func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
