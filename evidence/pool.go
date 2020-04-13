@@ -95,17 +95,21 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 }
 
-// AddEvidence checks the evidence is valid and adds it to the pool.
+// AddEvidence checks the evidence is valid and adds it to the pool. If
+// evidence is composite (ConflictingHeadersEvidence), it will be broken up
+// into smaller pieces.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	state := evpool.State()
+	var (
+		state  = evpool.State()
+		evList = []types.Evidence{evidence}
+	)
+
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
 		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
 	}
 
-	evList := []types.Evidence{evidence}
-
-	// Break ConflictingHeaders into smaller pieces.
+	// Break composite evidence into smaller pieces.
 	if ce, ok := evidence.(types.CompositeEvidence); ok {
 		evpool.logger.Info("Breaking up composite evidence", "ev", evidence)
 
@@ -122,7 +126,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
-		// check if evidence is already stored
 		if evpool.store.Has(evidence) {
 			return ErrEvidenceAlreadyStored{}
 		}
@@ -161,7 +164,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	return nil
 }
 
-// MarkEvidenceAsCommitted marks all the evidence as committed and removes it from the queue.
+// MarkEvidenceAsCommitted marks all the evidence as committed and removes it
+// from the queue.
 func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Time, evidence []types.Evidence) {
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
@@ -175,7 +179,8 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Tim
 	evpool.removeEvidence(height, lastBlockTime, evidenceParams, blockEvidenceMap)
 }
 
-// IsCommitted returns true if we have already seen this exact evidence and it is already marked as committed.
+// IsCommitted returns true if we have already seen this exact evidence and it
+// is already marked as committed.
 func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	ei := evpool.store.getInfo(evidence)
 	return ei.Evidence != nil && ei.Committed
