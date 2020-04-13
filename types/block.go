@@ -764,8 +764,12 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 		return errors.New("missing commit (precommit votes)")
 	}
 
+	// if err := sh.Header.ValidateBasic(); err != nil {
+	// 	return fmt.Errorf("header.ValidateBasic failed: %w", err)
+	// }
+
 	if err := sh.Commit.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "commit.ValidateBasic failed")
+		return fmt.Errorf("commit.ValidateBasic failed: %w", err)
 	}
 
 	// Make sure the header is consistent with the commit.

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/tendermint/tendermint/evidence"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -13,7 +13,7 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/broadcast_evidence
 func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	if err := ev.ValidateBasic(); err != nil {
-		return nil, errors.Wrap(err, "evidence.ValidateBasic failed")
+		return nil, fmt.Errorf("evidence.ValidateBasic failed: %w", err)
 	}
 
 	err := evidencePool.AddEvidence(ev)
