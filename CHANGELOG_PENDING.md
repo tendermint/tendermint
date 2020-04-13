@@ -28,6 +28,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] Add `/status` response fields for the earliest block available on the node
 - [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259)
 - [cmd] [\#4665](https://github.com/tendermint/tendermint/pull/4665) New `tedermint completion` command to generate Bash/Zsh completion scripts (@alessio).
+- [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
+- [lite2] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 
 ### IMPROVEMENTS:
 
