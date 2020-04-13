@@ -515,10 +515,10 @@ func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 	switch ev2.(type) {
 	case ConflictingHeadersEvidence:
 		e2 := ev2.(ConflictingHeadersEvidence)
-		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash())
+		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
 	case *ConflictingHeadersEvidence:
 		e2 := ev2.(*ConflictingHeadersEvidence)
-		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash())
+		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
 	default:
 		return false
 	}
