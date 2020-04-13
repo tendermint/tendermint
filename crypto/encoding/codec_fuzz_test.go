@@ -28,6 +28,7 @@ func TestFuzzPrivKeyProto10000(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		fuzzer.Fuzz(pk)
 		pkp, err := PrivKeyToProto(*pk)
+		assert.NoError(t, err)
 		_, err = PrivKeyFromProto(pkp)
 		assert.NoError(t, err)
 	}

@@ -67,6 +67,7 @@ func TestMsgToProto(t *testing.T) {
 		{"failure", nil, &bcproto.Message{}, true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			pb, err := MsgToProto(tt.msg)
@@ -136,6 +137,7 @@ func TestMsgFromProto(t *testing.T) {
 		{"failure", nil, bcproto.Message{}, true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			msg, err := MsgFromProto(tt.pbmsg)
