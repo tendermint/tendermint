@@ -214,7 +214,7 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	lc := new(tmproto.Commit)
+	var lc *tmproto.Commit
 	if b.LastCommit != nil {
 		lc = b.LastCommit.ToProto()
 	} else {
