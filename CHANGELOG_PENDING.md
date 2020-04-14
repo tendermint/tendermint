@@ -1,4 +1,4 @@
-## v0.33.3
+## v0.33.4
 
 - Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
 
@@ -27,6 +27,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] Add `ResponseCommit.retain_height` field, which will automatically remove blocks below this height.
 - [rpc] Add `/status` response fields for the earliest block available on the node
 - [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259)
+- [cmd] [\#4665](https://github.com/tendermint/tendermint/pull/4665) New `tedermint completion` command to generate Bash/Zsh completion scripts (@alessio).
 
 ### IMPROVEMENTS:
 
@@ -39,6 +40,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [all] [\#4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized
 - [lite2] [\#4575](https://github.com/tendermint/tendermint/pull/4575) Use bisection for within-range verification (@cmwaters)
 - [tools] \#4615 Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker`.
+- [p2p] \#4621(https://github.com/tendermint/tendermint/pull/4621) ban peers when messages are unsolicited or too frequent (@cmwaters)
+- [evidence] [\#4632](https://github.com/tendermint/tendermint/pull/4632) Inbound evidence checked if already existing (@cmwaters)
 
 ### BUG FIXES:
 

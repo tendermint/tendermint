@@ -77,7 +77,9 @@ type mockBlockApplier struct {
 }
 
 // XXX: Add whitelist/blacklist?
-func (mba *mockBlockApplier) ApplyBlock(state sm.State, blockID types.BlockID, block *types.Block) (sm.State, int64, error) {
+func (mba *mockBlockApplier) ApplyBlock(
+	state sm.State, blockID types.BlockID, block *types.Block,
+) (sm.State, int64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
 }
@@ -119,12 +121,6 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
-}
-
-func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
-	sio.mtx.Lock()
-	defer sio.mtx.Unlock()
-	return sio.switchedToConsensus
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
@@ -413,6 +409,22 @@ func TestReactorHelperMode(t *testing.T) {
 			reactor.Stop()
 		})
 	}
+}
+
+func TestReactorSetSwitchNil(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+
+	reactor := newTestReactor(testReactorParams{
+		logger:   log.TestingLogger(),
+		genDoc:   genDoc,
+		privVals: privVals,
+	})
+	reactor.SetSwitch(nil)
+
+	assert.Nil(t, reactor.Switch)
+	assert.Nil(t, reactor.io)
 }
 
 //----------------------------------------------
