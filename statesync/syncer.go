@@ -41,8 +41,9 @@ type syncer struct {
 	connQuery proxy.AppConnQuery
 	snapshots *snapshotPool
 
-	mtx    sync.RWMutex
-	chunks *chunkQueue // once a sync is started, this will be non-nil and used to feed chunks
+	mtx      sync.RWMutex
+	snapshot *snapshot   // snapshot currently being synced, if any
+	chunks   *chunkQueue // used to feed chunks to the restorer
 }
 
 // newSyncer creates a new syncer.
@@ -59,12 +60,19 @@ func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.Ap
 }
 
 // AddChunk adds a chunk to the chunk queue, if any. It returns false if the chunk has already
-// been added to the queue, or an error if there's no sync in progress.
-func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
+// been added to the queue, or an error if there's no sync in progress. The height and format
+// are used as a sanity-check, in case the reactor receives unsolicited chunks for whatever reason.
+func (s *syncer) AddChunk(height uint64, format uint32, chunk *chunk) (bool, error) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	if s.chunks == nil {
+	if s.snapshot == nil || s.chunks == nil {
 		return false, errors.New("no state sync in progress")
+	}
+	if height != s.snapshot.Height {
+		return false, fmt.Errorf("invalid chunk height %v, expected %v", height, s.snapshot.Height)
+	}
+	if format != s.snapshot.Format {
+		return false, fmt.Errorf("invalid chunk format %v, expected %v", format, s.snapshot.Format)
 	}
 	added, err := s.chunks.Add(chunk)
 	if err != nil {
@@ -181,7 +189,7 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 func (s *syncer) startSync() (*snapshot, *chunkQueue, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	if s.chunks != nil {
+	if s.snapshot != nil {
 		return nil, nil, errors.New("a state sync is already in progress")
 	}
 	var snapshot *snapshot
@@ -225,6 +233,7 @@ func (s *syncer) startSync() (*snapshot, *chunkQueue, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create chunk queue: %w", err)
 	}
+	s.snapshot = snapshot
 	s.chunks = chunks
 	return snapshot, chunks, nil
 }
@@ -233,6 +242,7 @@ func (s *syncer) startSync() (*snapshot, *chunkQueue, error) {
 func (s *syncer) endSync() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	s.snapshot = nil
 	if s.chunks != nil {
 		err := s.chunks.Close()
 		if err != nil {

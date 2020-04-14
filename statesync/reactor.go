@@ -186,7 +186,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			_, err := r.syncer.AddChunk(&chunk{
+			_, err := r.syncer.AddChunk(msg.Height, msg.Format, &chunk{
 				Index: msg.Chunk,
 				Body:  msg.Body,
 			})
