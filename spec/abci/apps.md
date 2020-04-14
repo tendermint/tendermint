@@ -233,7 +233,7 @@ ConsensusParams enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in InitChain and updated in EndBlock.
 
-### Block.MaxBytes
+### BlockParams.MaxBytes
 
 The maximum size of a complete Amino encoded block.
 This is enforced by Tendermint consensus.
@@ -243,7 +243,7 @@ the header, the validator set, and any included evidence in the block.
 
 Must have `0 < MaxBytes < 100 MB`.
 
-### Block.MaxGas
+### BlockParams.MaxGas
 
 The maximum of the sum of `GasWanted` in a proposed block.
 This is *not* enforced by Tendermint consensus.
@@ -254,21 +254,34 @@ txs included in a proposed block.
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
 
-### Block.TimeIotaMs
+### BlockParams.TimeIotaMs
 
 The minimum time between consecutive blocks (in milliseconds).
 This is enforced by Tendermint consensus.
 
 Must have `TimeIotaMs > 0` to ensure time monotonicity.
 
-### EvidenceParams.MaxAge
+### EvidenceParams.MaxAgeDuration
 
-This is the maximum age of evidence.
+This is the maximum age of evidence in time units.
 This is enforced by Tendermint consensus.
-If a block includes evidence older than this, the block will be rejected
-(validators won't vote for it).
 
-Must have `MaxAge > 0`.
+If a block includes evidence older than this (AND the evidence was created more
+than `MaxAgeNumBlocks` ago), the block will be rejected (validators won't vote
+for it).
+
+Must have `MaxAgeDuration > 0`.
+
+### EvidenceParams.MaxAgeNumBlocks
+
+This is the maximum age of evidence in blocks.
+This is enforced by Tendermint consensus.
+
+If a block includes evidence older than this (AND the evidence was created more
+than `MaxAgeDuration` ago), the block will be rejected (validators won't vote
+for it).
+
+Must have `MaxAgeNumBlocks > 0`.
 
 ### Updates
 
