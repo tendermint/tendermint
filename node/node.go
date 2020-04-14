@@ -198,6 +198,7 @@ type Node struct {
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
+	stateSync        bool               // whether node should state sync on startup
 	consensusState   *cs.State          // latest consensus state
 	consensusReactor *cs.Reactor        // for participating in the consensus
 	pexReactor       *pex.Reactor       // for exchanging peer addresses
@@ -562,9 +563,10 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, config *cfg.StateSyncConfig,
-	stateDB dbm.DB, blockStore *store.BlockStore, state sm.State) error {
+	stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
+	state := sm.LoadState(stateDB)
 	lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
 		Period: config.TrustedPeriod,
 		Height: config.TrustedHeight,
@@ -726,14 +728,6 @@ func NewNode(config *cfg.Config,
 	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query())
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
-	if stateSync {
-		err := startStateSync(stateSyncReactor, bcReactor.(*bcv0.BlockchainReactor),
-			config.StateSync, stateDB, blockStore, state)
-		if err != nil {
-			return nil, fmt.Errorf("failed to start state sync: %w", err)
-		}
-	}
-
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
 		return nil, err
@@ -806,6 +800,7 @@ func NewNode(config *cfg.Config,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		stateSyncReactor: stateSyncReactor,
+		stateSync:        stateSync,
 		pexReactor:       pexReactor,
 		evidencePool:     evidencePool,
 		proxyApp:         proxyApp,
@@ -874,6 +869,15 @@ func (n *Node) OnStart() error {
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return errors.Wrap(err, "could not dial peers from persistent_peers field")
+	}
+
+	// Run state sync
+	if n.stateSync {
+		err := startStateSync(n.stateSyncReactor, n.bcReactor.(*bcv0.BlockchainReactor),
+			n.config.StateSync, n.stateDB, n.blockStore)
+		if err != nil {
+			return fmt.Errorf("failed to start state sync: %w", err)
+		}
 	}
 
 	return nil
