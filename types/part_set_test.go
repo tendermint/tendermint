@@ -142,9 +142,10 @@ func TestParSetHeaderProtoBuf(t *testing.T) {
 		ps2     *PartSetHeader
 		expPass bool
 	}{
-		{"sucess empty", &PartSetHeader{}, &PartSetHeader{}, true},
-		{"sucess nil", nil, nil, true},
-		{"sucess", &PartSetHeader{Total: 1, Hash: []byte("hash")}, &PartSetHeader{Total: 2, Hash: []byte("other_hash")}, true},
+		{"success empty", &PartSetHeader{}, &PartSetHeader{}, true},
+		{"success nil", nil, nil, true},
+		{"success",
+			&PartSetHeader{Total: 1, Hash: []byte("hash")}, &PartSetHeader{Total: 2, Hash: []byte("other_hash")}, true},
 		{"fail PartSetHeader 2 nil", &PartSetHeader{}, nil, false},
 	}
 

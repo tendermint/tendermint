@@ -179,27 +179,40 @@ func (h Header) ValidateBasic() error {
 
 // ToProto converts Header to protobuf
 func (h *Header) ToProto() *tmproto.Header {
+	if h == nil {
+		return nil
+	}
 	return &tmproto.Header{
 		Version:            h.Version.ToProto(),
 		ChainID:            h.ChainID,
+		Height:             h.Height,
 		Time:               h.Time,
 		LastBlockID:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
 		AppHash:            h.AppHash,
+		DataHash:           h.DataHash,
+		EvidenceHash:       h.EvidenceHash,
 		LastResultsHash:    h.LastResultsHash,
+		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
 }
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
-func (h *Header) FromProto(ph tmproto.Header) error {
+func (h *Header) FromProto(ph *tmproto.Header) error {
 	var (
 		blockID     BlockID
 		versionCons version.Consensus
 	)
+	if h == nil {
+		h = &Header{}
+	}
+	if ph == nil {
+		return nil
+	}
 
 	if err := blockID.FromProto(ph.LastBlockID); err != nil {
 		return err
@@ -211,15 +224,16 @@ func (h *Header) FromProto(ph tmproto.Header) error {
 	h.ChainID = ph.ChainID
 	h.Height = ph.Height
 	h.Time = ph.Time
+	h.Height = ph.Height
 	h.LastBlockID = blockID
-	h.LastCommitHash = ph.LastCommitHash
-	h.DataHash = ph.DataHash
 	h.ValidatorsHash = ph.ValidatorsHash
 	h.NextValidatorsHash = ph.NextValidatorsHash
 	h.ConsensusHash = ph.ConsensusHash
 	h.AppHash = ph.AppHash
-	h.LastResultsHash = ph.LastResultsHash
+	h.DataHash = ph.DataHash
 	h.EvidenceHash = ph.EvidenceHash
+	h.LastResultsHash = ph.LastResultsHash
+	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
 
 	return h.ValidateBasic()

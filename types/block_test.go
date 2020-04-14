@@ -631,23 +631,7 @@ func TestCommitProtoBuf(t *testing.T) {
 
 func TestSignedHeaderProtoBuf(t *testing.T) {
 	commit := randCommit(time.Now())
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-	h := Header{
-		Version:            version.Consensus{Block: 10, App: 10},
-		ChainID:            "chainID",
-		Height:             10,
-		Time:               timestamp,
-		LastBlockID:        commit.BlockID,
-		LastCommitHash:     commit.Hash(),
-		DataHash:           commit.Hash(),
-		ValidatorsHash:     commit.Hash(),
-		NextValidatorsHash: commit.Hash(),
-		ConsensusHash:      commit.Hash(),
-		AppHash:            commit.Hash(),
-		LastResultsHash:    commit.Hash(),
-		EvidenceHash:       commit.Hash(),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
+	h := makeRandHeader()
 
 	sh := SignedHeader{Header: &h, Commit: commit}
 
@@ -664,7 +648,6 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
 		err := tc.sh2.FromProto(protoSignedHeader)
-
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, &tc.sh1, tc.sh2, tc.msg)
@@ -683,10 +666,10 @@ func TestBlockIDProtoBuf(t *testing.T) {
 		bid2    *BlockID
 		expPass bool
 	}{
-		{"sucess", &blockID, &BlockID{}, true},
-		{"sucess", &BlockID{}, &blockID, true},
-		{"sucess BlockID empty", &BlockID{}, &BlockID{}, true},
-		{"sucess BlockID nil", nil, nil, true},
+		{"success", &blockID, &BlockID{}, true},
+		{"success", &BlockID{}, &blockID, true},
+		{"success BlockID empty", &BlockID{}, &BlockID{}, true},
+		{"success BlockID nil", nil, nil, true},
 		{"not equal", nil, &blockID, false},
 	}
 	for _, tc := range testCases {
