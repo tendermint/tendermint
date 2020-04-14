@@ -664,7 +664,7 @@ func NewNode(config *cfg.Config,
 		stateSync = false
 	}
 	if stateSync && !fastSync {
-		return nil, errors.New("State sync requires fast sync to be enabled")
+		return nil, errors.New("state sync requires fast sync to be enabled")
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
@@ -802,6 +802,7 @@ func NewNode(config *cfg.Config,
 		mempool:          mempool,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
+		stateSyncReactor: stateSyncReactor,
 		pexReactor:       pexReactor,
 		evidencePool:     evidencePool,
 		proxyApp:         proxyApp,

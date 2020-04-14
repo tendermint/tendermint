@@ -121,8 +121,7 @@ func BootstrapState(db dbm.DB, state State) error {
 	saveValidatorsInfo(db, height+1, height+1, state.Validators)
 	saveValidatorsInfo(db, height+2, height+2, state.NextValidators)
 	saveConsensusParamsInfo(db, height+1, height+1, state.ConsensusParams)
-	db.SetSync(stateKey, state.Bytes())
-	return nil
+	return db.SetSync(stateKey, state.Bytes())
 }
 
 //------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
@@ -16,7 +16,7 @@ import (
 const bufferChunks = 4
 
 // Done is returned by chunkQueue.Next when all chunks have been returned.
-var Done = errors.New("iterator is done")
+var Done = errors.New("iterator is done") // nolint: stylecheck,golint
 
 // chunk contains data for a chunk.
 type chunk struct {
@@ -38,13 +38,13 @@ func (c *chunk) Hash() []byte {
 // be spooled in memory or on disk as appropriate.
 type chunkQueue struct {
 	sync.Mutex
-	hashes     [][]byte // if this is nil, the queue has been closed
-	dir        string
-	nextChunk  uint32
-	memChunks  map[uint32]*chunk
-	diskChunks map[uint32]string
-	chReady    chan uint32
-	waiters    map[uint32][]chan<- bool
+	hashes     [][]byte                 // chunk hashes - if this is nil, the queue has been closed
+	dir        string                   // temp dir for on-disk chunk storage
+	nextChunk  uint32                   // next chunk that Next() is waiting for
+	memChunks  map[uint32]*chunk        // in-memory chunk storage (see bufferChunks)
+	diskChunks map[uint32]string        // on-disk chunk storage (path to temp file)
+	chReady    chan uint32              // signals Next() about next blocks being ready
+	waiters    map[uint32][]chan<- bool // signals WaitFor() waiters about block arrival
 }
 
 // newChunkQueue creates a new chunk queue for a snapshot, using the OS temp dir for storage.
@@ -93,7 +93,7 @@ func (p *chunkQueue) Add(chunk *chunk) (bool, error) {
 	if chunk.Index < p.nextChunk+bufferChunks {
 		p.memChunks[chunk.Index] = chunk
 	} else {
-		path := path.Join(p.dir, strconv.FormatUint(uint64(chunk.Index), 10))
+		path := filepath.Join(p.dir, strconv.FormatUint(uint64(chunk.Index), 10))
 		err := ioutil.WriteFile(path, chunk.Body, 0644)
 		if err != nil {
 			return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)

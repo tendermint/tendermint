@@ -12,8 +12,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-const ()
-
 // snapshotHash is a snapshot hash, used for lookups.
 type snapshotHash [sha256.Size]byte
 
