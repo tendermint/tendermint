@@ -98,6 +98,10 @@ func (v *Validator) Bytes() []byte {
 
 // ToProto converts Valiator to protobuf
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
+	if v == nil {
+		return nil, nil
+	}
+
 	pk, err := ce.PubKeyToProto(v.PubKey)
 	if err != nil {
 		return nil, err
@@ -116,6 +120,10 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 // FromProto sets a protobuf Validator to the given pointer.
 // It returns an error if the public key is invalid.
 func (v *Validator) FromProto(vp tmproto.Validator) error {
+	if v == nil {
+		v = &Validator{}
+	}
+
 	pk, err := ce.PubKeyFromProto(vp.PubKey)
 	if err != nil {
 		return err

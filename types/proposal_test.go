@@ -144,7 +144,7 @@ func TestProposalValidateBasic(t *testing.T) {
 	}
 }
 
-func TestProtoBuf(t *testing.T) {
+func TestProposalProtoBuf(t *testing.T) {
 	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
 	proposal.Signature = []byte("sig")
 	proposal2 := NewProposal(1, 2, 3, BlockID{})

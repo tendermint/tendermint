@@ -1374,6 +1374,53 @@ func TestVerifyCommitTrusting(t *testing.T) {
 
 }
 
+func TestValidatorSetProtoBuf(t *testing.T) {
+	valset, _ := RandValidatorSet(10, 100)
+	valset2, _ := RandValidatorSet(10, 100)
+	valset2.Validators[0] = &Validator{}
+
+	valset3, _ := RandValidatorSet(10, 100)
+	valset3.Proposer = &Validator{}
+
+	testCases := []struct {
+		msg      string
+		v1       *ValidatorSet
+		v2       *ValidatorSet
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", valset, valset, true, true},
+		{"success nil", valset, nil, true, true},
+		{"success empty", valset, &ValidatorSet{}, true, true},
+		{"fail invalid Proposer", valset2, &ValidatorSet{}, false, false},
+		{"fail invalid Validators", valset3, &ValidatorSet{}, false, false},
+		{"fail empty", &ValidatorSet{}, &ValidatorSet{}, true, false},
+		{"false nil", nil, &ValidatorSet{}, true, false},
+		{"false both nil", nil, nil, true, false},
+	}
+	for _, tc := range testCases {
+		protoValSet, err := tc.v1.ToProto()
+
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		if protoValSet == nil {
+			protoValSet = &tmproto.ValidatorSet{}
+		}
+
+		err = tc.v2.FromProto(*protoValSet)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.v1, tc.v2, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
 //---------------------
 // Sort validators by priority and address
 type validatorsByPriority []*Validator

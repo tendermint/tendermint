@@ -245,15 +245,13 @@ func TestMaxVoteBytes(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected :=
-		`Vote{56789:6AF1F4111082 12345/02/PRECOMMIT_TYPE(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected := `Vote{56789:6AF1F4111082 12345/02/PRECOMMIT_TYPE(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected =
-		`Vote{56789:6AF1F4111082 12345/02/PREVOTE_TYPE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected = `Vote{56789:6AF1F4111082 12345/02/PREVOTE_TYPE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
@@ -301,8 +299,8 @@ func TestVoteProtobuf(t *testing.T) {
 		v2      *Vote
 		expPass bool
 	}{
-		{"sucess", *vote, &Vote{}, true},
-		{"sucess equal", *vote, vote, true},
+		{"success", *vote, &Vote{}, true},
+		{"success equal", *vote, vote, true},
 		{"fail vote validate basic", Vote{}, nil, false},
 	}
 	for _, tc := range testCases {

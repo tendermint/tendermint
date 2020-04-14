@@ -43,22 +43,21 @@ func makeRandHeader() Header {
 func TestHeaderProto(t *testing.T) {
 	h1 := makeRandHeader()
 	tc := []struct {
-		msg    string
-		h1     *Header
-		h2     *Header
-		expErr bool
+		msg     string
+		h1      *Header
+		h2      *Header
+		expPass bool
 	}{
-		{"failure empty Header", &Header{}, &Header{}, true},
-		{"success", &h1, &Header{}, false},
-		{"success Header nil", nil, nil, false},
-	}
+		{"failure empty Header", &Header{}, &Header{}, false},
+		{"success", &h1, &Header{}, true},
+		{"success Header nil", nil, nil, true}}
 
 	for _, tt := range tc {
 		tt := tt
 		t.Run(tt.msg, func(t *testing.T) {
 			pb := tt.h1.ToProto()
 			err := tt.h2.FromProto(pb)
-			if !tt.expErr {
+			if tt.expPass {
 				require.NoError(t, err, tt.msg)
 				require.Equal(t, tt.h1, tt.h2, tt.msg)
 			} else {
