@@ -45,7 +45,9 @@ func (s *snapshot) Hash() snapshotHash {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
-	lc *lite.Client
+	// light client is not concurrency-safe, but we don't want to lock entire pool
+	lcMutex sync.Mutex
+	lc      *lite.Client
 
 	sync.Mutex
 	snapshots     map[snapshotHash]*snapshot
@@ -81,10 +83,7 @@ func newSnapshotPool(lc *lite.Client) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	// FIXME Check if the light client deduplicates concurrent requests for the same height.
-	// Otherwise we'll have to manage this ourself. We should probably do some better error
-	// handling here too.
-	appHash, err := p.fetchTrustedAppHash(snapshot.Height)
+	appHash, err := p.fetchAppHash(snapshot.Height)
 	if err != nil {
 		return false, err
 	}
@@ -233,9 +232,12 @@ func (p *snapshotPool) RemovePeer(peer p2p.Peer) {
 	delete(p.peerIndex, peer.ID())
 }
 
-// fetchTrustedAppHash fetches the app hash for a given height using the light client.
-func (p *snapshotPool) fetchTrustedAppHash(height uint64) ([]byte, error) {
-	// we have to fetch the next height, which contains the app hash for the previous height.
+// fetchAppHash fetches the app hash for a given height using the light client.
+func (p *snapshotPool) fetchAppHash(height uint64) ([]byte, error) {
+	p.lcMutex.Lock()
+	defer p.lcMutex.Unlock()
+
+	// We have to fetch the next height, which contains the app hash for the previous height.
 	header, err := p.lc.VerifyHeaderAtHeight(int64(height+1), time.Now())
 	if err != nil {
 		return nil, err
