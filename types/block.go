@@ -766,29 +766,25 @@ func (sh SignedHeader) ToProto() tmproto.SignedHeader {
 // FromProto sets a protobuf SignedHeader to the given pointer.
 // It returns an error if the hader or the commit is invalid.
 func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
-	var (
-		h *Header
-		c *Commit
-	)
-
 	if sh == nil {
 		sh = &SignedHeader{}
 	}
 
 	if shp.Header != nil {
+		h := &Header{}
 		if err := h.FromProto(*shp.Header); err != nil {
 			return err
 		}
+		sh.Header = h
 	}
 
 	if shp.Commit != nil {
+		c := &Commit{}
 		if err := c.FromProto(*shp.Commit); err != nil {
 			return err
 		}
+		sh.Commit = c
 	}
-
-	sh.Header = h
-	sh.Commit = c
 
 	return nil
 }

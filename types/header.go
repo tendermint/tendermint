@@ -197,8 +197,8 @@ func (h *Header) ToProto() *tmproto.Header {
 // It returns an error if the header is invalid.
 func (h *Header) FromProto(ph tmproto.Header) error {
 	var (
-		blockID     *BlockID
-		versionCons *version.Consensus
+		blockID     BlockID
+		versionCons version.Consensus
 	)
 
 	if err := blockID.FromProto(ph.LastBlockID); err != nil {
@@ -207,15 +207,19 @@ func (h *Header) FromProto(ph tmproto.Header) error {
 
 	versionCons.FromProto(ph.Version)
 
-	h.Version = *versionCons
+	h.Version = versionCons
 	h.ChainID = ph.ChainID
+	h.Height = ph.Height
 	h.Time = ph.Time
-	h.LastBlockID = *blockID
+	h.LastBlockID = blockID
+	h.LastCommitHash = ph.LastCommitHash
+	h.DataHash = ph.DataHash
 	h.ValidatorsHash = ph.ValidatorsHash
 	h.NextValidatorsHash = ph.NextValidatorsHash
 	h.ConsensusHash = ph.ConsensusHash
 	h.AppHash = ph.AppHash
 	h.LastResultsHash = ph.LastResultsHash
+	h.EvidenceHash = ph.EvidenceHash
 	h.ProposerAddress = ph.ProposerAddress
 
 	return h.ValidateBasic()
