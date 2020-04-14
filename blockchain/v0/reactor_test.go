@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
 	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -116,7 +117,9 @@ func newBlockchainReactor(
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
+		partsHeader := thisParts.Header()
+		blockID := tmproto.BlockID{Hash: thisBlock.Hash(), PartsHeader: tmproto.PartSetHeader{
+			Total: partsHeader.Total, Hash: partsHeader.Hash}}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
@@ -126,7 +129,7 @@ func newBlockchainReactor(
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := NewBlockchainReactor(state, blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	return BlockchainReactorPair{bcReactor, proxyApp}
