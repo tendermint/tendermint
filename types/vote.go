@@ -189,10 +189,10 @@ func (vote Vote) ToProto() *tmproto.Vote {
 //FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
 func (vote *Vote) FromProto(pv tmproto.Vote) error {
-	var blockID *BlockID
+	var blockID BlockID
 
 	if vote == nil {
-		return nil
+		vote = &Vote{}
 	}
 
 	if err := blockID.FromProto(pv.BlockID); err != nil {
@@ -202,7 +202,7 @@ func (vote *Vote) FromProto(pv tmproto.Vote) error {
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
-	vote.BlockID = *blockID
+	vote.BlockID = blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
