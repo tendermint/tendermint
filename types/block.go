@@ -753,14 +753,15 @@ func (sh SignedHeader) StringIndented(indent string) string {
 
 // ToProto converts SignedHeader to protobuf
 func (sh SignedHeader) ToProto() tmproto.SignedHeader {
-	if sh.Header == nil || sh.Commit == nil {
-		return tmproto.SignedHeader{Header: nil, Commit: nil}
+	psh := new(tmproto.SignedHeader)
+	if sh.Header != nil {
+		psh.Header = sh.Header.ToProto()
+	}
+	if sh.Commit != nil {
+		psh.Commit = sh.Commit.ToProto()
 	}
 
-	return tmproto.SignedHeader{
-		Header: sh.Header.ToProto(),
-		Commit: sh.Commit.ToProto(),
-	}
+	return *psh
 }
 
 // FromProto sets a protobuf SignedHeader to the given pointer.
@@ -769,21 +770,23 @@ func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
 	if sh == nil {
 		sh = &SignedHeader{}
 	}
+	var (
+		h Header
+		c Commit
+	)
 
 	if shp.Header != nil {
-		h := new(Header)
 		if err := h.FromProto(shp.Header); err != nil {
 			return err
 		}
-		sh.Header = h
+		sh.Header = &h
 	}
 
 	if shp.Commit != nil {
-		c := new(Commit)
 		if err := c.FromProto(*shp.Commit); err != nil {
 			return err
 		}
-		sh.Commit = c
+		sh.Commit = &c
 	}
 
 	return nil

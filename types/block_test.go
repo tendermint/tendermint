@@ -600,7 +600,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 }
 
-func TestCommitProtoBuf(t *testing.T) {
+func makeCommit(t *testing.T) *Commit {
 	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
 	privVal := NewMockPV()
 	pk, err := privVal.GetPubKey()
@@ -612,6 +612,13 @@ func TestCommitProtoBuf(t *testing.T) {
 	require.NoError(t, err)
 	commit.Signatures = []CommitSig{{
 		BlockIDFlag: tmproto.BlockIDFlagCommit, ValidatorAddress: pk.Address(), Timestamp: now, Signature: []byte("sig")}}
+
+	return commit
+
+}
+
+func TestCommitProtoBuf(t *testing.T) {
+	commit := makeCommit(t)
 
 	testCases := []struct {
 		msg     string
@@ -640,21 +647,23 @@ func TestCommitProtoBuf(t *testing.T) {
 }
 
 func TestSignedHeaderProtoBuf(t *testing.T) {
+	h1 := makeRandHeader()
+	c1 := makeCommit(t)
 	testCases := []struct {
 		msg     string
 		sh1     *SignedHeader
 		sh2     *SignedHeader
 		expPass bool
 	}{
-		{"nil SignedHeader success", &SignedHeader{}, nil, true},
+		{"success emtpty SignedHeader", &SignedHeader{}, &SignedHeader{}, true},
+		{"success SignedHeader", &SignedHeader{Header: &h1, Commit: c1}, &SignedHeader{Header: &h1, Commit: c1}, true},
 	}
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
 		err := tc.sh2.FromProto(protoSignedHeader)
-
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.sh1, tc.sh2, tc.msg)
+			require.EqualValues(t, tc.sh1, tc.sh2, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 			require.NotEqual(t, tc.sh1, tc.sh2, tc.msg)
