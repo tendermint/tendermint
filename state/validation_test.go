@@ -228,7 +228,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			for i := int64(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
-			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
+			block, _ := sm.MakeBlock(state, height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
 			_, ok := err.(*types.ErrEvidenceOverflow)
 			require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d", height)

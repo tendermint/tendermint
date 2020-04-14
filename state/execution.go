@@ -115,7 +115,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+func (blockExec *BlockExecutor) ValidateBlock(state tmstate.State, block *types.Block) error {
 	return validateBlock(blockExec.evpool, blockExec.db, state, block)
 }
 
@@ -126,8 +126,8 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state State, blockID types.BlockID, block *types.Block,
-) (State, int64, error) {
+	state tmstate.State, blockID types.BlockID, block *types.Block,
+) (tmstate.State, int64, error) {
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
@@ -386,16 +386,20 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 // updateState returns a new State updated according to the header and responses.
 func updateState(
-	state State,
+	state tmstate.State,
 	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
-) (State, error) {
+) (tmstate.State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
-	nValSet := state.NextValidators.Copy()
+	nValSet := types.ValidatorSet{}
+	err := nValSet.FromProto(state.NextValidators)
+	if err != nil {
+		return state, err
+	}
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
@@ -416,8 +420,8 @@ func updateState(
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
-		err := nextParams.Validate()
+		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
+		err := types.ValidateParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}

@@ -1,11 +1,12 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"time"
 
+	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -31,9 +32,9 @@ type Version struct {
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var initStateVersion = Version{
-	Consensus: version.Consensus{
-		Block: version.BlockProtocol,
+var initStateVersion = tmstate.Version{
+	Consensus: tmproto.Version{
+		Block: version.BlockProtocol.Uint64(),
 		App:   0,
 	},
 	Software: version.TMCoreSemVer,
@@ -106,16 +107,16 @@ func (state State) Copy() State {
 	}
 }
 
-// Equals returns true if the States are identical.
-func (state State) Equals(state2 State) bool {
-	sbz, s2bz := state.Bytes(), state2.Bytes()
-	return bytes.Equal(sbz, s2bz)
-}
+// // Equals returns true if the States are identical.
+// func (state State) Equals(state2 State) bool {
+// 	sbz, s2bz := state.Bytes(), state2.Bytes()
+// 	return bytes.Equal(sbz, s2bz)
+// }
 
-// Bytes serializes the State using go-amino.
-func (state State) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(state)
-}
+// // Bytes serializes the State using go-amino.
+// func (state State) Bytes() []byte {
+// 	return cdc.MustMarshalBinaryBare(state)
+// }
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
@@ -128,7 +129,8 @@ func (state State) IsEmpty() bool {
 // MakeBlock builds a block from the current state with the given txs, commit,
 // and evidence. Note it also takes a proposerAddress because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
-func (state State) MakeBlock(
+func MakeBlock(
+	state tmstate.State
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
@@ -189,10 +191,10 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 // file.
 //
 // Used during replay and in tests.
-func MakeGenesisStateFromFile(genDocFile string) (State, error) {
+func MakeGenesisStateFromFile(genDocFile string) (tmstate.State, error) {
 	genDoc, err := MakeGenesisDocFromFile(genDocFile)
 	if err != nil {
-		return State{}, err
+		return tmstate.State{}, err
 	}
 	return MakeGenesisState(genDoc)
 }
@@ -211,10 +213,10 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
+func MakeGenesisState(genDoc *types.GenesisDoc) (tmstate.State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("error in genesis file: %v", err)
+		return tmstate.State{}, fmt.Errorf("error in genesis file: %v", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
@@ -227,23 +229,39 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 			validators[i] = types.NewValidator(val.PubKey, val.Power)
 		}
 		validatorSet = types.NewValidatorSet(validators)
+
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
+	pbv, err := validatorSet.ToProto()
+	if err != nil {
+		return tmstate.State{}, err
+	}
 
-	return State{
+	pbnv, err := nextValidatorSet.ToProto()
+	if err != nil {
+		return tmstate.State{}, err
+	}
+
+	protoParam := tmproto.ConsensusParams{
+		Block:     genDoc.ConsensusParams.Block,
+		Evidence:  genDoc.ConsensusParams.Evidence,
+		Validator: genDoc.ConsensusParams.Validator,
+	}
+
+	return tmstate.State{
 		Version: initStateVersion,
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,
-		LastBlockID:     types.BlockID{},
+		LastBlockID:     tmproto.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextValidators:              nextValidatorSet,
-		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil),
+		NextValidators:              pbnv,
+		Validators:                  pbv,
+		LastValidators:              nil,
 		LastHeightValidatorsChanged: 1,
 
-		ConsensusParams:                  *genDoc.ConsensusParams,
+		ConsensusParams:                  protoParam,
 		LastHeightConsensusParamsChanged: 1,
 
 		AppHash: genDoc.AppHash,

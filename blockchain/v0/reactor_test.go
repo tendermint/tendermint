@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -92,10 +93,15 @@ func newBlockchainReactor(
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
+			valSet := types.ValidatorSet{}
+			err := valSet.FromProto(state.Validators)
+			if err != nil {
+				panic(err)
+			}
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
-				state.Validators,
+				&valSet,
 				privVals[0],
 				lastBlock.Header.ChainID,
 				time.Now(),
@@ -347,8 +353,8 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+func makeBlock(height int64, state tmstate.State, lastCommit *types.Commit) *types.Block {
+	block, _ := sm.MakeBlock(state, height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
 	return block
 }
 

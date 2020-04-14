@@ -26,7 +26,7 @@ import (
 )
 
 // setupTestCase does setup common to all test cases.
-func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
+func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, tmstate.State) {
 	config := cfg.ResetTestRoot("state_")
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
@@ -94,8 +94,11 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := makeBlock(state, 2)
 	abciResponses := sm.NewABCIResponses(block)
+	dtxs := make([]*abci.ResponseDeliverTx, 2)
+	abciResponses.DeliverTxs = dtxs
 	abciResponses.DeliverTxs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
 	abciResponses.DeliverTxs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
+	//Block is filled with 10 txs but this test asks for two & only populates 2
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
@@ -977,9 +980,9 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		nextHeight := state.LastBlockHeight + 1
 
 		sc := tmproto.ConsensusParams{
-			Block:     &state.ConsensusParams.Block,
-			Evidence:  &state.ConsensusParams.Evidence,
-			Validator: &state.ConsensusParams.Validator,
+			Block:     state.ConsensusParams.Block,
+			Evidence:  state.ConsensusParams.Evidence,
+			Validator: state.ConsensusParams.Validator,
 		}
 
 		sm.SaveConsensusParamsInfo(stateDB, nextHeight, state.LastHeightConsensusParamsChanged, sc)
@@ -1002,7 +1005,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	for _, testCase := range testCases {
 		p, err := sm.LoadConsensusParams(stateDB, testCase.height)
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
+		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
 	}
 }

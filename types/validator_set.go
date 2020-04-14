@@ -335,6 +335,9 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
+	if vals == nil {
+		return nil, nil
+	}
 	var vsp = new(tmproto.ValidatorSet)
 
 	vsp.TotalVotingPower = vals.TotalVotingPower()

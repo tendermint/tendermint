@@ -32,8 +32,8 @@ message ConsensusParamsInfo {
 }
 
 message Version {
-  tendermint.proto.types.Version version  = 1 [(gogoproto.nullable) = false];
-  string                         software = 2;
+  tendermint.proto.types.Version consensus = 1 [(gogoproto.nullable) = false];
+  string                         software  = 2;
 }
 
 message State {
@@ -44,8 +44,9 @@ message State {
 
   //     // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
   int64                          last_block_height = 3;
-  tendermint.proto.types.BlockID last_block_id     = 4 [(gogoproto.nullable) = false];
-  google.protobuf.Timestamp      last_block_time   = 5
+  tendermint.proto.types.BlockID last_block_id     = 4
+      [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  google.protobuf.Timestamp last_block_time = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // LastValidators is used to validate block.LastCommit.

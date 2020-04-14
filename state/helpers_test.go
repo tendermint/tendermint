@@ -60,9 +60,9 @@ func makeAndCommitGoodBlock(
 	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
-	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
+func makeAndApplyGoodBlock(state tmstate.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
+	blockExec *sm.BlockExecutor, evidence []types.Evidence) (tmstate.State, types.BlockID, error) {
+	block, _ := sm.MakeBlock(state, height, makeTxs(height), lastCommit, evidence, proposerAddr)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -101,7 +101,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
+func makeState(nVals, height int) (tmstate.State, dbm.DB, map[string]types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
 	privVals := make(map[string]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {
@@ -127,14 +127,15 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 
 	for i := 1; i < height; i++ {
 		s.LastBlockHeight++
-		s.LastValidators = s.Validators.Copy()
+		s.LastValidators = s.Validators
 		sm.SaveState(stateDB, s)
 	}
 	return s, stateDB, privVals
 }
 
-func makeBlock(state sm.State, height int64) *types.Block {
-	block, _ := state.MakeBlock(
+func makeBlock(state tmstate.State, height int64) *types.Block {
+	block, _ := sm.MakeBlock(
+		state,
 		height,
 		makeTxs(state.LastBlockHeight),
 		new(types.Commit),
@@ -171,7 +172,7 @@ func makeConsensusParams(
 }
 
 func makeHeaderPartsResponsesValPubKeyChange(
-	state sm.State,
+	state tmstate.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
@@ -195,7 +196,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 }
 
 func makeHeaderPartsResponsesValPowerChange(
-	state sm.State,
+	state tmstate.State,
 	power int64,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
@@ -218,7 +219,7 @@ func makeHeaderPartsResponsesValPowerChange(
 }
 
 func makeHeaderPartsResponsesParams(
-	state sm.State,
+	state tmstate.State,
 	params types.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 

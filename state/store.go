@@ -38,9 +38,9 @@ func calcABCIResponsesKey(height int64) []byte {
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
 // or creates a new one from the given genesisFilePath and persists the result
 // to the database.
-func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
+func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (tmstate.State, error) {
 	state := LoadState(stateDB)
-	if state.IsEmpty() {
+	if state.Validators == nil {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFilePath)
 		if err != nil {
@@ -55,9 +55,9 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 // LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
 // or creates a new one from the given genesisDoc and persists the result
 // to the database.
-func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
+func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (tmstate.State, error) {
 	state := LoadState(stateDB)
-	if state.IsEmpty() {
+	if state.Validators == nil {
 		var err error
 		state, err = MakeGenesisState(genesisDoc)
 		if err != nil {
@@ -70,11 +70,11 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 }
 
 // LoadState loads the State from the database.
-func LoadState(db dbm.DB) State {
+func LoadState(db dbm.DB) tmstate.State {
 	return loadState(db, stateKey)
 }
 
-func loadState(db dbm.DB, key []byte) (state State) {
+func loadState(db dbm.DB, key []byte) (state tmstate.State) {
 	buf, err := db.Get(key)
 	if err != nil {
 		panic(err)
@@ -96,11 +96,11 @@ func loadState(db dbm.DB, key []byte) (state State) {
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
-func SaveState(db dbm.DB, state State) {
+func SaveState(db dbm.DB, state tmstate.State) {
 	saveState(db, state, stateKey)
 }
 
-func saveState(db dbm.DB, state State, key []byte) {
+func saveState(db dbm.DB, state tmstate.State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for block 1.
 	if nextHeight == 1 {
@@ -113,14 +113,18 @@ func saveState(db dbm.DB, state State, key []byte) {
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
 	sc := tmproto.ConsensusParams{
-		Block:     &state.ConsensusParams.Block,
-		Evidence:  &state.ConsensusParams.Evidence,
-		Validator: &state.ConsensusParams.Validator,
+		Block:     state.ConsensusParams.Block,
+		Evidence:  state.ConsensusParams.Evidence,
+		Validator: state.ConsensusParams.Validator,
 	}
 
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, sc)
-	db.SetSync(key, state.Bytes())
+	bz, err := state.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	db.SetSync(key, bz)
 }
 
 //------------------------------------------------------------------------
@@ -290,6 +294,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
+	fmt.Println(abciResponses)
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
@@ -372,7 +377,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *tmproto.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -382,13 +387,9 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	// Only persist validator set if it was updated or checkpoint height (see
 	// valSetCheckpointInterval) is reached.
 	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
-		pb, err := valSet.ToProto()
-		if err != nil {
-			panic(err)
-		}
-
-		valInfo.ValidatorSet = pb
+		valInfo.ValidatorSet = valSet
 	}
+
 	bz, err := valInfo.Marshal()
 	if err != nil {
 		panic(err)
@@ -441,7 +442,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 	if err = paramsInfo.Unmarshal(buf); err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:
-                %v \n`, err))
+                %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -453,13 +454,13 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
 func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
-	paramsInfo := tmstate.ConsensusParamsInfo{
-		LastHeightChanged: changeHeight,
-	}
+	paramsInfo := &tmstate.ConsensusParamsInfo{}
+	paramsInfo.LastHeightChanged = changeHeight
+
 	if changeHeight == nextHeight {
 		paramsInfo.ConsensusParams = params
 	}
-	bz, err := params.Marshal()
+	bz, err := paramsInfo.Marshal()
 	if err != nil {
 		panic(err)
 	}

@@ -67,12 +67,12 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 // DefaultValidatorParams returns a default ValidatorParams, which allows
 // only ed25519 pubkeys.
 func DefaultValidatorParams() tmproto.ValidatorParams {
-	return tmproto.ValidatorParams{PubKeyTypes: []string{ABCIPubKeyTypeEd25519}}
+	return tmproto.ValidatorParams{PubKeyTypes: []string{"ed25519"}}
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
-func (params *ConsensusParams) Validate() error {
+func ValidateParams(params tmproto.ConsensusParams) error {
 	if params.Block.MaxBytes <= 0 {
 		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
@@ -143,7 +143,7 @@ func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
 // NOTE: note: must not modify the original
-func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusParams {
+func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
 	res := params // explicit copy
 
 	if params2 == nil {
