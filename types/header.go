@@ -180,10 +180,7 @@ func (h Header) ValidateBasic() error {
 func (h *Header) ToProto() *tmproto.Header {
 
 	ph := tmproto.Header{
-		Version: tmproto.Version{
-			Block: h.Version.Block,
-			App:   h.Version.App,
-		},
+		Version: h.Version,
 		ChainID: h.ChainID,
 		Time:    h.Time,
 		LastBlockID: tmproto.BlockID{
@@ -204,10 +201,7 @@ func (h *Header) ToProto() *tmproto.Header {
 }
 
 func (h *Header) FromProto(ph tmproto.Header) error {
-	h.Version = version.Consensus{
-		Block: ph.Version.Block,
-		App:   ph.Version.App,
-	}
+	h.Version = ph.Version
 	h.ChainID = ph.ChainID
 	h.Time = ph.Time
 	h.LastBlockID = BlockID{

@@ -45,10 +45,7 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) tmproto.Header {
 	return tmproto.Header{
-		Version: tmproto.Version{
-			Block: header.Version.Block,
-			App:   header.Version.App,
-		},
+		Version: header.Version,
 		ChainID: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
