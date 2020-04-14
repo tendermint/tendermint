@@ -600,6 +600,73 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 }
 
+func TestDataProtoBuf(t *testing.T) {
+	data := &Data{Txs: Txs{Tx([]byte{1}), Tx([]byte{2}), Tx([]byte{3})}}
+	_ = data.Hash()
+	testCases := []struct {
+		msg     string
+		data1   *Data
+		data2   *Data
+		expPass bool
+	}{
+		{"success", data, &Data{}, true},
+		{"success Data nil", nil, nil, true},
+		{"not equal", nil, data, false},
+	}
+	for _, tc := range testCases {
+		protoData := tc.data1.ToProto()
+		tc.data2.FromProto(protoData)
+
+		if tc.expPass {
+			require.Equal(t, tc.data1, tc.data2, tc.msg)
+		} else {
+			require.NotEqual(t, tc.data1, tc.data2, tc.msg)
+		}
+	}
+}
+
+func TestEvidenceDataProtoBuf(t *testing.T) {
+	ev := NewDuplicateVoteEvidence(examplePrecommit(), examplePrevote())
+	data := &EvidenceData{Evidence: EvidenceList{ev}}
+	_ = data.Hash()
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceData
+		data2    *EvidenceData
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", data, &EvidenceData{}, true, true},
+		{"success empty", &EvidenceData{}, data, true, true},
+		// {"success Data 2 nil", data, nil, true, true},
+		{"fail nil Data", nil, nil, true, true},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		if protoData == nil {
+			protoData = &tmproto.EvidenceData{}
+		}
+
+		err = tc.data2.FromProto(*protoData)
+
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, tc.data2, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+			require.NotEqual(t, tc.data1, tc.data2, tc.msg)
+		}
+	}
+}
+
 func TestCommitProtoBuf(t *testing.T) {
 	commit := randCommit(time.Now())
 

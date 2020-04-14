@@ -222,7 +222,7 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 
 	protoBlock := tmproto.Block{
 		Header:     *protoHeader,
-		Data:       *protoData,
+		Data:       protoData,
 		Evidence:   *protoEvidence,
 		LastCommit: protoCommit,
 	}
@@ -838,17 +838,17 @@ func (data *Data) StringIndented(indent string) string {
 }
 
 // ToProto converts Data to protobuf
-func (data *Data) ToProto() *tmproto.Data {
+func (data *Data) ToProto() tmproto.Data {
 	if data == nil {
-		return nil
+		return tmproto.Data{}
 	}
 
 	txBzs := make([][]byte, len(data.Txs))
-	for i := 0; i < len(data.Txs); i++ {
+	for i := range data.Txs {
 		txBzs[i] = data.Txs[i]
 	}
 
-	return &tmproto.Data{
+	return tmproto.Data{
 		Txs:  txBzs,
 		Hash: data.hash,
 	}
@@ -860,9 +860,9 @@ func (data *Data) FromProto(dp tmproto.Data) {
 		data = &Data{}
 	}
 
-	txBzs := make(Txs, len(data.Txs))
-	for i := 0; i < len(dp.Txs); i++ {
-		txBzs[i] = dp.Txs[i]
+	txBzs := make(Txs, len(dp.Txs))
+	for i := range dp.Txs {
+		txBzs[i] = Tx(dp.Txs[i])
 	}
 	data.Txs = txBzs
 	data.hash = dp.Hash
@@ -913,7 +913,8 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	}
 
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
-	for i := 0; i < len(data.Evidence); i++ {
+
+	for i := range data.Evidence {
 		protoEvi, err := EvidenceToProto(data.Evidence[i])
 		if err != nil {
 			return nil, err
@@ -934,8 +935,8 @@ func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
 		data = &EvidenceData{}
 	}
 
-	eviBzs := make([]Evidence, len(eviData.Evidence))
-	for i := 0; i < len(eviData.Evidence); i++ {
+	eviBzs := make(EvidenceList, len(eviData.Evidence))
+	for i := range eviData.Evidence {
 		evi, err := EvidenceFromProto(eviData.Evidence[i])
 		if err != nil {
 			return err
