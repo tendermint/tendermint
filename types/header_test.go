@@ -14,13 +14,14 @@ import (
 func makeRandHeader() Header {
 	chainID := "test"
 	t := time.Now()
+	height := tmrand.Int63()
 	randBytes := tmrand.Bytes(tmhash.Size)
 	randAddress := tmrand.Bytes(crypto.AddressSize)
 
 	h := Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,
-		Height:             1,
+		Height:             height,
 		Time:               t,
 		LastBlockID:        BlockID{},
 		LastCommitHash:     randBytes,
