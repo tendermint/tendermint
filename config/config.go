@@ -140,14 +140,6 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [instrumentation] section")
 	}
-	if cfg.StateSync.Enabled {
-		if !cfg.FastSyncMode {
-			return errors.New("state sync requires fast sync to be enabled")
-		}
-		if cfg.FastSync.Version != "v0" {
-			return fmt.Errorf("state sync requires fastsync = v0, got %v", cfg.FastSync.Version)
-		}
-	}
 	return nil
 }
 
@@ -756,7 +748,6 @@ func TestStateSyncConfig() *StateSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
 	if cfg.Enabled {
-		// FIXME Parse and validate URL, in particular handle lack of scheme
 		if len(cfg.RPCServers) == 0 {
 			return errors.New("rpc_servers is required")
 		}

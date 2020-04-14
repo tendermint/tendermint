@@ -666,6 +666,9 @@ func NewNode(config *cfg.Config,
 	if stateSync && !fastSync {
 		return nil, errors.New("state sync requires fast sync to be enabled")
 	}
+	if stateSync && config.FastSync.Version != "v0" {
+		return nil, errors.New("state sync only supports fast sync v0 reactor")
+	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
