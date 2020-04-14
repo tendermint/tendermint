@@ -142,6 +142,12 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 		}()
 	}
 
+	// Optimistically build new state, so we don't discover any light client failures at the end.
+	newState, commit, err := s.buildState(state, int64(snapshot.Height))
+	if err != nil {
+		return state, nil, fmt.Errorf("failed to build new state: %w", err)
+	}
+
 	// Apply chunks.
 	for {
 		chunk, err := chunks.Next()
@@ -172,16 +178,10 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 	s.logger.Debug("Verified state snapshot app hash", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", hex.EncodeToString(resp.LastBlockAppHash))
 
-	// Build new state.
-	state, commit, err := s.buildState(state, int64(snapshot.Height))
-	if err != nil {
-		return state, nil, fmt.Errorf("failed to build new state: %w", err)
-	}
-
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
 
-	return state, commit, nil
+	return newState, commit, nil
 }
 
 // startSync attempts to start a sync, if able (i.e. if any valid snapshots are available).
@@ -272,13 +272,25 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 func (s *syncer) buildState(state sm.State, height int64) (sm.State, *types.Commit, error) {
 	state = state.Copy()
 
+	// We need to verify up until h+2, to get the validator set. This also prefetches the headers
+	// for h and h+1 in the typical case where the trusted header is after the snapshot height.
+	_, err := s.lc.VerifyHeaderAtHeight(height+2, time.Now())
+	if err != nil {
+		return state, nil, err
+	}
 	header, err := s.lc.VerifyHeaderAtHeight(height, time.Now())
+	if err != nil {
+		return state, nil, err
+	}
+	nextHeader, err := s.lc.VerifyHeaderAtHeight(height+1, time.Now())
 	if err != nil {
 		return state, nil, err
 	}
 	state.LastBlockHeight = header.Height
 	state.LastBlockTime = header.Time
 	state.LastBlockID = header.Commit.BlockID
+	state.AppHash = nextHeader.AppHash
+	state.LastResultsHash = nextHeader.LastResultsHash
 
 	state.LastValidators, _, err = s.lc.TrustedValidatorSet(height)
 	if err != nil {
@@ -293,13 +305,6 @@ func (s *syncer) buildState(state sm.State, height int64) (sm.State, *types.Comm
 		return state, nil, err
 	}
 	state.LastHeightValidatorsChanged = height
-
-	nextHeader, err := s.lc.VerifyHeaderAtHeight(height+1, time.Now())
-	if err != nil {
-		return state, nil, err
-	}
-	state.AppHash = nextHeader.AppHash
-	state.LastResultsHash = nextHeader.LastResultsHash
 
 	return state, header.Commit, nil
 }
