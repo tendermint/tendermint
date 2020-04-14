@@ -600,25 +600,8 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 }
 
-func makeCommit(t *testing.T) *Commit {
-	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
-	privVal := NewMockPV()
-	pk, err := privVal.GetPubKey()
-	require.NoError(t, err)
-	vals := NewValidator(pk, 100)
-	now := time.Now().UTC()
-	votes := NewVoteSet("chain", 1, 2, tmproto.PrecommitType, NewValidatorSet([]*Validator{vals}))
-	commit, err := MakeCommit(blockID, 1, 2, votes, []PrivValidator{privVal}, now)
-	require.NoError(t, err)
-	commit.Signatures = []CommitSig{{
-		BlockIDFlag: tmproto.BlockIDFlagCommit, ValidatorAddress: pk.Address(), Timestamp: now, Signature: []byte("sig")}}
-
-	return commit
-
-}
-
 func TestCommitProtoBuf(t *testing.T) {
-	commit := makeCommit(t)
+	commit := randCommit(time.Now())
 
 	testCases := []struct {
 		msg     string
@@ -626,13 +609,13 @@ func TestCommitProtoBuf(t *testing.T) {
 		c2      *Commit
 		expPass bool
 	}{
-		{"success 0 ", *commit, &Commit{}, true},
-		{"success 1", *commit, commit, true},
-		{"success Commit nil", *commit, nil, true},
+		{"sucess 0 ", *commit, &Commit{}, true},
+		{"sucess 1", *commit, commit, true},
 		{"not equal", Commit{}, commit, false},
 		{"fail Commit ValidateBasic", Commit{}, &Commit{}, false},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		protoCommit := tc.c1.ToProto()
 		err := tc.c2.FromProto(*protoCommit)
 
@@ -647,23 +630,43 @@ func TestCommitProtoBuf(t *testing.T) {
 }
 
 func TestSignedHeaderProtoBuf(t *testing.T) {
-	h1 := makeRandHeader()
-	c1 := makeCommit(t)
+	commit := randCommit(time.Now())
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+	h := Header{
+		Version:            version.Consensus{Block: 10, App: 10},
+		ChainID:            "chainID",
+		Height:             10,
+		Time:               timestamp,
+		LastBlockID:        commit.BlockID,
+		LastCommitHash:     commit.Hash(),
+		DataHash:           commit.Hash(),
+		ValidatorsHash:     commit.Hash(),
+		NextValidatorsHash: commit.Hash(),
+		ConsensusHash:      commit.Hash(),
+		AppHash:            commit.Hash(),
+		LastResultsHash:    commit.Hash(),
+		EvidenceHash:       commit.Hash(),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+	}
+
+	sh := SignedHeader{Header: &h, Commit: commit}
+
 	testCases := []struct {
 		msg     string
-		sh1     *SignedHeader
+		sh1     SignedHeader
 		sh2     *SignedHeader
 		expPass bool
 	}{
-		{"success emtpty SignedHeader", &SignedHeader{}, &SignedHeader{}, true},
-		{"success SignedHeader", &SignedHeader{Header: &h1, Commit: c1}, &SignedHeader{Header: &h1, Commit: c1}, true},
+		{"empty SignedHeader 2", SignedHeader{}, &SignedHeader{}, true},
+		{"success", sh, &SignedHeader{}, true},
+		{"success equal", sh, &sh, true},
 	}
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
 		err := tc.sh2.FromProto(protoSignedHeader)
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
-			require.EqualValues(t, tc.sh1, tc.sh2, tc.msg)
+			require.Equal(t, tc.sh1, tc.sh2, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 			require.NotEqual(t, tc.sh1, tc.sh2, tc.msg)

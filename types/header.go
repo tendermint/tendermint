@@ -222,6 +222,7 @@ func (h *Header) FromProto(ph *tmproto.Header) error {
 
 	h.Version = versionCons
 	h.ChainID = ph.ChainID
+	h.Height = ph.Height
 	h.Time = ph.Time
 	h.Height = ph.Height
 	h.LastBlockID = blockID
