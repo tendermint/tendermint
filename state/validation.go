@@ -168,7 +168,8 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	)
 
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
-		return fmt.Errorf("evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
+		return fmt.Errorf(
+			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
 			evidence.Height(),
 			evidence.Time(),
 			height-evidenceParams.MaxAgeNumBlocks,
