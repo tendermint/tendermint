@@ -610,7 +610,8 @@ func TestCommitProtoBuf(t *testing.T) {
 	votes := NewVoteSet("chain", 1, 2, tmproto.PrecommitType, NewValidatorSet([]*Validator{vals}))
 	commit, err := MakeCommit(blockID, 1, 2, votes, []PrivValidator{privVal}, now)
 	require.NoError(t, err)
-	commit.Signatures = []CommitSig{{BlockIDFlag: tmproto.BlockIDFlagCommit, ValidatorAddress: pk.Address(), Timestamp: now, Signature: []byte("sig")}}
+	commit.Signatures = []CommitSig{{
+		BlockIDFlag: tmproto.BlockIDFlagCommit, ValidatorAddress: pk.Address(), Timestamp: now, Signature: []byte("sig")}}
 
 	testCases := []struct {
 		msg     string
@@ -618,9 +619,9 @@ func TestCommitProtoBuf(t *testing.T) {
 		c2      *Commit
 		expPass bool
 	}{
-		{"sucess 0 ", *commit, &Commit{}, true},
-		{"sucess 1", *commit, commit, true},
-		{"sucess Commit nil", *commit, nil, true},
+		{"success 0 ", *commit, &Commit{}, true},
+		{"success 1", *commit, commit, true},
+		{"success Commit nil", *commit, nil, true},
 		{"not equal", Commit{}, commit, false},
 		{"fail Commit ValidateBasic", Commit{}, &Commit{}, false},
 	}
@@ -641,11 +642,11 @@ func TestCommitProtoBuf(t *testing.T) {
 func TestSignedHeaderProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg     string
-		sh1     SignedHeader
+		sh1     *SignedHeader
 		sh2     *SignedHeader
 		expPass bool
 	}{
-		{"nil", SignedHeader{}, nil, true},
+		{"nil SignedHeader success", &SignedHeader{}, nil, true},
 	}
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
@@ -653,10 +654,10 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
-			require.Equal(t, &tc.sh1, tc.sh2, tc.msg)
+			require.Equal(t, tc.sh1, tc.sh2, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
-			require.NotEqual(t, &tc.sh1, tc.sh2, tc.msg)
+			require.NotEqual(t, tc.sh1, tc.sh2, tc.msg)
 		}
 	}
 }
@@ -669,10 +670,10 @@ func TestBlockIDProtoBuf(t *testing.T) {
 		bid2    *BlockID
 		expPass bool
 	}{
-		{"sucess", &blockID, &BlockID{}, true},
-		{"sucess", &BlockID{}, &blockID, true},
-		{"sucess BlockID empty", &BlockID{}, &BlockID{}, true},
-		{"sucess BlockID nil", nil, nil, true},
+		{"success", &blockID, &BlockID{}, true},
+		{"success", &BlockID{}, &blockID, true},
+		{"success BlockID empty", &BlockID{}, &BlockID{}, true},
+		{"success BlockID nil", nil, nil, true},
 		{"not equal", nil, &blockID, false},
 	}
 	for _, tc := range testCases {

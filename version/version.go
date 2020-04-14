@@ -1,6 +1,8 @@
 package version
 
-import tmproto "github.com/tendermint/tendermint/proto/types"
+import (
+	tmproto "github.com/tendermint/tendermint/proto/types"
+)
 
 var (
 	// GitCommit is the current HEAD set using ldflags.

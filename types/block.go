@@ -237,7 +237,7 @@ func (b *Block) FromProto(bp tmproto.Block) error {
 		b = &Block{LastCommit: &Commit{}}
 	}
 
-	b.Header.FromProto(bp.Header)
+	b.Header.FromProto(&bp.Header)
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(bp.Evidence)
 	b.LastCommit.FromProto(*bp.LastCommit)
@@ -766,29 +766,25 @@ func (sh SignedHeader) ToProto() tmproto.SignedHeader {
 // FromProto sets a protobuf SignedHeader to the given pointer.
 // It returns an error if the hader or the commit is invalid.
 func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
-	var (
-		h *Header
-		c *Commit
-	)
-
 	if sh == nil {
 		sh = &SignedHeader{}
 	}
 
 	if shp.Header != nil {
-		if err := h.FromProto(*shp.Header); err != nil {
+		h := new(Header)
+		if err := h.FromProto(shp.Header); err != nil {
 			return err
 		}
+		sh.Header = h
 	}
 
 	if shp.Commit != nil {
+		c := new(Commit)
 		if err := c.FromProto(*shp.Commit); err != nil {
 			return err
 		}
+		sh.Commit = c
 	}
-
-	sh.Header = h
-	sh.Commit = c
 
 	return nil
 }

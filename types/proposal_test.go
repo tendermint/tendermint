@@ -155,7 +155,7 @@ func TestProtoBuf(t *testing.T) {
 		p2      *Proposal
 		expPass bool
 	}{
-		{"sucess", *proposal, &Proposal{}, true},
+		{"success", *proposal, &Proposal{}, true},
 		{"fail proposal 2 nil", Proposal{}, nil, false},
 		{"fail proposal validate basic", *proposal2, &Proposal{}, false},
 	}
