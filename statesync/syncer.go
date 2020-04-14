@@ -270,21 +270,16 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 
 // buildState builds a new state using the light client. It does not modify the given state.
 func (s *syncer) buildState(state sm.State, height int64) (sm.State, *types.Commit, error) {
+	state = state.Copy()
+
 	header, err := s.lc.VerifyHeaderAtHeight(height, time.Now())
 	if err != nil {
 		return state, nil, err
 	}
-	nextHeader, err := s.lc.VerifyHeaderAtHeight(height+1, time.Now())
-	if err != nil {
-		return state, nil, err
-	}
-
-	state = state.Copy()
 	state.LastBlockHeight = header.Height
 	state.LastBlockTime = header.Time
 	state.LastBlockID = header.Commit.BlockID
 
-	// FIXME Check that these heights are correct.
 	state.LastValidators, _, err = s.lc.TrustedValidatorSet(height)
 	if err != nil {
 		return state, nil, err
@@ -293,9 +288,16 @@ func (s *syncer) buildState(state sm.State, height int64) (sm.State, *types.Comm
 	if err != nil {
 		return state, nil, err
 	}
-	state.NextValidators = state.Validators
+	state.NextValidators, _, err = s.lc.TrustedValidatorSet(height + 2)
+	if err != nil {
+		return state, nil, err
+	}
 	state.LastHeightValidatorsChanged = height
 
+	nextHeader, err := s.lc.VerifyHeaderAtHeight(height+1, time.Now())
+	if err != nil {
+		return state, nil, err
+	}
 	state.AppHash = nextHeader.AppHash
 	state.LastResultsHash = nextHeader.LastResultsHash
 
