@@ -19,7 +19,7 @@ var (
 
 func TestConsensusParamsValidation(t *testing.T) {
 	testCases := []struct {
-		params ConsensusParams
+		params tmproto.ConsensusParams
 		valid  bool
 	}{
 		// test block params
@@ -42,9 +42,9 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		if tc.valid {
-			assert.NoErrorf(t, tc.params.Validate(), "expected no error for valid params (#%d)", i)
+			assert.NoErrorf(t, ValidateConsensusParams(tc.params), "expected no error for valid params (#%d)", i)
 		} else {
-			assert.Errorf(t, tc.params.Validate(), "expected error for non valid params (#%d)", i)
+			assert.Errorf(t, ValidateConsensusParams(tc.params), "expected error for non valid params (#%d)", i)
 		}
 	}
 }
@@ -54,8 +54,8 @@ func makeParams(
 	blockTimeIotaMs int64,
 	evidenceAge int64,
 	pubkeyTypes []string,
-) ConsensusParams {
-	return ConsensusParams{
+) tmproto.ConsensusParams {
+	return tmproto.ConsensusParams{
 		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
@@ -72,7 +72,7 @@ func makeParams(
 }
 
 func TestConsensusParamsHash(t *testing.T) {
-	params := []ConsensusParams{
+	params := []tmproto.ConsensusParams{
 		makeParams(4, 2, 10, 3, valEd25519),
 		makeParams(1, 4, 10, 3, valEd25519),
 		makeParams(1, 2, 10, 4, valEd25519),
@@ -85,7 +85,7 @@ func TestConsensusParamsHash(t *testing.T) {
 
 	hashes := make([][]byte, len(params))
 	for i := range params {
-		hashes[i] = params[i].Hash()
+		hashes[i] = HashConsensusParams(params[i])
 	}
 
 	// make sure there are no duplicates...
@@ -100,9 +100,9 @@ func TestConsensusParamsHash(t *testing.T) {
 
 func TestConsensusParamsUpdate(t *testing.T) {
 	testCases := []struct {
-		params        ConsensusParams
+		params        tmproto.ConsensusParams
 		updates       *abci.ConsensusParams
-		updatedParams ConsensusParams
+		updatedParams tmproto.ConsensusParams
 	}{
 		// empty updates
 		{
@@ -130,6 +130,6 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		assert.Equal(t, tc.updatedParams, tc.params.Update(tc.updates))
+		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(&tc.params, tc.updates))
 	}
 }

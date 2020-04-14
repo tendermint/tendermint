@@ -15,6 +15,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 const validationTestsStopHeight int64 = 10
@@ -38,7 +39,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
 	wrongVersion1.Block++
-	wrongVersion2 := state.Version.Consensus
+	wrongVersion2 := version.Consensus{Block: state.Version.Consensus.Block, App: state.Version.Consensus.Block}
 	wrongVersion2.App++
 
 	// Manipulation of any header field causes failure.

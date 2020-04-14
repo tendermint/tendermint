@@ -56,9 +56,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 			block.AppHash,
 		)
 	}
-	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
+	if !bytes.Equal(block.ConsensusHash, types.HashConsensusParams(state.ConsensusParams)) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
-			state.ConsensusParams.Hash(),
+			types.HashConsensusParams(state.ConsensusParams),
 			block.ConsensusHash,
 		)
 	}
@@ -68,15 +68,23 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 			block.LastResultsHash,
 		)
 	}
-	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
+	vals := types.ValidatorSet{}
+	if err := vals.FromProto(state.Validators); err != nil {
+		return err
+	}
+	if !bytes.Equal(block.ValidatorsHash, vals.Hash()) {
 		return fmt.Errorf("wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
-			state.Validators.Hash(),
+			vals.Hash(),
 			block.ValidatorsHash,
 		)
 	}
-	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
+	nextVals := types.ValidatorSet{}
+	if err := nextVals.FromProto(state.NextValidators); err != nil {
+		return err
+	}
+	if !bytes.Equal(block.NextValidatorsHash, nextVals.Hash()) {
 		return fmt.Errorf("wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
-			state.NextValidators.Hash(),
+			nextVals.Hash(),
 			block.NextValidatorsHash,
 		)
 	}
@@ -90,7 +98,11 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
 			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
 		}
-		err := state.LastValidators.VerifyCommit(
+		lastVals := types.ValidatorSet{}
+		if err := lastVals.FromProto(state.LastValidators); err != nil {
+			return err
+		}
+		err := lastVals.VerifyCommit(
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err

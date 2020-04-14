@@ -93,7 +93,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
-	state State, commit *types.Commit,
+	state tmstate.State, commit *types.Commit,
 	proposerAddr []byte,
 ) (*types.Block, *types.PartSet) {
 
@@ -108,7 +108,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	return MakeBlock(state, height, txs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -126,7 +126,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state tmstate.State, block *types.
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state tmstate.State, blockID types.BlockID, block *types.Block,
+	state tmstate.State, blockID tmproto.BlockID, block *types.Block,
 ) (tmstate.State, int64, error) {
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
@@ -199,7 +199,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
 func (blockExec *BlockExecutor) Commit(
-	state State,
+	state tmstate.State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, int64, error) {
@@ -387,7 +387,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 // updateState returns a new State updated according to the header and responses.
 func updateState(
 	state tmstate.State,
-	blockID types.BlockID,
+	blockID tmproto.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
@@ -431,18 +431,22 @@ func updateState(
 
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
+	valSet, err := nValSet.ToProto()
+	if err != nil {
+		return state, err
+	}
 
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
-	return State{
+	return tmstate.State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		NextValidators:                   nValSet,
-		Validators:                       state.NextValidators.Copy(),
-		LastValidators:                   state.Validators.Copy(),
+		NextValidators:                   valSet,
+		Validators:                       state.NextValidators,
+		LastValidators:                   state.Validators,
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,

@@ -7,7 +7,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -22,14 +21,6 @@ const (
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
-// ConsensusParams contains consensus critical parameters that determine the
-// validity of blocks.
-type ConsensusParams struct {
-	Block     tmproto.BlockParams     `json:"block"`
-	Evidence  tmproto.EvidenceParams  `json:"evidence"`
-	Validator tmproto.ValidatorParams `json:"validator"`
-}
-
 // HashedParams is a subset of ConsensusParams.
 // It is amino encoded and hashed into
 // the Header.ConsensusHash.
@@ -39,8 +30,8 @@ type HashedParams struct {
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
-func DefaultConsensusParams() *ConsensusParams {
-	return &ConsensusParams{
+func DefaultConsensusParams() *tmproto.ConsensusParams {
+	return &tmproto.ConsensusParams{
 		DefaultBlockParams(),
 		DefaultEvidenceParams(),
 		DefaultValidatorParams(),
@@ -72,7 +63,7 @@ func DefaultValidatorParams() tmproto.ValidatorParams {
 
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
-func ValidateParams(params tmproto.ConsensusParams) error {
+func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	if params.Block.MaxBytes <= 0 {
 		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
@@ -122,7 +113,7 @@ func ValidateParams(params tmproto.ConsensusParams) error {
 // Only the Block.MaxBytes and Block.MaxGas are included in the hash.
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
-func (params *ConsensusParams) Hash() []byte {
+func HashConsensusParams(params tmproto.ConsensusParams) []byte {
 	hasher := tmhash.New()
 	bz := cdcEncode(HashedParams{
 		params.Block.MaxBytes,
@@ -135,19 +126,13 @@ func (params *ConsensusParams) Hash() []byte {
 	return hasher.Sum(nil)
 }
 
-func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
-	return params.Block == params2.Block &&
-		params.Evidence == params2.Evidence &&
-		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
-}
-
 // Update returns a copy of the params with updates from the non-zero fields of p2.
 // NOTE: note: must not modify the original
-func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
+func UpdateConsensusParams(params *tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
 	res := params // explicit copy
 
 	if params2 == nil {
-		return res
+		return *res
 	}
 
 	// we must defensively consider any structs may be nil
@@ -164,5 +149,5 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
 	}
-	return res
+	return *res
 }
