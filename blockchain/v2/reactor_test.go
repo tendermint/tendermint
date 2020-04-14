@@ -411,6 +411,22 @@ func TestReactorHelperMode(t *testing.T) {
 	}
 }
 
+func TestReactorSetSwitchNil(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+
+	reactor := newTestReactor(testReactorParams{
+		logger:   log.TestingLogger(),
+		genDoc:   genDoc,
+		privVals: privVals,
+	})
+	reactor.SetSwitch(nil)
+
+	assert.Nil(t, reactor.Switch)
+	assert.Nil(t, reactor.io)
+}
+
 //----------------------------------------------
 // utility funcs
 
