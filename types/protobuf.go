@@ -46,8 +46,8 @@ type tm2pb struct{}
 func (tm2pb) Header(header *Header) tmproto.Header {
 	return tmproto.Header{
 		Version: tmproto.Version{
-			Block: header.Version.Block.Uint64(),
-			App:   header.Version.App.Uint64(),
+			Block: header.Version.Block,
+			App:   header.Version.App,
 		},
 		ChainID: header.ChainID,
 		Height:  header.Height,
