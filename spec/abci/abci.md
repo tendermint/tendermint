@@ -369,6 +369,8 @@ Commit are included in the header of the next block.
 
 - **Response**:
   - `Data ([]byte)`: The Merkle root hash of the application state
+  - `RetainHeight (int64)`: Blocks below this height may be removed. Defaults
+    to `0` (retain all).
 - **Usage**:
   - Persist the application state.
   - Return an (optional) Merkle root hash of the application state
@@ -380,6 +382,11 @@ Commit are included in the header of the next block.
     constant string, etc.), so long as it is deterministic - it must not be a
     function of anything that did not come from the
     BeginBlock/DeliverTx/EndBlock methods.
+  - Use `RetainHeight` with caution! If all nodes in the network remove historical
+    blocks then this data is permanently lost, and no new nodes will be able to
+    join the network and bootstrap. Historical blocks may also be required for
+    other purposes, e.g. auditing, replay of non-persisted heights, light client
+    verification, and so on.
 
 ## Data Types
 
