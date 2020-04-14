@@ -14,20 +14,6 @@ import (
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 )
 
-func TestReactor_AddPeer(t *testing.T) {
-	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.ID("id"))
-	peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
-		msg, err := decodeMsg(args[1].([]byte))
-		require.NoError(t, err)
-		assert.Equal(t, &snapshotsRequestMessage{}, msg)
-	}).Return(true)
-
-	r := NewReactor(nil, nil)
-	r.AddPeer(peer)
-	peer.AssertExpectations(t)
-}
-
 func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 	testcases := map[string]struct {
 		request        *chunkRequestMessage
@@ -62,6 +48,7 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 
 			// Mock peer to store response, if found
 			peer := &p2pmocks.Peer{}
+			peer.On("ID").Return(p2p.ID("id"))
 			var response *chunkResponseMessage
 			if tc.expectResponse != nil {
 				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
@@ -136,6 +123,7 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 			responses := []*snapshotsResponseMessage{}
 			peer := &p2pmocks.Peer{}
 			if len(tc.expectResponses) > 0 {
+				peer.On("ID").Return(p2p.ID("id"))
 				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
