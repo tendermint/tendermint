@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"

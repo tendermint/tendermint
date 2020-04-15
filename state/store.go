@@ -207,7 +207,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 
 		if keepParams[h] {
 			p := loadConsensusParamsInfo(db, h)
-			if p.ConsensusParams.Equal(&types.ConsensusParams{}) {
+			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 				p.ConsensusParams, err = LoadConsensusParams(db, h)
 				if err != nil {
 					return err

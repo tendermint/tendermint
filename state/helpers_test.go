@@ -21,7 +21,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params types.ConsensusParams
+	params tmproto.ConsensusParams
 }
 
 // always returns true if asked if any evidence was already committed.
@@ -157,8 +157,8 @@ func makeConsensusParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
-) types.ConsensusParams {
-	return types.ConsensusParams{
+) tmproto.ConsensusParams {
+	return tmproto.ConsensusParams{
 		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
@@ -219,9 +219,9 @@ func makeHeaderPartsResponsesValPowerChange(
 }
 
 func makeHeaderPartsResponsesParams(
-	state tmstate.State,
-	params types.ConsensusParams,
-) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+	state sm.State,
+	params tmproto.ConsensusParams,
+) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{

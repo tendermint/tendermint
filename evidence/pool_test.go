@@ -31,7 +31,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		Validators:                  valSet,
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: types.ConsensusParams{
+		ConsensusParams: tmproto.ConsensusParams{
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 10000,
 				MaxAgeDuration:  48 * time.Hour,

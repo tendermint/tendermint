@@ -114,7 +114,7 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: types.ConsensusParams{
+					ConsensusParams: tmproto.ConsensusParams{
 						Block: tmproto.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
@@ -162,7 +162,7 @@ func TestPruneStates(t *testing.T) {
 				params, err := sm.LoadConsensusParams(db, h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equal(&types.ConsensusParams{}))
+					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
 				} else {
 					require.Error(t, err, "params height %v", h)
 					require.Equal(t, sm.ErrNoConsensusParamsForHeight{Height: h}, err)

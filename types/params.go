@@ -21,20 +21,12 @@ const (
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
-// HashedParams is a subset of ConsensusParams.
-// It is amino encoded and hashed into
-// the Header.ConsensusHash.
-type HashedParams struct {
-	BlockMaxBytes int64
-	BlockMaxGas   int64
-}
-
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *tmproto.ConsensusParams {
 	return &tmproto.ConsensusParams{
-		DefaultBlockParams(),
-		DefaultEvidenceParams(),
-		DefaultValidatorParams(),
+		Block:     DefaultBlockParams(),
+		Evidence:  DefaultEvidenceParams(),
+		Validator: DefaultValidatorParams(),
 	}
 }
 
@@ -58,7 +50,18 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 // DefaultValidatorParams returns a default ValidatorParams, which allows
 // only ed25519 pubkeys.
 func DefaultValidatorParams() tmproto.ValidatorParams {
-	return tmproto.ValidatorParams{PubKeyTypes: []string{"ed25519"}}
+	return tmproto.ValidatorParams{
+		PubKeyTypes: []string{ABCIPubKeyTypeEd25519},
+	}
+}
+
+func IsValidPubkeyType(params tmproto.ValidatorParams, pubkeyType string) bool {
+	for i := 0; i < len(params.PubKeyTypes); i++ {
+		if params.PubKeyTypes[i] == pubkeyType {
+			return true
+		}
+	}
+	return false
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their
@@ -115,20 +118,24 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 // protocol. No need for a Merkle tree here, just a small struct to hash.
 func HashConsensusParams(params tmproto.ConsensusParams) []byte {
 	hasher := tmhash.New()
-	bz := cdcEncode(HashedParams{
-		params.Block.MaxBytes,
-		params.Block.MaxGas,
-	})
-	if bz == nil {
-		panic("cannot fail to encode ConsensusParams")
+
+	hp := tmproto.HashedParams{
+		BlockMaxBytes: params.Block.MaxBytes,
+		BlockMaxGas:   params.Block.MaxGas,
 	}
+
+	bz, err := hp.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	hasher.Write(bz)
 	return hasher.Sum(nil)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
 // NOTE: note: must not modify the original
-func UpdateConsensusParams(params *tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
+func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
 	res := params // explicit copy
 
 	if params2 == nil {

@@ -178,7 +178,7 @@ func TestValidateValidatorUpdates(t *testing.T) {
 
 	secpKey := secp256k1.GenPrivKey().PubKey()
 
-	defaultValidatorParams := types.DefaultValidatorParams()
+	defaultValidatorParams := tmproto.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
 
 	testCases := []struct {
 		name string

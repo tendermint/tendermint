@@ -118,11 +118,11 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxBytes: 100,
 					MaxGas:   200,
 				},
-				Evidence: &abci.EvidenceParams{
+				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
 				},
-				Validator: &abci.ValidatorParams{
+				Validator: &tmproto.ValidatorParams{
 					PubKeyTypes: valSecp256k1,
 				},
 			},
@@ -130,6 +130,6 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(&tc.params, tc.updates))
+		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(tc.params, tc.updates))
 	}
 }
