@@ -108,13 +108,15 @@ A new type of evidence needs to be created:
 
 ```go
 type PhantomValidatorEvidence struct {
-  Header types.Header
-  Vote types.Vote
+	Header                      types.Header
+	Vote                        types.Vote
+	LastHeightValidatorWasInSet int64
 }
 ```
 
 It contains a validator's public key and a vote for a block, where this
-validator is not part of the validator set.
+validator is not part of the validator set. `LastHeightValidatorWasInSet`
+indicates the last height validator was in the validator set.
 
 ### F5. Lunatic validator
 
