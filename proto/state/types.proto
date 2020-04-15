@@ -40,10 +40,10 @@ message Version {
 message State {
   Version version = 1 [(gogoproto.nullable) = false];
 
-  //     // immutable
+  // immutable
   string chain_Id = 2 [(gogoproto.customname) = "ChainID"];
 
-  //     // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+  // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
   int64                          last_block_height = 3;
   tendermint.proto.types.BlockID last_block_id     = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
@@ -66,9 +66,9 @@ message State {
   tendermint.proto.types.ConsensusParams consensus_params = 10 [(gogoproto.nullable) = false];
   int64                                  last_height_consensus_params_changed = 11;
 
-  //     // Merkle root of the results from executing prev block
+  // Merkle root of the results from executing prev block
   bytes LastResultsHash = 12;
 
-  //     // the latest AppHash we've received from calling abci.Commit()
+  // the latest AppHash we've received from calling abci.Commit()
   bytes AppHash = 13;
 }
