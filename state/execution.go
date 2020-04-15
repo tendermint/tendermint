@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -279,9 +280,13 @@ func execBlockOnProxyApp(
 
 	// Begin block
 	var err error
+	pbh := block.Header.ToProto()
+	if pbh == nil {
+		return nil, errors.New("nil header")
+	}
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(&block.Header),
+		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})

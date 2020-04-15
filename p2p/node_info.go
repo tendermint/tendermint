@@ -44,9 +44,9 @@ type nodeInfoTransport interface {
 
 // ProtocolVersion contains the protocol versions for the software.
 type ProtocolVersion struct {
-	P2P   version.Protocol `json:"p2p"`
-	Block version.Protocol `json:"block"`
-	App   version.Protocol `json:"app"`
+	P2P   uint64 `json:"p2p"`
+	Block uint64 `json:"block"`
+	App   uint64 `json:"app"`
 }
 
 // defaultProtocolVersion populates the Block and P2P versions using
@@ -58,7 +58,7 @@ var defaultProtocolVersion = NewProtocolVersion(
 )
 
 // NewProtocolVersion returns a fully populated ProtocolVersion.
-func NewProtocolVersion(p2p, block, app version.Protocol) ProtocolVersion {
+func NewProtocolVersion(p2p, block, app uint64) ProtocolVersion {
 	return ProtocolVersion{
 		P2P:   p2p,
 		Block: block,
