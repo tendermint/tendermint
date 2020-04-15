@@ -41,7 +41,7 @@ func TestEvidencePool(t *testing.T) {
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "has expired. Evidence can not be older than")
+		assert.Contains(t, err.Error(), "is too old; min height is 99981 and evidence can not be older than")
 	}
 
 	// good evidence
