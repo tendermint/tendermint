@@ -167,7 +167,8 @@ func TestGenesisAndValidators(t *testing.T) {
 		gval := gen.Genesis.Validators[0]
 
 		// get the current validators
-		vals, err := c.Validators(nil, 0, 0)
+		h := int64(1)
+		vals, err := c.Validators(&h, 0, 0)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
 		val := vals.Validators[0]

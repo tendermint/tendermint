@@ -154,8 +154,6 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		time.Sleep(1 * time.Second)
-
 		h1, err := c.Commit(nil)
 		require.NoError(t, err)
 		require.NotNil(t, h1.SignedHeader.Header)

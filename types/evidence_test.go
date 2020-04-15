@@ -226,8 +226,9 @@ func TestPhantomValidatorEvidence(t *testing.T) {
 	header.Time = bTime
 
 	ev := &PhantomValidatorEvidence{
-		Header: header,
-		Vote:   vote,
+		Header:                      header,
+		Vote:                        vote,
+		LastHeightValidatorWasInSet: header.Height - 1,
 	}
 
 	assert.Equal(t, header.Height, ev.Height())
