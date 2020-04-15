@@ -28,7 +28,7 @@ type chunk struct {
 
 // Hash generates a hash for the chunk body, used for verification.
 func (c *chunk) Hash() []byte {
-	if c.Body == nil {
+	if c == nil || c.Body == nil {
 		return []byte{}
 	}
 	hash := sha256.Sum256(c.Body)
@@ -72,6 +72,9 @@ func newChunkQueue(snapshot *snapshot) (*chunkQueue, error) {
 // Add adds a chunk to the queue, verifying its hash. It ignores chunks that already exist,
 // returning false.
 func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
+	if chunk == nil {
+		return false, errors.New("cannot add nil chunk")
+	}
 	if chunk.Body == nil {
 		return false, errors.New("cannot add chunk with nil body")
 	}
@@ -89,7 +92,7 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	if chunk.Index >= uint32(len(q.snapshot.ChunkHashes)) {
 		return false, fmt.Errorf("received unexpected chunk %v", chunk.Index)
 	}
-	if q.memChunks[chunk.Index] != nil || q.diskChunks[chunk.Index] != "" {
+	if chunk.Index < q.nextChunk || q.memChunks[chunk.Index] != nil || q.diskChunks[chunk.Index] != "" {
 		return false, nil
 	}
 	if !bytes.Equal(chunk.Hash(), q.snapshot.ChunkHashes[chunk.Index]) {
@@ -98,7 +101,7 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	}
 
 	// Save the chunk in memory if it is an upcoming one, otherwise spool to disk.
-	if chunk.Index < q.nextChunk+bufferChunks {
+	if len(q.memChunks) < bufferChunks && chunk.Index < q.nextChunk+bufferChunks {
 		q.memChunks[chunk.Index] = chunk
 	} else {
 		path := filepath.Join(q.dir, strconv.FormatUint(uint64(chunk.Index), 10))
@@ -127,6 +130,7 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	// Signal any waiters that the chunk has arrived.
 	for _, waiter := range q.waiters[chunk.Index] {
 		waiter <- true
+		close(waiter)
 	}
 	delete(q.waiters, chunk.Index)
 
@@ -146,6 +150,7 @@ func (q *chunkQueue) Close() error {
 	for _, waiters := range q.waiters {
 		for _, waiter := range waiters {
 			waiter <- false
+			close(waiter)
 		}
 	}
 	q.waiters = nil
@@ -200,8 +205,10 @@ func (q *chunkQueue) WaitFor(index uint32) <-chan bool {
 	switch {
 	case q.snapshot == nil:
 		ch <- false
+		close(ch)
 	case q.nextChunk > index:
 		ch <- true
+		close(ch)
 	default:
 		if q.waiters[index] == nil {
 			q.waiters[index] = make([]chan<- bool, 0)
