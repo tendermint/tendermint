@@ -10,7 +10,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
-	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -27,6 +26,13 @@ const (
 // errNoSnapshots is returned by Sync() when no viable snapshots are found in the pool.
 var errNoSnapshots = errors.New("no viable snapshots found")
 
+//go:generate mockery -inpkg -testonly -case underscore -name lightClient
+// lightClient is an interface for the light client, used internally for easier testing.
+type lightClient interface {
+	TrustedValidatorSet(int64) (*types.ValidatorSet, int64, error)
+	VerifyHeaderAtHeight(int64, time.Time) (*types.SignedHeader, error)
+}
+
 // syncer runs a state sync against an ABCI app. Typical usage:
 //
 // 1) Create the syncer: newSyncer(...)
@@ -36,7 +42,7 @@ var errNoSnapshots = errors.New("no viable snapshots found")
 // 5) Bootstrap node with the returned state and commit
 type syncer struct {
 	logger    log.Logger
-	lc        *lite.Client
+	lc        lightClient
 	conn      proxy.AppConnSnapshot
 	connQuery proxy.AppConnQuery
 	snapshots *snapshotPool
@@ -48,7 +54,7 @@ type syncer struct {
 
 // newSyncer creates a new syncer.
 func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	lc *lite.Client) *syncer {
+	lc lightClient) *syncer {
 	return &syncer{
 		logger:    logger,
 		lc:        lc,

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -47,7 +46,7 @@ func (s *snapshot) Hash() snapshotHash {
 type snapshotPool struct {
 	// light client is not concurrency-safe, but we don't want to lock entire pool
 	lcMutex sync.Mutex
-	lc      *lite.Client
+	lc      lightClient
 
 	sync.Mutex
 	snapshots     map[snapshotHash]*snapshot
@@ -65,7 +64,7 @@ type snapshotPool struct {
 }
 
 // newSnapshotPool creates a new snapshot pool.
-func newSnapshotPool(lc *lite.Client) *snapshotPool {
+func newSnapshotPool(lc lightClient) *snapshotPool {
 	return &snapshotPool{
 		lc:                lc,
 		snapshots:         make(map[snapshotHash]*snapshot),
@@ -101,6 +100,7 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	case p.snapshotBlacklist[hash]:
 		return false, nil
 	case p.snapshots[hash] != nil:
+		p.snapshotPeers[hash][peer.ID()] = peer
 		return false, nil
 	case len(p.peerIndex[peer.ID()]) >= recentSnapshots:
 		return false, nil
@@ -135,15 +135,46 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // preferring the snapshot with the greatest height, then greatest format, then greatest number
 // of peers. This can be improved quite a lot.
 func (p *snapshotPool) Best() *snapshot {
+	ranked := p.Ranked()
+	if len(ranked) == 0 {
+		return nil
+	}
+	return ranked[0]
+}
+
+// GetPeer returns a random peer for a snapshot, if any.
+func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.Peer {
+	peers := p.GetPeers(snapshot)
+	if len(peers) == 0 {
+		return nil
+	}
+	return peers[rand.Intn(len(peers))]
+}
+
+// GetPeers returns the peers for a snapshot.
+func (p *snapshotPool) GetPeers(snapshot *snapshot) []p2p.Peer {
+	hash := snapshot.Hash()
+	p.Lock()
+	defer p.Unlock()
+
+	peers := make([]p2p.Peer, 0, len(p.snapshotPeers[hash]))
+	for _, peer := range p.snapshotPeers[hash] {
+		peers = append(peers, peer)
+	}
+	sort.Slice(peers, func(a int, b int) bool {
+		return peers[a].ID() < peers[b].ID()
+	})
+	return peers
+}
+
+// Ranked returns a list of snapshots, ordered by rank
+func (p *snapshotPool) Ranked() []*snapshot {
 	p.Lock()
 	defer p.Unlock()
 
 	candidates := make([]*snapshot, 0, len(p.snapshots))
 	for _, snapshot := range p.snapshots {
 		candidates = append(candidates, snapshot)
-	}
-	if len(candidates) == 0 {
-		return nil
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {
@@ -166,24 +197,7 @@ func (p *snapshotPool) Best() *snapshot {
 		}
 	})
 
-	return candidates[0]
-}
-
-// GetPeer returns a random peer for a snapshot, if any.
-func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.Peer {
-	hash := snapshot.Hash()
-	p.Lock()
-	defer p.Unlock()
-
-	if len(p.snapshotPeers[hash]) == 0 {
-		return nil
-	}
-
-	peers := make([]p2p.Peer, 0, len(p.snapshotPeers[hash]))
-	for _, peer := range p.snapshotPeers[hash] {
-		peers = append(peers, peer)
-	}
-	return peers[rand.Intn(len(peers))]
+	return candidates
 }
 
 // Reject rejects a snapshot. Rejected snapshots will never be used again.
