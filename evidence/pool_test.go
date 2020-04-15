@@ -30,12 +30,12 @@ func TestEvidencePool(t *testing.T) {
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		blockStore   = store.NewBlockStore(blockStoreDB)
 		pool         = NewPool(stateDB, evidenceDB, blockStore)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
-		badEvidence := types.NewMockEvidence(1, evidenceTime, 0, valAddr)
+		goodEvidence = types.NewMockEvidence(height, time.Now(), 0, valAddr)
+		badEvidence  = types.NewMockEvidence(1, evidenceTime, 0, valAddr)
 	)
 
 	// bad evidence
