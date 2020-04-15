@@ -324,7 +324,9 @@ var _ CompositeEvidence = ConflictingHeadersEvidence{}
 // committedHeader - header at height H1.Height == H2.Height
 // valSet					 - validator set at height H1.Height == H2.Height
 // valToLastHeight - map between active validators and respective last heights
-func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence {
+func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet,
+	valToLastHeight map[string]int64) []Evidence {
+
 	evList := make([]Evidence, 0)
 
 	var alternativeHeader *SignedHeader
@@ -511,8 +513,12 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 
 	// Header must be signed by at least 1/3+ of voting power of currently
 	// trusted validator set.
-	if err := valSet.VerifyCommitTrusting(alternativeHeader.ChainID, alternativeHeader.Commit.BlockID, alternativeHeader.Height,
-		alternativeHeader.Commit, tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
+	if err := valSet.VerifyCommitTrusting(
+		alternativeHeader.ChainID,
+		alternativeHeader.Commit.BlockID,
+		alternativeHeader.Height,
+		alternativeHeader.Commit,
+		tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
 		return errors.Wrap(err, "alt header does not have 1/3+ of voting power of our validator set")
 	}
 
@@ -520,12 +526,10 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 }
 
 func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
-	switch ev2.(type) {
+	switch e2 := ev2.(type) {
 	case ConflictingHeadersEvidence:
-		e2 := ev2.(ConflictingHeadersEvidence)
 		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
 	case *ConflictingHeadersEvidence:
-		e2 := ev2.(*ConflictingHeadersEvidence)
 		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
 	default:
 		return false
@@ -607,13 +611,11 @@ func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 }
 
 func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
-	switch ev.(type) {
+	switch e2 := ev.(type) {
 	case PhantomValidatorEvidence:
-		e2 := ev.(PhantomValidatorEvidence)
 		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	case *PhantomValidatorEvidence:
-		e2 := ev.(*PhantomValidatorEvidence)
 		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	default:
@@ -712,13 +714,11 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 }
 
 func (e LunaticValidatorEvidence) Equal(ev Evidence) bool {
-	switch ev.(type) {
+	switch e2 := ev.(type) {
 	case LunaticValidatorEvidence:
-		e2 := ev.(LunaticValidatorEvidence)
 		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	case *LunaticValidatorEvidence:
-		e2 := ev.(*LunaticValidatorEvidence)
 		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	default:
@@ -853,12 +853,10 @@ func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 }
 
 func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
-	switch ev.(type) {
+	switch e2 := ev.(type) {
 	case PotentialAmnesiaEvidence:
-		e2 := ev.(PotentialAmnesiaEvidence)
 		return bytes.Equal(e.Hash(), e2.Hash())
 	case *PotentialAmnesiaEvidence:
-		e2 := ev.(*PotentialAmnesiaEvidence)
 		return bytes.Equal(e.Hash(), e2.Hash())
 	default:
 		return false

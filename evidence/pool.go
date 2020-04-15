@@ -224,7 +224,7 @@ func (evpool *Pool) removeEvidence(
 }
 
 func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
-	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks	
+	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
 		valSet, err := sm.LoadValidators(evpool.stateDB, removeHeight)
 		if err != nil {
@@ -237,7 +237,6 @@ func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 		}
 	}
 }
-
 
 func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
