@@ -120,8 +120,9 @@ validator is not part of the validator set.
 
 ```go
 type LunaticValidatorEvidence struct {
-  Header types.Header
-  Vote types.Vote
+	Header             types.Header
+	Vote               types.Vote
+	InvalidHeaderField string
 }
 ```
 
@@ -162,6 +163,10 @@ This includes `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
 `AppHash`, and `LastResultsHash`. These should all match what's in the header
 for the block that was actually committed at the corresponding height, and
 should thus be easy to check.
+
+`InvalidHeaderField` contains the invalid field name. Note it's very likely
+that multiple fields diverge, but it's faster to check just one. This field
+MUST NOT be used to determine equality of `LunaticValidatorEvidence`.
 
 ### F2. Amnesia
 
