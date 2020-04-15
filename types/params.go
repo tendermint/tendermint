@@ -21,14 +21,6 @@ const (
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
-// HashedParams is a subset of ConsensusParams.
-// It is amino encoded and hashed into
-// the Header.ConsensusHash.
-type HashedParams struct {
-	BlockMaxBytes int64
-	BlockMaxGas   int64
-}
-
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *tmproto.ConsensusParams {
 	return &tmproto.ConsensusParams{
@@ -126,13 +118,17 @@ func ValidateConsensusParams(params *tmproto.ConsensusParams) error {
 // protocol. No need for a Merkle tree here, just a small struct to hash.
 func HashConsensusParams(params *tmproto.ConsensusParams) []byte {
 	hasher := tmhash.New()
-	bz := cdcEncode(HashedParams{
-		params.Block.MaxBytes,
-		params.Block.MaxGas,
-	})
-	if bz == nil {
-		panic("cannot fail to encode ConsensusParams")
+
+	hp := tmproto.HashedParams{
+		BlockMaxBytes: params.Block.MaxBytes,
+		BlockMaxGas:   params.Block.MaxGas,
 	}
+
+	bz, err := hp.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	hasher.Write(bz)
 	return hasher.Sum(nil)
 }

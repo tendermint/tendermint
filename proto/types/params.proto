@@ -43,3 +43,11 @@ message ValidatorParams {
 
   repeated string pub_key_types = 1;
 }
+
+// HashedParams is a subset of ConsensusParams.
+// It is amino encoded and hashed into
+// the Header.ConsensusHash.
+message HashedParams {
+  int64 block_max_bytes = 1;
+  int64 block_max_gas   = 2;
+}
