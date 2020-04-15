@@ -375,7 +375,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
-		if !types.IsValidPubkeyType(&params, thisKeyType) {
+		if !types.IsValidPubkeyType(params, thisKeyType) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
@@ -416,7 +416,7 @@ func updateState(
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
 		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
-		err := types.ValidateConsensusParams(&nextParams)
+		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}

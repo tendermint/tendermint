@@ -55,7 +55,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.AppHash,
 		)
 	}
-	hashCP := types.HashConsensusParams(&state.ConsensusParams)
+	hashCP := types.HashConsensusParams(state.ConsensusParams)
 	if !bytes.Equal(block.ConsensusHash, hashCP) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
 			hashCP,

@@ -55,7 +55,7 @@ func DefaultValidatorParams() tmproto.ValidatorParams {
 	}
 }
 
-func IsValidPubkeyType(params *tmproto.ValidatorParams, pubkeyType string) bool {
+func IsValidPubkeyType(params tmproto.ValidatorParams, pubkeyType string) bool {
 	for i := 0; i < len(params.PubKeyTypes); i++ {
 		if params.PubKeyTypes[i] == pubkeyType {
 			return true
@@ -66,7 +66,7 @@ func IsValidPubkeyType(params *tmproto.ValidatorParams, pubkeyType string) bool 
 
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
-func ValidateConsensusParams(params *tmproto.ConsensusParams) error {
+func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	if params.Block.MaxBytes <= 0 {
 		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
@@ -116,7 +116,7 @@ func ValidateConsensusParams(params *tmproto.ConsensusParams) error {
 // Only the Block.MaxBytes and Block.MaxGas are included in the hash.
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
-func HashConsensusParams(params *tmproto.ConsensusParams) []byte {
+func HashConsensusParams(params tmproto.ConsensusParams) []byte {
 	hasher := tmhash.New()
 
 	hp := tmproto.HashedParams{

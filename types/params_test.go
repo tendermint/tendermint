@@ -42,9 +42,9 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		if tc.valid {
-			assert.NoErrorf(t, ValidateConsensusParams(&tc.params), "expected no error for valid params (#%d)", i)
+			assert.NoErrorf(t, ValidateConsensusParams(tc.params), "expected no error for valid params (#%d)", i)
 		} else {
-			assert.Errorf(t, ValidateConsensusParams(&tc.params), "expected error for non valid params (#%d)", i)
+			assert.Errorf(t, ValidateConsensusParams(tc.params), "expected error for non valid params (#%d)", i)
 		}
 	}
 }
@@ -85,7 +85,7 @@ func TestConsensusParamsHash(t *testing.T) {
 
 	hashes := make([][]byte, len(params))
 	for i := range params {
-		hashes[i] = HashConsensusParams(&params[i])
+		hashes[i] = HashConsensusParams(params[i])
 	}
 
 	// make sure there are no duplicates...
