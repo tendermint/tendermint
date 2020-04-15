@@ -2,11 +2,19 @@
 
 ## Changelog
 
-- 20202-3-31: Created (@marbar3778)
+- 2020-4-15: Created (@marbar3778)
 
 ## Context
 
-Currently we use [go-amino](https://github.com/tendermint/go-amino) throughout Tendermint. Amino enables quick prototyping and development of features. While this is nice amino does not provide the performance and developer convenience that is expected. For this reason moving to a different encoding format that is widely adopted and supports multiple languages is needed.
+Currently we use [go-amino](https://github.com/tendermint/go-amino) throughout Tendermint. Amino is not being maintained anymore (April 15, 2020) by the Tendermint team and has been found to have issues:
+
+- https://github.com/tendermint/go-amino/issues/286
+- https://github.com/tendermint/go-amino/issues/230
+- https://github.com/tendermint/go-amino/issues/121
+
+These are a few of the known issues that users could run into.
+
+Amino enables quick prototyping and development of features. While this is nice, amino does not provide the performance and developer convenience that is expected. For Tendermint to see wider adoption as a BFT protocol engine a transition to an adopted encoding format is needed. Below are some possible options that can be explored.
 
 There are a few options to pick from:
 
@@ -15,6 +23,11 @@ There are a few options to pick from:
 - `FlatBuffers`: FlatBuffers is an efficient cross platform serialization library. Flatbuffers are more efficient than Protobuf due to the fast that there is no parsing/unpacking to a second representation. FlatBuffers has been tested and used in production but is not widely adopted.
 
 - `CapnProto`: Cap’n Proto is an insanely fast data interchange format and capability-based RPC system. Cap'n Proto does not have a encoding/decoding step. It has not seen wide adoption throughout the industry.
+
+- @erikgrinaker - https://github.com/tendermint/tendermint/pull/4623#discussion_r401163501
+  ```
+  Cap'n'Proto is awesome. It was written by one of the original Protobuf developers to fix some of its issues, and supports e.g. random access to process huge messages without loading them into memory and an (opt-in) canonical form which would be very useful when determinism is needed (e.g. in the state machine). That said, I suspect Protobuf is the better choice due to wider adoption, although it makes me kind of sad since Cap'n'Proto is technically better.
+  ```
 
 ## Decision
 
