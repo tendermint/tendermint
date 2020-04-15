@@ -145,8 +145,8 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				Metadata:    msg.Metadata,
 			})
 			if err != nil {
-				r.Logger.Error("Failed to add snapshot to sync", "height", msg.Height,
-					"format", msg.Format, "peer", src.ID(), "err", err)
+				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
+					"peer", src.ID(), "err", err)
 				return
 			}
 
@@ -158,23 +158,23 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		switch msg := msg.(type) {
 		case *chunkRequestMessage:
 			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Chunk, "peer", src.ID())
+				"chunk", msg.Index, "peer", src.ID())
 			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
 				Height: msg.Height,
 				Format: msg.Format,
-				Chunk:  msg.Chunk,
+				Chunk:  msg.Index,
 			})
 			if err != nil {
 				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format,
-					"chunk", msg.Chunk, "err", err)
+					"chunk", msg.Index, "err", err)
 				return
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Chunk, "peer", src.ID())
+				"chunk", msg.Index, "peer", src.ID())
 			src.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkResponseMessage{
 				Height:  msg.Height,
 				Format:  msg.Format,
-				Chunk:   msg.Chunk,
+				Index:   msg.Index,
 				Body:    resp.Chunk,
 				Missing: resp.Chunk == nil,
 			}))
@@ -186,13 +186,15 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			_, err := r.syncer.AddChunk(msg.Height, msg.Format, &chunk{
-				Index: msg.Chunk,
-				Body:  msg.Body,
+			_, err := r.syncer.AddChunk(&chunk{
+				Height: msg.Height,
+				Format: msg.Format,
+				Index:  msg.Index,
+				Body:   msg.Body,
 			})
 			if err != nil {
 				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
-					"chunk", msg.Chunk, "err", err)
+					"chunk", msg.Index, "err", err)
 				return
 			}
 

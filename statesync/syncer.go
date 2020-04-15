@@ -31,7 +31,7 @@ var errNoSnapshots = errors.New("no viable snapshots found")
 //
 // 1) Create the syncer: newSyncer(...)
 // 2) Discover snapshots, and feed them via syncer.AddSnapshot()
-// 3) Start a sync via Sync()
+// 3) Start a sync via Sync(), which will request chunks from peers
 // 4) Concurrently feed chunks via syncer.AddChunk()
 // 5) Bootstrap node with the returned state and commit
 type syncer struct {
@@ -42,8 +42,8 @@ type syncer struct {
 	snapshots *snapshotPool
 
 	mtx      sync.RWMutex
-	snapshot *snapshot   // snapshot currently being synced, if any
-	chunks   *chunkQueue // used to feed chunks to the restorer
+	snapshot *snapshot
+	chunks   *chunkQueue
 }
 
 // newSyncer creates a new syncer.
@@ -62,17 +62,11 @@ func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.Ap
 // AddChunk adds a chunk to the chunk queue, if any. It returns false if the chunk has already
 // been added to the queue, or an error if there's no sync in progress. The height and format
 // are used as a sanity-check, in case the reactor receives unsolicited chunks for whatever reason.
-func (s *syncer) AddChunk(height uint64, format uint32, chunk *chunk) (bool, error) {
+func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	if s.snapshot == nil || s.chunks == nil {
 		return false, errors.New("no state sync in progress")
-	}
-	if height != s.snapshot.Height {
-		return false, fmt.Errorf("invalid chunk height %v, expected %v", height, s.snapshot.Height)
-	}
-	if format != s.snapshot.Format {
-		return false, fmt.Errorf("invalid chunk format %v, expected %v", format, s.snapshot.Format)
 	}
 	added, err := s.chunks.Add(chunk)
 	if err != nil {
@@ -151,7 +145,7 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 	// Apply chunks.
 	for {
 		chunk, err := chunks.Next()
-		if err == Done {
+		if err == errDone {
 			break
 		} else if err != nil {
 			return state, nil, fmt.Errorf("failed to fetch chunk: %w", err)
@@ -264,7 +258,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
 		Height: snapshot.Height,
 		Format: snapshot.Format,
-		Chunk:  chunk,
+		Index:  chunk,
 	}))
 }
 

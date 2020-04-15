@@ -21,17 +21,17 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 		expectResponse *chunkResponseMessage
 	}{
 		"chunk is returned": {
-			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			[]byte{1, 2, 3},
-			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Body: []byte{1, 2, 3}}},
+			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: []byte{1, 2, 3}}},
 		"empty chunk is returned, as nil": {
-			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			[]byte{},
-			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Body: nil}},
+			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: nil}},
 		"nil (missing) chunk is returned as missing": {
-			&chunkRequestMessage{Height: 1, Format: 1, Chunk: 1},
+			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			nil,
-			&chunkResponseMessage{Height: 1, Format: 1, Chunk: 1, Missing: true},
+			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true},
 		},
 	}
 
@@ -43,7 +43,7 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 			conn.On("LoadSnapshotChunkSync", abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
-				Chunk:  tc.request.Chunk,
+				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
 			// Mock peer to store response, if found

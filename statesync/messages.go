@@ -84,7 +84,7 @@ func (m *snapshotsResponseMessage) ValidateBasic() error {
 type chunkRequestMessage struct {
 	Height uint64
 	Format uint32
-	Chunk  uint32
+	Index  uint32
 }
 
 // ValidateBasic implements Message.
@@ -102,7 +102,7 @@ func (m *chunkRequestMessage) ValidateBasic() error {
 type chunkResponseMessage struct {
 	Height  uint64
 	Format  uint32
-	Chunk   uint32
+	Index   uint32
 	Body    []byte
 	Missing bool
 }
