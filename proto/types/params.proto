@@ -40,5 +40,6 @@ message EvidenceParams {
 message ValidatorParams {
   option (gogoproto.populate) = true;
   option (gogoproto.equal)    = true;
+
   repeated string pub_key_types = 1;
 }
