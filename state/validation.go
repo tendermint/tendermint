@@ -192,10 +192,13 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	addr := evidence.Address()
 	var val *types.Validator
 
+	// For PhantomValidatorEvidence, check evidence.Address was not part of the
+	// validator set at height evidence.Height, but was a validator before OR
+	// after.
 	if _, ok := evidence.(*types.PhantomValidatorEvidence); ok {
 		_, val = valset.GetByAddress(addr)
 		if val != nil {
-			return fmt.Errorf("address %X is a validator at height %d", addr, evidence.Height())
+			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
 		}
 
 		// TODO: something smarter here
@@ -220,13 +223,8 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			return fmt.Errorf("phantom validator %X not found", addr)
 		}
 	} else {
-		// The address must have been an active validator at the height.
-		//
-		// NOTE: we will ignore evidence from H if the key was not a validator
-		// at H, even if it is a validator at some nearby H'
-		//
-		// XXX: this makes lite-client bisection as is unsafe
-		// See https://github.com/tendermint/tendermint/issues/3244
+		// For all other types, expect evidence.Address to be a validator at height
+		// evidence.Height.
 		_, val = valset.GetByAddress(addr)
 		if val == nil {
 			return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
