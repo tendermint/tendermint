@@ -471,7 +471,7 @@ func fireEvents(
 	})
 
 	for i, tx := range block.Data.Txs {
-		eventBus.PublishEventTx(types.EventDataTx{TxResult: types.TxResult{
+		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
