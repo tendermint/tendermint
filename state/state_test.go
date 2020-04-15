@@ -1019,7 +1019,7 @@ func TestApplyUpdates(t *testing.T) {
 			makeConsensusParams(44, 55, 3, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
-				Evidence: &abci.EvidenceParams{
+				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: maxAge,
 					MaxAgeDuration:  time.Duration(maxAge),
 				},
