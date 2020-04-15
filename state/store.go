@@ -8,6 +8,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -168,7 +169,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 		keepVals[lastStoredHeightFor(to, valInfo.LastHeightChanged)] = true // keep last checkpoint too
 	}
 	keepParams := make(map[int64]bool)
-	if paramsInfo.ConsensusParams.Equals(&types.ConsensusParams{}) {
+	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 		keepParams[paramsInfo.LastHeightChanged] = true
 	}
 
@@ -199,7 +200,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 
 		if keepParams[h] {
 			p := loadConsensusParamsInfo(db, h)
-			if p.ConsensusParams.Equals(&types.ConsensusParams{}) {
+			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 				p.ConsensusParams, err = LoadConsensusParams(db, h)
 				if err != nil {
 					return err
@@ -379,7 +380,7 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 type ConsensusParamsInfo struct {
-	ConsensusParams   types.ConsensusParams
+	ConsensusParams   tmproto.ConsensusParams
 	LastHeightChanged int64
 }
 
@@ -389,15 +390,15 @@ func (params ConsensusParamsInfo) Bytes() []byte {
 }
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
-func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error) {
-	empty := types.ConsensusParams{}
+func LoadConsensusParams(db dbm.DB, height int64) (tmproto.ConsensusParams, error) {
+	empty := tmproto.ConsensusParams{}
 
 	paramsInfo := loadConsensusParamsInfo(db, height)
 	if paramsInfo == nil {
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
 
-	if paramsInfo.ConsensusParams.Equals(&empty) {
+	if paramsInfo.ConsensusParams.Equal(&empty) {
 		paramsInfo2 := loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
 		if paramsInfo2 == nil {
 			panic(
@@ -439,7 +440,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params types.ConsensusParams) {
+func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
 	paramsInfo := &ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}
