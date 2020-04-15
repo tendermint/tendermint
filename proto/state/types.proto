@@ -8,6 +8,7 @@ import "abci/types/types.proto";
 import "proto/types/types.proto";
 import "proto/types/validator.proto";
 import "proto/types/params.proto";
+import "proto/version/version.proto";
 import "google/protobuf/timestamp.proto";
 
 // ABCIResponses retains the responses
@@ -32,8 +33,8 @@ message ConsensusParamsInfo {
 }
 
 message Version {
-  tendermint.proto.types.Version consensus = 1 [(gogoproto.nullable) = false];
-  string                         software  = 2;
+  tendermint.proto.version.Consensus consensus = 1 [(gogoproto.nullable) = false];
+  string                             software  = 2;
 }
 
 message State {

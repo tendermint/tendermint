@@ -7,6 +7,7 @@ import (
 
 	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
+	protoversion "github.com/tendermint/tendermint/proto/version"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -24,7 +25,7 @@ var (
 // and the software version to support upgrades to the format of
 // the State as stored on disk.
 type Version struct {
-	Consensus version.Consensus
+	Consensus protoversion.Consensus
 	Software  string
 }
 
@@ -32,9 +33,9 @@ type Version struct {
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var initStateVersion = tmstate.Version{
-	Consensus: tmproto.Version{
-		Block: version.BlockProtocol.Uint64(),
+var initStateVersion = Version{
+	Consensus: protoversion.Consensus{
+		Block: version.BlockProtocol,
 		App:   0,
 	},
 	Software: version.TMCoreSemVer,
@@ -130,7 +131,7 @@ func (state State) IsEmpty() bool {
 // and evidence. Note it also takes a proposerAddress because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func MakeBlock(
-	state tmstate.State
+	state tmstate.State,
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
