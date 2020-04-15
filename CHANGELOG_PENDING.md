@@ -19,6 +19,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
 - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
 - [types] \#4582 Block: `Round` is now int32
+- [types] \#4680 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now protobuf types
 - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
 - [consensus] \#4582 HeightVoteSet: `round` is now int32
 - [crypto] \#4633 Remove suffixes from all keys.

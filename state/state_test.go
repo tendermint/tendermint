@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/kv"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -946,7 +947,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 	// Each valset is just one validator.
 	// create list of them.
-	params := make([]types.ConsensusParams, N+1)
+	params := make([]tmproto.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
 		params[i] = *types.DefaultConsensusParams()
@@ -1002,9 +1003,9 @@ func TestApplyUpdates(t *testing.T) {
 	initParams := makeConsensusParams(1, 2, 3, 4)
 	const maxAge int64 = 66
 	cases := [...]struct {
-		init     types.ConsensusParams
+		init     tmproto.ConsensusParams
 		updates  abci.ConsensusParams
-		expected types.ConsensusParams
+		expected tmproto.ConsensusParams
 	}{
 		0: {initParams, abci.ConsensusParams{}, initParams},
 		1: {initParams, abci.ConsensusParams{}, initParams},
@@ -1018,7 +1019,7 @@ func TestApplyUpdates(t *testing.T) {
 			makeConsensusParams(44, 55, 3, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
-				Evidence: &abci.EvidenceParams{
+				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: maxAge,
 					MaxAgeDuration:  time.Duration(maxAge),
 				},
@@ -1027,7 +1028,7 @@ func TestApplyUpdates(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		res := tc.init.Update(&(tc.updates))
+		res := types.UpdateConsensusParams(tc.init, &(tc.updates))
 		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
 }

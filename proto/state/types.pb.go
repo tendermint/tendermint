@@ -252,9 +252,9 @@ func (m *Version) GetSoftware() string {
 
 type State struct {
 	Version Version `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
-	//     // immutable
+	// immutable
 	ChainID string `protobuf:"bytes,2,opt,name=chain_Id,json=chainId,proto3" json:"chain_Id,omitempty"`
-	//     // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64          `protobuf:"varint,3,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
 	LastBlockID     types1.BlockID `protobuf:"bytes,4,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
 	LastBlockTime   time.Time      `protobuf:"bytes,5,opt,name=last_block_time,json=lastBlockTime,proto3,stdtime" json:"last_block_time"`
@@ -272,9 +272,9 @@ type State struct {
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types1.ConsensusParams `protobuf:"bytes,10,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params"`
 	LastHeightConsensusParamsChanged int64                  `protobuf:"varint,11,opt,name=last_height_consensus_params_changed,json=lastHeightConsensusParamsChanged,proto3" json:"last_height_consensus_params_changed,omitempty"`
-	//     // Merkle root of the results from executing prev block
+	// Merkle root of the results from executing prev block
 	LastResultsHash []byte `protobuf:"bytes,12,opt,name=LastResultsHash,proto3" json:"LastResultsHash,omitempty"`
-	//     // the latest AppHash we've received from calling abci.Commit()
+	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte `protobuf:"bytes,13,opt,name=AppHash,proto3" json:"AppHash,omitempty"`
 }
 
