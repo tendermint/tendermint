@@ -23,15 +23,17 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
-func getHTTPClient() *client.HTTP {
+func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
 		panic(err)
 	}
@@ -39,9 +41,9 @@ func getHTTPClient() *client.HTTP {
 	return c
 }
 
-func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
+func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTPWithTimeout(rpcAddr, "/websocket", timeout)
+	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
 	if err != nil {
 		panic(err)
 	}
@@ -49,8 +51,8 @@ func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
 	return c
 }
 
-func getLocalClient() *client.Local {
-	return client.NewLocal(node)
+func getLocalClient() *rpclocal.Local {
+	return rpclocal.New(node)
 }
 
 // GetClients returns a slice of clients for table-driven tests
@@ -63,7 +65,7 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		_, _ = client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
 		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
@@ -72,7 +74,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 
 func TestCustomHTTPClient(t *testing.T) {
 	remote := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	c, err := rpchttp.NewWithClient(remote, "/websocket", http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status()
 	require.NoError(t, err)
@@ -701,7 +703,7 @@ func TestBatchedJSONRPCCalls(t *testing.T) {
 	testBatchedJSONRPCCalls(t, c)
 }
 
-func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
+func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	k1, v1, tx1 := MakeTxKV()
 	k2, v2, tx2 := MakeTxKV()
 

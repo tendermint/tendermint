@@ -4,6 +4,7 @@
 * 13-02-2020: Initial draft
 * 26-02-2020: Cross-checking the first header
 * 28-02-2020: Bisection algorithm details
+* 31-03-2020: Verify signature got changed
 
 ## Context
 
@@ -60,8 +61,9 @@ also cross-checked with witnesses for additional security.
 
 Due to bisection algorithm nature, some headers might be skipped. If the light
 client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
-`VerifyHeader(H#X)` methods are called, it will perform a backwards
-verification from the latest header back to the header at height `X`.
+`VerifyHeader(H#X)` methods are called, these will perform either a) backwards
+verification from the latest header back to the header at height `X` or b)
+bisection verification from the first stored header to the header at height `X`.
 
 `TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
 If some header is not there, an error will be returned indicating that
@@ -99,6 +101,10 @@ type Store interface {
 	FirstSignedHeaderHeight() (int64, error)
 
 	SignedHeaderAfter(height int64) (*types.SignedHeader, error)
+
+	Prune(size uint16) error
+
+	Size() uint16
 }
 ```
 
@@ -109,12 +115,13 @@ database, used in Tendermint). In the future, remote adapters are possible
 ```go
 func Verify(
 	chainID string,
-	h1 *types.SignedHeader,
-	h1NextVals *types.ValidatorSet,
-	h2 *types.SignedHeader,
-	h2Vals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader, // height=X
+	trustedVals *types.ValidatorSet, // height=X or height=X+1
+	untrustedHeader *types.SignedHeader, // height=Y
+	untrustedVals *types.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
+	maxClockDrift time.Duration,
 	trustLevel tmmath.Fraction) error {
 ```
 
@@ -122,6 +129,9 @@ func Verify(
 cases of adjacent and non-adjacent headers. In the former case, it compares the
 hashes directly (2/3+ signed transition). Otherwise, it verifies 1/3+
 (`trustLevel`) of trusted validators are still present in new validators.
+
+While `Verify` function is certainly handy, `VerifyAdjacent` and
+`VerifyNonAdjacent` should be used most often to avoid logic errors.
 
 ### Bisection algorithm details
 
