@@ -80,7 +80,7 @@ type Evidence interface {
 
 type CompositeEvidence interface {
 	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
-	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
+	Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
@@ -323,7 +323,8 @@ var _ CompositeEvidence = ConflictingHeadersEvidence{}
 //
 // committedHeader - header at height H1.Height == H2.Height
 // valSet					 - validator set at height H1.Height == H2.Height
-func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
+// valToLastHeight - map between active validators and respective last heights
+func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence {
 	evList := make([]Evidence, 0)
 
 	var alternativeHeader *SignedHeader
@@ -341,10 +342,17 @@ func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Vali
 		if sig.Absent() {
 			continue
 		}
+
+		lastHeightValidatorWasInSet, ok := valToLastHeight[string(sig.ValidatorAddress)]
+		if !ok {
+			continue
+		}
+
 		if !valSet.HasAddress(sig.ValidatorAddress) {
 			evList = append(evList, &PhantomValidatorEvidence{
-				Header: alternativeHeader.Header,
-				Vote:   alternativeHeader.Commit.GetVote(i),
+				Header:                      alternativeHeader.Header,
+				Vote:                        alternativeHeader.Commit.GetVote(i),
+				LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
 			})
 		}
 	}
@@ -551,8 +559,9 @@ func (ev ConflictingHeadersEvidence) String() string {
 //-------------------------------------------
 
 type PhantomValidatorEvidence struct {
-	Header *Header `json:"header"`
-	Vote   *Vote   `json:"vote"`
+	Header                      *Header `json:"header"`
+	Vote                        *Vote   `json:"vote"`
+	LastHeightValidatorWasInSet int64   `json:"last_height_validator_was_in_set"`
 }
 
 var _ Evidence = &PhantomValidatorEvidence{}
@@ -638,6 +647,10 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 			e.Header.Height,
 			e.Vote.Height,
 		)
+	}
+
+	if e.LastHeightValidatorWasInSet <= 0 {
+		return errors.New("negative or zero LastHeightValidatorWasInSet")
 	}
 
 	return nil
