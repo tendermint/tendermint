@@ -9,7 +9,8 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://godoc.org/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.13-blue.svg)](https://github.com/moovweb/gvm)
-[![Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
+[![Tendermint Official Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/9XNEu2x)
+[![Cosmos Community Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
@@ -73,7 +74,7 @@ Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
 and the [style guide](STYLE_GUIDE.md).
 
-To get more active, Join the wider community at [Discord](https://discord.gg/AzefAFd) or jump onto the [Forum](https://forum.cosmos.network/).
+To get more active, Join the wider community at [Cosmos Community Discord](https://discord.gg/AzefAFd), or the new [Tendermint Official Discord](https://discord.gg/9XNEu2x), or jump onto the [Cosmos Forum](https://forum.cosmos.network/).
 
 Learn more by reading the code and the
 [specifications](https://github.com/tendermint/spec) or watch the [Developer Sessions](/docs/DEV_SESSIONS.md) and read up on the
