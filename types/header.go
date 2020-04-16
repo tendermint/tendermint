@@ -204,9 +204,6 @@ func (h *Header) ToProto() *tmproto.Header {
 // It returns an error if the header is invalid.
 func (h *Header) FromProto(ph *tmproto.Header) error {
 	var blockID BlockID
-	if h == nil {
-		h = &Header{}
-	}
 	if ph == nil {
 		return nil
 	}

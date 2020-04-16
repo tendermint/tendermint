@@ -606,21 +606,19 @@ func TestDataProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg     string
 		data1   *Data
-		data2   *Data
 		expPass bool
 	}{
-		{"success", data, &Data{}, true},
-		{"success Data nil", nil, nil, true},
-		{"not equal", nil, data, false},
+		{"success", data, true},
+		{"empty Data", &Data{}, true},
 	}
 	for _, tc := range testCases {
 		protoData := tc.data1.ToProto()
-		tc.data2.FromProto(protoData)
-
+		data := new(Data)
+		err := data.FromProto(protoData)
 		if tc.expPass {
-			require.Equal(t, tc.data1, tc.data2, tc.msg)
+			require.Equal(t, tc.data1, data, tc.msg)
 		} else {
-			require.NotEqual(t, tc.data1, tc.data2, tc.msg)
+			require.Error(t, err, tc.msg)
 		}
 	}
 }
@@ -632,13 +630,12 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg      string
 		data1    *EvidenceData
-		data2    *EvidenceData
 		expPass1 bool
 		expPass2 bool
 	}{
-		{"success", data, &EvidenceData{}, true, true},
-		{"success Data 1 empty", &EvidenceData{}, data, true, true},
-		{"fail nil Data", nil, nil, true, true},
+		{"success", data, true, true},
+		{"empty evidenceData", &EvidenceData{}, true, true},
+		{"fail nil Data", nil, true, false},
 	}
 
 	for _, tc := range testCases {
@@ -649,28 +646,28 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 			require.Error(t, err, tc.msg)
 		}
 
-		err = tc.data2.FromProto(protoData)
+		eviD := new(EvidenceData)
+		err = eviD.FromProto(protoData)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.data1, tc.data2, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
-			require.NotEqual(t, tc.data1, tc.data2, tc.msg)
 		}
 	}
 }
 
 func TestCommitProtoBuf(t *testing.T) {
-	// commit := randCommit(time.Now())
+	commit := randCommit(time.Now())
 
 	testCases := []struct {
 		msg     string
 		c1      *Commit
 		expPass bool
 	}{
-		// {"success", commit, true},
-		// {"empty commit", &Commit{}, false},
-		{"success	 Commit ValidateBasic", nil, true}, // We allow nil commits for block 0
+		{"success", commit, true},
+		{"empty commit", &Commit{}, false},
+		{"success Commit ValidateBasic", nil, false},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -728,7 +725,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 		{"success", &blockID, true},
 		{"success", &BlockID{}, true},
 		{"success BlockID empty", &BlockID{}, true},
-		{"success BlockID nil", nil, false},
+		{"failure BlockID nil", nil, false},
 	}
 	for _, tc := range testCases {
 		protoBlockID := tc.bid1.ToProto()

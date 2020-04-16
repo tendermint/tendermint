@@ -654,7 +654,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 // It returns an error if the commit is invalid.
 func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 	if cp == nil {
-		return nil
+		return errors.New("nil Commit")
 	}
 	var (
 		blockID  BlockID
@@ -663,10 +663,6 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 
 	if err := blockID.FromProto(&cp.BlockID); err != nil {
 		return err
-	}
-
-	if commit == nil {
-		commit = &Commit{}
 	}
 
 	bitArray.FromProto(cp.BitArray)
@@ -859,17 +855,21 @@ func (data *Data) ToProto() tmproto.Data {
 }
 
 // FromProto sets a protobuf Data to the given pointer.
-func (data *Data) FromProto(dp tmproto.Data) {
-	if data == nil {
-		data = &Data{}
+func (data *Data) FromProto(dp tmproto.Data) error {
+	if dp.Equal(tmproto.Data{}) {
+		return nil
 	}
-
-	txBzs := make(Txs, len(dp.Txs))
-	for i := range dp.Txs {
-		txBzs[i] = Tx(dp.Txs[i])
+	if len(dp.Txs) > 0 {
+		txBzs := make(Txs, len(dp.Txs))
+		for i := range dp.Txs {
+			txBzs[i] = Tx(dp.Txs[i])
+		}
+		data.Txs = txBzs
+	} else {
+		data.Txs = nil
 	}
-	data.Txs = txBzs
 	data.hash = dp.Hash
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -936,19 +936,21 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 // FromProto sets a protobuf EvidenceData to the given pointer.
 func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 	if eviData == nil {
-		return nil
+		return errors.New("nil evidenceData")
 	}
-
-	eviBzs := make(EvidenceList, len(eviData.Evidence))
-	for i := range eviData.Evidence {
-		evi, err := EvidenceFromProto(eviData.Evidence[i])
-		if err != nil {
-			return err
+	if len(eviData.Evidence) > 0 {
+		eviBzs := make(EvidenceList, len(eviData.Evidence))
+		for i := range eviData.Evidence {
+			evi, err := EvidenceFromProto(eviData.Evidence[i])
+			if err != nil {
+				return err
+			}
+			eviBzs[i] = evi
 		}
-		eviBzs[i] = evi
+		data.Evidence = eviBzs
+	} else {
+		data.Evidence = nil
 	}
-
-	data.Evidence = eviBzs
 	data.hash = eviData.Hash
 
 	return nil
