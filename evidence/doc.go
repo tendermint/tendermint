@@ -1,6 +1,7 @@
 /*
 Package evidence handles all evidence storage and gossiping from detection to block proposal.
-For the different types of evidence refer to the `evidence.go` file in the types package.
+For the different types of evidence refer to the `evidence.go` file in the types package
+or https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md.
 
 ## Gossiping
 
@@ -17,7 +18,7 @@ go#ConflictingHeadersEvidence)
 The gossiping of evidence is initiated when a peer is added which starts a go routine to broadcast currently
 uncommitted evidence at intervals of 60 seconds (set by the by broadcastEvidenceIntervalS).
 It uses a concurrent list to store the evidence and before sending verifies that each evidence is still valid in the
-sense that it has not exceeded the max evidence age and height which should be set to be equal to the "trusting
+sense that it has not exceeded the max evidence age and height. This should be set to be equal to the "trusting
 period" (see types/params.go#EvidenceParams).
 
 ## Proposing
