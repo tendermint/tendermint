@@ -182,8 +182,7 @@ func (h *Header) ToProto() *tmproto.Header {
 	if h == nil {
 		return nil
 	}
-
-	ph := tmproto.Header{
+	return &tmproto.Header{
 		Version:            h.Version,
 		ChainID:            h.ChainID,
 		Height:             h.Height,
@@ -199,15 +198,15 @@ func (h *Header) ToProto() *tmproto.Header {
 		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
-	return &ph
 }
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
 func (h *Header) FromProto(ph *tmproto.Header) error {
-	var (
-		blockID BlockID
-	)
+	var blockID BlockID
+	if h == nil {
+		h = &Header{}
+	}
 	if ph == nil {
 		return nil
 	}
