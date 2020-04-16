@@ -567,8 +567,8 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, config *cfg.StateSyncConfig,
-	stateDB dbm.DB, blockStore *store.BlockStore) error {
+func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, conR *consensus.Reactor,
+	config *cfg.StateSyncConfig, fastSync bool, stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
 	state := sm.LoadState(stateDB)
@@ -596,10 +596,14 @@ func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, config 
 		}
 		blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 
-		err = bcR.SwitchToFastSync(state)
-		if err != nil {
-			ssR.Logger.Error("Failed to switch to fast sync", "err", err)
-			return
+		if fastSync {
+			err = bcR.SwitchToFastSync(state)
+			if err != nil {
+				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				return
+			}
+		} else {
+			conR.SwitchToConsensus(state, true)
 		}
 	}()
 	return nil
@@ -670,10 +674,7 @@ func NewNode(config *cfg.Config,
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
 	}
-	if stateSync && !fastSync {
-		return nil, errors.New("state sync requires fast sync to be enabled")
-	}
-	if stateSync && config.FastSync.Version != "v0" {
+	if stateSync && fastSync && config.FastSync.Version != "v0" {
 		return nil, errors.New("state sync only supports fast sync v0 reactor")
 	}
 
@@ -879,7 +880,7 @@ func (n *Node) OnStart() error {
 	// Run state sync
 	if n.stateSync {
 		err := startStateSync(n.stateSyncReactor, n.bcReactor.(*bcv0.BlockchainReactor),
-			n.config.StateSync, n.stateDB, n.blockStore)
+			n.consensusReactor, n.config.StateSync, n.config.FastSyncMode, n.stateDB, n.blockStore)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
