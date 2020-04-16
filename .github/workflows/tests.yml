@@ -44,7 +44,7 @@ jobs:
       - uses: actions/setup-go@v2-beta
       - uses: actions/checkout@v2
       - name: install
-        run: make install install_abci
+        run: make install && make install_abci
       # - uses: actions/cache@v1
       #   with:
       #     path: ~/go/bin
