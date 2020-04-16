@@ -6,6 +6,7 @@ option go_package = "github.com/tendermint/tendermint/proto/types";
 import "third_party/proto/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/libs/bits/types.proto";
+import "proto/version/version.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
@@ -54,10 +55,10 @@ message Header {
   option (gogoproto.populate) = true;
   option (gogoproto.equal)    = true;
   // basic block info
-  Version                   version  = 1 [(gogoproto.nullable) = false];
-  string                    chain_id = 2 [(gogoproto.customname) = "ChainID"];
-  int64                     height   = 3;
-  google.protobuf.Timestamp time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  tendermint.proto.version.Consensus version  = 1 [(gogoproto.nullable) = false];
+  string                             chain_id = 2 [(gogoproto.customname) = "ChainID"];
+  int64                              height   = 3;
+  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
   BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
@@ -76,14 +77,6 @@ message Header {
   // consensus info
   bytes evidence_hash    = 13;  // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
-}
-
-message Version {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
-  uint64 block = 1;
-  uint64 app   = 2;
 }
 
 // Data contains the set of transactions included in the block
