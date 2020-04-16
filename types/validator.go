@@ -124,6 +124,10 @@ func (v *Validator) FromProto(vp *tmproto.Validator) error {
 		return nil
 	}
 
+	if v == nil {
+		v = &Validator{}
+	}
+
 	pk, err := ce.PubKeyFromProto(vp.PubKey)
 	if err != nil {
 		return err
