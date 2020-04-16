@@ -1,6 +1,6 @@
 ## v0.33.4
 
-- Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed. Nodes can also bootstrap via state sync, fetching a state maching snapshot at a given height rather than fetching and replaying historical blocks.
 
 \*\*
 
@@ -14,6 +14,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+  - [abci] [\#4645](https://github.com/tendermint/tendermint/pull/4645) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots.
+
 - P2P Protocol
 
 - Go API
@@ -24,6 +26,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
+- [statesync,p2p] [\#4645](https://github.com/tendermint/tendermint/pull/4645) Add state sync support, where a new node can be bootstrapped much faster by fetching state snapshots from peers instead of replaying blocks, via the `[statesync]` config section.
 - [abci] Add `ResponseCommit.retain_height` field, which will automatically remove blocks below this height.
 - [rpc] Add `/status` response fields for the earliest block available on the node
 - [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259)
