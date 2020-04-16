@@ -108,6 +108,13 @@ func TestSnapshotPool_Best_Ranked(t *testing.T) {
 		}
 	}
 
+	// Ranked should return the snapshots in the same order
+	ranked := pool.Ranked()
+	assert.Len(t, ranked, len(expectSnapshots))
+	for i := range ranked {
+		assert.Equal(t, expectSnapshots[i].snapshot, ranked[i])
+	}
+
 	// Check that best snapshots are returned in expected order
 	for i := range expectSnapshots {
 		snapshot := expectSnapshots[i].snapshot
@@ -115,12 +122,6 @@ func TestSnapshotPool_Best_Ranked(t *testing.T) {
 		pool.Reject(snapshot)
 	}
 	assert.Nil(t, pool.Best())
-
-	// Ranked should also return the snapshots in the same order
-	ranked := pool.Ranked()
-	for i := range ranked {
-		assert.Equal(t, expectSnapshots[i].snapshot, ranked[i])
-	}
 }
 
 func TestSnapshotPool_GetPeer(t *testing.T) {
@@ -141,6 +142,7 @@ func TestSnapshotPool_GetPeer(t *testing.T) {
 	_, err = pool.Add(peerB, s)
 	require.NoError(t, err)
 	_, err = pool.Add(peerA, &snapshot{Height: 2, Format: 1, ChunkHashes: [][]byte{{2}}})
+	require.NoError(t, err)
 
 	// GetPeer currently picks a random peer, so lets run it until we've seen both.
 	seenA := false
@@ -178,6 +180,7 @@ func TestSnapshotPool_GetPeers(t *testing.T) {
 	_, err = pool.Add(peerB, s)
 	require.NoError(t, err)
 	_, err = pool.Add(peerA, &snapshot{Height: 2, Format: 1, ChunkHashes: [][]byte{{2}}})
+	require.NoError(t, err)
 
 	peers := pool.GetPeers(s)
 	assert.Len(t, peers, 2)
@@ -250,6 +253,7 @@ func TestSnapshotPool_RejectFormat(t *testing.T) {
 	assert.True(t, added)
 }
 
+// nolint: dupl
 func TestSnapshotPool_RejectHeight(t *testing.T) {
 	lc := &mockLightClient{}
 	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
