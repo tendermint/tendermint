@@ -179,20 +179,19 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
-	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
-	uncontiguousPartSet.AddPart(part2)
 
 	header1 := types.Header{
 		Height:  1,
 		ChainID: "block_test",
 		Time:    tmtime.Now(),
 	}
-	header2 := header1
-	header2.Height = 4
+	header20 := header1
+	header20.Height = 20
 
 	// End of setup, test data
 
 	commitAtH10 := makeTestCommit(10, tmtime.Now())
+	commitAtH20 := makeTestCommit(20, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -213,14 +212,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     nil,
-			wantPanic: "only save a non-nil block",
+			block:      newBlock(header20, commitAtH20),
+			parts:      validPartSet,
+			seenCommit: seenCommit1,
 		},
 
 		{
-			block:     newBlock(header2, commitAtH10),
-			parts:     uncontiguousPartSet,
-			wantPanic: "only save contiguous blocks", // and incomplete and uncontiguous parts
+			block:     nil,
+			wantPanic: "only save a non-nil block",
 		},
 
 		{
