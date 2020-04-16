@@ -223,6 +223,8 @@ func (evpool *Pool) removeEvidence(
 	}
 }
 
+func (evpool *Pool) removePendingEvidence()
+
 func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
@@ -236,6 +238,16 @@ func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 			}
 		}
 	}
+}
+
+func (evpool *Pool) IsExpired(evidence types.Evidence) bool {
+	var (
+		params       = evpool.State().ConsensusParams.Evidence
+		ageDuration  = evpool.State().LastBlockTime.Sub(evidence.Time())
+		ageNumBlocks = evpool.State().LastBlockHeight - evidence.Height()
+	)
+	return ageNumBlocks > params.MaxAgeNumBlocks &&
+		ageDuration > params.MaxAgeDuration
 }
 
 func evMapKey(ev types.Evidence) string {
