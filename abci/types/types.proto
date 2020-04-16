@@ -171,7 +171,7 @@ message ResponseQuery {
 
 message ResponseBeginBlock {
   repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -182,7 +182,7 @@ message ResponseCheckTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -194,7 +194,7 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -202,7 +202,7 @@ message ResponseEndBlock {
   repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -234,7 +234,7 @@ message EvidenceParams {
   // Note: must be greater than 0
   int64                    max_age_num_blocks = 1;
   google.protobuf.Duration max_age_duration   = 2
-      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+    [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
 }
 
 // ValidatorParams contains limits on validators.
@@ -250,7 +250,7 @@ message LastCommitInfo {
 message Event {
   string   type                               = 1;
   repeated tendermint.libs.kv.Pair attributes = 2
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
+    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
 //----------------------------------------

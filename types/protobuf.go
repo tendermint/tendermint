@@ -150,7 +150,8 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
-	_, val := valSet.GetByAddress(ev.Address())
+	addr := ev.Address()
+	_, val := valSet.GetByAddress(addr)
 	if val == nil {
 		// should already have checked this
 		panic(val)
@@ -161,6 +162,12 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
+	case *PhantomValidatorEvidence:
+		evType = "phantom"
+	case *LunaticValidatorEvidence:
+		evType = "lunatic"
+	case *PotentialAmnesiaEvidence:
+		evType = "potential_amnesia"
 	case MockEvidence:
 		// XXX: not great to have test types in production paths ...
 		evType = ABCIEvidenceTypeMock
