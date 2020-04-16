@@ -105,6 +105,9 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, blocksSynced int) {
 }
 
 func (sio *switchIO) broadcastStatusRequest(base int64, height int64) {
+	if height == 0 && base > 0 {
+		base = 0
+	}
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{
 		Base:   base,
 		Height: height,
