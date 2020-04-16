@@ -578,9 +578,9 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus
 
 	state := sm.LoadState(stateDB)
 	lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
-		Period: config.TrustedPeriod,
-		Height: config.TrustedHeight,
-		Hash:   config.TrustedHashBytes(),
+		Period: config.TrustPeriod,
+		Height: config.TrustHeight,
+		Hash:   config.TrustHashBytes(),
 	}, config.RPCServers[0], config.RPCServers[1:], litedb.New(dbm.NewMemDB(), ""),
 		// The light client is very chatty, so we use a separate module to silence it at statesync:info.
 		lite.Logger(ssR.Logger.With("module", "lite")))
@@ -677,7 +677,7 @@ func NewNode(config *cfg.Config,
 	// Determine whether we should do state and/or fast sync.
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
-	stateSync := config.StateSync.Enabled && !onlyValidatorIsUs(state, pubKey)
+	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false

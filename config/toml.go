@@ -317,17 +317,20 @@ max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 ##### state sync configuration options #####
 [statesync]
-# Whether to enable state sync, which bootstraps a new node by fetching and restoring a state
-# machine snapshot (if available) instead of fetching and replaying historical blocks.
-enabled = {{ .StateSync.Enabled }}
+# Whether to enable state sync. This bootstraps a new node by fetching a state machine snapshot
+# from peers and restoring it instead of fetching and replaying historical blocks. The node will
+# have a truncated block history, starting from the height of the snapshot. If the node has local
+# state, state sync will be skipped.
+enable = {{ .StateSync.Enable }}
 
 # RPC servers (comma-separated) for light client verification of the synced state, along with a
-# trusted height and header hash obtained from a trusted source, and a period during which
-# validators can be trusted (for Cosmos SDK-based chains, about 2/3 of the unbonding time).
+# height and corresponding header hash obtained from a trusted source, and a period during which
+# validators can be trusted. For Cosmos SDK-based chains, trust_period is about 2/3 of the
+# unbonding time (~2 weeks) during which they can be financially punished (slashed) for misbehavior.
 rpc_servers = ""
-trusted_height = {{ .StateSync.TrustedHeight }}
-trusted_hash = "{{ .StateSync.TrustedHash }}"
-trusted_period = "{{ .StateSync.TrustedPeriod }}"
+trust_height = {{ .StateSync.TrustHeight }}
+trust_hash = "{{ .StateSync.TrustHash }}"
+trust_period = "{{ .StateSync.TrustPeriod }}"
 
 ##### fast sync configuration options #####
 [fastsync]

@@ -719,16 +719,16 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enabled       bool          `mapstructure:"enabled"`
-	RPCServers    []string      `mapstructure:"rpc_servers"`
-	TrustedPeriod time.Duration `mapstructure:"trusted_period"`
-	TrustedHeight int64         `mapstructure:"trusted_height"`
-	TrustedHash   string        `mapstructure:"trusted_hash"`
+	Enable      bool          `mapstructure:"enable"`
+	RPCServers  []string      `mapstructure:"rpc_servers"`
+	TrustPeriod time.Duration `mapstructure:"trust_period"`
+	TrustHeight int64         `mapstructure:"trust_height"`
+	TrustHash   string        `mapstructure:"trust_hash"`
 }
 
-func (cfg *StateSyncConfig) TrustedHashBytes() []byte {
+func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 	// validated in ValidateBasic, so we can safely panic here
-	bytes, err := hex.DecodeString(cfg.TrustedHash)
+	bytes, err := hex.DecodeString(cfg.TrustHash)
 	if err != nil {
 		panic(err)
 	}
@@ -747,7 +747,7 @@ func TestStateSyncConfig() *StateSyncConfig {
 
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
-	if cfg.Enabled {
+	if cfg.Enable {
 		if len(cfg.RPCServers) == 0 {
 			return errors.New("rpc_servers is required")
 		}
@@ -759,16 +759,16 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 				return errors.New("found empty rpc_servers entry")
 			}
 		}
-		if cfg.TrustedPeriod <= 0 {
+		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted_period is required")
 		}
-		if cfg.TrustedHeight <= 0 {
+		if cfg.TrustHeight <= 0 {
 			return errors.New("trusted_height is required")
 		}
-		if len(cfg.TrustedHash) == 0 {
+		if len(cfg.TrustHash) == 0 {
 			return errors.New("trusted_hash is required")
 		}
-		_, err := hex.DecodeString(cfg.TrustedHash)
+		_, err := hex.DecodeString(cfg.TrustHash)
 		if err != nil {
 			return fmt.Errorf("invalid trusted_hash: %w", err)
 		}
