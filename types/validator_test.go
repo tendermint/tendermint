@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
@@ -17,9 +16,9 @@ func TestValidatorProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"success empty", val, &Validator{}, true, true},
-		{"fail empty", &Validator{}, &Validator{}, false, false},
-		{"false nil", nil, &Validator{}, true, false},
-		{"false both nil", nil, nil, true, false},
+		{"fail empty", &Validator{}, &Validator{}, false, true},
+		{"false nil", nil, &Validator{}, true, true},
+		{"false both nil", nil, nil, true, true},
 	}
 	for _, tc := range testCases {
 		protoVal, err := tc.v1.ToProto()
@@ -30,11 +29,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 			require.Error(t, err, tc.msg)
 		}
 
-		if protoVal == nil {
-			protoVal = &tmproto.Validator{}
-		}
-
-		err = tc.v2.FromProto(*protoVal)
+		err = tc.v2.FromProto(protoVal)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, tc.v1, tc.v2, tc.msg)

@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 func makeRandHeader() Header {
@@ -17,7 +17,6 @@ func makeRandHeader() Header {
 	height := tmrand.Int63()
 	randBytes := tmrand.Bytes(tmhash.Size)
 	randAddress := tmrand.Bytes(crypto.AddressSize)
-
 	h := Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,
@@ -48,9 +47,9 @@ func TestHeaderProto(t *testing.T) {
 		h2      *Header
 		expPass bool
 	}{
+		{"success", &h1, &h1, true},
 		{"failure empty Header", &Header{}, &Header{}, false},
-		{"success", &h1, &Header{}, true},
-		{"success Header nil", nil, nil, true}}
+	}
 
 	for _, tt := range tc {
 		tt := tt

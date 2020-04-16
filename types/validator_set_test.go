@@ -1414,7 +1414,7 @@ func TestValidatorSetProtoBuf(t *testing.T) {
 		err = tc.v2.FromProto(*protoValSet)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.v1, tc.v2, tc.msg)
+			require.EqualValues(t, tc.v1, tc.v2, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
