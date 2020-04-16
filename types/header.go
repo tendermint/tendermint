@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 // Header defines the structure of a Tendermint block header.
@@ -183,7 +183,7 @@ func (h *Header) ToProto() *tmproto.Header {
 		return nil
 	}
 	return &tmproto.Header{
-		Version:            h.Version.ToProto(),
+		Version:            h.Version,
 		ChainID:            h.ChainID,
 		Height:             h.Height,
 		Time:               h.Time,
@@ -203,10 +203,7 @@ func (h *Header) ToProto() *tmproto.Header {
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
 func (h *Header) FromProto(ph *tmproto.Header) error {
-	var (
-		blockID     BlockID
-		versionCons version.Consensus
-	)
+	var blockID BlockID
 	if h == nil {
 		h = &Header{}
 	}
@@ -218,9 +215,7 @@ func (h *Header) FromProto(ph *tmproto.Header) error {
 		return err
 	}
 
-	versionCons.FromProto(ph.Version)
-
-	h.Version = versionCons
+	h.Version = ph.Version
 	h.ChainID = ph.ChainID
 	h.Height = ph.Height
 	h.Time = ph.Time

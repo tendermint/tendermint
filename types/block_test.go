@@ -21,8 +21,8 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
+	"github.com/tendermint/tendermint/proto/version"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -676,8 +676,8 @@ func TestCommitProtoBuf(t *testing.T) {
 		c2      *Commit
 		expPass bool
 	}{
-		{"sucess 0 ", *commit, &Commit{}, true},
-		{"sucess 1", *commit, commit, true},
+		{"success 0 ", *commit, &Commit{}, true},
+		{"success 1", *commit, commit, true},
 		{"not equal", Commit{}, commit, false},
 		{"fail Commit ValidateBasic", Commit{}, &Commit{}, false},
 	}

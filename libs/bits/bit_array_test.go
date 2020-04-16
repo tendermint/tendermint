@@ -266,15 +266,15 @@ func TestJSONMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestProtoBuf(t *testing.T) {
+func TestBitArrayProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg     string
 		bA1     *BitArray
 		bA2     *BitArray
 		expPass bool
 	}{
-		{"sucess empty", &BitArray{}, &BitArray{}, true},
-		{"sucess nil", nil, nil, true},
+		{"success empty", &BitArray{}, &BitArray{}, true},
+		{"success nil", nil, nil, true},
 		{"success", NewBitArray(1), NewBitArray(1), true},
 		{"success", NewBitArray(1), NewBitArray(2), true},
 		{"nil BitArray 2", NewBitArray(1), nil, false},
