@@ -145,6 +145,11 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
+// FIXME Temporary interface for switching to fast sync, we should get rid of v0 and v1 reactors.
+type fastSyncReactor interface {
+	SwitchToFastSync(sm.State) error
+}
+
 // CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
 // the node's Switch.
 //
@@ -567,7 +572,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR *bcv0.BlockchainReactor, conR *consensus.Reactor,
+func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus.Reactor,
 	config *cfg.StateSyncConfig, fastSync bool, stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
@@ -673,9 +678,6 @@ func NewNode(config *cfg.Config,
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
-	}
-	if stateSync && fastSync && config.FastSync.Version != "v0" {
-		return nil, errors.New("state sync only supports fast sync v0 reactor")
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
@@ -879,8 +881,12 @@ func (n *Node) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		err := startStateSync(n.stateSyncReactor, n.bcReactor.(*bcv0.BlockchainReactor),
-			n.consensusReactor, n.config.StateSync, n.config.FastSyncMode, n.stateDB, n.blockStore)
+		bcR, ok := n.bcReactor.(fastSyncReactor)
+		if !ok {
+			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
+		}
+		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.config.StateSync,
+			n.config.FastSyncMode, n.stateDB, n.blockStore)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
