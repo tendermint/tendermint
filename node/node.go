@@ -681,7 +681,7 @@ func NewNode(config *cfg.Config,
 	}
 	// Don't check fastSync == true, since the v2 reactor has a bug where it fast syncs regardless.
 	if stateSync && config.FastSync.Version == "v2" {
-		return nil, errors.New("State sync is not supported with blockchain v2 reactor")
+		return nil, errors.New("state sync is not supported with blockchain v2 reactor")
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,

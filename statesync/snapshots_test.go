@@ -1,5 +1,3 @@
-// nolint: dupl
-
 package statesync
 
 import (
@@ -222,6 +220,7 @@ func TestSnapshotPool_Reject(t *testing.T) {
 	assert.True(t, added)
 }
 
+// nolint: dupl
 func TestSnapshotPool_RejectFormat(t *testing.T) {
 	lc := &mockLightClient{}
 	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
@@ -255,6 +254,7 @@ func TestSnapshotPool_RejectFormat(t *testing.T) {
 	assert.True(t, added)
 }
 
+// nolint: dupl
 func TestSnapshotPool_RejectHeight(t *testing.T) {
 	lc := &mockLightClient{}
 	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
