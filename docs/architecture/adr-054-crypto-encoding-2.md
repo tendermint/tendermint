@@ -2,7 +2,8 @@
 
 ## Changelog
 
-\*2020-2-27: Created
+2020-2-27: Created
+2020-4-16: Update
 
 ## Context
 
@@ -12,7 +13,8 @@ Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
 
 ## Decision
 
-When using the `oneof` protobuf type there are many times where one will have to manually switch over the possible messages and then pass them to the interface which is needed. By transitioning from a fixed size byte array (`[size]byte`) to byte slice's (`[]byte`) then this would enable the usage of the [cosmos-proto's](hhttps://github.com/regen-network/cosmos-proto#interface_type) interface type, which will generate these switch statements.
+Previously Tendermint defined all the key types for use in Tendermint and the Cosmos-SDK. Going forward the Cosmos-SDK will define its own protobuf type for keys. This will allow Tendermint to only define the keys that are being used in the codebase (ed25519).
+There is the the opportunity to only define the usage of ed25519 (`bytes`) and not have it be a `oneof`, but this would mean that the `oneof` work is only being postponed to a later date. When using the `oneof` protobuf type we will have to manually switch over the possible key types and then pass them to the interface which is needed.
 
 The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
 
@@ -20,27 +22,13 @@ Protobuf messages:
 
 ```proto
 message PubKey {
-  option (cosmos_proto.interface_type) = "*github.com/tendermint/tendermint/crypto.PubKey";
   oneof key {
-    bytes ed25519 = 1
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PubKey"];
-    bytes secp256k1 = 2
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PubKey"];
-    bytes sr25519 = 3
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PubKey"];
-    PubKeyMultiSigThreshold multisig = 4
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/multisig.PubKeyMultisigThreshold"];;
+    bytes ed25519 = 1;
   }
 
 message PrivKey {
-  option (cosmos_proto.interface_type) = "github.com/tendermint/tendermint/crypto.PrivKey";
   oneof sum {
-    bytes ed25519 = 1
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/ed25519.PrivKey"];
-    bytes secp256k1 = 2
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/secp256k1.PrivKey"];
-    bytes sr25519 = 3
-        [(gogoproto.casttype) = "github.com/tendermint/tendermint/crypto/sr25519.PrivKey"];;
+    bytes ed25519 = 1;
   }
 }
 ```
