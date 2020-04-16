@@ -233,14 +233,11 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 // FromProto sets a protobuf Block to the given pointer.
 // It returns an error if the block is invalid.
 func (b *Block) FromProto(bp tmproto.Block) error {
-	if b == nil {
-		b = &Block{LastCommit: &Commit{}}
-	}
 
 	b.Header.FromProto(&bp.Header)
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(&bp.Evidence)
-	b.LastCommit.FromProto(*bp.LastCommit)
+	b.LastCommit.FromProto(bp.LastCommit)
 
 	return b.ValidateBasic()
 }
@@ -430,9 +427,6 @@ func (cs CommitSig) ToProto() *tmproto.CommitSig {
 // FromProto sets a protobuf CommitSig to the given pointer.
 // It returns an error if the CommitSig is invalid.
 func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
-	if cs == nil {
-		cs = &CommitSig{}
-	}
 
 	cs.BlockIDFlag = csp.BlockIdFlag
 	cs.ValidatorAddress = csp.ValidatorAddress
@@ -637,7 +631,10 @@ func (commit *Commit) StringIndented(indent string) string {
 }
 
 // ToProto converts Commit to protobuf
-func (commit Commit) ToProto() *tmproto.Commit {
+func (commit *Commit) ToProto() *tmproto.Commit {
+	if commit == nil {
+		return nil
+	}
 	sigs := make([]tmproto.CommitSig, len(commit.Signatures))
 	for i := range commit.Signatures {
 		sigs[i] = *commit.Signatures[i].ToProto()
@@ -646,7 +643,7 @@ func (commit Commit) ToProto() *tmproto.Commit {
 	return &tmproto.Commit{
 		Height:     commit.Height,
 		Round:      commit.Round,
-		BlockID:    commit.BlockID.ToProto(),
+		BlockID:    *commit.BlockID.ToProto(),
 		Signatures: sigs,
 		Hash:       commit.hash,
 		BitArray:   commit.bitArray.ToProto(),
@@ -655,13 +652,16 @@ func (commit Commit) ToProto() *tmproto.Commit {
 
 // FromProto sets a protobuf Commit to the given pointer.
 // It returns an error if the commit is invalid.
-func (commit *Commit) FromProto(cp tmproto.Commit) error {
+func (commit *Commit) FromProto(cp *tmproto.Commit) error {
+	if cp == nil {
+		return nil
+	}
 	var (
 		blockID  BlockID
 		bitArray *tmbits.BitArray
 	)
 
-	if err := blockID.FromProto(cp.BlockID); err != nil {
+	if err := blockID.FromProto(&cp.BlockID); err != nil {
 		return err
 	}
 
@@ -752,7 +752,10 @@ func (sh SignedHeader) StringIndented(indent string) string {
 }
 
 // ToProto converts SignedHeader to protobuf
-func (sh SignedHeader) ToProto() tmproto.SignedHeader {
+func (sh *SignedHeader) ToProto() *tmproto.SignedHeader {
+	if sh == nil {
+		return nil
+	}
 	psh := new(tmproto.SignedHeader)
 	if sh.Header != nil {
 		psh.Header = sh.Header.ToProto()
@@ -761,15 +764,16 @@ func (sh SignedHeader) ToProto() tmproto.SignedHeader {
 		psh.Commit = sh.Commit.ToProto()
 	}
 
-	return *psh
+	return psh
 }
 
 // FromProto sets a protobuf SignedHeader to the given pointer.
 // It returns an error if the hader or the commit is invalid.
-func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
-	if sh == nil {
-		sh = &SignedHeader{}
+func (sh *SignedHeader) FromProto(shp *tmproto.SignedHeader) error {
+	if shp == nil {
+		return errors.New("nil SignedHeader")
 	}
+
 	var (
 		h Header
 		c Commit
@@ -783,7 +787,7 @@ func (sh *SignedHeader) FromProto(shp tmproto.SignedHeader) error {
 	}
 
 	if shp.Commit != nil {
-		if err := c.FromProto(*shp.Commit); err != nil {
+		if err := c.FromProto(shp.Commit); err != nil {
 			return err
 		}
 		sh.Commit = &c
@@ -1004,12 +1008,12 @@ func (blockID BlockID) String() string {
 }
 
 // ToProto converts BlockID to protobuf
-func (blockID *BlockID) ToProto() tmproto.BlockID {
+func (blockID *BlockID) ToProto() *tmproto.BlockID {
 	if blockID == nil {
-		return tmproto.BlockID{}
+		return nil
 	}
 
-	return tmproto.BlockID{
+	return &tmproto.BlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: blockID.PartsHeader.ToProto(),
 	}
@@ -1017,9 +1021,9 @@ func (blockID *BlockID) ToProto() tmproto.BlockID {
 
 // FromProto sets a protobuf BlockID to the given pointer.
 // It returns an error if the block id is invalid.
-func (blockID *BlockID) FromProto(bID tmproto.BlockID) error {
-	if blockID == nil {
-		blockID = &BlockID{}
+func (blockID *BlockID) FromProto(bID *tmproto.BlockID) error {
+	if bID == nil {
+		return errors.New("nil BlockID")
 	}
 
 	var ph PartSetHeader

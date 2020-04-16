@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -121,7 +122,8 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 // It returns an error if the public key is invalid.
 func (v *Validator) FromProto(vp *tmproto.Validator) error {
 	if vp == nil {
-		return nil
+		v = nil
+		return errors.New("nil validator")
 	}
 
 	pk, err := ce.PubKeyFromProto(vp.PubKey)
@@ -129,10 +131,11 @@ func (v *Validator) FromProto(vp *tmproto.Validator) error {
 		return err
 	}
 
-	v.Address = vp.Address
+	fmt.Println(vp, 2)
+	v.Address = vp.GetAddress()
 	v.PubKey = pk
-	v.VotingPower = vp.VotingPower
-	v.ProposerPriority = vp.ProposerPriority
+	v.VotingPower = vp.GetVotingPower()
+	v.ProposerPriority = vp.GetProposerPriority()
 
 	return nil
 }

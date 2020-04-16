@@ -106,7 +106,7 @@ func (p Proposal) ToProto() *tmproto.Proposal {
 		Height:    p.Height,
 		Round:     p.Round,
 		PolRound:  p.POLRound,
-		BlockID:   &blockID,
+		BlockID:   blockID,
 		Timestamp: p.Timestamp,
 		Signature: p.Signature,
 	}
@@ -122,7 +122,7 @@ func (p *Proposal) FromProto(pp tmproto.Proposal) error {
 	var blockID BlockID
 
 	// error checked in proposal ValidateBasic
-	_ = blockID.FromProto(*pp.BlockID)
+	_ = blockID.FromProto(pp.BlockID)
 
 	p.Type = pp.Type
 	p.Height = pp.Height

@@ -371,18 +371,21 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 // FromProto sets a protobuf ValidatorSet to the given pointer.
 // It returns an error if any of the validators from the set or the proposer
 // is invalid
-func (vals *ValidatorSet) FromProto(vp tmproto.ValidatorSet) error {
-	if vals == nil {
-		vals = &ValidatorSet{}
+func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
+	if vp == nil {
+		return nil
 	}
 
 	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
-		err := valsProto[i].FromProto(vp.Validators[i])
+		pv := valsProto[i]
+		err := pv.FromProto(vp.Validators[i])
 		if err != nil {
 			return err
 		}
 	}
+	vp.GetValidators()
+	vals.Validators = valsProto
 
 	err := vals.Proposer.FromProto(vp.GetProposer())
 	if err != nil {

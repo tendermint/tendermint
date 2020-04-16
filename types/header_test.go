@@ -44,21 +44,21 @@ func TestHeaderProto(t *testing.T) {
 	tc := []struct {
 		msg     string
 		h1      *Header
-		h2      *Header
 		expPass bool
 	}{
-		{"success", &h1, &h1, true},
-		{"failure empty Header", &Header{}, &Header{}, false},
+		{"success", &h1, true},
+		{"failure empty Header", &Header{}, false},
 	}
 
 	for _, tt := range tc {
 		tt := tt
 		t.Run(tt.msg, func(t *testing.T) {
 			pb := tt.h1.ToProto()
-			err := tt.h2.FromProto(pb)
+			h := new(Header)
+			err := h.FromProto(pb)
 			if tt.expPass {
 				require.NoError(t, err, tt.msg)
-				require.Equal(t, tt.h1, tt.h2, tt.msg)
+				require.Equal(t, tt.h1, h, tt.msg)
 			} else {
 				require.Error(t, err, tt.msg)
 			}

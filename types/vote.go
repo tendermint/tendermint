@@ -178,7 +178,7 @@ func (vote Vote) ToProto() *tmproto.Vote {
 		Type:             vote.Type,
 		Height:           vote.Height,
 		Round:            vote.Round,
-		BlockID:          vote.BlockID.ToProto(),
+		BlockID:          *vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
 		ValidatorIndex:   vote.ValidatorIndex,
@@ -195,7 +195,7 @@ func (vote *Vote) FromProto(pv tmproto.Vote) error {
 		vote = &Vote{}
 	}
 
-	if err := blockID.FromProto(pv.BlockID); err != nil {
+	if err := blockID.FromProto(&pv.BlockID); err != nil {
 		return err
 	}
 

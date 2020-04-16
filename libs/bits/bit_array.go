@@ -423,7 +423,7 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 // ToProto converts BitArray to protobuf
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	if bA == nil {
-		return &tmprotobits.BitArray{}
+		return nil
 	}
 
 	return &tmprotobits.BitArray{
