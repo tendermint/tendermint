@@ -239,7 +239,7 @@ func (b *Block) FromProto(bp tmproto.Block) error {
 
 	b.Header.FromProto(&bp.Header)
 	b.Data.FromProto(bp.Data)
-	b.Evidence.FromProto(bp.Evidence)
+	b.Evidence.FromProto(&bp.Evidence)
 	b.LastCommit.FromProto(*bp.LastCommit)
 
 	return b.ValidateBasic()
@@ -930,9 +930,9 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 }
 
 // FromProto sets a protobuf EvidenceData to the given pointer.
-func (data *EvidenceData) FromProto(eviData tmproto.EvidenceData) error {
-	if data == nil {
-		data = &EvidenceData{}
+func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
+	if eviData == nil {
+		return nil
 	}
 
 	eviBzs := make(EvidenceList, len(eviData.Evidence))

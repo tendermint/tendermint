@@ -179,18 +179,16 @@ func (h Header) ValidateBasic() error {
 
 // ToProto converts Header to protobuf
 func (h *Header) ToProto() *tmproto.Header {
+	if h == nil {
+		return nil
+	}
 
 	ph := tmproto.Header{
-		Version: h.Version,
-		ChainID: h.ChainID,
-		Time:    h.Time,
-		LastBlockID: tmproto.BlockID{
-			Hash: h.LastBlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  h.LastBlockID.PartsHeader.Hash,
-				Total: h.LastBlockID.PartsHeader.Total,
-			},
-		},
+		Version:            h.Version,
+		ChainID:            h.ChainID,
+		Height:             h.Height,
+		Time:               h.Time,
+		LastBlockID:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
@@ -210,9 +208,6 @@ func (h *Header) FromProto(ph *tmproto.Header) error {
 	var (
 		blockID BlockID
 	)
-	if h == nil {
-		h = &Header{}
-	}
 	if ph == nil {
 		return nil
 	}

@@ -34,7 +34,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 			protoVal = &tmproto.Validator{}
 		}
 
-		err = tc.v2.FromProto(*protoVal)
+		err = tc.v2.FromProto(protoVal)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, tc.v1, tc.v2, tc.msg)

@@ -82,7 +82,7 @@ func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
 
 func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
 	return tmproto.PartSetHeader{
-		Total: uint32(header.Total),
+		Total: header.Total,
 		Hash:  header.Hash,
 	}
 }

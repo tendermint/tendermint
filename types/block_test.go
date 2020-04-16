@@ -637,26 +637,19 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"success", data, &EvidenceData{}, true, true},
-		{"success empty", &EvidenceData{}, data, true, true},
-		// {"success Data 2 nil", data, nil, true, true},
+		{"success Data 1 empty", &EvidenceData{}, data, true, true},
 		{"fail nil Data", nil, nil, true, true},
 	}
 
 	for _, tc := range testCases {
 		protoData, err := tc.data1.ToProto()
-
 		if tc.expPass1 {
 			require.NoError(t, err, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
 
-		if protoData == nil {
-			protoData = &tmproto.EvidenceData{}
-		}
-
-		err = tc.data2.FromProto(*protoData)
-
+		err = tc.data2.FromProto(protoData)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, tc.data1, tc.data2, tc.msg)
@@ -676,8 +669,8 @@ func TestCommitProtoBuf(t *testing.T) {
 		c2      *Commit
 		expPass bool
 	}{
-		{"sucess 0 ", *commit, &Commit{}, true},
-		{"sucess 1", *commit, commit, true},
+		{"success 0 ", *commit, &Commit{}, true},
+		{"success 1", *commit, commit, true},
 		{"not equal", Commit{}, commit, false},
 		{"fail Commit ValidateBasic", Commit{}, &Commit{}, false},
 	}
