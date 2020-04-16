@@ -602,6 +602,9 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus
 		blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 
 		if fastSync {
+			// FIXME Very ugly to have these metrics bleed through here.
+			conR.Metrics.StateSyncing.Set(0)
+			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
 				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
@@ -728,6 +731,12 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
+	// FIXME We need to update metrics here, since other reactors don't have access to them.
+	if stateSync {
+		csMetrics.StateSyncing.Set(1)
+	} else if fastSync {
+		csMetrics.FastSyncing.Set(1)
+	}
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
