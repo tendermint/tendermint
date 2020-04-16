@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -20,17 +21,19 @@ func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
+	vp, err := vals.ToProto()
+	require.NoError(t, err)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
-	sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
+	sm.SaveValidatorsInfo(stateDB, 1, 1, vp)
+	sm.SaveValidatorsInfo(stateDB, 2, 1, vp)
 	loadedVals, err := sm.LoadValidators(stateDB, 2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vp)
 
 	loadedVals, err = sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval)
 	require.NoError(t, err)
@@ -48,8 +51,24 @@ func BenchmarkLoadValidators(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	state.Validators = genValSet(valSetSize)
-	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
+	gvs := genValSet(valSetSize)
+	gvspb, err := gvs.ToProto()
+	if err != nil {
+		b.Fatal(err)
+	}
+	state.Validators = gvspb
+	var sv types.ValidatorSet
+	err = sv.FromProto(state.Validators)
+	if err != nil {
+		b.Fatal(err)
+	}
+	//TODO: something better?
+	sv.CopyIncrementProposerPriority(1)
+	svpb, err := sv.ToProto()
+	if err != nil {
+		b.Fatal(err)
+	}
+	state.NextValidators = svpb
 	sm.SaveState(stateDB, state)
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
@@ -94,9 +113,9 @@ func TestPruneStates(t *testing.T) {
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: []byte{1, 2, 3}, VotingPower: 100}
-			validatorSet := &types.ValidatorSet{
-				Validators: []*types.Validator{validator},
+			validator := &tmproto.Validator{Address: []byte{1, 2, 3}, VotingPower: 100}
+			validatorSet := &tmproto.ValidatorSet{
+				Validators: []*tmproto.Validator{validator},
 				Proposer:   validator,
 			}
 			valsChanged := int64(0)
@@ -110,7 +129,7 @@ func TestPruneStates(t *testing.T) {
 					paramsChanged = h
 				}
 
-				sm.SaveState(db, sm.State{
+				sm.SaveState(db, tmstate.State{
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,

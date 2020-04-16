@@ -284,7 +284,7 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
 type testSim struct {
-	GenesisState sm.State
+	GenesisState tmstate.State
 	Config       *cfg.Config
 	Chain        []*types.Block
 	Commits      []*types.Commit
@@ -632,7 +632,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var commits []*types.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
-	var genisisState sm.State
+	var genisisState tmstate.State
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
@@ -738,7 +738,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 }
 
-func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(stateDB dbm.DB, st tmstate.State, blk *types.Block, proxyApp proxy.AppConns) tmstate.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 

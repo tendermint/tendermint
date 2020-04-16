@@ -55,15 +55,6 @@ func DefaultValidatorParams() tmproto.ValidatorParams {
 	}
 }
 
-func IsValidPubkeyType(params tmproto.ValidatorParams, pubkeyType string) bool {
-	for i := 0; i < len(params.PubKeyTypes); i++ {
-		if params.PubKeyTypes[i] == pubkeyType {
-			return true
-		}
-	}
-	return false
-}
-
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
 func ValidateConsensusParams(params tmproto.ConsensusParams) error {
@@ -139,7 +130,7 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 	res := params // explicit copy
 
 	if params2 == nil {
-		return *res
+		return res
 	}
 
 	// we must defensively consider any structs may be nil
@@ -156,5 +147,5 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
 	}
-	return *res
+	return res
 }

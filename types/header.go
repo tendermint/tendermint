@@ -53,6 +53,7 @@ func (h *Header) Populate(
 	consensusHash, appHash, lastResultsHash []byte,
 	proposerAddress Address,
 ) {
+
 	h.Version = version
 	h.ChainID = chainID
 	h.Time = timestamp

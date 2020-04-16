@@ -42,7 +42,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, uint64)
+	SwitchToConsensus(tmstate.State, uint64)
 }
 
 type peerError struct {
@@ -59,7 +59,7 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	// immutable
-	initialState sm.State
+	initialState tmstate.State
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
@@ -316,7 +316,11 @@ FOR_LOOP:
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommit(
+			var vals types.ValidatorSet
+			if err := vals.FromProto(state.Validators); err != nil {
+				panic(err)
+			}
+			err := vals.VerifyCommit(
 				chainID, firstID, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
@@ -344,7 +348,8 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+				fid := firstID.ToProto()
+				state, _, err = bcR.blockExec.ApplyBlock(state, *fid, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

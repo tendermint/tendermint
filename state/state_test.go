@@ -44,14 +44,14 @@ func TestStateCopy(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	stateCopy := state.Copy()
+	stateCopy := sm.CopyState(state)
 
-	assert.True(state.Equals(stateCopy),
+	assert.True(state.Equal(stateCopy),
 		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
-	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
+	assert.False(state.Equal(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
 }
 

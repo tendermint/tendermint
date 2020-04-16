@@ -32,11 +32,22 @@ message ConsensusParamsInfo {
   int64                                  last_height_changed = 2;
 }
 
+// Version is for versioning the State.
+// It holds the Block and App version needed for making blocks,
+// and the software version to support upgrades to the format of
+// the State as stored on disk.
 message Version {
   tendermint.proto.version.Consensus consensus = 1 [(gogoproto.nullable) = false];
   string                             software  = 2;
 }
 
+// State is a short description of the latest committed block of the Tendermint consensus.
+// It keeps all information necessary to validate new blocks,
+// including the last validator set and the consensus params.
+// All fields are exposed so the struct can be easily serialized,
+// but none of them should be mutated directly.
+// Instead, use state.Copy() or state.NextState(...).
+// NOTE: not goroutine-safe.
 message State {
   Version version = 1 [(gogoproto.nullable) = false];
 
@@ -63,7 +74,7 @@ message State {
 
   // Consensus parameters used for validating blocks.
   // Changes returned by EndBlock and updated after Commit.
-  tendermint.proto.types.ConsensusParams consensus_params = 10 [(gogoproto.nullable) = false];
+  tendermint.proto.types.ConsensusParams consensus_params                     = 10 [(gogoproto.nullable) = false];
   int64                                  last_height_consensus_params_changed = 11;
 
   // Merkle root of the results from executing prev block

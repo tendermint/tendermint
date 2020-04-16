@@ -199,6 +199,10 @@ func (m *ConsensusParamsInfo) GetLastHeightChanged() int64 {
 	return 0
 }
 
+// Version is for versioning the State.
+// It holds the Block and App version needed for making blocks,
+// and the software version to support upgrades to the format of
+// the State as stored on disk.
 type Version struct {
 	Consensus version.Consensus `protobuf:"bytes,1,opt,name=consensus,proto3" json:"consensus"`
 	Software  string            `protobuf:"bytes,2,opt,name=software,proto3" json:"software,omitempty"`

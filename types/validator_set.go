@@ -215,6 +215,18 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 	return valsCopy
 }
 
+// Makes a copy of the validator list.
+func validatorListProtoCopy(valsList []*tmproto.Validator) []*tmproto.Validator {
+	if valsList == nil {
+		return nil
+	}
+	valsCopy := make([]*tmproto.Validator, len(valsList))
+	for i, val := range valsList {
+		valsCopy[i] = CopyProtoVal(val)
+	}
+	return valsCopy
+}
+
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
@@ -342,13 +354,13 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 
 	vsp.TotalVotingPower = vals.TotalVotingPower()
 	if vals.Validators != nil {
-		valsProto := make([]tmproto.Validator, len(vals.Validators))
+		valsProto := make([]*tmproto.Validator, len(vals.Validators))
 		for i := 0; i < len(vals.Validators); i++ {
 			valp, err := vals.Validators[i].ToProto()
 			if err != nil {
 				return nil, err
 			}
-			valsProto[i] = *valp
+			valsProto[i] = valp
 		}
 
 		vsp.Validators = valsProto
@@ -373,7 +385,7 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
 		vi := Validator{}
-		err := vi.FromProto(vp.Validators[i])
+		err := vi.FromProto(*vp.Validators[i])
 		if err != nil {
 			return err
 		}
@@ -382,7 +394,7 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 	}
 
 	if isTypedNil(vp.Proposer) {
-		err := vals.Proposer.FromProto(vp.GetProposer())
+		err := vals.Proposer.FromProto(*vp.GetProposer())
 		if err != nil {
 			return err
 		}
@@ -929,6 +941,14 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
+}
+
+func CopyProtoValSet(vals *tmproto.ValidatorSet) *tmproto.ValidatorSet {
+	return &tmproto.ValidatorSet{
+		Validators:       validatorListProtoCopy(vals.Validators),
+		Proposer:         vals.Proposer,
+		TotalVotingPower: vals.TotalVotingPower,
+	}
 }
 
 //----------------------------------------

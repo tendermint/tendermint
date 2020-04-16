@@ -8,6 +8,7 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
+	grpc1 "github.com/gogo/protobuf/grpc"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	golang_proto "github.com/golang/protobuf/proto"
@@ -4948,10 +4949,10 @@ type ABCIApplicationClient interface {
 }
 
 type aBCIApplicationClient struct {
-	cc *grpc.ClientConn
+	cc grpc1.ClientConn
 }
 
-func NewABCIApplicationClient(cc *grpc.ClientConn) ABCIApplicationClient {
+func NewABCIApplicationClient(cc grpc1.ClientConn) ABCIApplicationClient {
 	return &aBCIApplicationClient{cc}
 }
 
@@ -5107,7 +5108,7 @@ func (*UnimplementedABCIApplicationServer) EndBlock(ctx context.Context, req *Re
 	return nil, status.Errorf(codes.Unimplemented, "method EndBlock not implemented")
 }
 
-func RegisterABCIApplicationServer(s *grpc.Server, srv ABCIApplicationServer) {
+func RegisterABCIApplicationServer(s grpc1.Server, srv ABCIApplicationServer) {
 	s.RegisterService(&_ABCIApplication_serviceDesc, srv)
 }
 

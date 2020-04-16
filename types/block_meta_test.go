@@ -17,7 +17,7 @@ func TestBlockMeta_ProtoBuf(t *testing.T) {
 		bm2     *BlockMeta
 		expPass bool
 	}{
-		{"success emtpy", BlockMeta{}, &BlockMeta{}, true},
+		{"success empty", BlockMeta{}, &BlockMeta{}, true},
 		{"success", BlockMeta{
 			BlockID:   BlockID{},
 			BlockSize: 1,

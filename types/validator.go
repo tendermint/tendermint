@@ -131,6 +131,13 @@ func (v *Validator) FromProto(vp tmproto.Validator) error {
 	return nil
 }
 
+// Creates a new copy of the validator so we can mutate ProposerPriority.
+// Panics if the validator is nil.
+func CopyProtoVal(v *tmproto.Validator) *tmproto.Validator {
+	vCopy := *v
+	return &vCopy
+}
+
 //----------------------------------------
 // RandValidator
 
