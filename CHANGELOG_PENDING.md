@@ -14,7 +14,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
-  - [abci] [\#4645](https://github.com/tendermint/tendermint/pull/4645) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots.
+  - [abci] [\#4645](https://github.com/tendermint/tendermint/pull/4645) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0.
 
 - P2P Protocol
 
