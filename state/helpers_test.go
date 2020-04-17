@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -19,7 +20,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params types.ConsensusParams
+	params tmproto.ConsensusParams
 }
 
 // always returns true if asked if any evidence was already committed.
@@ -154,14 +155,14 @@ func makeConsensusParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
-) types.ConsensusParams {
-	return types.ConsensusParams{
-		Block: types.BlockParams{
+) tmproto.ConsensusParams {
+	return tmproto.ConsensusParams{
+		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: types.EvidenceParams{
+		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 		},
@@ -217,7 +218,7 @@ func makeHeaderPartsResponsesValPowerChange(
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,
-	params types.ConsensusParams,
+	params tmproto.ConsensusParams,
 ) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)

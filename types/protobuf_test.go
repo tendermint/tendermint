@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -68,7 +68,7 @@ func TestABCIValidators(t *testing.T) {
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
 	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := cp.Update(abciCP)
+	cp2 := UpdateConsensusParams(*cp, abciCP)
 
 	assert.Equal(t, *cp, cp2)
 }

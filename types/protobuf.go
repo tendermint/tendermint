@@ -46,10 +46,7 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) tmproto.Header {
 	return tmproto.Header{
-		Version: tmproto.Version{
-			Block: header.Version.Block.Uint64(),
-			App:   header.Version.App.Uint64(),
-		},
+		Version: header.Version,
 		ChainID: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
@@ -112,19 +109,14 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
+func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
 			MaxBytes: params.Block.MaxBytes,
 			MaxGas:   params.Block.MaxGas,
 		},
-		Evidence: &abci.EvidenceParams{
-			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
-			MaxAgeDuration:  params.Evidence.MaxAgeDuration,
-		},
-		Validator: &abci.ValidatorParams{
-			PubKeyTypes: params.Validator.PubKeyTypes,
-		},
+		Evidence:  &params.Evidence,
+		Validator: &params.Validator,
 	}
 }
 

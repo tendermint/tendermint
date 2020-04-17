@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	dbm "github.com/tendermint/tm-db"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmstring "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -57,7 +57,7 @@ func IndexAllEvents() func(*TxIndex) {
 
 // Get gets transaction from the TxIndex storage and returns it or nil if the
 // transaction is not found.
-func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
+func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	if len(hash) == 0 {
 		return nil, txindex.ErrorEmptyHash
 	}
@@ -70,8 +70,8 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, nil
 	}
 
-	txResult := new(types.TxResult)
-	err = cdc.UnmarshalBinaryBare(rawBytes, &txResult)
+	txResult := new(abci.TxResult)
+	err = txResult.Unmarshal(rawBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error reading TxResult: %v", err)
 	}
@@ -88,7 +88,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	defer storeBatch.Close()
 
 	for _, result := range b.Ops {
-		hash := result.Tx.Hash()
+		hash := types.Tx(result.Tx).Hash()
 
 		// index tx by events
 		txi.indexEvents(result, hash, storeBatch)
@@ -99,7 +99,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		}
 
 		// index tx by hash
-		rawBytes, err := cdc.MarshalBinaryBare(result)
+		rawBytes, err := result.Marshal()
 		if err != nil {
 			return err
 		}
@@ -114,11 +114,11 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 // that indexed from the tx's events is a composite of the event type and the
 // respective attribute's key delimited by a "." (eg. "account.number").
 // Any event with an empty type is not indexed.
-func (txi *TxIndex) Index(result *types.TxResult) error {
+func (txi *TxIndex) Index(result *abci.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Close()
 
-	hash := result.Tx.Hash()
+	hash := types.Tx(result.Tx).Hash()
 
 	// index tx by events
 	txi.indexEvents(result, hash, b)
@@ -129,7 +129,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	}
 
 	// index tx by hash
-	rawBytes, err := cdc.MarshalBinaryBare(result)
+	rawBytes, err := result.Marshal()
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	return nil
 }
 
-func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.SetDeleter) {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -171,11 +171,11 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 //
 // Search will exit early and return any result fetched so far,
 // when a message is received on the context chan.
-func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResult, error) {
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
 	// Potentially exit early.
 	select {
 	case <-ctx.Done():
-		results := make([]*types.TxResult, 0)
+		results := make([]*abci.TxResult, 0)
 		return results, nil
 	default:
 	}
@@ -197,11 +197,11 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResu
 		res, err := txi.Get(hash)
 		switch {
 		case err != nil:
-			return []*types.TxResult{}, errors.Wrap(err, "error while retrieving the result")
+			return []*abci.TxResult{}, errors.Wrap(err, "error while retrieving the result")
 		case res == nil:
-			return []*types.TxResult{}, nil
+			return []*abci.TxResult{}, nil
 		default:
-			return []*types.TxResult{res}, nil
+			return []*abci.TxResult{res}, nil
 		}
 	}
 
@@ -254,7 +254,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResu
 		}
 	}
 
-	results := make([]*types.TxResult, 0, len(filteredHashes))
+	results := make([]*abci.TxResult, 0, len(filteredHashes))
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
@@ -595,7 +595,7 @@ func extractValueFromKey(key []byte) string {
 	return parts[1]
 }
 
-func keyForEvent(key string, value []byte, result *types.TxResult) []byte {
+func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s/%s/%d/%d",
 		key,
 		value,
@@ -604,7 +604,7 @@ func keyForEvent(key string, value []byte, result *types.TxResult) []byte {
 	))
 }
 
-func keyForHeight(result *types.TxResult) []byte {
+func keyForHeight(result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s/%d/%d/%d",
 		types.TxHeightKey,
 		result.Height,

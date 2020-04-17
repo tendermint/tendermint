@@ -9,8 +9,8 @@ import "crypto/merkle/merkle.proto";
 import "libs/kv/types.proto";
 import "proto/types/types.proto";
 import "proto/crypto/types.proto";
+import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/duration.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
@@ -63,8 +63,8 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time     = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                    chain_id = 2;
+  google.protobuf.Timestamp time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    chain_id         = 2;
   ConsensusParams           consensus_params = 3;
   repeated ValidatorUpdate  validators       = 4 [(gogoproto.nullable) = false];
   bytes                     app_state_bytes  = 5;
@@ -219,9 +219,9 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockParams     block     = 1;
-  EvidenceParams  evidence  = 2;
-  ValidatorParams validator = 3;
+  BlockParams                            block     = 1;
+  tendermint.proto.types.EvidenceParams  evidence  = 2;
+  tendermint.proto.types.ValidatorParams validator = 3;
 }
 
 // BlockParams contains limits on the block size.
@@ -230,18 +230,6 @@ message BlockParams {
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-}
-
-message EvidenceParams {
-  // Note: must be greater than 0
-  int64                    max_age_num_blocks = 1;
-  google.protobuf.Duration max_age_duration   = 2
-      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
-}
-
-// ValidatorParams contains limits on validators.
-message ValidatorParams {
-  repeated string pub_key_types = 1;
 }
 
 message LastCommitInfo {
@@ -253,6 +241,16 @@ message Event {
   string   type                               = 1;
   repeated tendermint.libs.kv.Pair attributes = 2
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
+}
+
+// TxResult contains results of executing the transaction.
+//
+// One usage is indexing transaction results.
+message TxResult {
+  int64             height = 1;
+  uint32            Index  = 2;
+  bytes             tx     = 3;
+  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
@@ -278,10 +276,10 @@ message VoteInfo {
 }
 
 message Evidence {
-  string                    type      = 1;
-  Validator                 validator = 2 [(gogoproto.nullable) = false];
-  int64                     height    = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    type               = 1;
+  Validator                 validator          = 2 [(gogoproto.nullable) = false];
+  int64                     height             = 3;
+  google.protobuf.Timestamp time               = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   int64                     total_voting_power = 5;
 }
 
