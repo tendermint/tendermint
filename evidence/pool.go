@@ -106,7 +106,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
-	evpool.cleanupValToLastHeight(block.Height)
+	evpool.updateValToLastHeight(block.Height, state)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool. If
@@ -223,7 +223,17 @@ func (evpool *Pool) removeEvidence(
 	}
 }
 
-func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
+func evMapKey(ev types.Evidence) string {
+	return string(ev.Hash())
+}
+
+func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
+	// Update current validators & add new ones.
+	for _, val := range state.Validators.Validators {
+		evpool.valToLastHeight[string(val.Address)] = blockHeight
+	}
+
+	// Remove validators outside of MaxAgeNumBlocks & MaxAgeDuration.
 	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
 		valSet, err := sm.LoadValidators(evpool.stateDB, removeHeight)
@@ -236,10 +246,6 @@ func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 			}
 		}
 	}
-}
-
-func evMapKey(ev types.Evidence) string {
-	return string(ev.Hash())
 }
 
 func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap {
