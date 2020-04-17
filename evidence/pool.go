@@ -223,8 +223,6 @@ func (evpool *Pool) removeEvidence(
 	}
 }
 
-func (evpool *Pool) removePendingEvidence()
-
 func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
