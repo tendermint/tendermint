@@ -41,16 +41,24 @@ type valToLastHeightMap map[string]int64
 
 func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 	var (
-		store = NewStore(evidenceDB)
-		state = sm.LoadState(stateDB)
+		evidenceStore = NewStore(evidenceDB)
+		state         = sm.LoadState(stateDB)
+		evidenceList  = clist.New()
 	)
+
+	// if pending evidence already in db, in event of prior failure, then load it to the evidenceList
+	evList := evidenceStore.listEvidence(baseKeyPending, -1)
+	for _, ev := range evList {
+		evidenceList.PushBack(ev)
+	}
+
 	return &Pool{
 		stateDB:         stateDB,
 		blockStore:      blockStore,
 		state:           state,
 		logger:          log.NewNopLogger(),
-		store:           store,
-		evidenceList:    clist.New(),
+		store:           evidenceStore,
+		evidenceList:    evidenceList,
 		valToLastHeight: buildValToLastHeightMap(state, stateDB),
 	}
 }
