@@ -919,7 +919,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 // ToProto converts EvidenceData to protobuf
 func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	if data == nil {
-		return nil, nil
+		return nil, errors.New("nil evidence data")
 	}
 
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))

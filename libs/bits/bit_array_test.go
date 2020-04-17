@@ -270,23 +270,20 @@ func TestBitArrayProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg     string
 		bA1     *BitArray
-		bA2     *BitArray
 		expPass bool
 	}{
-		{"success empty", &BitArray{}, &BitArray{}, true},
-		{"success nil", nil, nil, true},
-		{"success", NewBitArray(1), NewBitArray(1), true},
-		{"success", NewBitArray(1), NewBitArray(2), true},
-		{"nil BitArray 2", NewBitArray(1), nil, false},
-		{"nil BitArray 1", nil, NewBitArray(1), false},
+		{"success empty", &BitArray{}, true},
+		{"success", NewBitArray(1), true},
+		{"success", NewBitArray(2), true},
+		{"negative", NewBitArray(-1), false},
 	}
 	for _, tc := range testCases {
 		protoBA := tc.bA1.ToProto()
-		tc.bA2.FromProto(protoBA)
+		fmt.Println(protoBA)
+		ba := new(BitArray)
+		ba.FromProto(protoBA)
 		if tc.expPass {
-			require.Equal(t, tc.bA1, tc.bA2, tc.msg)
-		} else {
-			require.NotEqual(t, tc.bA1, tc.bA2, tc.msg)
+			require.Equal(t, tc.bA1, ba, tc.msg)
 		}
 	}
 }

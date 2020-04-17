@@ -651,7 +651,7 @@ func TestDataProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", data, true},
-		{"data2", data2, true},
+		{"success data2", data2, true},
 	}
 	for _, tc := range testCases {
 		protoData := tc.data1.ToProto()
@@ -677,7 +677,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	}{
 		{"success", data, true, true},
 		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
-		{"fail nil Data", nil, true, false},
+		{"fail nil Data", nil, false, false},
 	}
 
 	for _, tc := range testCases {
@@ -708,8 +708,8 @@ func TestCommitProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", commit, true},
-		{"empty commit", &Commit{}, false},
-		{"success Commit ValidateBasic", nil, false},
+		{"fail empty commit", &Commit{}, false},
+		{"fail Commit nil", nil, false},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -740,7 +740,7 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	}{
 		{"empty SignedHeader 2", &SignedHeader{}, true},
 		{"success", &sh, true},
-		{"success equal", nil, false},
+		{"failure nil", nil, false},
 	}
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
