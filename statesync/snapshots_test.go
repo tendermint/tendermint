@@ -9,7 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/statesync/mocks"
 )
 
 func TestSnapshot_Hash(t *testing.T) {
@@ -40,16 +40,14 @@ func TestSnapshot_Hash(t *testing.T) {
 }
 
 func TestSnapshotPool_Add(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", int64(2), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", uint64(1)).Return([]byte("app_hash"), nil)
 
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(p2p.ID("id"))
 
 	// Adding to the pool should work
-	pool := newSnapshotPool(lc)
+	pool := newSnapshotPool(stateSource)
 	added, err := pool.Add(peer, &snapshot{
 		Height:      1,
 		Format:      1,
@@ -74,15 +72,13 @@ func TestSnapshotPool_Add(t *testing.T) {
 	require.NotNil(t, snapshot)
 	assert.Equal(t, []byte("app_hash"), snapshot.trustedAppHash)
 
-	lc.AssertExpectations(t)
+	stateSource.AssertExpectations(t)
 }
 
 func TestSnapshotPool_Best_Ranked(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 
 	// snapshots in expected order (best to worst). Highest height wins, then highest format.
 	// Snapshots with different chunk hashes are considered different, and the most peers is
@@ -125,11 +121,9 @@ func TestSnapshotPool_Best_Ranked(t *testing.T) {
 }
 
 func TestSnapshotPool_GetPeer(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 
 	s := &snapshot{Height: 1, Format: 1, ChunkHashes: [][]byte{{1}}}
 	peerA := &p2pmocks.Peer{}
@@ -163,11 +157,9 @@ func TestSnapshotPool_GetPeer(t *testing.T) {
 }
 
 func TestSnapshotPool_GetPeers(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 
 	s := &snapshot{Height: 1, Format: 1, ChunkHashes: [][]byte{{1}}}
 	peerA := &p2pmocks.Peer{}
@@ -189,11 +181,9 @@ func TestSnapshotPool_GetPeers(t *testing.T) {
 }
 
 func TestSnapshotPool_Reject(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(p2p.ID("id"))
 
@@ -222,11 +212,9 @@ func TestSnapshotPool_Reject(t *testing.T) {
 
 // nolint: dupl
 func TestSnapshotPool_RejectFormat(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(p2p.ID("id"))
 
@@ -256,11 +244,9 @@ func TestSnapshotPool_RejectFormat(t *testing.T) {
 
 // nolint: dupl
 func TestSnapshotPool_RejectHeight(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(p2p.ID("id"))
 
@@ -289,11 +275,9 @@ func TestSnapshotPool_RejectHeight(t *testing.T) {
 }
 
 func TestSnapshotPool_RemovePeer(t *testing.T) {
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", mock.Anything, mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{AppHash: []byte("app_hash")},
-	}, nil)
-	pool := newSnapshotPool(lc)
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	pool := newSnapshotPool(stateSource)
 
 	peerA := &p2pmocks.Peer{}
 	peerA.On("ID").Return(p2p.ID("a"))

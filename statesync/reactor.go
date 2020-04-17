@@ -8,7 +8,6 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -242,35 +241,34 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 
 // Sync runs a state sync, returning the new state and last commit at the snapshot height.
 // The caller must store the state and commit in the state database and block store.
-func (r *Reactor) Sync(initialState sm.State, lc *lite.Client) (sm.State, *types.Commit, error) {
+func (r *Reactor) Sync(stateSource StateSource) (sm.State, *types.Commit, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
-		return initialState, nil, errors.New("a state sync is already in progress")
+		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, lc)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateSource)
 	r.mtx.Unlock()
-
 	defer func() {
 		r.mtx.Lock()
 		r.syncer = nil
 		r.mtx.Unlock()
 	}()
 
-	// Wait for snapshots to be discovered before starting the sync. If there are no viable
+	// Wait for snapshots to be discovered before starting the sync. If there are no suitable
 	// snapshots available, wait to discover some more.
 	for {
 		r.Logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 
-		newState, commit, err := r.syncer.Sync(initialState)
-		if err == errNoSnapshots {
+		newState, commit, err := r.syncer.Sync()
+		switch {
+		case err == errNoSnapshots:
 			continue
+		case err != nil:
+			return sm.State{}, nil, err
+		default:
+			return newState, commit, nil
 		}
-		if err != nil {
-			return initialState, nil, err
-		}
-
-		return newState, commit, nil
 	}
 }

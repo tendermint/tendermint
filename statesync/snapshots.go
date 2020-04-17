@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -44,9 +43,7 @@ func (s *snapshot) Hash() snapshotHash {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
-	// light client is not concurrency-safe, but we don't want to lock entire pool
-	lcMutex sync.Mutex
-	lc      lightClient
+	stateSource StateSource
 
 	sync.Mutex
 	snapshots     map[snapshotHash]*snapshot
@@ -64,9 +61,9 @@ type snapshotPool struct {
 }
 
 // newSnapshotPool creates a new snapshot pool.
-func newSnapshotPool(lc lightClient) *snapshotPool {
+func newSnapshotPool(stateSource StateSource) *snapshotPool {
 	return &snapshotPool{
-		lc:                lc,
+		stateSource:       stateSource,
 		snapshots:         make(map[snapshotHash]*snapshot),
 		snapshotPeers:     make(map[snapshotHash]map[p2p.ID]p2p.Peer),
 		formatIndex:       make(map[uint32]map[snapshotHash]bool),
@@ -82,7 +79,7 @@ func newSnapshotPool(lc lightClient) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	appHash, err := p.fetchAppHash(snapshot.Height)
+	appHash, err := p.stateSource.AppHash(snapshot.Height)
 	if err != nil {
 		return false, err
 	}
@@ -131,9 +128,7 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	return true, nil
 }
 
-// Best returns the "best" currently known snapshot, if any. The current heuristic is very naïve,
-// preferring the snapshot with the greatest height, then greatest format, then greatest number
-// of peers. This can be improved quite a lot.
+// Best returns the "best" currently known snapshot, if any.
 func (p *snapshotPool) Best() *snapshot {
 	ranked := p.Ranked()
 	if len(ranked) == 0 {
@@ -167,7 +162,9 @@ func (p *snapshotPool) GetPeers(snapshot *snapshot) []p2p.Peer {
 	return peers
 }
 
-// Ranked returns a list of snapshots, ordered by rank
+// Ranked returns a list of snapshots, ordered by rank. The current heuristic is very naïve,
+// preferring the snapshot with the greatest height, then greatest format, then greatest number of
+// peers. This can be improved quite a lot.
 func (p *snapshotPool) Ranked() []*snapshot {
 	p.Lock()
 	defer p.Unlock()
@@ -244,19 +241,6 @@ func (p *snapshotPool) RemovePeer(peer p2p.Peer) {
 		}
 	}
 	delete(p.peerIndex, peer.ID())
-}
-
-// fetchAppHash fetches the app hash for a given height using the light client.
-func (p *snapshotPool) fetchAppHash(height uint64) ([]byte, error) {
-	p.lcMutex.Lock()
-	defer p.lcMutex.Unlock()
-
-	// We have to fetch the next height, which contains the app hash for the previous height.
-	header, err := p.lc.VerifyHeaderAtHeight(int64(height+1), time.Now())
-	if err != nil {
-		return nil, err
-	}
-	return header.AppHash, nil
 }
 
 // removeSnapshot removes a snapshot. The caller must hold the mutex lock.

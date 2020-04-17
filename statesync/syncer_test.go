@@ -15,15 +15,38 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/statesync/mocks"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestSyncer(t *testing.T) {
 	state := sm.State{
-		ChainID:                          "chain",
-		ConsensusParams:                  types.ConsensusParams{Block: types.DefaultBlockParams()},
+		ChainID: "chain",
+		Version: sm.Version{
+			Consensus: version.Consensus{
+				Block: version.BlockProtocol,
+				App:   0,
+			},
+
+			Software: version.TMCoreSemVer,
+		},
+
+		LastBlockHeight: 1,
+		LastBlockID:     types.BlockID{Hash: []byte("blockhash")},
+		LastBlockTime:   time.Now(),
+		LastResultsHash: []byte("last_results_hash"),
+		AppHash:         []byte("app_hash"),
+
+		LastValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val1")}},
+		Validators:     &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val2")}},
+		NextValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val3")}},
+
+		ConsensusParams:                  *types.DefaultConsensusParams(),
 		LastHeightConsensusParamsChanged: 1,
 	}
+	commit := &types.Commit{BlockID: types.BlockID{Hash: []byte("blockhash")}}
+
 	chunks := []*chunk{
 		{Height: 1, Format: 1, Index: 0, Body: []byte{1, 1, 0}},
 		{Height: 1, Format: 1, Index: 1, Body: []byte{1, 1, 1}},
@@ -34,40 +57,22 @@ func TestSyncer(t *testing.T) {
 		s.ChunkHashes = append(s.ChunkHashes, c.Hash())
 	}
 
+	stateSource := &mocks.StateSource{}
+	stateSource.On("AppHash", uint64(1)).Return(state.AppHash, nil)
+	stateSource.On("AppHash", uint64(2)).Return([]byte("app_hash_2"), nil)
+	stateSource.On("Commit", uint64(1)).Return(commit, nil)
+	stateSource.On("State", uint64(1)).Return(state, nil)
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", int64(1), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{
-			Height: 1,
-			Time:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-		Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("blockid")}},
-	}, nil)
-	lc.On("VerifyHeaderAtHeight", int64(2), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{Height: 2, AppHash: []byte("app_hash"), LastResultsHash: []byte("last_results_hash")},
-	}, nil)
-	lc.On("VerifyHeaderAtHeight", int64(3), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{Height: 3, AppHash: []byte("app_hash_2")},
-	}, nil)
-	lc.On("TrustedValidatorSet", int64(1)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val1")},
-	}, int64(1), nil)
-	lc.On("TrustedValidatorSet", int64(2)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val2")},
-	}, int64(2), nil)
-	lc.On("TrustedValidatorSet", int64(3)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val3")},
-	}, int64(3), nil)
 
-	sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, lc)
+	sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource)
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := sync.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Body: []byte{1}})
 	require.Error(t, err)
 
 	// With no snapshots, starting a sync should error
-	_, _, err = sync.Sync(state)
+	_, _, err = sync.Sync()
 	require.Error(t, err)
 	assert.Equal(t, errNoSnapshots, err)
 
@@ -148,38 +153,26 @@ func TestSyncer(t *testing.T) {
 		Chunk: []byte{1, 1, 2},
 	}).Return(&abci.ResponseApplySnapshotChunk{Applied: true}, nil)
 	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
+		AppVersion:       9,
+		LastBlockHeight:  1,
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
-	newState, _, err := sync.Sync(state)
+	newState, lastCommit, err := sync.Sync()
 	require.NoError(t, err)
 
-	assert.Equal(t, sm.State{
-		ChainID:         state.ChainID,
-		LastBlockHeight: 1,
-		LastBlockTime:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-		LastBlockID:     types.BlockID{Hash: []byte("blockid")},
-		AppHash:         []byte("app_hash"),
-		LastResultsHash: []byte("last_results_hash"),
-		LastValidators: &types.ValidatorSet{
-			Proposer: &types.Validator{Address: []byte("val1")},
-		},
-		Validators: &types.ValidatorSet{
-			Proposer: &types.Validator{Address: []byte("val2")},
-		},
-		NextValidators: &types.ValidatorSet{
-			Proposer: &types.Validator{Address: []byte("val3")},
-		},
-		LastHeightValidatorsChanged:      1,
-		ConsensusParams:                  state.ConsensusParams,
-		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-	}, newState)
+	// The syncer should have updated the state app version from the ABCI info response.
+	expectState := state
+	expectState.Version.Consensus.App = 9
+
+	assert.Equal(t, expectState, newState)
+	assert.Equal(t, commit, lastCommit)
 
 	connSnapshot.AssertExpectations(t)
 	connQuery.AssertExpectations(t)
 }
 
-func TestSyncer_AppHashMismatch(t *testing.T) {
+func TestSyncer_ABCIMismatch(t *testing.T) {
 	chunks := []*chunk{
 		{Height: 1, Format: 1, Index: 0, Body: []byte{1, 1, 0}},
 		{Height: 1, Format: 1, Index: 1, Body: []byte{1, 1, 1}},
@@ -189,90 +182,90 @@ func TestSyncer_AppHashMismatch(t *testing.T) {
 		s.ChunkHashes = append(s.ChunkHashes, c.Hash())
 	}
 
-	connSnapshot := &proxymocks.AppConnSnapshot{}
-	connQuery := &proxymocks.AppConnQuery{}
-	lc := &mockLightClient{}
-	lc.On("VerifyHeaderAtHeight", int64(1), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{
-			Height: 1,
-			Time:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-		},
-		Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("blockid")}},
-	}, nil)
-	lc.On("VerifyHeaderAtHeight", int64(2), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{Height: 2, AppHash: []byte("app_hash"), LastResultsHash: []byte("last_results_hash")},
-	}, nil)
-	lc.On("VerifyHeaderAtHeight", int64(3), mock.Anything).Return(&types.SignedHeader{
-		Header: &types.Header{Height: 3},
-	}, nil)
-	lc.On("TrustedValidatorSet", int64(1)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val1")},
-	}, int64(1), nil)
-	lc.On("TrustedValidatorSet", int64(2)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val2")},
-	}, int64(2), nil)
-	lc.On("TrustedValidatorSet", int64(3)).Return(&types.ValidatorSet{
-		Proposer: &types.Validator{Address: []byte("val3")},
-	}, int64(3), nil)
-
-	sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, lc)
-
-	// A peer reports back with a snapshot
-	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.ID("id"))
-	_, err := sync.AddSnapshot(peer, s)
-	require.NoError(t, err)
-
-	// We start a sync, with peers sending back chunks when requested
-	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
-		Snapshot: &abci.Snapshot{
-			Height:      s.Height,
-			Format:      s.Format,
-			ChunkHashes: s.ChunkHashes,
-			Metadata:    s.Metadata,
-		},
-		AppHash: []byte("app_hash"),
-	}).Return(&abci.ResponseOfferSnapshot{
-		Accepted: true,
-	}, nil)
-	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-		Chunk: []byte{1, 1, 0},
-	}).Return(&abci.ResponseApplySnapshotChunk{Applied: true}, nil)
-	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-		Chunk: []byte{1, 1, 1},
-	}).Return(&abci.ResponseApplySnapshotChunk{Applied: true}, nil)
-	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
-		LastBlockAppHash: []byte("other_app_hash"),
-	}, nil)
-
-	onChunkRequest := func(args mock.Arguments) {
-		msg := &chunkRequestMessage{}
-		err := cdc.UnmarshalBinaryBare(args[1].([]byte), &msg)
-		require.NoError(t, err)
-		require.EqualValues(t, 1, msg.Height)
-		require.EqualValues(t, 1, msg.Format)
-		require.LessOrEqual(t, msg.Index, uint32(len(chunks)))
-
-		added, err := sync.AddChunk(chunks[msg.Index])
-		require.NoError(t, err)
-		assert.True(t, added)
+	testcases := map[string]struct {
+		response  abci.ResponseInfo
+		expectErr bool
+	}{
+		"invalid app hash response": {abci.ResponseInfo{
+			LastBlockHeight:  1,
+			LastBlockAppHash: []byte("other_app_hash"),
+		}, true},
+		"invalid app height response": {abci.ResponseInfo{
+			LastBlockHeight:  2,
+			LastBlockAppHash: []byte("app_hash"),
+		}, true},
+		"valid response": {abci.ResponseInfo{
+			LastBlockHeight:  1,
+			LastBlockAppHash: []byte("app_hash"),
+		}, false},
 	}
-	peer.On("Send", ChunkChannel, mock.Anything).Run(onChunkRequest).Return(true)
+	for name, tc := range testcases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			stateSource := &mocks.StateSource{}
+			stateSource.On("AppHash", uint64(1)).Return([]byte("app_hash"), nil)
+			stateSource.On("Commit", uint64(1)).Return(&types.Commit{}, nil)
+			stateSource.On("State", uint64(1)).Return(sm.State{}, nil)
+			connSnapshot := &proxymocks.AppConnSnapshot{}
+			connQuery := &proxymocks.AppConnQuery{}
 
-	_, _, err = sync.Sync(sm.State{})
-	require.Error(t, err)
+			sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource)
 
-	connSnapshot.AssertExpectations(t)
-	connQuery.AssertExpectations(t)
+			// A peer reports back with a snapshot
+			peer := &p2pmocks.Peer{}
+			peer.On("ID").Return(p2p.ID("id"))
+			_, err := sync.AddSnapshot(peer, s)
+			require.NoError(t, err)
+
+			// We start a sync, with peers sending back chunks when requested
+			connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
+				Snapshot: &abci.Snapshot{
+					Height:      s.Height,
+					Format:      s.Format,
+					ChunkHashes: s.ChunkHashes,
+					Metadata:    s.Metadata,
+				},
+				AppHash: []byte("app_hash"),
+			}).Return(&abci.ResponseOfferSnapshot{
+				Accepted: true,
+			}, nil)
+			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
+				Chunk: []byte{1, 1, 0},
+			}).Return(&abci.ResponseApplySnapshotChunk{Applied: true}, nil)
+			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
+				Chunk: []byte{1, 1, 1},
+			}).Return(&abci.ResponseApplySnapshotChunk{Applied: true}, nil)
+			connQuery.On("InfoSync", proxy.RequestInfo).Return(&tc.response, nil)
+
+			peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
+				msg := &chunkRequestMessage{}
+				err := cdc.UnmarshalBinaryBare(args[1].([]byte), &msg)
+				require.NoError(t, err)
+				require.EqualValues(t, 1, msg.Height)
+				require.EqualValues(t, 1, msg.Format)
+				_, err = sync.AddChunk(chunks[msg.Index])
+				require.NoError(t, err)
+			}).Return(true)
+
+			_, _, err = sync.Sync()
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			connSnapshot.AssertExpectations(t)
+			connQuery.AssertExpectations(t)
+		})
+	}
 }
 
 func TestSyncer_NoSnapshots(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
-	lc := &mockLightClient{}
-	sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, lc)
+	stateSource := &mocks.StateSource{}
+	sync := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource)
 
-	_, _, err := sync.Sync(sm.State{})
+	_, _, err := sync.Sync()
 	require.Error(t, err)
 	assert.Equal(t, errNoSnapshots, err)
 }

@@ -32,7 +32,6 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	lite "github.com/tendermint/tendermint/lite2"
-	litedb "github.com/tendermint/tendermint/lite2/store/db"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -577,19 +576,18 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus
 	ssR.Logger.Info("Starting state sync")
 
 	state := sm.LoadState(stateDB)
-	lc, err := lite.NewHTTPClient(state.ChainID, lite.TrustOptions{
-		Period: config.TrustPeriod,
-		Height: config.TrustHeight,
-		Hash:   config.TrustHashBytes(),
-	}, config.RPCServers[0], config.RPCServers[1:], litedb.New(dbm.NewMemDB(), ""),
-		// The light client is very chatty, so we use a separate module to silence it at statesync:info.
-		lite.Logger(ssR.Logger.With("module", "lite")))
+	stateSource, err := statesync.NewLightClientStateSource(state.ChainID, state.Version,
+		config.RPCServers, lite.TrustOptions{
+			Period: config.TrustPeriod,
+			Height: config.TrustHeight,
+			Hash:   config.TrustHashBytes(),
+		}, ssR.Logger.With("module", "lite"))
 	if err != nil {
 		return fmt.Errorf("failed to set up light client: %w", err)
 	}
 
 	go func() {
-		state, commit, err := ssR.Sync(state, lc)
+		state, commit, err := ssR.Sync(stateSource)
 		if err != nil {
 			ssR.Logger.Error("State sync failed", "err", err)
 			return

@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -26,13 +27,6 @@ const (
 // errNoSnapshots is returned by Sync() when no viable snapshots are found in the pool.
 var errNoSnapshots = errors.New("no viable snapshots found")
 
-//go:generate mockery -inpkg -testonly -case underscore -name lightClient
-// lightClient is an interface for the light client, used internally for easier testing.
-type lightClient interface {
-	TrustedValidatorSet(int64) (*types.ValidatorSet, int64, error)
-	VerifyHeaderAtHeight(int64, time.Time) (*types.SignedHeader, error)
-}
-
 // syncer runs a state sync against an ABCI app. Typical usage:
 //
 // 1) Create the syncer: newSyncer(...)
@@ -41,11 +35,11 @@ type lightClient interface {
 // 4) Concurrently feed chunks via syncer.AddChunk()
 // 5) Bootstrap node with the returned state and commit
 type syncer struct {
-	logger    log.Logger
-	lc        lightClient
-	conn      proxy.AppConnSnapshot
-	connQuery proxy.AppConnQuery
-	snapshots *snapshotPool
+	logger      log.Logger
+	stateSource StateSource
+	conn        proxy.AppConnSnapshot
+	connQuery   proxy.AppConnQuery
+	snapshots   *snapshotPool
 
 	mtx      sync.RWMutex
 	snapshot *snapshot
@@ -54,14 +48,14 @@ type syncer struct {
 
 // newSyncer creates a new syncer.
 func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	lc lightClient) *syncer {
+	stateSource StateSource) *syncer {
 	return &syncer{
-		logger:    logger,
-		lc:        lc,
-		conn:      conn,
-		connQuery: connQuery,
-		snapshots: newSnapshotPool(lc),
-		chunks:    nil,
+		logger:      logger,
+		stateSource: stateSource,
+		conn:        conn,
+		connQuery:   connQuery,
+		snapshots:   newSnapshotPool(stateSource),
+		chunks:      nil,
 	}
 }
 
@@ -114,11 +108,11 @@ func (s *syncer) RemovePeer(peer p2p.Peer) {
 
 // Sync executes a sync, returning the latest state and block commit which the caller must use to
 // bootstrap the node. It returns errNoSnapshots if no viable snapshots are found.
-func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
+func (s *syncer) Sync() (sm.State, *types.Commit, error) {
 	// Start state sync.
 	snapshot, chunks, err := s.startSync()
 	if err != nil {
-		return state, nil, err
+		return sm.State{}, nil, err
 	}
 	defer s.endSync()
 
@@ -143,9 +137,13 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 	}
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
-	newState, commit, err := s.buildState(state, int64(snapshot.Height))
+	state, err := s.stateSource.State(snapshot.Height)
 	if err != nil {
-		return state, nil, fmt.Errorf("failed to build new state: %w", err)
+		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
+	}
+	commit, err := s.stateSource.Commit(snapshot.Height)
+	if err != nil {
+		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}
 
 	// Apply chunks.
@@ -154,34 +152,39 @@ func (s *syncer) Sync(state sm.State) (sm.State, *types.Commit, error) {
 		if err == errDone {
 			break
 		} else if err != nil {
-			return state, nil, fmt.Errorf("failed to fetch chunk: %w", err)
+			return sm.State{}, nil, fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 		s.logger.Info("Applying chunk to ABCI app", "chunk", chunk.Index, "total", len(snapshot.ChunkHashes))
 		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{Chunk: chunk.Body})
 		if err != nil {
-			return state, nil, fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
+			return sm.State{}, nil, fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
 		}
 		if !resp.Applied {
-			return state, nil, fmt.Errorf("failed to apply chunk %v", chunk.Index)
+			return sm.State{}, nil, fmt.Errorf("failed to apply chunk %v", chunk.Index)
 		}
 	}
 
-	// Snapshot should now be restored, verify it.
+	// Snapshot should now be restored, verify it and update the state app version.
 	resp, err := s.connQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {
-		return state, nil, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
+		return sm.State{}, nil, fmt.Errorf("failed to query ABCI app for app_hash: %w", err)
 	}
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
-		return state, nil, fmt.Errorf("app_hash verification failed, expected %x got %x",
+		return sm.State{}, nil, fmt.Errorf("app_hash verification failed, expected %x got %x",
 			snapshot.trustedAppHash, resp.LastBlockAppHash)
 	}
 	s.logger.Debug("Verified state snapshot app hash", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", hex.EncodeToString(resp.LastBlockAppHash))
+	if uint64(resp.LastBlockHeight) != snapshot.Height {
+		return sm.State{}, nil, fmt.Errorf("ABCI app reported last block height %v, expected %v",
+			resp.LastBlockHeight, snapshot.Height)
+	}
+	state.Version.Consensus.App = version.Protocol(resp.AppVersion)
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format)
 
-	return newState, commit, nil
+	return state, commit, nil
 }
 
 // startSync attempts to start a sync, if able (i.e. if any valid snapshots are available).
@@ -266,45 +269,4 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		Format: snapshot.Format,
 		Index:  chunk,
 	}))
-}
-
-// buildState builds a new state using the light client. It does not modify the given state.
-func (s *syncer) buildState(state sm.State, height int64) (sm.State, *types.Commit, error) {
-	state = state.Copy()
-
-	// We need to verify up until h+2, to get the validator set. This also prefetches the headers
-	// for h and h+1 in the typical case where the trusted header is after the snapshot height.
-	_, err := s.lc.VerifyHeaderAtHeight(height+2, time.Now())
-	if err != nil {
-		return state, nil, err
-	}
-	header, err := s.lc.VerifyHeaderAtHeight(height, time.Now())
-	if err != nil {
-		return state, nil, err
-	}
-	nextHeader, err := s.lc.VerifyHeaderAtHeight(height+1, time.Now())
-	if err != nil {
-		return state, nil, err
-	}
-	state.LastBlockHeight = header.Height
-	state.LastBlockTime = header.Time
-	state.LastBlockID = header.Commit.BlockID
-	state.AppHash = nextHeader.AppHash
-	state.LastResultsHash = nextHeader.LastResultsHash
-
-	state.LastValidators, _, err = s.lc.TrustedValidatorSet(height)
-	if err != nil {
-		return state, nil, err
-	}
-	state.Validators, _, err = s.lc.TrustedValidatorSet(height + 1)
-	if err != nil {
-		return state, nil, err
-	}
-	state.NextValidators, _, err = s.lc.TrustedValidatorSet(height + 2)
-	if err != nil {
-		return state, nil, err
-	}
-	state.LastHeightValidatorsChanged = height
-
-	return state, header.Commit, nil
 }
