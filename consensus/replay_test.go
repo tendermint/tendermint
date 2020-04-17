@@ -751,7 +751,7 @@ func applyBlock(stateDB dbm.DB, st tmstate.State, blk *types.Block, proxyApp pro
 }
 
 func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
-	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
+	state tmstate.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -759,7 +759,11 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	defer proxyApp.Stop()
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
-	validators := types.TM2PB.ValidatorUpdates(state.Validators)
+	valUpdates := make([]abci.ValidatorUpdate, len(state.Validators.Validators))
+	for i, val := range state.Validators.Validators {
+		valUpdates[i] = abci.ValidatorUpdate{PubKey: val.PubKey, Power: val.VotingPower}
+	}
+	validators := valUpdates
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -793,10 +797,10 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 func buildTMStateFromChain(
 	config *cfg.Config,
 	stateDB dbm.DB,
-	state sm.State,
+	state tmstate.State,
 	chain []*types.Block,
 	nBlocks int,
-	mode uint) sm.State {
+	mode uint) tmstate.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(
 		kvstore.NewPersistentKVStoreApplication(
@@ -853,7 +857,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	state.LastValidators = state.Validators.Copy()
+	state.LastValidators = types.CopyProtoValSet(state.Validators)
 	// mode = 0 for committing all the blocks
 	blocks := makeBlocks(3, &state, privVal)
 	store.chain = blocks
@@ -895,7 +899,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	}
 }
 
-func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+func makeBlocks(n int, state *tmstate.State, privVal types.PrivValidator) []*types.Block {
 	blocks := make([]*types.Block, 0)
 
 	var (
@@ -922,15 +926,17 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 	return blocks
 }
 
-func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
+func makeBlock(state tmstate.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
 	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	vals := new(types.ValidatorSet)
+	vals.FromProto(state.Validators)
 	if height > 1 {
 		vote, _ := types.MakeVote(
 			lastBlock.Header.Height,
 			lastBlockMeta.BlockID,
-			state.Validators,
+			vals,
 			privVal,
 			lastBlock.Header.ChainID,
 			time.Now())
@@ -938,7 +944,7 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
 
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	return sm.MakeBlock(state, height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
 }
 
 type badApp struct {
@@ -1077,7 +1083,7 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 func stateAndStore(
 	config *cfg.Config,
 	pubKey crypto.PubKey,
-	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
+	appVersion uint64) (dbm.DB, tmstate.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
