@@ -33,26 +33,17 @@ type Info struct {
 }
 
 const (
-	baseKeyLookup   = "evidence-lookup"   // all evidence
-	baseKeyOutqueue = "evidence-outqueue" // not-yet broadcast
-	baseKeyPending  = "evidence-pending"  // broadcast but not committed
+	baseKeyCommitted = byte(0x00) // committed evidence
+	baseKeyPending   = byte(0x01) // pending evidence
 )
-
-func keyLookup(evidence types.Evidence) []byte {
-	return keyLookupFromHeightAndHash(evidence.Height(), evidence.Hash())
-}
 
 // big endian padded hex
 func bE(h int64) string {
 	return fmt.Sprintf("%0.16X", h)
 }
 
-func keyLookupFromHeightAndHash(height int64, hash []byte) []byte {
-	return _key("%s/%s/%X", baseKeyLookup, bE(height), hash)
-}
-
-func keyOutqueue(evidence types.Evidence, priority int64) []byte {
-	return _key("%s/%s/%s/%X", baseKeyOutqueue, bE(priority), bE(evidence.Height()), evidence.Hash())
+func keyCommitted(evidence types.Evidence) []byte {
+	return _key("%s/%s/%X", baseKeyCommitted, bE(evidence.Height()), evidence.Hash())
 }
 
 func keyPending(evidence types.Evidence) []byte {
@@ -76,17 +67,6 @@ func NewStore(db dbm.DB) *Store {
 	}
 }
 
-// PriorityEvidence returns the evidence from the outqueue, sorted by highest priority.
-func (store *Store) PriorityEvidence() (evidence []types.Evidence) {
-	// reverse the order so highest priority is first
-	l := store.listEvidence(baseKeyOutqueue, -1)
-	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
-		l[i], l[j] = l[j], l[i]
-	}
-
-	return l
-}
-
 // PendingEvidence returns up to maxNum known, uncommitted evidence.
 // If maxNum is -1, all evidence is returned.
 func (store *Store) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
@@ -96,9 +76,9 @@ func (store *Store) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
 // listEvidence lists up to maxNum pieces of evidence for the given prefix key.
 // It is wrapped by PriorityEvidence and PendingEvidence for convenience.
 // If maxNum is -1, there's no cap on the size of returned evidence.
-func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []types.Evidence) {
+func (store *Store) listEvidence(prefixKey byte, maxNum int64) (evidence []types.Evidence) {
 	var count int64
-	iter, err := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	iter, err := dbm.IteratePrefix(store.db, []byte{prefixKey})
 	if err != nil {
 		panic(err)
 	}
@@ -121,39 +101,27 @@ func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []typ
 	return evidence
 }
 
-// GetInfo fetches the Info with the given height and hash.
-// If not found, ei.Evidence is nil.
-func (store *Store) GetInfo(height int64, hash []byte) Info {
-	key := keyLookupFromHeightAndHash(height, hash)
-	val, err := store.db.Get(key)
-	if err != nil {
-		panic(err)
-	}
-	if len(val) == 0 {
-		return Info{}
-	}
-	var ei Info
-	err = cdc.UnmarshalBinaryBare(val, &ei)
-	if err != nil {
-		panic(err)
-	}
-	return ei
-}
-
 // Has checks if the evidence is already stored
-func (store *Store) Has(evidence types.Evidence) bool {
-	key := keyLookup(evidence)
-	ok, _ := store.db.Has(key)
-	return ok
+func (store *Store) Has(evidence types.Evidence) (bool, error) {
+	key := keyPending(evidence)
+	ok, err := store.db.Has(key)
+	if err != nil {
+		return true, err
+	}
+	if ok {
+		return true, nil
+	}
+	key = keyCommitted(evidence)
+	ok, err = store.db.Has(key)
+	if err != nil {
+		return true, err
+	}
+	return ok, nil
 }
 
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
-func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (bool, error) {
-	// check if we already have seen it
-	if store.Has(evidence) {
-		return false, nil
-	}
+func (store *Store) addEvidence(evidence types.Evidence, priority int64) error {
 
 	ei := Info{
 		Committed: false,
@@ -164,40 +132,16 @@ func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) (boo
 
 	// add it to the store
 	var err error
-	key := keyOutqueue(evidence, priority)
+	key := keyPending(evidence)
 	if err = store.db.Set(key, eiBytes); err != nil {
-		return false, err
+		return err
 	}
 
-	key = keyPending(evidence)
-	if err = store.db.Set(key, eiBytes); err != nil {
-		return false, err
-	}
-
-	key = keyLookup(evidence)
-	if err = store.db.SetSync(key, eiBytes); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-// MarkEvidenceAsBroadcasted removes evidence from Outqueue.
-func (store *Store) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
-	ei := store.getInfo(evidence)
-	if ei.Evidence == nil {
-		// nothing to do; we did not store the evidence yet (AddNewEvidence):
-		return
-	}
-	// remove from the outqueue
-	key := keyOutqueue(evidence, ei.Priority)
-	store.db.Delete(key)
+	return nil
 }
 
 // MarkEvidenceAsCommitted removes evidence from pending and outqueue and sets the state to committed.
 func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
-	// if its committed, its been broadcast
-	store.MarkEvidenceAsBroadcasted(evidence)
 
 	pendingKey := keyPending(evidence)
 	store.db.Delete(pendingKey)
@@ -209,14 +153,6 @@ func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
 		Priority:  0,
 	}
 
-	lookupKey := keyLookup(evidence)
-	store.db.SetSync(lookupKey, cdc.MustMarshalBinaryBare(ei))
-}
-
-//---------------------------------------------------
-// utils
-
-// getInfo is convenience for calling GetInfo if we have the full evidence.
-func (store *Store) getInfo(evidence types.Evidence) Info {
-	return store.GetInfo(evidence.Height(), evidence.Hash())
+	committedKey := keyCommitted(evidence)
+	store.db.Set(committedKey, cdc.MustMarshalBinaryBare(ei))
 }
