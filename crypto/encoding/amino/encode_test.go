@@ -161,6 +161,7 @@ func (privkey testPriv) Bytes() []byte {
 }
 func (privkey testPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
 func (privkey testPriv) Equals(other crypto.PrivKey) bool { return true }
+func (privkey testPriv) Type() string                     { return "testPriv" }
 
 type testPub []byte
 
@@ -171,6 +172,7 @@ func (key testPub) Bytes() []byte {
 func (key testPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
 func (key testPub) Equals(other crypto.PubKey) bool         { return true }
 func (key testPub) String() string                          { return "" }
+func (key testPub) Type() string                            { return "testPub" }
 
 var (
 	privAminoName = "registerTest/Priv"

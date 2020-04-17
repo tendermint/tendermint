@@ -252,6 +252,9 @@ func (m *ValidatorParams) GetPubKeyTypes() []string {
 	return nil
 }
 
+// HashedParams is a subset of ConsensusParams.
+// It is amino encoded and hashed into
+// the Header.ConsensusHash.
 type HashedParams struct {
 	BlockMaxBytes int64 `protobuf:"varint,1,opt,name=block_max_bytes,json=blockMaxBytes,proto3" json:"block_max_bytes,omitempty"`
 	BlockMaxGas   int64 `protobuf:"varint,2,opt,name=block_max_gas,json=blockMaxGas,proto3" json:"block_max_gas,omitempty"`

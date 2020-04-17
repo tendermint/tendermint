@@ -8,7 +8,7 @@ import "third_party/proto/gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
 import "libs/kv/types.proto";
 import "proto/types/types.proto";
-import "proto/crypto/types.proto";
+import "proto/crypto/keys/types.proto";
 import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -265,8 +265,8 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.proto.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  int64                             power   = 2;
+  tendermint.proto.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  int64                                  power   = 2;
 }
 
 // VoteInfo

@@ -13,7 +13,7 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/tendermint/tendermint/crypto/merkle"
 	_ "github.com/tendermint/tendermint/libs/kv"
-	_ "github.com/tendermint/tendermint/proto/crypto"
+	_ "github.com/tendermint/tendermint/proto/crypto/keys"
 	_ "github.com/tendermint/tendermint/proto/types"
 	go_parser "go/parser"
 	math "math"

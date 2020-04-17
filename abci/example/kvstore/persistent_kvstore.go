@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	pc "github.com/tendermint/tendermint/proto/crypto"
+	pc "github.com/tendermint/tendermint/proto/crypto/keys"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
