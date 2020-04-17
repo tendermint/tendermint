@@ -103,9 +103,12 @@ specify exactly the dependency you want to update, eg.
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will have to install the needed dependencies with `make buf`. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-To generate new stubs based off of your changes you can run `make proto-gen` after installing `protoc` and gogoproto.
+There are two ways to generate your proto stubs.
+
+1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
+2. Run `make proto-gen` after installing `protoc` and gogoproto.
 
 ### Installation Instructions
 
@@ -193,8 +196,22 @@ When you have submitted a pull request label the pull request with either `R:min
 
 - ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
-- squash merge pull request
+- [squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
+
+### Git Commit Style
+
+We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
+
+\```
+cmd/debug: execute p.Signal only when p is not nil
+
+[potentially longer description in the body]
+
+Fixes #nnnn
+\```
+
+Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
 ### Release Procedure
 

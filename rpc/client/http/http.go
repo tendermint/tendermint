@@ -1,4 +1,4 @@
-package client
+package http
 
 import (
 	"context"
@@ -15,8 +15,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
+	rpcclientlib "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -40,7 +41,7 @@ the example for more details.
 
 Example:
 
-		c, err := NewHTTP("http://192.168.1.10:26657", "/websocket")
+		c, err := New("http://192.168.1.10:26657", "/websocket")
 		if err != nil {
 			// handle error
 		}
@@ -61,7 +62,7 @@ Example:
 */
 type HTTP struct {
 	remote string
-	rpc    *rpcclient.JSONRPCClient
+	rpc    *rpcclientlib.JSONRPCClient
 
 	*baseRPCClient
 	*WSEvents
@@ -78,7 +79,7 @@ type HTTP struct {
 // batch, but ordering of transactions in the batch cannot be guaranteed in such
 // an example.
 type BatchHTTP struct {
-	rpcBatch *rpcclient.JSONRPCRequestBatch
+	rpcBatch *rpcclientlib.JSONRPCRequestBatch
 	*baseRPCClient
 }
 
@@ -86,17 +87,17 @@ type BatchHTTP struct {
 // non-batch) must conform. Acts as an additional code-level sanity check to
 // make sure the implementations stay coherent.
 type rpcClient interface {
-	ABCIClient
-	HistoryClient
-	NetworkClient
-	SignClient
-	StatusClient
+	rpcclient.ABCIClient
+	rpcclient.HistoryClient
+	rpcclient.NetworkClient
+	rpcclient.SignClient
+	rpcclient.StatusClient
 }
 
 // baseRPCClient implements the basic RPC method logic without the actual
 // underlying RPC call functionality, which is provided by `caller`.
 type baseRPCClient struct {
-	caller rpcclient.JSONRPCCaller
+	caller rpcclientlib.JSONRPCCaller
 }
 
 var _ rpcClient = (*HTTP)(nil)
@@ -106,35 +107,35 @@ var _ rpcClient = (*baseRPCClient)(nil)
 //-----------------------------------------------------------------------------
 // HTTP
 
-// NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
+// New takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
 // An error is returned on invalid remote. The function panics when remote is nil.
-func NewHTTP(remote, wsEndpoint string) (*HTTP, error) {
-	httpClient, err := rpcclient.DefaultHTTPClient(remote)
+func New(remote, wsEndpoint string) (*HTTP, error) {
+	httpClient, err := rpcclientlib.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
-	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
+	return NewWithClient(remote, wsEndpoint, httpClient)
 }
 
 // Create timeout enabled http client
-func NewHTTPWithTimeout(remote, wsEndpoint string, timeout uint) (*HTTP, error) {
-	httpClient, err := rpcclient.DefaultHTTPClient(remote)
+func NewWithTimeout(remote, wsEndpoint string, timeout uint) (*HTTP, error) {
+	httpClient, err := rpcclientlib.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
 	httpClient.Timeout = time.Duration(timeout) * time.Second
-	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
+	return NewWithClient(remote, wsEndpoint, httpClient)
 }
 
-// NewHTTPWithClient allows for setting a custom http client (See NewHTTP).
+// NewWithClient allows for setting a custom http client (See New).
 // An error is returned on invalid remote. The function panics when remote is nil.
-func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
+func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
 	if client == nil {
 		panic("nil http.Client provided")
 	}
 
-	rc, err := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
+	rc, err := rpcclientlib.NewJSONRPCClientWithHTTPClient(remote, client)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, e
 	return httpClient, nil
 }
 
-var _ Client = (*HTTP)(nil)
+var _ rpcclient.Client = (*HTTP)(nil)
 
 // SetLogger sets a logger.
 func (c *HTTP) SetLogger(l log.Logger) {
@@ -224,13 +225,13 @@ func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 }
 
 func (c *baseRPCClient) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
-	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
+	return c.ABCIQueryWithOptions(path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
 func (c *baseRPCClient) ABCIQueryWithOptions(
 	path string,
 	data bytes.HexBytes,
-	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.caller.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "prove": opts.Prove},
@@ -440,7 +441,7 @@ type WSEvents struct {
 	cdc      *amino.Codec
 	remote   string
 	endpoint string
-	ws       *rpcclient.WSClient
+	ws       *rpcclientlib.WSClient
 
 	mtx           sync.RWMutex
 	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
@@ -456,7 +457,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
 	var err error
-	w.ws, err = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+	w.ws, err = rpcclientlib.NewWSClient(w.remote, w.endpoint, rpcclientlib.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
