@@ -19,3 +19,11 @@ type ErrEvidenceAlreadyStored struct{}
 func (e ErrEvidenceAlreadyStored) Error() string {
 	return "evidence is already stored"
 }
+
+type ErrDatabase struct {
+	DBErr error
+}
+
+func (e ErrDatabase) Error() string {
+	return fmt.Sprintf("database error: %v", e.DBErr)
+}
