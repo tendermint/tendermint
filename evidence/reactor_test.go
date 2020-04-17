@@ -125,13 +125,13 @@ func sendEvidence(t *testing.T, evpool *Pool, valAddr []byte, n int) types.Evide
 }
 
 var (
-	numEvidence = 10
+	numEvidence = 50
 	timeout     = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastEvidence(t *testing.T) {
 	config := cfg.TestConfig()
-	N := 7
+	N := 2
 
 	// create statedb for everyone
 	stateDBs := make([]dbm.DB, N)

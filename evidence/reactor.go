@@ -16,12 +16,11 @@ import (
 const (
 	EvidenceChannel = byte(0x38)
 
-	maxMsgSize = 1048576 // 1MB TODO make it configurable
+	maxMsgSize = 24576 // 24KB  - 50 pieces of evidence per msg TODO make it configurable
 
-	// broadcast uncommitted evidence this often, This is not the interval between messages but the
-	// interval with which all pending evidence is set.
-	broadcastEvidenceIntervalS = 60
-	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
+	// interval with which the reactor will attempt to broadcast evidence. This also means
+	// the max time between
+	broadcastEvidenceIntervalS = 1
 )
 
 // Reactor handles evpool evidence broadcasting amongst peers.
@@ -141,33 +140,44 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			// different every time due to us using a map. Sometimes other reactors
 			// will be initialized before the consensus reactor. We should wait a few
 			// milliseconds and retry.
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			time.Sleep(broadcastEvidenceIntervalS * time.Second)
 			continue
 		}
 
 		var evMsg ListMessage
-		for ; next != nil && len(evMsg.Evidence) < messageSize; next = next.Next() {
+		for next != nil && len(evMsg.Evidence) < messageSize {
 			ev := next.Value.(types.Evidence)
-			if ev.Height() > peerState.GetHeight() {
-				// peer is behind so move on to the next evidence
-				continue
+			// check to see if peer is behind, if so jump to next piece of evidence
+			if ev.Height() <= peerState.GetHeight() {
+				// check that the evidence has not expired else remove it
+				if evR.evpool.IsExpired(ev) {
+					pendingKey := keyPending(ev)
+					evR.evpool.store.db.Delete(pendingKey)
+					evR.evpool.evidenceList.Remove(next)
+					next.DetachPrev()
+				} else {
+					evMsg.Evidence = append(evMsg.Evidence, ev)
+				}
 			}
-			// check that the evidence has not expired else remove it
-			if evR.evpool.IsExpired(ev) {
-				pendingKey := keyPending(ev)
-				evR.evpool.store.db.Delete(pendingKey)
-				evR.evpool.evidenceList.Remove(next)
-				next.DetachPrev()
-			} else {
-				evMsg.Evidence = append(evMsg.Evidence, ev)
+			// As evidence arrives in batches, wait for a period to see if there is
+			// more evidence to come, if not then finish the msg and send it to the peer.
+			// (10ms is the allocated time for each loop of AddEvidence)
+			afterCh := time.After(time.Millisecond * 10)
+			select {
+			case <-afterCh:
+				next = nil
+			case <-next.NextWaitChan():
+				next = next.Next()
+			case <-peer.Quit():
+				return
+			case <-evR.Quit():
+				return
 			}
 		}
 
 		success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(evMsg))
 
-		// if there is more evidence to send then move on to bundling this else if
-		// this message constains the last of the evidence or the message failed then wait
-		// for peer to be ready for the next round of evidence to be sent.
+		// if failed to send then wait before trying again
 		if next == nil || !success {
 			time.Sleep(broadcastEvidenceIntervalS * time.Second)
 		}
