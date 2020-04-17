@@ -45,6 +45,8 @@ func TestEvidencePool(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "is too old; min height is 32 and evidence can not be older than")
 	}
+	assert.False(t, pool.IsPending(badEvidence))
+	assert.True(t, pool.IsExpired(badEvidence))
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -59,18 +61,18 @@ func TestEvidencePool(t *testing.T) {
 	select {
 	case <-evAdded:
 	case <-time.After(5 * time.Second):
-		t.Fatal("evidence was not added after 5s")
+		t.Fatal("evidence was not added to list after 5s")
 	}
 
 	assert.Equal(t, 1, pool.evidenceList.Len())
 
 	// if we send it again, it shouldnt add and return an error
 	err = pool.AddEvidence(goodEvidence)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
 
-func TestEvidencePoolIsCommitted(t *testing.T) {
+func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
 		valAddr       = []byte("validator_address")
 		height        = int64(1)
@@ -79,22 +81,31 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 		evidenceDB    = dbm.NewMemDB()
 		blockStoreDB  = dbm.NewMemDB()
 		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
 
 	// evidence not seen yet:
-	evidence := types.NewMockEvidence(height, time.Now(), valAddr)
+	evidence := types.NewMockEvidence(height, evidenceTime, valAddr)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
 	assert.NoError(t, pool.AddEvidence(evidence))
 	assert.False(t, pool.IsCommitted(evidence))
 
+	// test evidence is proposed
+	proposedEvidence := pool.PendingEvidence(-1)
+	assert.Equal(t, proposedEvidence[0], evidence)
+
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
+	pool.MarkEvidenceAsCommitted(height, lastBlockTime, proposedEvidence)
 	assert.True(t, pool.IsCommitted(evidence))
+	assert.False(t, pool.IsPending(evidence))
+	assert.Equal(t, 0, pool.evidenceList.Len())
+
+	// evidence should
 }
 
 func TestEvidencePoolAddEvidence(t *testing.T) {
@@ -182,6 +193,35 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 	assert.Equal(t, height, pool.ValidatorLastHeight(valAddr))
 	assert.EqualValues(t, 0, pool.ValidatorLastHeight([]byte("non-existent-validator")))
+}
+
+func TestRecoverPendingEvidence(t *testing.T) {
+	var (
+		valAddr         = []byte("val1")
+		height          = int64(30)
+		stateDB         = initializeValidatorState(valAddr, height)
+		evidenceDB      = dbm.NewMemDB()
+		blockStoreDB    = dbm.NewMemDB()
+		state           = sm.LoadState(stateDB)
+		blockStore      = initializeBlockStore(blockStoreDB, state, valAddr)
+		evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		goodEvidence    = types.NewMockEvidence(height, time.Now(), valAddr)
+		expiredEvidence = types.NewMockEvidence(int64(1), evidenceTime, valAddr)
+	)
+
+	// load good evidence
+	goodKey := keyPending(goodEvidence)
+	goodEvidenceBytes := cdc.MustMarshalBinaryBare(goodEvidence)
+	_ = evidenceDB.Set(goodKey, goodEvidenceBytes)
+
+	// load expired evidence
+	expiredKey := keyPending(expiredEvidence)
+	expiredEvidenceBytes := cdc.MustMarshalBinaryBare(expiredEvidence)
+	_ = evidenceDB.Set(expiredKey, expiredEvidenceBytes)
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+	assert.Equal(t, 1, pool.evidenceList.Len())
+	assert.True(t, pool.IsPending(goodEvidence))
 }
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
