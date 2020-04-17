@@ -209,35 +209,40 @@ func (b *Block) StringShort() string {
 // ToProto converts Block to protobuf
 func (b *Block) ToProto() (*tmproto.Block, error) {
 	if b == nil {
-		return nil, nil
+		return nil, errors.New("nil Block")
 	}
 
-	protoHeader := b.Header.ToProto()
-	protoCommit := b.LastCommit.ToProto()
-	protoData := b.Data.ToProto()
+	pb := new(tmproto.Block)
+
+	pb.Header = *b.Header.ToProto()
+	pb.LastCommit = b.LastCommit.ToProto()
+	pb.Data = b.Data.ToProto()
+
 	protoEvidence, err := b.Evidence.ToProto()
 	if err != nil {
 		return nil, err
 	}
+	pb.Evidence = *protoEvidence
 
-	protoBlock := tmproto.Block{
-		Header:     *protoHeader,
-		Data:       protoData,
-		Evidence:   *protoEvidence,
-		LastCommit: protoCommit,
-	}
-
-	return &protoBlock, nil
+	return pb, nil
 }
 
 // FromProto sets a protobuf Block to the given pointer.
 // It returns an error if the block is invalid.
-func (b *Block) FromProto(bp tmproto.Block) error {
+func (b *Block) FromProto(bp *tmproto.Block) error {
+	if bp == nil {
+		return errors.New("nil block")
+	}
 
 	b.Header.FromProto(&bp.Header)
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(&bp.Evidence)
-	b.LastCommit.FromProto(bp.LastCommit)
+
+	if bp.LastCommit != nil {
+		lc := new(Commit) // on init of block commit is nil
+		lc.FromProto(bp.LastCommit)
+		b.LastCommit = lc
+	}
 
 	return b.ValidateBasic()
 }
@@ -415,7 +420,10 @@ func (cs CommitSig) ValidateBasic() error {
 }
 
 // ToProto converts CommitSig to protobuf
-func (cs CommitSig) ToProto() *tmproto.CommitSig {
+func (cs *CommitSig) ToProto() *tmproto.CommitSig {
+	if cs == nil {
+		return nil
+	}
 	return &tmproto.CommitSig{
 		BlockIdFlag:      cs.BlockIDFlag,
 		ValidatorAddress: cs.ValidatorAddress,
@@ -635,19 +643,20 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	if commit == nil {
 		return nil
 	}
+
+	c := new(tmproto.Commit)
 	sigs := make([]tmproto.CommitSig, len(commit.Signatures))
 	for i := range commit.Signatures {
 		sigs[i] = *commit.Signatures[i].ToProto()
 	}
+	c.Signatures = sigs
 
-	return &tmproto.Commit{
-		Height:     commit.Height,
-		Round:      commit.Round,
-		BlockID:    *commit.BlockID.ToProto(),
-		Signatures: sigs,
-		Hash:       commit.hash,
-		BitArray:   commit.bitArray.ToProto(),
-	}
+	c.Height = commit.Height
+	c.Round = commit.Round
+	c.BlockID = *commit.BlockID.ToProto()
+	c.Hash = commit.hash
+	c.BitArray = commit.bitArray.ToProto()
+	return c
 }
 
 // FromProto sets a protobuf Commit to the given pointer.
@@ -839,26 +848,23 @@ func (data *Data) StringIndented(indent string) string {
 
 // ToProto converts Data to protobuf
 func (data *Data) ToProto() tmproto.Data {
-	if data == nil {
-		return tmproto.Data{}
+	tp := new(tmproto.Data)
+
+	if len(data.Txs) > 0 {
+		txBzs := make([][]byte, len(data.Txs))
+		for i := range data.Txs {
+			txBzs[i] = data.Txs[i]
+		}
+		tp.Txs = txBzs
 	}
 
-	txBzs := make([][]byte, len(data.Txs))
-	for i := range data.Txs {
-		txBzs[i] = data.Txs[i]
-	}
+	tp.Hash = data.hash
 
-	return tmproto.Data{
-		Txs:  txBzs,
-		Hash: data.hash,
-	}
+	return *tp
 }
 
 // FromProto sets a protobuf Data to the given pointer.
 func (data *Data) FromProto(dp tmproto.Data) error {
-	if dp.Equal(tmproto.Data{}) {
-		return nil
-	}
 	if len(dp.Txs) > 0 {
 		txBzs := make(Txs, len(dp.Txs))
 		for i := range dp.Txs {
@@ -866,7 +872,7 @@ func (data *Data) FromProto(dp tmproto.Data) error {
 		}
 		data.Txs = txBzs
 	} else {
-		data.Txs = nil
+		data.Txs = Txs{}
 	}
 	data.hash = dp.Hash
 	return nil
@@ -949,7 +955,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 		}
 		data.Evidence = eviBzs
 	} else {
-		data.Evidence = nil
+		data.Evidence = EvidenceList{}
 	}
 	data.hash = eviData.Hash
 

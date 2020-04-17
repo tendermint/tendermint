@@ -600,23 +600,65 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 }
 
+func TestBlockProtoBuf(t *testing.T) {
+	h := tmrand.Int63()
+	c1 := randCommit(time.Now())
+	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	evi := NewMockEvidence(b2.Height, time.Now(), 0, tmrand.Bytes(32))
+	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
+
+	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
+	testCases := []struct {
+		msg     string
+		b1      *Block
+		expPass bool
+	}{
+		{"nil block", nil, false},
+		{"b1", b1, true},
+		{"b2", b2, true},
+		{"b3", b3, true},
+	}
+	for _, tc := range testCases {
+		pb, err := tc.b1.ToProto()
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		block := new(Block)
+		err = block.FromProto(pb)
+		if tc.expPass {
+			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
+			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
 func TestDataProtoBuf(t *testing.T) {
 	data := &Data{Txs: Txs{Tx([]byte{1}), Tx([]byte{2}), Tx([]byte{3})}}
 	_ = data.Hash()
+	data2 := &Data{Txs: Txs{}}
+	_ = data2.Hash()
 	testCases := []struct {
 		msg     string
 		data1   *Data
 		expPass bool
 	}{
 		{"success", data, true},
-		{"empty Data", &Data{}, true},
+		{"data2", data2, true},
 	}
 	for _, tc := range testCases {
 		protoData := tc.data1.ToProto()
-		data := new(Data)
-		err := data.FromProto(protoData)
+		d := new(Data)
+		err := d.FromProto(protoData)
 		if tc.expPass {
-			require.Equal(t, tc.data1, data, tc.msg)
+			require.EqualValues(t, tc.data1, d, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
@@ -634,7 +676,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"success", data, true, true},
-		{"empty evidenceData", &EvidenceData{}, true, true},
+		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
 		{"fail nil Data", nil, true, false},
 	}
 

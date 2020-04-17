@@ -337,7 +337,7 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 // ToProto converts ValidatorSet to protobuf
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
-		return nil, nil
+		return nil, errors.New("nil validator set") // validator set should never be nil
 	}
 
 	valsProto := make([]*tmproto.Validator, len(vals.Validators))
@@ -354,11 +354,6 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		return nil, err
 	}
 
-	// check for case when vals.Proposer is nil
-	if valProposer == nil {
-		valProposer = &tmproto.Validator{}
-	}
-
 	vp := tmproto.ValidatorSet{
 		Validators:       valsProto,
 		Proposer:         valProposer,
@@ -373,24 +368,27 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 // is invalid
 func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 	if vp == nil {
-		return nil
+		return errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
 	}
 
 	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
-		pv := valsProto[i]
-		err := pv.FromProto(vp.Validators[i])
+		v := new(Validator)
+		err := v.FromProto(vp.Validators[i])
 		if err != nil {
 			return err
 		}
+		valsProto[i] = v
 	}
-	vp.GetValidators()
 	vals.Validators = valsProto
 
-	err := vals.Proposer.FromProto(vp.GetProposer())
+	p := new(Validator)
+	err := p.FromProto(vp.GetProposer())
 	if err != nil {
 		return err
 	}
+
+	vals.Proposer = p
 
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 

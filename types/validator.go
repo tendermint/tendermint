@@ -122,7 +122,6 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 // It returns an error if the public key is invalid.
 func (v *Validator) FromProto(vp *tmproto.Validator) error {
 	if vp == nil {
-		v = nil
 		return errors.New("nil validator")
 	}
 
