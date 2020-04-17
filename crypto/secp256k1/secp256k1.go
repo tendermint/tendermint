@@ -43,7 +43,7 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 func (privKey PrivKey) Type() string {
-	return PrivKeyAminoName
+	return "secp256k1"
 }
 
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
@@ -145,7 +145,7 @@ func (pubKey PubKey) String() string {
 }
 
 func (pubKey PubKey) Type() string {
-	return PubKeyAminoName
+	return "secp256k1"
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {

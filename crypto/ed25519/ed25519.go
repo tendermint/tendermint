@@ -85,7 +85,7 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 func (privKey PrivKey) Type() string {
-	return PrivKeyAminoName
+	return "ed25519"
 }
 
 // GenPrivKey generates a new ed25519 private key.
@@ -150,7 +150,7 @@ func (pubKey PubKey) String() string {
 }
 
 func (pubKey PubKey) Type() string {
-	return PubKeyAminoName
+	return "ed25519"
 }
 
 // nolint: golint

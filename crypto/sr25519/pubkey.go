@@ -69,6 +69,6 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 }
 
 func (pubKey PubKey) Type() string {
-	return PubKeyAminoName
+	return "sr25519"
 
 }

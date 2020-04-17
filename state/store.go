@@ -236,7 +236,7 @@ func NewABCIResponses(block *types.Block) *ABCIResponses {
 
 // Bytes serializes the ABCIResponse using go-amino.
 func (arz *ABCIResponses) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(arz)
+	return cdc.MustMarshalBinaryBare(arz) //TODO: this is block on store migration
 }
 
 func (arz *ABCIResponses) ResultsHash() []byte {

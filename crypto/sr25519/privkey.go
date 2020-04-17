@@ -70,7 +70,7 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 func (privKey PrivKey) Type() string {
-	return PrivKeyAminoName
+	return "sr25519"
 }
 
 // GenPrivKey generates a new sr25519 private key.
