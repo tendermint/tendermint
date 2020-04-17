@@ -133,27 +133,42 @@ func TestAddEvidence(t *testing.T) {
 
 func TestRecoverPendingEvidence(t *testing.T) {
 	var (
-		valAddr      = []byte("val1")
-		height       = int64(100002)
-		stateDB      = initializeValidatorState(valAddr, height)
-		evidenceDB   = dbm.NewMemDB()
-		blockStoreDB = dbm.NewMemDB()
-		blockStore   = store.NewBlockStore(blockStoreDB)
-
-		evidence = types.NewMockEvidence(height, time.Now(), 0, valAddr)
+		valAddr         = []byte("val1")
+		height          = int64(100002)
+		stateDB         = initializeValidatorState(valAddr, height)
+		evidenceDB      = dbm.NewMemDB()
+		blockStoreDB    = dbm.NewMemDB()
+		blockStore      = store.NewBlockStore(blockStoreDB)
+		evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		goodEvidence    = types.NewMockEvidence(height, time.Now(), 0, valAddr)
+		expiredEvidence = types.NewMockEvidence(int64(1), evidenceTime, 0, valAddr)
 	)
 
-	key := keyPending(evidence)
-	ei := Info{
+	// load good evidence
+	goodKey := keyPending(goodEvidence)
+	goodEi := Info{
 		Committed: false,
 		Priority:  1,
-		Evidence:  evidence,
+		Evidence:  goodEvidence,
 	}
-	eiBytes := cdc.MustMarshalBinaryBare(ei)
-	_ = evidenceDB.Set(key, eiBytes)
+	goodEiBytes := cdc.MustMarshalBinaryBare(goodEi)
+	_ = evidenceDB.Set(goodKey, goodEiBytes)
+
+	// load expired evidence
+	expiredKey := keyPending(expiredEvidence)
+	expiredEi := Info{
+		Committed: false,
+		Priority:  2,
+		Evidence:  expiredEvidence,
+	}
+	expiredEiBytes := cdc.MustMarshalBinaryBare(expiredEi)
+	_ = evidenceDB.Set(expiredKey, expiredEiBytes)
 	pool := NewPool(stateDB, evidenceDB, blockStore)
 
+	ok, _ := pool.store.db.Has(goodKey)
+
 	assert.Equal(t, 1, pool.evidenceList.Len())
+	assert.True(t, ok)
 }
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
