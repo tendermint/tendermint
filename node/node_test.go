@@ -260,7 +260,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockEvidence(1, time.Now(), 1, proposerAddr)
+		ev := types.NewMockEvidence(1, time.Now(), proposerAddr)
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}

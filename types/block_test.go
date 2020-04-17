@@ -608,7 +608,7 @@ func TestBlockProtoBuf(t *testing.T) {
 
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(20)
-	evi := NewMockEvidence(b2.Height, time.Now(), 0, tmrand.Bytes(32))
+	evi := NewMockEvidence(b2.Height, time.Now(), tmrand.Bytes(32))
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
