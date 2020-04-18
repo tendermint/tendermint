@@ -115,6 +115,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, block *types.Block) (State, error) {
+	blockExec.logger.Debug("[Peppermint] Applying block", "height", block.Height, "numTxs", block.NumTxs)
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, ErrInvalidBlock(err)
@@ -168,6 +169,13 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
+	if block.Height%5 == 0 {
+		state.ProposalResults = []types.SideProposalResult{
+			types.SideProposalResult{Result: 0x01},
+			types.SideProposalResult{Result: 0x02},
+		}
+	}
+
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -483,6 +491,7 @@ func ExecCommitBlock(
 	logger log.Logger,
 	stateDB dbm.DB,
 ) ([]byte, error) {
+	logger.Info("[Peppermint] Exec commit block", "height", block.Height)
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)

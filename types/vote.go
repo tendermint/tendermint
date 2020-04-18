@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/maticnetwork/bor/rlp"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -59,7 +58,9 @@ type Vote struct {
 	ValidatorAddress Address       `json:"validator_address"`
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
-	Data             []byte        `json:"data"` // extra data [peppermint]
+
+	Data                []byte               `json:"data"`                  // extra data [peppermint]
+	SideProposalResults []SideProposalResult `json:"side_proposal_results"` // proposal result [peppermint]
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -74,7 +75,7 @@ func (vote *Vote) CommitSig() *CommitSig {
 
 func (vote *Vote) SignBytes(chainID string) []byte {
 	// [peppermint] converted from amino to rlp
-	bz, err := rlp.EncodeToBytes(CanonicalizeVote(chainID, vote))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +101,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s (proposals %v)}",
 		vote.ValidatorIndex,
 		cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -110,6 +111,7 @@ func (vote *Vote) String() string {
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
+		vote.SideProposalResults,
 	)
 }
 
