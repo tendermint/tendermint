@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/p2p"
 	tmstate "github.com/tendermint/tendermint/proto/state"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,7 +17,7 @@ type iIO interface {
 
 	broadcastStatusRequest(base int64, height int64)
 
-	trySwitchToConsensus(state tmstate.State, blocksSynced int)
+	trySwitchToConsensus(state sm.State, blocksSynced int)
 }
 
 type switchIO struct {

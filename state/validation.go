@@ -8,14 +8,13 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	tmstate "github.com/tendermint/tendermint/proto/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.State, block *types.Block) error {
+func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -40,12 +39,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 			block.Height,
 		)
 	}
-	var bi types.BlockID
-	if err := bi.FromProto(&state.LastBlockID); err != nil {
-		return err
-	}
 	// Validate prev block info.
-	if !block.LastBlockID.Equals(bi) {
+	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
 			state.LastBlockID,
 			block.LastBlockID,
@@ -72,23 +67,15 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 			block.LastResultsHash,
 		)
 	}
-	vals := types.ValidatorSet{}
-	if err := vals.FromProto(state.Validators); err != nil {
-		return err
-	}
-	if !bytes.Equal(block.ValidatorsHash, vals.Hash()) {
+	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
 		return fmt.Errorf("wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
-			vals.Hash(),
+			state.Validators.Hash(),
 			block.ValidatorsHash,
 		)
 	}
-	nextVals := types.ValidatorSet{}
-	if err := nextVals.FromProto(state.NextValidators); err != nil {
-		return err
-	}
-	if !bytes.Equal(block.NextValidatorsHash, nextVals.Hash()) {
+	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
 		return fmt.Errorf("wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
-			nextVals.Hash(),
+			state.NextValidators.Hash(),
 			block.NextValidatorsHash,
 		)
 	}
@@ -102,12 +89,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
 			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
 		}
-		lastVals := types.ValidatorSet{}
-		if err := lastVals.FromProto(state.LastValidators); err != nil {
-			return err
-		}
-		err := lastVals.VerifyCommit(
-			state.ChainID, bi, block.Height-1, block.LastCommit)
+		err := state.LastValidators.VerifyCommit(
+			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err
 		}
@@ -121,12 +104,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 				state.LastBlockTime,
 			)
 		}
-
-		var lastValSet types.ValidatorSet
-		if err := lastValSet.FromProto(state.LastValidators); err != nil {
-			return err
-		}
-		medianTime := MedianTime(block.LastCommit, &lastValSet)
+		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
 			return fmt.Errorf("invalid block time. Expected %v, got %v",
 				medianTime,
@@ -164,12 +142,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	var valSet types.ValidatorSet
-	if err := valSet.FromProto(state.Validators); err != nil {
-		return err
-	}
 	if len(block.ProposerAddress) != crypto.AddressSize ||
-		!valSet.HasAddress(block.ProposerAddress) {
+		!state.Validators.HasAddress(block.ProposerAddress) {
 		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
 			block.ProposerAddress,
 		)
@@ -183,7 +157,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state tmstate.Stat
 // - it is from a key who was a validator at the given height
 // - it is internally consistent
 // - it was properly signed by the alleged equivocator
-func VerifyEvidence(stateDB dbm.DB, state tmstate.State, evidence types.Evidence) error {
+func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error {
 	var (
 		height         = state.LastBlockHeight
 		evidenceParams = state.ConsensusParams.Evidence

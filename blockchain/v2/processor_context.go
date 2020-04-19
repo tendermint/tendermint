@@ -3,7 +3,7 @@ package v2
 import (
 	"fmt"
 
-	tmstate "github.com/tendermint/tendermint/proto/state"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -11,16 +11,16 @@ type processorContext interface {
 	applyBlock(blockID types.BlockID, block *types.Block) error
 	verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-	tmState() tmstate.State
+	tmState() sm.State
 }
 
 type pContext struct {
 	store   blockStore
 	applier blockApplier
-	state   tmstate.State
+	state   sm.State
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s tmstate.State) *pContext {
+func newProcessorContext(st blockStore, ex blockApplier, s sm.State) *pContext {
 	return &pContext{
 		store:   st,
 		applier: ex,
@@ -34,7 +34,7 @@ func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block) error 
 	return err
 }
 
-func (pc pContext) tmState() tmstate.State {
+func (pc pContext) tmState() sm.State {
 	return pc.state
 }
 
@@ -49,11 +49,11 @@ func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, see
 type mockPContext struct {
 	applicationBL  []int64
 	verificationBL []int64
-	state          tmstate.State
+	state          sm.State
 }
 
 func newMockProcessorContext(
-	state tmstate.State,
+	state sm.State,
 	verificationBlackList []int64,
 	applicationBlackList []int64) *mockPContext {
 	return &mockPContext{
@@ -86,6 +86,6 @@ func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet
 
 }
 
-func (mpc *mockPContext) tmState() tmstate.State {
+func (mpc *mockPContext) tmState() sm.State {
 	return mpc.state
 }

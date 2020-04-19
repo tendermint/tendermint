@@ -1,7 +1,6 @@
 package state
 
 import (
-	tmstate "github.com/tendermint/tendermint/proto/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -41,7 +40,7 @@ type BlockStore interface {
 type EvidencePool interface {
 	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error
-	Update(*types.Block, tmstate.State)
+	Update(*types.Block, State)
 	// IsCommitted indicates if this evidence was already marked committed in another block.
 	IsCommitted(types.Evidence) bool
 }
@@ -51,5 +50,5 @@ type MockEvidencePool struct{}
 
 func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
 func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
-func (m MockEvidencePool) Update(*types.Block, tmstate.State)     {}
+func (m MockEvidencePool) Update(*types.Block, State)             {}
 func (m MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }

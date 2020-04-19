@@ -39,13 +39,13 @@ func newTestApp() proxy.AppConns {
 }
 
 func makeAndCommitGoodBlock(
-	state tmstate.State,
+	state sm.State,
 	height int64,
 	lastCommit *types.Commit,
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (tmstate.State, types.BlockID, *types.Commit, error) {
+	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
 	// A good block passes
 	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
 	if err != nil {
@@ -53,27 +53,22 @@ func makeAndCommitGoodBlock(
 	}
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	var vals types.ValidatorSet
-	if err := vals.FromProto(state.Validators); err != nil {
-		return tmstate.State{}, types.BlockID{}, nil, err
-	}
-	commit, err := makeValidCommit(height, blockID, &vals, privVals)
+	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
 	if err != nil {
 		return state, types.BlockID{}, nil, err
 	}
 	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state tmstate.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
-	blockExec *sm.BlockExecutor, evidence []types.Evidence) (tmstate.State, types.BlockID, error) {
-	block, _ := sm.MakeBlock(state, height, makeTxs(height), lastCommit, evidence, proposerAddr)
+func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
+	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}} //TODO: see if we can stay in proto not local type
-	bi := blockID.ToProto()
-	state, _, err := blockExec.ApplyBlock(state, *bi, block)
+	state, _, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -106,7 +101,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeState(nVals, height int) (tmstate.State, dbm.DB, map[string]types.PrivValidator) {
+func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
 	privVals := make(map[string]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {
@@ -138,9 +133,8 @@ func makeState(nVals, height int) (tmstate.State, dbm.DB, map[string]types.PrivV
 	return s, stateDB, privVals
 }
 
-func makeBlock(state tmstate.State, height int64) *types.Block {
-	block, _ := sm.MakeBlock(
-		state,
+func makeBlock(state sm.State, height int64) *types.Block {
+	block, _ := state.MakeBlock(
 		height,
 		makeTxs(state.LastBlockHeight),
 		new(types.Commit),
@@ -177,7 +171,7 @@ func makeConsensusParams(
 }
 
 func makeHeaderPartsResponsesValPubKeyChange(
-	state tmstate.State,
+	state sm.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
@@ -185,13 +179,8 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
-	var nVals types.ValidatorSet
-	err := nVals.FromProto(state.NextValidators)
-	if err != nil {
-		panic(err)
-	}
 	// If the pubkey is new, remove the old and add the new.
-	_, val := nVals.GetByIndex(0)
+	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
@@ -205,7 +194,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 }
 
 func makeHeaderPartsResponsesValPowerChange(
-	state tmstate.State,
+	state sm.State,
 	power int64,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
@@ -214,13 +203,8 @@ func makeHeaderPartsResponsesValPowerChange(
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
-	var nVals types.ValidatorSet
-	err := nVals.FromProto(state.NextValidators)
-	if err != nil {
-		panic(err)
-	}
 	// If the pubkey is new, remove the old and add the new.
-	_, val := nVals.GetByIndex(0)
+	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
@@ -233,7 +217,7 @@ func makeHeaderPartsResponsesValPowerChange(
 }
 
 func makeHeaderPartsResponsesParams(
-	state tmstate.State,
+	state sm.State,
 	params tmproto.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 

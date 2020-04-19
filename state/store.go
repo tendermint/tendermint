@@ -38,15 +38,15 @@ func calcABCIResponsesKey(height int64) []byte {
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
 // or creates a new one from the given genesisFilePath and persists the result
 // to the database.
-func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (tmstate.State, error) {
+func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
 	state := LoadState(stateDB)
+	SaveState(stateDB, state)
 	if state.Validators == nil {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFilePath)
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state)
 	}
 
 	return state, nil
@@ -55,7 +55,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (tmsta
 // LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
 // or creates a new one from the given genesisDoc and persists the result
 // to the database.
-func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (tmstate.State, error) {
+func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
 	state := LoadState(stateDB)
 	if state.Validators == nil {
 		var err error
@@ -65,42 +65,44 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		}
 		SaveState(stateDB, state)
 	}
-
 	return state, nil
 }
 
 // LoadState loads the State from the database.
-func LoadState(db dbm.DB) tmstate.State {
+func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
-func loadState(db dbm.DB, key []byte) (state tmstate.State) {
+func loadState(db dbm.DB, key []byte) State {
 	buf, err := db.Get(key)
 	if err != nil {
 		panic(err)
 	}
 	if len(buf) == 0 {
-		return state
+		return State{}
 	}
-
-	err = cdc.UnmarshalBinaryBare(buf, &state)
+	var sp tmstate.State
+	err = sp.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
-                %v\n`, err))
+		%v\n`, err))
 	}
-	// TODO: ensure that buf is completely read.
+	sm := new(State)
+	if err := sm.FromProto(&sp); err != nil {
+		panic(err)
+	}
 
-	return state
+	return *sm
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
-func SaveState(db dbm.DB, state tmstate.State) {
+func SaveState(db dbm.DB, state State) {
 	saveState(db, state, stateKey)
 }
 
-func saveState(db dbm.DB, state tmstate.State, key []byte) {
+func saveState(db dbm.DB, state State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for block 1.
 	if nextHeight == 1 {
@@ -120,10 +122,7 @@ func saveState(db dbm.DB, state tmstate.State, key []byte) {
 
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, sc)
-	bz, err := state.Marshal()
-	if err != nil {
-		panic(err)
-	}
+	bz := state.Bytes()
 	db.SetSync(key, bz)
 }
 
@@ -377,7 +376,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *tmproto.ValidatorSet) {
+func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -387,7 +386,11 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *tmpr
 	// Only persist validator set if it was updated or checkpoint height (see
 	// valSetCheckpointInterval) is reached.
 	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
-		valInfo.ValidatorSet = valSet
+		pv, err := valSet.ToProto()
+		if err != nil {
+			panic(err)
+		}
+		valInfo.ValidatorSet = pv
 	}
 
 	bz, err := valInfo.Marshal()

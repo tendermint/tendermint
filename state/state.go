@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -34,10 +36,51 @@ var initStateVersion = tmstate.Version{
 
 //-----------------------------------------------------------------------------
 
-// Copy makes a copy of the State for mutating.
-func CopyState(state tmstate.State) tmstate.State {
+// State is a short description of the latest committed block of the Tendermint consensus.
+// It keeps all information necessary to validate new blocks,
+// including the last validator set and the consensus params.
+// All fields are exposed so the struct can be easily serialized,
+// but none of them should be mutated directly.
+// Instead, use state.Copy() or state.NextState(...).
+// NOTE: not goroutine-safe.
+type State struct {
+	Version tmstate.Version
 
-	return tmstate.State{
+	// immutable
+	ChainID string
+
+	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+	LastBlockHeight int64
+	LastBlockID     types.BlockID
+	LastBlockTime   time.Time
+
+	// LastValidators is used to validate block.LastCommit.
+	// Validators are persisted to the database separately every time they change,
+	// so we can query for historical validator sets.
+	// Note that if s.LastBlockHeight causes a valset change,
+	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
+	// Extra +1 due to nextValSet delay.
+	NextValidators              *types.ValidatorSet
+	Validators                  *types.ValidatorSet
+	LastValidators              *types.ValidatorSet
+	LastHeightValidatorsChanged int64
+
+	// Consensus parameters used for validating blocks.
+	// Changes returned by EndBlock and updated after Commit.
+	ConsensusParams                  tmproto.ConsensusParams
+	LastHeightConsensusParamsChanged int64
+
+	// Merkle root of the results from executing prev block
+	LastResultsHash []byte
+
+	// the latest AppHash we've received from calling abci.Commit()
+	AppHash []byte
+}
+
+// Copy makes a copy of the State for mutating.
+func (state State) Copy() State {
+
+	return State{
 		Version: state.Version,
 		ChainID: state.ChainID,
 
@@ -45,9 +88,9 @@ func CopyState(state tmstate.State) tmstate.State {
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
 
-		NextValidators:              types.CopyProtoValSet(state.NextValidators),
-		Validators:                  types.CopyProtoValSet(state.Validators),
-		LastValidators:              types.CopyProtoValSet(state.LastValidators),
+		NextValidators:              state.NextValidators.Copy(),
+		Validators:                  state.Validators.Copy(),
+		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
 
 		ConsensusParams:                  state.ConsensusParams,
@@ -59,14 +102,108 @@ func CopyState(state tmstate.State) tmstate.State {
 	}
 }
 
+// Equals returns true if the States are identical.
+func (state State) Equals(state2 State) bool {
+	sbz, s2bz := state.Bytes(), state2.Bytes()
+	return bytes.Equal(sbz, s2bz)
+}
+
+// Bytes serializes the State using go-amino.
+func (state State) Bytes() []byte {
+	sm, err := state.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := sm.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+// IsEmpty returns true if the State is equal to the empty State.
+func (state State) IsEmpty() bool {
+	return state.Validators == nil // XXX can't compare to Empty
+}
+
+func (state State) ToProto() (*tmstate.State, error) {
+	sm := new(tmstate.State)
+
+	sm.Version = state.Version
+	sm.ChainID = state.ChainID
+	sm.LastBlockHeight = state.LastBlockHeight
+	bip := state.LastBlockID.ToProto()
+	sm.LastBlockID = *bip
+	sm.LastBlockTime = state.LastBlockTime
+
+	vals, err := state.Validators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	nVals, err := state.NextValidators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	lVals, err := state.LastValidators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	sm.NextValidators = nVals
+	sm.Validators = vals
+	sm.LastValidators = lVals
+
+	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
+	sm.ConsensusParams = state.ConsensusParams
+	sm.LastHeightConsensusParamsChanged = state.LastHeightConsensusParamsChanged
+	sm.LastResultsHash = state.LastResultsHash
+	sm.AppHash = state.AppHash
+
+	return sm, nil
+}
+
+func (state *State) FromProto(pb *tmstate.State) error {
+	if pb == nil {
+		return errors.New("nil State")
+	}
+
+	state.Version = pb.Version
+	state.ChainID = pb.ChainID
+	state.LastBlockHeight = pb.LastBlockHeight
+
+	vals := new(types.ValidatorSet)
+	if err := vals.FromProto(pb.Validators); err != nil {
+		return err
+	}
+	nVals := new(types.ValidatorSet)
+	if err := nVals.FromProto(pb.NextValidators); err != nil {
+		return err
+	}
+	lVals := new(types.ValidatorSet)
+	if err := lVals.FromProto(pb.LastValidators); err != nil {
+		return err
+	}
+
+	state.Validators = vals
+	state.NextValidators = nVals
+	state.LastValidators = lVals
+
+	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
+	state.ConsensusParams = pb.ConsensusParams
+	state.LastHeightConsensusParamsChanged = pb.LastHeightConsensusParamsChanged
+	state.LastResultsHash = pb.LastResultsHash
+	state.AppHash = pb.AppHash
+
+	return nil
+}
+
 //------------------------------------------------------------------------
 // Create a block from the latest state
 
 // MakeBlock builds a block from the current state with the given txs, commit,
 // and evidence. Note it also takes a proposerAddress because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
-func MakeBlock(
-	state tmstate.State,
+func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
@@ -82,32 +219,14 @@ func MakeBlock(
 	if height == 1 {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		var lastVals types.ValidatorSet
-		if err := lastVals.FromProto(state.LastValidators); err != nil {
-			return nil, nil
-		}
-		timestamp = MedianTime(commit, &lastVals)
-	}
-	var lastBi types.BlockID
-	if err := lastBi.FromProto(&state.LastBlockID); err != nil {
-		return nil, nil
-	}
-
-	var vals types.ValidatorSet
-	if err := vals.FromProto(state.Validators); err != nil {
-		return nil, nil
-	}
-
-	var nextVals types.ValidatorSet
-	if err := nextVals.FromProto(state.NextValidators); err != nil {
-		return nil, nil
+		timestamp = MedianTime(commit, state.LastValidators)
 	}
 
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, lastBi,
-		vals.Hash(), nextVals.Hash(),
+		timestamp, state.LastBlockID,
+		state.Validators.Hash(), state.NextValidators.Hash(),
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
 		proposerAddress,
 	)
@@ -145,10 +264,10 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 // file.
 //
 // Used during replay and in tests.
-func MakeGenesisStateFromFile(genDocFile string) (tmstate.State, error) {
+func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 	genDoc, err := MakeGenesisDocFromFile(genDocFile)
 	if err != nil {
-		return tmstate.State{}, err
+		return State{}, err
 	}
 	return MakeGenesisState(genDoc)
 }
@@ -167,10 +286,10 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-func MakeGenesisState(genDoc *types.GenesisDoc) (tmstate.State, error) {
+func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return tmstate.State{}, fmt.Errorf("error in genesis file: %v", err)
+		return State{}, fmt.Errorf("error in genesis file: %v", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
@@ -186,32 +305,22 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (tmstate.State, error) {
 
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
-	pbv, err := validatorSet.ToProto()
-	if err != nil {
-		return tmstate.State{}, err
-	}
-
-	pbnv, err := nextValidatorSet.ToProto()
-	if err != nil {
-		return tmstate.State{}, err
-	}
-
 	protoParam := tmproto.ConsensusParams{
 		Block:     genDoc.ConsensusParams.Block,
 		Evidence:  genDoc.ConsensusParams.Evidence,
 		Validator: genDoc.ConsensusParams.Validator,
 	}
 
-	return tmstate.State{
+	return State{
 		Version: initStateVersion,
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,
-		LastBlockID:     tmproto.BlockID{},
+		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextValidators:              pbnv,
-		Validators:                  pbv,
+		NextValidators:              nextValidatorSet,
+		Validators:                  validatorSet,
 		LastValidators:              nil,
 		LastHeightValidatorsChanged: 1,
 

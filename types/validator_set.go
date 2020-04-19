@@ -215,18 +215,6 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 	return valsCopy
 }
 
-// Makes a copy of the validator list.
-func validatorListProtoCopy(valsList []*tmproto.Validator) []*tmproto.Validator {
-	if valsList == nil {
-		return nil
-	}
-	valsCopy := make([]*tmproto.Validator, len(valsList))
-	for i, val := range valsList {
-		valsCopy[i] = CopyProtoVal(val)
-	}
-	return valsCopy
-}
-
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
@@ -371,7 +359,7 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		if err != nil {
 			return nil, err
 		}
-		vsp.Proposer = *valProposer
+		vsp.Proposer = valProposer
 	}
 
 	return vsp, nil
@@ -941,14 +929,6 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
-}
-
-func CopyProtoValSet(vals *tmproto.ValidatorSet) *tmproto.ValidatorSet {
-	return &tmproto.ValidatorSet{
-		Validators:       validatorListProtoCopy(vals.Validators),
-		Proposer:         vals.Proposer,
-		TotalVotingPower: vals.TotalVotingPower,
-	}
 }
 
 //----------------------------------------

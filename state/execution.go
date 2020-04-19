@@ -93,7 +93,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
-	state tmstate.State, commit *types.Commit,
+	state State, commit *types.Commit,
 	proposerAddr []byte,
 ) (*types.Block, *types.PartSet) {
 
@@ -108,14 +108,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return MakeBlock(state, height, txs, commit, evidence, proposerAddr)
+	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlock(state tmstate.State, block *types.Block) error {
+func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
 	return validateBlock(blockExec.evpool, blockExec.db, state, block)
 }
 
@@ -126,8 +126,8 @@ func (blockExec *BlockExecutor) ValidateBlock(state tmstate.State, block *types.
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state tmstate.State, blockID tmproto.BlockID, block *types.Block,
-) (tmstate.State, int64, error) {
+	state State, blockID types.BlockID, block *types.Block,
+) (State, int64, error) {
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
@@ -199,7 +199,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
 func (blockExec *BlockExecutor) Commit(
-	state tmstate.State,
+	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, int64, error) {
@@ -376,7 +376,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
-		if !types.IsValidPubkeyType(params, thisKeyType) {
+		if !types.IsValidPubkeyType(thisKeyType, params) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
@@ -386,20 +386,16 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 // updateState returns a new State updated according to the header and responses.
 func updateState(
-	state tmstate.State,
-	blockID tmproto.BlockID,
+	state State,
+	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
-) (tmstate.State, error) {
+) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
-	nValSet := types.ValidatorSet{}
-	err := nValSet.FromProto(state.NextValidators)
-	if err != nil {
-		return state, err
-	}
+	nValSet := state.NextValidators.Copy()
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
@@ -431,20 +427,16 @@ func updateState(
 
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
-	valSet, err := nValSet.ToProto()
-	if err != nil {
-		return state, err
-	}
 
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
-	return tmstate.State{
+	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		NextValidators:                   valSet,
+		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators,
 		LastValidators:                   state.Validators,
 		LastHeightValidatorsChanged:      lastHeightValsChanged,

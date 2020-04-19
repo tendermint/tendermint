@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	tmstate "github.com/tendermint/tendermint/proto/state"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -42,7 +41,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(tmstate.State, uint64)
+	SwitchToConsensus(sm.State, uint64)
 }
 
 type peerError struct {
@@ -59,7 +58,7 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	// immutable
-	initialState tmstate.State
+	initialState sm.State
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
@@ -71,7 +70,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state tmstate.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -316,11 +315,7 @@ FOR_LOOP:
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			var vals types.ValidatorSet
-			if err := vals.FromProto(state.Validators); err != nil {
-				panic(err)
-			}
-			err := vals.VerifyCommit(
+			err := state.Validators.VerifyCommit(
 				chainID, firstID, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
@@ -348,8 +343,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				fid := firstID.ToProto()
-				state, _, err = bcR.blockExec.ApplyBlock(state, *fid, first)
+				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

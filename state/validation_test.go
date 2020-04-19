@@ -12,10 +12,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	tmproto "github.com/tendermint/tendermint/proto/types"
+	"github.com/tendermint/tendermint/proto/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 const validationTestsStopHeight int64 = 10
@@ -229,7 +229,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			for i := int64(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
-			block, _ := sm.MakeBlock(state, height, makeTxs(height), lastCommit, evidence, proposerAddr)
+			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
 			_, ok := err.(*types.ErrEvidenceOverflow)
 			require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d", height)

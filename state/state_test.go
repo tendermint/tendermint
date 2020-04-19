@@ -26,13 +26,13 @@ import (
 )
 
 // setupTestCase does setup common to all test cases.
-func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, tmstate.State) {
+func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	config := cfg.ResetTestRoot("state_")
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
-
+	fmt.Println(state)
 	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
 
 	return tearDown, stateDB, state
@@ -44,14 +44,14 @@ func TestStateCopy(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	stateCopy := sm.CopyState(state)
+	stateCopy := state.Copy()
 
-	assert.True(state.Equal(stateCopy),
+	assert.True(state.Equals(stateCopy),
 		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
-	assert.False(state.Equal(stateCopy), fmt.Sprintf(`expected states to be different. got same
+	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
 }
 

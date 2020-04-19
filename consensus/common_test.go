@@ -33,7 +33,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
-	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -337,14 +336,14 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state tmstate.State, pv types.PrivValidator, app abci.Application) *State {
+func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
 	config := cfg.ResetTestRoot("consensus_state_test")
 	return newStateWithConfig(config, state, pv, app)
 }
 
 func newStateWithConfig(
 	thisConfig *cfg.Config,
-	state tmstate.State,
+	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
@@ -354,7 +353,7 @@ func newStateWithConfig(
 
 func newStateWithConfigAndBlockStore(
 	thisConfig *cfg.Config,
-	state tmstate.State,
+	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 	blockDB dbm.DB,
@@ -766,7 +765,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (tmstate.State, []types.PrivValidator) {
+func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators

@@ -254,6 +254,13 @@ func (m *Version) GetSoftware() string {
 	return ""
 }
 
+// State is a short description of the latest committed block of the Tendermint consensus.
+// It keeps all information necessary to validate new blocks,
+// including the last validator set and the consensus params.
+// All fields are exposed so the struct can be easily serialized,
+// but none of them should be mutated directly.
+// Instead, use state.Copy() or state.NextState(...).
+// NOTE: not goroutine-safe.
 type State struct {
 	Version Version `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
 	// immutable

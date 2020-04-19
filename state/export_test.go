@@ -25,14 +25,13 @@ const ValSetCheckpointInterval = valSetCheckpointInterval
 // UpdateState is an alias for updateState exported from execution.go,
 // exclusively and explicitly for testing.
 func UpdateState(
-	state tmstate.State,
+	state State,
 	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
-) (tmstate.State, error) {
-	bi := blockID.ToProto()
-	return updateState(state, *bi, header, abciResponses, validatorUpdates)
+) (State, error) {
+	return updateState(state, blockID, header, abciResponses, validatorUpdates)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported
@@ -49,6 +48,6 @@ func SaveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 
 // SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
 // store.go, exported exclusively and explicitly for testing.
-func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *tmproto.ValidatorSet) {
+func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	saveValidatorsInfo(db, height, lastHeightChanged, valSet)
 }

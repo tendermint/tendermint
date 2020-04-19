@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/p2p"
-	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmstate "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 

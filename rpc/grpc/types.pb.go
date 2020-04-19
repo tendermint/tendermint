@@ -8,7 +8,6 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
-	grpc1 "github.com/gogo/protobuf/grpc"
 	proto "github.com/gogo/protobuf/proto"
 	golang_proto "github.com/golang/protobuf/proto"
 	types "github.com/tendermint/tendermint/abci/types"
@@ -402,10 +401,10 @@ type BroadcastAPIClient interface {
 }
 
 type broadcastAPIClient struct {
-	cc grpc1.ClientConn
+	cc *grpc.ClientConn
 }
 
-func NewBroadcastAPIClient(cc grpc1.ClientConn) BroadcastAPIClient {
+func NewBroadcastAPIClient(cc *grpc.ClientConn) BroadcastAPIClient {
 	return &broadcastAPIClient{cc}
 }
 
@@ -444,7 +443,7 @@ func (*UnimplementedBroadcastAPIServer) BroadcastTx(ctx context.Context, req *Re
 	return nil, status.Errorf(codes.Unimplemented, "method BroadcastTx not implemented")
 }
 
-func RegisterBroadcastAPIServer(s grpc1.Server, srv BroadcastAPIServer) {
+func RegisterBroadcastAPIServer(s *grpc.Server, srv BroadcastAPIServer) {
 	s.RegisterService(&_BroadcastAPI_serviceDesc, srv)
 }
 

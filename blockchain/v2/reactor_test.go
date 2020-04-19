@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
-	tmstate "github.com/tendermint/tendermint/proto/state"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -79,8 +78,8 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state tmstate.State, blockID types.BlockID, block *types.Block,
-) (tmstate.State, int64, error) {
+	state sm.State, blockID types.BlockID, block *types.Block,
+) (sm.State, int64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
 }
@@ -118,7 +117,7 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state tmstate.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
@@ -422,8 +421,8 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state tmstate.State, lastCommit *types.Commit) *types.Block {
-	block, _ := sm.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
 	return block
 }
 
@@ -457,7 +456,7 @@ func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower 
 func newReactorStore(
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, tmstate.State, *sm.BlockExecutor) {
+	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -488,14 +487,10 @@ func newReactorStore(
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-			var vals types.ValidatorSet
-			if err := vals.FromProto(state.Validators); err != nil {
-				panic(err)
-			}
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
-				&vals,
+				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
 				time.Now(),
@@ -511,8 +506,7 @@ func newReactorStore(
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
-		bip := blockID.ToProto()
-		state, _, err = blockExec.ApplyBlock(state, *bip, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
 			panic(errors.Wrap(err, "error apply block"))
 		}
