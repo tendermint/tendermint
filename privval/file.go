@@ -251,6 +251,11 @@ func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
 	return nil
 }
 
+// SignBytes signs given data bytes
+func (pv *FilePV) SignBytes(data []byte) ([]byte, error) {
+	return pv.Key.PrivKey.Sign(data)
+}
+
 // Save persists the FilePV to disk.
 func (pv *FilePV) Save() {
 	pv.Key.Save()

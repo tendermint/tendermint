@@ -334,6 +334,30 @@ func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.Respons
 	return reqres.Response.GetEndBlock(), cli.Error()
 }
 
+//
+// Side channel
+//
+
+func (cli *socketClient) BeginSideBlockAsync(req types.RequestBeginSideBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginSideBlock(req))
+}
+
+func (cli *socketClient) BeginSideBlockSync(req types.RequestBeginSideBlock) (*types.ResponseBeginSideBlock, error) {
+	reqres := cli.queueRequest(types.ToRequestBeginSideBlock(req))
+	cli.FlushSync()
+	return reqres.Response.GetBeginSideBlock(), cli.Error()
+}
+
+func (cli *socketClient) DeliverSideTxAsync(req types.RequestDeliverSideTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverSideTx(req))
+}
+
+func (cli *socketClient) DeliverSideTxSync(req types.RequestDeliverSideTx) (*types.ResponseDeliverSideTx, error) {
+	reqres := cli.queueRequest(types.ToRequestDeliverSideTx(req))
+	cli.FlushSync()
+	return reqres.Response.GetDeliverSideTx(), cli.Error()
+}
+
 //----------------------------------------
 
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
@@ -398,6 +422,11 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_BeginBlock)
 	case *types.Request_EndBlock:
 		_, ok = res.Value.(*types.Response_EndBlock)
+
+	case *types.Request_BeginSideBlock:
+		_, ok = res.Value.(*types.Response_BeginSideBlock)
+	case *types.Request_DeliverSideTx:
+		_, ok = res.Value.(*types.Response_DeliverSideTx)
 	}
 	return ok
 }

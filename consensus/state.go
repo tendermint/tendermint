@@ -1726,9 +1726,18 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		vote.Data = cs.LockedBlock.DataHash
 	}
 
-	if len(cs.state.ProposalResults) > 0 {
-		cs.Logger.Debug("[peppermint] Setting side proposal results to vote")
-		vote.SideProposalResults = cs.state.ProposalResults
+	if len(cs.state.SideTxResponses) > 0 {
+		cs.Logger.Debug("[peppermint] Setting side tx results to vote")
+		sideTxResults := make([]types.SideTxResult, 0)
+		for _, sideTxResponse := range cs.state.SideTxResponses {
+			sig, err := cs.privValidator.SignBytes(sideTxResponse.GetBytes())
+			if err != nil {
+				return vote, err
+			}
+			sideTxResponse.SideTxResult.Sig = sig
+			sideTxResults = append(sideTxResults, sideTxResponse.SideTxResult)
+		}
+		vote.SideTxResults = sideTxResults
 	}
 
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)

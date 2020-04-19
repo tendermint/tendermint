@@ -544,16 +544,17 @@ func (commit *Commit) GetVote(valIdx int) *Vote {
 	blockID := commitSig.BlockID
 	commit.memoizeHeightRound()
 	return &Vote{
-		Type:                PrecommitType,
-		Height:              commit.height,
-		Round:               commit.round,
-		BlockID:             blockID,
-		Timestamp:           commitSig.Timestamp,
-		ValidatorAddress:    commitSig.ValidatorAddress,
-		ValidatorIndex:      valIdx,
-		Signature:           commitSig.Signature,
-		Data:                commitSig.Data,
-		SideProposalResults: commitSig.SideProposalResults,
+		Type:             PrecommitType,
+		Height:           commit.height,
+		Round:            commit.round,
+		BlockID:          blockID,
+		Timestamp:        commitSig.Timestamp,
+		ValidatorAddress: commitSig.ValidatorAddress,
+		ValidatorIndex:   valIdx,
+		Signature:        commitSig.Signature,
+
+		Data:          commitSig.Data,
+		SideTxResults: commitSig.SideTxResults,
 	}
 }
 

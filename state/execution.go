@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -122,7 +123,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	abciResponses, sideTxResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -167,15 +168,11 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
+	// Save side tx responses
+	state.SideTxResponses = sideTxResponses
+
 	// Update the app hash and save the state.
 	state.AppHash = appHash
-	if block.Height%5 == 0 {
-		state.ProposalResults = []types.SideProposalResult{
-			types.SideProposalResult{Result: 0x01},
-			types.SideProposalResult{Result: 0x02},
-		}
-	}
-
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -249,11 +246,12 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-) (*ABCIResponses, error) {
+) (*ABCIResponses, []*types.SideTxResultWithData, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
+	sideTxResponses := make([]*types.SideTxResultWithData, 0)
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -286,27 +284,99 @@ func execBlockOnProxyApp(
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
-		return nil, err
+		return nil, nil, err
 	}
+
+	//
+	// Side begin block
+	//
+
+	// TODO get votes from last commit
+	// Side hook for begin block
+	_, err = proxyAppConn.BeginSideBlockSync(abci.RequestBeginSideBlock{
+		Hash:   block.Hash(),
+		Header: types.TM2PB.Header(&block.Header),
+	})
+	if err != nil {
+		logger.Error("Error in proxyAppConn.BeginSideBlock", "err", err)
+		return nil, nil, err
+	}
+
+	//
+	// Deliver tx
+	//
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
+
+	//
+	// Deliver side-tx
+	//
+
+	// Execute side-transactions and store in side-tx responses
+	proxySideCb := func(req *abci.Request, res *abci.Response) {
+		if vreq, okreq := req.Value.(*abci.Request_DeliverSideTx); okreq {
+			if vres, okres := res.Value.(*abci.Response_DeliverSideTx); okres {
+
+				txReq := vreq.DeliverSideTx
+				txRes := vres.DeliverSideTx
+
+				if txRes.Code == abci.CodeTypeOK && txRes.Result != abci.SideTxResultType_Skip {
+					bs := make([]byte, 4)
+					binary.LittleEndian.PutUint32(bs, uint32(txRes.Result))
+
+					tx := types.Tx(txReq.Tx)
+					// add into side tx responses
+					sideTxResponses = append(sideTxResponses, &types.SideTxResultWithData{
+						SideTxResult: types.SideTxResult{
+							TxHash: tx.Hash(),
+							Result: bs[0],
+						},
+						Data: txRes.Data,
+					})
+				}
+
+				// ignore invalid side-tx responses
+			}
+		}
+	}
+	proxyAppConn.SetResponseCallback(proxySideCb)
+
+	// Run side-txs of block.
+	for txIndex, tx := range block.Txs {
+		txRes := abciResponses.DeliverTx[txIndex]
+
+		// execute side-tx only if tx is valid
+		if txRes.Code == abci.CodeTypeOK {
+			proxyAppConn.DeliverSideTxAsync(abci.RequestDeliverSideTx{Tx: tx})
+			if err := proxyAppConn.Error(); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
+	//
+	// End block
+	//
 
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
+	if len(sideTxResponses) > 0 {
+		logger.Debug("Executed side block", "height", block.Height, "validSideTxs", len(sideTxResponses))
+	}
 
-	return abciResponses, nil
+	return abciResponses, sideTxResponses, nil
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
@@ -492,7 +562,7 @@ func ExecCommitBlock(
 	stateDB dbm.DB,
 ) ([]byte, error) {
 	logger.Info("[Peppermint] Exec commit block", "height", block.Height)
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
+	_, _, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

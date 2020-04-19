@@ -59,8 +59,8 @@ type Vote struct {
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
 
-	Data                []byte               `json:"data"`                  // extra data [peppermint]
-	SideProposalResults []SideProposalResult `json:"side_proposal_results"` // proposal result [peppermint]
+	Data          []byte         `json:"data"`            // extra data [peppermint]
+	SideTxResults []SideTxResult `json:"side_tx_results"` // side-tx result [peppermint]
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -111,7 +111,7 @@ func (vote *Vote) String() string {
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
-		vote.SideProposalResults,
+		vote.SideTxResults,
 	)
 }
 

@@ -140,6 +140,18 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
+//
+// Side channel functions
+//
+
+func (app *PersistentKVStoreApplication) BeginSideBlock(req types.RequestBeginSideBlock) types.ResponseBeginSideBlock {
+	return app.app.BeginSideBlock(req)
+}
+
+func (app *PersistentKVStoreApplication) DeliverSideTx(req types.RequestDeliverSideTx) types.ResponseDeliverSideTx {
+	return app.app.DeliverSideTx(req)
+}
+
 //---------------------------------------------
 // update validators
 

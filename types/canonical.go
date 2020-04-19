@@ -41,8 +41,8 @@ type CanonicalVote struct {
 	Timestamp time.Time
 	ChainID   string
 
-	Data                []byte               // [peppermint] tx hash
-	SideProposalResults []SideProposalResult // [peppermint] side proposal results
+	Data          []byte         // [peppermint] tx hash
+	SideTxResults []SideTxResult // [peppermint] side tx results
 }
 
 // CanonicalRLPVote create RLP vote to decode in contract
@@ -93,8 +93,8 @@ func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
 
-		Data:                vote.Data,
-		SideProposalResults: vote.SideProposalResults,
+		Data:          vote.Data,
+		SideTxResults: vote.SideTxResults,
 	}
 	// TODO ensure that removing Timestamp and BlockID has no security issues
 	// return CanonicalRLPVote{
