@@ -162,18 +162,19 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	var (
 		height         = state.LastBlockHeight
 		evidenceParams = state.ConsensusParams.Evidence
+
+		ageDuration  = state.LastBlockTime.Sub(evidence.Time())
+		ageNumBlocks = height - evidence.Height()
 	)
 
-	ageNumBlocks := height - evidence.Height()
-	if ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
-		return fmt.Errorf("evidence from height %d is too old. Min height is %d",
-			evidence.Height(), height-evidenceParams.MaxAgeNumBlocks)
-	}
-
-	ageDuration := state.LastBlockTime.Sub(evidence.Time())
-	if ageDuration > evidenceParams.MaxAgeDuration {
-		return fmt.Errorf("evidence created at %v has expired. Evidence can not be older than: %v",
-			evidence.Time(), state.LastBlockTime.Add(evidenceParams.MaxAgeDuration))
+	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
+		return fmt.Errorf(
+			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
+			evidence.Height(),
+			evidence.Time(),
+			height-evidenceParams.MaxAgeNumBlocks,
+			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
+		)
 	}
 
 	valset, err := LoadValidators(stateDB, evidence.Height())

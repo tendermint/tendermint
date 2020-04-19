@@ -295,6 +295,67 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
 
+## v0.32.10
+
+*April 6, 2020*
+
+This security release fixes:
+
+### Denial of Service 1
+
+Tendermint 0.33.2 and earlier does not limit the number of P2P connection
+requests. For each p2p connection, Tendermint allocates ~0.5MB. Even though
+this memory is garbage collected once the connection is terminated (due to
+duplicate IP or reaching a maximum number of inbound peers), temporary memory
+spikes can lead to OOM (Out-Of-Memory) exceptions.
+
+Tendermint 0.33.3 (and 0.32.10) limits the total number of P2P incoming
+connection requests to to `p2p.max_num_inbound_peers +
+len(p2p.unconditional_peer_ids)`.
+
+Notes:
+
+- Tendermint does not rate limit P2P connection requests per IP (an attacker
+  can saturate all the inbound slots);
+- Tendermint does not rate limit HTTP(S) requests. If you expose any RPC
+  endpoints to the public, please make sure to put in place some protection
+  (https://www.nginx.com/blog/rate-limiting-nginx/). We may implement this in
+  the future ([\#1696](https://github.com/tendermint/tendermint/issues/1696)).
+
+### Denial of Service 2
+
+Tendermint 0.33.2 and earlier does not reclaim `activeID` of a peer after it's
+removed in `Mempool` reactor. This does not happen all the time. It only
+happens when a connection fails (for any reason) before the Peer is created and
+added to all reactors. `RemovePeer` is therefore called before `AddPeer`, which
+leads to always growing memory (`activeIDs` map). The `activeIDs` map has a
+maximum size of 65535 and the node will panic if this map reaches the maximum.
+An attacker can create a lot of connection attempts (exploiting Denial of
+Service 1), which ultimately will lead to the node panicking.
+
+Tendermint 0.33.3 (and 0.32.10) claims `activeID` for a peer in `InitPeer`,
+which is executed before `MConnection` is started.
+
+Notes:
+
+- `InitPeer` function was added to all reactors to combat a similar issue -
+  [\#3338](https://github.com/tendermint/tendermint/issues/3338);
+- Denial of Service 2 is independent of Denial of Service 1 and can be executed
+  without it.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
+- [p2p] Limit the number of incoming connections (@melekes)
+
 ## v0.32.9
 
 _January, 9, 2020_
@@ -625,6 +686,69 @@ program](https://hackerone.com/tendermint).
 - [libs/db] [\#3718](https://github.com/tendermint/tendermint/issues/3718) Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
 - [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
 - [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
+
+*Tendermint 0.31 release series has reached End-Of-Life and is no longer supported.*
+
+## v0.31.12
+
+*April 6, 2020*
+
+This security release fixes:
+
+### Denial of Service 1
+
+Tendermint 0.33.2 and earlier does not limit the number of P2P connection requests.
+For each p2p connection, Tendermint allocates ~0.5MB. Even though this
+memory is garbage collected once the connection is terminated (due to duplicate
+IP or reaching a maximum number of inbound peers), temporary memory spikes can
+lead to OOM (Out-Of-Memory) exceptions.
+
+Tendermint 0.33.3, 0.32.10, and 0.31.12 limit the total number of P2P incoming
+connection requests to to `p2p.max_num_inbound_peers +
+len(p2p.unconditional_peer_ids)`.
+
+Notes:
+
+- Tendermint does not rate limit P2P connection requests per IP (an attacker
+  can saturate all the inbound slots);
+- Tendermint does not rate limit HTTP(S) requests. If you expose any RPC
+  endpoints to the public, please make sure to put in place some protection
+  (https://www.nginx.com/blog/rate-limiting-nginx/). We may implement this in
+  the future ([\#1696](https://github.com/tendermint/tendermint/issues/1696)).
+
+### Denial of Service 2
+
+Tendermint 0.33.2 and earlier does not reclaim `activeID` of a peer after it's
+removed in `Mempool` reactor. This does not happen all the time. It only
+happens when a connection fails (for any reason) before the Peer is created and
+added to all reactors. `RemovePeer` is therefore called before `AddPeer`, which
+leads to always growing memory (`activeIDs` map). The `activeIDs` map has a
+maximum size of 65535 and the node will panic if this map reaches the maximum.
+An attacker can create a lot of connection attempts (exploiting Denial of
+Service 1), which ultimately will lead to the node panicking.
+
+Tendermint 0.33.3, 0.32.10, and 0.31.12 claim `activeID` for a peer in `InitPeer`,
+which is executed before `MConnection` is started.
+
+Notes:
+
+- `InitPeer` function was added to all reactors to combat a similar issue -
+  [\#3338](https://github.com/tendermint/tendermint/issues/3338);
+- Denial of Service 2 is independent of Denial of Service 1 and can be executed
+  without it.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
+- [p2p] Limit the number of incoming connections (@melekes)
 
 ## v0.31.11
 
