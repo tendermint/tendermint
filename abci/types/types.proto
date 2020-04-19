@@ -37,6 +37,9 @@ message Request {
     RequestDeliverTx deliver_tx = 19;
     RequestEndBlock end_block = 11;
     RequestCommit commit = 12;
+
+    RequestBeginSideBlock begin_side_block = 21;
+    RequestDeliverSideTx deliver_side_tx = 22;
   }
 }
 
@@ -102,6 +105,20 @@ message RequestEndBlock {
 message RequestCommit {
 }
 
+//
+// Side channel requests
+//
+
+message RequestBeginSideBlock {
+  bytes hash = 1;
+  Header header = 2 [(gogoproto.nullable)=false];
+  repeated SideProposal side_proposals = 3 [(gogoproto.nullable)=false];
+}
+
+message RequestDeliverSideTx {
+  bytes tx = 1;
+}
+
 //----------------------------------------
 // Response types
 
@@ -119,6 +136,9 @@ message Response {
     ResponseDeliverTx deliver_tx = 10;
     ResponseEndBlock end_block = 11;
     ResponseCommit commit = 12;
+
+    ResponseBeginSideBlock begin_side_block = 21;
+    ResponseDeliverSideTx deliver_side_tx = 22;
   }
 }
 
@@ -205,6 +225,21 @@ message ResponseEndBlock {
 message ResponseCommit {
   // reserve 1
   bytes data = 2;
+}
+
+//
+// Side channel response
+//
+
+message ResponseBeginSideBlock {
+  bytes data = 1;
+}
+
+message ResponseDeliverSideTx {
+  uint32 code = 1;
+  string codespace = 2;
+  SideTxResultType result = 4;
+  bytes data = 3;
 }
 
 //----------------------------------------
@@ -326,6 +361,19 @@ message Evidence {
   int64 total_voting_power = 5;
 }
 
+// Side-tx result type
+enum SideTxResultType {
+  Skip = 0;
+  Yes = 1;
+  No = 2;
+}
+
+// Side proposal
+message SideProposal {
+  bytes tx = 1;
+  SideTxResultType result = 2;
+}
+
 //----------------------------------------
 // Service Definition
 
@@ -341,4 +389,7 @@ service ABCIApplication {
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+
+  rpc BeginSideBlock(RequestBeginSideBlock) returns (ResponseBeginSideBlock);
+  rpc DeliverSideTx(RequestDeliverSideTx) returns (ResponseDeliverSideTx);
 }
