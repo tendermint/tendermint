@@ -42,6 +42,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [tools] \#4615 Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker`.
 - [p2p] \#4621(https://github.com/tendermint/tendermint/pull/4621) ban peers when messages are unsolicited or too frequent (@cmwaters)
 - [evidence] [\#4632](https://github.com/tendermint/tendermint/pull/4632) Inbound evidence checked if already existing (@cmwaters)
+- [rpc] [\#4703](https://github.com/tendermint/tendermint/pull/4703) Add `count` and `total` to `/validators` response (@melekes)
 
 ### BUG FIXES:
 
