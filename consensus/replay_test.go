@@ -759,11 +759,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	defer proxyApp.Stop()
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
-	valUpdates := make([]abci.ValidatorUpdate, len(state.Validators.Validators))
-	for i, val := range state.Validators.Validators {
-		valUpdates[i] = abci.ValidatorUpdate{PubKey: val.PubKey, Power: val.VotingPower}
-	}
-	validators := valUpdates
+	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {

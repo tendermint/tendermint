@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -40,13 +41,13 @@ func calcABCIResponsesKey(height int64) []byte {
 // to the database.
 func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
 	state := LoadState(stateDB)
-	SaveState(stateDB, state)
-	if state.Validators == nil {
+	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFilePath)
 		if err != nil {
 			return state, err
 		}
+		SaveState(stateDB, state)
 	}
 
 	return state, nil
@@ -288,7 +289,8 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	bz, err := abciResponses.Marshal()
+	fmt.Println(abciResponses)
+	bz, err := proto.Marshal(abciResponses)
 	if err != nil {
 		panic(err)
 	}
@@ -405,7 +407,6 @@ func LoadConsensusParams(db dbm.DB, height int64) (tmproto.ConsensusParams, erro
 	empty := tmproto.ConsensusParams{}
 
 	paramsInfo := loadConsensusParamsInfo(db, height)
-	fmt.Println(paramsInfo, height)
 	if paramsInfo == nil {
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
@@ -445,7 +446,6 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 	}
 	// TODO: ensure that buf is completely read.
 
-	fmt.Println(paramsInfo, height)
 	return paramsInfo
 }
 
@@ -465,6 +465,6 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(paramsInfo, "save", changeHeight, nextHeight)
+
 	db.Set(calcConsensusParamsKey(nextHeight), bz)
 }

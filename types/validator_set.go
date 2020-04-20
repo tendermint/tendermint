@@ -374,15 +374,18 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 		return nil // allow Validator set to be empty (block 1 will have empty LastValidators)
 	}
 
-	valsProto := make([]*Validator, len(vp.Validators))
-	for i := 0; i < len(vp.Validators); i++ {
-		vi := Validator{}
-		err := vi.FromProto(vp.Validators[i])
-		if err != nil {
-			return err
-		}
+	if vp.Validators != nil {
+		valsProto := make([]*Validator, len(vp.Validators))
+		for i := 0; i < len(vp.Validators); i++ {
+			vi := Validator{}
+			err := vi.FromProto(vp.Validators[i])
+			if err != nil {
+				return err
+			}
 
-		valsProto[i] = &vi
+			valsProto[i] = &vi
+		}
+		vals.Validators = valsProto
 	}
 
 	if vp.Proposer != nil {
@@ -394,7 +397,6 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 		vals.Proposer = proposer
 	}
 
-	vals.Validators = valsProto
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 
 	return nil

@@ -153,6 +153,10 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			nil,
 			nil,
 		},
+		4: {
+			[]*abci.ResponseDeliverTx{nil},
+			nil,
+		},
 	}
 
 	// Query all before, this should return error.
