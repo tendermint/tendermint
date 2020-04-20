@@ -110,9 +110,7 @@ func newBlockchainReactor(
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		partsHeader := thisParts.Header()
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: types.PartSetHeader{
-			Total: partsHeader.Total, Hash: partsHeader.Hash}}
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
@@ -122,7 +120,7 @@ func newBlockchainReactor(
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	bcReactor := NewBlockchainReactor(state, blockExec, blockStore, fastSync)
+	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	return BlockchainReactorPair{bcReactor, proxyApp}

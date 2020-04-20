@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -151,12 +151,12 @@ type blockVerifier interface {
 
 //nolint:deadcode
 type blockApplier interface {
-	ApplyBlock(state sm.State, blockID types.BlockID, block *types.Block) (sm.State, int64, error)
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
 }
 
 // XXX: unify naming in this package around tmState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
-func newReactor(state sm.State, store blockStore, reporter behaviour.Reporter,
+func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
 	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
 	scheduler := newScheduler(state.LastBlockHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
@@ -177,7 +177,7 @@ func newReactor(state sm.State, store blockStore, reporter behaviour.Reporter,
 
 // NewBlockchainReactor creates a new reactor instance.
 func NewBlockchainReactor(
-	state sm.State,
+	state state.State,
 	blockApplier blockApplier,
 	store blockStore,
 	fastSync bool) *BlockchainReactor {

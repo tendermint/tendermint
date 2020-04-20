@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,7 +16,7 @@ type iIO interface {
 
 	broadcastStatusRequest(base int64, height int64)
 
-	trySwitchToConsensus(state sm.State, blocksSynced int)
+	trySwitchToConsensus(state state.State, blocksSynced int)
 }
 
 type switchIO struct {
@@ -37,7 +37,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, int)
+	SwitchToConsensus(state.State, int)
 }
 
 func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
@@ -97,7 +97,7 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIO) trySwitchToConsensus(state sm.State, blocksSynced int) {
+func (sio *switchIO) trySwitchToConsensus(state state.State, blocksSynced int) {
 	conR, ok := sio.sw.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
 		conR.SwitchToConsensus(state, blocksSynced)

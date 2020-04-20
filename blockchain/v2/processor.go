@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
+	tmstate "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +28,7 @@ type pcBlockProcessed struct {
 type pcFinished struct {
 	priorityNormal
 	blocksSynced int
-	tmState      sm.State
+	tmState      tmstate.State
 }
 
 func (p pcFinished) Error() string {
