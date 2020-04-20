@@ -40,8 +40,6 @@ jobs:
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2
-      - name: install
-        run: make install install_abci
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
