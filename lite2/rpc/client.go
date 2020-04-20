@@ -19,6 +19,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var errNegOrZeroHeight = errors.New("negative or zero height")
+
 // Client is an RPC client, which uses lite#Client to verify data (if it can be
 // proved!).
 type Client struct {
@@ -86,7 +88,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 		return nil, errors.New("empty tree")
 	}
 	if resp.Height <= 0 {
-		return nil, errors.New("negative or zero height")
+		return nil, errNegOrZeroHeight
 	}
 
 	// Update the light client if we're behind.
@@ -109,7 +111,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
 		err = c.prt.VerifyValue(resp.Proof, h.AppHash, kp.String(), resp.Value)
 		if err != nil {
-			return nil, errors.Wrap(err, "verify value proof")
+			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
@@ -118,7 +120,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 	// XXX How do we encode the key into a string...
 	err = c.prt.VerifyAbsence(resp.Proof, h.AppHash, string(resp.Key))
 	if err != nil {
-		return nil, errors.Wrap(err, "verify absence proof")
+		return nil, fmt.Errorf("verify absence proof: %w", err)
 	}
 	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
@@ -161,6 +163,14 @@ func (c *Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, 
 		return nil, err
 	}
 
+	// Validate res.
+	if err := res.ConsensusParams.Validate(); err != nil {
+		return nil, err
+	}
+	if res.BlockHeight <= 0 {
+		return nil, errNegOrZeroHeight
+	}
+
 	// Update the light client if we're behind.
 	h, err := c.updateLiteClientIfNeededTo(res.BlockHeight)
 	if err != nil {
@@ -189,12 +199,12 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 	}
 
 	// Validate res.
-	for _, meta := range res.BlockMetas {
+	for i, meta := range res.BlockMetas {
 		if meta == nil {
-			return nil, errors.New("nil BlockMeta")
+			return nil, fmt.Errorf("nil block meta %d", i)
 		}
 		if err := meta.ValidateBasic(); err != nil {
-			return nil, errors.Wrap(err, "invalid BlockMeta")
+			return nil, fmt.Errorf("invalid block meta %d: %w", i, err)
 		}
 	}
 
@@ -210,10 +220,10 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 	for _, meta := range res.BlockMetas {
 		h, err := c.lc.TrustedHeader(meta.Header.Height)
 		if err != nil {
-			return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
+			return nil, fmt.Errorf("trusted header %d: %w", meta.Header.Height, err)
 		}
 		if bmH, tH := meta.Header.Hash(), h.Hash(); !bytes.Equal(bmH, tH) {
-			return nil, errors.Errorf("BlockMeta#Header %X does not match with trusted header %X",
+			return nil, errors.Errorf("block meta header %X does not match with trusted header %X",
 				bmH, tH)
 		}
 	}
@@ -240,7 +250,7 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 		return nil, err
 	}
 	if bmH, bH := res.BlockID.Hash, res.Block.Hash(); !bytes.Equal(bmH, bH) {
-		return nil, errors.Errorf("BlockID %X does not match with Block %X",
+		return nil, errors.Errorf("blockID %X does not match with block %X",
 			bmH, bH)
 	}
 
@@ -252,7 +262,7 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 
 	// Verify block.
 	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
-		return nil, errors.Errorf("Block#Header %X does not match with trusted header %X",
+		return nil, errors.Errorf("block header %X does not match with trusted header %X",
 			bH, tH)
 	}
 
@@ -260,7 +270,30 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 }
 
 func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
-	return c.next.BlockResults(height)
+	res, err := c.next.BlockResults(height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate res.
+	if res.Height <= 0 {
+		return nil, errNegOrZeroHeight
+	}
+
+	// Update the light client if we're behind.
+	h, err := c.updateLiteClientIfNeededTo(res.Height + 1)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify block results.
+	results := types.NewResults(res.TxsResults)
+	if rH, tH := results.Hash(), h.LastResultsHash; !bytes.Equal(rH, tH) {
+		return nil, errors.Errorf("last results %X does not match with trusted last results %X",
+			rH, tH)
+	}
+
+	return res, nil
 }
 
 func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
@@ -272,6 +305,9 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	// Validate res.
 	if err := res.SignedHeader.ValidateBasic(c.lc.ChainID()); err != nil {
 		return nil, err
+	}
+	if res.Height <= 0 {
+		return nil, errNegOrZeroHeight
 	}
 
 	// Update the light client if we're behind.
@@ -299,7 +335,7 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errors.Errorf("invalid ResultTx: %v", res)
+		return nil, errNegOrZeroHeight
 	}
 
 	// Update the light client if we're behind.
@@ -317,6 +353,7 @@ func (c *Client) TxSearch(query string, prove bool, page, perPage int, orderBy s
 	return c.next.TxSearch(query, prove, page, perPage, orderBy)
 }
 
+// UNVERIFIED
 func (c *Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	return c.next.Validators(height, page, perPage)
 }
@@ -340,7 +377,7 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 
 func (c *Client) updateLiteClientIfNeededTo(height int64) (*types.SignedHeader, error) {
 	h, err := c.lc.VerifyHeaderAtHeight(height, time.Now())
-	return h, errors.Wrapf(err, "failed to update light client to %d", height)
+	return h, fmt.Errorf("failed to update light client to %d: %w", height, err)
 }
 
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
@@ -399,7 +436,7 @@ func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscr
 
 func parseQueryStorePath(path string) (storeName string, err error) {
 	if !strings.HasPrefix(path, "/") {
-		return "", fmt.Errorf("expected path to start with /")
+		return "", errors.New("expected path to start with /")
 	}
 
 	paths := strings.SplitN(path[1:], "/", 3)
