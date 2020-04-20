@@ -65,7 +65,9 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		// check evidence hasn't expired
 		if pool.IsExpired(ev) {
 			key := keyPending(ev)
-			pool.evidenceStore.Delete(key)
+			if err := pool.evidenceStore.Delete(key); err != nil {
+				pool.logger.Error("Unable to remove expired evidence", "err", err)
+			}
 			continue
 		}
 		pool.evidenceList.PushBack(ev)
@@ -135,12 +137,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
-		ok, err := evpool.Has(evidence)
-		if err != nil {
-			return ErrDatabase{err}
-		}
-		if ok {
-			return ErrEvidenceAlreadyStored{}
+		if evpool.Has(ev) {
+			continue
 		}
 
 		// For lunatic validator evidence, a header needs to be fetched.
@@ -159,8 +157,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		}
 
 		// 2) Save to store.
-		err = evpool.addPendingEvidence(ev)
-		if err != nil {
+		if err := evpool.addPendingEvidence(ev); err != nil {
 			return ErrDatabase{err}
 		}
 
@@ -186,13 +183,8 @@ func (evpool *Pool) IsExpired(evidence types.Evidence) bool {
 }
 
 // Has checks if the evidence is already stored
-func (evpool *Pool) Has(evidence types.Evidence) (bool, error) {
-	ok, err := evpool.IsPending(evidence)
-	// if not there and there is no error then we check if it is committed
-	if ok || err != nil {
-		return ok, err
-	}
-	return evpool.IsCommitted(evidence)
+func (evpool *Pool) Has(evidence types.Evidence) bool {
+	return evpool.IsPending(evidence) || evpool.IsCommitted(evidence)
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
@@ -202,36 +194,52 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Tim
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
 		// check that evidence has not already been committed
-		if ok, _ := evpool.IsCommitted(ev); ok {
+		if evpool.IsCommitted(ev) {
 			continue
 		}
 		// As the evidence is stored in the block store we only need to record the height that it was saved at.
 		key := keyCommitted(ev)
 		evBytes := cdc.MustMarshalBinaryBare(height)
-		evpool.evidenceStore.Set(key, evBytes)
-		// if pending, remove from that bucket
-		if ok, _ := evpool.IsPending(ev); ok {
+		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
+			evpool.logger.Error("Unable to add committed evidence", "err", err)
+			// if we can't move evidence to committed then don't remove the evidence from pending
+			continue
+		}
+		// if pending, remove from that bucket, remember not all evidence has been seen before
+		if evpool.IsPending(ev) {
 			key := keyPending(ev)
-			evpool.evidenceStore.Delete(key)
+			if err := evpool.evidenceStore.Delete(key); err != nil {
+				evpool.logger.Error("Unable to delete pending evidence", "err", err)
+			}
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
 	}
 
+	// remove committed evidence from the clist
 	if len(blockEvidenceMap) != 0 {
-		// remove committed evidence from the clist
 		evidenceParams := evpool.State().ConsensusParams.Evidence
 		evpool.removeEvidenceFromList(height, lastBlockTime, evidenceParams, blockEvidenceMap)
 	}
 }
 
-func (evpool *Pool) IsCommitted(evidence types.Evidence) (bool, error) {
+// Checks whether the evidence has already been committed. DB errors are passed to the logger.
+func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	key := keyCommitted(evidence)
-	return evpool.evidenceStore.Has(key)
+	ok, err := evpool.evidenceStore.Has(key)
+	if err != nil {
+		evpool.logger.Error("Unable to find committed evidence", "err", err)
+	}
+	return ok
 }
 
-func (evpool *Pool) IsPending(evidence types.Evidence) (bool, error) {
+// Checks whether the evidence is already pending. DB errors are passed to the logger.
+func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	key := keyPending(evidence)
-	return evpool.evidenceStore.Has(key)
+	ok, err := evpool.evidenceStore.Has(key)
+	if err != nil {
+		evpool.logger.Error("Unable to find pending evidence", "err", err)
+	}
+	return ok
 }
 
 func (evpool *Pool) EvidenceFront() *clist.CElement {
