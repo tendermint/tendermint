@@ -1922,6 +1922,12 @@ components:
                   proposer_priority:
                     type: "string"
                     example: "13769415"
+            count:
+              type: "number"
+              example: 1
+            total:
+              type: "number"
+              example: 25
           type: "object"
     GenesisResponse:
       type: object
