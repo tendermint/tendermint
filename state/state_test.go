@@ -1043,3 +1043,34 @@ func TestApplyUpdates(t *testing.T) {
 		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
 }
+
+func TestStateProto(t *testing.T) {
+	tearDown, _, _ := setupTestCase(t)
+	defer tearDown(t)
+
+	tc := []struct {
+		testName string
+		state    *sm.State
+		expPass  bool
+	}{
+		{"empty state", &sm.State{}, true},
+		{"nil state", nil, false},
+		// {"success state", &state, true},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		pbs, err := tt.state.ToProto()
+		if !tt.expPass {
+			require.Error(t, err)
+		}
+		smt := new(sm.State)
+		err = smt.FromProto(pbs)
+		if tt.expPass {
+			require.NoError(t, err, tt.testName)
+			require.Equal(t, tt.state, smt, tt.testName)
+		} else {
+			require.Error(t, err, tt.testName)
+		}
+	}
+}

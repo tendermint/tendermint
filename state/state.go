@@ -126,7 +126,10 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-func (state State) ToProto() (*tmstate.State, error) {
+func (state *State) ToProto() (*tmstate.State, error) {
+	if state == nil {
+		return nil, errors.New("state is nil")
+	}
 	sm := new(tmstate.State)
 
 	sm.Version = state.Version
@@ -136,22 +139,33 @@ func (state State) ToProto() (*tmstate.State, error) {
 	sm.LastBlockID = *bip
 	sm.LastBlockTime = state.LastBlockTime
 
-	vals, err := state.Validators.ToProto()
-	if err != nil {
-		return nil, err
+	if state.Validators == nil {
+		state.Validators = &types.ValidatorSet{}
+	} else {
+		vals, err := state.Validators.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		sm.Validators = vals
 	}
-	nVals, err := state.NextValidators.ToProto()
-	if err != nil {
-		return nil, err
+	if state.NextValidators == nil {
+		state.NextValidators = &types.ValidatorSet{}
+	} else {
+		nVals, err := state.NextValidators.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		sm.NextValidators = nVals
 	}
-	lVals, err := state.LastValidators.ToProto()
-	if err != nil {
-		return nil, err
+	if state.LastValidators == nil {
+		state.LastValidators = &types.ValidatorSet{}
+	} else {
+		lVals, err := state.LastValidators.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		sm.LastValidators = lVals
 	}
-
-	sm.NextValidators = nVals
-	sm.Validators = vals
-	sm.LastValidators = lVals
 
 	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
 	sm.ConsensusParams = state.ConsensusParams
