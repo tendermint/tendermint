@@ -126,6 +126,8 @@ type Peer struct {
 type ResultValidators struct {
 	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
+	Count       int                `json:"count"`
+	Total       int                `json:"total"`
 }
 
 // ConsensusParams for given height

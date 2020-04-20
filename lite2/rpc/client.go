@@ -3,11 +3,10 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -82,7 +81,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 
 	// Validate the response.
 	if resp.IsErr() {
-		return nil, errors.Errorf("err response code: %v", resp.Code)
+		return nil, fmt.Errorf("err response code: %v", resp.Code)
 	}
 	if len(resp.Key) == 0 || resp.Proof == nil {
 		return nil, errors.New("empty tree")
@@ -223,7 +222,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 			return nil, fmt.Errorf("trusted header %d: %w", meta.Header.Height, err)
 		}
 		if bmH, tH := meta.Header.Hash(), h.Hash(); !bytes.Equal(bmH, tH) {
-			return nil, errors.Errorf("block meta header %X does not match with trusted header %X",
+			return nil, fmt.Errorf("block meta header %X does not match with trusted header %X",
 				bmH, tH)
 		}
 	}
@@ -250,7 +249,7 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 		return nil, err
 	}
 	if bmH, bH := res.BlockID.Hash, res.Block.Hash(); !bytes.Equal(bmH, bH) {
-		return nil, errors.Errorf("blockID %X does not match with block %X",
+		return nil, fmt.Errorf("blockID %X does not match with block %X",
 			bmH, bH)
 	}
 
@@ -262,7 +261,7 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 
 	// Verify block.
 	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
-		return nil, errors.Errorf("block header %X does not match with trusted header %X",
+		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
 			bH, tH)
 	}
 
@@ -289,7 +288,7 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	// Verify block results.
 	results := types.NewResults(res.TxsResults)
 	if rH, tH := results.Hash(), h.LastResultsHash; !bytes.Equal(rH, tH) {
-		return nil, errors.Errorf("last results %X does not match with trusted last results %X",
+		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
 			rH, tH)
 	}
 
@@ -318,7 +317,7 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 
 	// Verify commit.
 	if rH, tH := res.Hash(), h.Hash(); !bytes.Equal(rH, tH) {
-		return nil, errors.Errorf("header %X does not match with trusted header %X",
+		return nil, fmt.Errorf("header %X does not match with trusted header %X",
 			rH, tH)
 	}
 
@@ -353,9 +352,36 @@ func (c *Client) TxSearch(query string, prove bool, page, perPage int, orderBy s
 	return c.next.TxSearch(query, prove, page, perPage, orderBy)
 }
 
-// UNVERIFIED
+// Validators fetches and verifies validators.
+//
+// WARNING: only full validator sets are verified (when length of validators is
+// less than +perPage+. +perPage+ default is 30, max is 100).
 func (c *Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
-	return c.next.Validators(height, page, perPage)
+	res, err := c.next.Validators(height, page, perPage)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate res.
+	if res.BlockHeight <= 0 {
+		return nil, errNegOrZeroHeight
+	}
+
+	// Update the light client if we're behind.
+	h, err := c.updateLiteClientIfNeededTo(res.BlockHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify validators.
+	if res.Count <= res.Total {
+		if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.ValidatorsHash; !bytes.Equal(rH, tH) {
+			return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
+				rH, tH)
+		}
+	}
+
+	return res, nil
 }
 
 func (c *Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
