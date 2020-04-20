@@ -39,11 +39,17 @@ type Pool struct {
 // Validator.Address -> Last height it was in validator set
 type valToLastHeightMap map[string]int64
 
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
+func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
 	var (
 		store = NewStore(evidenceDB)
 		state = sm.LoadState(stateDB)
 	)
+
+	valToLastHeight, err := buildValToLastHeightMap(state, stateDB, blockStore)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Pool{
 		stateDB:         stateDB,
 		blockStore:      blockStore,
@@ -51,8 +57,8 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		logger:          log.NewNopLogger(),
 		store:           store,
 		evidenceList:    clist.New(),
-		valToLastHeight: buildValToLastHeightMap(state, stateDB),
-	}
+		valToLastHeight: valToLastHeight,
+	}, nil
 }
 
 func (evpool *Pool) EvidenceFront() *clist.CElement {
@@ -200,6 +206,18 @@ func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	return ei.Evidence != nil && ei.Committed
 }
 
+// ValidatorLastHeight returns the last height of the validator w/ the
+// given address. 0 - if address never was a validator or was such a
+// long time ago (> ConsensusParams.Evidence.MaxAgeDuration && >
+// ConsensusParams.Evidence.MaxAgeNumBlocks).
+func (evpool *Pool) ValidatorLastHeight(address []byte) int64 {
+	h, ok := evpool.valToLastHeight[string(address)]
+	if !ok {
+		return 0
+	}
+	return h
+}
+
 func (evpool *Pool) removeEvidence(
 	height int64,
 	lastBlockTime time.Time,
@@ -248,22 +266,38 @@ func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
 	}
 }
 
-func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap {
+func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.BlockStore) (valToLastHeightMap, error) {
 	var (
 		valToLastHeight = make(map[string]int64)
 		params          = state.ConsensusParams.Evidence
 
-		numBlocks = int64(0)
-		height    = state.LastBlockHeight
+		numBlocks  = int64(0)
+		blockTime  = time.Now()
+		minAgeTime = time.Now().Add(-params.MaxAgeDuration)
+		height     = state.LastBlockHeight
 	)
 
-	// From last height down to MaxAgeNumBlocks, put all validators into a map.
-	for height >= 1 && numBlocks <= params.MaxAgeNumBlocks {
-		valSet, err := sm.LoadValidators(stateDB, height)
+	if height == 0 {
+		return valToLastHeight, nil
+	}
 
-		// last stored height -> return
-		if _, ok := err.(sm.ErrNoValSetForHeight); ok {
-			return valToLastHeight
+	meta := blockStore.LoadBlockMeta(height)
+	if meta == nil {
+		return nil, fmt.Errorf("block meta for height %d not found", height)
+	}
+	blockTime = meta.Header.Time
+
+	// From state.LastBlockHeight, build a map of "active" validators until
+	// MaxAgeNumBlocks is passed and block time is less than now() -
+	// MaxAgeDuration.
+	for height >= 1 && (numBlocks <= params.MaxAgeNumBlocks || !blockTime.Before(minAgeTime)) {
+		valSet, err := sm.LoadValidators(stateDB, height)
+		if err != nil {
+			// last stored height -> return
+			if _, ok := err.(sm.ErrNoValSetForHeight); ok {
+				return valToLastHeight, nil
+			}
+			return nil, fmt.Errorf("validator set for height %d not found", height)
 		}
 
 		for _, val := range valSet.Validators {
@@ -274,8 +308,20 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap 
 		}
 
 		height--
+
+		if height > 0 {
+			// NOTE: we assume here blockStore and state.Validators are in sync. I.e if
+			// block N is stored, then validators for height N are also stored in
+			// state.
+			meta := blockStore.LoadBlockMeta(height)
+			if meta == nil {
+				return nil, fmt.Errorf("block meta for height %d not found", height)
+			}
+			blockTime = meta.Header.Time
+		}
+
 		numBlocks++
 	}
 
-	return valToLastHeight
+	return valToLastHeight, nil
 }

@@ -26,22 +26,24 @@ func TestMain(m *testing.M) {
 func TestEvidencePool(t *testing.T) {
 	var (
 		valAddr      = []byte("val1")
-		height       = int64(100002)
+		height       = int64(52)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = store.NewBlockStore(blockStoreDB)
-		pool         = NewPool(stateDB, evidenceDB, blockStore)
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 		goodEvidence = types.NewMockEvidence(height, time.Now(), 0, valAddr)
 		badEvidence  = types.NewMockEvidence(1, evidenceTime, 0, valAddr)
 	)
 
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+
 	// bad evidence
-	err := pool.AddEvidence(badEvidence)
+	err = pool.AddEvidence(badEvidence)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "is too old; min height is 99981 and evidence can not be older than")
+		assert.Contains(t, err.Error(), "is too old; min height is 31 and evidence can not be older than")
 	}
 
 	// good evidence
@@ -76,9 +78,11 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 		stateDB       = initializeValidatorState(valAddr, height)
 		evidenceDB    = dbm.NewMemDB()
 		blockStoreDB  = dbm.NewMemDB()
-		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
-		pool          = NewPool(stateDB, evidenceDB, blockStore)
+		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 	)
+
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 
 	// evidence not seen yet:
 	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
@@ -93,17 +97,19 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	assert.True(t, pool.IsCommitted(evidence))
 }
 
-func TestAddEvidence(t *testing.T) {
+func TestEvidencePoolAddEvidence(t *testing.T) {
 	var (
 		valAddr      = []byte("val1")
 		height       = int64(30)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
-		pool         = NewPool(stateDB, evidenceDB, blockStore)
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
+
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 
 	testCases := []struct {
 		evHeight      int64
@@ -129,6 +135,35 @@ func TestAddEvidence(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEvidencePoolUpdate(t *testing.T) {
+	var (
+		valAddr      = []byte("validator_address")
+		height       = int64(1)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		state        = sm.LoadState(stateDB)
+		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
+	)
+
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+
+	// create new block (no need to save it to blockStore)
+	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	lastCommit := makeCommit(height, valAddr)
+	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{evidence})
+	// update state (partially)
+	state.LastBlockHeight = height + 1
+
+	pool.Update(block, state)
+
+	// a) Update marks evidence as committed
+	assert.True(t, pool.IsCommitted(evidence))
+	// b) Update updates valToLastHeight map
+	assert.Equal(t, height+1, pool.ValidatorLastHeight(valAddr))
 }
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
@@ -170,20 +205,10 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 
 // initializeBlockStore creates a block storage and populates it w/ a dummy
 // block at +height+.
-func initializeBlockStore(db dbm.DB, state sm.State, height int64, valAddr []byte) *store.BlockStore {
-	makeCommit := func(height int64, valAddr []byte) *types.Commit {
-		commitSigs := []types.CommitSig{{
-			BlockIDFlag:      types.BlockIDFlagCommit,
-			ValidatorAddress: valAddr,
-			Timestamp:        time.Now(),
-			Signature:        []byte("Signature"),
-		}}
-		return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
-	}
-
+func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.BlockStore {
 	blockStore := store.NewBlockStore(db)
 
-	for i := int64(1); i <= height; i++ {
+	for i := int64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, valAddr)
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
@@ -196,4 +221,14 @@ func initializeBlockStore(db dbm.DB, state sm.State, height int64, valAddr []byt
 	}
 
 	return blockStore
+}
+
+func makeCommit(height int64, valAddr []byte) *types.Commit {
+	commitSigs := []types.CommitSig{{
+		BlockIDFlag:      types.BlockIDFlagCommit,
+		ValidatorAddress: valAddr,
+		Timestamp:        time.Now(),
+		Signature:        []byte("Signature"),
+	}}
+	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }

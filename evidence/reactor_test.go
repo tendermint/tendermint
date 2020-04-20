@@ -43,8 +43,11 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 	for i := 0; i < N; i++ {
 		evidenceDB := dbm.NewMemDB()
 		blockStoreDB := dbm.NewMemDB()
-		blockStore := initializeBlockStore(blockStoreDB, sm.LoadState(stateDBs[i]), int64(numEvidence), []byte("myval"))
-		pool := NewPool(stateDBs[i], evidenceDB, blockStore)
+		blockStore := initializeBlockStore(blockStoreDB, sm.LoadState(stateDBs[i]), []byte("myval"))
+		pool, err := NewPool(stateDBs[i], evidenceDB, blockStore)
+		if err != nil {
+			panic(err)
+		}
 		reactors[i] = NewReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
