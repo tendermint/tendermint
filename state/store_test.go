@@ -134,7 +134,6 @@ func TestPruneStates(t *testing.T) {
 						},
 					})
 
-				fmt.Println("here")
 				sm.SaveABCIResponses(db, h, abciResponses)
 			}
 

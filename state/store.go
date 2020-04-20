@@ -57,6 +57,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 // to the database.
 func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
 	state := LoadState(stateDB)
+
 	if state.Validators == nil {
 		var err error
 		state, err = MakeGenesisState(genesisDoc)
@@ -293,7 +294,6 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	fmt.Println(abciResponses)
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
@@ -307,7 +307,6 @@ func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIRespo
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
 func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	valInfo := loadValidatorsInfo(db, height)
-	vip := types.ValidatorSet{}
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
 	}
@@ -337,6 +336,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		valInfo = valInfo2
 	}
 
+	vip := types.ValidatorSet{}
 	if err := vip.FromProto(valInfo.ValidatorSet); err != nil {
 		return nil, err
 	}
@@ -355,11 +355,12 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 	if err != nil {
 		panic(err)
 	}
+
 	if len(buf) == 0 {
 		return nil
 	}
 
-	v := tmstate.ValidatorsInfo{}
+	v := new(tmstate.ValidatorsInfo)
 	err = v.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
@@ -368,7 +369,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 	}
 	// TODO: ensure that buf is completely read.
 
-	return &v
+	return v
 }
 
 // saveValidatorsInfo persists the validator set.
@@ -408,7 +409,6 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 // LoadConsensusParams loads the ConsensusParams for a given height.
 func LoadConsensusParams(db dbm.DB, height int64) (tmproto.ConsensusParams, error) {
 	empty := tmproto.ConsensusParams{}
-
 	paramsInfo := loadConsensusParamsInfo(db, height)
 	if paramsInfo == nil {
 		return empty, ErrNoConsensusParamsForHeight{height}
@@ -441,15 +441,14 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 		return nil
 	}
 
-	paramsInfo := tmstate.ConsensusParamsInfo{}
+	paramsInfo := new(tmstate.ConsensusParamsInfo)
 	if err = paramsInfo.Unmarshal(buf); err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:
                 %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
-
-	return &paramsInfo
+	return paramsInfo
 }
 
 // saveConsensusParamsInfo persists the consensus params for the next block to disk.

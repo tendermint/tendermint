@@ -627,47 +627,43 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.hash)
 }
 
-func (c Commit) ToProto() *tmproto.Commit {
+func (commit Commit) ToProto() *tmproto.Commit {
 
 	csp := tmproto.Commit{
-		Height: c.Height,
-		Round:  c.Round,
+		Height: commit.Height,
+		Round:  commit.Round,
 		BlockID: tmproto.BlockID{
-			Hash: c.BlockID.Hash,
+			Hash: commit.BlockID.Hash,
 			PartsHeader: tmproto.PartSetHeader{
-				Hash:  c.BlockID.PartsHeader.Hash,
-				Total: c.BlockID.PartsHeader.Total,
+				Hash:  commit.BlockID.PartsHeader.Hash,
+				Total: commit.BlockID.PartsHeader.Total,
 			},
 		},
-		Hash: c.hash,
+		Hash: commit.hash,
 		BitArray: &tmprotobits.BitArray{
-			Bits:  int64(c.bitArray.Bits),
-			Elems: c.bitArray.Elems,
+			Bits:  int64(commit.bitArray.Bits),
+			Elems: commit.bitArray.Elems,
 		},
 	}
 	return &csp
 }
-func (c *Commit) FromProto(cp tmproto.Commit) error {
-	c.Height = cp.Height
-	c.Round = cp.Round
-	c.BlockID = BlockID{
+func (commit *Commit) FromProto(cp tmproto.Commit) error {
+	commit.Height = cp.Height
+	commit.Round = cp.Round
+	commit.BlockID = BlockID{
 		Hash: cp.BlockID.Hash,
 		PartsHeader: PartSetHeader{
 			Hash:  cp.BlockID.PartsHeader.Hash,
 			Total: cp.BlockID.PartsHeader.Total,
 		},
 	}
-	c.hash = cp.Hash
-	c.bitArray = &tmbits.BitArray{
+	commit.hash = cp.Hash
+	commit.bitArray = &tmbits.BitArray{
 		Bits:  (int(cp.BitArray.Bits)),
 		Elems: cp.BitArray.Elems,
 	}
 
-	if err := c.ValidateBasic(); err != nil {
-		return err
-	}
-
-	return nil
+	return commit.ValidateBasic()
 }
 
 //-----------------------------------------------------------------------------

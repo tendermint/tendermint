@@ -130,8 +130,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	if state == nil {
 		return nil, errors.New("state is nil")
 	}
-	sm := new(tmstate.State)
 
+	sm := new(tmstate.State)
 	sm.Version = state.Version
 	sm.ChainID = state.ChainID
 	sm.LastBlockHeight = state.LastBlockHeight
@@ -139,33 +139,23 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.LastBlockID = *bip
 	sm.LastBlockTime = state.LastBlockTime
 
-	if state.Validators == nil {
-		state.Validators = &types.ValidatorSet{}
-	} else {
-		vals, err := state.Validators.ToProto()
-		if err != nil {
-			return nil, err
-		}
-		sm.Validators = vals
+	vals, err := state.Validators.ToProto()
+	if err != nil {
+		return nil, err
 	}
-	if state.NextValidators == nil {
-		state.NextValidators = &types.ValidatorSet{}
-	} else {
-		nVals, err := state.NextValidators.ToProto()
-		if err != nil {
-			return nil, err
-		}
-		sm.NextValidators = nVals
+	sm.Validators = vals
+
+	nVals, err := state.NextValidators.ToProto()
+	if err != nil {
+		return nil, err
 	}
-	if state.LastValidators == nil {
-		state.LastValidators = &types.ValidatorSet{}
-	} else {
-		lVals, err := state.LastValidators.ToProto()
-		if err != nil {
-			return nil, err
-		}
-		sm.LastValidators = lVals
+	sm.NextValidators = nVals
+
+	lVals, err := state.LastValidators.ToProto()
+	if err != nil {
+		return nil, err
 	}
+	sm.LastValidators = lVals
 
 	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
 	sm.ConsensusParams = state.ConsensusParams
@@ -184,23 +174,37 @@ func (state *State) FromProto(pb *tmstate.State) error {
 	state.Version = pb.Version
 	state.ChainID = pb.ChainID
 	state.LastBlockHeight = pb.LastBlockHeight
+	state.LastBlockTime = pb.LastBlockTime
 
-	vals := new(types.ValidatorSet)
-	if err := vals.FromProto(pb.Validators); err != nil {
-		return err
-	}
-	nVals := new(types.ValidatorSet)
-	if err := nVals.FromProto(pb.NextValidators); err != nil {
-		return err
-	}
-	lVals := new(types.ValidatorSet)
-	if err := lVals.FromProto(pb.LastValidators); err != nil {
-		return err
+	if pb.Validators == nil {
+		state.Validators = nil
+	} else {
+		vals := new(types.ValidatorSet)
+		if err := vals.FromProto(pb.Validators); err != nil {
+			return err
+		}
+		state.Validators = vals
 	}
 
-	state.Validators = vals
-	state.NextValidators = nVals
-	state.LastValidators = lVals
+	if pb.NextValidators == nil {
+		state.Validators = nil
+	} else {
+		nVals := new(types.ValidatorSet)
+		if err := nVals.FromProto(pb.NextValidators); err != nil {
+			return err
+		}
+		state.NextValidators = nVals
+	}
+
+	if pb.LastValidators == nil {
+		state.LastValidators = nil
+	} else {
+		lVals := new(types.ValidatorSet)
+		if err := lVals.FromProto(pb.LastValidators); err != nil {
+			return err
+		}
+		state.LastValidators = lVals
+	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
 	state.ConsensusParams = pb.ConsensusParams

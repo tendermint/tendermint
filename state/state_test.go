@@ -32,7 +32,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
-	fmt.Println(state)
+
 	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
 
 	return tearDown, stateDB, state
@@ -1045,7 +1045,7 @@ func TestApplyUpdates(t *testing.T) {
 }
 
 func TestStateProto(t *testing.T) {
-	tearDown, _, _ := setupTestCase(t)
+	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 
 	tc := []struct {
@@ -1054,16 +1054,17 @@ func TestStateProto(t *testing.T) {
 		expPass  bool
 	}{
 		{"empty state", &sm.State{}, true},
-		{"nil state", nil, false},
-		// {"success state", &state, true},
+		{"nil failure state", nil, false},
+		{"success state", &state, true},
 	}
 
 	for _, tt := range tc {
 		tt := tt
 		pbs, err := tt.state.ToProto()
 		if !tt.expPass {
-			require.Error(t, err)
+			assert.Error(t, err)
 		}
+
 		smt := new(sm.State)
 		err = smt.FromProto(pbs)
 		if tt.expPass {

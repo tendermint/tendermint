@@ -217,6 +217,10 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
+	if vals == nil {
+		return nil
+	}
+
 	return &ValidatorSet{
 		Validators:       validatorListCopy(vals.Validators),
 		Proposer:         vals.Proposer,
@@ -336,7 +340,7 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
-		return nil, nil
+		return nil, nil // allow Validator set to be empty (block 1 will have empty LastValidators)
 	}
 	var vsp = new(tmproto.ValidatorSet)
 
@@ -367,13 +371,13 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 
 func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 	if vp == nil {
-		return errors.New("valSet is empty")
+		return nil // allow Validator set to be empty (block 1 will have empty LastValidators)
 	}
 
 	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
 		vi := Validator{}
-		err := vi.FromProto(*vp.Validators[i])
+		err := vi.FromProto(vp.Validators[i])
 		if err != nil {
 			return err
 		}
@@ -381,11 +385,13 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 		valsProto[i] = &vi
 	}
 
-	if isTypedNil(vp.Proposer) {
-		err := vals.Proposer.FromProto(*vp.GetProposer())
+	if vp.Proposer != nil {
+		proposer := new(Validator)
+		err := proposer.FromProto(vp.GetProposer())
 		if err != nil {
 			return err
 		}
+		vals.Proposer = proposer
 	}
 
 	vals.Validators = valsProto
