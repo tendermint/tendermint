@@ -378,9 +378,7 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
-	err = sw.Start()
-	require.NoError(t, err)
-	defer sw.Stop()
+	// No need to start sw since crawlPeers is called manually here.
 
 	peer := mock.NewPeer(nil)
 	addr := peer.SocketAddr()
@@ -389,9 +387,11 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, book.HasAddress(addr))
+
 	// imitate maxAttemptsToDial reached
 	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
 	pexR.crawlPeers([]*p2p.NetAddress{addr})
+
 	assert.False(t, book.HasAddress(addr))
 }
 
