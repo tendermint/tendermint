@@ -279,7 +279,6 @@ func TestBitArrayProtoBuf(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		protoBA := tc.bA1.ToProto()
-		fmt.Println(protoBA)
 		ba := new(BitArray)
 		ba.FromProto(protoBA)
 		if tc.expPass {
