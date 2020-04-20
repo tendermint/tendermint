@@ -31,7 +31,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 
 	var latestHeight int64
-	if consensusReactor.FastSync() {
+	if consensusReactor.WaitSync() {
 		latestHeight = blockStore.Height()
 	} else {
 		latestHeight = consensusState.GetLastHeight()
@@ -66,7 +66,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			CatchingUp:          consensusReactor.FastSync(),
+			CatchingUp:          consensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),
