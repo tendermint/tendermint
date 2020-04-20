@@ -176,6 +176,8 @@ func TestGenesisAndValidators(t *testing.T) {
 		vals, err := c.Validators(nil, 0, 0)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
+		require.Equal(t, 1, vals.Count)
+		require.Equal(t, 1, vals.Total)
 		val := vals.Validators[0]
 
 		// make sure the current set is also the genesis set

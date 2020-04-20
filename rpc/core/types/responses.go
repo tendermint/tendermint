@@ -122,10 +122,14 @@ type Peer struct {
 	RemoteIP         string               `json:"remote_ip"`
 }
 
-// Validators for a height
+// Validators for a height.
 type ResultValidators struct {
 	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
+	// Count of actual validators in this result
+	Count int `json:"count"`
+	// Total number of validators
+	Total int `json:"total"`
 }
 
 // ConsensusParams for given height
