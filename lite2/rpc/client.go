@@ -156,7 +156,24 @@ func (c *Client) ConsensusState() (*ctypes.ResultConsensusState, error) {
 }
 
 func (c *Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
-	return c.next.ConsensusParams(height)
+	res, err := c.next.ConsensusParams(height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the light client if we're behind.
+	h, err := c.updateLiteClientIfNeededTo(res.BlockHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify hash.
+	if cH, tH := res.ConsensusParams.Hash(), h.ConsensusHash; !bytes.Equal(cH, tH) {
+		return nil, fmt.Errorf("params hash %X does not match trusted hash %X",
+			cH, tH)
+	}
+
+	return res, nil
 }
 
 func (c *Client) Health() (*ctypes.ResultHealth, error) {
