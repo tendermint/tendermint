@@ -272,7 +272,6 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.B
 		params          = state.ConsensusParams.Evidence
 
 		numBlocks  = int64(0)
-		blockTime  = time.Now()
 		minAgeTime = time.Now().Add(-params.MaxAgeDuration)
 		height     = state.LastBlockHeight
 	)
@@ -285,7 +284,7 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.B
 	if meta == nil {
 		return nil, fmt.Errorf("block meta for height %d not found", height)
 	}
-	blockTime = meta.Header.Time
+	blockTime := meta.Header.Time
 
 	// From state.LastBlockHeight, build a map of "active" validators until
 	// MaxAgeNumBlocks is passed and block time is less than now() -
