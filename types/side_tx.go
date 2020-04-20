@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -9,7 +10,7 @@ import (
 // SideTxResult side tx result for vote
 type SideTxResult struct {
 	TxHash []byte `json:"tx_hash"`
-	Result byte   `json:"result"`
+	Result int32  `json:"result"`
 	Sig    []byte `json:"sig"`
 }
 
@@ -34,8 +35,22 @@ type SideTxResultWithData struct {
 
 // GetBytes returns data bytes for sign
 func (sp *SideTxResultWithData) GetBytes() []byte {
+	bs := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bs, uint32(sp.Result))
+
 	data := make([]byte, 0)
-	data = append(data, sp.Result)
+	data = append(data, bs[0]) // use first byte as result
 	data = append(data, sp.Data...)
 	return data
+}
+
+func (sp *SideTxResultWithData) String() string {
+	if sp == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("SideTxResultWithData {%s %X}",
+		sp.String(),
+		cmn.Fingerprint(sp.Data),
+	)
 }

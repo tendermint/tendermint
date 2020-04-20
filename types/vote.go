@@ -101,7 +101,16 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s (proposals %v)}",
+	sideTxResults := "Proposals "
+	if len(vote.SideTxResults) > 0 {
+		for _, s := range vote.SideTxResults {
+			sideTxResults += s.String()
+		}
+	} else {
+		sideTxResults = "no-proposals"
+	}
+
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s [%s]}",
 		vote.ValidatorIndex,
 		cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -111,7 +120,7 @@ func (vote *Vote) String() string {
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
-		vote.SideTxResults,
+		sideTxResults,
 	)
 }
 

@@ -130,7 +130,7 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 	return nil
 }
 
-// SignBytes sign bytes
-func (sc *SignerClient) SignBytes(data []byte) ([]byte, error) {
-	return nil, nil
+// SignSideTxResult set sign bytes
+func (sc *SignerClient) SignSideTxResult(data *types.SideTxResultWithData) error {
+	return nil
 }
