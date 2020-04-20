@@ -610,7 +610,6 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2.ProposerAddress = tmrand.Bytes(20)
 	evi := NewMockEvidence(b2.Height, time.Now(), 0, tmrand.Bytes(32))
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
-
 	b2.EvidenceHash = b2.Evidence.Hash()
 
 	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
@@ -665,6 +664,7 @@ func TestDataProtoBuf(t *testing.T) {
 		d := new(Data)
 		err := d.FromProto(protoData)
 		if tc.expPass {
+			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.data1, d, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
