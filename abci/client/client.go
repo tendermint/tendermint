@@ -35,6 +35,10 @@ type Client interface {
 	InitChainAsync(types.RequestInitChain) *ReqRes
 	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
 	EndBlockAsync(types.RequestEndBlock) *ReqRes
+	ListSnapshotsAsync(types.RequestListSnapshots) *ReqRes
+	OfferSnapshotAsync(types.RequestOfferSnapshot) *ReqRes
+	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) *ReqRes
+	ApplySnapshotChunkAsync(types.RequestApplySnapshotChunk) *ReqRes
 
 	FlushSync() error
 	EchoSync(msg string) (*types.ResponseEcho, error)
@@ -47,6 +51,10 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	ListSnapshotsSync(types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
+	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
+	LoadSnapshotChunkSync(types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
+	ApplySnapshotChunkSync(types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
 }
 
 //----------------------------------------
