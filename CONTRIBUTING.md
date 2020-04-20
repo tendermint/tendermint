@@ -190,6 +190,8 @@ easy to reference the pull request where a change was introduced.
 - make changes and update the `CHANGELOG_PENDING.md` to record your change
 - before submitting a pull request, run `git rebase` on top of the latest `master`
 
+When you have submitted a pull request label the pull request with either `R:minor`, if the change can be accepted in a minor release, or `R:major`, if the change is meant for a major release.
+
 ### Pull Merge Procedure
 
 - ensure pull branch is based on a recent `master`
@@ -225,20 +227,50 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - reset the `CHANGELOG_PENDING.md`
-   - bump versions
+   - bump the appropriate versions in `version.go`
 4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
 5. merge back to master (don't squash merge!)
 
 #### Minor Release
 
-If there were no breaking changes and you need to create a release nonetheless,
-the procedure is almost exactly like with a new release above.
+Minor releases are done differently from major releases. Minor release pull requests should be labeled with `R:minor` if they are to be included.
 
-The only difference is that in the end you create a pull request against the existing `X.X` branch.
-The branch name should match the release number you want to create.
-Merging this PR will trigger the next release.
-For example, if the PR is against an existing 0.34 branch which already contains a v0.34.0 release/tag,
-the patch version will be incremented and the created release will be v0.34.1.
+1. Checkout the last major release, `vX.X`.
+
+   - `git checkout vX.X`
+
+2. Create a release candidate branch off the most recent major release with your upcoming version specified, `rc1/vX.X.x`, and push the branch.
+
+   - `git checkout -b rc1/vX.X.x`
+   - `git push -u origin rc1/vX.X.x`
+
+3. Create a cherry-picking branch, and make a pull request into the release candidate.
+
+   - `git checkout -b cherry-picks/rc1/vX.X.x`
+
+     - This is for devs to approve the commits that are entering the release candidate.
+     - There may be merge conflicts.
+
+4. Begin cherry-picking.
+
+   - `git cherry-pick {PR commit from master you wish to cherry pick}`
+   - Fix conflicts
+   - `git cherry-pick --continue`
+   - `git push cherry-picks/rc1/vX.X.x`
+
+   > Once all commits are included and CI/tests have passed, then it is ready for a release.
+
+5. Create a release branch `release/vX.X.x` off the release candidate branch.
+
+   - `git checkout -b release/vX.X.x`
+   - `git push -u origin release/vX.X.x`
+     > Note this Branch is protected once pushed, you will need admin help to make any change merges into the branch.
+
+6. Merge Commit the release branch into the latest major release branch `vX.X`, this will start the release process.
+
+7. Create a Pull Request back to master with the CHANGELOG & version changes from the latest release.
+   - Remove all `R:minor` labels from the pull requests that were included in the release.
+     > Note: Do not merge the release branch into master.
 
 #### Backport Release
 
