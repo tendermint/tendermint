@@ -43,7 +43,7 @@ func TestEvidencePool(t *testing.T) {
 	// bad evidence
 	err = pool.AddEvidence(badEvidence)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "is too old; min height is 31 and evidence can not be older than")
+		assert.Contains(t, err.Error(), "is too old; min height is 32 and evidence can not be older than")
 	}
 
 	// good evidence
@@ -166,6 +166,24 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	assert.Equal(t, height+1, pool.ValidatorLastHeight(valAddr))
 }
 
+func TestEvidencePoolNewPool(t *testing.T) {
+	var (
+		valAddr      = []byte("validator_address")
+		height       = int64(1)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		state        = sm.LoadState(stateDB)
+		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
+	)
+
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+
+	assert.Equal(t, height, pool.ValidatorLastHeight(valAddr))
+	assert.EqualValues(t, 0, pool.ValidatorLastHeight([]byte("non-existent-validator")))
+}
+
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	stateDB := dbm.NewMemDB()
 
@@ -195,7 +213,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	}
 
 	// save all states up to height
-	for i := int64(0); i < height; i++ {
+	for i := int64(0); i <= height; i++ {
 		state.LastBlockHeight = i
 		sm.SaveState(stateDB, state)
 	}
