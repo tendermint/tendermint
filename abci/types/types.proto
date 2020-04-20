@@ -112,9 +112,7 @@ message RequestCommit {
 message RequestBeginSideBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
-  repeated VoteInfo votes = 3 [(gogoproto.nullable)=false];
-  int64 total_power = 4;
-  repeated SideTxResult side_tx_results = 5 [(gogoproto.nullable)=false];
+  repeated SideTxResult side_tx_results = 3 [(gogoproto.nullable)=false];
 }
 
 message RequestDeliverSideTx {
@@ -378,7 +376,7 @@ message SideTxSig {
 
 // Side tx results
 message SideTxResult {
-  bytes tx = 1;
+  bytes tx_hash = 1;
   repeated SideTxSig sigs = 2 [(gogoproto.nullable)=false];
 }
 

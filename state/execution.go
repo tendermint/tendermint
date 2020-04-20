@@ -1,7 +1,7 @@
 package state
 
 import (
-	"encoding/binary"
+	"bytes"
 	"fmt"
 	"time"
 
@@ -253,6 +253,9 @@ func execBlockOnProxyApp(
 	abciResponses := NewABCIResponses(block)
 	sideTxResponses := make([]*types.SideTxResultWithData, 0)
 
+	hash := block.Hash()
+	header := types.TM2PB.Header(&block.Header)
+
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
@@ -272,13 +275,14 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
+	// get begin block validator info
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
 
 	// Begin block
 	var err error
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(&block.Header),
+		Hash:                hash,
+		Header:              header,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
@@ -291,11 +295,15 @@ func execBlockOnProxyApp(
 	// Side begin block
 	//
 
+	// get side-tx results for begin side-block
+	sideTxResults := getBeginSideBlockData(block, stateDB)
+
 	// TODO get votes from last commit
 	// Side hook for begin block
 	_, err = proxyAppConn.BeginSideBlockSync(abci.RequestBeginSideBlock{
-		Hash:   block.Hash(),
-		Header: types.TM2PB.Header(&block.Header),
+		Hash:          hash,
+		Header:        header,
+		SideTxResults: sideTxResults,
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginSideBlock", "err", err)
@@ -327,15 +335,12 @@ func execBlockOnProxyApp(
 				txRes := vres.DeliverSideTx
 
 				if txRes.Code == abci.CodeTypeOK && txRes.Result != abci.SideTxResultType_Skip {
-					bs := make([]byte, 4)
-					binary.LittleEndian.PutUint32(bs, uint32(txRes.Result))
-
 					tx := types.Tx(txReq.Tx)
 					// add into side tx responses
 					sideTxResponses = append(sideTxResponses, &types.SideTxResultWithData{
 						SideTxResult: types.SideTxResult{
 							TxHash: tx.Hash(),
-							Result: bs[0],
+							Result: int32(txRes.Result),
 						},
 						Data: txRes.Data,
 					})
@@ -575,4 +580,80 @@ func ExecCommitBlock(
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
+}
+
+//
+// Side channel utils
+//
+
+func getBeginSideBlockData(block *types.Block, stateDB dbm.DB) []abci.SideTxResult {
+	// returns [
+	//   {
+	//     txHash: txHash,
+	//     sigs: [
+	//       {
+	//         result: 1,
+	//         sig: 2
+	//       },
+	//       ...
+	//     ]
+	//   },
+	//   ...
+	// ]
+
+	// prepare result
+	result := make([]abci.SideTxResult, 0)
+
+	// return if prev block is empty result (mostly block 0)
+	if block == nil || block.Height <= 2 {
+		return make([]abci.SideTxResult, 0)
+	}
+
+	// iterate all votes
+	for _, vote := range block.LastCommit.Precommits {
+		if vote != nil {
+			txMapping := make([][]byte, 0)
+			for _, sideTxResult := range vote.SideTxResults {
+				// find if result object is already created
+				resultIndex := -1
+				for i, rr := range result {
+					if bytes.Equal(rr.TxHash, sideTxResult.TxHash) {
+						resultIndex = i
+						break
+					}
+				}
+
+				// create tx-hash based object, if not found yet
+				if resultIndex == -1 {
+					result = append(result, abci.SideTxResult{
+						TxHash: sideTxResult.TxHash,
+						Sigs:   make([]abci.SideTxSig, 0),
+					})
+					// set new result index
+					resultIndex = len(result) - 1
+				}
+
+				txProcessed := false
+				for _, rr := range txMapping {
+					if bytes.Equal(rr, sideTxResult.TxHash) {
+						txProcessed = true
+						break
+					}
+				}
+
+				// if tx is not processed for current vote, add it into sigs for particular side-tx result
+				if !txProcessed {
+					// get result object from result index
+					result[resultIndex].Sigs = append(result[resultIndex].Sigs, abci.SideTxSig{
+						Result: abci.SideTxResultType(sideTxResult.Result),
+						Sig:    sideTxResult.Sig,
+					})
+					// add tx hash for the record for particular vote
+					txMapping = append(txMapping, sideTxResult.TxHash)
+				}
+			}
+		}
+	}
+
+	return result
 }

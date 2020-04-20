@@ -2,10 +2,12 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -169,6 +171,23 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) == 0 {
 		return errors.New("Signature is missing")
 	}
+
+	if len(vote.SideTxResults) > 0 {
+		for _, s := range vote.SideTxResults {
+			if len(s.Sig) != 65 {
+				return fmt.Errorf("Side-tx signature is invalid. Sig length: %v", len(s.Sig))
+			}
+
+			if _, ok := abci.SideTxResultType_name[s.Result]; !ok {
+				return fmt.Errorf("Invalid side-tx result. Result: %v", s.Result)
+			}
+
+			if len(s.TxHash) != 32 {
+				return fmt.Errorf("Invalid side-tx tx hash. TxHash: %v", hex.EncodeToString(s.TxHash))
+			}
+		}
+	}
+
 	// if len(vote.Signature) > MaxSignatureSize {
 	// 	return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
 	// }
