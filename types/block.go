@@ -957,7 +957,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 	} else {
 		data.Evidence = EvidenceList{}
 	}
-	data.hash = eviData.Hash
+	data.hash = eviData.GetHash()
 
 	return nil
 }

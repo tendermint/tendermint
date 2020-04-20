@@ -604,20 +604,27 @@ func TestBlockProtoBuf(t *testing.T) {
 	h := tmrand.Int63()
 	c1 := randCommit(time.Now())
 	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+	b1.ProposerAddress = tmrand.Bytes(20)
+
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	b2.ProposerAddress = tmrand.Bytes(20)
 	evi := NewMockEvidence(b2.Height, time.Now(), 0, tmrand.Bytes(32))
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 
+	b2.EvidenceHash = b2.Evidence.Hash()
+
 	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
+	b3.ProposerAddress = tmrand.Bytes(20)
 	testCases := []struct {
-		msg     string
-		b1      *Block
-		expPass bool
+		msg      string
+		b1       *Block
+		expPass  bool
+		expPass2 bool
 	}{
-		{"nil block", nil, false},
-		{"b1", b1, true},
-		{"b2", b2, true},
-		{"b3", b3, true},
+		{"nil block", nil, false, false},
+		{"b1", b1, true, false}, //nil BlockID errors
+		{"b2", b2, true, true},
+		{"b3", b3, true, true},
 	}
 	for _, tc := range testCases {
 		pb, err := tc.b1.ToProto()
@@ -626,10 +633,10 @@ func TestBlockProtoBuf(t *testing.T) {
 		} else {
 			require.Error(t, err, tc.msg)
 		}
-
 		block := new(Block)
 		err = block.FromProto(pb)
-		if tc.expPass {
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
 			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
 			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
