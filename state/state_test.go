@@ -978,14 +978,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
-
-		sc := tmproto.ConsensusParams{
-			Block:     state.ConsensusParams.Block,
-			Evidence:  state.ConsensusParams.Evidence,
-			Validator: state.ConsensusParams.Validator,
-		}
-
-		sm.SaveConsensusParamsInfo(stateDB, nextHeight, state.LastHeightConsensusParamsChanged, sc)
+		sm.SaveConsensusParamsInfo(stateDB, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	}
 
 	// Make all the test cases by using the same params until after the change.

@@ -323,11 +323,6 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
-	protoParam := tmproto.ConsensusParams{
-		Block:     genDoc.ConsensusParams.Block,
-		Evidence:  genDoc.ConsensusParams.Evidence,
-		Validator: genDoc.ConsensusParams.Validator,
-	}
 
 	return State{
 		Version: initStateVersion,
@@ -339,10 +334,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              nil,
+		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
 
-		ConsensusParams:                  protoParam,
+		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: 1,
 
 		AppHash: genDoc.AppHash,

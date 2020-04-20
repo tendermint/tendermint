@@ -58,7 +58,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
 	state := LoadState(stateDB)
 
-	if state.Validators == nil {
+	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisState(genesisDoc)
 		if err != nil {
@@ -66,6 +66,7 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		}
 		SaveState(stateDB, state)
 	}
+
 	return state, nil
 }
 
@@ -115,16 +116,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
-	sc := tmproto.ConsensusParams{
-		Block:     state.ConsensusParams.Block,
-		Evidence:  state.ConsensusParams.Evidence,
-		Validator: state.ConsensusParams.Validator,
-	}
-
 	// Save next consensus params.
-	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, sc)
-	bz := state.Bytes()
-	db.SetSync(key, bz)
+	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
+	db.SetSync(key, state.Bytes())
 }
 
 //------------------------------------------------------------------------
@@ -275,7 +269,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
-	abciResponses := tmstate.ABCIResponses{}
+	abciResponses := new(tmstate.ABCIResponses)
 	err = abciResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
@@ -284,7 +278,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 	}
 	// TODO: ensure that buf is completely read.
 
-	return &abciResponses, nil
+	return abciResponses, nil
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -321,7 +315,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 				),
 			)
 		}
-		vs := types.ValidatorSet{}
+		vs := new(types.ValidatorSet)
 		if err := vs.FromProto(valInfo2.ValidatorSet); err != nil {
 			return nil, err
 		}
@@ -336,12 +330,12 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		valInfo = valInfo2
 	}
 
-	vip := types.ValidatorSet{}
+	vip := new(types.ValidatorSet)
 	if err := vip.FromProto(valInfo.ValidatorSet); err != nil {
 		return nil, err
 	}
 
-	return &vip, nil
+	return vip, nil
 }
 
 func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
@@ -409,7 +403,9 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 // LoadConsensusParams loads the ConsensusParams for a given height.
 func LoadConsensusParams(db dbm.DB, height int64) (tmproto.ConsensusParams, error) {
 	empty := tmproto.ConsensusParams{}
+
 	paramsInfo := loadConsensusParamsInfo(db, height)
+	fmt.Println(paramsInfo, height)
 	if paramsInfo == nil {
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
@@ -448,6 +444,8 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
                 %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
+
+	fmt.Println(paramsInfo, height)
 	return paramsInfo
 }
 
@@ -456,8 +454,9 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
 func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
-	paramsInfo := &tmstate.ConsensusParamsInfo{}
-	paramsInfo.LastHeightChanged = changeHeight
+	paramsInfo := &tmstate.ConsensusParamsInfo{
+		LastHeightChanged: changeHeight,
+	}
 
 	if changeHeight == nextHeight {
 		paramsInfo.ConsensusParams = params
@@ -466,5 +465,6 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(paramsInfo, "save", changeHeight, nextHeight)
 	db.Set(calcConsensusParamsKey(nextHeight), bz)
 }

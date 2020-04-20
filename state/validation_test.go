@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	tmproto "github.com/tendermint/tendermint/proto/types"
-	"github.com/tendermint/tendermint/proto/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -39,7 +38,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
 	wrongVersion1.Block++
-	wrongVersion2 := version.Consensus{Block: state.Version.Consensus.Block, App: state.Version.Consensus.Block}
+	wrongVersion2 := state.Version.Consensus
 	wrongVersion2.App++
 
 	// Manipulation of any header field causes failure.

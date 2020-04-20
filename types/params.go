@@ -147,5 +147,6 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
 	}
+
 	return res
 }

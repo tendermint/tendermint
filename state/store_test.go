@@ -122,7 +122,7 @@ func TestPruneStates(t *testing.T) {
 					LastHeightConsensusParamsChanged: paramsChanged,
 				})
 
-				abciResponses := sm.NewABCIResponses(
+				sm.SaveABCIResponses(db, h, sm.NewABCIResponses(
 					&types.Block{
 						Header: types.Header{Height: h},
 						Data: types.Data{
@@ -132,9 +132,7 @@ func TestPruneStates(t *testing.T) {
 								[]byte{3},
 							},
 						},
-					})
-
-				sm.SaveABCIResponses(db, h, abciResponses)
+					}))
 			}
 
 			// Test assertions
