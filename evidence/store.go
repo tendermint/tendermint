@@ -1,8 +1,6 @@
 package evidence
 
 import (
-	"fmt"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/types"
@@ -30,28 +28,6 @@ type Info struct {
 	Committed bool
 	Priority  int64
 	Evidence  types.Evidence
-}
-
-const (
-	baseKeyCommitted = byte(0x00) // committed evidence
-	baseKeyPending   = byte(0x01) // pending evidence
-)
-
-// big endian padded hex
-func bE(h int64) string {
-	return fmt.Sprintf("%0.16X", h)
-}
-
-func keyCommitted(evidence types.Evidence) []byte {
-	return _key("%s/%s/%X", baseKeyCommitted, bE(evidence.Height()), evidence.Hash())
-}
-
-func keyPending(evidence types.Evidence) []byte {
-	return _key("%s/%s/%X", baseKeyPending, bE(evidence.Height()), evidence.Hash())
-}
-
-func _key(format string, o ...interface{}) []byte {
-	return []byte(fmt.Sprintf(format, o...))
 }
 
 // Store is a store of all the evidence we've seen, including

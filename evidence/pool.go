@@ -14,12 +14,17 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Pool maintains a pool of valid evidence in an Store.
+const (
+	baseKeyCommitted = byte(0x00) // committed evidence
+	baseKeyPending   = byte(0x01) // pending evidence
+)
+
+// Pool maintains a pool of valid evidence to be broadcasted and committed..
 type Pool struct {
 	logger log.Logger
 
-	store        *Store
-	evidenceList *clist.CList // concurrent linked-list of evidence
+	evidenceStore dbm.DB
+	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
 	stateDB    dbm.DB
@@ -41,8 +46,7 @@ type valToLastHeightMap map[string]int64
 
 func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 	var (
-		evidenceStore = NewStore(evidenceDB)
-		state         = sm.LoadState(stateDB)
+		state = sm.LoadState(stateDB)
 	)
 
 	pool := &Pool{
@@ -50,18 +54,18 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		blockStore:      blockStore,
 		state:           state,
 		logger:          log.NewNopLogger(),
-		store:           evidenceStore,
+		evidenceStore:   evidenceDB,
 		evidenceList:    clist.New(),
 		valToLastHeight: buildValToLastHeightMap(state, stateDB),
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it to the evidenceList
-	evList := evidenceStore.listEvidence(baseKeyPending, -1)
+	evList := pool.listEvidence(baseKeyPending, -1)
 	for _, ev := range evList {
 		// check evidence hasn't expired
 		if pool.IsExpired(ev) {
 			key := keyPending(ev)
-			pool.store.db.Delete(key)
+			pool.evidenceStore.Delete(key)
 			continue
 		}
 		pool.evidenceList.PushBack(ev)
@@ -70,33 +74,14 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 	return pool
 }
 
-func (evpool *Pool) EvidenceFront() *clist.CElement {
-	return evpool.evidenceList.Front()
-}
-
-func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
-	return evpool.evidenceList.WaitChan()
-}
-
-// SetLogger sets the Logger.
-func (evpool *Pool) SetLogger(l log.Logger) {
-	evpool.logger = l
-}
-
 // PendingEvidence returns up to maxNum uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is in order of priority
 func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	return evpool.store.PendingEvidence(maxNum)
+	return evpool.listEvidence(baseKeyPending, maxNum)
 }
 
-// State returns the current state of the evpool.
-func (evpool *Pool) State() sm.State {
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
-	return evpool.state
-}
-
-// Update loads the latest
+// Update uses the latest block to update the state, the ValToLastHeight map for evidence expiration
+// and to mark committed evidence
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
@@ -150,7 +135,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
-		ok, err := evpool.store.Has(evidence)
+		ok, err := evpool.Has(evidence)
 		if err != nil {
 			return ErrDatabase{err}
 		}
@@ -173,17 +158,13 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 
-		// 2) Compute priority.
-		_, val := valSet.GetByAddress(ev.Address())
-		priority := val.VotingPower
-
-		// 3) Save to store.
-		err = evpool.store.addEvidence(ev, priority)
+		// 2) Save to store.
+		err = evpool.addPendingEvidence(ev)
 		if err != nil {
 			return ErrDatabase{err}
 		}
 
-		// 4) Add evidence to clist.
+		// 3) Add evidence to clist.
 		evpool.evidenceList.PushBack(ev)
 
 		evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", ev)
@@ -192,22 +173,100 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	return nil
 }
 
+// Evaluates whether the evidence has expired
+// FIXME: To be replaced by the ValToLastHeight map
+func (evpool *Pool) IsExpired(evidence types.Evidence) bool {
+	var (
+		params       = evpool.State().ConsensusParams.Evidence
+		ageDuration  = evpool.State().LastBlockTime.Sub(evidence.Time())
+		ageNumBlocks = evpool.State().LastBlockHeight - evidence.Height()
+	)
+	return ageNumBlocks > params.MaxAgeNumBlocks &&
+		ageDuration > params.MaxAgeDuration
+}
+
+// Has checks if the evidence is already stored
+func (evpool *Pool) Has(evidence types.Evidence) (bool, error) {
+	ok, err := evpool.IsPending(evidence)
+	// if not there and there is no error then we check if it is committed
+	if ok || err != nil {
+		return ok, err
+	}
+	return evpool.IsCommitted(evidence)
+}
+
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
 // from the queue.
 func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Time, evidence []types.Evidence) {
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
-		evpool.store.MarkEvidenceAsCommitted(ev)
-		blockEvidenceMap[evMapKey(ev)] = struct{}{}
+		// check that evidence has not already been committed
+		if ok, _ := evpool.IsCommitted(ev); ok {
+			continue
+		}
+		// As the evidence is stored in the block store we only need to record the height that it was saved at.
+		key := keyCommitted(ev)
+		evBytes := cdc.MustMarshalBinaryBare(height)
+		evpool.evidenceStore.Set(key, evBytes)
+		// if pending, remove from that bucket
+		if ok, _ := evpool.IsPending(ev); ok {
+			key := keyPending(ev)
+			evpool.evidenceStore.Delete(key)
+			blockEvidenceMap[evMapKey(ev)] = struct{}{}
+		}
 	}
 
-	// remove committed evidence from the clist
-	evidenceParams := evpool.State().ConsensusParams.Evidence
-	evpool.removeEvidence(height, lastBlockTime, evidenceParams, blockEvidenceMap)
+	if len(blockEvidenceMap) != 0 {
+		// remove committed evidence from the clist
+		evidenceParams := evpool.State().ConsensusParams.Evidence
+		evpool.removeEvidenceFromList(height, lastBlockTime, evidenceParams, blockEvidenceMap)
+	}
 }
 
-func (evpool *Pool) removeEvidence(
+func (evpool *Pool) IsCommitted(evidence types.Evidence) (bool, error) {
+	key := keyCommitted(evidence)
+	return evpool.evidenceStore.Has(key)
+}
+
+func (evpool *Pool) IsPending(evidence types.Evidence) (bool, error) {
+	key := keyPending(evidence)
+	return evpool.evidenceStore.Has(key)
+}
+
+func (evpool *Pool) EvidenceFront() *clist.CElement {
+	return evpool.evidenceList.Front()
+}
+
+func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
+	return evpool.evidenceList.WaitChan()
+}
+
+// SetLogger sets the Logger.
+func (evpool *Pool) SetLogger(l log.Logger) {
+	evpool.logger = l
+}
+
+// State returns the current state of the evpool.
+func (evpool *Pool) State() sm.State {
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
+	return evpool.state
+}
+
+// AddNewEvidence adds the given evidence to the database.
+// It returns false if the evidence is already stored.
+func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
+	var err error
+	evBytes := cdc.MustMarshalBinaryBare(evidence)
+	key := keyPending(evidence)
+	if err = evpool.evidenceStore.Set(key, evBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (evpool *Pool) removeEvidenceFromList(
 	height int64,
 	lastBlockTime time.Time,
 	params types.EvidenceParams,
@@ -245,14 +304,32 @@ func (evpool *Pool) cleanupValToLastHeight(blockHeight int64) {
 	}
 }
 
-func (evpool *Pool) IsExpired(evidence types.Evidence) bool {
-	var (
-		params       = evpool.State().ConsensusParams.Evidence
-		ageDuration  = evpool.State().LastBlockTime.Sub(evidence.Time())
-		ageNumBlocks = evpool.State().LastBlockHeight - evidence.Height()
-	)
-	return ageNumBlocks > params.MaxAgeNumBlocks &&
-		ageDuration > params.MaxAgeDuration
+// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
+// It is wrapped by PriorityEvidence and PendingEvidence for convenience.
+// If maxNum is -1, there's no cap on the size of returned evidence.
+func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) (evidence []types.Evidence) {
+	var count int64
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		val := iter.Value()
+
+		if count == maxNum {
+			return evidence
+		}
+		count++
+
+		var ei Info
+		err := cdc.UnmarshalBinaryBare(val, &ei)
+		if err != nil {
+			panic(err)
+		}
+		evidence = append(evidence, ei.Evidence)
+	}
+	return evidence
 }
 
 func evMapKey(ev types.Evidence) string {
@@ -289,4 +366,21 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap 
 	}
 
 	return valToLastHeight
+}
+
+// big endian padded hex
+func bE(h int64) string {
+	return fmt.Sprintf("%0.16X", h)
+}
+
+func keyCommitted(evidence types.Evidence) []byte {
+	return append([]byte(baseKeyCommitted), keySuffix(evidence)...)
+}
+
+func keyPending(evidence types.Evidence) []byte {
+	return append([]byte(baseKeyPending), keySuffix(evidence)...)
+}
+
+func keySuffix(evidence types.Evidence) []byte {
+	return []byte(fmt.Sprintf("%s/%X", bE(evidence.Height()), evidence.Hash()))
 }
