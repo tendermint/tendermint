@@ -94,11 +94,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := makeBlock(state, 2)
 	abciResponses := sm.NewABCIResponses(block)
-	dtxs := make([]*abci.ResponseDeliverTx, 2)
-	abciResponses.DeliverTxs = dtxs
 	abciResponses.DeliverTxs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
 	abciResponses.DeliverTxs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
-	//Block is filled with 10 txs but this test asks for two & only populates 2
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}

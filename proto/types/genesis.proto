@@ -1,7 +1,0 @@
-syntax = "proto3";
-package tendermint.proto.types;
-
-option go_package = "github.com/tendermint/tendermint/proto/types";
-
-message GenesisDoc {
-}

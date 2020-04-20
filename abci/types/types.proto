@@ -15,10 +15,10 @@ import "google/protobuf/timestamp.proto";
 // NOTE: When using custom types, mind the warnings.
 // https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
 
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-option (gogoproto.goproto_registration) = true;
+// option (gogoproto.marshaler_all)        = true;
+// option (gogoproto.unmarshaler_all)      = true;
+// option (gogoproto.sizer_all)            = true;
+// option (gogoproto.goproto_registration) = true;
 // Generate tests
 option (gogoproto.populate_all) = true;
 option (gogoproto.equal_all)    = true;
@@ -62,8 +62,8 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time     = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                    chain_id = 2;
+  google.protobuf.Timestamp time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    chain_id         = 2;
   ConsensusParams           consensus_params = 3;
   repeated ValidatorUpdate  validators       = 4 [(gogoproto.nullable) = false];
   bytes                     app_state_bytes  = 5;
@@ -218,7 +218,7 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockParams     block     = 1;
+  BlockParams                            block     = 1;
   tendermint.proto.types.EvidenceParams  evidence  = 2;
   tendermint.proto.types.ValidatorParams validator = 3;
 }
@@ -280,10 +280,10 @@ message PubKey {
 }
 
 message Evidence {
-  string                    type      = 1;
-  Validator                 validator = 2 [(gogoproto.nullable) = false];
-  int64                     height    = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    type               = 1;
+  Validator                 validator          = 2 [(gogoproto.nullable) = false];
+  int64                     height             = 3;
+  google.protobuf.Timestamp time               = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   int64                     total_voting_power = 5;
 }
 

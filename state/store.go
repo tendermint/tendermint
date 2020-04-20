@@ -3,7 +3,7 @@ package state
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -267,6 +267,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 		return nil, err
 	}
 	if len(buf) == 0 {
+
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
@@ -289,7 +290,16 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	fmt.Println(abciResponses)
+	// can't preallocate as values will be set to nil instead of empty
+	var dtxs []*abci.ResponseDeliverTx
+	//strip nil values, currently gogoproto panics on array of nil values....
+	for _, tx := range abciResponses.DeliverTxs {
+		if tx != nil {
+			dtxs = append(dtxs, tx)
+		}
+	}
+
+	abciResponses.DeliverTxs = dtxs
 	bz, err := proto.Marshal(abciResponses)
 	if err != nil {
 		panic(err)
@@ -321,7 +331,6 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		if err := vs.FromProto(valInfo2.ValidatorSet); err != nil {
 			return nil, err
 		}
-
 		vs.IncrementProposerPriority(tmmath.SafeConvertInt32(height - lastStoredHeight)) // mutate
 		vi2, err := vs.ToProto()
 		if err != nil {
