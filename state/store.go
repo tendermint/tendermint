@@ -3,7 +3,6 @@ package state
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -300,7 +299,7 @@ func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIRespo
 	}
 
 	abciResponses.DeliverTxs = dtxs
-	bz, err := proto.Marshal(abciResponses)
+	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
 	}

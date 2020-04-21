@@ -67,7 +67,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
-		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}} //TODO: see if we can stay in proto not local type
+		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, _, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
@@ -127,7 +127,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 
 	for i := 1; i < height; i++ {
 		s.LastBlockHeight++
-		s.LastValidators = s.Validators
+		s.LastValidators = s.Validators.Copy()
 		sm.SaveState(stateDB, s)
 	}
 	return s, stateDB, privVals
