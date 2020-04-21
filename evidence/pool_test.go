@@ -8,10 +8,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	dbm "github.com/tendermint/tm-db"
+
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func TestMain(m *testing.M) {
@@ -57,7 +58,7 @@ func TestEvidencePool(t *testing.T) {
 
 	var (
 		valAddr      = []byte("val1")
-		height       = int64(5)
+		height       = int64(100002)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		pool         = NewPool(stateDB, evidenceDB)
@@ -65,11 +66,11 @@ func TestEvidencePool(t *testing.T) {
 	)
 
 	goodEvidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
-	badEvidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
+	badEvidence := types.NewMockEvidence(1, evidenceTime, 0, valAddr)
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	// err: evidence created at 2019-01-01 00:00:00 +0000 UTC has expired. Evidence can not be older than: ...
 
 	var wg sync.WaitGroup
@@ -80,14 +81,14 @@ func TestEvidencePool(t *testing.T) {
 	}()
 
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	wg.Wait()
 
 	assert.Equal(t, 1, pool.evidenceList.Len())
 
-	// if we send it again, it shouldnt change the size
+	// if we send it again, it shouldnt add and return an error
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
 
@@ -133,10 +134,10 @@ func TestAddEvidence(t *testing.T) {
 		evDescription string
 	}{
 		{height, time.Now(), false, "valid evidence"},
-		{height, evidenceTime, true, "evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
-		{int64(1), time.Now(), true, "evidence from height 1 is too old"},
+		{height, evidenceTime, false, "valid evidence (despite old time)"},
+		{int64(1), time.Now(), false, "valid evidence (despite old height)"},
 		{int64(1), evidenceTime, true,
-			"evidence from height 1 is too old & evidence created at 2019-01-01 00:00:00 +0000 UTC has expired"},
+			"evidence from height 1 (created at: 2019-01-01 00:00:00 +0000 UTC) is too old"},
 	}
 
 	for _, tc := range testCases {

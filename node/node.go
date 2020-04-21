@@ -17,9 +17,12 @@ import (
 	"github.com/rs/cors"
 
 	amino "github.com/tendermint/go-amino"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
 	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
+	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -45,7 +48,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 //------------------------------------------------------------------------------
@@ -309,12 +311,12 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
+func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 	if state.Validators.Size() > 1 {
 		return false
 	}
 	addr, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(privVal.GetPubKey().Address(), addr)
+	return bytes.Equal(pubKey.Address(), addr)
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
@@ -365,6 +367,8 @@ func createBlockchainReactor(config *cfg.Config,
 		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	case "v2":
+		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -618,17 +622,16 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	pubKey := privValidator.GetPubKey()
-	if pubKey == nil {
-		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
-		return nil, errors.New("could not retrieve public key from private validator")
+	pubKey, err := privValidator.GetPubKey()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -861,7 +864,10 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
-	pubKey := n.privValidator.GetPubKey()
+	pubKey, err := n.privValidator.GetPubKey()
+	if err != nil {
+		panic(err)
+	}
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -1096,6 +1102,8 @@ func makeNodeInfo(
 		bcChannel = bcv0.BlockchainChannel
 	case "v1":
 		bcChannel = bcv1.BlockchainChannel
+	case "v2":
+		bcChannel = bcv2.BlockchainChannel
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}

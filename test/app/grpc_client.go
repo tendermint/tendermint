@@ -8,6 +8,7 @@ import (
 	"context"
 
 	amino "github.com/tendermint/go-amino"
+
 	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 )
 

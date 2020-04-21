@@ -143,13 +143,14 @@ func TestVoteProposalNotEq(t *testing.T) {
 
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey()
+	require.NoError(t, err)
 
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
 
 	// sign it
-	err := privVal.SignVote("test_chain_id", vote)
+	err = privVal.SignVote("test_chain_id", vote)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -193,12 +194,13 @@ func TestIsVoteTypeValid(t *testing.T) {
 
 func TestVoteVerify(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey()
+	require.NoError(t, err)
 
 	vote := examplePrevote()
 	vote.ValidatorAddress = pubkey.Address()
 
-	err := vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
+	err = vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorAddress, err)
 	}

@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	clist "github.com/tendermint/tendermint/libs/clist"
-	"github.com/tendermint/tendermint/libs/log"
 	dbm "github.com/tendermint/tm-db"
 
+	clist "github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -95,25 +95,29 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
+func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
-	// TODO: check if we already have evidence for this
-	// validator at this height so we dont get spammed
+	// check if evidence is already stored
+	if evpool.store.Has(evidence) {
+		return ErrEvidenceAlreadyStored{}
+	}
 
 	if err := sm.VerifyEvidence(evpool.stateDB, evpool.State(), evidence); err != nil {
-		return err
+		return ErrInvalidEvidence{err}
 	}
 
 	// fetch the validator and return its voting power as its priority
 	// TODO: something better ?
-	valset, _ := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	valset, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	if err != nil {
+		return err
+	}
 	_, val := valset.GetByAddress(evidence.Address())
 	priority := val.VotingPower
 
-	added := evpool.store.AddNewEvidence(evidence, priority)
-	if !added {
-		// evidence already known, just ignore
-		return
+	_, err = evpool.store.AddNewEvidence(evidence, priority)
+	if err != nil {
+		return err
 	}
 
 	evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", evidence)
@@ -159,8 +163,7 @@ func (evpool *Pool) removeEvidence(
 
 		// Remove the evidence if it's already in a block or if it's now too old.
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			ageNumBlocks > params.MaxAgeNumBlocks ||
-			ageDuration > params.MaxAgeDuration {
+			(ageDuration > params.MaxAgeDuration && ageNumBlocks > params.MaxAgeNumBlocks) {
 			// remove from clist
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()

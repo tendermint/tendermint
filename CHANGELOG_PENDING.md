@@ -1,4 +1,5 @@
-## v0.33.4
+## v0.33.5
+
 
 \*\*
 
@@ -12,10 +13,14 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+- P2P Protocol
+
 - Go API
 
 ### FEATURES:
 
+
 ### IMPROVEMENTS:
+
 
 ### BUG FIXES:

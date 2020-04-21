@@ -14,9 +14,6 @@ executors:
       - image: tendermintdev/docker-website-deployment
     environment:
       AWS_REGION: us-east-1
-  protoc:
-    docker:
-      - image: tendermintdev/docker-protoc
 
 commands:
   run_test:
@@ -75,39 +72,6 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
-  proto-lint:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-lint
-
-  proto-breakage:
-    executor: protoc
-    steps:
-      - checkout
-      - run:
-          command: make proto-check-breaking-ci
-
-  test_abci_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_app/test.sh
-
-  # if this test fails, fix it and update the docs at:
-  # https://github.com/tendermint/tendermint/blob/master/docs/abci-cli.md
-  test_abci_cli:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_cli/test.sh
-
-  test_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/app/test.sh
 
   test_persistence:
     executor: golang
@@ -404,19 +368,8 @@ workflows:
           filters:
             branches:
               only:
-                - docs-theme-latest
+                - docs-staging
       - setup_dependencies
-      - test_abci_apps:
-          requires:
-            - setup_dependencies
-      - proto-breakage
-      - proto-lint
-      - test_abci_cli:
-          requires:
-            - setup_dependencies
-      - test_apps:
-          requires:
-            - setup_dependencies
       - test_cover:
           requires:
             - setup_dependencies

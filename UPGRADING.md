@@ -7,6 +7,17 @@ a newer version of Tendermint Core.
 
 <Overview>
 
+
+## v0.33.4
+
+### Go API
+
+- `rpc/client` HTTP and local clients have been moved into `http` and `local` subpackages, and their constructors have been renamed to `New()`.
+
+### Protobuf Changes
+
+When upgrading to version 0.33.4 you will have to fetch the `third_party` directory along with the updated proto files.
+
 ## v0.33.1
 
 This release is compatible with the previous version. The only change that is required is if you are fetching the protobuf files for application use.
@@ -14,6 +25,7 @@ This release is compatible with the previous version. The only change that is re
 ### Protobuf Changes
 
 When upgrading to version 0.33.1 you will have to fetch the `third_party` directory along with the updated proto files.
+
 
 ## v0.33.0
 

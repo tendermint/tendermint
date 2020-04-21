@@ -16,7 +16,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
 var killCmd = &cobra.Command{
@@ -44,7 +44,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc, err := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
 	if err != nil {
 		return errors.Wrap(err, "failed to create new http client")
 	}
