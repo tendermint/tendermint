@@ -685,11 +685,11 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 			return err
 		}
 	}
+	commit.Signatures = sigs
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
 	commit.BlockID = blockID
-	commit.Signatures = sigs
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -924,6 +924,7 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	if data == nil {
 		return nil, errors.New("nil evidence data")
 	}
+
 	evi := new(tmproto.EvidenceData)
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
 	for i := range data.Evidence {
@@ -947,19 +948,17 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 	if eviData == nil {
 		return errors.New("nil evidenceData")
 	}
-	if len(eviData.Evidence) > 0 {
-		eviBzs := make(EvidenceList, len(eviData.Evidence))
-		for i := range eviData.Evidence {
-			evi, err := EvidenceFromProto(eviData.Evidence[i])
-			if err != nil {
-				return err
-			}
-			eviBzs[i] = evi
+
+	eviBzs := make(EvidenceList, len(eviData.Evidence))
+	for i := range eviData.Evidence {
+		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		if err != nil {
+			return err
 		}
-		data.Evidence = eviBzs
-	} else {
-		data.Evidence = EvidenceList{}
+		eviBzs[i] = evi
 	}
+	data.Evidence = eviBzs
+
 	data.hash = eviData.GetHash()
 
 	return nil

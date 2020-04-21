@@ -70,7 +70,10 @@ func MsgToProto(bcm Message) (*bcproto.Message, error) {
 	}
 }
 
-func MsgFromProto(bcm bcproto.Message) (Message, error) {
+func MsgFromProto(bcm *bcproto.Message) (Message, error) {
+	if bcm == nil {
+		return nil, errors.New("message is nil")
+	}
 
 	var bm Message
 	switch msg := bcm.Sum.(type) {

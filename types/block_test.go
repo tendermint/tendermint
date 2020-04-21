@@ -683,7 +683,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"success", data, true, true},
-		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
+		{"empty evidenceData", &EvidenceData{}, true, true},
 		{"fail nil Data", nil, false, false},
 	}
 
@@ -715,7 +715,7 @@ func TestCommitProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", commit, true},
-		{"empty commit", &Commit{}, true},
+		{"empty commit", &Commit{Signatures: []CommitSig{}}, true}, // Empty value sets signatures to nil, signatures should not be nillable
 		{"fail Commit nil", nil, false},
 	}
 	for _, tc := range testCases {
