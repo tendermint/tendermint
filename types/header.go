@@ -177,51 +177,56 @@ func (h Header) ValidateBasic() error {
 	return nil
 }
 
+// ToProto converts Header to protobuf
 func (h *Header) ToProto() *tmproto.Header {
-
-	ph := tmproto.Header{
-		Version: h.Version,
-		ChainID: h.ChainID,
-		Time:    h.Time,
-		LastBlockID: tmproto.BlockID{
-			Hash: h.LastBlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Hash:  h.LastBlockID.PartsHeader.Hash,
-				Total: h.LastBlockID.PartsHeader.Total,
-			},
-		},
+	if h == nil {
+		return nil
+	}
+	return &tmproto.Header{
+		Version:            h.Version,
+		ChainID:            h.ChainID,
+		Height:             h.Height,
+		Time:               h.Time,
+		LastBlockID:        *h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
 		AppHash:            h.AppHash,
+		DataHash:           h.DataHash,
+		EvidenceHash:       h.EvidenceHash,
 		LastResultsHash:    h.LastResultsHash,
+		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
-	return &ph
 }
 
-func (h *Header) FromProto(ph tmproto.Header) error {
+// FromProto sets a protobuf Header to the given pointer.
+// It returns an error if the header is invalid.
+func (h *Header) FromProto(ph *tmproto.Header) error {
+	var blockID BlockID
+	if ph == nil {
+		return nil
+	}
+
+	if err := blockID.FromProto(&ph.LastBlockID); err != nil {
+		return err
+	}
+
 	h.Version = ph.Version
 	h.ChainID = ph.ChainID
+	h.Height = ph.Height
 	h.Time = ph.Time
-	h.LastBlockID = BlockID{
-		Hash: ph.LastBlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Hash:  ph.LastBlockID.PartsHeader.Hash,
-			Total: ph.LastBlockID.PartsHeader.Total,
-		},
-	}
+	h.Height = ph.Height
+	h.LastBlockID = blockID
 	h.ValidatorsHash = ph.ValidatorsHash
 	h.NextValidatorsHash = ph.NextValidatorsHash
 	h.ConsensusHash = ph.ConsensusHash
 	h.AppHash = ph.AppHash
+	h.DataHash = ph.DataHash
+	h.EvidenceHash = ph.EvidenceHash
 	h.LastResultsHash = ph.LastResultsHash
+	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
 
-	err := h.ValidateBasic()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.ValidateBasic()
 }

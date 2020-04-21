@@ -58,7 +58,7 @@ message Header {
   tendermint.proto.version.Consensus version  = 1 [(gogoproto.nullable) = false];
   string                             chain_id = 2 [(gogoproto.customname) = "ChainID"];
   int64                              height   = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  google.protobuf.Timestamp          time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
   BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
@@ -106,9 +106,9 @@ message Vote {
 
 // Commit contains the evidence that a block was committed by a set of validators.
 message Commit {
-  int64   height   = 1;
-  int32   round    = 2;
-  BlockID block_id = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  int64                               height     = 1;
+  int32                               round      = 2;
+  BlockID                             block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
   repeated CommitSig                  signatures = 4 [(gogoproto.nullable) = false];
   bytes                               hash       = 5;
   tendermint.proto.libs.bits.BitArray bit_array  = 6;
@@ -128,7 +128,7 @@ message Proposal {
   int64                     height    = 2;
   int32                     round     = 3;
   int32                     pol_round = 4;
-  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID"];
+  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
   google.protobuf.Timestamp timestamp = 6
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 7;
