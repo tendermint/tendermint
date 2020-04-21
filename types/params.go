@@ -56,7 +56,11 @@ type BlockParams struct {
 // period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
 type EvidenceParams struct {
 	// Max age of evidence, in blocks.
+	//
+	// The basic formula for calculating this is: MaxAgeDuration / {average block
+	// time}.
 	MaxAgeNumBlocks int64 `json:"max_age_num_blocks"`
+
 	// Max age of evidence, in time.
 	//
 	// It should correspond with an app's "unbonding period" or other similar
