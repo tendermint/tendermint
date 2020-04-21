@@ -510,10 +510,15 @@ Commit are included in the header of the next block.
 - **Fields**:
   - `MaxAgeNumBlocks (int64)`: Max age of evidence, in blocks.
   - `MaxAgeDuration (time.Duration)`: Max age of evidence, in time.
-    Evidence older than this is considered stale and ignored.
-    
-    - This should correspond with an app's "unbonding period" or other
-      similar mechanism for handling Nothing-At-Stake attacks.
+    It should correspond with an app's "unbonding period" or other similar
+    mechanism for handling [Nothing-At-Stake
+    attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
+
+    - Evidence older than `MaxAgeNumBlocks` && `MaxAgeDuration` is considered
+      stale and ignored.
+    - In Cosmos-SDK based blockchains, `MaxAgeDuration` is usually equal to the
+      unbonding period. `MaxAgeNumBlocks` is calculated by dividing the unboding
+      period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
 
 ### ValidatorParams
 
