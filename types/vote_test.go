@@ -301,13 +301,14 @@ func TestVoteProtobuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", vote, true},
-		{"success equal", vote, true},
 		{"fail vote validate basic", &Vote{}, false},
+		{"failure nil", nil, false},
 	}
 	for _, tc := range testCases {
 		protoProposal := tc.v1.ToProto()
+
 		v := new(Vote)
-		err := v.FromProto(*protoProposal)
+		err := v.FromProto(protoProposal)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.v1, v, tc.msg)

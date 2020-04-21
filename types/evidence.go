@@ -118,9 +118,9 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
 		voteA := Vote{}
-		voteA.FromProto(*evi.DuplicateVoteEvidence.GetVoteA())
+		voteA.FromProto(evi.DuplicateVoteEvidence.GetVoteA())
 		voteB := Vote{}
-		voteB.FromProto(*evi.DuplicateVoteEvidence.GetVoteB())
+		voteB.FromProto(evi.DuplicateVoteEvidence.GetVoteB())
 
 		dve := DuplicateVoteEvidence{
 			VoteA: &voteA,

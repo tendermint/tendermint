@@ -151,20 +151,22 @@ func TestProposalProtoBuf(t *testing.T) {
 
 	testCases := []struct {
 		msg     string
-		p1      Proposal
-		p2      *Proposal
+		p1      *Proposal
 		expPass bool
 	}{
-		{"success", *proposal, &Proposal{}, true},
-		{"fail proposal 2 nil", Proposal{}, nil, false},
-		{"fail proposal validate basic", *proposal2, &Proposal{}, false},
+		// {"success", proposal, true},
+		{"success", proposal2, false}, // blcokID cannot be empty
+		{"empty proposal failure validatebasic", &Proposal{}, false},
+		{"nil proposal", nil, false},
 	}
 	for _, tc := range testCases {
 		protoProposal := tc.p1.ToProto()
-		err := tc.p2.FromProto(*protoProposal)
+
+		p := new(Proposal)
+		err := p.FromProto(protoProposal)
 		if tc.expPass {
 			require.NoError(t, err)
-			require.Equal(t, &tc.p1, tc.p2, tc.msg)
+			require.Equal(t, tc.p1, p, tc.msg)
 		} else {
 			require.Error(t, err)
 		}

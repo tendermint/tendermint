@@ -772,8 +772,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", &blockID, true},
-		{"success", &BlockID{}, true},
-		{"success BlockID empty", &BlockID{}, true},
+		{"success empty", &BlockID{}, true},
 		{"failure BlockID nil", nil, false},
 	}
 	for _, tc := range testCases {
@@ -781,7 +780,6 @@ func TestBlockIDProtoBuf(t *testing.T) {
 
 		bi := new(BlockID)
 		err := bi.FromProto(protoBlockID)
-
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.bid1, bi, tc.msg)
