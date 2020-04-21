@@ -53,7 +53,7 @@ func (bm *BlockMeta) FromProto(pb *tmproto.BlockMeta) error {
 	if err := bi.FromProto(&pb.BlockID); err != nil {
 		return err
 	}
-	if err := h.FromProto(pb.Header); err != nil {
+	if err := h.FromProto(&pb.Header); err != nil {
 		return err
 	}
 

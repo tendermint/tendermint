@@ -337,64 +337,61 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	}
 }
 
+// ToProto converts ValidatorSet to protobuf
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
-		return nil, nil // allow Validator set to be empty (block 1 will have empty LastValidators)
-	}
-	var vsp = new(tmproto.ValidatorSet)
-
-	vsp.TotalVotingPower = vals.TotalVotingPower()
-	if vals.Validators != nil {
-		valsProto := make([]*tmproto.Validator, len(vals.Validators))
-		for i := 0; i < len(vals.Validators); i++ {
-			valp, err := vals.Validators[i].ToProto()
-			if err != nil {
-				return nil, err
-			}
-			valsProto[i] = valp
-		}
-
-		vsp.Validators = valsProto
+		return nil, errors.New("nil validator set") // validator set should never be nil
 	}
 
-	if vals.Proposer != nil {
-		valProposer, err := vals.Proposer.ToProto()
+	valsProto := make([]*tmproto.Validator, len(vals.Validators))
+	for i := 0; i < len(vals.Validators); i++ {
+		valp, err := vals.Validators[i].ToProto()
 		if err != nil {
 			return nil, err
 		}
-		vsp.Proposer = valProposer
+		valsProto[i] = valp
 	}
 
-	return vsp, nil
+	valProposer, err := vals.Proposer.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	vp := tmproto.ValidatorSet{
+		Validators:       valsProto,
+		Proposer:         valProposer,
+		TotalVotingPower: vals.TotalVotingPower(),
+	}
+
+	return &vp, nil
 }
 
+// FromProto sets a protobuf ValidatorSet to the given pointer.
+// It returns an error if any of the validators from the set or the proposer
+// is invalid
 func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 	if vp == nil {
-		return nil // allow Validator set to be empty (block 1 will have empty LastValidators)
+		return errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
 	}
 
-	if vp.Validators != nil {
-		valsProto := make([]*Validator, len(vp.Validators))
-		for i := 0; i < len(vp.Validators); i++ {
-			vi := Validator{}
-			err := vi.FromProto(vp.Validators[i])
-			if err != nil {
-				return err
-			}
-
-			valsProto[i] = &vi
-		}
-		vals.Validators = valsProto
-	}
-
-	if vp.Proposer != nil {
-		proposer := new(Validator)
-		err := proposer.FromProto(vp.GetProposer())
+	valsProto := make([]*Validator, len(vp.Validators))
+	for i := 0; i < len(vp.Validators); i++ {
+		v := new(Validator)
+		err := v.FromProto(vp.Validators[i])
 		if err != nil {
 			return err
 		}
-		vals.Proposer = proposer
+		valsProto[i] = v
 	}
+	vals.Validators = valsProto
+
+	p := new(Validator)
+	err := p.FromProto(vp.GetProposer())
+	if err != nil {
+		return err
+	}
+
+	vals.Proposer = p
 
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 

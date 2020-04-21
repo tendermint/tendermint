@@ -97,15 +97,17 @@ func (v *Validator) Bytes() []byte {
 	})
 }
 
+// ToProto converts Valiator to protobuf
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	if v == nil {
-		return nil, errors.New("validator is missing")
+		return nil, errors.New("nil validator")
 	}
 
 	var pv = new(tmproto.Validator)
 	pv.Address = v.Address
 	pv.VotingPower = v.VotingPower
 	pv.ProposerPriority = v.ProposerPriority
+
 	if v.PubKey != nil {
 		pk, err := ce.PubKeyToProto(v.PubKey)
 		if err != nil {
@@ -117,9 +119,11 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	return pv, nil
 }
 
+// FromProto sets a protobuf Validator to the given pointer.
+// It returns an error if the public key is invalid.
 func (v *Validator) FromProto(vp *tmproto.Validator) error {
 	if vp == nil {
-		return nil
+		return errors.New("nil validator")
 	}
 
 	pk, err := ce.PubKeyFromProto(vp.PubKey)
@@ -127,10 +131,10 @@ func (v *Validator) FromProto(vp *tmproto.Validator) error {
 		return err
 	}
 
-	v.Address = vp.Address
+	v.Address = vp.GetAddress()
 	v.PubKey = pk
-	v.VotingPower = vp.VotingPower
-	v.ProposerPriority = vp.ProposerPriority
+	v.VotingPower = vp.GetVotingPower()
+	v.ProposerPriority = vp.GetProposerPriority()
 
 	return nil
 }
