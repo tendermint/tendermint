@@ -307,7 +307,7 @@ func (cs *State) OnStart() error {
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
 	if cs.doWALCatchup {
-		wal2json, json2wal, repairtToolsInstalled := repairCmdsInstalled()
+		wal2json, json2wal, repairToolsInstalled := repairCmdsInstalled()
 		repairAttempted := false
 		for {
 			err := cs.catchupReplay(cs.Height)
@@ -330,7 +330,7 @@ func (cs *State) OnStart() error {
 			}
 
 			// if wal2json and json2wal are not installed, return error and advise users on manual repair
-			if !repairtToolsInstalled {
+			if !repairToolsInstalled {
 				cs.Logger.Error("Please repair the WAL file before restarting")
 				fmt.Println(`You can attempt to repair the WAL as follows:
 
