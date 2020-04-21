@@ -46,18 +46,22 @@ type BlockParams struct {
 	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
-// EvidenceParams determines how we handle evidence of malfeasance. New
-// evidence will only be accepted if its height is within [{last height} -
-// {MaxAgeNumBlocks}, {last height}] AND its time is within [{now} -
-// {MaxAgeDuration}, {now}].
+// EvidenceParams determines how we handle evidence of malfeasance.
+//
+// Evidence older than MaxAgeNumBlocks && MaxAgeDuration is considered
+// stale and ignored.
+//
+// This should correspond with an app's "unbonding period" or other similar
+// mechanism for handling [Nothing-At-Stake
+// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
 //
 // In Cosmos-SDK based blockchains, MaxAgeDuration is usually equal to the
 // unbonding period. MaxAgeNumBlocks is calculated by dividing the unboding
 // period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
 type EvidenceParams struct {
-	// Number of blocks after which evidence is considered stale.
+	// Max age of evidence, in blocks.
 	MaxAgeNumBlocks int64 `json:"max_age_num_blocks"`
-	// Time duration after which evidence is considered stale.
+	// Max age of evidence, in time.
 	MaxAgeDuration time.Duration `json:"max_age_duration"`
 }
 
