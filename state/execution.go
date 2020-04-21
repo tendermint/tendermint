@@ -645,8 +645,9 @@ func getBeginSideBlockData(block *types.Block, stateDB dbm.DB) []abci.SideTxResu
 				if !txProcessed {
 					// get result object from result index
 					result[resultIndex].Sigs = append(result[resultIndex].Sigs, abci.SideTxSig{
-						Result: abci.SideTxResultType(sideTxResult.Result),
-						Sig:    sideTxResult.Sig,
+						Result:  abci.SideTxResultType(sideTxResult.Result),
+						Sig:     sideTxResult.Sig,
+						Address: vote.ValidatorAddress,
 					})
 					// add tx hash for the record for particular vote
 					txMapping = append(txMapping, sideTxResult.TxHash)

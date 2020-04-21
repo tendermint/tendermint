@@ -372,6 +372,7 @@ enum SideTxResultType {
 message SideTxSig {
   SideTxResultType result = 1;
   bytes sig = 2;
+  bytes address = 3;
 }
 
 // Side tx results

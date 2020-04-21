@@ -40,7 +40,9 @@ func (sp *SideTxResultWithData) GetBytes() []byte {
 
 	data := make([]byte, 0)
 	data = append(data, bs[0]) // use first byte as result
-	data = append(data, sp.Data...)
+	if len(sp.Data) > 0 {
+		data = append(data, sp.Data...)
+	}
 	return data
 }
 
