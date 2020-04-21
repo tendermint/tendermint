@@ -149,8 +149,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			if ev.Height() <= peerState.GetHeight() {
 				// check that the evidence has not expired else remove it
 				if evR.evpool.IsExpired(ev) {
-					pendingKey := keyPending(ev)
-					evR.evpool.store.db.Delete(pendingKey)
+					evR.evpool.removePendingEvidence(ev)
 					evR.evpool.evidenceList.Remove(next)
 					next.DetachPrev()
 				} else {

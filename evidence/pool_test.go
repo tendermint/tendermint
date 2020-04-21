@@ -64,7 +64,6 @@ func TestEvidencePool(t *testing.T) {
 
 	// if we send it again, it shouldnt add and return an error
 	err = pool.AddEvidence(goodEvidence)
-	assert.Error(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
 
@@ -146,29 +145,17 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 	// load good evidence
 	goodKey := keyPending(goodEvidence)
-	goodEi := Info{
-		Committed: false,
-		Priority:  1,
-		Evidence:  goodEvidence,
-	}
-	goodEiBytes := cdc.MustMarshalBinaryBare(goodEi)
+	goodEiBytes := cdc.MustMarshalBinaryBare(goodEvidence)
 	_ = evidenceDB.Set(goodKey, goodEiBytes)
 
 	// load expired evidence
 	expiredKey := keyPending(expiredEvidence)
-	expiredEi := Info{
-		Committed: false,
-		Priority:  2,
-		Evidence:  expiredEvidence,
-	}
-	expiredEiBytes := cdc.MustMarshalBinaryBare(expiredEi)
+	expiredEiBytes := cdc.MustMarshalBinaryBare(expiredEvidence)
 	_ = evidenceDB.Set(expiredKey, expiredEiBytes)
 	pool := NewPool(stateDB, evidenceDB, blockStore)
 
-	ok, _ := pool.store.db.Has(goodKey)
-
 	assert.Equal(t, 1, pool.evidenceList.Len())
-	assert.True(t, ok)
+	assert.True(t, pool.IsPending(goodEvidence))
 }
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
