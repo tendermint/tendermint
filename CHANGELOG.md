@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.33.4
+
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
+
+*April 21, 2020*
+
+Special thanks to external contributors on this release: @whylee259, @greg-szabo
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+
+  - [lite2] [\#4616](https://github.com/tendermint/tendermint/pull/4616) Make `maxClockDrift` an option `Verify/VerifyAdjacent/VerifyNonAdjacent` now accept `maxClockDrift time.Duration` (@melekes).
+  - [rpc/client] [\#4628](https://github.com/tendermint/tendermint/pull/4628) Split out HTTP and local clients into `http` and `local` packages (@erikgrinaker).
+
+### FEATURES:
+
+- [abci] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `ResponseCommit.retain_height` field, which will automatically remove blocks below this height. This bumps the ABCI version to 0.16.2 (@erikgrinaker).
+- [cmd] [\#4665](https://github.com/tendermint/tendermint/pull/4665) New `tendermint completion` command to generate Bash/Zsh completion scripts (@alessio).
+- [rpc] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `/status` response fields for the earliest block available on the node (@erikgrinaker).
+- [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259).
+
+### IMPROVEMENTS:
+
+- [all] [\#4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized (@tessr).
+- [blockchain] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `Base` to blockchain reactor P2P messages `StatusRequest` and `StatusResponse` (@erikgrinaker).
+- [Docker] [\#4569](https://github.com/tendermint/tendermint/issues/4569) Default configuration added to docker image (you can still mount your own config the same way) (@greg-szabo).
+- [example/kvstore] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `RetainBlocks` option to control block retention (@erikgrinaker).
+- [evidence] [\#4632](https://github.com/tendermint/tendermint/pull/4632) Inbound evidence checked if already existing (@cmwaters).
+- [lite2] [\#4575](https://github.com/tendermint/tendermint/pull/4575) Use bisection for within-range verification (@cmwaters).
+- [lite2] [\#4562](https://github.com/tendermint/tendermint/pull/4562) Cache headers when using bisection (@cmwaters).
+- [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters).
+- [privval] [\#4534](https://github.com/tendermint/tendermint/issues/4534) Add `error` as a return value on`GetPubKey()` (@marbar3778).
+- [p2p] [\#4621](https://github.com/tendermint/tendermint/issues/4621) Ban peers when messages are unsolicited or too frequent (@cmwaters).
+- [rpc] [\#4703](https://github.com/tendermint/tendermint/pull/4703) Add `count` and `total` to `/validators` response (@melekes).
+- [tools] [\#4615](https://github.com/tendermint/tendermint/issues/4615) Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker` (@erikgrinaker).
+
+### BUG FIXES:
+
+- [rpc] [\#4568](https://github.com/tendermint/tendermint/issues/4568) Fix panic when `Subscribe` is called, but HTTP client is not running. `Subscribe`, `Unsubscribe(All)` methods return an error now (@melekes).
+  
+
 ## v0.33.3
 
 *April 6, 2020*
