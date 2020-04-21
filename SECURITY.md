@@ -48,7 +48,7 @@ The following is an example timeline for the triage and response. The required r
 
 #### 24 Hours Before Release Time
 
-1. Post “Security Advisory” on forum (TENDERMINT LEAD) 
+1. Post “Security Advisory” pre-notification on forum (TENDERMINT LEAD) 
 2. Post Tweet linking to forum post (COMMS LEAD) 
 3. Announce security advisory/link to post in various other social channels (Telegram, Discord) (COMMS LEAD) 
 4. Send emails to validators or other users (PARTNERSHIPS LEAD) 
