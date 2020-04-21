@@ -1192,7 +1192,19 @@ func createAndStartPrivValidatorSocketClient(
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	return pvsc, nil
+	// try to get a pubkey from private validate first time
+	pubKey := pvsc.GetPubKey()
+	if pubKey == nil {
+		return nil, errors.New("could not retrieve public key from private validator")
+	}
+
+	const (
+		retries = 50 // unlimited
+		timeout = 100 * time.Millisecond
+	)
+	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+
+	return pvscWithRetries, nil
 }
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a

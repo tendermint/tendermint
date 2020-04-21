@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.32.11
+
+### BUG FIXES:
+
+- [privval] [\#4275](https://github.com/tendermint/tendermint/issues/4275) Fix consensus failure when remote signer drops (@melekes)
+
 ## v0.32.10
 
 *April 6, 2020*
@@ -84,7 +90,7 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [rpc/lib] [\#4131](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
 - [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
 
 ## v0.32.8
