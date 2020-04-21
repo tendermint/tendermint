@@ -104,7 +104,6 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int32) {
 	for i := int32(0); i < times; i++ {
 		proposer = vals.incrementProposerPriority()
 	}
-
 	vals.Proposer = proposer
 }
 

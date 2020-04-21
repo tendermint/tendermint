@@ -263,6 +263,7 @@ func ABCIResponsesResultsHash(ar tmstate.ABCIResponses) []byte {
 func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) {
 	buf, err := db.Get(calcABCIResponsesKey(height))
 	if err != nil {
+		fmt.Println()
 		return nil, err
 	}
 	if len(buf) == 0 {
@@ -297,8 +298,8 @@ func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIRespo
 			dtxs = append(dtxs, tx)
 		}
 	}
-
 	abciResponses.DeliverTxs = dtxs
+
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
