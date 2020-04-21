@@ -16,7 +16,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 	}{
 		{"success empty", val, true, true},
 		{"failure empty", &Validator{}, false, false},
-		{"failure nil", nil, true, false},
+		{"failure nil", nil, false, false},
 	}
 	for _, tc := range testCases {
 		protoVal, err := tc.v1.ToProto()

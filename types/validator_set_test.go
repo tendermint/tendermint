@@ -1393,9 +1393,9 @@ func TestValidatorSetProtoBuf(t *testing.T) {
 	}{
 		{"success", valset, true, true},
 		{"fail valSet2, pubkey empty", valset2, false, false},
-		{"fail nil Proposer", valset3, true, false},
+		{"fail nil Proposer", valset3, false, false},
 		{"fail empty Proposer", valset4, false, false},
-		{"fail empty valSet", &ValidatorSet{}, true, false},
+		{"fail empty valSet", &ValidatorSet{}, false, false},
 		{"false nil", nil, false, false},
 	}
 	for _, tc := range testCases {

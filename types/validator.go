@@ -100,7 +100,7 @@ func (v *Validator) Bytes() []byte {
 // ToProto converts Valiator to protobuf
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	if v == nil {
-		return nil, nil
+		return nil, errors.New("nil validator")
 	}
 
 	pk, err := ce.PubKeyToProto(v.PubKey)
