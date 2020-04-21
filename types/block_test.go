@@ -715,7 +715,8 @@ func TestCommitProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", commit, true},
-		{"empty commit", &Commit{Signatures: []CommitSig{}}, true}, // Empty value sets signatures to nil, signatures should not be nillable
+		// Empty value sets signatures to nil, signatures should not be nillable
+		{"empty commit", &Commit{Signatures: []CommitSig{}}, true},
 		{"fail Commit nil", nil, false},
 	}
 	for _, tc := range testCases {
