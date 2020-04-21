@@ -124,10 +124,8 @@ func (p *Proposal) FromProto(pp *tmproto.Proposal) error {
 	var blockID BlockID
 
 	// error checked in proposal ValidateBasic
-	err := blockID.FromProto(&pp.BlockID)
-	if err != nil {
-		return err
-	}
+	blockID.FromProto(&pp.BlockID)
+
 	p.BlockID = blockID
 	p.Type = pp.Type
 	p.Height = pp.Height
