@@ -43,6 +43,8 @@ func TestEvidencePool(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "is too old; min height is 99981 and evidence can not be older than")
 	}
+	assert.False(t, pool.IsPending(badEvidence))
+	assert.True(t, pool.IsExpired(badEvidence))
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -57,17 +59,18 @@ func TestEvidencePool(t *testing.T) {
 	select {
 	case <-evAdded:
 	case <-time.After(5 * time.Second):
-		t.Fatal("evidence was not added after 5s")
+		t.Fatal("evidence was not added to list after 5s")
 	}
 
 	assert.Equal(t, 1, pool.evidenceList.Len())
 
 	// if we send it again, it shouldnt add and return an error
 	err = pool.AddEvidence(goodEvidence)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
 
-func TestEvidencePoolIsCommitted(t *testing.T) {
+func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
 		valAddr       = []byte("validator_address")
 		height        = int64(1)
@@ -77,19 +80,26 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 		blockStoreDB  = dbm.NewMemDB()
 		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
 		pool          = NewPool(stateDB, evidenceDB, blockStore)
+		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	// evidence not seen yet:
-	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	evidence := types.NewMockEvidence(height, evidenceTime, 0, valAddr)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
 	assert.NoError(t, pool.AddEvidence(evidence))
 	assert.False(t, pool.IsCommitted(evidence))
 
+	// test evidence is proposed
+	proposedEvidence := pool.PendingEvidence(-1)
+	assert.Equal(t, proposedEvidence[0], evidence)
+
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, lastBlockTime, []types.Evidence{evidence})
+	pool.MarkEvidenceAsCommitted(height, lastBlockTime, proposedEvidence)
 	assert.True(t, pool.IsCommitted(evidence))
+	assert.False(t, pool.IsPending(evidence))
+	assert.Equal(t, 0, pool.evidenceList.Len())
 }
 
 func TestAddEvidence(t *testing.T) {
