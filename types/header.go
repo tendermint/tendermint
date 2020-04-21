@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 // Header defines the structure of a Tendermint block header.
@@ -177,54 +177,56 @@ func (h Header) ValidateBasic() error {
 	return nil
 }
 
-func (h Header) ToProto() *tmproto.Header {
-
-	ph := tmproto.Header{
-		Version: tmproto.Version{
-			Block: h.Version.Block.Uint64(),
-			App:   h.Version.App.Uint64(),
-		},
+// ToProto converts Header to protobuf
+func (h *Header) ToProto() *tmproto.Header {
+	if h == nil {
+		return nil
+	}
+	return &tmproto.Header{
+		Version:            h.Version,
 		ChainID:            h.ChainID,
 		Height:             h.Height,
 		Time:               h.Time,
-		LastBlockID:        h.LastBlockID.ToProto(),
-		LastCommitHash:     h.LastCommitHash,
-		DataHash:           h.DataHash,
+		LastBlockID:        *h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,
 		AppHash:            h.AppHash,
+		DataHash:           h.DataHash,
+		EvidenceHash:       h.EvidenceHash,
 		LastResultsHash:    h.LastResultsHash,
+		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
 	}
-
-	return &ph
 }
 
-func (h *Header) FromProto(ph tmproto.Header) error {
-	h.Version = version.Consensus{
-		Block: version.Protocol(ph.Version.Block),
-		App:   version.Protocol(ph.Version.App),
+// FromProto sets a protobuf Header to the given pointer.
+// It returns an error if the header is invalid.
+func (h *Header) FromProto(ph *tmproto.Header) error {
+	var blockID BlockID
+	if ph == nil {
+		return nil
 	}
+
+	if err := blockID.FromProto(&ph.LastBlockID); err != nil {
+		return err
+	}
+
+	h.Version = ph.Version
 	h.ChainID = ph.ChainID
 	h.Height = ph.Height
 	h.Time = ph.Time
-	if err := h.LastBlockID.FromProto(ph.LastBlockID); err != nil {
-		return err
-	}
-	h.LastCommitHash = ph.GetLastCommitHash()
-	h.DataHash = ph.GetDataHash()
-	h.ValidatorsHash = ph.GetValidatorsHash()
-	h.NextValidatorsHash = ph.GetNextValidatorsHash()
-	h.ConsensusHash = ph.GetConsensusHash()
-	h.AppHash = ph.GetAppHash()
-	h.LastResultsHash = ph.GetLastResultsHash()
-	h.ProposerAddress = ph.GetProposerAddress()
+	h.Height = ph.Height
+	h.LastBlockID = blockID
+	h.ValidatorsHash = ph.ValidatorsHash
+	h.NextValidatorsHash = ph.NextValidatorsHash
+	h.ConsensusHash = ph.ConsensusHash
+	h.AppHash = ph.AppHash
+	h.DataHash = ph.DataHash
+	h.EvidenceHash = ph.EvidenceHash
+	h.LastResultsHash = ph.LastResultsHash
+	h.LastCommitHash = ph.LastCommitHash
+	h.ProposerAddress = ph.ProposerAddress
 
-	err := h.ValidateBasic()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.ValidateBasic()
 }

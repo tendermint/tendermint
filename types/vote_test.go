@@ -288,3 +288,32 @@ func TestVoteValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestVoteProtobuf(t *testing.T) {
+	privVal := NewMockPV()
+	vote := examplePrecommit()
+	err := privVal.SignVote("test_chain_id", vote)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		msg     string
+		v1      *Vote
+		expPass bool
+	}{
+		{"success", vote, true},
+		{"fail vote validate basic", &Vote{}, false},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoProposal := tc.v1.ToProto()
+
+		v := new(Vote)
+		err := v.FromProto(protoProposal)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.msg)
+		} else {
+			require.Error(t, err)
+		}
+	}
+}

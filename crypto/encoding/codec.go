@@ -2,10 +2,11 @@ package encoding
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	pc "github.com/tendermint/tendermint/proto/crypto"
+	pc "github.com/tendermint/tendermint/proto/crypto/keys"
 )
 
 // PubKeyToProto takes crypto.PubKey and transforms it to a protobuf Pubkey
@@ -19,7 +20,7 @@ func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 			},
 		}
 	default:
-		return kp, errors.New("toproto: key type is not supported")
+		return kp, fmt.Errorf("toproto: key type %v is not supported", k)
 	}
 	return kp, nil
 }
@@ -32,7 +33,7 @@ func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
 		copy(pk, k.Ed25519)
 		return pk, nil
 	default:
-		return nil, errors.New("fromproto: key type not supported")
+		return nil, fmt.Errorf("fromproto: key type %v is not supported", k)
 	}
 }
 

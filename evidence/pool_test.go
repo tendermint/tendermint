@@ -9,6 +9,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -29,8 +30,8 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		Validators:                  valSet,
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: types.ConsensusParams{
-			Evidence: types.EvidenceParams{
+		ConsensusParams: tmproto.ConsensusParams{
+			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 10000,
 				MaxAgeDuration:  48 * time.Hour,
 			},
