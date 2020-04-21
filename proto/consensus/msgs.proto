@@ -24,13 +24,13 @@ message NewValidBlock {
 }
 
 message Proposal {
-  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Proposal proposal = 1;
 }
 
 message ProposalPOL {
   int64                               height             = 1;
   int32                               proposal_pol_round = 2;
-  tendermint.proto.libs.bits.BitArray proposal_pol       = 3;
+  tendermint.proto.libs.bits.BitArray proposal_pol       = 3 [(gogoproto.nullable) = false];
 }
 
 message BlockPart {
@@ -54,7 +54,15 @@ message VoteSetMaj23 {
   int64                                height   = 1;
   int32                                round    = 2;
   tendermint.proto.types.SignedMsgType type     = 3;
-  tendermint.proto.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID"];
+  tendermint.proto.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+}
+
+message VoteSetBits {
+  int64                                height   = 1;
+  int32                                Round    = 2;
+  tendermint.proto.types.SignedMsgType type     = 3;
+  tendermint.proto.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  tendermint.proto.libs.bits.BitArray  votes    = 5;
 }
 
 message Message {
@@ -67,5 +75,6 @@ message Message {
     Vote          vote            = 6;
     HasVote       has_vote        = 7;
     VoteSetMaj23  vote_set_maj23  = 8;
+    VoteSetBits   vote_set_bits   = 9;
   }
 }
