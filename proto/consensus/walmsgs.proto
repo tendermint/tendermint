@@ -13,7 +13,7 @@ message msgInfo {
 }
 
 message timeoutInfo {
-  google.protobuf.Duration max_age_duration = 1
+  google.protobuf.Duration duration = 1
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   int64 height = 2;
   int32 round  = 3;

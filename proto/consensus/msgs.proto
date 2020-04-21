@@ -69,16 +69,3 @@ message Message {
     VoteSetMaj23  vote_set_maj23  = 8;
   }
 }
-
-// // ----------------------------------------------------------------
-
-// // WAL Messages
-
-// message msgInfo {
-//   Message msg = 1;
-//   // p2p.ID  peer_id = 2;
-// }
-
-// message EndHeightMessage {
-//   int64 height = 1;
-// }

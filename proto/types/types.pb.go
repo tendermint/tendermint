@@ -10,9 +10,9 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
-	keys "github.com/tendermint/tendermint/proto/crypto/keys"
 	merkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 	bits "github.com/tendermint/tendermint/proto/libs/bits"
+	version "github.com/tendermint/tendermint/proto/version"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -256,10 +256,10 @@ func (m *BlockID) GetPartsHeader() PartSetHeader {
 // Header defines the structure of a Tendermint block header.
 type Header struct {
 	// basic block info
-	Version Version   `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
-	ChainID string    `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	Height  int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	Time    time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
+	Version version.Consensus `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
+	ChainID string            `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	Height  int64             `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	Time    time.Time         `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
 	// prev block info
 	LastBlockID BlockID `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
 	// hashes of block data
@@ -308,11 +308,11 @@ func (m *Header) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Header proto.InternalMessageInfo
 
-func (m *Header) GetVersion() Version {
+func (m *Header) GetVersion() version.Consensus {
 	if m != nil {
 		return m.Version
 	}
-	return Version{}
+	return version.Consensus{}
 }
 
 func (m *Header) GetChainID() string {
@@ -406,57 +406,6 @@ func (m *Header) GetProposerAddress() []byte {
 	return nil
 }
 
-type Version struct {
-	Block uint64 `protobuf:"varint,1,opt,name=block,proto3" json:"block,omitempty"`
-	App   uint64 `protobuf:"varint,2,opt,name=app,proto3" json:"app,omitempty"`
-}
-
-func (m *Version) Reset()      { *m = Version{} }
-func (*Version) ProtoMessage() {}
-func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{4}
-}
-func (m *Version) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Version) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Version.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Version) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Version.Merge(m, src)
-}
-func (m *Version) XXX_Size() int {
-	return m.Size()
-}
-func (m *Version) XXX_DiscardUnknown() {
-	xxx_messageInfo_Version.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Version proto.InternalMessageInfo
-
-func (m *Version) GetBlock() uint64 {
-	if m != nil {
-		return m.Block
-	}
-	return 0
-}
-
-func (m *Version) GetApp() uint64 {
-	if m != nil {
-		return m.App
-	}
-	return 0
-}
-
 // Data contains the set of transactions included in the block
 type Data struct {
 	// Txs that will be applied by state @ block.Height+1.
@@ -470,7 +419,7 @@ type Data struct {
 func (m *Data) Reset()      { *m = Data{} }
 func (*Data) ProtoMessage() {}
 func (*Data) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{5}
+	return fileDescriptor_ff06f8095857fb18, []int{4}
 }
 func (m *Data) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -529,7 +478,7 @@ type Vote struct {
 func (m *Vote) Reset()      { *m = Vote{} }
 func (*Vote) ProtoMessage() {}
 func (*Vote) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{6}
+	return fileDescriptor_ff06f8095857fb18, []int{5}
 }
 func (m *Vote) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -614,256 +563,6 @@ func (m *Vote) GetSignature() []byte {
 	return nil
 }
 
-// DuplicateVoteEvidence contains evidence a validator signed two conflicting
-// votes.
-type DuplicateVoteEvidence struct {
-	VoteA *Vote `protobuf:"bytes,1,opt,name=vote_a,json=voteA,proto3" json:"vote_a,omitempty"`
-	VoteB *Vote `protobuf:"bytes,2,opt,name=vote_b,json=voteB,proto3" json:"vote_b,omitempty"`
-}
-
-func (m *DuplicateVoteEvidence) Reset()      { *m = DuplicateVoteEvidence{} }
-func (*DuplicateVoteEvidence) ProtoMessage() {}
-func (*DuplicateVoteEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{7}
-}
-func (m *DuplicateVoteEvidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *DuplicateVoteEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_DuplicateVoteEvidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *DuplicateVoteEvidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DuplicateVoteEvidence.Merge(m, src)
-}
-func (m *DuplicateVoteEvidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *DuplicateVoteEvidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_DuplicateVoteEvidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_DuplicateVoteEvidence proto.InternalMessageInfo
-
-func (m *DuplicateVoteEvidence) GetVoteA() *Vote {
-	if m != nil {
-		return m.VoteA
-	}
-	return nil
-}
-
-func (m *DuplicateVoteEvidence) GetVoteB() *Vote {
-	if m != nil {
-		return m.VoteB
-	}
-	return nil
-}
-
-// MockEvidence is used for testing pruposes
-type MockEvidence struct {
-	EvidenceHeight  int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
-	EvidenceTime    time.Time `protobuf:"bytes,2,opt,name=evidence_time,json=evidenceTime,proto3,stdtime" json:"evidence_time"`
-	EvidenceAddress []byte    `protobuf:"bytes,3,opt,name=evidence_address,json=evidenceAddress,proto3" json:"evidence_address,omitempty"`
-}
-
-func (m *MockEvidence) Reset()      { *m = MockEvidence{} }
-func (*MockEvidence) ProtoMessage() {}
-func (*MockEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{8}
-}
-func (m *MockEvidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MockEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MockEvidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MockEvidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MockEvidence.Merge(m, src)
-}
-func (m *MockEvidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *MockEvidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_MockEvidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MockEvidence proto.InternalMessageInfo
-
-func (m *MockEvidence) GetEvidenceHeight() int64 {
-	if m != nil {
-		return m.EvidenceHeight
-	}
-	return 0
-}
-
-func (m *MockEvidence) GetEvidenceTime() time.Time {
-	if m != nil {
-		return m.EvidenceTime
-	}
-	return time.Time{}
-}
-
-func (m *MockEvidence) GetEvidenceAddress() []byte {
-	if m != nil {
-		return m.EvidenceAddress
-	}
-	return nil
-}
-
-type Evidence struct {
-	// Types that are valid to be assigned to Sum:
-	//	*Evidence_DuplicateVoteEvidence
-	//	*Evidence_MockEvidence
-	Sum isEvidence_Sum `protobuf_oneof:"sum"`
-}
-
-func (m *Evidence) Reset()      { *m = Evidence{} }
-func (*Evidence) ProtoMessage() {}
-func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{9}
-}
-func (m *Evidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Evidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Evidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Evidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Evidence.Merge(m, src)
-}
-func (m *Evidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *Evidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_Evidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Evidence proto.InternalMessageInfo
-
-type isEvidence_Sum interface {
-	isEvidence_Sum()
-	Equal(interface{}) bool
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type Evidence_DuplicateVoteEvidence struct {
-	DuplicateVoteEvidence *DuplicateVoteEvidence `protobuf:"bytes,1,opt,name=duplicate_vote_evidence,json=duplicateVoteEvidence,proto3,oneof" json:"duplicate_vote_evidence,omitempty"`
-}
-type Evidence_MockEvidence struct {
-	MockEvidence *MockEvidence `protobuf:"bytes,2,opt,name=mock_evidence,json=mockEvidence,proto3,oneof" json:"mock_evidence,omitempty"`
-}
-
-func (*Evidence_DuplicateVoteEvidence) isEvidence_Sum() {}
-func (*Evidence_MockEvidence) isEvidence_Sum()          {}
-
-func (m *Evidence) GetSum() isEvidence_Sum {
-	if m != nil {
-		return m.Sum
-	}
-	return nil
-}
-
-func (m *Evidence) GetDuplicateVoteEvidence() *DuplicateVoteEvidence {
-	if x, ok := m.GetSum().(*Evidence_DuplicateVoteEvidence); ok {
-		return x.DuplicateVoteEvidence
-	}
-	return nil
-}
-
-func (m *Evidence) GetMockEvidence() *MockEvidence {
-	if x, ok := m.GetSum().(*Evidence_MockEvidence); ok {
-		return x.MockEvidence
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*Evidence) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*Evidence_DuplicateVoteEvidence)(nil),
-		(*Evidence_MockEvidence)(nil),
-	}
-}
-
-// EvidenceData contains any evidence of malicious wrong-doing by validators
-type EvidenceData struct {
-	Evidence []Evidence `protobuf:"bytes,1,rep,name=evidence,proto3" json:"evidence"`
-	Hash     []byte     `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
-}
-
-func (m *EvidenceData) Reset()      { *m = EvidenceData{} }
-func (*EvidenceData) ProtoMessage() {}
-func (*EvidenceData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{10}
-}
-func (m *EvidenceData) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EvidenceData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EvidenceData.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EvidenceData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EvidenceData.Merge(m, src)
-}
-func (m *EvidenceData) XXX_Size() int {
-	return m.Size()
-}
-func (m *EvidenceData) XXX_DiscardUnknown() {
-	xxx_messageInfo_EvidenceData.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EvidenceData proto.InternalMessageInfo
-
-func (m *EvidenceData) GetEvidence() []Evidence {
-	if m != nil {
-		return m.Evidence
-	}
-	return nil
-}
-
-func (m *EvidenceData) GetHash() []byte {
-	if m != nil {
-		return m.Hash
-	}
-	return nil
-}
-
 // Commit contains the evidence that a block was committed by a set of validators.
 type Commit struct {
 	Height     int64          `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
@@ -877,7 +576,7 @@ type Commit struct {
 func (m *Commit) Reset()      { *m = Commit{} }
 func (*Commit) ProtoMessage() {}
 func (*Commit) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{11}
+	return fileDescriptor_ff06f8095857fb18, []int{6}
 }
 func (m *Commit) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -959,7 +658,7 @@ type CommitSig struct {
 func (m *CommitSig) Reset()      { *m = CommitSig{} }
 func (*CommitSig) ProtoMessage() {}
 func (*CommitSig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{12}
+	return fileDescriptor_ff06f8095857fb18, []int{7}
 }
 func (m *CommitSig) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1016,73 +715,6 @@ func (m *CommitSig) GetSignature() []byte {
 	return nil
 }
 
-type Block struct {
-	Header     Header       `protobuf:"bytes,1,opt,name=header,proto3" json:"header"`
-	Data       Data         `protobuf:"bytes,2,opt,name=data,proto3" json:"data"`
-	Evidence   EvidenceData `protobuf:"bytes,3,opt,name=evidence,proto3" json:"evidence"`
-	LastCommit *Commit      `protobuf:"bytes,4,opt,name=last_commit,json=lastCommit,proto3" json:"last_commit,omitempty"`
-}
-
-func (m *Block) Reset()      { *m = Block{} }
-func (*Block) ProtoMessage() {}
-func (*Block) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{13}
-}
-func (m *Block) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Block.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Block) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Block.Merge(m, src)
-}
-func (m *Block) XXX_Size() int {
-	return m.Size()
-}
-func (m *Block) XXX_DiscardUnknown() {
-	xxx_messageInfo_Block.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Block proto.InternalMessageInfo
-
-func (m *Block) GetHeader() Header {
-	if m != nil {
-		return m.Header
-	}
-	return Header{}
-}
-
-func (m *Block) GetData() Data {
-	if m != nil {
-		return m.Data
-	}
-	return Data{}
-}
-
-func (m *Block) GetEvidence() EvidenceData {
-	if m != nil {
-		return m.Evidence
-	}
-	return EvidenceData{}
-}
-
-func (m *Block) GetLastCommit() *Commit {
-	if m != nil {
-		return m.LastCommit
-	}
-	return nil
-}
-
 type Proposal struct {
 	Type      SignedMsgType `protobuf:"varint,1,opt,name=type,proto3,enum=tendermint.proto.types.SignedMsgType" json:"type,omitempty"`
 	Height    int64         `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
@@ -1096,7 +728,7 @@ type Proposal struct {
 func (m *Proposal) Reset()      { *m = Proposal{} }
 func (*Proposal) ProtoMessage() {}
 func (*Proposal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{14}
+	return fileDescriptor_ff06f8095857fb18, []int{8}
 }
 func (m *Proposal) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1182,7 +814,7 @@ type SignedHeader struct {
 func (m *SignedHeader) Reset()      { *m = SignedHeader{} }
 func (*SignedHeader) ProtoMessage() {}
 func (*SignedHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{15}
+	return fileDescriptor_ff06f8095857fb18, []int{9}
 }
 func (m *SignedHeader) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1225,132 +857,6 @@ func (m *SignedHeader) GetCommit() *Commit {
 	return nil
 }
 
-type ValidatorSet struct {
-	Validators       []Validator `protobuf:"bytes,1,rep,name=validators,proto3" json:"validators"`
-	Proposer         Validator   `protobuf:"bytes,2,opt,name=proposer,proto3" json:"proposer"`
-	TotalVotingPower int64       `protobuf:"varint,3,opt,name=total_voting_power,json=totalVotingPower,proto3" json:"total_voting_power,omitempty"`
-}
-
-func (m *ValidatorSet) Reset()      { *m = ValidatorSet{} }
-func (*ValidatorSet) ProtoMessage() {}
-func (*ValidatorSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{16}
-}
-func (m *ValidatorSet) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ValidatorSet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_ValidatorSet.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *ValidatorSet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ValidatorSet.Merge(m, src)
-}
-func (m *ValidatorSet) XXX_Size() int {
-	return m.Size()
-}
-func (m *ValidatorSet) XXX_DiscardUnknown() {
-	xxx_messageInfo_ValidatorSet.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ValidatorSet proto.InternalMessageInfo
-
-func (m *ValidatorSet) GetValidators() []Validator {
-	if m != nil {
-		return m.Validators
-	}
-	return nil
-}
-
-func (m *ValidatorSet) GetProposer() Validator {
-	if m != nil {
-		return m.Proposer
-	}
-	return Validator{}
-}
-
-func (m *ValidatorSet) GetTotalVotingPower() int64 {
-	if m != nil {
-		return m.TotalVotingPower
-	}
-	return 0
-}
-
-type Validator struct {
-	Address          []byte         `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	PubKey           keys.PublicKey `protobuf:"bytes,2,opt,name=pub_key,json=pubKey,proto3" json:"pub_key"`
-	VotingPower      int64          `protobuf:"varint,3,opt,name=VotingPower,proto3" json:"VotingPower,omitempty"`
-	ProposerPriority int64          `protobuf:"varint,4,opt,name=proposer_priority,json=proposerPriority,proto3" json:"proposer_priority,omitempty"`
-}
-
-func (m *Validator) Reset()      { *m = Validator{} }
-func (*Validator) ProtoMessage() {}
-func (*Validator) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ff06f8095857fb18, []int{17}
-}
-func (m *Validator) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Validator) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Validator.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Validator) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Validator.Merge(m, src)
-}
-func (m *Validator) XXX_Size() int {
-	return m.Size()
-}
-func (m *Validator) XXX_DiscardUnknown() {
-	xxx_messageInfo_Validator.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Validator proto.InternalMessageInfo
-
-func (m *Validator) GetAddress() []byte {
-	if m != nil {
-		return m.Address
-	}
-	return nil
-}
-
-func (m *Validator) GetPubKey() keys.PublicKey {
-	if m != nil {
-		return m.PubKey
-	}
-	return keys.PublicKey{}
-}
-
-func (m *Validator) GetVotingPower() int64 {
-	if m != nil {
-		return m.VotingPower
-	}
-	return 0
-}
-
-func (m *Validator) GetProposerPriority() int64 {
-	if m != nil {
-		return m.ProposerPriority
-	}
-	return 0
-}
-
 func init() {
 	proto.RegisterEnum("tendermint.proto.types.BlockIDFlag", BlockIDFlag_name, BlockIDFlag_value)
 	proto.RegisterEnum("tendermint.proto.types.SignedMsgType", SignedMsgType_name, SignedMsgType_value)
@@ -1358,132 +864,99 @@ func init() {
 	proto.RegisterType((*Parts)(nil), "tendermint.proto.types.Parts")
 	proto.RegisterType((*BlockID)(nil), "tendermint.proto.types.BlockID")
 	proto.RegisterType((*Header)(nil), "tendermint.proto.types.Header")
-	proto.RegisterType((*Version)(nil), "tendermint.proto.types.Version")
 	proto.RegisterType((*Data)(nil), "tendermint.proto.types.Data")
 	proto.RegisterType((*Vote)(nil), "tendermint.proto.types.Vote")
-	proto.RegisterType((*DuplicateVoteEvidence)(nil), "tendermint.proto.types.DuplicateVoteEvidence")
-	proto.RegisterType((*MockEvidence)(nil), "tendermint.proto.types.MockEvidence")
-	proto.RegisterType((*Evidence)(nil), "tendermint.proto.types.Evidence")
-	proto.RegisterType((*EvidenceData)(nil), "tendermint.proto.types.EvidenceData")
 	proto.RegisterType((*Commit)(nil), "tendermint.proto.types.Commit")
 	proto.RegisterType((*CommitSig)(nil), "tendermint.proto.types.CommitSig")
-	proto.RegisterType((*Block)(nil), "tendermint.proto.types.Block")
 	proto.RegisterType((*Proposal)(nil), "tendermint.proto.types.Proposal")
 	proto.RegisterType((*SignedHeader)(nil), "tendermint.proto.types.SignedHeader")
-	proto.RegisterType((*ValidatorSet)(nil), "tendermint.proto.types.ValidatorSet")
-	proto.RegisterType((*Validator)(nil), "tendermint.proto.types.Validator")
 }
 
 func init() { proto.RegisterFile("proto/types/types.proto", fileDescriptor_ff06f8095857fb18) }
 
 var fileDescriptor_ff06f8095857fb18 = []byte{
-	// 1686 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x58, 0x4b, 0x6f, 0xdb, 0xda,
-	0x11, 0x16, 0xf5, 0xd6, 0x48, 0xb2, 0x65, 0xd6, 0x49, 0x54, 0x39, 0xa5, 0x14, 0xa5, 0x49, 0x9c,
-	0x47, 0xe5, 0xc2, 0x01, 0x8a, 0xbe, 0x80, 0x40, 0xf2, 0x53, 0xb0, 0x2d, 0x0b, 0x94, 0xeb, 0x3e,
-	0x36, 0x04, 0x29, 0x1e, 0x4b, 0x84, 0x29, 0x91, 0x20, 0x8f, 0x9c, 0x08, 0x28, 0x8a, 0x76, 0xd3,
-	0x16, 0x5e, 0xe5, 0x0f, 0x18, 0x08, 0x90, 0x16, 0xc8, 0xa6, 0xfb, 0x02, 0xed, 0xa2, 0xbb, 0x06,
-	0x5d, 0x65, 0x99, 0x55, 0x7a, 0x23, 0x6f, 0xb2, 0xcc, 0xe2, 0xfe, 0x80, 0x8b, 0xf3, 0x20, 0x45,
-	0xc5, 0x52, 0xe2, 0xdc, 0x7b, 0x71, 0x37, 0x06, 0xcf, 0xcc, 0x37, 0x73, 0xe6, 0xcc, 0xf9, 0x66,
-	0xce, 0xc8, 0x70, 0xcd, 0x76, 0x2c, 0x6c, 0xad, 0xe0, 0xa1, 0x8d, 0x5c, 0xf6, 0xb7, 0x42, 0x25,
-	0xe2, 0x55, 0x8c, 0xfa, 0x3a, 0x72, 0x7a, 0x46, 0x1f, 0x33, 0x49, 0x85, 0x6a, 0x0b, 0xb7, 0x71,
-	0xd7, 0x70, 0x74, 0xc5, 0x56, 0x1d, 0x3c, 0x5c, 0x61, 0xc6, 0x1d, 0xab, 0x63, 0x8d, 0xbf, 0x18,
-	0xba, 0x50, 0xec, 0x58, 0x56, 0xc7, 0x44, 0x0c, 0xa2, 0x0d, 0x8e, 0x56, 0xb0, 0xd1, 0x43, 0x2e,
-	0x56, 0x7b, 0x36, 0x07, 0x2c, 0x31, 0x13, 0xd3, 0xd0, 0xdc, 0x15, 0xcd, 0xc0, 0x13, 0xbb, 0x17,
-	0x7e, 0xc0, 0x94, 0x6d, 0x67, 0x68, 0x63, 0x6b, 0xe5, 0x18, 0x0d, 0x27, 0xd5, 0xc5, 0x09, 0x75,
-	0x0f, 0x39, 0xc7, 0x26, 0x0a, 0x02, 0xca, 0x6b, 0x90, 0x6d, 0xaa, 0x0e, 0x6e, 0x21, 0xbc, 0x8d,
-	0x54, 0x1d, 0x39, 0xe2, 0x22, 0xc4, 0xb0, 0x85, 0x55, 0x33, 0x2f, 0x94, 0x84, 0xe5, 0xac, 0xcc,
-	0x16, 0xa2, 0x08, 0xd1, 0xae, 0xea, 0x76, 0xf3, 0xe1, 0x92, 0xb0, 0x9c, 0x91, 0xe9, 0xf7, 0xcf,
-	0x93, 0xff, 0x7c, 0x56, 0x14, 0xde, 0x3d, 0x2b, 0x0a, 0xe5, 0xdf, 0x43, 0x8c, 0x38, 0x71, 0x89,
-	0xb1, 0xd1, 0xd7, 0xd1, 0x13, 0xcf, 0x98, 0x2e, 0x88, 0x54, 0x1b, 0x62, 0xe4, 0x72, 0x6b, 0xb6,
-	0x10, 0xb7, 0x20, 0x66, 0x3b, 0x96, 0x75, 0x94, 0x8f, 0x94, 0x84, 0xe5, 0xf4, 0xea, 0xfd, 0xca,
-	0x85, 0x3c, 0xb2, 0xa8, 0x2b, 0x2c, 0xea, 0x4a, 0xcb, 0xe8, 0xd9, 0x26, 0x6a, 0x12, 0x93, 0x5a,
-	0xf4, 0xe5, 0x9b, 0x62, 0x48, 0x66, 0xf6, 0xe5, 0xc7, 0x90, 0xa8, 0x99, 0x56, 0xfb, 0xb8, 0xbe,
-	0xee, 0x87, 0x29, 0x8c, 0xc3, 0x14, 0x1b, 0x90, 0x21, 0x77, 0xe0, 0x2a, 0x5d, 0x7a, 0x40, 0x1a,
-	0x44, 0x7a, 0xf5, 0x56, 0x65, 0xfa, 0xb5, 0x55, 0x26, 0xb2, 0xc1, 0x37, 0x4a, 0x53, 0x07, 0x4c,
-	0x14, 0x38, 0xf6, 0x5f, 0x62, 0x10, 0xe7, 0x59, 0x7b, 0x04, 0x89, 0x13, 0xe4, 0xb8, 0x86, 0xd5,
-	0xa7, 0x7b, 0xa7, 0x57, 0x8b, 0xb3, 0xfc, 0x1f, 0x32, 0x18, 0xf7, 0xec, 0x59, 0x89, 0xb7, 0x21,
-	0xd9, 0xee, 0xaa, 0x46, 0x5f, 0x31, 0x74, 0x1a, 0x61, 0xaa, 0x96, 0x1e, 0xbd, 0x29, 0x26, 0xd6,
-	0x88, 0xac, 0xbe, 0x2e, 0x27, 0xa8, 0xb2, 0xae, 0x8b, 0x57, 0x21, 0xde, 0x45, 0x46, 0xa7, 0x8b,
-	0x69, 0xda, 0x22, 0x32, 0x5f, 0x89, 0x3f, 0x85, 0x28, 0xe1, 0x4d, 0x3e, 0x4a, 0x77, 0x2f, 0x54,
-	0x18, 0xa9, 0x2a, 0x1e, 0xa9, 0x2a, 0x07, 0x1e, 0xa9, 0x6a, 0x49, 0xb2, 0xf1, 0xd3, 0xff, 0x17,
-	0x05, 0x99, 0x5a, 0x88, 0xbf, 0x81, 0xac, 0xa9, 0xba, 0x58, 0xd1, 0x48, 0x0e, 0xc9, 0xf6, 0xb1,
-	0x8f, 0x1f, 0x80, 0xe7, 0xba, 0xf6, 0x3d, 0xe2, 0x67, 0xf4, 0xa6, 0x98, 0xde, 0x55, 0x5d, 0xcc,
-	0x85, 0x72, 0xda, 0xf4, 0x17, 0xba, 0xb8, 0x0c, 0x39, 0xea, 0xb9, 0x6d, 0xf5, 0x7a, 0x06, 0x56,
-	0xe8, 0xcd, 0xc4, 0xe9, 0xcd, 0xcc, 0x11, 0xf9, 0x1a, 0x15, 0x6f, 0x93, 0x3b, 0x5a, 0x82, 0x94,
-	0xae, 0x62, 0x95, 0x41, 0x12, 0x14, 0x92, 0x24, 0x02, 0xaa, 0xbc, 0x03, 0xf3, 0x27, 0xaa, 0x69,
-	0xe8, 0x2a, 0xb6, 0x1c, 0x97, 0x41, 0x92, 0xcc, 0xcb, 0x58, 0x4c, 0x81, 0x3f, 0x86, 0xc5, 0x3e,
-	0x7a, 0x82, 0x95, 0x0f, 0xd1, 0x29, 0x8a, 0x16, 0x89, 0xee, 0x70, 0xd2, 0xe2, 0x16, 0xcc, 0xb5,
-	0xad, 0xbe, 0x8b, 0xfa, 0xee, 0x80, 0x63, 0x81, 0x62, 0xb3, 0xbe, 0x94, 0xc2, 0xbe, 0x0f, 0x49,
-	0xd5, 0xb6, 0x19, 0x20, 0x4d, 0x01, 0x09, 0xd5, 0xb6, 0xa9, 0xea, 0x1e, 0x2c, 0xd0, 0x33, 0x3a,
-	0xc8, 0x1d, 0x98, 0x98, 0x3b, 0xc9, 0x50, 0xcc, 0x3c, 0x51, 0xc8, 0x4c, 0x4e, 0xb1, 0x37, 0x21,
-	0x8b, 0x4e, 0x0c, 0x1d, 0xf5, 0xdb, 0x88, 0xe1, 0xb2, 0x14, 0x97, 0xf1, 0x84, 0x14, 0x74, 0x17,
-	0x72, 0xb6, 0x63, 0xd9, 0x96, 0x8b, 0x1c, 0x45, 0xd5, 0x75, 0x07, 0xb9, 0x6e, 0x7e, 0x8e, 0xf9,
-	0xf3, 0xe4, 0x55, 0x26, 0x0e, 0x30, 0xf1, 0x17, 0x90, 0xe0, 0xbc, 0xa2, 0xc5, 0x46, 0xf2, 0x4f,
-	0x79, 0x18, 0x95, 0xd9, 0x42, 0xcc, 0x41, 0x44, 0xb5, 0x6d, 0xca, 0xac, 0xa8, 0x4c, 0x3e, 0x03,
-	0xc6, 0x0f, 0x20, 0xba, 0xae, 0x62, 0x95, 0x60, 0xf0, 0x13, 0x37, 0x2f, 0x94, 0x22, 0xcb, 0x19,
-	0x99, 0x7c, 0x4e, 0xab, 0xfa, 0xf2, 0x97, 0x61, 0x88, 0x1e, 0x5a, 0x18, 0x89, 0x3f, 0x83, 0x28,
-	0x21, 0x04, 0xdd, 0x67, 0x6e, 0x76, 0x3d, 0xb5, 0x8c, 0x4e, 0x1f, 0xe9, 0x7b, 0x6e, 0xe7, 0x60,
-	0x68, 0x23, 0x99, 0x9a, 0x04, 0x48, 0x1c, 0x9e, 0x20, 0xf1, 0x22, 0xc4, 0x1c, 0x6b, 0xd0, 0xd7,
-	0x29, 0xb7, 0x63, 0x32, 0x5b, 0x88, 0x3b, 0x90, 0xf4, 0xb9, 0x19, 0xbd, 0x1c, 0x37, 0xe7, 0x39,
-	0x37, 0xbd, 0xc6, 0x20, 0x27, 0x34, 0xce, 0xc9, 0x1a, 0xa4, 0xfc, 0xfe, 0xca, 0x99, 0x7e, 0xb9,
-	0x62, 0x19, 0x9b, 0x89, 0xf7, 0x61, 0xc1, 0xa7, 0x98, 0x7f, 0x47, 0x8c, 0xd8, 0x39, 0x5f, 0xc1,
-	0x2f, 0x69, 0x82, 0xbd, 0x0a, 0x6b, 0x8e, 0x09, 0xda, 0x1c, 0xc7, 0xec, 0xad, 0xd3, 0x2e, 0x79,
-	0x1d, 0x52, 0xae, 0xd1, 0xe9, 0xab, 0x78, 0xe0, 0x20, 0x4e, 0xf0, 0xb1, 0xa0, 0xfc, 0x27, 0x01,
-	0xae, 0xac, 0x0f, 0x6c, 0xd3, 0x68, 0xab, 0x18, 0x91, 0xfc, 0x6f, 0x70, 0xd2, 0x88, 0x0f, 0x21,
-	0x7e, 0x62, 0x61, 0xa4, 0xa8, 0xbc, 0xf3, 0x5c, 0x9f, 0xd9, 0x79, 0x2c, 0x8c, 0xe4, 0x18, 0xc1,
-	0x56, 0x7d, 0x23, 0x8d, 0xb7, 0xc3, 0x4b, 0x18, 0xd5, 0xca, 0xff, 0x10, 0x20, 0xb3, 0x67, 0xb5,
-	0x8f, 0xfd, 0xad, 0xef, 0xc0, 0xfc, 0x98, 0xd0, 0xec, 0x42, 0x05, 0x7a, 0xa1, 0x73, 0x3e, 0xa5,
-	0xd9, 0xc5, 0xd6, 0x03, 0xcc, 0xa7, 0x6d, 0x2a, 0xfc, 0x19, 0x99, 0xf7, 0xeb, 0x83, 0x28, 0x49,
-	0x7d, 0xf8, 0xae, 0xbc, 0xdc, 0x47, 0x58, 0x7d, 0x78, 0x72, 0x9e, 0xfa, 0xf2, 0x7f, 0x05, 0x48,
-	0xfa, 0xb1, 0x76, 0xe0, 0x9a, 0xee, 0xe5, 0x4f, 0xa1, 0x67, 0xf7, 0xe0, 0x3c, 0x6f, 0x3f, 0x9a,
-	0x95, 0x82, 0xa9, 0x69, 0xdf, 0x0e, 0xc9, 0x57, 0xf4, 0xa9, 0xf7, 0xb1, 0x03, 0xd9, 0x1e, 0x61,
-	0xab, 0xef, 0x9e, 0x9d, 0xf5, 0x87, 0xb3, 0xdc, 0x07, 0x33, 0xba, 0x1d, 0x92, 0x33, 0xbd, 0xc0,
-	0xba, 0x16, 0x83, 0x88, 0x3b, 0xe8, 0x95, 0x8f, 0x20, 0xe3, 0x89, 0x68, 0xa9, 0xd6, 0x20, 0x19,
-	0x88, 0x3e, 0xb2, 0x9c, 0x5e, 0x2d, 0xcd, 0x72, 0xef, 0xbb, 0x62, 0x0f, 0x8e, 0x6f, 0x37, 0xb5,
-	0xb8, 0x9f, 0x87, 0x21, 0xce, 0xda, 0x72, 0xa0, 0x46, 0x85, 0xe9, 0x35, 0x1a, 0x9e, 0x55, 0xa3,
-	0x91, 0x6f, 0x5a, 0xa3, 0x5b, 0x00, 0x3e, 0xf1, 0xdd, 0x7c, 0x94, 0x9e, 0xef, 0xc6, 0x2c, 0x77,
-	0x2c, 0xdc, 0x96, 0xd1, 0xe1, 0x07, 0x0c, 0x98, 0xfa, 0x47, 0x8c, 0x05, 0xc6, 0x81, 0x2a, 0xa4,
-	0x34, 0x03, 0x2b, 0xaa, 0xe3, 0xa8, 0x43, 0x5a, 0xb4, 0x53, 0xaf, 0x86, 0x0c, 0x5b, 0x15, 0x32,
-	0x6c, 0x55, 0x6a, 0x06, 0xae, 0x12, 0xac, 0x9c, 0xd4, 0xf8, 0x57, 0xf9, 0x5c, 0x80, 0x94, 0xbf,
-	0xad, 0xb8, 0x05, 0x59, 0xef, 0xe8, 0xca, 0x91, 0xa9, 0x76, 0x78, 0x43, 0xbc, 0xf9, 0x89, 0xf3,
-	0x6f, 0x9a, 0x6a, 0x47, 0x4e, 0xf3, 0x23, 0x93, 0xc5, 0xf4, 0xb6, 0x12, 0x9e, 0xd1, 0x56, 0x26,
-	0xfa, 0x58, 0xe4, 0xeb, 0xf5, 0xb1, 0x89, 0x8e, 0x13, 0xfd, 0xb0, 0xe3, 0xfc, 0x39, 0x0c, 0x31,
-	0x1a, 0xab, 0xf8, 0x4b, 0x42, 0x05, 0x3a, 0x3b, 0xb1, 0x4a, 0x91, 0x66, 0x1d, 0x6d, 0x62, 0x68,
-	0xe2, 0x36, 0xe2, 0x4f, 0x20, 0x4a, 0x9e, 0xf2, 0x4f, 0x35, 0x1a, 0xc2, 0x6b, 0x6e, 0x49, 0xf1,
-	0xe2, 0x66, 0x80, 0xe3, 0x91, 0x8f, 0x97, 0x50, 0xb0, 0x36, 0x2e, 0xf0, 0xfc, 0x11, 0xa4, 0x03,
-	0x53, 0x08, 0x7f, 0x41, 0xa4, 0x8f, 0xd3, 0x49, 0x86, 0xf1, 0x80, 0x52, 0xfe, 0x57, 0x18, 0x92,
-	0x4d, 0xfa, 0xf4, 0xaa, 0xe6, 0x77, 0xf7, 0xea, 0x2d, 0x41, 0xca, 0xb6, 0x4c, 0x85, 0x69, 0xa2,
-	0x54, 0x93, 0xb4, 0x2d, 0x53, 0xa6, 0xca, 0xad, 0x40, 0xb9, 0x5d, 0x72, 0x5c, 0x4b, 0x7f, 0xfa,
-	0x39, 0x8c, 0x7f, 0x0b, 0x34, 0x4a, 0x7c, 0x48, 0xa3, 0x3f, 0x40, 0x86, 0x25, 0x63, 0xdb, 0xa3,
-	0xc3, 0x67, 0x91, 0x29, 0x40, 0xa3, 0x38, 0xbf, 0xc1, 0xf0, 0xa5, 0x6e, 0x90, 0xa3, 0xcb, 0xff,
-	0x13, 0x20, 0xe3, 0x4f, 0x7d, 0x2d, 0x84, 0x49, 0x77, 0x19, 0x0f, 0x88, 0xbc, 0x7b, 0xce, 0xec,
-	0x2e, 0xbe, 0xa5, 0xd7, 0x5d, 0xc6, 0xa6, 0xe2, 0x1a, 0x24, 0xbd, 0x89, 0x8c, 0xc7, 0x74, 0x69,
-	0x37, 0xbe, 0xa1, 0xf8, 0x00, 0x44, 0xfa, 0x0b, 0x8b, 0x3c, 0x49, 0x46, 0xbf, 0xa3, 0xd8, 0xd6,
-	0x63, 0xe4, 0xf0, 0xd9, 0x3e, 0x47, 0x35, 0x87, 0x54, 0xd1, 0x24, 0xf2, 0xf2, 0xbf, 0x05, 0x48,
-	0xf9, 0xbe, 0xc4, 0x3c, 0x24, 0xbc, 0x36, 0x21, 0xf0, 0xa9, 0x94, 0x77, 0x87, 0x4d, 0x48, 0xd8,
-	0x03, 0x4d, 0x39, 0x46, 0x43, 0x1e, 0xd9, 0x9d, 0x99, 0xbf, 0xae, 0xc8, 0x4f, 0xc6, 0x4a, 0x73,
-	0xa0, 0x99, 0x46, 0x7b, 0x07, 0x0d, 0xbd, 0xda, 0xb5, 0x07, 0xda, 0x0e, 0x1a, 0x8a, 0x25, 0x48,
-	0x07, 0xb6, 0xe7, 0x61, 0x05, 0x45, 0xa4, 0x69, 0xf9, 0xe3, 0xaa, 0xed, 0x18, 0x96, 0x63, 0xe0,
-	0x21, 0xa5, 0x6b, 0x44, 0xf6, 0xe7, 0xd8, 0x26, 0x97, 0xdf, 0xfb, 0x8f, 0x00, 0xe9, 0x40, 0xfb,
-	0x13, 0x0b, 0x70, 0xb5, 0xb6, 0xbb, 0xbf, 0xb6, 0xb3, 0xae, 0xd4, 0xd7, 0x95, 0xcd, 0xdd, 0xea,
-	0x96, 0xf2, 0xab, 0xc6, 0x4e, 0x63, 0xff, 0xd7, 0x8d, 0x5c, 0x48, 0x5c, 0x81, 0x45, 0xaa, 0xf3,
-	0x55, 0xd5, 0x5a, 0x6b, 0xa3, 0x71, 0x90, 0x13, 0x0a, 0x57, 0x4e, 0xcf, 0x4a, 0x0b, 0x01, 0x37,
-	0x55, 0xcd, 0x45, 0x7d, 0x7c, 0xd1, 0x60, 0x6d, 0x7f, 0x6f, 0xaf, 0x7e, 0x90, 0x0b, 0x5f, 0x30,
-	0xe0, 0x2f, 0xdc, 0x5d, 0x58, 0x98, 0x34, 0x68, 0xd4, 0x77, 0x73, 0x91, 0x82, 0x78, 0x7a, 0x56,
-	0x9a, 0x0b, 0xa0, 0x1b, 0x86, 0x59, 0x48, 0xfe, 0xf5, 0xb9, 0x14, 0x7a, 0xf1, 0x37, 0x29, 0x74,
-	0xef, 0xef, 0x02, 0x64, 0x27, 0x8a, 0x5b, 0x5c, 0x82, 0x6b, 0xad, 0xfa, 0x56, 0x63, 0x63, 0x5d,
-	0xd9, 0x6b, 0x6d, 0x29, 0x07, 0xbf, 0x6d, 0x6e, 0x04, 0x4e, 0x71, 0x03, 0x32, 0x4d, 0x79, 0xe3,
-	0x70, 0xff, 0x60, 0x83, 0x6a, 0x72, 0x42, 0x61, 0xfe, 0xf4, 0xac, 0x94, 0x6e, 0x3a, 0x88, 0x8c,
-	0x20, 0xd4, 0xfe, 0x16, 0xcc, 0x35, 0xe5, 0x0d, 0x16, 0x2c, 0x03, 0x85, 0x0b, 0x0b, 0xa7, 0x67,
-	0xa5, 0x6c, 0xd3, 0x41, 0x8c, 0xc3, 0x14, 0x76, 0x13, 0xb2, 0x4d, 0x79, 0xbf, 0xb9, 0xdf, 0xaa,
-	0xee, 0x32, 0x54, 0xa4, 0x90, 0x3b, 0x3d, 0x2b, 0x65, 0xbc, 0xce, 0x44, 0x40, 0xe3, 0x38, 0x6b,
-	0xda, 0xab, 0xb7, 0x52, 0xe8, 0xf5, 0x5b, 0x29, 0xf4, 0xfe, 0xad, 0x24, 0xfc, 0x71, 0x24, 0x09,
-	0x2f, 0x46, 0x92, 0xf0, 0x72, 0x24, 0x09, 0xaf, 0x46, 0x92, 0xf0, 0xc5, 0x48, 0x12, 0xde, 0x8d,
-	0xa4, 0xd0, 0xfb, 0x91, 0x24, 0x3c, 0x3d, 0x97, 0x42, 0xaf, 0xce, 0xa5, 0xd0, 0xeb, 0x73, 0x29,
-	0xf4, 0xbb, 0x07, 0x1d, 0x03, 0x77, 0x07, 0x5a, 0xa5, 0x6d, 0xf5, 0x56, 0xc6, 0x84, 0x09, 0x7e,
-	0x06, 0xfe, 0x0b, 0xa2, 0xc5, 0xe9, 0xe2, 0xe1, 0x57, 0x01, 0x00, 0x00, 0xff, 0xff, 0xb4, 0xe6,
-	0xc0, 0xf7, 0x1b, 0x11, 0x00, 0x00,
+	// 1288 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0x4b, 0x6f, 0xdb, 0x46,
+	0x17, 0x15, 0xf5, 0xb0, 0xa4, 0x4b, 0xc9, 0x96, 0xf9, 0xf9, 0x4b, 0x54, 0xb9, 0xa0, 0x14, 0xbb,
+	0x49, 0x9d, 0x07, 0xa8, 0xc2, 0x05, 0x8a, 0xb6, 0x3b, 0x49, 0x76, 0x14, 0x21, 0xb6, 0x2c, 0x50,
+	0x6e, 0xfa, 0xd8, 0x10, 0x23, 0x71, 0x22, 0x11, 0xa1, 0x48, 0x82, 0x1c, 0xbb, 0x31, 0x50, 0x14,
+	0x5d, 0x16, 0xee, 0x26, 0x7f, 0xc0, 0x40, 0x80, 0xb4, 0x40, 0x7e, 0x42, 0x81, 0x6e, 0xba, 0xcc,
+	0x32, 0xcb, 0xac, 0xd2, 0x46, 0xde, 0x64, 0x99, 0x45, 0x7f, 0x40, 0x31, 0x0f, 0x51, 0x54, 0x6c,
+	0x35, 0x41, 0x5b, 0x74, 0x63, 0x73, 0xee, 0x3d, 0xe7, 0xce, 0xcc, 0xb9, 0x67, 0x66, 0x04, 0x17,
+	0x3d, 0xdf, 0x25, 0x6e, 0x95, 0x1c, 0x79, 0x38, 0xe0, 0x7f, 0x35, 0x16, 0x51, 0x2e, 0x10, 0xec,
+	0x98, 0xd8, 0x1f, 0x59, 0x0e, 0xe1, 0x11, 0x8d, 0x65, 0x4b, 0x57, 0xc8, 0xd0, 0xf2, 0x4d, 0xc3,
+	0x43, 0x3e, 0x39, 0xaa, 0x72, 0xf2, 0xc0, 0x1d, 0xb8, 0xd3, 0x2f, 0x8e, 0x2e, 0x95, 0x07, 0xae,
+	0x3b, 0xb0, 0x31, 0x87, 0xf4, 0x0e, 0xee, 0x56, 0x89, 0x35, 0xc2, 0x01, 0x41, 0x23, 0x4f, 0x00,
+	0x56, 0x39, 0xc5, 0xb6, 0x7a, 0x41, 0xb5, 0x67, 0x91, 0x99, 0xd9, 0x4b, 0x65, 0x9e, 0xec, 0xfb,
+	0x47, 0x1e, 0x71, 0xab, 0x23, 0xec, 0xdf, 0xb3, 0xf1, 0x0c, 0x40, 0xb0, 0x0f, 0xb1, 0x1f, 0x58,
+	0xae, 0x33, 0xf9, 0xcf, 0x93, 0x6b, 0x0d, 0xc8, 0x77, 0x90, 0x4f, 0xba, 0x98, 0xdc, 0xc2, 0xc8,
+	0xc4, 0xbe, 0xb2, 0x02, 0x29, 0xe2, 0x12, 0x64, 0x17, 0xa5, 0x8a, 0xb4, 0x91, 0xd7, 0xf9, 0x40,
+	0x51, 0x20, 0x39, 0x44, 0xc1, 0xb0, 0x18, 0xaf, 0x48, 0x1b, 0x39, 0x9d, 0x7d, 0x7f, 0x9a, 0xf9,
+	0xf9, 0x61, 0x59, 0x7a, 0xf9, 0xb0, 0x2c, 0xad, 0x7d, 0x03, 0x29, 0x5a, 0x24, 0xa0, 0x64, 0xcb,
+	0x31, 0xf1, 0xfd, 0x09, 0x99, 0x0d, 0x68, 0xb4, 0x77, 0x44, 0x70, 0x20, 0xd8, 0x7c, 0xa0, 0x34,
+	0x21, 0xe5, 0xf9, 0xae, 0x7b, 0xb7, 0x98, 0xa8, 0x48, 0x1b, 0xf2, 0xe6, 0x75, 0xed, 0x8c, 0x8a,
+	0x7c, 0x4b, 0x1a, 0xdf, 0x92, 0xd6, 0xb5, 0x46, 0x9e, 0x8d, 0x3b, 0x94, 0x52, 0x4f, 0x3e, 0x79,
+	0x5e, 0x8e, 0xe9, 0x9c, 0xbf, 0xf6, 0x35, 0xa4, 0xeb, 0xb6, 0xdb, 0xbf, 0xd7, 0xda, 0x0a, 0x97,
+	0x29, 0x4d, 0x97, 0xa9, 0xb4, 0x21, 0x47, 0x3b, 0x10, 0x18, 0x43, 0xb6, 0x41, 0xb6, 0x08, 0x79,
+	0xf3, 0xb2, 0x76, 0x7e, 0xd3, 0xb4, 0x19, 0x35, 0xc4, 0x44, 0x32, 0x2b, 0xc0, 0x43, 0x91, 0x6d,
+	0xff, 0x90, 0x82, 0x05, 0xa1, 0x5a, 0x03, 0xd2, 0x42, 0x57, 0x36, 0xb7, 0xbc, 0xb9, 0x7e, 0xb6,
+	0xfe, 0x44, 0xf8, 0x86, 0xeb, 0x04, 0xd8, 0x09, 0x0e, 0x02, 0x51, 0x7d, 0xc2, 0x54, 0xae, 0x40,
+	0xa6, 0x3f, 0x44, 0x96, 0x63, 0x58, 0x26, 0x5b, 0x65, 0xb6, 0x2e, 0x8f, 0x9f, 0x97, 0xd3, 0x0d,
+	0x1a, 0x6b, 0x6d, 0xe9, 0x69, 0x96, 0x6c, 0x99, 0xca, 0x05, 0x58, 0x18, 0x62, 0x6b, 0x30, 0x24,
+	0x4c, 0xba, 0x84, 0x2e, 0x46, 0xca, 0xc7, 0x90, 0xa4, 0xce, 0x29, 0x26, 0xd9, 0x0a, 0x4a, 0x1a,
+	0xb7, 0x95, 0x36, 0xb1, 0x95, 0xb6, 0x3f, 0xb1, 0x55, 0x3d, 0x43, 0x27, 0x7e, 0xf0, 0x5b, 0x59,
+	0xd2, 0x19, 0x43, 0xf9, 0x02, 0xf2, 0x36, 0x0a, 0x88, 0xd1, 0xa3, 0x3a, 0xd2, 0xe9, 0x53, 0xac,
+	0x44, 0x79, 0x9e, 0x48, 0x42, 0xef, 0xfa, 0xff, 0x68, 0x9d, 0xf1, 0xf3, 0xb2, 0xbc, 0x83, 0x02,
+	0x22, 0x82, 0xba, 0x6c, 0x87, 0x03, 0x53, 0xd9, 0x80, 0x02, 0xab, 0xdc, 0x77, 0x47, 0x23, 0x8b,
+	0x18, 0xac, 0x3b, 0x0b, 0xac, 0x3b, 0x8b, 0x34, 0xde, 0x60, 0xe1, 0x5b, 0xb4, 0x4f, 0xab, 0x90,
+	0x35, 0x11, 0x41, 0x1c, 0x92, 0x66, 0x90, 0x0c, 0x0d, 0xb0, 0xe4, 0xfb, 0xb0, 0x74, 0x88, 0x6c,
+	0xcb, 0x44, 0xc4, 0xf5, 0x03, 0x0e, 0xc9, 0xf0, 0x2a, 0xd3, 0x30, 0x03, 0x7e, 0x00, 0x2b, 0x0e,
+	0xbe, 0x4f, 0x8c, 0xd7, 0xd1, 0x59, 0x86, 0x56, 0x68, 0xee, 0xce, 0x2c, 0xe3, 0x32, 0x2c, 0xf6,
+	0x27, 0x1d, 0xe1, 0x58, 0x60, 0xd8, 0x7c, 0x18, 0x65, 0xb0, 0x77, 0x20, 0x83, 0x3c, 0x8f, 0x03,
+	0x64, 0x06, 0x48, 0x23, 0xcf, 0x63, 0xa9, 0x6b, 0xb0, 0xcc, 0xf6, 0xe8, 0xe3, 0xe0, 0xc0, 0x26,
+	0xa2, 0x48, 0x8e, 0x61, 0x96, 0x68, 0x42, 0xe7, 0x71, 0x86, 0x5d, 0x87, 0x3c, 0x3e, 0xb4, 0x4c,
+	0xec, 0xf4, 0x31, 0xc7, 0xe5, 0x19, 0x2e, 0x37, 0x09, 0x32, 0xd0, 0x55, 0x28, 0x78, 0xbe, 0xeb,
+	0xb9, 0x01, 0xf6, 0x0d, 0x64, 0x9a, 0x3e, 0x0e, 0x82, 0xe2, 0x22, 0xaf, 0x37, 0x89, 0xd7, 0x78,
+	0x38, 0xe2, 0xc6, 0x1b, 0x90, 0xdc, 0x42, 0x04, 0x29, 0x05, 0x48, 0x90, 0xfb, 0x41, 0x51, 0xaa,
+	0x24, 0x36, 0x72, 0x3a, 0xfd, 0x3c, 0xef, 0xf0, 0xae, 0xfd, 0x11, 0x87, 0xe4, 0x1d, 0x97, 0x60,
+	0xe5, 0x13, 0x48, 0xd2, 0x9e, 0x32, 0xdb, 0x2e, 0xce, 0x3f, 0x16, 0x5d, 0x6b, 0xe0, 0x60, 0x73,
+	0x37, 0x18, 0xec, 0x1f, 0x79, 0x58, 0x67, 0x94, 0x88, 0x0f, 0xe3, 0x33, 0x3e, 0x5c, 0x81, 0x94,
+	0xef, 0x1e, 0x38, 0x26, 0xb3, 0x67, 0x4a, 0xe7, 0x03, 0xe5, 0x36, 0x64, 0x42, 0x7b, 0x25, 0xdf,
+	0xce, 0x5e, 0x4b, 0xc2, 0x5e, 0x93, 0xf3, 0xad, 0xa7, 0x7b, 0xc2, 0x56, 0x75, 0xc8, 0x86, 0x97,
+	0xa4, 0x30, 0xeb, 0xdb, 0xf9, 0x7d, 0x4a, 0x53, 0xae, 0xc3, 0x72, 0xe8, 0x92, 0x50, 0x66, 0xee,
+	0xcd, 0x42, 0x98, 0x10, 0x3a, 0xcf, 0x18, 0xd0, 0xe0, 0x77, 0x5c, 0x9a, 0xdd, 0x71, 0x53, 0x03,
+	0xb6, 0xd8, 0x65, 0xf7, 0x2e, 0x64, 0x03, 0x6b, 0xe0, 0x20, 0x72, 0xe0, 0x63, 0xe1, 0xd1, 0x69,
+	0x60, 0xed, 0x51, 0x1c, 0x16, 0xb8, 0xe7, 0x23, 0xea, 0x49, 0xe7, 0xab, 0x17, 0x9f, 0xa7, 0x5e,
+	0xe2, 0x9f, 0xaa, 0xd7, 0x04, 0x08, 0x97, 0x14, 0x14, 0x93, 0x95, 0xc4, 0x86, 0xbc, 0x79, 0x69,
+	0x5e, 0x39, 0xbe, 0xdc, 0xae, 0x35, 0x10, 0xd7, 0x55, 0x84, 0x1a, 0x3a, 0x2b, 0x15, 0xb9, 0x6f,
+	0x6b, 0x90, 0xed, 0x59, 0xc4, 0x40, 0xbe, 0x8f, 0x8e, 0x98, 0x9c, 0xf2, 0xe6, 0x7b, 0x67, 0x6b,
+	0xd3, 0xb7, 0x4c, 0xa3, 0x6f, 0x99, 0x56, 0xb7, 0x48, 0x8d, 0x62, 0xf5, 0x4c, 0x4f, 0x7c, 0xad,
+	0x9d, 0x4a, 0x90, 0x0d, 0xa7, 0x55, 0x9a, 0x90, 0x9f, 0x6c, 0xdd, 0xb8, 0x6b, 0xa3, 0x81, 0xb0,
+	0xea, 0xfa, 0x1b, 0xf6, 0x7f, 0xd3, 0x46, 0x03, 0x5d, 0x16, 0x5b, 0xa6, 0x83, 0xf3, 0x1b, 0x1e,
+	0x9f, 0xd3, 0xf0, 0x19, 0x87, 0x25, 0xfe, 0x9e, 0xc3, 0x66, 0xbc, 0x90, 0x7c, 0xdd, 0x0b, 0xbf,
+	0xc4, 0x21, 0xd3, 0x61, 0xc7, 0x19, 0xd9, 0xff, 0xdd, 0x31, 0x5c, 0x85, 0xac, 0xe7, 0xda, 0x06,
+	0xcf, 0x24, 0x59, 0x26, 0xe3, 0xb9, 0xb6, 0xce, 0x92, 0xcd, 0x88, 0xcb, 0xde, 0xf2, 0x09, 0x90,
+	0xdf, 0x7c, 0x3e, 0x17, 0xfe, 0x05, 0xf5, 0xd2, 0xaf, 0xab, 0xf7, 0x2d, 0xe4, 0xb8, 0x18, 0xe2,
+	0x05, 0xfe, 0x88, 0xaa, 0xc0, 0x1e, 0x78, 0xfe, 0x00, 0xab, 0xf3, 0x16, 0xce, 0xf1, 0xba, 0x40,
+	0x53, 0x1e, 0x7f, 0x9b, 0xc4, 0x0f, 0x03, 0xf5, 0xaf, 0xcf, 0x81, 0x2e, 0xd0, 0xd7, 0x7e, 0x95,
+	0x40, 0x8e, 0x38, 0x4d, 0x29, 0xc1, 0x85, 0xfa, 0xce, 0x5e, 0xe3, 0xf6, 0x96, 0xd1, 0xda, 0x32,
+	0x6e, 0xee, 0xd4, 0x9a, 0xc6, 0x67, 0xed, 0xdb, 0xed, 0xbd, 0xcf, 0xdb, 0x85, 0x98, 0x52, 0x85,
+	0x15, 0x96, 0x0b, 0x53, 0xb5, 0x7a, 0x77, 0xbb, 0xbd, 0x5f, 0x90, 0x4a, 0xff, 0x3f, 0x3e, 0xa9,
+	0x2c, 0x47, 0xca, 0xd4, 0x7a, 0x01, 0x76, 0xc8, 0x59, 0x42, 0x63, 0x6f, 0x77, 0xb7, 0xb5, 0x5f,
+	0x88, 0x9f, 0x21, 0x88, 0xcb, 0xe4, 0x2a, 0x2c, 0xcf, 0x12, 0xda, 0xad, 0x9d, 0x42, 0xa2, 0xa4,
+	0x1c, 0x9f, 0x54, 0x16, 0x23, 0xe8, 0xb6, 0x65, 0x97, 0x32, 0xdf, 0x3f, 0x52, 0x63, 0x8f, 0x7f,
+	0x54, 0x63, 0xd7, 0x7e, 0x92, 0x20, 0x3f, 0x63, 0x28, 0x65, 0x15, 0x2e, 0x76, 0x5b, 0xcd, 0xf6,
+	0xf6, 0x96, 0xb1, 0xdb, 0x6d, 0x1a, 0xfb, 0x5f, 0x76, 0xb6, 0x23, 0xbb, 0xb8, 0x04, 0xb9, 0x8e,
+	0xbe, 0x7d, 0x67, 0x6f, 0x7f, 0x9b, 0x65, 0x0a, 0x52, 0x69, 0xe9, 0xf8, 0xa4, 0x22, 0x77, 0x7c,
+	0x7c, 0xe8, 0x12, 0xcc, 0xf8, 0x97, 0x61, 0xb1, 0xa3, 0x6f, 0xf3, 0xc5, 0x72, 0x50, 0xbc, 0xb4,
+	0x7c, 0x7c, 0x52, 0xc9, 0x77, 0x7c, 0xcc, 0x75, 0x63, 0xb0, 0x75, 0xc8, 0x77, 0xf4, 0xbd, 0xce,
+	0x5e, 0xb7, 0xb6, 0xc3, 0x51, 0x89, 0x52, 0xe1, 0xf8, 0xa4, 0x92, 0x9b, 0x9c, 0x06, 0x0a, 0x9a,
+	0xae, 0xb3, 0xde, 0x7b, 0xfa, 0x42, 0x8d, 0x3d, 0x7b, 0xa1, 0xc6, 0x5e, 0xbd, 0x50, 0xa5, 0xef,
+	0xc6, 0xaa, 0xf4, 0x78, 0xac, 0x4a, 0x4f, 0xc6, 0xaa, 0xf4, 0x74, 0xac, 0x4a, 0xbf, 0x8f, 0x55,
+	0xe9, 0xe5, 0x58, 0x8d, 0xbd, 0x1a, 0xab, 0xd2, 0x83, 0x53, 0x35, 0xf6, 0xf4, 0x54, 0x8d, 0x3d,
+	0x3b, 0x55, 0x63, 0x5f, 0xdd, 0x18, 0x58, 0x64, 0x78, 0xd0, 0xd3, 0xfa, 0xee, 0xa8, 0x3a, 0x6d,
+	0x69, 0xf4, 0x33, 0xf2, 0x7b, 0xbe, 0xb7, 0xc0, 0x06, 0x1f, 0xfe, 0x19, 0x00, 0x00, 0xff, 0xff,
+	0x04, 0xd8, 0x8f, 0xab, 0xe5, 0x0b, 0x00, 0x00,
 }
 
 func (x BlockIDFlag) String() string {
@@ -1647,33 +1120,6 @@ func (this *Header) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *Version) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Version)
-	if !ok {
-		that2, ok := that.(Version)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Block != that1.Block {
-		return false
-	}
-	if this.App != that1.App {
-		return false
-	}
-	return true
-}
 func (this *Data) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -1747,173 +1193,6 @@ func (this *Vote) Equal(that interface{}) bool {
 		return false
 	}
 	if !bytes.Equal(this.Signature, that1.Signature) {
-		return false
-	}
-	return true
-}
-func (this *DuplicateVoteEvidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*DuplicateVoteEvidence)
-	if !ok {
-		that2, ok := that.(DuplicateVoteEvidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.VoteA.Equal(that1.VoteA) {
-		return false
-	}
-	if !this.VoteB.Equal(that1.VoteB) {
-		return false
-	}
-	return true
-}
-func (this *MockEvidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*MockEvidence)
-	if !ok {
-		that2, ok := that.(MockEvidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.EvidenceHeight != that1.EvidenceHeight {
-		return false
-	}
-	if !this.EvidenceTime.Equal(that1.EvidenceTime) {
-		return false
-	}
-	if !bytes.Equal(this.EvidenceAddress, that1.EvidenceAddress) {
-		return false
-	}
-	return true
-}
-func (this *Evidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Evidence)
-	if !ok {
-		that2, ok := that.(Evidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Sum == nil {
-		if this.Sum != nil {
-			return false
-		}
-	} else if this.Sum == nil {
-		return false
-	} else if !this.Sum.Equal(that1.Sum) {
-		return false
-	}
-	return true
-}
-func (this *Evidence_DuplicateVoteEvidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Evidence_DuplicateVoteEvidence)
-	if !ok {
-		that2, ok := that.(Evidence_DuplicateVoteEvidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.DuplicateVoteEvidence.Equal(that1.DuplicateVoteEvidence) {
-		return false
-	}
-	return true
-}
-func (this *Evidence_MockEvidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Evidence_MockEvidence)
-	if !ok {
-		that2, ok := that.(Evidence_MockEvidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.MockEvidence.Equal(that1.MockEvidence) {
-		return false
-	}
-	return true
-}
-func (this *EvidenceData) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*EvidenceData)
-	if !ok {
-		that2, ok := that.(EvidenceData)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Evidence) != len(that1.Evidence) {
-		return false
-	}
-	for i := range this.Evidence {
-		if !this.Evidence[i].Equal(&that1.Evidence[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.Hash, that1.Hash) {
 		return false
 	}
 	return true
@@ -1995,39 +1274,6 @@ func (this *CommitSig) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *Block) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Block)
-	if !ok {
-		that2, ok := that.(Block)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Header.Equal(&that1.Header) {
-		return false
-	}
-	if !this.Data.Equal(&that1.Data) {
-		return false
-	}
-	if !this.Evidence.Equal(&that1.Evidence) {
-		return false
-	}
-	if !this.LastCommit.Equal(that1.LastCommit) {
-		return false
-	}
-	return true
-}
 func (this *Proposal) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -2097,74 +1343,6 @@ func (this *SignedHeader) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *ValidatorSet) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ValidatorSet)
-	if !ok {
-		that2, ok := that.(ValidatorSet)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Validators) != len(that1.Validators) {
-		return false
-	}
-	for i := range this.Validators {
-		if !this.Validators[i].Equal(&that1.Validators[i]) {
-			return false
-		}
-	}
-	if !this.Proposer.Equal(&that1.Proposer) {
-		return false
-	}
-	if this.TotalVotingPower != that1.TotalVotingPower {
-		return false
-	}
-	return true
-}
-func (this *Validator) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Validator)
-	if !ok {
-		that2, ok := that.(Validator)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Address, that1.Address) {
-		return false
-	}
-	if !this.PubKey.Equal(&that1.PubKey) {
-		return false
-	}
-	if this.VotingPower != that1.VotingPower {
-		return false
-	}
-	if this.ProposerPriority != that1.ProposerPriority {
-		return false
-	}
-	return true
-}
 func (this *PartSetHeader) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2222,17 +1400,6 @@ func (this *Header) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Version) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.Version{")
-	s = append(s, "Block: "+fmt.Sprintf("%#v", this.Block)+",\n")
-	s = append(s, "App: "+fmt.Sprintf("%#v", this.App)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *Data) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2258,78 +1425,6 @@ func (this *Vote) GoString() string {
 	s = append(s, "ValidatorAddress: "+fmt.Sprintf("%#v", this.ValidatorAddress)+",\n")
 	s = append(s, "ValidatorIndex: "+fmt.Sprintf("%#v", this.ValidatorIndex)+",\n")
 	s = append(s, "Signature: "+fmt.Sprintf("%#v", this.Signature)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DuplicateVoteEvidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.DuplicateVoteEvidence{")
-	if this.VoteA != nil {
-		s = append(s, "VoteA: "+fmt.Sprintf("%#v", this.VoteA)+",\n")
-	}
-	if this.VoteB != nil {
-		s = append(s, "VoteB: "+fmt.Sprintf("%#v", this.VoteB)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *MockEvidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.MockEvidence{")
-	s = append(s, "EvidenceHeight: "+fmt.Sprintf("%#v", this.EvidenceHeight)+",\n")
-	s = append(s, "EvidenceTime: "+fmt.Sprintf("%#v", this.EvidenceTime)+",\n")
-	s = append(s, "EvidenceAddress: "+fmt.Sprintf("%#v", this.EvidenceAddress)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Evidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.Evidence{")
-	if this.Sum != nil {
-		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Evidence_DuplicateVoteEvidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Evidence_DuplicateVoteEvidence{` +
-		`DuplicateVoteEvidence:` + fmt.Sprintf("%#v", this.DuplicateVoteEvidence) + `}`}, ", ")
-	return s
-}
-func (this *Evidence_MockEvidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Evidence_MockEvidence{` +
-		`MockEvidence:` + fmt.Sprintf("%#v", this.MockEvidence) + `}`}, ", ")
-	return s
-}
-func (this *EvidenceData) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.EvidenceData{")
-	if this.Evidence != nil {
-		vs := make([]Evidence, len(this.Evidence))
-		for i := range vs {
-			vs[i] = this.Evidence[i]
-		}
-		s = append(s, "Evidence: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "Hash: "+fmt.Sprintf("%#v", this.Hash)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2369,21 +1464,6 @@ func (this *CommitSig) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Block) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.Block{")
-	s = append(s, "Header: "+strings.Replace(this.Header.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Data: "+strings.Replace(this.Data.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Evidence: "+strings.Replace(this.Evidence.GoString(), `&`, ``, 1)+",\n")
-	if this.LastCommit != nil {
-		s = append(s, "LastCommit: "+fmt.Sprintf("%#v", this.LastCommit)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *Proposal) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2414,37 +1494,6 @@ func (this *SignedHeader) GoString() string {
 	if this.Commit != nil {
 		s = append(s, "Commit: "+fmt.Sprintf("%#v", this.Commit)+",\n")
 	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ValidatorSet) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.ValidatorSet{")
-	if this.Validators != nil {
-		vs := make([]Validator, len(this.Validators))
-		for i := range vs {
-			vs[i] = this.Validators[i]
-		}
-		s = append(s, "Validators: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "Proposer: "+strings.Replace(this.Proposer.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "TotalVotingPower: "+fmt.Sprintf("%#v", this.TotalVotingPower)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Validator) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.Validator{")
-	s = append(s, "Address: "+fmt.Sprintf("%#v", this.Address)+",\n")
-	s = append(s, "PubKey: "+strings.Replace(this.PubKey.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "VotingPower: "+fmt.Sprintf("%#v", this.VotingPower)+",\n")
-	s = append(s, "ProposerPriority: "+fmt.Sprintf("%#v", this.ProposerPriority)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2702,39 +1751,6 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Version) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Version) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Version) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.App != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.App))
-		i--
-		dAtA[i] = 0x10
-	}
-	if m.Block != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.Block))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *Data) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -2849,214 +1865,6 @@ func (m *Vote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *DuplicateVoteEvidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *DuplicateVoteEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *DuplicateVoteEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.VoteB != nil {
-		{
-			size, err := m.VoteB.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTypes(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.VoteA != nil {
-		{
-			size, err := m.VoteA.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTypes(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MockEvidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MockEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MockEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.EvidenceAddress) > 0 {
-		i -= len(m.EvidenceAddress)
-		copy(dAtA[i:], m.EvidenceAddress)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.EvidenceAddress)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	n10, err10 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.EvidenceTime, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime):])
-	if err10 != nil {
-		return 0, err10
-	}
-	i -= n10
-	i = encodeVarintTypes(dAtA, i, uint64(n10))
-	i--
-	dAtA[i] = 0x12
-	if m.EvidenceHeight != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.EvidenceHeight))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Evidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Evidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Sum != nil {
-		{
-			size := m.Sum.Size()
-			i -= size
-			if _, err := m.Sum.MarshalTo(dAtA[i:]); err != nil {
-				return 0, err
-			}
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Evidence_DuplicateVoteEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence_DuplicateVoteEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.DuplicateVoteEvidence != nil {
-		{
-			size, err := m.DuplicateVoteEvidence.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTypes(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Evidence_MockEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence_MockEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.MockEvidence != nil {
-		{
-			size, err := m.MockEvidence.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTypes(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *EvidenceData) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EvidenceData) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EvidenceData) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Hash) > 0 {
-		i -= len(m.Hash)
-		copy(dAtA[i:], m.Hash)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.Hash)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Evidence) > 0 {
-		for iNdEx := len(m.Evidence) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Evidence[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintTypes(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *Commit) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -3160,12 +1968,12 @@ func (m *CommitSig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x22
 	}
-	n15, err15 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Timestamp, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp):])
-	if err15 != nil {
-		return 0, err15
+	n10, err10 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Timestamp, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp):])
+	if err10 != nil {
+		return 0, err10
 	}
-	i -= n15
-	i = encodeVarintTypes(dAtA, i, uint64(n15))
+	i -= n10
+	i = encodeVarintTypes(dAtA, i, uint64(n10))
 	i--
 	dAtA[i] = 0x1a
 	if len(m.ValidatorAddress) > 0 {
@@ -3180,71 +1988,6 @@ func (m *CommitSig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x8
 	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Block) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Block) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.LastCommit != nil {
-		{
-			size, err := m.LastCommit.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTypes(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
-	{
-		size, err := m.Evidence.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintTypes(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x1a
-	{
-		size, err := m.Data.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintTypes(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x12
-	{
-		size, err := m.Header.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintTypes(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -3275,12 +2018,12 @@ func (m *Proposal) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x3a
 	}
-	n20, err20 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Timestamp, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp):])
-	if err20 != nil {
-		return 0, err20
+	n11, err11 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Timestamp, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp):])
+	if err11 != nil {
+		return 0, err11
 	}
-	i -= n20
-	i = encodeVarintTypes(dAtA, i, uint64(n20))
+	i -= n11
+	i = encodeVarintTypes(dAtA, i, uint64(n11))
 	i--
 	dAtA[i] = 0x32
 	if m.BlockID != nil {
@@ -3365,108 +2108,6 @@ func (m *SignedHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *ValidatorSet) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ValidatorSet) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ValidatorSet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.TotalVotingPower != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.TotalVotingPower))
-		i--
-		dAtA[i] = 0x18
-	}
-	{
-		size, err := m.Proposer.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintTypes(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x12
-	if len(m.Validators) > 0 {
-		for iNdEx := len(m.Validators) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Validators[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintTypes(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Validator) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Validator) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Validator) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.ProposerPriority != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.ProposerPriority))
-		i--
-		dAtA[i] = 0x20
-	}
-	if m.VotingPower != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.VotingPower))
-		i--
-		dAtA[i] = 0x18
-	}
-	{
-		size, err := m.PubKey.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintTypes(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x12
-	if len(m.Address) > 0 {
-		i -= len(m.Address)
-		copy(dAtA[i:], m.Address)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.Address)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	offset -= sovTypes(v)
 	base := offset
@@ -3507,7 +2148,7 @@ func NewPopulatedBlockID(r randyTypes, easy bool) *BlockID {
 
 func NewPopulatedHeader(r randyTypes, easy bool) *Header {
 	this := &Header{}
-	v4 := NewPopulatedVersion(r, easy)
+	v4 := version.NewPopulatedConsensus(r, easy)
 	this.Version = *v4
 	this.ChainID = string(randStringTypes(r))
 	this.Height = int64(r.Int63())
@@ -3563,15 +2204,6 @@ func NewPopulatedHeader(r randyTypes, easy bool) *Header {
 	for i := 0; i < v15; i++ {
 		this.ProposerAddress[i] = byte(r.Intn(256))
 	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedVersion(r randyTypes, easy bool) *Version {
-	this := &Version{}
-	this.Block = uint64(uint64(r.Uint32()))
-	this.App = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -3756,21 +2388,6 @@ func (m *Header) Size() (n int) {
 	return n
 }
 
-func (m *Version) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Block != 0 {
-		n += 1 + sovTypes(uint64(m.Block))
-	}
-	if m.App != 0 {
-		n += 1 + sovTypes(uint64(m.App))
-	}
-	return n
-}
-
 func (m *Data) Size() (n int) {
 	if m == nil {
 		return 0
@@ -3817,96 +2434,6 @@ func (m *Vote) Size() (n int) {
 		n += 1 + sovTypes(uint64(m.ValidatorIndex))
 	}
 	l = len(m.Signature)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *DuplicateVoteEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.VoteA != nil {
-		l = m.VoteA.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	if m.VoteB != nil {
-		l = m.VoteB.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *MockEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.EvidenceHeight != 0 {
-		n += 1 + sovTypes(uint64(m.EvidenceHeight))
-	}
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime)
-	n += 1 + l + sovTypes(uint64(l))
-	l = len(m.EvidenceAddress)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *Evidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Sum != nil {
-		n += m.Sum.Size()
-	}
-	return n
-}
-
-func (m *Evidence_DuplicateVoteEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.DuplicateVoteEvidence != nil {
-		l = m.DuplicateVoteEvidence.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *Evidence_MockEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.MockEvidence != nil {
-		l = m.MockEvidence.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *EvidenceData) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.Evidence) > 0 {
-		for _, e := range m.Evidence {
-			l = e.Size()
-			n += 1 + l + sovTypes(uint64(l))
-		}
-	}
-	l = len(m.Hash)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -3966,25 +2493,6 @@ func (m *CommitSig) Size() (n int) {
 	return n
 }
 
-func (m *Block) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = m.Header.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	l = m.Data.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	l = m.Evidence.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	if m.LastCommit != nil {
-		l = m.LastCommit.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
 func (m *Proposal) Size() (n int) {
 	if m == nil {
 		return 0
@@ -4029,47 +2537,6 @@ func (m *SignedHeader) Size() (n int) {
 	if m.Commit != nil {
 		l = m.Commit.Size()
 		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *ValidatorSet) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.Validators) > 0 {
-		for _, e := range m.Validators {
-			l = e.Size()
-			n += 1 + l + sovTypes(uint64(l))
-		}
-	}
-	l = m.Proposer.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	if m.TotalVotingPower != 0 {
-		n += 1 + sovTypes(uint64(m.TotalVotingPower))
-	}
-	return n
-}
-
-func (m *Validator) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Address)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = m.PubKey.Size()
-	n += 1 + l + sovTypes(uint64(l))
-	if m.VotingPower != 0 {
-		n += 1 + sovTypes(uint64(m.VotingPower))
-	}
-	if m.ProposerPriority != 0 {
-		n += 1 + sovTypes(uint64(m.ProposerPriority))
 	}
 	return n
 }
@@ -4119,7 +2586,7 @@ func (this *Header) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Header{`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Version), "Consensus", "version.Consensus", 1), `&`, ``, 1) + `,`,
 		`ChainID:` + fmt.Sprintf("%v", this.ChainID) + `,`,
 		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
 		`Time:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Time), "Timestamp", "timestamp.Timestamp", 1), `&`, ``, 1) + `,`,
@@ -4133,17 +2600,6 @@ func (this *Header) String() string {
 		`LastResultsHash:` + fmt.Sprintf("%v", this.LastResultsHash) + `,`,
 		`EvidenceHash:` + fmt.Sprintf("%v", this.EvidenceHash) + `,`,
 		`ProposerAddress:` + fmt.Sprintf("%v", this.ProposerAddress) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Version) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Version{`,
-		`Block:` + fmt.Sprintf("%v", this.Block) + `,`,
-		`App:` + fmt.Sprintf("%v", this.App) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4172,75 +2628,6 @@ func (this *Vote) String() string {
 		`ValidatorAddress:` + fmt.Sprintf("%v", this.ValidatorAddress) + `,`,
 		`ValidatorIndex:` + fmt.Sprintf("%v", this.ValidatorIndex) + `,`,
 		`Signature:` + fmt.Sprintf("%v", this.Signature) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *DuplicateVoteEvidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&DuplicateVoteEvidence{`,
-		`VoteA:` + strings.Replace(this.VoteA.String(), "Vote", "Vote", 1) + `,`,
-		`VoteB:` + strings.Replace(this.VoteB.String(), "Vote", "Vote", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *MockEvidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&MockEvidence{`,
-		`EvidenceHeight:` + fmt.Sprintf("%v", this.EvidenceHeight) + `,`,
-		`EvidenceTime:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.EvidenceTime), "Timestamp", "timestamp.Timestamp", 1), `&`, ``, 1) + `,`,
-		`EvidenceAddress:` + fmt.Sprintf("%v", this.EvidenceAddress) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Evidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Evidence{`,
-		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Evidence_DuplicateVoteEvidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Evidence_DuplicateVoteEvidence{`,
-		`DuplicateVoteEvidence:` + strings.Replace(fmt.Sprintf("%v", this.DuplicateVoteEvidence), "DuplicateVoteEvidence", "DuplicateVoteEvidence", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Evidence_MockEvidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Evidence_MockEvidence{`,
-		`MockEvidence:` + strings.Replace(fmt.Sprintf("%v", this.MockEvidence), "MockEvidence", "MockEvidence", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *EvidenceData) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForEvidence := "[]Evidence{"
-	for _, f := range this.Evidence {
-		repeatedStringForEvidence += strings.Replace(strings.Replace(f.String(), "Evidence", "Evidence", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForEvidence += "}"
-	s := strings.Join([]string{`&EvidenceData{`,
-		`Evidence:` + repeatedStringForEvidence + `,`,
-		`Hash:` + fmt.Sprintf("%v", this.Hash) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4278,19 +2665,6 @@ func (this *CommitSig) String() string {
 	}, "")
 	return s
 }
-func (this *Block) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Block{`,
-		`Header:` + strings.Replace(strings.Replace(this.Header.String(), "Header", "Header", 1), `&`, ``, 1) + `,`,
-		`Data:` + strings.Replace(strings.Replace(this.Data.String(), "Data", "Data", 1), `&`, ``, 1) + `,`,
-		`Evidence:` + strings.Replace(strings.Replace(this.Evidence.String(), "EvidenceData", "EvidenceData", 1), `&`, ``, 1) + `,`,
-		`LastCommit:` + strings.Replace(this.LastCommit.String(), "Commit", "Commit", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *Proposal) String() string {
 	if this == nil {
 		return "nil"
@@ -4314,36 +2688,6 @@ func (this *SignedHeader) String() string {
 	s := strings.Join([]string{`&SignedHeader{`,
 		`Header:` + strings.Replace(this.Header.String(), "Header", "Header", 1) + `,`,
 		`Commit:` + strings.Replace(this.Commit.String(), "Commit", "Commit", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ValidatorSet) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForValidators := "[]Validator{"
-	for _, f := range this.Validators {
-		repeatedStringForValidators += strings.Replace(strings.Replace(f.String(), "Validator", "Validator", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForValidators += "}"
-	s := strings.Join([]string{`&ValidatorSet{`,
-		`Validators:` + repeatedStringForValidators + `,`,
-		`Proposer:` + strings.Replace(strings.Replace(this.Proposer.String(), "Validator", "Validator", 1), `&`, ``, 1) + `,`,
-		`TotalVotingPower:` + fmt.Sprintf("%v", this.TotalVotingPower) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Validator) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Validator{`,
-		`Address:` + fmt.Sprintf("%v", this.Address) + `,`,
-		`PubKey:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.PubKey), "PublicKey", "keys.PublicKey", 1), `&`, ``, 1) + `,`,
-		`VotingPower:` + fmt.Sprintf("%v", this.VotingPower) + `,`,
-		`ProposerPriority:` + fmt.Sprintf("%v", this.ProposerPriority) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5230,97 +3574,6 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Version) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Version: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Version: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
-			}
-			m.Block = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Block |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field App", wireType)
-			}
-			m.App = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.App |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *Data) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -5677,514 +3930,6 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 			m.Signature = append(m.Signature[:0], dAtA[iNdEx:postIndex]...)
 			if m.Signature == nil {
 				m.Signature = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DuplicateVoteEvidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DuplicateVoteEvidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DuplicateVoteEvidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VoteA", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.VoteA == nil {
-				m.VoteA = &Vote{}
-			}
-			if err := m.VoteA.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VoteB", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.VoteB == nil {
-				m.VoteB = &Vote{}
-			}
-			if err := m.VoteB.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MockEvidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MockEvidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MockEvidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceHeight", wireType)
-			}
-			m.EvidenceHeight = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.EvidenceHeight |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceTime", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.EvidenceTime, dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceAddress", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EvidenceAddress = append(m.EvidenceAddress[:0], dAtA[iNdEx:postIndex]...)
-			if m.EvidenceAddress == nil {
-				m.EvidenceAddress = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Evidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Evidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Evidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DuplicateVoteEvidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &DuplicateVoteEvidence{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Evidence_DuplicateVoteEvidence{v}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MockEvidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &MockEvidence{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Evidence_MockEvidence{v}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *EvidenceData) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: EvidenceData: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: EvidenceData: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Evidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Evidence = append(m.Evidence, Evidence{})
-			if err := m.Evidence[len(m.Evidence)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Hash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Hash = append(m.Hash[:0], dAtA[iNdEx:postIndex]...)
-			if m.Hash == nil {
-				m.Hash = []byte{}
 			}
 			iNdEx = postIndex
 		default:
@@ -6612,194 +4357,6 @@ func (m *CommitSig) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Block) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Block: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Block: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Data.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Evidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Evidence.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastCommit", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.LastCommit == nil {
-				m.LastCommit = &Commit{}
-			}
-			if err := m.LastCommit.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *Proposal) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -7133,303 +4690,6 @@ func (m *SignedHeader) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ValidatorSet) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ValidatorSet: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ValidatorSet: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Validators", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Validators = append(m.Validators, Validator{})
-			if err := m.Validators[len(m.Validators)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Proposer", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Proposer.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TotalVotingPower", wireType)
-			}
-			m.TotalVotingPower = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TotalVotingPower |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Validator) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Validator: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Validator: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Address", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Address = append(m.Address[:0], dAtA[iNdEx:postIndex]...)
-			if m.Address == nil {
-				m.Address = []byte{}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PubKey", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.PubKey.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VotingPower", wireType)
-			}
-			m.VotingPower = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.VotingPower |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProposerPriority", wireType)
-			}
-			m.ProposerPriority = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ProposerPriority |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(dAtA[iNdEx:])
