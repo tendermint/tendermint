@@ -683,7 +683,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"success", data, true, true},
-		{"empty evidenceData", &EvidenceData{}, true, true},
+		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
 		{"fail nil Data", nil, false, false},
 	}
 
