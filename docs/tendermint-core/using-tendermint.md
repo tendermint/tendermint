@@ -67,10 +67,10 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 #### Sample genesis.json
 
-```
+```json
 {
-  "genesis_time": "2018-11-13T18:11:50.277637Z",
-  "chain_id": "test-chain-s4ui7D",
+  "genesis_time": "2020-04-21T11:17:42.341227868Z",
+  "chain_id": "test-chain-ROp9KF",
   "consensus_params": {
     "block": {
       "max_bytes": "22020096",
@@ -78,8 +78,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
       "time_iota_ms": "1000"
     },
     "evidence": {
-      "max_age_num_blocks": "100000"
-      "max_age_duration": "10000"
+      "max_age_num_blocks": "100000",
+      "max_age_duration": "172800000000000"
     },
     "validator": {
       "pub_key_types": [
@@ -89,10 +89,10 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   },
   "validators": [
     {
-      "address": "39C04A480B54AB258A45355A5E48ADDED9956C65",
+      "address": "B547AB87E79F75A4A3198C57A8C2FDAF8628CB47",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "DMEMMj1+thrkUCGocbvvKzXeaAtRslvX9MWtB+smuIA="
+        "value": "P/V6GHuZrb8rs/k1oBorxc6vyXMlnzhJmv7LmjELDys="
       },
       "power": "10",
       "name": ""
@@ -333,7 +333,7 @@ When `tendermint init` is run, both a `genesis.json` and
 `priv_validator_key.json` are created in `~/.tendermint/config`. The
 `genesis.json` might look like:
 
-```
+```json
 {
   "validators" : [
     {
@@ -353,7 +353,7 @@ When `tendermint init` is run, both a `genesis.json` and
 
 And the `priv_validator_key.json`:
 
-```
+```json
 {
   "last_step" : 0,
   "last_round" : "0",
@@ -480,7 +480,7 @@ tendermint gen_validator
 Now we can update our genesis file. For instance, if the new
 `priv_validator_key.json` looks like:
 
-```
+```json
 {
   "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
   "pub_key" : {
@@ -499,7 +499,7 @@ Now we can update our genesis file. For instance, if the new
 
 then the new `genesis.json` will be:
 
-```
+```json
 {
   "validators" : [
     {
