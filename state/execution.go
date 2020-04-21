@@ -258,7 +258,9 @@ func execBlockOnProxyApp(
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-	abciResponses := NewABCIResponses(block)
+	abciResponses := new(tmstate.ABCIResponses)
+	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
+	abciResponses.DeliverTxs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {

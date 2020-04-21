@@ -10,8 +10,10 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -79,13 +81,13 @@ func TestPruneStates(t *testing.T) {
 		expectParams []int64
 		expectABCI   []int64
 	}{
-		// "error on pruning from 0":      {100, 0, 5, true, nil, nil, nil},
-		// "error when from > to":         {100, 3, 2, true, nil, nil, nil},
-		// "error when from == to":        {100, 3, 3, true, nil, nil, nil},
-		// "error when to does not exist": {100, 1, 101, true, nil, nil, nil},
-		// "prune all": {100, 1, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
-		// "prune some": {10, 2, 8, false, []int64{1, 3, 8, 9, 10},
-		// 	[]int64{1, 5, 8, 9, 10}, []int64{1, 8, 9, 10}},
+		"error on pruning from 0":      {100, 0, 5, true, nil, nil, nil},
+		"error when from > to":         {100, 3, 2, true, nil, nil, nil},
+		"error when from == to":        {100, 3, 3, true, nil, nil, nil},
+		"error when to does not exist": {100, 1, 101, true, nil, nil, nil},
+		"prune all":                    {100, 1, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
+		"prune some": {10, 2, 8, false, []int64{1, 3, 8, 9, 10},
+			[]int64{1, 5, 8, 9, 10}, []int64{1, 8, 9, 10}},
 		"prune across checkpoint": {100001, 1, 100001, false, []int64{99993, 100000, 100001},
 			[]int64{99995, 100001}, []int64{100001}},
 	}
@@ -124,17 +126,13 @@ func TestPruneStates(t *testing.T) {
 					LastHeightConsensusParamsChanged: paramsChanged,
 				})
 
-				sm.SaveABCIResponses(db, h, sm.NewABCIResponses(
-					&types.Block{
-						Header: types.Header{Height: h},
-						Data: types.Data{
-							Txs: types.Txs{
-								[]byte{1},
-								[]byte{2},
-								[]byte{3},
-							},
-						},
-					}))
+				sm.SaveABCIResponses(db, h, &state.ABCIResponses{
+					DeliverTxs: []*abci.ResponseDeliverTx{
+						{Data: []byte{1}},
+						{Data: []byte{2}},
+						{Data: []byte{3}},
+					},
+				})
 			}
 
 			// Test assertions

@@ -240,18 +240,6 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 	return nil
 }
 
-// NewABCIResponses returns a new ABCIResponses
-func NewABCIResponses(block *types.Block) *tmstate.ABCIResponses {
-	resDeliverTxs := make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
-	if len(block.Data.Txs) == 0 {
-		// This makes Amino encoding/decoding consistent.
-		resDeliverTxs = nil
-	}
-	return &tmstate.ABCIResponses{
-		DeliverTxs: resDeliverTxs,
-	}
-}
-
 func ABCIResponsesResultsHash(ar tmstate.ABCIResponses) []byte {
 	results := types.NewResults(ar.DeliverTxs)
 	return results.Hash()
