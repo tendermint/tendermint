@@ -57,8 +57,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"untrustedHeader.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not" +
-				" 'TestVerifyAdjacentHeaders'",
+			"header belongs to another chain",
 		},
 		// new header's time is before old header's time -> error
 		2: {

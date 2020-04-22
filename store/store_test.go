@@ -13,12 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	db "github.com/tendermint/tm-db"
-	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
-
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -54,8 +52,8 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
+	blockDB := db.NewMemDB()
+	stateDB := db.NewMemDB()
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {
 		panic(errors.Wrap(err, "error constructing state from genesis file"))
@@ -389,9 +387,9 @@ func TestLoadBlockPart(t *testing.T) {
 func TestPruneBlocks(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	state, err := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
+	state, err := sm.LoadStateFromDBOrGenesisFile(db.NewMemDB(), config.GenesisFile())
 	require.NoError(t, err)
-	db := dbm.NewMemDB()
+	db := db.NewMemDB()
 	bs := NewBlockStore(db)
 	assert.EqualValues(t, 0, bs.Base())
 	assert.EqualValues(t, 0, bs.Height())

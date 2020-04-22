@@ -11,25 +11,17 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// SignStatusClient combines a SignClient and StatusClient.
-type SignStatusClient interface {
-	rpcclient.SignClient
-	rpcclient.StatusClient
-	// Remote returns the remote network address in a string form.
-	Remote() string
-}
-
-// http provider uses an RPC client (or SignStatusClient more generally) to
-// obtain the necessary information.
+// http provider uses an RPC client to obtain the necessary information.
 type http struct {
-	SignStatusClient // embed so interface can be converted to SignStatusClient for tests
-	chainID          string
+	chainID string
+	client  rpcclient.RemoteClient
 }
 
-// New creates a HTTP provider, which is using the rpchttp.HTTP client under the
-// hood. If no scheme is provided in the remote URL, http will be used by default.
+// New creates a HTTP provider, which is using the rpchttp.HTTP client under
+// the hood. If no scheme is provided in the remote URL, http will be used by
+// default.
 func New(chainID, remote string) (provider.Provider, error) {
-	// ensure URL scheme is set (default HTTP) when not provided
+	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
@@ -42,11 +34,11 @@ func New(chainID, remote string) (provider.Provider, error) {
 	return NewWithClient(chainID, httpClient), nil
 }
 
-// NewWithClient allows you to provide custom SignStatusClient.
-func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
+// NewWithClient allows you to provide a custom client.
+func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
 	return &http{
-		SignStatusClient: client,
-		chainID:          chainID,
+		client:  client,
+		chainID: chainID,
 	}
 }
 
@@ -56,7 +48,7 @@ func (p *http) ChainID() string {
 }
 
 func (p *http) String() string {
-	return fmt.Sprintf("http{%s}", p.Remote())
+	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
 // SignedHeader fetches a SignedHeader at the given height and checks the
@@ -67,7 +59,7 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, err
 	}
 
-	commit, err := p.SignStatusClient.Commit(h)
+	commit, err := p.client.Commit(h)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -97,7 +89,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	const maxPerPage = 100
-	res, err := p.SignStatusClient.Validators(h, 0, maxPerPage)
+	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if strings.Contains(err.Error(), "height must be less than or equal") {
@@ -113,7 +105,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 	// Check if there are more validators.
 	for len(res.Validators) == maxPerPage {
-		res, err = p.SignStatusClient.Validators(h, page, maxPerPage)
+		res, err = p.client.Validators(h, page, maxPerPage)
 		if err != nil {
 			return nil, err
 		}
@@ -124,6 +116,12 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	return types.NewValidatorSet(vals), nil
+}
+
+// ReportEvidence calls `/broadcast_evidence` endpoint.
+func (p *http) ReportEvidence(ev types.Evidence) error {
+	_, err := p.client.BroadcastEvidence(ev)
+	return err
 }
 
 func validateHeight(height int64) (*int64, error) {
