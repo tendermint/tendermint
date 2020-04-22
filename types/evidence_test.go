@@ -112,8 +112,9 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	}
 
 	// evl := &LunaticValidatorEvidence{
-	// 	Header:             makeHeaderRandom(),
-	// 	Vote:               makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+	// Header: makeHeaderRandom(),
+	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+
 	// 	InvalidHeaderField: "",
 	// }
 
