@@ -1,6 +1,7 @@
-package http
+package http_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -8,10 +9,27 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/lite2/provider/http"
+	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
+
+func TestNewProvider(t *testing.T) {
+	c, err := http.New("chain-test", "192.168.0.1:26657")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://192.168.0.1:26657}")
+
+	c, err = http.New("chain-test", "http://153.200.0.1:26657")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1:26657}")
+
+	c, err = http.New("chain-test", "153.200.0.1")
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
+}
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewApplication()
@@ -33,12 +51,16 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p, err := New(chainID, rpcAddr)
+
+	c, err := rpchttp.New(rpcAddr, "/websocket")
+	require.Nil(t, err)
+
+	p := litehttp.NewWithClient(chainID, c)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(p.(*http).client, 6, nil)
+	err = rpcclient.WaitForHeight(c, 6, nil)
 	require.Nil(t, err)
 
 	// let's get the highest block

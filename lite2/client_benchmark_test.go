@@ -1,14 +1,16 @@
-package lite
+package lite_test
 
 import (
 	"testing"
 	"time"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/libs/log"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/lite2/provider"
 	mockp "github.com/tendermint/tendermint/lite2/provider/mock"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
-	dbm "github.com/tendermint/tm-db"
 )
 
 // NOTE: block is produced every minute. Make sure the verification time
@@ -19,23 +21,23 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	largeFullNode    = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
-	genesisHeader, _ = largeFullNode.SignedHeader(1)
+	benchmarkFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
+	genesisHeader, _  = benchmarkFullNode.SignedHeader(1)
 )
 
 func BenchmarkSequence(b *testing.B) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: 1,
 			Hash:   genesisHeader.Hash(),
 		},
-		largeFullNode,
-		[]provider.Provider{largeFullNode},
+		benchmarkFullNode,
+		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		SequentialVerification(),
+		lite.Logger(log.TestingLogger()),
+		lite.SequentialVerification(),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -51,17 +53,17 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
-	c, err := NewClient(
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: 1,
 			Hash:   genesisHeader.Hash(),
 		},
-		largeFullNode,
-		[]provider.Provider{largeFullNode},
+		benchmarkFullNode,
+		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -77,18 +79,18 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
-	trustedHeader, _ := largeFullNode.SignedHeader(0)
-	c, err := NewClient(
+	trustedHeader, _ := benchmarkFullNode.SignedHeader(0)
+	c, err := lite.NewClient(
 		chainID,
-		TrustOptions{
+		lite.TrustOptions{
 			Period: 24 * time.Hour,
 			Height: trustedHeader.Height,
 			Hash:   trustedHeader.Hash(),
 		},
-		largeFullNode,
-		[]provider.Provider{largeFullNode},
+		benchmarkFullNode,
+		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		lite.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)

@@ -7,39 +7,38 @@ import (
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
 )
 
-// SignStatusClient combines a SignClient and StatusClient.
-type SignStatusClient interface {
-	rpcclient.SignClient
-	rpcclient.StatusClient
-	// Remote returns the remote network address in a string form.
-	Remote() string
-}
-
-// http provider uses an RPC client (or SignStatusClient more generally) to
-// obtain the necessary information.
+// http provider uses an RPC client to obtain the necessary information.
 type http struct {
 	chainID string
-	client  SignStatusClient
+	client  rpcclient.RemoteClient
 }
 
-// New creates a HTTP provider, which is using the rpcclient.HTTP
-// client under the hood.
+// New creates a HTTP provider, which is using the rpchttp.HTTP client under
+// the hood. If no scheme is provided in the remote URL, http will be used by
+// default.
 func New(chainID, remote string) (provider.Provider, error) {
-	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	// Ensure URL scheme is set (default HTTP) when not provided.
+	if !strings.Contains(remote, "://") {
+		remote = "http://" + remote
+	}
+
+	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}
+
 	return NewWithClient(chainID, httpClient), nil
 }
 
-// NewWithClient allows you to provide custom SignStatusClient.
-func NewWithClient(chainID string, client SignStatusClient) provider.Provider {
+// NewWithClient allows you to provide a custom client.
+func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
 	return &http{
-		chainID: chainID,
 		client:  client,
+		chainID: chainID,
 	}
 }
 
@@ -117,6 +116,12 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	return types.NewValidatorSet(vals), nil
+}
+
+// ReportEvidence calls `/broadcast_evidence` endpoint.
+func (p *http) ReportEvidence(ev types.Evidence) error {
+	_, err := p.client.BroadcastEvidence(ev)
+	return err
 }
 
 func validateHeight(height int64) (*int64, error) {

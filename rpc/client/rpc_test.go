@@ -1,37 +1,33 @@
 package client_test
 
 import (
-	"bytes"
 	"fmt"
 	"math"
-	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
-func getHTTPClient() *client.HTTP {
+func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTP(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
 		panic(err)
 	}
@@ -39,9 +35,9 @@ func getHTTPClient() *client.HTTP {
 	return c
 }
 
-func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
+func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTPWithTimeout(rpcAddr, "/websocket", timeout)
+	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
 	if err != nil {
 		panic(err)
 	}
@@ -49,8 +45,8 @@ func getHTTPClientWithTimeout(timeout uint) *client.HTTP {
 	return c
 }
 
-func getLocalClient() *client.Local {
-	return client.NewLocal(node)
+func getLocalClient() *rpclocal.Local {
+	return rpclocal.New(node)
 }
 
 // GetClients returns a slice of clients for table-driven tests
@@ -63,7 +59,7 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		_, _ = client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
 		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
@@ -72,7 +68,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 
 func TestCustomHTTPClient(t *testing.T) {
 	remote := rpctest.GetConfig().RPC.ListenAddress
-	c, err := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	c, err := rpchttp.NewWithClient(remote, "/websocket", http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status()
 	require.NoError(t, err)
@@ -171,9 +167,12 @@ func TestGenesisAndValidators(t *testing.T) {
 		gval := gen.Genesis.Validators[0]
 
 		// get the current validators
-		vals, err := c.Validators(nil, 0, 0)
+		h := int64(1)
+		vals, err := c.Validators(&h, 0, 0)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
+		require.Equal(t, 1, vals.Count)
+		require.Equal(t, 1, vals.Total)
 		val := vals.Validators[0]
 
 		// make sure the current set is also the genesis set
@@ -550,158 +549,12 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
-func deepcpVote(vote *types.Vote) (res *types.Vote) {
-	res = &types.Vote{
-		ValidatorAddress: make([]byte, len(vote.ValidatorAddress)),
-		ValidatorIndex:   vote.ValidatorIndex,
-		Height:           vote.Height,
-		Round:            vote.Round,
-		Type:             vote.Type,
-		Timestamp:        vote.Timestamp,
-		BlockID: types.BlockID{
-			Hash:        make([]byte, len(vote.BlockID.Hash)),
-			PartsHeader: vote.BlockID.PartsHeader,
-		},
-		Signature: make([]byte, len(vote.Signature)),
-	}
-	copy(res.ValidatorAddress, vote.ValidatorAddress)
-	copy(res.BlockID.Hash, vote.BlockID.Hash)
-	copy(res.Signature, vote.Signature)
-	return
-}
-
-func newEvidence(
-	t *testing.T,
-	val *privval.FilePV,
-	vote *types.Vote,
-	vote2 *types.Vote,
-	chainID string,
-) types.DuplicateVoteEvidence {
-	var err error
-	deepcpVote2 := deepcpVote(vote2)
-	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
-	require.NoError(t, err)
-
-	return *types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, deepcpVote2)
-}
-
-func makeEvidences(
-	t *testing.T,
-	val *privval.FilePV,
-	chainID string,
-) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
-	vote := &types.Vote{
-		ValidatorAddress: val.Key.Address,
-		ValidatorIndex:   0,
-		Height:           1,
-		Round:            0,
-		Type:             types.PrevoteType,
-		Timestamp:        time.Now().UTC(),
-		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockhash")),
-			PartsHeader: types.PartSetHeader{
-				Total: 1000,
-				Hash:  tmhash.Sum([]byte("partset")),
-			},
-		},
-	}
-
-	var err error
-	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
-	require.NoError(t, err)
-
-	vote2 := deepcpVote(vote)
-	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
-
-	ev = newEvidence(t, val, vote, vote2, chainID)
-
-	fakes = make([]types.DuplicateVoteEvidence, 42)
-
-	// different address
-	vote2 = deepcpVote(vote)
-	for i := 0; i < 10; i++ {
-		rand.Read(vote2.ValidatorAddress) // nolint: gosec
-		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
-	}
-	// different index
-	vote2 = deepcpVote(vote)
-	for i := 10; i < 20; i++ {
-		vote2.ValidatorIndex = rand.Int()%100 + 1 // nolint: gosec
-		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
-	}
-	// different height
-	vote2 = deepcpVote(vote)
-	for i := 20; i < 30; i++ {
-		vote2.Height = rand.Int63()%1000 + 100 // nolint: gosec
-		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
-	}
-	// different round
-	vote2 = deepcpVote(vote)
-	for i := 30; i < 40; i++ {
-		vote2.Round = rand.Int()%10 + 1 // nolint: gosec
-		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
-	}
-	// different type
-	vote2 = deepcpVote(vote)
-	vote2.Type = types.PrecommitType
-	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
-	// exactly same vote
-	vote2 = deepcpVote(vote)
-	fakes[41] = newEvidence(t, val, vote, vote2, chainID)
-	return ev, fakes
-}
-
-func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
-	config := rpctest.GetConfig()
-	chainID := config.ChainID()
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
-
-	ev, fakes := makeEvidences(t, pv, chainID)
-	t.Logf("evidence %v", ev)
-
-	for i, c := range GetClients() {
-		t.Logf("client %d", i)
-
-		result, err := c.BroadcastEvidence(&ev)
-		require.Nil(t, err)
-		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
-
-		status, err := c.Status()
-		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-
-		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
-		rawpub := ed25519pub[:]
-		result2, err := c.ABCIQuery("/val", rawpub)
-		require.Nil(t, err, "Error querying evidence, err %v", err)
-		qres := result2.Response
-		require.True(t, qres.IsOK(), "Response not OK")
-
-		var v abci.ValidatorUpdate
-		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
-		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
-
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
-
-		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
-				PubKey: fake.PubKey,
-				VoteA:  fake.VoteA,
-				VoteB:  fake.VoteB})
-			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
-		}
-	}
-}
-
 func TestBatchedJSONRPCCalls(t *testing.T) {
 	c := getHTTPClient()
 	testBatchedJSONRPCCalls(t, c)
 }
 
-func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
+func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	k1, v1, tx1 := MakeTxKV()
 	k2, v2, tx2 := MakeTxKV()
 

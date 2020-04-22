@@ -253,9 +253,10 @@ paths:
         https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
 
         ```go
+        import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
         err := client.Start()
         if err != nil {
           handle error
@@ -309,7 +310,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
         err := client.Start()
         if err != nil {
            handle error
@@ -1122,6 +1123,18 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+          earliest_block_hash:
+            type: string
+            example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+          earliest_app_hash:
+            type: string
+            example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+          earliest_block_height:
+            type: string
+            example: "1262196"
+          earliest_block_time:
+            type: string
+            example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
           example: false
@@ -1909,6 +1922,12 @@ components:
                   proposer_priority:
                     type: "string"
                     example: "13769415"
+            count:
+              type: "number"
+              example: 1
+            total:
+              type: "number"
+              example: 25
           type: "object"
     GenesisResponse:
       type: object
@@ -2947,6 +2966,9 @@ components:
             log:
               type: "string"
               example: ""
+            codespace:
+              type: "string"
+              example: "ibc"
             hash:
               type: "string"
               example: "0D33F2F03A5234F38706E43004489E061AC40A2E"

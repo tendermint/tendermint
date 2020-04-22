@@ -1,4 +1,4 @@
-package lite
+package lite_test
 
 import (
 	"fmt"
@@ -8,7 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	lite "github.com/tendermint/tendermint/lite2"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	maxClockDrift = 10 * time.Second
 )
 
 func TestVerifyAdjacentHeaders(t *testing.T) {
@@ -52,8 +57,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
-			"untrustedHeader.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not" +
-				" 'TestVerifyAdjacentHeaders'",
+			"header belongs to another chain",
 		},
 		// new header's time is before old header's time -> error
 		2: {
@@ -113,7 +117,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			ErrInvalidHeader{Reason: types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
+			lite.ErrInvalidHeader{Reason: types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
 			"",
 		},
 		// vals does not match with what we have -> error
@@ -151,7 +155,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now)
+			err := lite.VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, maxClockDrift)
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
@@ -227,7 +231,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			ErrInvalidHeader{types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
+			lite.ErrInvalidHeader{types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
 			"",
 		},
 		// 3/3 new vals signed, 2/3 old vals present -> no error
@@ -257,7 +261,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			lessThanOneThirdVals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			ErrNewValSetCantBeTrusted{types.ErrNotEnoughVotingPowerSigned{Got: 20, Needed: 46}},
+			lite.ErrNewValSetCantBeTrusted{types.ErrNotEnoughVotingPowerSigned{Got: 20, Needed: 46}},
 			"",
 		},
 	}
@@ -265,8 +269,9 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now,
-				DefaultTrustLevel)
+			err := lite.VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod,
+				tc.now, maxClockDrift,
+				lite.DefaultTrustLevel)
 
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
@@ -295,7 +300,7 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	err := Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(),
+	err := lite.Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(), maxClockDrift,
 		tmmath.Fraction{Numerator: 2, Denominator: 1})
 	assert.Error(t, err)
 }
@@ -322,7 +327,7 @@ func TestValidateTrustLevel(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := ValidateTrustLevel(tc.lvl)
+		err := lite.ValidateTrustLevel(tc.lvl)
 		if !tc.valid {
 			assert.Error(t, err)
 		} else {
