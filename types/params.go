@@ -30,14 +30,13 @@ type ConsensusParams struct {
 }
 
 // HashedParams is a subset of ConsensusParams.
-// It is amino encoded and hashed into
-// the Header.ConsensusHash.
+// It is amino encoded and hashed into the Header.ConsensusHash.
 type HashedParams struct {
 	BlockMaxBytes int64
 	BlockMaxGas   int64
 }
 
-// BlockParams define limits on the block size and gas plus minimum time
+// BlockParams defines limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
 	MaxBytes int64 `json:"max_bytes"`
@@ -47,10 +46,27 @@ type BlockParams struct {
 	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
-// EvidenceParams determine how we handle evidence of malfeasance.
+// EvidenceParams determines how we handle evidence of malfeasance.
+//
+// Evidence older than MaxAgeNumBlocks && MaxAgeDuration is considered
+// stale and ignored.
+//
+// In Cosmos-SDK based blockchains, MaxAgeDuration is usually equal to the
+// unbonding period. MaxAgeNumBlocks is calculated by dividing the unboding
+// period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
 type EvidenceParams struct {
-	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
-	MaxAgeDuration  time.Duration `json:"max_age_duration"`
+	// Max age of evidence, in blocks.
+	//
+	// The basic formula for calculating this is: MaxAgeDuration / {average block
+	// time}.
+	MaxAgeNumBlocks int64 `json:"max_age_num_blocks"`
+
+	// Max age of evidence, in time.
+	//
+	// It should correspond with an app's "unbonding period" or other similar
+	// mechanism for handling [Nothing-At-Stake
+	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
+	MaxAgeDuration time.Duration `json:"max_age_duration"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -77,7 +93,7 @@ func DefaultBlockParams() BlockParams {
 	}
 }
 
-// DefaultEvidenceParams Params returns a default EvidenceParams.
+// DefaultEvidenceParams returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s

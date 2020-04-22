@@ -187,8 +187,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		ChainID: "block_test",
 		Time:    tmtime.Now(),
 	}
-	header2 := header1
-	header2.Height = 4
 
 	// End of setup, test data
 
@@ -218,9 +216,12 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     newBlock(header2, commitAtH10),
-			parts:     uncontiguousPartSet,
-			wantPanic: "only save contiguous blocks", // and incomplete and uncontiguous parts
+			block: newBlock( // New block at height 5 in empty block store is fine
+				types.Header{Height: 5, ChainID: "block_test", Time: tmtime.Now()},
+				makeTestCommit(5, tmtime.Now()),
+			),
+			parts:      validPartSet,
+			seenCommit: makeTestCommit(5, tmtime.Now()),
 		},
 
 		{
