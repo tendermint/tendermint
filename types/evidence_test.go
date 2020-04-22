@@ -111,34 +111,33 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
-	evl := &LunaticValidatorEvidence{
-		Header:             makeHeaderRandom(),
-		Vote:               makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
-		InvalidHeaderField: "",
-	}
+	// evl := &LunaticValidatorEvidence{
+	// 	Header:             makeHeaderRandom(),
+	// 	Vote:               makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+	// 	InvalidHeaderField: "",
+	// }
 
-	evp := &PhantomValidatorEvidence{
-		Header: makeHeaderRandom(),
-		Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+	// evp := &PhantomValidatorEvidence{
+	// 	Header: makeHeaderRandom(),
+	// 	Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 
-		LastHeightValidatorWasInSet: math.MaxInt64,
-	}
+	// 	LastHeightValidatorWasInSet: math.MaxInt64,
+	// }
 
-	signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
-	evc := &ConflictingHeadersEvidence{
-		H1: &signedHeader,
-		H2: &signedHeader,
-	}
+	// signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
+	// evc := &ConflictingHeadersEvidence{
+	// 	H1: &signedHeader,
+	// 	H2: &signedHeader,
+	// }
 
 	testCases := []struct {
 		testName string
 		evidence Evidence
-		expPass  bool
 	}{
-		{"DuplicateVote", ev, true},
-		{"LunaticValidatorEvidence", evl, true},
-		{"PhantomValidatorEvidence", evp, true},
-		{"ConflictingHeadersEvidence", evc, true},
+		{"DuplicateVote", ev},
+		// {"LunaticValidatorEvidence", evl},
+		// {"PhantomValidatorEvidence", evp},
+		// {"ConflictingHeadersEvidence", evc},
 	}
 
 	for _, tt := range testCases {
