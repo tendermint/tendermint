@@ -211,8 +211,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
-		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerIdx, proposerAddr)
+		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
 		if height > 1 {
 			/*
 				A block with too much evidence fails
@@ -265,7 +264,7 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
 	addr, _ := state.Validators.GetByIndex(0)
-	alreadyCommittedEvidence := types.NewMockEvidence(height, time.Now(), 0, addr)
+	alreadyCommittedEvidence := types.NewMockEvidence(height, time.Now(), addr)
 	block.Evidence.Evidence = []types.Evidence{alreadyCommittedEvidence}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
