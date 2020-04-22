@@ -7,12 +7,12 @@ import "third_party/proto/gogoproto/gogo.proto";
 import "proto/consensus/msgs.proto";
 import "google/protobuf/duration.proto";
 
-message msgInfo {
+message MsgInfo {
   Message msg     = 1 [(gogoproto.nullable) = false];
   string  peer_id = 2;
 }
 
-message timeoutInfo {
+message TimeoutInfo {
   google.protobuf.Duration duration = 1
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   int64 height = 2;

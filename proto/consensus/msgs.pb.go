@@ -30,7 +30,7 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type NewRoundStep struct {
 	Height                int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round                 int32 `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
-	Step                  int8  `protobuf:"varint,3,opt,name=Step,proto3,casttype=int8" json:"Step,omitempty"`
+	Step                  int8  `protobuf:"varint,3,opt,name=step,proto3,casttype=int8" json:"step,omitempty"`
 	SecondsSinceStartTime int64 `protobuf:"varint,4,opt,name=seconds_since_start_time,json=secondsSinceStartTime,proto3" json:"seconds_since_start_time,omitempty"`
 	LastCommitRound       int32 `protobuf:"varint,5,opt,name=last_commit_round,json=lastCommitRound,proto3" json:"last_commit_round,omitempty"`
 }
@@ -221,9 +221,9 @@ func (m *Proposal) GetProposal() types.Proposal {
 }
 
 type ProposalPOL struct {
-	Height           int64          `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
-	ProposalPolRound int32          `protobuf:"varint,2,opt,name=proposal_pol_round,json=proposalPolRound,proto3" json:"proposal_pol_round,omitempty"`
-	ProposalPol      *bits.BitArray `protobuf:"bytes,3,opt,name=proposal_pol,json=proposalPol,proto3" json:"proposal_pol,omitempty"`
+	Height           int64         `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	ProposalPolRound int32         `protobuf:"varint,2,opt,name=proposal_pol_round,json=proposalPolRound,proto3" json:"proposal_pol_round,omitempty"`
+	ProposalPol      bits.BitArray `protobuf:"bytes,3,opt,name=proposal_pol,json=proposalPol,proto3" json:"proposal_pol"`
 }
 
 func (m *ProposalPOL) Reset()      { *m = ProposalPOL{} }
@@ -272,17 +272,17 @@ func (m *ProposalPOL) GetProposalPolRound() int32 {
 	return 0
 }
 
-func (m *ProposalPOL) GetProposalPol() *bits.BitArray {
+func (m *ProposalPOL) GetProposalPol() bits.BitArray {
 	if m != nil {
 		return m.ProposalPol
 	}
-	return nil
+	return bits.BitArray{}
 }
 
 type BlockPart struct {
-	Height int64        `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
-	Round  int32        `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
-	Part   *types.Parts `protobuf:"bytes,3,opt,name=part,proto3" json:"part,omitempty"`
+	Height int64       `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	Round  int32       `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
+	Part   types.Parts `protobuf:"bytes,3,opt,name=part,proto3" json:"part"`
 }
 
 func (m *BlockPart) Reset()      { *m = BlockPart{} }
@@ -331,11 +331,11 @@ func (m *BlockPart) GetRound() int32 {
 	return 0
 }
 
-func (m *BlockPart) GetPart() *types.Parts {
+func (m *BlockPart) GetPart() types.Parts {
 	if m != nil {
 		return m.Part
 	}
-	return nil
+	return types.Parts{}
 }
 
 type Vote struct {
@@ -452,7 +452,7 @@ type VoteSetMaj23 struct {
 	Height  int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round   int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
 	Type    types.SignedMsgType `protobuf:"varint,3,opt,name=type,proto3,enum=tendermint.proto.types.SignedMsgType" json:"type,omitempty"`
-	BlockID *types.BlockID      `protobuf:"bytes,4,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	BlockID types.BlockID       `protobuf:"bytes,4,opt,name=block_id,json=blockId,proto3" json:"block_id"`
 }
 
 func (m *VoteSetMaj23) Reset()      { *m = VoteSetMaj23{} }
@@ -508,11 +508,86 @@ func (m *VoteSetMaj23) GetType() types.SignedMsgType {
 	return types.SIGNED_MSG_TYPE_UNKNOWN
 }
 
-func (m *VoteSetMaj23) GetBlockID() *types.BlockID {
+func (m *VoteSetMaj23) GetBlockID() types.BlockID {
 	if m != nil {
 		return m.BlockID
 	}
-	return nil
+	return types.BlockID{}
+}
+
+type VoteSetBits struct {
+	Height  int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	Round   int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
+	Type    types.SignedMsgType `protobuf:"varint,3,opt,name=type,proto3,enum=tendermint.proto.types.SignedMsgType" json:"type,omitempty"`
+	BlockID types.BlockID       `protobuf:"bytes,4,opt,name=block_id,json=blockId,proto3" json:"block_id"`
+	Votes   bits.BitArray       `protobuf:"bytes,5,opt,name=votes,proto3" json:"votes"`
+}
+
+func (m *VoteSetBits) Reset()      { *m = VoteSetBits{} }
+func (*VoteSetBits) ProtoMessage() {}
+func (*VoteSetBits) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9de64017f8b3fc88, []int{8}
+}
+func (m *VoteSetBits) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *VoteSetBits) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_VoteSetBits.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *VoteSetBits) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VoteSetBits.Merge(m, src)
+}
+func (m *VoteSetBits) XXX_Size() int {
+	return m.Size()
+}
+func (m *VoteSetBits) XXX_DiscardUnknown() {
+	xxx_messageInfo_VoteSetBits.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_VoteSetBits proto.InternalMessageInfo
+
+func (m *VoteSetBits) GetHeight() int64 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+
+func (m *VoteSetBits) GetRound() int32 {
+	if m != nil {
+		return m.Round
+	}
+	return 0
+}
+
+func (m *VoteSetBits) GetType() types.SignedMsgType {
+	if m != nil {
+		return m.Type
+	}
+	return types.SIGNED_MSG_TYPE_UNKNOWN
+}
+
+func (m *VoteSetBits) GetBlockID() types.BlockID {
+	if m != nil {
+		return m.BlockID
+	}
+	return types.BlockID{}
+}
+
+func (m *VoteSetBits) GetVotes() bits.BitArray {
+	if m != nil {
+		return m.Votes
+	}
+	return bits.BitArray{}
 }
 
 type Message struct {
@@ -525,13 +600,14 @@ type Message struct {
 	//	*Message_Vote
 	//	*Message_HasVote
 	//	*Message_VoteSetMaj23
+	//	*Message_VoteSetBits
 	Sum isMessage_Sum `protobuf_oneof:"sum"`
 }
 
 func (m *Message) Reset()      { *m = Message{} }
 func (*Message) ProtoMessage() {}
 func (*Message) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9de64017f8b3fc88, []int{8}
+	return fileDescriptor_9de64017f8b3fc88, []int{9}
 }
 func (m *Message) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -591,6 +667,9 @@ type Message_HasVote struct {
 type Message_VoteSetMaj23 struct {
 	VoteSetMaj23 *VoteSetMaj23 `protobuf:"bytes,8,opt,name=vote_set_maj23,json=voteSetMaj23,proto3,oneof" json:"vote_set_maj23,omitempty"`
 }
+type Message_VoteSetBits struct {
+	VoteSetBits *VoteSetBits `protobuf:"bytes,9,opt,name=vote_set_bits,json=voteSetBits,proto3,oneof" json:"vote_set_bits,omitempty"`
+}
 
 func (*Message_NewRoundStep) isMessage_Sum()  {}
 func (*Message_NewValidBlock) isMessage_Sum() {}
@@ -600,6 +679,7 @@ func (*Message_BlockPart) isMessage_Sum()     {}
 func (*Message_Vote) isMessage_Sum()          {}
 func (*Message_HasVote) isMessage_Sum()       {}
 func (*Message_VoteSetMaj23) isMessage_Sum()  {}
+func (*Message_VoteSetBits) isMessage_Sum()   {}
 
 func (m *Message) GetSum() isMessage_Sum {
 	if m != nil {
@@ -664,6 +744,13 @@ func (m *Message) GetVoteSetMaj23() *VoteSetMaj23 {
 	return nil
 }
 
+func (m *Message) GetVoteSetBits() *VoteSetBits {
+	if x, ok := m.GetSum().(*Message_VoteSetBits); ok {
+		return x.VoteSetBits
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Message) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -675,6 +762,7 @@ func (*Message) XXX_OneofWrappers() []interface{} {
 		(*Message_Vote)(nil),
 		(*Message_HasVote)(nil),
 		(*Message_VoteSetMaj23)(nil),
+		(*Message_VoteSetBits)(nil),
 	}
 }
 
@@ -687,67 +775,71 @@ func init() {
 	proto.RegisterType((*Vote)(nil), "tendermint.proto.consensus.Vote")
 	proto.RegisterType((*HasVote)(nil), "tendermint.proto.consensus.HasVote")
 	proto.RegisterType((*VoteSetMaj23)(nil), "tendermint.proto.consensus.VoteSetMaj23")
+	proto.RegisterType((*VoteSetBits)(nil), "tendermint.proto.consensus.VoteSetBits")
 	proto.RegisterType((*Message)(nil), "tendermint.proto.consensus.Message")
 }
 
 func init() { proto.RegisterFile("proto/consensus/msgs.proto", fileDescriptor_9de64017f8b3fc88) }
 
 var fileDescriptor_9de64017f8b3fc88 = []byte{
-	// 854 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0xcd, 0x6f, 0xdc, 0x44,
-	0x14, 0xb7, 0x89, 0x37, 0xbb, 0x79, 0x9b, 0xa6, 0x65, 0xc4, 0xc7, 0x2a, 0x2d, 0x4e, 0x64, 0xbe,
-	0x02, 0x42, 0xde, 0xb2, 0x95, 0xa0, 0xdc, 0xc0, 0x7c, 0xd4, 0x95, 0x92, 0x74, 0x35, 0x5b, 0x55,
-	0x82, 0x8b, 0xe5, 0x5d, 0x0f, 0xde, 0x01, 0xdb, 0x63, 0x79, 0x26, 0x09, 0xb9, 0x71, 0xe4, 0xc8,
-	0x1f, 0xc0, 0x1f, 0xc0, 0x7f, 0x01, 0xc7, 0x1e, 0x73, 0xec, 0x85, 0x88, 0x38, 0x17, 0x8e, 0x3d,
-	0x23, 0x0e, 0x68, 0x66, 0xbc, 0xb1, 0x93, 0xe2, 0xa6, 0xb9, 0x70, 0x59, 0x79, 0xde, 0x7b, 0xbf,
-	0xdf, 0xbc, 0x79, 0x1f, 0xbf, 0x85, 0xf5, 0xbc, 0x60, 0x82, 0x0d, 0x67, 0x2c, 0xe3, 0x24, 0xe3,
-	0x7b, 0x7c, 0x98, 0xf2, 0x98, 0xbb, 0xca, 0x88, 0xd6, 0x05, 0xc9, 0x22, 0x52, 0xa4, 0x34, 0x13,
-	0xda, 0xe2, 0x9e, 0x85, 0xad, 0xbf, 0x23, 0xe6, 0xb4, 0x88, 0x82, 0x3c, 0x2c, 0xc4, 0xe1, 0x50,
-	0x73, 0xc4, 0x2c, 0x66, 0xf5, 0x97, 0x46, 0xac, 0xbf, 0xae, 0x2d, 0xe2, 0x30, 0x27, 0x5c, 0xff,
-	0x56, 0x8e, 0x9b, 0xda, 0x91, 0xd0, 0x29, 0x1f, 0x4e, 0xa9, 0x38, 0xe7, 0x74, 0x7e, 0x33, 0x61,
-	0x75, 0x97, 0x1c, 0x60, 0xb6, 0x97, 0x45, 0x13, 0x41, 0x72, 0xf4, 0x1a, 0x2c, 0xcf, 0x09, 0x8d,
-	0xe7, 0x62, 0x60, 0x6e, 0x9a, 0x5b, 0x4b, 0xb8, 0x3a, 0xa1, 0x57, 0xa0, 0x53, 0xc8, 0xa0, 0xc1,
-	0x4b, 0x9b, 0xe6, 0x56, 0x07, 0xeb, 0x03, 0xba, 0x05, 0x96, 0x44, 0x0d, 0x96, 0xa4, 0xd1, 0xeb,
-	0xfd, 0x7d, 0xbc, 0x61, 0xd1, 0x4c, 0xdc, 0xc5, 0xca, 0x8a, 0x3e, 0x86, 0x01, 0x27, 0x33, 0x96,
-	0x45, 0x3c, 0xe0, 0x34, 0x9b, 0x91, 0x80, 0x8b, 0xb0, 0x10, 0x81, 0xa0, 0x29, 0x19, 0x58, 0x8a,
-	0xfd, 0xd5, 0xca, 0x3f, 0x91, 0xee, 0x89, 0xf4, 0x3e, 0xa4, 0x29, 0x41, 0xef, 0xc3, 0xcb, 0x49,
-	0xc8, 0x45, 0x30, 0x63, 0x69, 0x4a, 0x45, 0xa0, 0x2f, 0xee, 0xa8, 0x8b, 0xaf, 0x4b, 0xc7, 0xe7,
-	0xca, 0xae, 0x92, 0x76, 0xfe, 0x31, 0xe1, 0xda, 0x2e, 0x39, 0x78, 0x14, 0x26, 0x34, 0xf2, 0x12,
-	0x36, 0xfb, 0xfe, 0xc2, 0x13, 0xac, 0x4b, 0x9e, 0xf0, 0x35, 0xa0, 0xa9, 0x84, 0xa9, 0x0a, 0xf3,
-	0x60, 0x4e, 0xc2, 0x88, 0x14, 0xea, 0x41, 0xfd, 0xd1, 0xdb, 0xee, 0x33, 0x8d, 0xd1, 0xc5, 0x1b,
-	0x87, 0x85, 0x98, 0x10, 0xe1, 0xab, 0x60, 0xcf, 0x7a, 0x7c, 0xbc, 0x61, 0xe0, 0x1b, 0x8a, 0x46,
-	0x7a, 0xb8, 0xb6, 0xa3, 0x2f, 0xa1, 0xdf, 0xa0, 0x56, 0x4f, 0xee, 0x8f, 0xde, 0x7a, 0x96, 0x53,
-	0xb6, 0xc6, 0x95, 0xad, 0x71, 0x3d, 0x2a, 0x3e, 0x2b, 0x8a, 0xf0, 0x10, 0x43, 0x4d, 0x86, 0x6e,
-	0xc2, 0x0a, 0xe5, 0x55, 0x2d, 0x54, 0x15, 0x7a, 0xb8, 0x47, 0xb9, 0xae, 0x81, 0xb3, 0x0b, 0xbd,
-	0x71, 0xc1, 0x72, 0xc6, 0xc3, 0x04, 0x79, 0xd0, 0xcb, 0xab, 0x6f, 0xf5, 0xf4, 0xfe, 0x68, 0xb3,
-	0xf5, 0x01, 0x55, 0x5c, 0x95, 0xfb, 0x19, 0xce, 0xf9, 0xc5, 0x84, 0xfe, 0xc2, 0x39, 0x7e, 0xb0,
-	0xdd, 0x3a, 0x0f, 0x1f, 0x00, 0x5a, 0x60, 0x82, 0x9c, 0x25, 0x41, 0xb3, 0xb2, 0x37, 0x16, 0x9e,
-	0x31, 0x4b, 0x54, 0x93, 0xd0, 0x3d, 0x58, 0x6d, 0x46, 0x57, 0xe5, 0x7d, 0xb1, 0x52, 0xf4, 0x1b,
-	0x6c, 0x4e, 0x02, 0x2b, 0xde, 0xa2, 0x32, 0x57, 0x9c, 0xd5, 0x0f, 0xc1, 0x92, 0x7d, 0xa8, 0xee,
-	0x7e, 0xe3, 0x79, 0xad, 0xe5, 0x58, 0x85, 0x3a, 0x77, 0xc1, 0x7a, 0xc4, 0x04, 0x41, 0xb7, 0xc1,
-	0xda, 0x67, 0x82, 0x54, 0x45, 0xbd, 0xd5, 0x06, 0x95, 0xb1, 0x58, 0x45, 0x3a, 0x3f, 0x99, 0xd0,
-	0xf5, 0x43, 0xae, 0xd0, 0x57, 0x4b, 0xf3, 0x13, 0xb0, 0x24, 0x9b, 0x4a, 0x73, 0xad, 0x7d, 0x02,
-	0x27, 0x34, 0xce, 0x48, 0xb4, 0xc3, 0xe3, 0x87, 0x87, 0x39, 0xc1, 0x0a, 0x22, 0x09, 0x69, 0x16,
-	0x91, 0x1f, 0xd4, 0xa4, 0x75, 0xb0, 0x3e, 0x38, 0xbf, 0x9b, 0xb0, 0x2a, 0xf3, 0x98, 0x10, 0xb1,
-	0x13, 0x7e, 0x37, 0xba, 0xf3, 0xff, 0xe5, 0x73, 0x0f, 0x7a, 0x7a, 0xfe, 0x69, 0x54, 0x0d, 0xff,
-	0x46, 0x1b, 0x5c, 0x35, 0xf5, 0xfe, 0x17, 0x5e, 0xbf, 0x3c, 0xde, 0xe8, 0x56, 0x07, 0xdc, 0x55,
-	0xe8, 0xfb, 0x91, 0xf3, 0x87, 0x05, 0xdd, 0x1d, 0xc2, 0x79, 0x18, 0x13, 0x34, 0x86, 0xb5, 0x8c,
-	0x1c, 0xe8, 0x79, 0x0b, 0xb8, 0x14, 0x1f, 0xdd, 0x95, 0x2d, 0xb7, 0x5d, 0x44, 0xdd, 0xa6, 0xc4,
-	0xf9, 0x06, 0x5e, 0xcd, 0x9a, 0x92, 0x37, 0x81, 0xeb, 0x92, 0x71, 0x5f, 0x2a, 0x48, 0xa0, 0xae,
-	0x54, 0x15, 0xe8, 0x8f, 0xde, 0xbb, 0x84, 0xb2, 0xd6, 0x1c, 0xdf, 0xc0, 0xd7, 0xb2, 0x73, 0x22,
-	0xd4, 0xdc, 0xc5, 0xd6, 0x69, 0xaf, 0xd9, 0x16, 0x2b, 0xe7, 0x37, 0x76, 0x11, 0x6d, 0x5f, 0xd8,
-	0x1a, 0x5d, 0xc3, 0x77, 0x5f, 0x84, 0x67, 0xfc, 0x60, 0xdb, 0x37, 0xce, 0xad, 0x0e, 0xfa, 0x0a,
-	0xa0, 0x56, 0x23, 0xa5, 0x23, 0xff, 0x29, 0x70, 0x35, 0xd7, 0xd9, 0xa2, 0xf9, 0x06, 0x5e, 0x39,
-	0xd3, 0x23, 0xf4, 0x51, 0xb5, 0x0c, 0xcb, 0x6d, 0x0a, 0x53, 0x33, 0xc8, 0xb1, 0xf3, 0x0d, 0xbd,
-	0x12, 0xe8, 0x53, 0xe8, 0xcd, 0x43, 0x1e, 0x28, 0x6c, 0x57, 0x61, 0xdf, 0x7c, 0x1e, 0xb6, 0xda,
-	0x1e, 0xdf, 0xc0, 0xdd, 0x79, 0xb5, 0x48, 0x63, 0x58, 0x93, 0xe8, 0x80, 0x13, 0x11, 0xa4, 0x72,
-	0x94, 0x07, 0xbd, 0xcb, 0x5b, 0xdf, 0x1c, 0x7d, 0xd9, 0xfa, 0xfd, 0xc6, 0xd9, 0xeb, 0xc0, 0x12,
-	0xdf, 0x4b, 0xbd, 0x6f, 0x8f, 0x4e, 0x6c, 0xe3, 0xc9, 0x89, 0x6d, 0x3c, 0x3d, 0xb1, 0xcd, 0x1f,
-	0x4b, 0xdb, 0xfc, 0xb5, 0xb4, 0xcd, 0xc7, 0xa5, 0x6d, 0x1e, 0x95, 0xb6, 0xf9, 0x67, 0x69, 0x9b,
-	0x7f, 0x95, 0xb6, 0xf1, 0xb4, 0xb4, 0xcd, 0x9f, 0x4f, 0x6d, 0xe3, 0xe8, 0xd4, 0x36, 0x9e, 0x9c,
-	0xda, 0xc6, 0x37, 0xb7, 0x63, 0x2a, 0xe6, 0x7b, 0x53, 0x77, 0xc6, 0xd2, 0x61, 0x9d, 0x40, 0xf3,
-	0xf3, 0xc2, 0x5f, 0xfe, 0x74, 0x59, 0x19, 0xee, 0xfc, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xfb, 0x09,
-	0xde, 0x0f, 0x0c, 0x08, 0x00, 0x00,
+	// 907 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0xbd, 0x6f, 0xdb, 0x46,
+	0x14, 0x27, 0x63, 0xca, 0x92, 0x9f, 0xfc, 0x91, 0x1e, 0xfa, 0x21, 0x38, 0x29, 0x6d, 0xb0, 0x4d,
+	0xeb, 0x16, 0x85, 0x14, 0x28, 0x40, 0x93, 0x6e, 0x29, 0xfb, 0x01, 0x06, 0xb5, 0x1c, 0x81, 0x0a,
+	0x02, 0xb4, 0x0b, 0x41, 0x89, 0x57, 0xe9, 0x5a, 0x91, 0x47, 0xf0, 0xce, 0x76, 0xbd, 0x75, 0x29,
+	0xd0, 0xb1, 0x7f, 0x43, 0xa7, 0x0e, 0xfd, 0x1f, 0xba, 0x74, 0xc8, 0xe8, 0x31, 0x93, 0x51, 0xd3,
+	0x4b, 0xc7, 0xcc, 0x45, 0x87, 0xe2, 0x3e, 0x24, 0xd2, 0x0e, 0x68, 0xd9, 0x4b, 0x81, 0x2c, 0x06,
+	0xef, 0xbd, 0x7b, 0xbf, 0x7b, 0xef, 0xf7, 0xde, 0xfb, 0xc9, 0xb0, 0x99, 0x66, 0x94, 0xd3, 0xce,
+	0x88, 0x26, 0x0c, 0x27, 0x6c, 0x9f, 0x75, 0x62, 0x36, 0x66, 0x6d, 0x69, 0x44, 0x9b, 0x1c, 0x27,
+	0x11, 0xce, 0x62, 0x92, 0x70, 0x65, 0x69, 0xcf, 0xaf, 0x6d, 0xbe, 0xc7, 0x27, 0x24, 0x8b, 0x82,
+	0x34, 0xcc, 0xf8, 0x51, 0x47, 0x61, 0x8c, 0xe9, 0x98, 0x16, 0x5f, 0x2a, 0x62, 0xf3, 0x2d, 0x65,
+	0xe1, 0x47, 0x29, 0x66, 0xea, 0xaf, 0x76, 0xdc, 0x52, 0x8e, 0x29, 0x19, 0xb2, 0xce, 0x90, 0xf0,
+	0x73, 0x4e, 0xe7, 0x0f, 0x13, 0x56, 0xf7, 0xf0, 0xa1, 0x4f, 0xf7, 0x93, 0x68, 0xc0, 0x71, 0x8a,
+	0xde, 0x84, 0xe5, 0x09, 0x26, 0xe3, 0x09, 0x6f, 0x99, 0xdb, 0xe6, 0xce, 0x92, 0xaf, 0x4f, 0xe8,
+	0x75, 0xa8, 0x65, 0xe2, 0x52, 0xeb, 0xc6, 0xb6, 0xb9, 0x53, 0xf3, 0xd5, 0x01, 0xdd, 0x06, 0x8b,
+	0x71, 0x9c, 0xb6, 0x96, 0x84, 0xd1, 0x6d, 0xfc, 0x73, 0xb2, 0x65, 0x91, 0x84, 0x3f, 0xf0, 0xa5,
+	0x15, 0xdd, 0x87, 0x16, 0xc3, 0x23, 0x9a, 0x44, 0x2c, 0x60, 0x24, 0x19, 0xe1, 0x80, 0xf1, 0x30,
+	0xe3, 0x01, 0x27, 0x31, 0x6e, 0x59, 0x12, 0xfd, 0x0d, 0xed, 0x1f, 0x08, 0xf7, 0x40, 0x78, 0x9f,
+	0x90, 0x18, 0xa3, 0x0f, 0xe1, 0xb5, 0x69, 0xc8, 0x78, 0x30, 0xa2, 0x71, 0x4c, 0x78, 0xa0, 0x1e,
+	0xae, 0xc9, 0x87, 0x37, 0x84, 0xe3, 0x33, 0x69, 0x97, 0x49, 0x3b, 0xff, 0x9a, 0xb0, 0xb6, 0x87,
+	0x0f, 0x9f, 0x86, 0x53, 0x12, 0xb9, 0x53, 0x3a, 0xfa, 0xfe, 0x42, 0x09, 0xd6, 0x82, 0x12, 0xbe,
+	0x06, 0x34, 0x14, 0x61, 0x92, 0x61, 0x16, 0x4c, 0x70, 0x18, 0xe1, 0x4c, 0x16, 0xd4, 0xec, 0xde,
+	0x69, 0xbf, 0xd4, 0x18, 0x45, 0x5e, 0x3f, 0xcc, 0xf8, 0x00, 0x73, 0x4f, 0x5e, 0x76, 0xad, 0x67,
+	0x27, 0x5b, 0x86, 0x7f, 0x53, 0xc2, 0x08, 0x0f, 0x53, 0x76, 0xf4, 0x05, 0x34, 0x4b, 0xd0, 0xb2,
+	0xe4, 0x66, 0xf7, 0xdd, 0x97, 0x31, 0x45, 0x6b, 0xda, 0xa2, 0x35, 0x6d, 0x97, 0xf0, 0x4f, 0xb3,
+	0x2c, 0x3c, 0xf2, 0xa1, 0x00, 0x43, 0xb7, 0x60, 0x85, 0x30, 0xcd, 0x85, 0x64, 0xa1, 0xe1, 0x37,
+	0x08, 0x53, 0x1c, 0x38, 0x7b, 0xd0, 0xe8, 0x67, 0x34, 0xa5, 0x2c, 0x9c, 0x22, 0x17, 0x1a, 0xa9,
+	0xfe, 0x96, 0xa5, 0x37, 0xbb, 0xdb, 0x95, 0x05, 0xe8, 0x7b, 0x3a, 0xf7, 0x79, 0x9c, 0xf3, 0xab,
+	0x09, 0xcd, 0x99, 0xb3, 0xff, 0x78, 0xb7, 0x72, 0x1e, 0x3e, 0x02, 0x34, 0x8b, 0x09, 0x52, 0x3a,
+	0x0d, 0xca, 0xcc, 0xde, 0x9c, 0x79, 0xfa, 0x74, 0x2a, 0x9b, 0x84, 0x7a, 0xb0, 0x5a, 0xbe, 0xad,
+	0xe9, 0xbd, 0x12, 0x15, 0x3a, 0xc3, 0x66, 0x09, 0xd3, 0xc9, 0x60, 0xc5, 0x9d, 0xf1, 0x73, 0xcd,
+	0x89, 0xbd, 0x0f, 0x96, 0xe8, 0x86, 0xce, 0xe0, 0xed, 0xcb, 0x1a, 0xcc, 0xf4, 0xd3, 0x32, 0xc0,
+	0x79, 0x00, 0xd6, 0x53, 0xca, 0x31, 0xba, 0x0b, 0xd6, 0x01, 0xe5, 0x58, 0x13, 0x7c, 0xbb, 0x0a,
+	0x40, 0xdc, 0xf5, 0xe5, 0x4d, 0xe7, 0x67, 0x13, 0xea, 0x5e, 0xc8, 0x64, 0xf4, 0xf5, 0x92, 0xfd,
+	0x04, 0x2c, 0x81, 0x26, 0x93, 0x5d, 0xaf, 0x9e, 0xc6, 0x01, 0x19, 0x27, 0x38, 0xea, 0xb1, 0xf1,
+	0x93, 0xa3, 0x14, 0xfb, 0x32, 0x44, 0x00, 0x92, 0x24, 0xc2, 0x3f, 0xc8, 0xa9, 0xab, 0xf9, 0xea,
+	0xe0, 0xfc, 0x69, 0xc2, 0xaa, 0xc8, 0x63, 0x80, 0x79, 0x2f, 0xfc, 0xae, 0x7b, 0xef, 0xff, 0xcb,
+	0xe7, 0x2b, 0x68, 0xa8, 0x5d, 0x20, 0x91, 0x5e, 0x84, 0xad, 0xaa, 0x70, 0xd9, 0xda, 0x47, 0x9f,
+	0xbb, 0x1b, 0x82, 0xfd, 0xfc, 0x64, 0xab, 0xae, 0x0d, 0x7e, 0x5d, 0x22, 0x3c, 0x8a, 0x9c, 0x9f,
+	0x6e, 0x40, 0x53, 0x97, 0xe1, 0x12, 0xce, 0x5e, 0xcd, 0x2a, 0xd0, 0x43, 0xa8, 0x89, 0xf9, 0x60,
+	0x72, 0xa7, 0xaf, 0xb7, 0x0d, 0x2a, 0xd0, 0xf9, 0xbd, 0x06, 0xf5, 0x1e, 0x66, 0x2c, 0x1c, 0x63,
+	0xd4, 0x87, 0xf5, 0x04, 0x1f, 0xaa, 0x3d, 0x0c, 0xa4, 0x28, 0xab, 0x09, 0xdd, 0x69, 0x57, 0xff,
+	0xb8, 0xb4, 0xcb, 0xd2, 0xef, 0x19, 0xfe, 0x6a, 0x52, 0xfe, 0x29, 0x18, 0xc0, 0x86, 0x40, 0x3c,
+	0x10, 0xca, 0x1a, 0xc8, 0xa4, 0x25, 0x8f, 0xcd, 0xee, 0x07, 0x0b, 0x20, 0x0b, 0x2d, 0xf6, 0x0c,
+	0x7f, 0x2d, 0x39, 0x27, 0xce, 0x65, 0x8d, 0xaa, 0x54, 0x81, 0x02, 0x6d, 0x26, 0x45, 0x5e, 0x49,
+	0xa3, 0xd0, 0xee, 0x05, 0x35, 0x51, 0x9d, 0x78, 0xff, 0x2a, 0x38, 0xfd, 0xc7, 0xbb, 0xde, 0x79,
+	0x31, 0x41, 0x5f, 0x02, 0x14, 0x2a, 0xad, 0x7b, 0x71, 0xe7, 0x32, 0xac, 0xb9, 0xf4, 0x78, 0x86,
+	0xbf, 0x32, 0xd7, 0x69, 0xf4, 0xb1, 0x16, 0x86, 0xe5, 0x2a, 0xe5, 0x2d, 0x10, 0xc4, 0xec, 0x7a,
+	0x86, 0x92, 0x07, 0xf4, 0x10, 0x1a, 0x93, 0x90, 0x05, 0x32, 0xb6, 0x2e, 0x63, 0xdf, 0xb9, 0x2c,
+	0x56, 0x2b, 0x89, 0x67, 0xf8, 0xf5, 0x89, 0x16, 0x95, 0x3e, 0xac, 0x8b, 0xe8, 0x80, 0x61, 0x1e,
+	0xc4, 0x62, 0xad, 0x5b, 0x8d, 0xc5, 0xad, 0x2f, 0xcb, 0x80, 0x68, 0xfd, 0x41, 0x59, 0x16, 0x7a,
+	0xb0, 0x36, 0x47, 0x14, 0xf3, 0xd7, 0x5a, 0x59, 0x4c, 0x71, 0x69, 0x21, 0x05, 0xc5, 0x07, 0xc5,
+	0xd1, 0xad, 0xc1, 0x12, 0xdb, 0x8f, 0xdd, 0x6f, 0x8f, 0x4f, 0x6d, 0xe3, 0xf9, 0xa9, 0x6d, 0xbc,
+	0x38, 0xb5, 0xcd, 0x1f, 0x73, 0xdb, 0xfc, 0x2d, 0xb7, 0xcd, 0x67, 0xb9, 0x6d, 0x1e, 0xe7, 0xb6,
+	0xf9, 0x57, 0x6e, 0x9b, 0x7f, 0xe7, 0xb6, 0xf1, 0x22, 0xb7, 0xcd, 0x5f, 0xce, 0x6c, 0xe3, 0xf8,
+	0xcc, 0x36, 0x9e, 0x9f, 0xd9, 0xc6, 0x37, 0x77, 0xc7, 0x84, 0x4f, 0xf6, 0x87, 0xed, 0x11, 0x8d,
+	0x3b, 0xc5, 0xf3, 0xe5, 0xcf, 0x0b, 0xff, 0x59, 0x0d, 0x97, 0xa5, 0xe1, 0xde, 0x7f, 0x01, 0x00,
+	0x00, 0xff, 0xff, 0x03, 0xcd, 0xca, 0x58, 0x73, 0x09, 0x00, 0x00,
 }
 
 func (this *NewRoundStep) Equal(that interface{}) bool {
@@ -871,7 +963,7 @@ func (this *ProposalPOL) Equal(that interface{}) bool {
 	if this.ProposalPolRound != that1.ProposalPolRound {
 		return false
 	}
-	if !this.ProposalPol.Equal(that1.ProposalPol) {
+	if !this.ProposalPol.Equal(&that1.ProposalPol) {
 		return false
 	}
 	return true
@@ -901,7 +993,7 @@ func (this *BlockPart) Equal(that interface{}) bool {
 	if this.Round != that1.Round {
 		return false
 	}
-	if !this.Part.Equal(that1.Part) {
+	if !this.Part.Equal(&that1.Part) {
 		return false
 	}
 	return true
@@ -991,7 +1083,43 @@ func (this *VoteSetMaj23) Equal(that interface{}) bool {
 	if this.Type != that1.Type {
 		return false
 	}
-	if !this.BlockID.Equal(that1.BlockID) {
+	if !this.BlockID.Equal(&that1.BlockID) {
+		return false
+	}
+	return true
+}
+func (this *VoteSetBits) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*VoteSetBits)
+	if !ok {
+		that2, ok := that.(VoteSetBits)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Height != that1.Height {
+		return false
+	}
+	if this.Round != that1.Round {
+		return false
+	}
+	if this.Type != that1.Type {
+		return false
+	}
+	if !this.BlockID.Equal(&that1.BlockID) {
+		return false
+	}
+	if !this.Votes.Equal(&that1.Votes) {
 		return false
 	}
 	return true
@@ -1218,6 +1346,30 @@ func (this *Message_VoteSetMaj23) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *Message_VoteSetBits) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Message_VoteSetBits)
+	if !ok {
+		that2, ok := that.(Message_VoteSetBits)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.VoteSetBits.Equal(that1.VoteSetBits) {
+		return false
+	}
+	return true
+}
 func (this *NewRoundStep) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1266,9 +1418,7 @@ func (this *ProposalPOL) GoString() string {
 	s = append(s, "&consensus.ProposalPOL{")
 	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
 	s = append(s, "ProposalPolRound: "+fmt.Sprintf("%#v", this.ProposalPolRound)+",\n")
-	if this.ProposalPol != nil {
-		s = append(s, "ProposalPol: "+fmt.Sprintf("%#v", this.ProposalPol)+",\n")
-	}
+	s = append(s, "ProposalPol: "+strings.Replace(this.ProposalPol.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1280,9 +1430,7 @@ func (this *BlockPart) GoString() string {
 	s = append(s, "&consensus.BlockPart{")
 	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
 	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	if this.Part != nil {
-		s = append(s, "Part: "+fmt.Sprintf("%#v", this.Part)+",\n")
-	}
+	s = append(s, "Part: "+strings.Replace(this.Part.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1320,9 +1468,21 @@ func (this *VoteSetMaj23) GoString() string {
 	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
 	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
 	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	if this.BlockID != nil {
-		s = append(s, "BlockID: "+fmt.Sprintf("%#v", this.BlockID)+",\n")
+	s = append(s, "BlockID: "+strings.Replace(this.BlockID.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *VoteSetBits) GoString() string {
+	if this == nil {
+		return "nil"
 	}
+	s := make([]string, 0, 9)
+	s = append(s, "&consensus.VoteSetBits{")
+	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
+	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
+	s = append(s, "BlockID: "+strings.Replace(this.BlockID.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "Votes: "+strings.Replace(this.Votes.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1330,7 +1490,7 @@ func (this *Message) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 12)
+	s := make([]string, 0, 13)
 	s = append(s, "&consensus.Message{")
 	if this.Sum != nil {
 		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
@@ -1400,6 +1560,14 @@ func (this *Message_VoteSetMaj23) GoString() string {
 	}
 	s := strings.Join([]string{`&consensus.Message_VoteSetMaj23{` +
 		`VoteSetMaj23:` + fmt.Sprintf("%#v", this.VoteSetMaj23) + `}`}, ", ")
+	return s
+}
+func (this *Message_VoteSetBits) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&consensus.Message_VoteSetBits{` +
+		`VoteSetBits:` + fmt.Sprintf("%#v", this.VoteSetBits) + `}`}, ", ")
 	return s
 }
 func valueToGoStringMsgs(v interface{}, typ string) string {
@@ -1576,18 +1744,16 @@ func (m *ProposalPOL) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.ProposalPol != nil {
-		{
-			size, err := m.ProposalPol.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMsgs(dAtA, i, uint64(size))
+	{
+		size, err := m.ProposalPol.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
-		i--
-		dAtA[i] = 0x1a
+		i -= size
+		i = encodeVarintMsgs(dAtA, i, uint64(size))
 	}
+	i--
+	dAtA[i] = 0x1a
 	if m.ProposalPolRound != 0 {
 		i = encodeVarintMsgs(dAtA, i, uint64(m.ProposalPolRound))
 		i--
@@ -1621,18 +1787,16 @@ func (m *BlockPart) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Part != nil {
-		{
-			size, err := m.Part.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMsgs(dAtA, i, uint64(size))
+	{
+		size, err := m.Part.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
-		i--
-		dAtA[i] = 0x1a
+		i -= size
+		i = encodeVarintMsgs(dAtA, i, uint64(size))
 	}
+	i--
+	dAtA[i] = 0x1a
 	if m.Round != 0 {
 		i = encodeVarintMsgs(dAtA, i, uint64(m.Round))
 		i--
@@ -1744,18 +1908,74 @@ func (m *VoteSetMaj23) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.BlockID != nil {
-		{
-			size, err := m.BlockID.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMsgs(dAtA, i, uint64(size))
+	{
+		size, err := m.BlockID.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
-		i--
-		dAtA[i] = 0x22
+		i -= size
+		i = encodeVarintMsgs(dAtA, i, uint64(size))
 	}
+	i--
+	dAtA[i] = 0x22
+	if m.Type != 0 {
+		i = encodeVarintMsgs(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Round != 0 {
+		i = encodeVarintMsgs(dAtA, i, uint64(m.Round))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.Height != 0 {
+		i = encodeVarintMsgs(dAtA, i, uint64(m.Height))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *VoteSetBits) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *VoteSetBits) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *VoteSetBits) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size, err := m.Votes.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintMsgs(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x2a
+	{
+		size, err := m.BlockID.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintMsgs(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x22
 	if m.Type != 0 {
 		i = encodeVarintMsgs(dAtA, i, uint64(m.Type))
 		i--
@@ -1974,6 +2194,27 @@ func (m *Message_VoteSetMaj23) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *Message_VoteSetBits) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_VoteSetBits) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.VoteSetBits != nil {
+		{
+			size, err := m.VoteSetBits.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x4a
+	}
+	return len(dAtA) - i, nil
+}
 func encodeVarintMsgs(dAtA []byte, offset int, v uint64) int {
 	offset -= sovMsgs(v)
 	base := offset
@@ -2056,10 +2297,8 @@ func (m *ProposalPOL) Size() (n int) {
 	if m.ProposalPolRound != 0 {
 		n += 1 + sovMsgs(uint64(m.ProposalPolRound))
 	}
-	if m.ProposalPol != nil {
-		l = m.ProposalPol.Size()
-		n += 1 + l + sovMsgs(uint64(l))
-	}
+	l = m.ProposalPol.Size()
+	n += 1 + l + sovMsgs(uint64(l))
 	return n
 }
 
@@ -2075,10 +2314,8 @@ func (m *BlockPart) Size() (n int) {
 	if m.Round != 0 {
 		n += 1 + sovMsgs(uint64(m.Round))
 	}
-	if m.Part != nil {
-		l = m.Part.Size()
-		n += 1 + l + sovMsgs(uint64(l))
-	}
+	l = m.Part.Size()
+	n += 1 + l + sovMsgs(uint64(l))
 	return n
 }
 
@@ -2131,10 +2368,30 @@ func (m *VoteSetMaj23) Size() (n int) {
 	if m.Type != 0 {
 		n += 1 + sovMsgs(uint64(m.Type))
 	}
-	if m.BlockID != nil {
-		l = m.BlockID.Size()
-		n += 1 + l + sovMsgs(uint64(l))
+	l = m.BlockID.Size()
+	n += 1 + l + sovMsgs(uint64(l))
+	return n
+}
+
+func (m *VoteSetBits) Size() (n int) {
+	if m == nil {
+		return 0
 	}
+	var l int
+	_ = l
+	if m.Height != 0 {
+		n += 1 + sovMsgs(uint64(m.Height))
+	}
+	if m.Round != 0 {
+		n += 1 + sovMsgs(uint64(m.Round))
+	}
+	if m.Type != 0 {
+		n += 1 + sovMsgs(uint64(m.Type))
+	}
+	l = m.BlockID.Size()
+	n += 1 + l + sovMsgs(uint64(l))
+	l = m.Votes.Size()
+	n += 1 + l + sovMsgs(uint64(l))
 	return n
 }
 
@@ -2246,6 +2503,18 @@ func (m *Message_VoteSetMaj23) Size() (n int) {
 	}
 	return n
 }
+func (m *Message_VoteSetBits) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.VoteSetBits != nil {
+		l = m.VoteSetBits.Size()
+		n += 1 + l + sovMsgs(uint64(l))
+	}
+	return n
+}
 
 func sovMsgs(x uint64) (n int) {
 	return (math_bits.Len64(x|1) + 6) / 7
@@ -2298,7 +2567,7 @@ func (this *ProposalPOL) String() string {
 	s := strings.Join([]string{`&ProposalPOL{`,
 		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
 		`ProposalPolRound:` + fmt.Sprintf("%v", this.ProposalPolRound) + `,`,
-		`ProposalPol:` + strings.Replace(fmt.Sprintf("%v", this.ProposalPol), "BitArray", "bits.BitArray", 1) + `,`,
+		`ProposalPol:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ProposalPol), "BitArray", "bits.BitArray", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2310,7 +2579,7 @@ func (this *BlockPart) String() string {
 	s := strings.Join([]string{`&BlockPart{`,
 		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
 		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Part:` + strings.Replace(fmt.Sprintf("%v", this.Part), "Parts", "types.Parts", 1) + `,`,
+		`Part:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Part), "Parts", "types.Parts", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2346,7 +2615,21 @@ func (this *VoteSetMaj23) String() string {
 		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
 		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
 		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`BlockID:` + strings.Replace(fmt.Sprintf("%v", this.BlockID), "BlockID", "types.BlockID", 1) + `,`,
+		`BlockID:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.BlockID), "BlockID", "types.BlockID", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VoteSetBits) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VoteSetBits{`,
+		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
+		`BlockID:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.BlockID), "BlockID", "types.BlockID", 1), `&`, ``, 1) + `,`,
+		`Votes:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Votes), "BitArray", "bits.BitArray", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2437,6 +2720,16 @@ func (this *Message_VoteSetMaj23) String() string {
 	}
 	s := strings.Join([]string{`&Message_VoteSetMaj23{`,
 		`VoteSetMaj23:` + strings.Replace(fmt.Sprintf("%v", this.VoteSetMaj23), "VoteSetMaj23", "VoteSetMaj23", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Message_VoteSetBits) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Message_VoteSetBits{`,
+		`VoteSetBits:` + strings.Replace(fmt.Sprintf("%v", this.VoteSetBits), "VoteSetBits", "VoteSetBits", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2959,9 +3252,6 @@ func (m *ProposalPOL) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ProposalPol == nil {
-				m.ProposalPol = &bits.BitArray{}
-			}
 			if err := m.ProposalPol.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3085,9 +3375,6 @@ func (m *BlockPart) Unmarshal(dAtA []byte) error {
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Part == nil {
-				m.Part = &types.Parts{}
 			}
 			if err := m.Part.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3450,10 +3737,183 @@ func (m *VoteSetMaj23) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.BlockID == nil {
-				m.BlockID = &types.BlockID{}
+			if err := m.BlockID.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMsgs(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *VoteSetBits) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMsgs
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VoteSetBits: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VoteSetBits: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			m.Height = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Height |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Round", wireType)
+			}
+			m.Round = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Round |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			m.Type = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Type |= types.SignedMsgType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockID", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
 			}
 			if err := m.BlockID.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Votes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Votes.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3789,6 +4249,41 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Sum = &Message_VoteSetMaj23{v}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VoteSetBits", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &VoteSetBits{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &Message_VoteSetBits{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
