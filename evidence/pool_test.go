@@ -30,9 +30,6 @@ func TestEvidencePool(t *testing.T) {
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = store.NewBlockStore(blockStoreDB)
-		pool         = NewPool(stateDB, evidenceDB, blockStore)
-		blockStoreDB = dbm.NewMemDB()
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -83,7 +80,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 		stateDB       = initializeValidatorState(valAddr, height)
 		evidenceDB    = dbm.NewMemDB()
 		blockStoreDB  = dbm.NewMemDB()
-		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
@@ -118,7 +115,7 @@ func TestEvidencePoolAddEvidence(t *testing.T) {
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), height, valAddr)
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
@@ -220,8 +217,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	expiredKey := keyPending(expiredEvidence)
 	expiredEiBytes := cdc.MustMarshalBinaryBare(expiredEvidence)
 	_ = evidenceDB.Set(expiredKey, expiredEiBytes)
-	pool := NewPool(stateDB, evidenceDB, blockStore)
-
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 	assert.True(t, pool.IsPending(goodEvidence))
 }

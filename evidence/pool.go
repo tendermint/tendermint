@@ -290,9 +290,7 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
-func (evpool *Pool) removeEvidenceFromList
-
-func (evpool *Pool) removeEvidence(
+func (evpool *Pool) removeEvidenceFromList(
 	height int64,
 	lastBlockTime time.Time,
 	params types.EvidenceParams,
