@@ -276,7 +276,6 @@ func (cfg BaseConfig) NodeKeyFile() string {
 
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
-	fmt.Println(cfg.DBPath, cfg.RootDir)
 	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
