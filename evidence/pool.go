@@ -44,10 +44,15 @@ type Pool struct {
 // Validator.Address -> Last height it was in validator set
 type valToLastHeightMap map[string]int64
 
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
+func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
 	var (
 		state = sm.LoadState(stateDB)
 	)
+
+	valToLastHeight, err := buildValToLastHeightMap(state, stateDB, blockStore)
+	if err != nil {
+		return nil, err
+	}
 
 	pool := &Pool{
 		stateDB:         stateDB,
@@ -56,7 +61,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		logger:          log.NewNopLogger(),
 		evidenceStore:   evidenceDB,
 		evidenceList:    clist.New(),
-		valToLastHeight: buildValToLastHeightMap(state, stateDB),
+		valToLastHeight: valToLastHeight,
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
@@ -70,7 +75,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		pool.evidenceList.PushBack(ev)
 	}
 
-	return pool
+	return pool, nil
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
@@ -100,7 +105,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
-	evpool.cleanupValToLastHeight(block.Height)
+	evpool.updateValToLastHeight(block.Height, state)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool. If
@@ -216,7 +221,7 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Tim
 	}
 }
 
-// Checks whether the evidence has already been committed. DB errors are passed to the logger.
+// IsCommitted returns true if we have already seen this exact evidence and it is already marked as committed.
 func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	key := keyCommitted(evidence)
 	ok, err := evpool.evidenceStore.Has(key)
@@ -249,6 +254,18 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
+// ValidatorLastHeight returns the last height of the validator w/ the
+// given address. 0 - if address never was a validator or was such a
+// long time ago (> ConsensusParams.Evidence.MaxAgeDuration && >
+// ConsensusParams.Evidence.MaxAgeNumBlocks).
+func (evpool *Pool) ValidatorLastHeight(address []byte) int64 {
+	h, ok := evpool.valToLastHeight[string(address)]
+	if !ok {
+		return 0
+	}
+	return h
+}
+
 // State returns the current state of the evpool.
 func (evpool *Pool) State() sm.State {
 	evpool.mtx.Lock()
@@ -273,7 +290,9 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
-func (evpool *Pool) removeEvidenceFromList(
+func (evpool *Pool) removeEvidenceFromList
+
+func (evpool *Pool) removeEvidence(
 	height int64,
 	lastBlockTime time.Time,
 	params types.EvidenceParams,
@@ -343,22 +362,58 @@ func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
 }
 
-func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap {
+func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
+	// Update current validators & add new ones.
+	for _, val := range state.Validators.Validators {
+		evpool.valToLastHeight[string(val.Address)] = blockHeight
+	}
+
+	// Remove validators outside of MaxAgeNumBlocks & MaxAgeDuration.
+	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
+	if removeHeight >= 1 {
+		valSet, err := sm.LoadValidators(evpool.stateDB, removeHeight)
+		if err != nil {
+			for _, val := range valSet.Validators {
+				h, ok := evpool.valToLastHeight[string(val.Address)]
+				if ok && h == removeHeight {
+					delete(evpool.valToLastHeight, string(val.Address))
+				}
+			}
+		}
+	}
+}
+
+func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.BlockStore) (valToLastHeightMap, error) {
 	var (
 		valToLastHeight = make(map[string]int64)
 		params          = state.ConsensusParams.Evidence
 
-		numBlocks = int64(0)
-		height    = state.LastBlockHeight
+		numBlocks  = int64(0)
+		minAgeTime = time.Now().Add(-params.MaxAgeDuration)
+		height     = state.LastBlockHeight
 	)
 
-	// From last height down to MaxAgeNumBlocks, put all validators into a map.
-	for height >= 1 && numBlocks <= params.MaxAgeNumBlocks {
-		valSet, err := sm.LoadValidators(stateDB, height)
+	if height == 0 {
+		return valToLastHeight, nil
+	}
 
-		// last stored height -> return
-		if _, ok := err.(sm.ErrNoValSetForHeight); ok {
-			return valToLastHeight
+	meta := blockStore.LoadBlockMeta(height)
+	if meta == nil {
+		return nil, fmt.Errorf("block meta for height %d not found", height)
+	}
+	blockTime := meta.Header.Time
+
+	// From state.LastBlockHeight, build a map of "active" validators until
+	// MaxAgeNumBlocks is passed and block time is less than now() -
+	// MaxAgeDuration.
+	for height >= 1 && (numBlocks <= params.MaxAgeNumBlocks || !blockTime.Before(minAgeTime)) {
+		valSet, err := sm.LoadValidators(stateDB, height)
+		if err != nil {
+			// last stored height -> return
+			if _, ok := err.(sm.ErrNoValSetForHeight); ok {
+				return valToLastHeight, nil
+			}
+			return nil, fmt.Errorf("validator set for height %d not found", height)
 		}
 
 		for _, val := range valSet.Validators {
@@ -369,10 +424,22 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB) valToLastHeightMap 
 		}
 
 		height--
+
+		if height > 0 {
+			// NOTE: we assume here blockStore and state.Validators are in sync. I.e if
+			// block N is stored, then validators for height N are also stored in
+			// state.
+			meta := blockStore.LoadBlockMeta(height)
+			if meta == nil {
+				return nil, fmt.Errorf("block meta for height %d not found", height)
+			}
+			blockTime = meta.Header.Time
+		}
+
 		numBlocks++
 	}
 
-	return valToLastHeight
+	return valToLastHeight, nil
 }
 
 // big endian padded hex

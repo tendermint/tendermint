@@ -252,7 +252,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence

@@ -28,9 +28,9 @@ type ConflictingHeadersEvidence struct {
 ```
 
 _Remark_: Theoretically, only the header, which differs from what a full node
-has, needs to be sent. But sending two headers a) makes an evidence easily
-verifiable b) simplifies retransmission (since the full node does not have to
-query each receiver about which header it has: A or B)
+has, needs to be sent. But sending two headers a) makes evidence easily
+verifiable b) simplifies the light client, which does not have query each
+witness as to which header it possesses.
 
 When a full node receives the `ConflictingHeadersEvidence` evidence, it should
 a) validate it b) figure out if malicious behaviour is obvious (immediately

@@ -202,6 +202,13 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
 		}
 
+		// check if last height validator was in the validator set is within
+		// MaxAgeNumBlocks.
+		if ageNumBlocks > 0 && phve.LastHeightValidatorWasInSet <= ageNumBlocks {
+			return fmt.Errorf("last time validator was in the set at height %d, min: %d",
+				phve.LastHeightValidatorWasInSet, ageNumBlocks+1)
+		}
+
 		valset, err := LoadValidators(stateDB, phve.LastHeightValidatorWasInSet)
 		if err != nil {
 			// TODO: if err is just that we cant find it cuz we pruned, ignore.
