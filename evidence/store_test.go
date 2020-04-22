@@ -19,7 +19,7 @@ func TestStoreAddDuplicate(t *testing.T) {
 	store := NewStore(db)
 
 	priority := int64(10)
-	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
+	ev := types.NewMockEvidence(2, time.Now().UTC(), []byte("val1"))
 
 	added, err := store.AddNewEvidence(ev, priority)
 	require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestStoreCommitDuplicate(t *testing.T) {
 	store := NewStore(db)
 
 	priority := int64(10)
-	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
+	ev := types.NewMockEvidence(2, time.Now().UTC(), []byte("val1"))
 
 	store.MarkEvidenceAsCommitted(ev)
 
@@ -56,7 +56,7 @@ func TestStoreMark(t *testing.T) {
 	assert.Equal(t, 0, len(pendingEv))
 
 	priority := int64(10)
-	ev := types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1"))
+	ev := types.NewMockEvidence(2, time.Now().UTC(), []byte("val1"))
 
 	added, err := store.AddNewEvidence(ev, priority)
 	require.NoError(t, err)
@@ -105,12 +105,12 @@ func TestStorePriority(t *testing.T) {
 		ev       types.MockEvidence
 		priority int64
 	}{
-		{types.NewMockEvidence(2, time.Now().UTC(), 1, []byte("val1")), 17},
-		{types.NewMockEvidence(5, time.Now().UTC(), 2, []byte("val2")), 15},
-		{types.NewMockEvidence(10, time.Now().UTC(), 2, []byte("val2")), 13},
-		{types.NewMockEvidence(100, time.Now().UTC(), 2, []byte("val2")), 11},
-		{types.NewMockEvidence(90, time.Now().UTC(), 2, []byte("val2")), 11},
-		{types.NewMockEvidence(80, time.Now().UTC(), 2, []byte("val2")), 11},
+		{types.NewMockEvidence(2, time.Now().UTC(), []byte("val1")), 17},
+		{types.NewMockEvidence(5, time.Now().UTC(), []byte("val2")), 15},
+		{types.NewMockEvidence(10, time.Now().UTC(), []byte("val2")), 13},
+		{types.NewMockEvidence(100, time.Now().UTC(), []byte("val2")), 11},
+		{types.NewMockEvidence(90, time.Now().UTC(), []byte("val2")), 11},
+		{types.NewMockEvidence(80, time.Now().UTC(), []byte("val2")), 11},
 	}
 
 	for _, c := range cases {

@@ -204,7 +204,7 @@ type mockEvidencePool struct {
 
 func newMockEvidencePool(val []byte) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), 1, val)},
+		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), val)},
 	}
 }
 
