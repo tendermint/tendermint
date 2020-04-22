@@ -1730,9 +1730,12 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		cs.Logger.Debug("[peppermint] Setting side tx results to vote")
 		sideTxResults := make([]types.SideTxResult, 0)
 		for _, sideTxResponse := range cs.state.SideTxResponses {
-			err := cs.privValidator.SignSideTxResult(sideTxResponse)
-			if err != nil {
-				return nil, err
+			// sign if data is available on side tx response
+			if len(sideTxResponse.Data) > 0 {
+				err := cs.privValidator.SignSideTxResult(sideTxResponse)
+				if err != nil {
+					return nil, err
+				}
 			}
 			sideTxResults = append(sideTxResults, sideTxResponse.SideTxResult)
 		}

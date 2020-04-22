@@ -174,7 +174,8 @@ func (vote *Vote) ValidateBasic() error {
 
 	if len(vote.SideTxResults) > 0 {
 		for _, s := range vote.SideTxResults {
-			if len(s.Sig) != 65 {
+			// side-tx response sig should be empty or valid 65 bytes
+			if len(s.Sig) != 0 && len(s.Sig) != 65 {
 				return fmt.Errorf("Side-tx signature is invalid. Sig length: %v", len(s.Sig))
 			}
 
@@ -182,6 +183,7 @@ func (vote *Vote) ValidateBasic() error {
 				return fmt.Errorf("Invalid side-tx result. Result: %v", s.Result)
 			}
 
+			// tx-hash must be 32 bytes
 			if len(s.TxHash) != 32 {
 				return fmt.Errorf("Invalid side-tx tx hash. TxHash: %v", hex.EncodeToString(s.TxHash))
 			}
