@@ -76,10 +76,11 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
     events := []abci.Event{
         {
             Type: "transfer",
-            Attributes: kv.Pairs{
-                kv.Pair{Key: []byte("sender"), Value: []byte("Bob")},
-                kv.Pair{Key: []byte("recipient"), Value: []byte("Alice")},
-                kv.Pair{Key: []byte("balance"), Value: []byte("100")},
+            Attributes: []abci.EventAttribute{
+                {Key: []byte("sender"), Value: []byte("Bob")},
+                {Key: []byte("recipient"), Value: []byte("Alice")},
+                {Key: []byte("balance"), Value: []byte("100")},
+                {Key: []byte("note"), Value: []byte("nothing"), Index: true},
             },
         },
     }
@@ -97,6 +98,9 @@ Note, there are a few predefined event types:
 - `tx.height` (height of the block transaction was committed in)
 
 Tendermint will throw a warning if you try to use any of the above keys.
+
+The index will be added if the `Index` field of attribute is set to true. In above example, querying
+using `transfer.note` will work.
 
 ## Querying Transactions
 

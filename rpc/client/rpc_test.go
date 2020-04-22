@@ -493,6 +493,20 @@ func TestTxSearch(t *testing.T) {
 			t.Fatal("expected a lot of transactions")
 		}
 
+		// query using an index key
+		result, err = c.TxSearch("app.index_key='index is working'", false, 1, 30, "asc")
+		require.Nil(t, err)
+		if len(result.Txs) == 0 {
+			t.Fatal("expected a lot of transactions")
+		}
+
+		// query using an noindex key
+		result, err = c.TxSearch("app.noindex_key='index is working'", false, 1, 30, "asc")
+		require.Nil(t, err)
+		if len(result.Txs) != 0 {
+			t.Fatal("expected no transaction")
+		}
+
 		// query using a compositeKey (see kvstore application) and height
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30, "asc")
 		require.Nil(t, err)
