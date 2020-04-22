@@ -31,3 +31,4 @@ ____
 - [ ] Appropriate labels applied
 - [ ] Appropriate contributors tagged
 - [ ] Contributor assigned/self-assigned
+- [ ] ADR needs to be written
