@@ -1,14 +1,11 @@
 package server
 
 import (
-	stdlog "log"
 	"net"
-	"os"
 
 	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -33,8 +30,7 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) service.Se
 		listener: nil,
 		app:      app,
 	}
-	logger := log.NewStdLibLogger(os.Stdout, "abci_server", stdlog.LstdFlags)
-	s.BaseService = *service.NewBaseService(logger, "ABCIServer", s)
+	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
 	return s
 }
 

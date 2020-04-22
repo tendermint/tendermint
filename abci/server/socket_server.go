@@ -6,12 +6,10 @@ import (
 	"io"
 	stdlog "log"
 	"net"
-	"os"
 	"runtime"
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -42,9 +40,7 @@ func NewSocketServer(protoAddr string, app types.Application) service.Service {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	// Use standard logger by default.
-	logger := log.NewStdLibLogger(os.Stdout, "abci_server", stdlog.LstdFlags)
-	s.BaseService = *service.NewBaseService(logger, "ABCIServer", s)
+	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
 	return s
 }
 
@@ -160,7 +156,9 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			closeConn <- fmt.Errorf("recovered from panic: %v\n%s", r, buf)
+			err := fmt.Errorf("recovered from panic: %v\n%s", r, buf)
+			stdlog.Println(err)
+			closeConn <- err
 			s.appMtx.Unlock()
 		}
 	}()
