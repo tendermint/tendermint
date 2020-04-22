@@ -52,6 +52,38 @@ func (part *Part) StringIndented(indent string) string {
 		indent)
 }
 
+func (part *Part) ToProto() (*tmproto.Parts, error) {
+	if part == nil {
+		return nil, errors.New("nil part")
+	}
+
+	pb := new(tmproto.Parts)
+
+	proof := part.Proof.ToProto()
+
+	pb.Index = part.Index
+	pb.Bytes = part.Bytes
+	pb.Proof = *proof
+
+	return nil, nil
+}
+
+func (part *Part) FromProto(pb *tmproto.Parts) error {
+	if pb == nil {
+		return errors.New("nil part")
+	}
+
+	proof := new(merkle.SimpleProof)
+	if err := proof.FromProto(&pb.Proof); err != nil {
+		return err
+	}
+	part.Index = pb.Index
+	part.Bytes = pb.Bytes
+	part.Proof = *proof
+
+	return part.ValidateBasic()
+}
+
 //-------------------------------------
 
 type PartSetHeader struct {

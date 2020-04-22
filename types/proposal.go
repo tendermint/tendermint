@@ -111,6 +111,7 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 	pb.PolRound = p.POLRound
 	pb.Timestamp = p.Timestamp
 	pb.Signature = p.Signature
+
 	return pb
 }
 

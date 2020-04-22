@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmcrypto "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const (
@@ -24,8 +25,8 @@ const (
 // everything.  This also affects the generalized proof system as
 // well.
 type SimpleProof struct {
-	Total    int      `json:"total"`     // Total number of items.
-	Index    int      `json:"index"`     // Index of item to prove.
+	Total    int64      `json:"total"`     // Total number of items.
+	Index    int64      `json:"index"`     // Index of item to prove.
 	LeafHash []byte   `json:"leaf_hash"` // Hash of item value.
 	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
@@ -115,6 +116,30 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 %s}`,
 		indent, sp.Aunts,
 		indent)
+}
+
+func (sp *SimpleProof) ToProto() *tmcrypto.SimpleProof {
+	pb := new(tmcrypto.SimpleProof)
+
+	pb.Total = sp.Total
+	pb.Index = sp.Index
+	pb.LeafHash = sp.LeafHash
+	pb.Aunts = sp.Aunts
+
+	return pb
+}
+
+func (sp *SimpleProof) FromProto(pb *tmcrypto.SimpleProof) error{
+	if pb == nil {
+		return errors.New("nil proof")
+	}
+
+	sp.Total = pb.Total
+	sp.Index = pb.Index
+	sp.LeafHash = pb.LeafHash
+	sp.Aunts = pb.Aunts
+
+	return sp.ValidateBasic()
 }
 
 // ValidateBasic performs basic validation.
