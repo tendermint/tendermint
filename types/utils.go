@@ -1,6 +1,8 @@
 package types
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // Go lacks a simple and safe way to see if something is a typed nil.
 // See:

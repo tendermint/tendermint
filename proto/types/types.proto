@@ -135,7 +135,7 @@ message Proposal {
   int64                     height    = 2;
   int32                     round     = 3;
   int32                     pol_round = 4;
-  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID"];
+  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
   google.protobuf.Timestamp timestamp = 6
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 7;

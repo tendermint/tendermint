@@ -174,48 +174,41 @@ func (vote *Vote) ValidateBasic() error {
 // ToProto converts the handwritten type to proto generated type
 // return type, nil if everything converts safely, otherwise nil, error
 func (vote *Vote) ToProto() *tmproto.Vote {
-
-	protoVote := tmproto.Vote{
-		Type:   vote.Type,
-		Height: vote.Height,
-		Round:  vote.Round,
-		BlockID: tmproto.BlockID{
-			Hash: vote.BlockID.Hash,
-			PartsHeader: tmproto.PartSetHeader{
-				Total: vote.BlockID.PartsHeader.Total,
-				Hash:  vote.BlockID.PartsHeader.Hash,
-			},
-		},
+	if vote == nil {
+		return nil
+	}
+	return &tmproto.Vote{
+		Type:             vote.Type,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		BlockID:          *vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
 		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
 	}
-
-	return &protoVote
 }
 
 //FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
-func (vote *Vote) FromProto(pv tmproto.Vote) error {
+func (vote *Vote) FromProto(pv *tmproto.Vote) error {
+	if pv == nil {
+		return errors.New("nil vote")
+	}
+	var blockID BlockID
+
+	if err := blockID.FromProto(&pv.BlockID); err != nil {
+		return err
+	}
+
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
-	vote.BlockID = BlockID{
-		Hash: pv.BlockID.Hash,
-		PartsHeader: PartSetHeader{
-			Total: pv.BlockID.PartsHeader.GetTotal(),
-			Hash:  pv.BlockID.PartsHeader.GetHash(),
-		},
-	}
+	vote.BlockID = blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
 
-	if err := vote.ValidateBasic(); err != nil {
-		return err
-	}
-
-	return nil
+	return vote.ValidateBasic()
 }
