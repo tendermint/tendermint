@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	stdlog "log"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
+	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -18,6 +19,7 @@ import (
 
 type SocketServer struct {
 	service.BaseService
+	isLoggerSet bool
 
 	proto    string
 	addr     string
@@ -42,6 +44,11 @@ func NewSocketServer(protoAddr string, app types.Application) service.Service {
 	}
 	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
 	return s
+}
+
+func (s *SocketServer) SetLogger(l tmlog.Logger) {
+	s.BaseService.SetLogger(l)
+	s.isLoggerSet = true
 }
 
 func (s *SocketServer) OnStart() error {
@@ -157,7 +164,9 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
 			err := fmt.Errorf("recovered from panic: %v\n%s", r, buf)
-			stdlog.Println(err)
+			if !s.isLoggerSet {
+				fmt.Fprintln(os.Stderr, err)
+			}
 			closeConn <- err
 			s.appMtx.Unlock()
 		}
