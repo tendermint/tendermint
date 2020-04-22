@@ -1,11 +1,10 @@
 {
   "name": "docs",
   "version": "1.0.0",
-  "description": "Welcome to the Tendermint Core documentation!",
+  "description": "Tendermint Core Documentation",
   "main": "index.js",
   "dependencies": {
-    "@vuepress/plugin-google-analytics": "^1.4.1",
-    "vuepress-theme-cosmos": "^1.0.161"
+    "vuepress-theme-cosmos": "^1.0.163"
   },
   "scripts": {
     "preserve": "./pre.sh",
