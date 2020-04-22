@@ -789,6 +789,13 @@ func (commit *Commit) ValidateBasic() error {
 			return errors.New("commit cannot be for nil block")
 		}
 
+	// Check that commit.Height is greater than 1
+	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
+	if commit.Height >= 1 {
+		if commit.BlockID.IsZero() {
+			return errors.New("commit cannot be for nil block")
+		}
+
 		if len(commit.Signatures) == 0 {
 			return errors.New("no signatures in commit")
 		}
@@ -798,7 +805,6 @@ func (commit *Commit) ValidateBasic() error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -892,8 +898,8 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.Signatures = sigs
 
 	commit.Height = cp.Height
-	commit.Round = int(cp.Round)
-	commit.BlockID = *bi
+	commit.Round = cp.Round
+	commit.BlockID = blockID
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -1087,6 +1093,51 @@ func (data *EvidenceData) StringIndented(indent string) string {
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
 		indent, data.hash)
+}
+
+// ToProto converts EvidenceData to protobuf
+func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
+	if data == nil {
+		return nil, errors.New("nil evidence data")
+	}
+
+	evi := new(tmproto.EvidenceData)
+	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
+	for i := range data.Evidence {
+		protoEvi, err := EvidenceToProto(data.Evidence[i])
+		if err != nil {
+			return nil, err
+		}
+		eviBzs[i] = *protoEvi
+	}
+	evi.Evidence = eviBzs
+
+	if data.hash != nil {
+		evi.Hash = data.hash
+	}
+
+	return evi, nil
+}
+
+// FromProto sets a protobuf EvidenceData to the given pointer.
+func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
+	if eviData == nil {
+		return errors.New("nil evidenceData")
+	}
+
+	eviBzs := make(EvidenceList, len(eviData.Evidence))
+	for i := range eviData.Evidence {
+		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		if err != nil {
+			return err
+		}
+		eviBzs[i] = evi
+	}
+	data.Evidence = eviBzs
+
+	data.hash = eviData.GetHash()
+
+	return nil
 }
 
 //--------------------------------------------------------------------------------

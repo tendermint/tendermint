@@ -14,6 +14,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
+	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -124,7 +125,8 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool
 	return true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) error {
+	return nil
 }
 
 type testReactorParams struct {
@@ -370,10 +372,10 @@ func TestReactorHelperMode(t *testing.T) {
 			name:   "status request",
 			params: params,
 			msgs: []testEvent{
-				{"P1", bcStatusRequestMessage{}},
-				{"P1", bcBlockRequestMessage{Height: 13}},
-				{"P1", bcBlockRequestMessage{Height: 20}},
-				{"P1", bcBlockRequestMessage{Height: 22}},
+				{"P1", bc.StatusRequestMessage{}},
+				{"P1", bc.BlockRequestMessage{Height: 13}},
+				{"P1", bc.BlockRequestMessage{Height: 20}},
+				{"P1", bc.BlockRequestMessage{Height: 22}},
 			},
 		},
 	}
@@ -389,18 +391,30 @@ func TestReactorHelperMode(t *testing.T) {
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
 				switch ev := step.event.(type) {
-				case bcStatusRequestMessage:
+				case bc.StatusRequestMessage:
 					old := mockSwitch.numStatusResponse
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+					bm, err := bc.MsgToProto(&ev)
+					assert.NoError(t, err)
+					msg, err := bm.Marshal()
+					assert.NoError(t, err)
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
-				case bcBlockRequestMessage:
+				case bc.BlockRequestMessage:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						bm, err := bc.MsgToProto(&ev)
+						assert.NoError(t, err)
+						msg, err := bm.Marshal()
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						bm, err := bc.MsgToProto(&ev)
+						assert.NoError(t, err)
+						msg, err := bm.Marshal()
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
