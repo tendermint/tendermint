@@ -67,9 +67,9 @@ message State {
   // Note that if s.LastBlockHeight causes a valset change,
   // we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
   // Extra +1 due to nextValSet delay.
-  tendermint.proto.types.ValidatorSet next_validators                = 6;
-  tendermint.proto.types.ValidatorSet validators                     = 7;
-  tendermint.proto.types.ValidatorSet last_validators                = 8;
+  tendermint.proto.types.ValidatorSet next_validators                = 6 [(gogoproto.nullable) = false];
+  tendermint.proto.types.ValidatorSet validators                     = 7 [(gogoproto.nullable) = false];
+  tendermint.proto.types.ValidatorSet last_validators                = 8 [(gogoproto.nullable) = false];
   int64                               last_height_validators_changed = 9;
 
   // Consensus parameters used for validating blocks.

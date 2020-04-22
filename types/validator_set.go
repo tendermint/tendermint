@@ -342,9 +342,9 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
 		return nil, errors.New("nil validator set") // validator set should never be nil
 	}
-	vp := new(tmproto.ValidatorSet)
 
-	valsProto := make([]*tmproto.Validator, len(vals.Validators))
+	vs := new(tmproto.ValidatorSet)
+	valsProto := make([]tmproto.Validator, len(vals.Validators))
 	for i := 0; i < len(vals.Validators); i++ {
 		valp, err := vals.Validators[i].ToProto()
 		if err != nil {
@@ -352,19 +352,19 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		}
 		valsProto[i] = valp
 	}
-	vp.Validators = valsProto
+	vs.Validators = valsProto
 
 	if vals.Proposer != nil {
 		valProposer, err := vals.Proposer.ToProto()
 		if err != nil {
 			return nil, fmt.Errorf("error on proposer to proto: %w", err)
 		}
-		vp.Proposer = valProposer
+		vs.Proposer = valProposer
 	}
 
-	vp.TotalVotingPower = vals.TotalVotingPower()
+	vs.TotalVotingPower = vals.TotalVotingPower()
 
-	return vp, nil
+	return vs, nil
 }
 
 // FromProto sets a protobuf ValidatorSet to the given pointer.
@@ -375,24 +375,31 @@ func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
 		return errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
 	}
 
-	valsProto := make([]*Validator, len(vp.Validators))
-	for i := 0; i < len(vp.Validators); i++ {
-		v := new(Validator)
-		err := v.FromProto(vp.Validators[i])
-		if err != nil {
-			return fmt.Errorf("error on validators from proto: %w", err)
-		}
-		valsProto[i] = v
-	}
-	vals.Validators = valsProto
+	if len(vp.Validators) > 0 {
+		valsProto := make([]*Validator, len(vp.Validators))
+		for i := 0; i < len(vp.Validators); i++ {
+			v := new(Validator)
+			err := v.FromProto(vp.Validators[i])
+			if err != nil {
+				return fmt.Errorf("error on validators from proto: %w", err)
+			}
 
-	if vp.Proposer != nil {
+			valsProto[i] = v
+		}
+
+		vals.Validators = valsProto
+	} else {
+		vals.Validators = nil
+	}
+
+	if vp.Proposer.GetPubKey().Sum != nil {
 		p := new(Validator)
-		err := p.FromProto(vp.GetProposer())
-		if err != nil {
+		if err := p.FromProto(vp.GetProposer()); err != nil {
 			return fmt.Errorf("error on proposer from proto: %w", err)
 		}
 		vals.Proposer = p
+	} else {
+		vals.Proposer = nil
 	}
 
 	vals.totalVotingPower = vp.GetTotalVotingPower()

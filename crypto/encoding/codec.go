@@ -12,6 +12,10 @@ import (
 // PubKeyToProto takes crypto.PubKey and transforms it to a protobuf Pubkey
 func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 	var kp pc.PublicKey
+	if k == nil {
+		return kp, errors.New("nil key")
+	}
+
 	switch k := k.(type) {
 	case ed25519.PubKey:
 		kp = pc.PublicKey{

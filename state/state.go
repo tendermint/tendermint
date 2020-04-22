@@ -142,23 +142,21 @@ func (state *State) ToProto() (*tmstate.State, error) {
 
 	vals, err := state.Validators.ToProto()
 	if err != nil {
-		fmt.Println(1)
 		return nil, err
 	}
-	sm.Validators = vals
+	sm.Validators = *vals
 
 	nVals, err := state.NextValidators.ToProto()
 	if err != nil {
-		fmt.Println(2)
 		return nil, err
 	}
-	sm.NextValidators = nVals
+	sm.NextValidators = *nVals
 
 	lVals, err := state.LastValidators.ToProto()
 	if err != nil {
 		return nil, err
 	}
-	sm.LastValidators = lVals
+	sm.LastValidators = *lVals
 
 	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
 	sm.ConsensusParams = state.ConsensusParams
@@ -179,36 +177,23 @@ func (state *State) FromProto(pb *tmstate.State) error {
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 
-	if pb.Validators == nil {
-		state.Validators = nil
-	} else {
-		vals := new(types.ValidatorSet)
-		if err := vals.FromProto(pb.Validators); err != nil {
-			return err
-		}
-		state.Validators = vals
+	vals := new(types.ValidatorSet)
+	if err := vals.FromProto(&pb.Validators); err != nil {
+		return err
 	}
+	state.Validators = vals
 
-	if pb.NextValidators == nil {
-		state.Validators = nil
-	} else {
-		nVals := new(types.ValidatorSet)
-		if err := nVals.FromProto(pb.NextValidators); err != nil {
-			return err
-		}
-		state.NextValidators = nVals
+	nVals := new(types.ValidatorSet)
+	if err := nVals.FromProto(&pb.NextValidators); err != nil {
+		return err
 	}
+	state.NextValidators = nVals
 
-	if pb.LastValidators == nil {
-		state.LastValidators = nil
-	} else {
-		lVals := new(types.ValidatorSet)
-		if err := lVals.FromProto(pb.LastValidators); err != nil {
-			fmt.Println(1, pb.LastValidators, err)
-			return err
-		}
-		state.LastValidators = lVals
+	lVals := new(types.ValidatorSet)
+	if err := lVals.FromProto(&pb.LastValidators); err != nil {
+		return err
 	}
+	state.LastValidators = lVals
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
 	state.ConsensusParams = pb.ConsensusParams

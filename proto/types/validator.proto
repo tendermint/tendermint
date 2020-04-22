@@ -7,8 +7,8 @@ import "third_party/proto/gogoproto/gogo.proto";
 import "proto/crypto/keys/types.proto";
 
 message ValidatorSet {
-  repeated Validator validators         = 1;
-  Validator          proposer           = 2;
+  repeated Validator validators         = 1 [(gogoproto.nullable) = false];
+  Validator          proposer           = 2 [(gogoproto.nullable) = false];
   int64              total_voting_power = 3;
 }
 

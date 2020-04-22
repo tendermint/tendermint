@@ -91,8 +91,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
 		%v\n`, err))
 	}
-	// sm := new(State)
-	// if err := sm.FromProto(&sp); err != nil {
+	// if err := state.FromProto(&sp); err != nil {
 	// 	panic(err)
 	// }
 	// TODO: ensure that buf is completely read.
@@ -253,7 +252,6 @@ func ABCIResponsesResultsHash(ar tmstate.ABCIResponses) []byte {
 func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) {
 	buf, err := db.Get(calcABCIResponsesKey(height))
 	if err != nil {
-		fmt.Println()
 		return nil, err
 	}
 	if len(buf) == 0 {

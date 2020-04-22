@@ -1051,7 +1051,7 @@ func TestStateProto(t *testing.T) {
 		state    *sm.State
 		expPass  bool
 	}{
-		{"empty state", &sm.State{}, true},
+		{"empty state", &sm.State{}, false},
 		{"nil failure state", nil, false},
 		{"success state", &state, true},
 	}
@@ -1061,6 +1061,8 @@ func TestStateProto(t *testing.T) {
 		pbs, err := tt.state.ToProto()
 		if !tt.expPass {
 			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err, tt.testName)
 		}
 
 		smt := new(sm.State)
