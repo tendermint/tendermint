@@ -100,6 +100,8 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	assert.True(t, pool.IsCommitted(evidence))
 	assert.False(t, pool.IsPending(evidence))
 	assert.Equal(t, 0, pool.evidenceList.Len())
+
+	// evidence should
 }
 
 func TestAddEvidence(t *testing.T) {

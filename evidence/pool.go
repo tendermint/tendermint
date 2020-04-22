@@ -59,15 +59,12 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 		valToLastHeight: buildValToLastHeightMap(state, stateDB),
 	}
 
-	// if pending evidence already in db, in event of prior failure, then load it to the evidenceList
+	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
 	evList := pool.listEvidence(baseKeyPending, -1)
 	for _, ev := range evList {
 		// check evidence hasn't expired
 		if pool.IsExpired(ev) {
-			key := keyPending(ev)
-			if err := pool.evidenceStore.Delete(key); err != nil {
-				pool.logger.Error("Unable to remove expired evidence", "err", err)
-			}
+			pool.removePendingEvidence(ev)
 			continue
 		}
 		pool.evidenceList.PushBack(ev)
@@ -76,8 +73,8 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) *Pool {
 	return pool
 }
 
-// PendingEvidence returns up to maxNum uncommitted evidence.
-// If maxNum is -1, all evidence is returned. Pending evidence is in order of priority
+// PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
+// If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
 func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
 	return evpool.listEvidence(baseKeyPending, maxNum)
 }
@@ -239,13 +236,6 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
-func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
-	key := keyPending(evidence)
-	if err := evpool.evidenceStore.Delete(key); err != nil {
-		evpool.logger.Error("Unable to delete pending evidence", "err", err)
-	}
-}
-
 func (evpool *Pool) EvidenceFront() *clist.CElement {
 	return evpool.evidenceList.Front()
 }
@@ -266,8 +256,6 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
-// AddNewEvidence adds the given evidence to the database.
-// It returns false if the evidence is already stored.
 func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
 	var err error
 	evBytes := cdc.MustMarshalBinaryBare(evidence)
@@ -276,6 +264,13 @@ func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
 		return err
 	}
 	return nil
+}
+
+func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
+	key := keyPending(evidence)
+	if err := evpool.evidenceStore.Delete(key); err != nil {
+		evpool.logger.Error("Unable to delete pending evidence", "err", err)
+	}
 }
 
 func (evpool *Pool) removeEvidenceFromList(
