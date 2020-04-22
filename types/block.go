@@ -752,40 +752,37 @@ type SignedHeader struct {
 
 // ValidateBasic does basic consistency checks and makes sure the header
 // and commit are consistent.
-// NOTE: This does not actually check the cryptographic signatures.  Make
-// sure to use a Verifier to validate the signatures actually provide a
+//
+// NOTE: This does not actually check the cryptographic signatures.  Make sure
+// to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
-	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
-		return errors.New("signedHeader missing header")
+		return errors.New("missing header")
 	}
 	if sh.Commit == nil {
-		return errors.New("signedHeader missing commit (precommit votes)")
+		return errors.New("missing commit (precommit votes)")
 	}
 
-	// Check ChainID.
+	// if err := sh.Header.ValidateBasic(); err != nil {
+	// 	return fmt.Errorf("header.ValidateBasic failed: %w", err)
+	// }
+
+	if err := sh.Commit.ValidateBasic(); err != nil {
+		return fmt.Errorf("commit.ValidateBasic failed: %w", err)
+	}
+
+	// Make sure the header is consistent with the commit.
 	if sh.ChainID != chainID {
-		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'",
-			sh.ChainID, chainID)
+		return fmt.Errorf("header belongs to another chain %q, not %q", sh.ChainID, chainID)
 	}
-	// Check Height.
 	if sh.Commit.Height != sh.Height {
-		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v",
-			sh.Height, sh.Commit.Height)
+		return fmt.Errorf("header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
 	}
-	// Check Hash.
-	hhash := sh.Hash()
-	chash := sh.Commit.BlockID.Hash
-	if !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("signedHeader commit signs block %X, header is block %X",
-			chash, hhash)
+	if hhash, chash := sh.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
+		return fmt.Errorf("commit signs block %X, header is block %X", chash, hhash)
 	}
-	// ValidateBasic on the Commit.
-	err := sh.Commit.ValidateBasic()
-	if err != nil {
-		return errors.Wrap(err, "commit.ValidateBasic failed during SignedHeader.ValidateBasic")
-	}
+
 	return nil
 }
 
