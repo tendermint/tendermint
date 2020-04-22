@@ -30,4 +30,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.28.1
+	google.golang.org/protobuf v1.20.1-0.20200309200217-e05f789c0967
 )

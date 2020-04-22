@@ -621,7 +621,7 @@ func TestBlockProtoBuf(t *testing.T) {
 		expPass2 bool
 	}{
 		{"nil block", nil, false, false},
-		{"b1", b1, true, false}, //nil BlockID errors
+		{"b1", b1, true, true}, //nil BlockID errors
 		{"b2", b2, true, true},
 		{"b3", b3, true, true},
 	}
@@ -715,7 +715,8 @@ func TestCommitProtoBuf(t *testing.T) {
 		expPass bool
 	}{
 		{"success", commit, true},
-		{"fail empty commit", &Commit{}, false},
+		// Empty value sets signatures to nil, signatures should not be nillable
+		{"empty commit", &Commit{Signatures: []CommitSig{}}, true},
 		{"fail Commit nil", nil, false},
 	}
 	for _, tc := range testCases {

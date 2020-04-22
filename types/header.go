@@ -137,40 +137,40 @@ func (h Header) ValidateBasic() error {
 	}
 
 	if h.Height < 0 {
-		return errors.New("negative Header.Height")
+		return errors.New("negative Height")
 	} else if h.Height == 0 {
-		return errors.New("zero Header.Height")
+		return errors.New("zero Height")
 	}
 
 	if err := h.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
+		return fmt.Errorf("wrong LastBlockID: %v", err)
 	}
 	if err := ValidateHash(h.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
+		return fmt.Errorf("wrong LastCommitHash: %v", err)
 	}
 
 	// Basic validation of hashes related to application data.
 	// Will validate fully against state in state#ValidateBlock.
 	if err := ValidateHash(h.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
+		return fmt.Errorf("wrong ValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(h.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
+		return fmt.Errorf("wrong NextValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(h.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
+		return fmt.Errorf("wrong ConsensusHash: %v", err)
 	}
 	// NOTE: AppHash is arbitrary length
 	if err := ValidateHash(h.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
+		return fmt.Errorf("wrong LastResultsHash: %v", err)
 	}
 
 	if err := ValidateHash(h.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
+		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
 	if len(h.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
+		return fmt.Errorf("expected len(ProposerAddress) to be %d, got %d",
 			crypto.AddressSize, len(h.ProposerAddress))
 	}
 
