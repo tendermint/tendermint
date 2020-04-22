@@ -10,7 +10,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
-  - [evidence] \#4617 Remove `Pubkey` from DuplicateVoteEvidence
+  - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
 
 - Apps
 
