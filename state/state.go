@@ -119,6 +119,7 @@ func (state State) Bytes() []byte {
 	// 	panic(err)
 	// }
 	// return bz
+
 	return cdc.MustMarshalBinaryBare(state)
 }
 

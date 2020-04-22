@@ -91,9 +91,11 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
 		%v\n`, err))
 	}
+
 	// if err := state.FromProto(&sp); err != nil {
 	// 	panic(err)
 	// }
+
 	// TODO: ensure that buf is completely read.
 
 	return state
