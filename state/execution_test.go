@@ -127,10 +127,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
-	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
-	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
-	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
-	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
+	height1, val1 := int64(8), state.Validators.Validators[0].Address
+	height2, val2 := int64(3), state.Validators.Validators[1].Address
+	ev1 := types.NewMockEvidence(height1, time.Now(), val1)
+	ev2 := types.NewMockEvidence(height2, time.Now(), val2)
 
 	now := tmtime.Now()
 	valSet := state.Validators
