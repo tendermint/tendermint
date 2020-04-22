@@ -6,7 +6,6 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "third_party/proto/gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
-import "libs/kv/types.proto";
 import "proto/types/types.proto";
 import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
@@ -62,8 +61,8 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time     = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                    chain_id = 2;
+  google.protobuf.Timestamp time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    chain_id         = 2;
   ConsensusParams           consensus_params = 3;
   repeated ValidatorUpdate  validators       = 4 [(gogoproto.nullable) = false];
   bytes                     app_state_bytes  = 5;
@@ -172,7 +171,7 @@ message ResponseQuery {
 
 message ResponseBeginBlock {
   repeated Event events = 1
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -183,7 +182,7 @@ message ResponseCheckTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -195,7 +194,7 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -203,7 +202,7 @@ message ResponseEndBlock {
   repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -218,7 +217,7 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockParams     block     = 1;
+  BlockParams                            block     = 1;
   tendermint.proto.types.EvidenceParams  evidence  = 2;
   tendermint.proto.types.ValidatorParams validator = 3;
 }
@@ -236,10 +235,17 @@ message LastCommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
+// EventAttribute represents an event to the indexing service.
+message EventAttribute {
+  bytes key   = 1;
+  bytes value = 2;
+  bool  index = 3;
+}
+
 message Event {
-  string   type                               = 1;
-  repeated tendermint.libs.kv.Pair attributes = 2
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
+  string                  type       = 1;
+  repeated EventAttribute attributes = 2
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
 // TxResult contains results of executing the transaction.
@@ -280,10 +286,10 @@ message PubKey {
 }
 
 message Evidence {
-  string                    type      = 1;
-  Validator                 validator = 2 [(gogoproto.nullable) = false];
-  int64                     height    = 3;
-  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    type               = 1;
+  Validator                 validator          = 2 [(gogoproto.nullable) = false];
+  int64                     height             = 3;
+  google.protobuf.Timestamp time               = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   int64                     total_voting_power = 5;
 }
 
