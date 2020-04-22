@@ -8,7 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -19,7 +22,7 @@ type voteData struct {
 }
 
 func makeVote(
-	t *testing.T, val PrivValidator, chainID string, round int32, valIndex uint32, height int64, step int, blockID BlockID,
+	t *testing.T, val PrivValidator, chainID string, valIndex uint32, height int64, round int32, step int, blockID BlockID,
 ) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
@@ -105,8 +108,8 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID),
-		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, math.MaxInt64, blockID2),
+		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID),
+		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID2),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
@@ -145,7 +148,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, 0, blockID2)
+			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, blockID2)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -156,8 +159,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, 0x02, blockID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt32, math.MaxInt64, 0x02, blockID2)
+			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2)
 			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -173,4 +176,196 @@ func TestMockGoodEvidenceValidateBasic(t *testing.T) {
 func TestMockBadEvidenceValidateBasic(t *testing.T) {
 	badEvidence := NewMockEvidence(int64(1), time.Now(), 1, []byte{1})
 	assert.Nil(t, badEvidence.ValidateBasic())
+}
+
+func TestLunaticValidatorEvidence(t *testing.T) {
+	var (
+		blockID  = makeBlockIDRandom()
+		header   = makeHeaderRandom()
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		val      = NewMockPV()
+		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID)
+	)
+
+	header.Time = bTime
+
+	ev := &LunaticValidatorEvidence{
+		Header:             header,
+		Vote:               vote,
+		InvalidHeaderField: "AppHash",
+	}
+
+	assert.Equal(t, header.Height, ev.Height())
+	assert.Equal(t, bTime, ev.Time())
+	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
+	assert.NotEmpty(t, ev.Hash())
+	assert.NotEmpty(t, ev.Bytes())
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
+	assert.Error(t, ev.Verify("other", pubKey))
+	privKey2 := ed25519.GenPrivKey()
+	pubKey2 := privKey2.PubKey()
+	assert.Error(t, ev.Verify("other", pubKey2))
+	assert.True(t, ev.Equal(ev))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
+}
+
+func TestPhantomValidatorEvidence(t *testing.T) {
+	var (
+		blockID  = makeBlockIDRandom()
+		header   = makeHeaderRandom()
+		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		val      = NewMockPV()
+		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID)
+	)
+
+	header.Time = bTime
+
+	ev := &PhantomValidatorEvidence{
+		Header:                      header,
+		Vote:                        vote,
+		LastHeightValidatorWasInSet: header.Height - 1,
+	}
+
+	assert.Equal(t, header.Height, ev.Height())
+	assert.Equal(t, bTime, ev.Time())
+	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
+	assert.NotEmpty(t, ev.Hash())
+	assert.NotEmpty(t, ev.Bytes())
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
+	assert.Error(t, ev.Verify("other", pubKey))
+	privKey2 := ed25519.GenPrivKey()
+	pubKey2 := privKey2.PubKey()
+	assert.Error(t, ev.Verify("other", pubKey2))
+	assert.True(t, ev.Equal(ev))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
+}
+
+func TestConflictingHeadersEvidence(t *testing.T) {
+	const (
+		chainID       = "TestConflictingHeadersEvidence"
+		height  int64 = 37
+	)
+
+	var (
+		blockID = makeBlockIDRandom()
+		header1 = makeHeaderRandom()
+		header2 = makeHeaderRandom()
+	)
+
+	header1.Height = height
+	header1.LastBlockID = blockID
+	header1.ChainID = chainID
+
+	header2.Height = height
+	header2.LastBlockID = blockID
+	header2.ChainID = chainID
+
+	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
+
+	commit1, err := MakeCommit(BlockID{
+		Hash: header1.Hash(),
+		PartsHeader: PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	}, height, 1, voteSet1, vals, time.Now())
+	require.NoError(t, err)
+	commit2, err := MakeCommit(BlockID{
+		Hash: header2.Hash(),
+		PartsHeader: PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	}, height, 1, voteSet2, vals, time.Now())
+	require.NoError(t, err)
+
+	ev := &ConflictingHeadersEvidence{
+		H1: &SignedHeader{
+			Header: header1,
+			Commit: commit1,
+		},
+		H2: &SignedHeader{
+			Header: header2,
+			Commit: commit2,
+		},
+	}
+
+	assert.Panics(t, func() {
+		ev.Address()
+	})
+
+	assert.Panics(t, func() {
+		pubKey, _ := vals[0].GetPubKey()
+		ev.Verify(chainID, pubKey)
+	})
+
+	assert.Equal(t, height, ev.Height())
+	// assert.Equal(t, bTime, ev.Time())
+	assert.NotEmpty(t, ev.Hash())
+	assert.NotEmpty(t, ev.Bytes())
+	assert.NoError(t, ev.VerifyComposite(header1, valSet))
+	assert.True(t, ev.Equal(ev))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
+}
+
+func TestPotentialAmnesiaEvidence(t *testing.T) {
+	const (
+		chainID       = "TestPotentialAmnesiaEvidence"
+		height  int64 = 37
+	)
+
+	var (
+		val      = NewMockPV()
+		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID)
+		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2)
+	)
+
+	ev := &PotentialAmnesiaEvidence{
+		VoteA: vote2,
+		VoteB: vote1,
+	}
+
+	assert.Equal(t, height, ev.Height())
+	// assert.Equal(t, bTime, ev.Time())
+	assert.EqualValues(t, vote1.ValidatorAddress, ev.Address())
+	assert.NotEmpty(t, ev.Hash())
+	assert.NotEmpty(t, ev.Bytes())
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	assert.NoError(t, ev.Verify(chainID, pubKey))
+	assert.Error(t, ev.Verify("other", pubKey))
+	privKey2 := ed25519.GenPrivKey()
+	pubKey2 := privKey2.PubKey()
+	assert.Error(t, ev.Verify("other", pubKey2))
+	assert.True(t, ev.Equal(ev))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
+}
+
+func makeHeaderRandom() *Header {
+	return &Header{
+		ChainID:            tmrand.Str(12),
+		Height:             int64(tmrand.Uint16()) + 1,
+		Time:               time.Now(),
+		LastBlockID:        makeBlockIDRandom(),
+		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
+		DataHash:           crypto.CRandBytes(tmhash.Size),
+		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
+		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
+		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
+		AppHash:            crypto.CRandBytes(tmhash.Size),
+		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
+		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+		ProposerAddress:    crypto.CRandBytes(tmhash.Size),
+	}
 }

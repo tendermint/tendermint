@@ -22,10 +22,23 @@ message MockEvidence {
   bytes evidence_address = 3;
 }
 
+message ConflictingHeadersEvidence {
+  SignedHeader h1 = 1;
+  SignedHeader h2 = 2;
+}
+
+message LunaticValidatorEvidence {
+  Header header               = 1;
+  Vote   vote                 = 2;
+  string invalid_header_field = 3;
+}
+
 message Evidence {
   oneof sum {
-    DuplicateVoteEvidence duplicate_vote_evidence = 1;
-    MockEvidence          mock_evidence           = 2;
+    DuplicateVoteEvidence      duplicate_vote_evidence      = 1;
+    ConflictingHeadersEvidence conflicting_headers_evidence = 2;
+    LunaticValidatorEvidence   lunatic_validator_evidence   = 3;
+    MockEvidence               mock_evidence                = 4;
   }
 }
 
