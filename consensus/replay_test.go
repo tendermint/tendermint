@@ -522,9 +522,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, false)
-	}
+	// for _, m := range modes {
+	// 	testHandshakeReplay(t, config, 0, m, false)
+	// }
 	for _, m := range modes {
 		testHandshakeReplay(t, config, 0, m, true)
 	}
@@ -798,6 +798,7 @@ func buildTMStateFromChain(
 	nBlocks int,
 	mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
+	fmt.Println(config.DBDir())
 	clientCreator := proxy.NewLocalClientCreator(
 		kvstore.NewPersistentKVStoreApplication(
 			filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))

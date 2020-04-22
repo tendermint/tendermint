@@ -108,13 +108,11 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	pv.VotingPower = v.VotingPower
 	pv.ProposerPriority = v.ProposerPriority
 
-	if v.PubKey != nil {
-		pk, err := ce.PubKeyToProto(v.PubKey)
-		if err != nil {
-			return nil, err
-		}
-		pv.PubKey = pk
+	pk, err := ce.PubKeyToProto(v.PubKey)
+	if err != nil {
+		return nil, err
 	}
+	pv.PubKey = pk
 
 	return pv, nil
 }

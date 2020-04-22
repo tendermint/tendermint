@@ -141,12 +141,14 @@ func (state *State) ToProto() (*tmstate.State, error) {
 
 	vals, err := state.Validators.ToProto()
 	if err != nil {
+		fmt.Println(1)
 		return nil, err
 	}
 	sm.Validators = vals
 
 	nVals, err := state.NextValidators.ToProto()
 	if err != nil {
+		fmt.Println(2)
 		return nil, err
 	}
 	sm.NextValidators = nVals
@@ -201,6 +203,7 @@ func (state *State) FromProto(pb *tmstate.State) error {
 	} else {
 		lVals := new(types.ValidatorSet)
 		if err := lVals.FromProto(pb.LastValidators); err != nil {
+			fmt.Println(1, pb.LastValidators, err)
 			return err
 		}
 		state.LastValidators = lVals
