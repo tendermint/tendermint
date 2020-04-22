@@ -36,7 +36,7 @@ type SideTxResultWithData struct {
 // GetBytes returns data bytes for sign
 func (sp *SideTxResultWithData) GetBytes() []byte {
 	bs := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bs, uint32(sp.Result))
+	binary.BigEndian.PutUint32(bs, uint32(sp.Result))
 
 	data := make([]byte, 0)
 	data = append(data, bs[0]) // use first byte as result

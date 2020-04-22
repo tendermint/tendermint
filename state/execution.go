@@ -300,7 +300,7 @@ func execBlockOnProxyApp(
 
 	// TODO get votes from last commit
 	// Side hook for begin block
-	_, err = proxyAppConn.BeginSideBlockSync(abci.RequestBeginSideBlock{
+	sideBlockResponse, err := proxyAppConn.BeginSideBlockSync(abci.RequestBeginSideBlock{
 		Hash:          hash,
 		Header:        header,
 		SideTxResults: sideTxResults,
@@ -309,6 +309,8 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.BeginSideBlock", "err", err)
 		return nil, nil, err
 	}
+
+	abciResponses.BeginBlock.Events = append(abciResponses.BeginBlock.Events, sideBlockResponse.Events...)
 
 	//
 	// Deliver tx
@@ -612,7 +614,7 @@ func getBeginSideBlockData(block *types.Block, stateDB dbm.DB) []abci.SideTxResu
 	// iterate all votes
 	for _, vote := range block.LastCommit.Precommits {
 		if vote != nil {
-			txMapping := make([][]byte, 0)
+			txMapping := make(map[int]bool)
 			for _, sideTxResult := range vote.SideTxResults {
 				// find if result object is already created
 				resultIndex := -1
@@ -633,24 +635,17 @@ func getBeginSideBlockData(block *types.Block, stateDB dbm.DB) []abci.SideTxResu
 					resultIndex = len(result) - 1
 				}
 
-				txProcessed := false
-				for _, rr := range txMapping {
-					if bytes.Equal(rr, sideTxResult.TxHash) {
-						txProcessed = true
-						break
-					}
-				}
-
 				// if tx is not processed for current vote, add it into sigs for particular side-tx result
-				if !txProcessed {
+				if _, ok := txMapping[resultIndex]; !ok {
 					// get result object from result index
 					result[resultIndex].Sigs = append(result[resultIndex].Sigs, abci.SideTxSig{
 						Result:  abci.SideTxResultType(sideTxResult.Result),
 						Sig:     sideTxResult.Sig,
 						Address: vote.ValidatorAddress,
 					})
-					// add tx hash for the record for particular vote
-					txMapping = append(txMapping, sideTxResult.TxHash)
+
+					// add tx hash for the record for particular vote to avoid duplicate votes
+					txMapping[resultIndex] = true
 				}
 			}
 		}

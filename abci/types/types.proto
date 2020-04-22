@@ -232,7 +232,7 @@ message ResponseCommit {
 //
 
 message ResponseBeginSideBlock {
-  bytes data = 1;
+  repeated Event events = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseDeliverSideTx {
