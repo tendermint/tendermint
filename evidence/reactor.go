@@ -149,15 +149,9 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			ev := next.Value.(types.Evidence)
 			// check to see if peer is behind, if so jump to next piece of evidence
 			if ev.Height() <= peerState.GetHeight() {
-				// check that the evidence has not expired else remove it
-				if evR.evpool.IsExpired(ev) {
-					pendingKey := keyPending(ev)
-					evR.evpool.store.db.Delete(pendingKey)
-					evR.evpool.evidenceList.Remove(next)
-					next.DetachPrev()
-				} else {
-					evMsg.Evidence = append(evMsg.Evidence, ev)
-				}
+				// Update should ensure that all evidence in the list is not expired
+				// hence we don't need to check it
+				evMsg.Evidence = append(evMsg.Evidence, ev)
 			}
 			// As evidence arrives in batches, wait for a period to see if there is
 			// more evidence to come, if not then finish the msg and send it to the peer.
