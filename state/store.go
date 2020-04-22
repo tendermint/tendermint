@@ -111,7 +111,10 @@ func saveState(db dbm.DB, state State, key []byte) {
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
-	db.SetSync(key, state.Bytes())
+	err := db.SetSync(key, state.Bytes())
+	if err != nil {
+		panic(err)
+	}
 }
 
 //------------------------------------------------------------------------
