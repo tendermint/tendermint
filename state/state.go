@@ -110,15 +110,16 @@ func (state State) Equals(state2 State) bool {
 
 // Bytes serializes the State using go-amino.
 func (state State) Bytes() []byte {
-	sm, err := state.ToProto()
-	if err != nil {
-		panic(err)
-	}
-	bz, err := sm.Marshal()
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	// sm, err := state.ToProto()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// bz, err := sm.Marshal()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// return bz
+	return cdc.MustMarshalBinaryBare(state)
 }
 
 // IsEmpty returns true if the State is equal to the empty State.

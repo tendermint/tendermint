@@ -75,27 +75,29 @@ func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
-func loadState(db dbm.DB, key []byte) State {
+func loadState(db dbm.DB, key []byte) (state State) {
 	buf, err := db.Get(key)
 	if err != nil {
 		panic(err)
 	}
 	if len(buf) == 0 {
-		return State{}
+		return state
 	}
-	var sp tmstate.State
-	err = sp.Unmarshal(buf)
+	err = cdc.UnmarshalBinaryBare(buf, &state)
+	// var sp tmstate.State
+	// err = sp.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
 		%v\n`, err))
 	}
-	sm := new(State)
-	if err := sm.FromProto(&sp); err != nil {
-		panic(err)
-	}
+	// sm := new(State)
+	// if err := sm.FromProto(&sp); err != nil {
+	// 	panic(err)
+	// }
+	// TODO: ensure that buf is completely read.
 
-	return *sm
+	return state
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
