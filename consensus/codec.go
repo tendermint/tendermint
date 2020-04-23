@@ -1,15 +1,17 @@
 package consensus
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -151,7 +153,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 			}
 		}
 	default:
-		return nil, errors.New("consensus: message not recognized")
+		return nil, fmt.Errorf("consensus: message not recognized, %T", msg)
 	}
 
 	return &pb, nil
@@ -250,7 +252,11 @@ func MsgFromProto(msg tmcons.Message) (Message, error) {
 			Votes:   bits,
 		}
 	default:
-		return nil, errors.New("consensus: message not recognized")
+		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
+	}
+
+	if err := pb.ValidateBasic(); err != nil {
+		return nil, err
 	}
 
 	return pb, nil
@@ -268,4 +274,99 @@ func MustEncode(msg Message) []byte {
 		panic(err)
 	}
 	return enc
+}
+
+// WALToProto takes a consensus wal message and return a proto walMessage and error
+func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
+	var pb tmcons.WALMessage
+
+	switch msg := msg.(type) {
+	case types.EventDataRoundState:
+		pb = tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_EventDataRoundState{
+				EventDataRoundState: &tmproto.EventDataRoundState{
+					Height: msg.Height,
+					Round:  msg.Round,
+					Step:   msg.Step,
+				},
+			},
+		}
+	case msgInfo:
+		consMsg, err := MsgToProto(msg.Msg)
+		if err != nil {
+			return nil, err
+		}
+		pb = tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_MsgInfo{
+				MsgInfo: &tmcons.MsgInfo{
+					Msg:    *consMsg,
+					PeerId: string(msg.PeerID),
+				},
+			},
+		}
+	case timeoutInfo:
+		pb = tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_TimeoutInfo{
+				TimeoutInfo: &tmcons.TimeoutInfo{
+					Duration: msg.Duration,
+					Height:   msg.Height,
+					Round:    msg.Round,
+					Step:     uint8(msg.Step),
+				},
+			},
+		}
+	case EndHeightMessage:
+		pb = tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_EndHeight{
+				EndHeight: &tmcons.EndHeight{
+					Height: msg.Height,
+				},
+			},
+		}
+	default:
+		return nil, fmt.Errorf("to proto: wal message not recognized: %T", msg)
+	}
+
+	return &pb, nil
+}
+
+// WALFromProto takes a proto wal message and return a consensus walMessage and error
+func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
+	if msg == nil {
+		return nil, errors.New("nil WAL message")
+	}
+	var pb WALMessage
+
+	switch msg := msg.Sum.(type) {
+	case *tmcons.WALMessage_EventDataRoundState:
+		pb = types.EventDataRoundState{
+			Height: msg.EventDataRoundState.Height,
+			Round:  msg.EventDataRoundState.Round,
+			Step:   msg.EventDataRoundState.Step,
+		}
+	case *tmcons.WALMessage_MsgInfo:
+		walMsg, err := MsgFromProto(msg.MsgInfo.Msg)
+		if err != nil {
+			return nil, fmt.Errorf("msgInfo from proto error: %w", err)
+		}
+		pb = msgInfo{
+			Msg:    walMsg,
+			PeerID: p2p.ID(msg.MsgInfo.PeerId),
+		}
+	case *tmcons.WALMessage_TimeoutInfo:
+		pb = timeoutInfo{
+			Duration: msg.TimeoutInfo.Duration,
+			Height:   msg.TimeoutInfo.Height,
+			Round:    msg.TimeoutInfo.Round,
+			Step:     cstypes.RoundStepType(msg.TimeoutInfo.Step),
+		}
+	case *tmcons.WALMessage_EndHeight:
+		pb = EndHeightMessage{
+			Height: msg.EndHeight.Height,
+		}
+	default:
+		return nil, fmt.Errorf("from proto: wal message not recognized: %T", msg)
+	}
+
+	return pb, nil
 }

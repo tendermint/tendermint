@@ -73,8 +73,8 @@ func (part *Part) FromProto(pb *tmproto.Parts) error {
 		return errors.New("nil part")
 	}
 
-	proof := new(merkle.SimpleProof)
-	if err := proof.FromProto(&pb.Proof); err != nil {
+	proof, err := merkle.SimpleProofFromProto(&pb.Proof)
+	if err != nil {
 		return err
 	}
 	part.Index = pb.Index

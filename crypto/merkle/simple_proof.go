@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmcrypto "github.com/tendermint/tendermint/proto/crypto/merkle"
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const (
@@ -118,8 +118,8 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 		indent)
 }
 
-func (sp *SimpleProof) ToProto() *tmcrypto.SimpleProof {
-	pb := new(tmcrypto.SimpleProof)
+func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
+	pb := new(tmmerkle.SimpleProof)
 
 	pb.Total = sp.Total
 	pb.Index = sp.Index
@@ -129,17 +129,18 @@ func (sp *SimpleProof) ToProto() *tmcrypto.SimpleProof {
 	return pb
 }
 
-func (sp *SimpleProof) FromProto(pb *tmcrypto.SimpleProof) error {
+func SimpleProofFromProto(pb *tmmerkle.SimpleProof) (*SimpleProof, error) {
 	if pb == nil {
-		return errors.New("nil proof")
+		return nil, errors.New("nil proof")
 	}
+	sp := new(SimpleProof)
 
 	sp.Total = pb.Total
 	sp.Index = pb.Index
 	sp.LeafHash = pb.LeafHash
 	sp.Aunts = pb.Aunts
 
-	return sp.ValidateBasic()
+	return sp, sp.ValidateBasic()
 }
 
 // ValidateBasic performs basic validation.

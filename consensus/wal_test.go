@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -131,11 +132,12 @@ func TestWALWrite(t *testing.T) {
 			Proof: merkle.SimpleProof{
 				Total:    1,
 				Index:    1,
-				LeafHash: make([]byte, maxMsgSizeBytes-30),
+				LeafHash: make([]byte, maxMsgSizeBytes-3),
 			},
 		},
 	}
 	err = wal.Write(msg)
+	fmt.Println(err)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}

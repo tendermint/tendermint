@@ -5,7 +5,9 @@ option go_package = "github.com/tendermint/tendermint/proto/consensus";
 
 import "third_party/proto/gogoproto/gogo.proto";
 import "proto/consensus/msgs.proto";
+import "proto/types/events.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 message MsgInfo {
   Message msg     = 1 [(gogoproto.nullable) = false];
@@ -17,9 +19,24 @@ message TimeoutInfo {
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   int64 height = 2;
   int32 round  = 3;
-  int32 step   = 4 [(gogoproto.casttype) = "int8"];
+  int32 step   = 4 [(gogoproto.casttype) = "uint8"];
 }
 
-message EndHeightMessage {
+message EndHeight {
   int64 height = 1;
+}
+
+message WALMessage {
+  oneof sum {
+    tendermint.proto.types.EventDataRoundState event_data_round_state = 1;
+    MsgInfo                                    msg_info               = 2;
+    TimeoutInfo                                timeout_info           = 3;
+    EndHeight                                  end_height             = 4;
+  }
+}
+
+// TimedWALMessage wraps WALMessage and adds Time for debugging purposes.
+message TimedWALMessage {
+  google.protobuf.Timestamp time = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  WALMessage                Msg  = 2;
 }
