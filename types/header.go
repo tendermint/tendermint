@@ -187,7 +187,7 @@ func (h *Header) ToProto() *tmproto.Header {
 		ChainID:            h.ChainID,
 		Height:             h.Height,
 		Time:               h.Time,
-		LastBlockID:        *h.LastBlockID.ToProto(),
+		LastBlockID:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
 		ConsensusHash:      h.ConsensusHash,

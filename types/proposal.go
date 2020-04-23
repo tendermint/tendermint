@@ -104,7 +104,7 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 	}
 	pb := new(tmproto.Proposal)
 
-	pb.BlockID = *p.BlockID.ToProto()
+	pb.BlockID = p.BlockID.ToProto()
 	pb.Type = p.Type
 	pb.Height = p.Height
 	pb.Round = p.Round

@@ -780,7 +780,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 		protoBlockID := tc.bid1.ToProto()
 
 		bi := new(BlockID)
-		err := bi.FromProto(protoBlockID)
+		err := bi.FromProto(&protoBlockID)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.bid1, bi, tc.msg)

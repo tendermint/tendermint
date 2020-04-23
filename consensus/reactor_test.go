@@ -261,7 +261,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
@@ -284,7 +284,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
