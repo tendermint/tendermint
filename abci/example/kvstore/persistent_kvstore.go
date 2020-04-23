@@ -156,12 +156,12 @@ func (app *PersistentKVStoreApplication) LoadSnapshotChunk(
 
 func (app *PersistentKVStoreApplication) OfferSnapshot(
 	req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
-	return types.ResponseOfferSnapshot{Accepted: false}
+	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_abort}
 }
 
 func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
-	return types.ResponseApplySnapshotChunk{Applied: false}
+	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_abort}
 }
 
 //---------------------------------------------
