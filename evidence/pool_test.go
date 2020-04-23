@@ -33,8 +33,8 @@ func TestEvidencePool(t *testing.T) {
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		goodEvidence = types.NewMockEvidence(height, time.Now(), 0, valAddr)
-		badEvidence  = types.NewMockEvidence(1, evidenceTime, 0, valAddr)
+		goodEvidence = types.NewMockEvidence(height, time.Now(), valAddr)
+		badEvidence  = types.NewMockEvidence(1, evidenceTime, valAddr)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -85,7 +85,7 @@ func TestEvidencePoolIsCommitted(t *testing.T) {
 	require.NoError(t, err)
 
 	// evidence not seen yet:
-	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	evidence := types.NewMockEvidence(height, time.Now(), valAddr)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
@@ -127,7 +127,7 @@ func TestEvidencePoolAddEvidence(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockEvidence(tc.evHeight, tc.evTime, 0, valAddr)
+			ev := types.NewMockEvidence(tc.evHeight, tc.evTime, valAddr)
 			err := pool.AddEvidence(ev)
 			if tc.expErr {
 				assert.Error(t, err)
@@ -152,7 +152,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// create new block (no need to save it to blockStore)
-	evidence := types.NewMockEvidence(height, time.Now(), 0, valAddr)
+	evidence := types.NewMockEvidence(height, time.Now(), valAddr)
 	lastCommit := makeCommit(height, valAddr)
 	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{evidence})
 	// update state (partially)
