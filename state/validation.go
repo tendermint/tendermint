@@ -132,11 +132,13 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 	// Validate all evidence.
 	for _, ev := range block.Evidence.Evidence {
+		if evidencePool != nil {
+			if evidencePool.IsCommitted(ev) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
+			}
+		}
 		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
-		}
-		if evidencePool != nil && evidencePool.IsCommitted(ev) {
-			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 		}
 	}
 
