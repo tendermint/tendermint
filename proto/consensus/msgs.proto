@@ -1,0 +1,80 @@
+syntax = "proto3";
+package tendermint.proto.consensus;
+
+option go_package = "github.com/tendermint/tendermint/proto/consensus";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/types/types.proto";
+import "proto/libs/bits/types.proto";
+
+message NewRoundStep {
+  int64 height                   = 1;
+  int32 round                    = 2;
+  int32 step                     = 3 [(gogoproto.casttype) = "int8"];
+  int64 seconds_since_start_time = 4;
+  int32 last_commit_round        = 5;
+}
+
+message NewValidBlock {
+  uint64                               height             = 1;
+  int32                                round              = 2;
+  tendermint.proto.types.PartSetHeader block_parts_header = 3 [(gogoproto.nullable) = false];
+  tendermint.proto.libs.bits.BitArray  block_parts        = 4;
+  bool                                 is_commit          = 5;
+}
+
+message Proposal {
+  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+}
+
+message ProposalPOL {
+  int64                               height             = 1;
+  int32                               proposal_pol_round = 2;
+  tendermint.proto.libs.bits.BitArray proposal_pol       = 3 [(gogoproto.nullable) = false];
+}
+
+message BlockPart {
+  int64                        height = 1;
+  int32                        round  = 2;
+  tendermint.proto.types.Parts part   = 3 [(gogoproto.nullable) = false];
+}
+
+message Vote {
+  tendermint.proto.types.Vote vote = 1;
+}
+
+message HasVote {
+  int64                                height = 1;
+  int32                                round  = 2;
+  tendermint.proto.types.SignedMsgType type   = 3;
+  int32                                index  = 4;
+}
+
+message VoteSetMaj23 {
+  int64                                height   = 1;
+  int32                                round    = 2;
+  tendermint.proto.types.SignedMsgType type     = 3;
+  tendermint.proto.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+}
+
+message VoteSetBits {
+  int64                                height   = 1;
+  int32                                round    = 2;
+  tendermint.proto.types.SignedMsgType type     = 3;
+  tendermint.proto.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  tendermint.proto.libs.bits.BitArray  votes    = 5 [(gogoproto.nullable) = false];
+}
+
+message Message {
+  oneof sum {
+    NewRoundStep  new_round_step  = 1;
+    NewValidBlock new_valid_block = 2;
+    Proposal      proposal        = 3;
+    ProposalPOL   proposal_pol    = 4;
+    BlockPart     block_part      = 5;
+    Vote          vote            = 6;
+    HasVote       has_vote        = 7;
+    VoteSetMaj23  vote_set_maj23  = 8;
+    VoteSetBits   vote_set_bits   = 9;
+  }
+}

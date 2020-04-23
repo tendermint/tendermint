@@ -110,6 +110,7 @@ func (state State) Equals(state2 State) bool {
 
 // Bytes serializes the State using go-amino.
 func (state State) Bytes() []byte {
+	//TODO: migrate in tandem with consensus reactor
 	// sm, err := state.ToProto()
 	// if err != nil {
 	// 	panic(err)

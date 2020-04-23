@@ -1,122 +1,18 @@
 package v2
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+
+	bc "github.com/tendermint/tendermint/blockchain"
 )
-
-//-------------------------------------
-
-type bcBlockRequestMessage struct {
-	Height int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcBlockRequestMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	return nil
-}
-
-func (m *bcBlockRequestMessage) String() string {
-	return fmt.Sprintf("[bcBlockRequestMessage %v]", m.Height)
-}
-
-type bcNoBlockResponseMessage struct {
-	Height int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcNoBlockResponseMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	return nil
-}
-
-func (m *bcNoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
-}
-
-//-------------------------------------
-
-type bcBlockResponseMessage struct {
-	Block *types.Block
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcBlockResponseMessage) ValidateBasic() error {
-	if m.Block == nil {
-		return errors.New("block response message has nil block")
-	}
-
-	return m.Block.ValidateBasic()
-}
-
-func (m *bcBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
-}
-
-//-------------------------------------
-
-type bcStatusRequestMessage struct {
-	Height int64
-	Base   int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcStatusRequestMessage) ValidateBasic() error {
-	if m.Base < 0 {
-		return errors.New("negative Base")
-	}
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Base > m.Height {
-		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
-	}
-	return nil
-}
-
-func (m *bcStatusRequestMessage) String() string {
-	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
-}
-
-//-------------------------------------
-
-type bcStatusResponseMessage struct {
-	Height int64
-	Base   int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcStatusResponseMessage) ValidateBasic() error {
-	if m.Base < 0 {
-		return errors.New("negative Base")
-	}
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Base > m.Height {
-		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
-	}
-	return nil
-}
-
-func (m *bcStatusResponseMessage) String() string {
-	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
-}
 
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
@@ -428,41 +324,9 @@ func (r *BlockchainReactor) Stop() error {
 	return nil
 }
 
-const (
-	// NOTE: keep up to date with bcBlockResponseMessage
-	bcBlockResponseMessagePrefixSize   = 4
-	bcBlockResponseMessageFieldKeySize = 1
-	maxMsgSize                         = types.MaxBlockSizeBytes +
-		bcBlockResponseMessagePrefixSize +
-		bcBlockResponseMessageFieldKeySize
-)
-
-// BlockchainMessage is a generic message for this reactor.
-type BlockchainMessage interface {
-	ValidateBasic() error
-}
-
-// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
-func RegisterBlockchainMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
-	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
-	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/blockchain/BlockResponse", nil)
-	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
-	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
-	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
-}
-
-func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	return
-}
-
 // Receive implements Reactor by handling different message types.
 func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
+	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
 		r.logger.Error("error decoding message",
 			"src", src.ID(), "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
@@ -479,12 +343,12 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
-	case *bcStatusRequestMessage:
+	case *bc.StatusRequestMessage:
 		if err := r.io.sendStatusResponse(r.store.Height(), src.ID()); err != nil {
 			r.logger.Error("Could not send status message to peer", "src", src)
 		}
 
-	case *bcBlockRequestMessage:
+	case *bc.BlockRequestMessage:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
 			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
@@ -498,10 +362,10 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 		}
 
-	case *bcStatusResponseMessage:
+	case *bc.StatusResponseMessage:
 		r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
 
-	case *bcBlockResponseMessage:
+	case *bc.BlockResponseMessage:
 		r.events <- bcBlockResponse{
 			peerID: src.ID(),
 			block:  msg.Block,
@@ -509,7 +373,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			time:   time.Now(),
 		}
 
-	case *bcNoBlockResponseMessage:
+	case *bc.NoBlockResponseMessage:
 		r.events <- bcNoBlockResponse{peerID: src.ID(), height: msg.Height, time: time.Now()}
 	}
 }
@@ -540,7 +404,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            10,
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxMsgSize,
+			RecvMessageCapacity: bc.MaxMsgSize,
 		},
 	}
 }

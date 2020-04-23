@@ -583,19 +583,22 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 
-	if commit.BlockID.IsZero() {
-		return errors.New("commit cannot be for nil block")
-	}
+	// Check that commit.Height is greater than 1
+	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
+	if commit.Height >= 1 {
+		if commit.BlockID.IsZero() {
+			return errors.New("commit cannot be for nil block")
+		}
 
-	if len(commit.Signatures) == 0 {
-		return errors.New("no signatures in commit")
-	}
-	for i, commitSig := range commit.Signatures {
-		if err := commitSig.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+		if len(commit.Signatures) == 0 {
+			return errors.New("no signatures in commit")
+		}
+		for i, commitSig := range commit.Signatures {
+			if err := commitSig.ValidateBasic(); err != nil {
+				return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -682,11 +685,11 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 			return err
 		}
 	}
+	commit.Signatures = sigs
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
 	commit.BlockID = blockID
-	commit.Signatures = sigs
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -922,8 +925,8 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 		return nil, errors.New("nil evidence data")
 	}
 
+	evi := new(tmproto.EvidenceData)
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
-
 	for i := range data.Evidence {
 		protoEvi, err := EvidenceToProto(data.Evidence[i])
 		if err != nil {
@@ -931,12 +934,13 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 		}
 		eviBzs[i] = *protoEvi
 	}
+	evi.Evidence = eviBzs
 
-	protoEvidence := tmproto.EvidenceData{
-		Evidence: eviBzs,
-		Hash:     data.hash,
+	if data.hash != nil {
+		evi.Hash = data.hash
 	}
-	return &protoEvidence, nil
+
+	return evi, nil
 }
 
 // FromProto sets a protobuf EvidenceData to the given pointer.
@@ -944,19 +948,17 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 	if eviData == nil {
 		return errors.New("nil evidenceData")
 	}
-	if len(eviData.Evidence) > 0 {
-		eviBzs := make(EvidenceList, len(eviData.Evidence))
-		for i := range eviData.Evidence {
-			evi, err := EvidenceFromProto(eviData.Evidence[i])
-			if err != nil {
-				return err
-			}
-			eviBzs[i] = evi
+
+	eviBzs := make(EvidenceList, len(eviData.Evidence))
+	for i := range eviData.Evidence {
+		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		if err != nil {
+			return err
 		}
-		data.Evidence = eviBzs
-	} else {
-		data.Evidence = EvidenceList{}
+		eviBzs[i] = evi
 	}
+	data.Evidence = eviBzs
+
 	data.hash = eviData.GetHash()
 
 	return nil
