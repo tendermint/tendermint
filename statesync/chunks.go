@@ -1,8 +1,6 @@
 package statesync
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,78 +8,67 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
+
+	"github.com/tendermint/tendermint/p2p"
 )
 
-// bufferChunks is the number of queued chunks to buffer in memory, before spooling to disk.
-const bufferChunks = 4
-
-// errDone is returned by chunkQueue.Next when all chunks have been returned.
-var errDone = errors.New("chunk queue is done")
+// errDone is returned by chunkQueue.Next() when all chunks have been returned.
+var errDone = errors.New("chunk queue has completed")
 
 // chunk contains data for a chunk.
 type chunk struct {
 	Height uint64
 	Format uint32
 	Index  uint32
-	Body   []byte
+	Chunk  []byte
+	Sender p2p.ID
 }
 
-// Hash generates a hash for the chunk body, used for verification.
-func (c *chunk) Hash() []byte {
-	if c == nil || c.Body == nil {
-		return []byte{}
-	}
-	hash := sha256.Sum256(c.Body)
-	return hash[:]
-}
-
-// chunkQueue manages chunks for a state sync process, ordering them as necessary. It acts as an
-// iterator over an ordered sequence of chunks. Callers can add chunks out-of-order and they will
-// be spooled in memory or on disk as appropriate.
+// chunkQueue manages chunks for a state sync process, ordering them if requested. It acts as an
+// iterator over all chunks, but callers can request chunks to be retried, optionally after
+// refetching.
 type chunkQueue struct {
 	sync.Mutex
-	snapshot   *snapshot                // if this is nil, the queue has been closed
-	dir        string                   // temp dir for on-disk chunk storage
-	nextChunk  uint32                   // next chunk that Next() is waiting for
-	memChunks  map[uint32]*chunk        // in-memory chunk storage (see bufferChunks)
-	diskChunks map[uint32]string        // on-disk chunk storage (path to temp file)
-	chReady    chan uint32              // signals Next() about next blocks being ready
-	waiters    map[uint32][]chan<- bool // signals WaitFor() waiters about block arrival
+	snapshot       *snapshot                  // if this is nil, the queue has been closed
+	dir            string                     // temp dir for on-disk chunk storage
+	chunkFiles     map[uint32]string          // path to temporary chunk file
+	chunkSenders   map[uint32]p2p.ID          // the peer who sent the given chunk
+	chunkAllocated map[uint32]bool            // chunks that have been allocated via Allocate()
+	chunkReturned  map[uint32]bool            // chunks returned via Next()
+	waiters        map[uint32][]chan<- uint32 // signals WaitFor() waiters about chunk arrival
 }
 
-// newChunkQueue creates a new chunk queue for a snapshot, using the OS temp dir for storage.
+// newChunkQueue creates a new chunk queue for a snapshot, using a temp dir for storage.
 // Callers must call Close() when done.
-func newChunkQueue(snapshot *snapshot) (*chunkQueue, error) {
-	dir, err := ioutil.TempDir("", "tm-statesync")
+func newChunkQueue(snapshot *snapshot, tempDir string) (*chunkQueue, error) {
+	dir, err := ioutil.TempDir(tempDir, "tm-statesync")
 	if err != nil {
-		return nil, fmt.Errorf("unable to create temp dir for snapshot chunks: %w", err)
+		return nil, fmt.Errorf("unable to create temp dir for state sync chunks: %w", err)
 	}
-	if len(snapshot.ChunkHashes) == 0 {
+	if snapshot.Chunks == 0 {
 		return nil, errors.New("snapshot has no chunks")
 	}
 	return &chunkQueue{
-		snapshot:   snapshot,
-		dir:        dir,
-		memChunks:  make(map[uint32]*chunk),
-		diskChunks: make(map[uint32]string),
-		chReady:    make(chan uint32, len(snapshot.ChunkHashes)),
-		waiters:    make(map[uint32][]chan<- bool),
+		snapshot:       snapshot,
+		dir:            dir,
+		chunkFiles:     make(map[uint32]string, snapshot.Chunks),
+		chunkSenders:   make(map[uint32]p2p.ID, snapshot.Chunks),
+		chunkAllocated: make(map[uint32]bool, snapshot.Chunks),
+		chunkReturned:  make(map[uint32]bool, snapshot.Chunks),
+		waiters:        make(map[uint32][]chan<- uint32),
 	}, nil
 }
 
-// Add adds a chunk to the queue, verifying its hash. It ignores chunks that already exist,
-// returning false.
+// Add adds a chunk to the queue. It ignores chunks that already exist, returning false.
 func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
-	if chunk == nil {
+	if chunk == nil || chunk.Chunk == nil {
 		return false, errors.New("cannot add nil chunk")
-	}
-	if chunk.Body == nil {
-		return false, errors.New("cannot add chunk with nil body")
 	}
 	q.Lock()
 	defer q.Unlock()
 	if q.snapshot == nil {
-		return false, errors.New("chunk queue is closed")
+		return false, nil // queue is closed
 	}
 	if chunk.Height != q.snapshot.Height {
 		return false, fmt.Errorf("invalid chunk height %v, expected %v", chunk.Height, q.snapshot.Height)
@@ -89,52 +76,58 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	if chunk.Format != q.snapshot.Format {
 		return false, fmt.Errorf("invalid chunk format %v, expected %v", chunk.Format, q.snapshot.Format)
 	}
-	if chunk.Index >= uint32(len(q.snapshot.ChunkHashes)) {
+	if chunk.Index >= q.snapshot.Chunks {
 		return false, fmt.Errorf("received unexpected chunk %v", chunk.Index)
 	}
-	if chunk.Index < q.nextChunk || q.memChunks[chunk.Index] != nil || q.diskChunks[chunk.Index] != "" {
+	if q.chunkFiles[chunk.Index] != "" {
 		return false, nil
 	}
-	if !bytes.Equal(chunk.Hash(), q.snapshot.ChunkHashes[chunk.Index]) {
-		return false, fmt.Errorf("chunk %v hash mismatch, expected %x got %x", chunk.Index,
-			q.snapshot.ChunkHashes[chunk.Index], chunk.Hash())
-	}
 
-	// Save the chunk in memory if it is an upcoming one, otherwise spool to disk.
-	if len(q.memChunks) < bufferChunks && chunk.Index < q.nextChunk+bufferChunks {
-		q.memChunks[chunk.Index] = chunk
-	} else {
-		path := filepath.Join(q.dir, strconv.FormatUint(uint64(chunk.Index), 10))
-		err := ioutil.WriteFile(path, chunk.Body, 0644)
-		if err != nil {
-			return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
-		}
-		q.diskChunks[chunk.Index] = path
+	path := filepath.Join(q.dir, strconv.FormatUint(uint64(chunk.Index), 10))
+	err := ioutil.WriteFile(path, chunk.Chunk, 0644)
+	if err != nil {
+		return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
 	}
-
-	// If this is the next expected chunk, pass any ready chunks to Next() via channel, and close
-	// the channel when all chunks have been passed.
-	//
-	// We don't pass chunk contents, since they may be spooled to disk, and loading all of them
-	// here first would block other callers and use a ton of memory.
-	if chunk.Index == q.nextChunk {
-		for i := chunk.Index; q.memChunks[i] != nil || q.diskChunks[i] != ""; i++ {
-			q.chReady <- i
-			q.nextChunk++
-		}
-		if q.nextChunk >= uint32(len(q.snapshot.ChunkHashes)) {
-			close(q.chReady)
-		}
-	}
+	q.chunkFiles[chunk.Index] = path
+	q.chunkSenders[chunk.Index] = chunk.Sender
 
 	// Signal any waiters that the chunk has arrived.
 	for _, waiter := range q.waiters[chunk.Index] {
-		waiter <- true
+		waiter <- chunk.Index
 		close(waiter)
 	}
 	delete(q.waiters, chunk.Index)
 
 	return true, nil
+}
+
+// Allocate allocates a chunk to the caller, making it responsible for fetching it. If wait is
+// true, it waits until either the queue is closed or a chunk needs to be refetched. Returns
+// errDone once the queue is closed or when no blocks are left and wait is false.
+func (q *chunkQueue) Allocate(wait bool) (uint32, error) {
+	for {
+		q.Lock()
+		if q.snapshot == nil {
+			q.Unlock()
+			return 0, errDone
+		}
+		if uint32(len(q.chunkAllocated)) < q.snapshot.Chunks {
+			for i := uint32(0); i < q.snapshot.Chunks; i++ {
+				if !q.chunkAllocated[i] {
+					q.chunkAllocated[i] = true
+					q.Unlock()
+					return i, nil
+				}
+			}
+		}
+		q.Unlock()
+
+		if !wait {
+			return 0, errDone
+		}
+		// sleep instead of using a channel, to avoid overfilling channel and blocking sender
+		time.Sleep(1 * time.Second)
+	}
 }
 
 // Close closes the chunk queue, cleaning up all temporary files.
@@ -144,12 +137,8 @@ func (q *chunkQueue) Close() error {
 	if q.snapshot == nil {
 		return nil
 	}
-	if q.nextChunk < uint32(len(q.snapshot.ChunkHashes)) {
-		close(q.chReady)
-	}
 	for _, waiters := range q.waiters {
 		for _, waiter := range waiters {
-			waiter <- false
 			close(waiter)
 		}
 	}
@@ -162,56 +151,178 @@ func (q *chunkQueue) Close() error {
 	return nil
 }
 
-// Next returns the next chunk from the queue, or a Done error if no more chunks are available.
-// It blocks until the chunk is available.
-func (q *chunkQueue) Next() (*chunk, error) {
-	index, ok := <-q.chReady
-	if !ok {
-		return nil, errDone
-	}
+// Discard discards a chunk. It will be removed from the queue, available for allocation, and can
+// be added and returned via Next() again. If the chunk is not already in the queue this does
+// nothing, to avoid it being allocated to multiple fetchers.
+func (q *chunkQueue) Discard(index uint32) error {
 	q.Lock()
 	defer q.Unlock()
-
-	if chunk, ok := q.memChunks[index]; ok {
-		delete(q.memChunks, index)
-		return chunk, nil
-	}
-	if path, ok := q.diskChunks[index]; ok {
-		body, err := ioutil.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load chunk %v from file %v: %w", index, path, err)
-		}
-		err = os.Remove(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to remove chunk %v: %w", index, err)
-		}
-		delete(q.diskChunks, index)
-		return &chunk{
-			Height: q.snapshot.Height,
-			Format: q.snapshot.Format,
-			Index:  index,
-			Body:   body,
-		}, nil
-	}
-	return nil, fmt.Errorf("chunk %v not found", index)
+	return q.discard(index)
 }
 
-// WaitFor returns a channel that receives true when the chunk arrives in the pool, or false when
-// the pool is closed.
-func (q *chunkQueue) WaitFor(index uint32) <-chan bool {
+// discard discards a chunk, scheduling it for refetching. The caller must hold the mutex lock.
+func (q *chunkQueue) discard(index uint32) error {
+	if q.snapshot == nil {
+		return nil
+	}
+	path := q.chunkFiles[index]
+	if path == "" {
+		return nil
+	}
+	err := os.Remove(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove chunk %v: %w", index, err)
+	}
+	delete(q.chunkFiles, index)
+	delete(q.chunkReturned, index)
+	delete(q.chunkAllocated, index)
+	return nil
+}
+
+// DiscardSender discards all *unreturned* chunks from a given sender. If the caller wants to
+// discard already returned chunks, this can be done via Discard().
+func (q *chunkQueue) DiscardSender(peerID p2p.ID) error {
 	q.Lock()
 	defer q.Unlock()
-	ch := make(chan bool, 1)
+
+	for index, sender := range q.chunkSenders {
+		if sender == peerID && !q.chunkReturned[index] {
+			err := q.discard(index)
+			if err != nil {
+				return err
+			}
+			delete(q.chunkSenders, index)
+		}
+	}
+	return nil
+}
+
+// GetSender returns the sender of the chunk with the given index, or empty if not found.
+func (q *chunkQueue) GetSender(index uint32) p2p.ID {
+	q.Lock()
+	defer q.Unlock()
+	return q.chunkSenders[index]
+}
+
+// Has checks whether a chunk exists in the queue.
+func (q *chunkQueue) Has(index uint32) bool {
+	q.Lock()
+	defer q.Unlock()
+	return q.chunkFiles[index] != ""
+}
+
+// load loads a chunk from disk, or nil if the chunk is not in the queue. The caller must hold the
+// mutex lock.
+func (q *chunkQueue) load(index uint32) (*chunk, error) {
+	path, ok := q.chunkFiles[index]
+	if !ok {
+		return nil, nil
+	}
+	body, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chunk %v: %w", index, err)
+	}
+	return &chunk{
+		Height: q.snapshot.Height,
+		Format: q.snapshot.Format,
+		Index:  index,
+		Chunk:  body,
+		Sender: q.chunkSenders[index],
+	}, nil
+}
+
+// Next returns the next chunk from the queue, or errDone if all chunks have been returned. It
+// blocks until the chunk is available. Concurrent Next() calls may return the same chunk.
+func (q *chunkQueue) Next() (*chunk, error) {
+	q.Lock()
+	var chunk *chunk
+	index, err := q.nextUp()
+	if err == nil {
+		chunk, err = q.load(index)
+		if err == nil {
+			q.chunkReturned[index] = true
+		}
+	}
+	q.Unlock()
+	if chunk != nil || err != nil {
+		return chunk, err
+	}
+
+	select {
+	case _, ok := <-q.WaitFor(index):
+		if !ok {
+			return nil, errDone // queue closed
+		}
+	case <-time.After(chunkTimeout):
+		return nil, errTimeout
+	}
+
+	q.Lock()
+	defer q.Unlock()
+	chunk, err = q.load(index)
+	if err != nil {
+		return nil, err
+	}
+	q.chunkReturned[index] = true
+	return chunk, nil
+}
+
+// nextUp returns the next chunk to be returned, or errDone if all chunks have been returned. The
+// caller must hold the mutex lock.
+func (q *chunkQueue) nextUp() (uint32, error) {
+	if q.snapshot == nil {
+		return 0, errDone
+	}
+	for i := uint32(0); i < q.snapshot.Chunks; i++ {
+		if !q.chunkReturned[i] {
+			return i, nil
+		}
+	}
+	return 0, errDone
+}
+
+// Retry schedules a chunk to be retried, without refetching it.
+func (q *chunkQueue) Retry(index uint32) {
+	q.Lock()
+	defer q.Unlock()
+	delete(q.chunkReturned, index)
+}
+
+// RetryAll schedules all chunks to be retried, without refetching them.
+func (q *chunkQueue) RetryAll() {
+	q.Lock()
+	defer q.Unlock()
+	q.chunkReturned = make(map[uint32]bool)
+}
+
+// Size returns the total number of chunks for the snapshot and queue, or 0 when closed.
+func (q *chunkQueue) Size() uint32 {
+	q.Lock()
+	defer q.Unlock()
+	if q.snapshot == nil {
+		return 0
+	}
+	return q.snapshot.Chunks
+}
+
+// WaitFor returns a channel that receives a chunk index when it arrives in the queue, or
+// immediately if it has already arrived. The channel is closed without a value if the queue is
+// closed or if the chunk index is not valid.
+func (q *chunkQueue) WaitFor(index uint32) <-chan uint32 {
+	q.Lock()
+	defer q.Unlock()
+	ch := make(chan uint32, 1)
 	switch {
 	case q.snapshot == nil:
-		ch <- false
 		close(ch)
-	case q.nextChunk > index:
-		ch <- true
+	case index >= q.snapshot.Chunks:
+		close(ch)
+	case q.chunkFiles[index] != "":
+		ch <- index
 		close(ch)
 	default:
 		if q.waiters[index] == nil {
-			q.waiters[index] = make([]chan<- bool, 0)
+			q.waiters[index] = make([]chan<- uint32, 0)
 		}
 		q.waiters[index] = append(q.waiters[index], ch)
 	}

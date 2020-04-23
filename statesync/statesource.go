@@ -21,13 +21,13 @@ import (
 
 //go:generate mockery -case underscore -name StateSource
 
-// StateSource is a trusted source of state data (not state machine data) for bootstrapping a node.
+// StateSource is a trusted source of state data for bootstrapping a node.
 type StateSource interface {
 	// AppHash returns the app hash after the given height (from height+1 header).
 	AppHash(height uint64) ([]byte, error)
 	// Commit returns the commit at the given height.
 	Commit(height uint64) (*types.Commit, error)
-	// State builds state at the given height. The caller may need to update the app version after.
+	// State builds state at the given height. The caller may need to update the app version.
 	State(height uint64) (sm.State, error)
 }
 
@@ -66,7 +66,7 @@ func NewLightClientStateSource(
 	}
 
 	lc, err := lite.NewClient(chainID, trustOptions, providers[0], providers[1:],
-		litedb.New(dbm.NewMemDB(), ""), lite.Logger(logger))
+		litedb.New(dbm.NewMemDB(), ""), lite.Logger(logger), lite.MaxRetryAttempts(5))
 	if err != nil {
 		return nil, err
 	}

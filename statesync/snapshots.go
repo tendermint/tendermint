@@ -10,35 +10,32 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// snapshotHash is a snapshot hash, used for lookups.
-type snapshotHash [sha256.Size]byte
+// snapshotKey is a snapshot key used for lookups.
+type snapshotKey [sha256.Size]byte
 
 // snapshot contains data about a snapshot.
 type snapshot struct {
-	Height      uint64
-	Format      uint32
-	ChunkHashes [][]byte
-	Metadata    []byte
+	Height   uint64
+	Format   uint32
+	Chunks   uint32
+	Hash     []byte
+	Metadata []byte
 
 	trustedAppHash []byte // populated by light client
 }
 
-// Hash generates a snapshot hash, used for lookups. It takes into account not only the height
-// and format, but also the chunk hashes and metadata in case peers have generated snapshots in a
-// non-deterministic manner such that chunks from different peers wouldn't fit together.
-func (s *snapshot) Hash() snapshotHash {
+// Key generates a snapshot key, used for lookups. It takes into account not only the height and
+// format, but also the chunks, hash, and metadata in case peers have generated snapshots in a
+// non-deterministic manner. All fields must be equal for the snapshot to be considered the same.
+func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v:%v", s.Height, s.Format)))
-	if s.Metadata != nil {
-		hasher.Write(s.Metadata)
-	}
-	for _, chunkHash := range s.ChunkHashes {
-		hasher.Write(chunkHash)
-	}
-	var hash snapshotHash
-	copy(hash[:], hasher.Sum(nil))
-	return hash
+	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v", s.Height, s.Format, s.Chunks)))
+	hasher.Write(s.Hash)
+	hasher.Write(s.Metadata)
+	var key snapshotKey
+	copy(key[:], hasher.Sum(nil))
+	return key
 }
 
 // snapshotPool discovers and aggregates snapshots across peers.
@@ -46,32 +43,32 @@ type snapshotPool struct {
 	stateSource StateSource
 
 	sync.Mutex
-	snapshots     map[snapshotHash]*snapshot
-	snapshotPeers map[snapshotHash]map[p2p.ID]p2p.Peer
+	snapshots     map[snapshotKey]*snapshot
+	snapshotPeers map[snapshotKey]map[p2p.ID]p2p.Peer
 
 	// indexes for fast searches
-	formatIndex map[uint32]map[snapshotHash]bool
-	heightIndex map[uint64]map[snapshotHash]bool
-	peerIndex   map[p2p.ID]map[snapshotHash]bool
+	formatIndex map[uint32]map[snapshotKey]bool
+	heightIndex map[uint64]map[snapshotKey]bool
+	peerIndex   map[p2p.ID]map[snapshotKey]bool
 
 	// blacklists for rejected items
 	formatBlacklist   map[uint32]bool
-	heightBlacklist   map[uint64]bool
-	snapshotBlacklist map[snapshotHash]bool
+	peerBlacklist     map[p2p.ID]bool
+	snapshotBlacklist map[snapshotKey]bool
 }
 
-// newSnapshotPool creates a new snapshot pool.
+// newSnapshotPool creates a new snapshot pool. The state source is used for
 func newSnapshotPool(stateSource StateSource) *snapshotPool {
 	return &snapshotPool{
 		stateSource:       stateSource,
-		snapshots:         make(map[snapshotHash]*snapshot),
-		snapshotPeers:     make(map[snapshotHash]map[p2p.ID]p2p.Peer),
-		formatIndex:       make(map[uint32]map[snapshotHash]bool),
-		heightIndex:       make(map[uint64]map[snapshotHash]bool),
-		peerIndex:         make(map[p2p.ID]map[snapshotHash]bool),
+		snapshots:         make(map[snapshotKey]*snapshot),
+		snapshotPeers:     make(map[snapshotKey]map[p2p.ID]p2p.Peer),
+		formatIndex:       make(map[uint32]map[snapshotKey]bool),
+		heightIndex:       make(map[uint64]map[snapshotKey]bool),
+		peerIndex:         make(map[p2p.ID]map[snapshotKey]bool),
 		formatBlacklist:   make(map[uint32]bool),
-		heightBlacklist:   make(map[uint64]bool),
-		snapshotBlacklist: make(map[snapshotHash]bool),
+		peerBlacklist:     make(map[p2p.ID]bool),
+		snapshotBlacklist: make(map[snapshotKey]bool),
 	}
 }
 
@@ -84,7 +81,7 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 		return false, err
 	}
 	snapshot.trustedAppHash = appHash
-	hash := snapshot.Hash()
+	key := snapshot.Key()
 
 	p.Lock()
 	defer p.Unlock()
@@ -92,38 +89,38 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	switch {
 	case p.formatBlacklist[snapshot.Format]:
 		return false, nil
-	case p.heightBlacklist[snapshot.Height]:
+	case p.peerBlacklist[peer.ID()]:
 		return false, nil
-	case p.snapshotBlacklist[hash]:
-		return false, nil
-	case p.snapshots[hash] != nil:
-		p.snapshotPeers[hash][peer.ID()] = peer
+	case p.snapshotBlacklist[key]:
 		return false, nil
 	case len(p.peerIndex[peer.ID()]) >= recentSnapshots:
 		return false, nil
 	}
 
-	p.snapshots[hash] = snapshot
-
-	if p.snapshotPeers[hash] == nil {
-		p.snapshotPeers[hash] = make(map[p2p.ID]p2p.Peer)
+	if p.snapshotPeers[key] == nil {
+		p.snapshotPeers[key] = make(map[p2p.ID]p2p.Peer)
 	}
-	p.snapshotPeers[hash][peer.ID()] = peer
+	p.snapshotPeers[key][peer.ID()] = peer
 
 	if p.peerIndex[peer.ID()] == nil {
-		p.peerIndex[peer.ID()] = make(map[snapshotHash]bool)
+		p.peerIndex[peer.ID()] = make(map[snapshotKey]bool)
 	}
-	p.peerIndex[peer.ID()][hash] = true
+	p.peerIndex[peer.ID()][key] = true
+
+	if p.snapshots[key] != nil {
+		return false, nil
+	}
+	p.snapshots[key] = snapshot
 
 	if p.formatIndex[snapshot.Format] == nil {
-		p.formatIndex[snapshot.Format] = make(map[snapshotHash]bool)
+		p.formatIndex[snapshot.Format] = make(map[snapshotKey]bool)
 	}
-	p.formatIndex[snapshot.Format][hash] = true
+	p.formatIndex[snapshot.Format][key] = true
 
 	if p.heightIndex[snapshot.Height] == nil {
-		p.heightIndex[snapshot.Height] = make(map[snapshotHash]bool)
+		p.heightIndex[snapshot.Height] = make(map[snapshotKey]bool)
 	}
-	p.heightIndex[snapshot.Height][hash] = true
+	p.heightIndex[snapshot.Height][key] = true
 
 	return true, nil
 }
@@ -148,12 +145,12 @@ func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.Peer {
 
 // GetPeers returns the peers for a snapshot.
 func (p *snapshotPool) GetPeers(snapshot *snapshot) []p2p.Peer {
-	hash := snapshot.Hash()
+	key := snapshot.Key()
 	p.Lock()
 	defer p.Unlock()
 
-	peers := make([]p2p.Peer, 0, len(p.snapshotPeers[hash]))
-	for _, peer := range p.snapshotPeers[hash] {
+	peers := make([]p2p.Peer, 0, len(p.snapshotPeers[key]))
+	for _, peer := range p.snapshotPeers[key] {
 		peers = append(peers, peer)
 	}
 	// sort results, for testability (otherwise order is random, so tests randomly fail)
@@ -163,7 +160,7 @@ func (p *snapshotPool) GetPeers(snapshot *snapshot) []p2p.Peer {
 	return peers
 }
 
-// Ranked returns a list of snapshots, ordered by rank. The current heuristic is very naïve,
+// Ranked returns a list of snapshots ranked by preference. The current heuristic is very naïve,
 // preferring the snapshot with the greatest height, then greatest format, then greatest number of
 // peers. This can be improved quite a lot.
 func (p *snapshotPool) Ranked() []*snapshot {
@@ -188,7 +185,7 @@ func (p *snapshotPool) Ranked() []*snapshot {
 			return true
 		case a.Format < b.Format:
 			return false
-		case len(p.snapshotPeers[a.Hash()]) > len(p.snapshotPeers[b.Hash()]):
+		case len(p.snapshotPeers[a.Key()]) > len(p.snapshotPeers[b.Key()]):
 			return true
 		default:
 			return false
@@ -200,12 +197,12 @@ func (p *snapshotPool) Ranked() []*snapshot {
 
 // Reject rejects a snapshot. Rejected snapshots will never be used again.
 func (p *snapshotPool) Reject(snapshot *snapshot) {
-	hash := snapshot.Hash()
+	key := snapshot.Key()
 	p.Lock()
 	defer p.Unlock()
 
-	p.snapshotBlacklist[hash] = true
-	p.removeSnapshot(hash)
+	p.snapshotBlacklist[key] = true
+	p.removeSnapshot(key)
 }
 
 // RejectFormat rejects a snapshot format. It will never be used again.
@@ -214,48 +211,53 @@ func (p *snapshotPool) RejectFormat(format uint32) {
 	defer p.Unlock()
 
 	p.formatBlacklist[format] = true
-	for hash := range p.formatIndex[format] {
-		p.removeSnapshot(hash)
+	for key := range p.formatIndex[format] {
+		p.removeSnapshot(key)
 	}
 }
 
-// RejectHeight rejects a snapshot height. It will never be used again.
-func (p *snapshotPool) RejectHeight(height uint64) {
+// RejectPeer rejects a peer. It will never be used again.
+func (p *snapshotPool) RejectPeer(peerID p2p.ID) {
+	if peerID == "" {
+		return
+	}
 	p.Lock()
 	defer p.Unlock()
 
-	p.heightBlacklist[height] = true
-	for hash := range p.heightIndex[height] {
-		p.removeSnapshot(hash)
-	}
+	p.removePeer(peerID)
+	p.peerBlacklist[peerID] = true
 }
 
 // RemovePeer removes a peer from the pool, and any snapshots that no longer have peers.
-func (p *snapshotPool) RemovePeer(peer p2p.Peer) {
+func (p *snapshotPool) RemovePeer(peerID p2p.ID) {
 	p.Lock()
 	defer p.Unlock()
+	p.removePeer(peerID)
+}
 
-	for hash := range p.peerIndex[peer.ID()] {
-		delete(p.snapshotPeers[hash], peer.ID())
-		if len(p.snapshotPeers[hash]) == 0 {
-			p.removeSnapshot(hash)
+// removePeer removes a peer. The caller must hold the mutex lock.
+func (p *snapshotPool) removePeer(peerID p2p.ID) {
+	for key := range p.peerIndex[peerID] {
+		delete(p.snapshotPeers[key], peerID)
+		if len(p.snapshotPeers[key]) == 0 {
+			p.removeSnapshot(key)
 		}
 	}
-	delete(p.peerIndex, peer.ID())
+	delete(p.peerIndex, peerID)
 }
 
 // removeSnapshot removes a snapshot. The caller must hold the mutex lock.
-func (p *snapshotPool) removeSnapshot(hash snapshotHash) {
-	snapshot := p.snapshots[hash]
+func (p *snapshotPool) removeSnapshot(key snapshotKey) {
+	snapshot := p.snapshots[key]
 	if snapshot == nil {
 		return
 	}
 
-	delete(p.snapshots, hash)
-	delete(p.formatIndex[snapshot.Format], hash)
-	delete(p.heightIndex[snapshot.Height], hash)
-	for peerID := range p.snapshotPeers[hash] {
-		delete(p.peerIndex[peerID], hash)
+	delete(p.snapshots, key)
+	delete(p.formatIndex[snapshot.Format], key)
+	delete(p.heightIndex[snapshot.Height], key)
+	for peerID := range p.snapshotPeers[key] {
+		delete(p.peerIndex[peerID], key)
 	}
-	delete(p.snapshotPeers, hash)
+	delete(p.snapshotPeers, key)
 }

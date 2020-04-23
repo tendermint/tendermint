@@ -23,11 +23,11 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 		"chunk is returned": {
 			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			[]byte{1, 2, 3},
-			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: []byte{1, 2, 3}}},
+			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}}},
 		"empty chunk is returned, as nil": {
 			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			[]byte{},
-			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: nil}},
+			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: nil}},
 		"nil (missing) chunk is returned as missing": {
 			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
 			nil,
@@ -59,7 +59,7 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 			}
 
 			// Start a reactor and send a chunkRequestMessage, then wait for and check response
-			r := NewReactor(conn, nil)
+			r := NewReactor(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			defer r.Stop()
@@ -82,30 +82,30 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 		"no snapshots": {nil, []*snapshotsResponseMessage{}},
 		">10 unordered snapshots": {
 			[]*abci.Snapshot{
-				{Height: 1, Format: 2, ChunkHashes: [][]byte{{1, 2}}, Metadata: []byte{1}},
-				{Height: 2, Format: 2, ChunkHashes: [][]byte{{2, 2}}, Metadata: []byte{2}},
-				{Height: 3, Format: 2, ChunkHashes: [][]byte{{3, 2}}, Metadata: []byte{3}},
-				{Height: 1, Format: 1, ChunkHashes: [][]byte{{1, 1}}, Metadata: []byte{4}},
-				{Height: 2, Format: 1, ChunkHashes: [][]byte{{2, 1}}, Metadata: []byte{5}},
-				{Height: 3, Format: 1, ChunkHashes: [][]byte{{3, 1}}, Metadata: []byte{6}},
-				{Height: 1, Format: 4, ChunkHashes: [][]byte{{1, 4}}, Metadata: []byte{7}},
-				{Height: 2, Format: 4, ChunkHashes: [][]byte{{2, 4}}, Metadata: []byte{8}},
-				{Height: 3, Format: 4, ChunkHashes: [][]byte{{3, 4}}, Metadata: []byte{9}},
-				{Height: 1, Format: 3, ChunkHashes: [][]byte{{1, 3}}, Metadata: []byte{10}},
-				{Height: 2, Format: 3, ChunkHashes: [][]byte{{2, 3}}, Metadata: []byte{11}},
-				{Height: 3, Format: 3, ChunkHashes: [][]byte{{3, 3}}, Metadata: []byte{12}},
+				{Height: 1, Format: 2, Chunks: 7, Hash: []byte{1, 2}, Metadata: []byte{1}},
+				{Height: 2, Format: 2, Chunks: 7, Hash: []byte{2, 2}, Metadata: []byte{2}},
+				{Height: 3, Format: 2, Chunks: 7, Hash: []byte{3, 2}, Metadata: []byte{3}},
+				{Height: 1, Format: 1, Chunks: 7, Hash: []byte{1, 1}, Metadata: []byte{4}},
+				{Height: 2, Format: 1, Chunks: 7, Hash: []byte{2, 1}, Metadata: []byte{5}},
+				{Height: 3, Format: 1, Chunks: 7, Hash: []byte{3, 1}, Metadata: []byte{6}},
+				{Height: 1, Format: 4, Chunks: 7, Hash: []byte{1, 4}, Metadata: []byte{7}},
+				{Height: 2, Format: 4, Chunks: 7, Hash: []byte{2, 4}, Metadata: []byte{8}},
+				{Height: 3, Format: 4, Chunks: 7, Hash: []byte{3, 4}, Metadata: []byte{9}},
+				{Height: 1, Format: 3, Chunks: 7, Hash: []byte{1, 3}, Metadata: []byte{10}},
+				{Height: 2, Format: 3, Chunks: 7, Hash: []byte{2, 3}, Metadata: []byte{11}},
+				{Height: 3, Format: 3, Chunks: 7, Hash: []byte{3, 3}, Metadata: []byte{12}},
 			},
 			[]*snapshotsResponseMessage{
-				{Height: 3, Format: 4, ChunkHashes: [][]byte{{3, 4}}, Metadata: []byte{9}},
-				{Height: 3, Format: 3, ChunkHashes: [][]byte{{3, 3}}, Metadata: []byte{12}},
-				{Height: 3, Format: 2, ChunkHashes: [][]byte{{3, 2}}, Metadata: []byte{3}},
-				{Height: 3, Format: 1, ChunkHashes: [][]byte{{3, 1}}, Metadata: []byte{6}},
-				{Height: 2, Format: 4, ChunkHashes: [][]byte{{2, 4}}, Metadata: []byte{8}},
-				{Height: 2, Format: 3, ChunkHashes: [][]byte{{2, 3}}, Metadata: []byte{11}},
-				{Height: 2, Format: 2, ChunkHashes: [][]byte{{2, 2}}, Metadata: []byte{2}},
-				{Height: 2, Format: 1, ChunkHashes: [][]byte{{2, 1}}, Metadata: []byte{5}},
-				{Height: 1, Format: 4, ChunkHashes: [][]byte{{1, 4}}, Metadata: []byte{7}},
-				{Height: 1, Format: 3, ChunkHashes: [][]byte{{1, 3}}, Metadata: []byte{10}},
+				{Height: 3, Format: 4, Chunks: 7, Hash: []byte{3, 4}, Metadata: []byte{9}},
+				{Height: 3, Format: 3, Chunks: 7, Hash: []byte{3, 3}, Metadata: []byte{12}},
+				{Height: 3, Format: 2, Chunks: 7, Hash: []byte{3, 2}, Metadata: []byte{3}},
+				{Height: 3, Format: 1, Chunks: 7, Hash: []byte{3, 1}, Metadata: []byte{6}},
+				{Height: 2, Format: 4, Chunks: 7, Hash: []byte{2, 4}, Metadata: []byte{8}},
+				{Height: 2, Format: 3, Chunks: 7, Hash: []byte{2, 3}, Metadata: []byte{11}},
+				{Height: 2, Format: 2, Chunks: 7, Hash: []byte{2, 2}, Metadata: []byte{2}},
+				{Height: 2, Format: 1, Chunks: 7, Hash: []byte{2, 1}, Metadata: []byte{5}},
+				{Height: 1, Format: 4, Chunks: 7, Hash: []byte{1, 4}, Metadata: []byte{7}},
+				{Height: 1, Format: 3, Chunks: 7, Hash: []byte{1, 3}, Metadata: []byte{10}},
 			},
 		},
 	}
@@ -132,7 +132,7 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 			}
 
 			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactor(conn, nil)
+			r := NewReactor(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			defer r.Stop()

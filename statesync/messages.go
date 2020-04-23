@@ -60,10 +60,11 @@ func (m *snapshotsRequestMessage) ValidateBasic() error {
 
 // SnapshotResponseMessage contains information about a single snapshot.
 type snapshotsResponseMessage struct {
-	Height      uint64
-	Format      uint32
-	ChunkHashes [][]byte
-	Metadata    []byte
+	Height   uint64
+	Format   uint32
+	Chunks   uint32
+	Hash     []byte
+	Metadata []byte
 }
 
 // ValidateBasic implements Message.
@@ -74,8 +75,11 @@ func (m *snapshotsResponseMessage) ValidateBasic() error {
 	if m.Height == 0 {
 		return errors.New("height cannot be 0")
 	}
-	if len(m.ChunkHashes) == 0 {
-		return errors.New("no chunks")
+	if len(m.Hash) == 0 {
+		return errors.New("snapshot has no hash")
+	}
+	if m.Chunks == 0 {
+		return errors.New("snapshot has no chunks")
 	}
 	return nil
 }
@@ -103,7 +107,7 @@ type chunkResponseMessage struct {
 	Height  uint64
 	Format  uint32
 	Index   uint32
-	Body    []byte
+	Chunk   []byte
 	Missing bool
 }
 
@@ -115,11 +119,11 @@ func (m *chunkResponseMessage) ValidateBasic() error {
 	if m.Height == 0 {
 		return errors.New("height cannot be 0")
 	}
-	if m.Missing && len(m.Body) > 0 {
-		return errors.New("missing chunk cannot have a body")
+	if m.Missing && len(m.Chunk) > 0 {
+		return errors.New("missing chunk cannot have contents")
 	}
-	if !m.Missing && m.Body == nil {
-		return errors.New("body cannot be nil")
+	if !m.Missing && m.Chunk == nil {
+		return errors.New("chunk cannot be nil")
 	}
 	return nil
 }

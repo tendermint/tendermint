@@ -335,6 +335,10 @@ trust_height = {{ .StateSync.TrustHeight }}
 trust_hash = "{{ .StateSync.TrustHash }}"
 trust_period = "{{ .StateSync.TrustPeriod }}"
 
+# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
+# Will create a new, randomly named directory within, and remove it when done.
+temp_dir = "{{ .StateSync.TempDir }}"
+
 ##### fast sync configuration options #####
 [fastsync]
 

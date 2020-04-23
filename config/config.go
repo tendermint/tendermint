@@ -714,6 +714,7 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
 	Enable      bool          `mapstructure:"enable"`
+	TempDir     string        `mapstructure:"temp_dir"`
 	RPCServers  []string      `mapstructure:"rpc_servers"`
 	TrustPeriod time.Duration `mapstructure:"trust_period"`
 	TrustHeight int64         `mapstructure:"trust_height"`

@@ -28,16 +28,16 @@ func TestSnapshotsRequestMessage_ValidateBasic(t *testing.T) {
 }
 
 func TestSnapshotsResponseMessage_ValidateBasic(t *testing.T) {
-	hashes := [][]byte{{1, 2}, {3, 4}}
 	testcases := map[string]struct {
 		msg   *snapshotsResponseMessage
 		valid bool
 	}{
-		"nil":       {nil, false},
-		"valid":     {&snapshotsResponseMessage{Height: 1, Format: 1, ChunkHashes: hashes}, true},
-		"0 height":  {&snapshotsResponseMessage{Height: 0, Format: 1, ChunkHashes: hashes}, false},
-		"0 format":  {&snapshotsResponseMessage{Height: 1, Format: 0, ChunkHashes: hashes}, true},
-		"no chunks": {&snapshotsResponseMessage{Height: 1, Format: 1}, false},
+		"nil":      {nil, false},
+		"valid":    {&snapshotsResponseMessage{Height: 1, Format: 1, Chunks: 2, Hash: []byte{1}}, true},
+		"0 height": {&snapshotsResponseMessage{Height: 0, Format: 1, Chunks: 2, Hash: []byte{1}}, false},
+		"0 format": {&snapshotsResponseMessage{Height: 1, Format: 0, Chunks: 2, Hash: []byte{1}}, true},
+		"0 chunks": {&snapshotsResponseMessage{Height: 1, Format: 1, Hash: []byte{1}}, false},
+		"no hash":  {&snapshotsResponseMessage{Height: 1, Format: 1, Chunks: 2, Hash: []byte{}}, false},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -82,15 +82,15 @@ func TestChunkResponseMessage_ValidateBasic(t *testing.T) {
 		valid bool
 	}{
 		"nil message":        {nil, false},
-		"valid":              {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: []byte{1}}, true},
-		"0 height":           {&chunkResponseMessage{Height: 0, Format: 1, Index: 1, Body: []byte{1}}, false},
-		"0 format":           {&chunkResponseMessage{Height: 1, Format: 0, Index: 1, Body: []byte{1}}, true},
-		"0 chunk":            {&chunkResponseMessage{Height: 1, Format: 1, Index: 0, Body: []byte{1}}, true},
-		"empty body":         {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: []byte{}}, true},
-		"nil body":           {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Body: nil}, false},
+		"valid":              {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}}, true},
+		"0 height":           {&chunkResponseMessage{Height: 0, Format: 1, Index: 1, Chunk: []byte{1}}, false},
+		"0 format":           {&chunkResponseMessage{Height: 1, Format: 0, Index: 1, Chunk: []byte{1}}, true},
+		"0 chunk":            {&chunkResponseMessage{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}}, true},
+		"empty body":         {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{}}, true},
+		"nil body":           {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: nil}, false},
 		"missing":            {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true}, true},
-		"missing with empty": {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Body: []byte{}}, true},
-		"missing with body":  {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Body: []byte{1}}, false},
+		"missing with empty": {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{}}, true},
+		"missing with body":  {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{1}}, false},
 	}
 	for name, tc := range testcases {
 		tc := tc

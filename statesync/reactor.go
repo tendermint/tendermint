@@ -2,10 +2,8 @@ package statesync
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
-	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -19,8 +17,6 @@ const (
 	SnapshotChannel = byte(0x60)
 	// ChunkChannel exchanges chunk contents
 	ChunkChannel = byte(0x61)
-	// discoveryTime is the time to spend discovering snapshots
-	discoveryTime = 20 * time.Second
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
 )
@@ -32,6 +28,7 @@ type Reactor struct {
 
 	conn      proxy.AppConnSnapshot
 	connQuery proxy.AppConnQuery
+	tempDir   string
 
 	// This will only be set when a state sync is in progress. It is used to feed received
 	// snapshots and chunks into the sync.
@@ -40,7 +37,7 @@ type Reactor struct {
 }
 
 // NewReactor creates a new state sync reactor.
-func NewReactor(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery) *Reactor {
+func NewReactor(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
 	r := &Reactor{
 		conn:      conn,
 		connQuery: connQuery,
@@ -122,10 +119,11 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", src.ID())
 				src.Send(chID, cdc.MustMarshalBinaryBare(&snapshotsResponseMessage{
-					Height:      snapshot.Height,
-					Format:      snapshot.Format,
-					ChunkHashes: snapshot.ChunkHashes,
-					Metadata:    snapshot.Metadata,
+					Height:   snapshot.Height,
+					Format:   snapshot.Format,
+					Chunks:   snapshot.Chunks,
+					Hash:     snapshot.Hash,
+					Metadata: snapshot.Metadata,
 				}))
 			}
 
@@ -138,10 +136,11 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
 			_, err := r.syncer.AddSnapshot(src, &snapshot{
-				Height:      msg.Height,
-				Format:      msg.Format,
-				ChunkHashes: msg.ChunkHashes,
-				Metadata:    msg.Metadata,
+				Height:   msg.Height,
+				Format:   msg.Format,
+				Chunks:   msg.Chunks,
+				Hash:     msg.Hash,
+				Metadata: msg.Metadata,
 			})
 			if err != nil {
 				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
@@ -174,7 +173,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				Height:  msg.Height,
 				Format:  msg.Format,
 				Index:   msg.Index,
-				Body:    resp.Chunk,
+				Chunk:   resp.Chunk,
 				Missing: resp.Chunk == nil,
 			}))
 
@@ -185,11 +184,14 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
+			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Index, "peer", src.ID())
 			_, err := r.syncer.AddChunk(&chunk{
 				Height: msg.Height,
 				Format: msg.Format,
 				Index:  msg.Index,
-				Body:   msg.Body,
+				Chunk:  msg.Chunk,
+				Sender: src.ID(),
 			})
 			if err != nil {
 				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
@@ -230,10 +232,11 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 			break
 		}
 		snapshots = append(snapshots, &snapshot{
-			Height:      s.Height,
-			Format:      s.Format,
-			ChunkHashes: s.ChunkHashes,
-			Metadata:    s.Metadata,
+			Height:   s.Height,
+			Format:   s.Format,
+			Chunks:   s.Chunks,
+			Hash:     s.Hash,
+			Metadata: s.Metadata,
 		})
 	}
 	return snapshots, nil
@@ -247,28 +250,12 @@ func (r *Reactor) Sync(stateSource StateSource) (sm.State, *types.Commit, error)
 		r.mtx.Unlock()
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateSource)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateSource, r.tempDir)
 	r.mtx.Unlock()
-	defer func() {
-		r.mtx.Lock()
-		r.syncer = nil
-		r.mtx.Unlock()
-	}()
 
-	// Wait for snapshots to be discovered before starting the sync. If there are no suitable
-	// snapshots available, wait to discover some more.
-	for {
-		r.Logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
-		time.Sleep(discoveryTime)
-
-		newState, commit, err := r.syncer.Sync()
-		switch {
-		case err == errNoSnapshots:
-			continue
-		case err != nil:
-			return sm.State{}, nil, err
-		default:
-			return newState, commit, nil
-		}
-	}
+	state, commit, err := r.syncer.SyncAny(defaultDiscoveryTime)
+	r.mtx.Lock()
+	r.syncer = nil
+	r.mtx.Unlock()
+	return state, commit, err
 }
