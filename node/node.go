@@ -643,6 +643,9 @@ func NewNode(config *cfg.Config,
 		privValidator, csMetrics, fastSync, eventBus, consensusLogger,
 	)
 
+	// set fast sync function to block executor
+	blockExec.SetFastSyncFunc(consensusReactor.FastSync)
+
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
 		return nil, err
