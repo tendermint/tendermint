@@ -111,6 +111,8 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
+	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
+
 	// evl := &LunaticValidatorEvidence{
 	// Header: makeHeaderRandom(),
 	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
@@ -145,7 +147,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
 		require.NoError(t, err, tt.testName)
 
-		assert.LessOrEqual(t, MaxEvidenceBytes, len(bz), tt.testName)
+		assert.LessOrEqual(t, MaxEvidenceBytes, int64(len(bz)), tt.testName)
 	}
 
 }
