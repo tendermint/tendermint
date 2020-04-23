@@ -65,7 +65,7 @@ func (part *Part) ToProto() (*tmproto.Parts, error) {
 	pb.Bytes = part.Bytes
 	pb.Proof = *proof
 
-	return nil, nil
+	return pb, nil
 }
 
 func (part *Part) FromProto(pb *tmproto.Parts) error {
