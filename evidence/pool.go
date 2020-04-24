@@ -115,27 +115,10 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.updateValToLastHeight(block.Height, state)
 }
 
-func (evpool *Pool) AddPOLC(voteSet *types.VoteSet, pubKey crypto.PubKey) error {
-	if !voteSet.HasTwoThirdsMajority() {
-		return errors.New("vote set does not have two-thirds majority")
-	}
-	var votes []types.Vote
-	valSetSize := voteSet.Size()
-	for valIdx := 0; valIdx < valSetSize; valIdx++ {
-		vote := voteSet.GetByIndex(valIdx)
-		if vote != nil && vote.BlockID.IsZero() {
-			votes = append(votes, *vote)
-		}
-	}
-	polc := types.ProofOfLockChange{
-		Votes:  votes,
-		PubKey: pubKey,
-	}
+func (evpool *Pool) AddPOLC(polc types.ProofOfLockChange) error {
 	key := keyPOLC(polc)
 	polcBytes := cdc.MustMarshalBinaryBare(polc)
-	// store polc in evidence db
-
-	return nil
+	return evpool.store.db.Set(key, polcBytes)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool. If
