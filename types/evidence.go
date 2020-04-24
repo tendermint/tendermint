@@ -632,9 +632,9 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 		return errors.New("empty vote")
 	}
 
-	// if err := e.Header.ValidateBasic(); err != nil {
-	// 	return fmt.Errorf("invalid header: %v", err)
-	// }
+	if err := e.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid header: %v", err)
+	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid signature: %v", err)
@@ -735,9 +735,9 @@ func (e LunaticValidatorEvidence) ValidateBasic() error {
 		return errors.New("empty vote")
 	}
 
-	// if err := e.Header.ValidateBasic(); err != nil {
-	// 	return fmt.Errorf("invalid header: %v", err)
-	// }
+	if err := e.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid header: %v", err)
+	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid signature: %v", err)
