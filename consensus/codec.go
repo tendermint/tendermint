@@ -341,6 +341,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		return nil, errors.New("nil WAL message")
 	}
 	var pb WALMessage
+
 	switch msg := msg.Sum.(type) {
 	case *tmcons.WALMessage_EventDataRoundState:
 		pb = &types.EventDataRoundState{
@@ -348,7 +349,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 			Round:  msg.EventDataRoundState.Round,
 			Step:   msg.EventDataRoundState.Step,
 		}
-
+		return pb
 	case *tmcons.WALMessage_MsgInfo:
 		walMsg, err := MsgFromProto(&msg.MsgInfo.Msg)
 		if err != nil {
