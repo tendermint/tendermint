@@ -8,11 +8,11 @@ import "proto/crypto/keys/types.proto";
 
 // FilePVKey stores the immutable part of PrivValidator.
 message FilePVKey {
-  bytes                                   Address  = 1;
+  bytes                                   address  = 1;
   tendermint.proto.crypto.keys.PublicKey  pub_key  = 2 [(gogoproto.nullable) = false];
   tendermint.proto.crypto.keys.PrivateKey priv_key = 3 [(gogoproto.nullable) = false];
 
-  string file_Path = 4;
+  string file_path = 4;
 }
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
