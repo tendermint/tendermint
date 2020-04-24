@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -99,7 +98,6 @@ func TestWALEncoderDecoder(t *testing.T) {
 		dec := NewWALDecoder(b)
 		decoded, err := dec.Decode()
 		require.NoError(t, err)
-
 		assert.Equal(t, msg.Time.UTC(), decoded.Time)
 		assert.Equal(t, msg.Msg, decoded.Msg)
 	}
@@ -132,12 +130,11 @@ func TestWALWrite(t *testing.T) {
 			Proof: merkle.SimpleProof{
 				Total:    1,
 				Index:    1,
-				LeafHash: make([]byte, maxMsgSizeBytes-3),
+				LeafHash: make([]byte, maxMsgSizeBytes-30),
 			},
 		},
 	}
 	err = wal.Write(msg)
-	fmt.Println(err)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}

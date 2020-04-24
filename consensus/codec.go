@@ -158,7 +158,10 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 
 	return &pb, nil
 }
-func MsgFromProto(msg tmcons.Message) (Message, error) {
+func MsgFromProto(msg *tmcons.Message) (Message, error) {
+	if msg == nil {
+		return nil, errors.New("consensus: nil message")
+	}
 	var pb Message
 
 	switch msg := msg.Sum.(type) {
@@ -185,8 +188,10 @@ func MsgFromProto(msg tmcons.Message) (Message, error) {
 			IsCommit:         msg.NewValidBlock.IsCommit,
 		}
 	case *tmcons.Message_Proposal:
-		pbP := new(types.Proposal)
-		pbP.FromProto(&msg.Proposal.Proposal)
+		pbP, err := types.ProposalFromProto(&msg.Proposal.Proposal)
+		if err != nil {
+			return nil, fmt.Errorf("proposal msg to proto error: %w", err)
+		}
 
 		pb = &ProposalMessage{
 			Proposal: pbP,
@@ -200,8 +205,8 @@ func MsgFromProto(msg tmcons.Message) (Message, error) {
 			ProposalPOL:      pbBits,
 		}
 	case *tmcons.Message_BlockPart:
-		parts := new(types.Part)
-		if err := parts.FromProto(&msg.BlockPart.Part); err != nil {
+		parts, err := types.PartFromProto(&msg.BlockPart.Part)
+		if err != nil {
 			return nil, fmt.Errorf("blockpart msg to proto error: %w", err)
 		}
 		pb = &BlockPartMessage{
@@ -234,7 +239,7 @@ func MsgFromProto(msg tmcons.Message) (Message, error) {
 			Height:  msg.VoteSetMaj23.Height,
 			Round:   msg.VoteSetMaj23.Round,
 			Type:    msg.VoteSetMaj23.Type,
-			BlockID: *bi, // nil pointer deference
+			BlockID: *bi,
 		}
 	case *tmcons.Message_VoteSetBits:
 		bi := new(types.BlockID)
@@ -345,7 +350,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 			Step:   msg.EventDataRoundState.Step,
 		}
 	case *tmcons.WALMessage_MsgInfo:
-		walMsg, err := MsgFromProto(msg.MsgInfo.Msg)
+		walMsg, err := MsgFromProto(&msg.MsgInfo.Msg)
 		if err != nil {
 			return nil, fmt.Errorf("msgInfo from proto error: %w", err)
 		}

@@ -117,13 +117,14 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 
 // FromProto sets a protobuf Proposal to the given pointer.
 // It returns an error if the proposal is invalid.
-func (p *Proposal) FromProto(pp *tmproto.Proposal) error {
+func ProposalFromProto(pp *tmproto.Proposal) (*Proposal,error) {
 	if pp == nil {
-		return errors.New("nil proposal")
+		return nil, errors.New("nil proposal")
 	}
 
 	var blockID BlockID
 
+	p := new(Proposal)
 	// error checked in proposal ValidateBasic
 	blockID.FromProto(&pp.BlockID)
 
@@ -135,5 +136,5 @@ func (p *Proposal) FromProto(pp *tmproto.Proposal) error {
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature
 
-	return p.ValidateBasic()
+	return p,  p.ValidateBasic()
 }

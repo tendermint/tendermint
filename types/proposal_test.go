@@ -162,8 +162,7 @@ func TestProposalProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoProposal := tc.p1.ToProto()
 
-		p := new(Proposal)
-		err := p.FromProto(protoProposal)
+		p, err := ProposalFromProto(protoProposal)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.p1, p, tc.msg)

@@ -304,6 +304,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	// data := cdc.MustMarshalBinaryBare(v)
 	pbMsg, err := WALToProto(v.Msg)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	pv := tmcons.TimedWALMessage{
@@ -318,6 +319,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
+	fmt.Println(length, "<-> v", v)
 	if length > maxMsgSizeBytes {
 		return fmt.Errorf("msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
 	}

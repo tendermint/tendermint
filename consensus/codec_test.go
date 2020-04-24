@@ -1,0 +1,204 @@
+package consensus
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/libs/bits"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
+	"github.com/tendermint/tendermint/types"
+)
+
+func TestMsgToProto(t *testing.T) {
+	psh := types.PartSetHeader{
+		Total: 1,
+		Hash:  tmrand.Bytes(32),
+	}
+	pbPsh := psh.ToProto()
+	bi := types.BlockID{
+		Hash:        tmrand.Bytes(32),
+		PartsHeader: psh,
+	}
+	pbBi := bi.ToProto()
+	bits := bits.NewBitArray(1)
+	pbBits := bits.ToProto()
+
+	parts := types.Part{
+		Index: 1,
+		Bytes: []byte("test"),
+		Proof: merkle.SimpleProof{
+			Total:    1,
+			Index:    1,
+			LeafHash: tmrand.Bytes(32),
+			Aunts:    [][]byte{},
+		},
+	}
+	pbParts, err := parts.ToProto()
+	require.NoError(t, err)
+
+	proposal := types.Proposal{
+		Type:      3, //proposal type in enum is 3
+		Height:    1,
+		Round:     1,
+		POLRound:  1,
+		BlockID:   bi,
+		Timestamp: time.Now(),
+		Signature: tmrand.Bytes(20),
+	}
+	pbProposal := proposal.ToProto()
+
+	pv := types.NewMockPV()
+	pk, err := pv.GetPubKey()
+	require.NoError(t, err)
+	val := types.NewValidator(pk, 100)
+
+	vote, err := types.MakeVote(
+		1, types.BlockID{}, &types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}},
+		pv, "chainID", time.Now())
+	require.NoError(t, err)
+	pbVote := vote.ToProto()
+
+	testsCases := []struct {
+		testName string
+		msg      Message
+		want     *tmcons.Message
+		wantErr  bool
+	}{
+		{"successful NewRoundStepMessage", &NewRoundStepMessage{
+			Height:                2,
+			Round:                 1,
+			Step:                  1,
+			SecondsSinceStartTime: 1,
+			LastCommitRound:       2,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_NewRoundStep{
+				NewRoundStep: &tmcons.NewRoundStep{
+					Height:                2,
+					Round:                 1,
+					Step:                  1,
+					SecondsSinceStartTime: 1,
+					LastCommitRound:       2,
+				},
+			},
+		}, false},
+
+		{"successful NewValidBlockMessage", &NewValidBlockMessage{
+			Height:           1,
+			Round:            1,
+			BlockPartsHeader: psh,
+			BlockParts:       bits,
+			IsCommit:         false,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_NewValidBlock{
+				NewValidBlock: &tmcons.NewValidBlock{
+					Height:           1,
+					Round:            1,
+					BlockPartsHeader: pbPsh,
+					BlockParts:       pbBits,
+					IsCommit:         false,
+				},
+			},
+		}, false},
+		{"successful BlockPartMessage", &BlockPartMessage{
+			Height: 100,
+			Round:  1,
+			Part:   &parts,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_BlockPart{
+				BlockPart: &tmcons.BlockPart{
+					Height: 100,
+					Round:  1,
+					Part:   *pbParts,
+				},
+			},
+		}, false},
+		{"successful ProposalPOLMessage", &ProposalPOLMessage{
+			Height:           1,
+			ProposalPOLRound: 1,
+			ProposalPOL:      bits,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_ProposalPol{
+				ProposalPol: &tmcons.ProposalPOL{
+					Height:           1,
+					ProposalPolRound: 1,
+					ProposalPol:      *pbBits,
+				},
+			}}, false},
+		{"successful ProposalMessage", &ProposalMessage{
+			Proposal: &proposal,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_Proposal{
+				Proposal: &tmcons.Proposal{
+					Proposal: *pbProposal,
+				},
+			},
+		}, false},
+		{"successful VoteMessage", &VoteMessage{
+			Vote: vote,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_Vote{
+				Vote: &tmcons.Vote{
+					Vote: pbVote,
+				},
+			},
+		}, false},
+		{"successful VoteSetMaj23", &VoteSetMaj23Message{
+			Height:  1,
+			Round:   1,
+			Type:    1,
+			BlockID: bi,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_VoteSetMaj23{
+				VoteSetMaj23: &tmcons.VoteSetMaj23{
+					Height:  1,
+					Round:   1,
+					Type:    1,
+					BlockID: pbBi,
+				},
+			},
+		}, false},
+		{"successful VoteSetBits", &VoteSetBitsMessage{
+			Height:  1,
+			Round:   1,
+			Type:    1,
+			BlockID: bi,
+			Votes:   bits,
+		}, &tmcons.Message{
+			Sum: &tmcons.Message_VoteSetBits{
+				VoteSetBits: &tmcons.VoteSetBits{
+					Height:  1,
+					Round:   1,
+					Type:    1,
+					BlockID: pbBi,
+					Votes:   *pbBits,
+				},
+			},
+		}, false},
+		{"failure", nil, &tmcons.Message{}, true},
+	}
+	for _, tt := range testsCases {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			pb, err := MsgToProto(tt.msg)
+			if tt.wantErr == true {
+				assert.Equal(t, err != nil, tt.wantErr)
+				return
+			}
+			assert.EqualValues(t, tt.want, pb, tt.testName)
+
+			msg, err := MsgFromProto(pb)
+
+			if !tt.wantErr {
+				require.NoError(t, err)
+				bcm := assert.Equal(t, tt.msg, msg, tt.testName)
+				assert.True(t, bcm, tt.testName)
+			} else {
+				require.Error(t, err, tt.testName)
+			}
+		})
+	}
+}

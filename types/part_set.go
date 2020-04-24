@@ -68,20 +68,21 @@ func (part *Part) ToProto() (*tmproto.Parts, error) {
 	return pb, nil
 }
 
-func (part *Part) FromProto(pb *tmproto.Parts) error {
+func PartFromProto(pb *tmproto.Parts) (*Part, error) {
 	if pb == nil {
-		return errors.New("nil part")
+		return nil, errors.New("nil part")
 	}
 
+	part := new(Part)
 	proof, err := merkle.SimpleProofFromProto(&pb.Proof)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	part.Index = pb.Index
 	part.Bytes = pb.Bytes
 	part.Proof = *proof
 
-	return part.ValidateBasic()
+	return part, part.ValidateBasic()
 }
 
 //-------------------------------------
