@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -67,7 +66,7 @@ type txNotifier interface {
 // interface to the evidence pool
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
-	AddPOLC(*types.VoteSet, crypto.PubKey) error
+	AddPOLC(types.ProofOfLockChange) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -1255,17 +1254,25 @@ func (cs *State) enterPrecommit(height int64, round int) {
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 	// Save POL prevotes in evidence db in case of future justification
+	cs.savePOLC(round)
+	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
+}
+
+func (cs *State) savePOLC(round int) {
 	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		// Metrics won't be updated, but it's not critical.
-		cs.Logger.Error("Error on retrival of pubkey", "err", err)
+		cs.Logger.Error("Error on retrieval of pubkey", "err", err)
+		return
 	}
-	err = cs.evpool.AddPOLC(cs.Votes.Prevotes(round), pubKey)
+	polc, err := types.MakePOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey)
 	if err != nil {
-		cs.Logger.Error("Error")
+		cs.Logger.Error("Error on forming POLC", "err", err)
+		return
 	}
-
-	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
+	err = cs.evpool.AddPOLC(polc)
+	if err != nil {
+		cs.Logger.Error("Error on saving POLC", "err", err)
+	}
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1293,7 +1300,6 @@ func (cs *State) enterPrecommitWait(height int64, round int) {
 
 	// Wait for some more precommits; enterNewRound
 	cs.scheduleTimeout(cs.config.Precommit(round), height, round, cstypes.RoundStepPrecommitWait)
-
 }
 
 // Enter: +2/3 precommits for block
