@@ -913,7 +913,7 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 	// fullNode2 sends us different header
 	altH2 := keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-		[]byte("app_hash2"), []byte("cons_hash"), []byte("results_hash"),
+		hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
 		0, len(keys), types.BlockID{Hash: h1.Hash()})
 	fullNode2 := mockp.New(
 		chainID,
