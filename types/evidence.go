@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/proto/types"
 	"strings"
 	"time"
 
@@ -921,6 +922,133 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 
 func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
+}
+
+type ProofOfLockChange struct {
+	Votes  []Vote        `json:"votes"`
+	PubKey crypto.PubKey `json:"pubkey"`
+}
+
+var _ Evidence = &ProofOfLockChange{}
+var _ Evidence = ProofOfLockChange{}
+
+func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) (ProofOfLockChange, error) {
+	if !voteSet.HasTwoThirdsMajority() {
+		return ProofOfLockChange{}, errors.New("vote set does not have two-thirds majority")
+	}
+	var votes []Vote
+	valSetSize := voteSet.Size()
+	for valIdx := 0; valIdx < valSetSize; valIdx++ {
+		vote := voteSet.GetByIndex(valIdx)
+		if vote != nil && vote.BlockID.IsZero() {
+			votes = append(votes, *vote)
+		}
+	}
+	return ProofOfLockChange{
+		Votes:  votes,
+		PubKey: pubKey,
+	}, nil
+}
+
+func (e ProofOfLockChange) Height() int64 {
+	return e.Votes[0].Height
+}
+
+// returns the time of the last vote
+func (e ProofOfLockChange) Time() time.Time {
+	latest := e.Votes[0].Timestamp
+	for _, vote := range e.Votes {
+		if vote.Timestamp.After(latest) {
+			latest = vote.Timestamp
+		}
+	}
+	return latest
+}
+
+func (e ProofOfLockChange) Round() int {
+	return e.Votes[0].Round
+}
+
+func (e ProofOfLockChange) Address() []byte {
+	return e.PubKey.Address()
+}
+
+func (e ProofOfLockChange) Bytes() []byte {
+	return cdcEncode(e)
+}
+
+func (e ProofOfLockChange) Hash() []byte {
+	return tmhash.Sum(cdcEncode(e))
+}
+
+// a proof of lock change has nothing to verify by itself but must be used to verify a vote in amnesia evidence
+func (e ProofOfLockChange) Verify(chainID string, pubKey crypto.PubKey) error {
+
+	if !bytes.Equal(pubKey.Address(), e.Address()) {
+		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
+			e.Address(), pubKey, pubKey.Address())
+	}
+
+	return nil
+}
+
+func (e ProofOfLockChange) Equal(ev Evidence) bool {
+	switch e2 := ev.(type) {
+	case ProofOfLockChange:
+		return bytes.Equal(e.Address(), e2.Address()) && (e.Votes[0].Height == e2.Votes[0].Height) &&
+			(e.Votes[0].Round == e2.Votes[0].Round)
+	case *ProofOfLockChange:
+		return bytes.Equal(e.Address(), e2.Address()) && (e.Votes[0].Height == e2.Votes[0].Height) &&
+			(e.Votes[0].Round == e2.Votes[0].Round)
+	default:
+		return false
+	}
+}
+
+func (e ProofOfLockChange) ValidateBasic() error {
+	if e.PubKey == nil {
+		return errors.New("missing public key")
+	}
+	// validate basic doesn't count the number of votes and their voting power, this is to be done by VerifyEvidence
+	if e.Votes == nil {
+		return errors.New("missing votes")
+	}
+	// height, round and vote type must be the same for all votes
+	height := e.Height()
+	round := e.Round()
+	voteType := e.Votes[0].Type
+	for idx, vote := range e.Votes {
+		if err := vote.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid vote#%d: %w", idx, err)
+		}
+
+		if vote.Height != height {
+			return fmt.Errorf("invalid height for vote#%d: %d instead of %d", idx, vote.Height, height)
+		}
+
+		if vote.Round != round {
+			return fmt.Errorf("invalid round for vote#%d: %d instead of %d", idx, vote.Round, round)
+		}
+
+		if vote.Type != voteType {
+			return fmt.Errorf("invalid vote type for vote#%d: %d instead of %d", idx, vote.Type, voteType)
+		}
+
+		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
+			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X",
+				vote.ValidatorAddress.Bytes())
+		}
+
+		if vote.BlockID.IsZero() {
+			return fmt.Errorf("vote did not sign a block (%X)", vote.String())
+		}
+	}
+	return nil
+}
+
+func (e ProofOfLockChange) String() string {
+	return fmt.Sprintf("ProofOfLockChange for %X at height %d and round %d", e.Address(), e.Height(),
+		e.Votes[0].Round)
 }
 
 //-----------------------------------------------------------------

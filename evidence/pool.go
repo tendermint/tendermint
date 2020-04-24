@@ -2,17 +2,27 @@ package evidence
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
+
+const (
+	baseKeyPOLC = byte(0x02)
+)
+
+func keyPOLC(polc types.ProofOfLockChange) []byte {
+	return []byte(fmt.Sprintf("%v/%s/%s", baseKeyPOLC, bE(polc.Height()), bE(int64(polc.Round()))))
+}
 
 // Pool maintains a pool of valid evidence in an Store.
 type Pool struct {
@@ -113,6 +123,29 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
 	evpool.updateValToLastHeight(block.Height, state)
+}
+
+func (evpool *Pool) AddPOLC(voteSet *types.VoteSet, pubKey crypto.PubKey) error {
+	if !voteSet.HasTwoThirdsMajority() {
+		return errors.New("vote set does not have two-thirds majority")
+	}
+	var votes []types.Vote
+	valSetSize := voteSet.Size()
+	for valIdx := 0; valIdx < valSetSize; valIdx++ {
+		vote := voteSet.GetByIndex(valIdx)
+		if vote != nil && vote.BlockID.IsZero() {
+			votes = append(votes, *vote)
+		}
+	}
+	polc := types.ProofOfLockChange{
+		Votes:  votes,
+		PubKey: pubKey,
+	}
+	key := keyPOLC(polc)
+	polcBytes := cdc.MustMarshalBinaryBare(polc)
+	// store polc in evidence db
+
+	return nil
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool. If
