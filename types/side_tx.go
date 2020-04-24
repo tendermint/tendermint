@@ -39,7 +39,7 @@ func (sp *SideTxResultWithData) GetBytes() []byte {
 	binary.BigEndian.PutUint32(bs, uint32(sp.Result))
 
 	data := make([]byte, 0)
-	data = append(data, bs[0]) // use first byte as result
+	data = append(data, bs[3]) // use last byte as result
 	if len(sp.Data) > 0 {
 		data = append(data, sp.Data...)
 	}
