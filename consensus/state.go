@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -66,6 +67,7 @@ type txNotifier interface {
 // interface to the evidence pool
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
+	AddPOLC(*types.VoteSet, crypto.PubKey) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -1244,7 +1246,6 @@ func (cs *State) enterPrecommit(height int64, round int) {
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	// TODO: In the future save the POL prevotes for justification.
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
@@ -1253,6 +1254,17 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+	// Save POL prevotes in evidence db in case of future justification
+	pubKey, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		// Metrics won't be updated, but it's not critical.
+		cs.Logger.Error("Error on retrival of pubkey", "err", err)
+	}
+	err = cs.evpool.AddPOLC(cs.Votes.Prevotes(round), pubKey)
+	if err != nil {
+		cs.Logger.Error("Error")
+	}
+
 	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 }
 
