@@ -93,17 +93,8 @@ func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
 
-		Data:          vote.Data,
 		SideTxResults: vote.SideTxResults,
 	}
-	// TODO ensure that removing Timestamp and BlockID has no security issues
-	// return CanonicalRLPVote{
-	// 	ChainID: chainID,
-	// 	Type:    byte(vote.Type),
-	// 	Height:  uint(vote.Height),
-	// 	Round:   uint(vote.Round),
-	// 	Data:    vote.Data,
-	// }
 }
 
 // CanonicalTime can be used to stringify time in a canonical way.

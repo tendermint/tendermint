@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"reflect"
 	"runtime/debug"
@@ -1719,11 +1718,6 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		Timestamp:        cs.voteTime(),
 		Type:             type_,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
-	}
-
-	if cs.LockedBlock != nil {
-		cs.Logger.Debug("[peppermint] sign add vote", "lockedHeaderHash", hex.EncodeToString(header.Hash), "lockedBlockDataHash", hex.EncodeToString(cs.LockedBlock.DataHash))
-		vote.Data = cs.LockedBlock.DataHash
 	}
 
 	if len(cs.state.SideTxResponses) > 0 {

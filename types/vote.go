@@ -61,7 +61,6 @@ type Vote struct {
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
 
-	Data          []byte         `json:"data"`            // extra data [peppermint]
 	SideTxResults []SideTxResult `json:"side_tx_results"` // side-tx result [peppermint]
 }
 
