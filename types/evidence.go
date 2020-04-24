@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/proto/types"
 	"strings"
 	"time"
 
@@ -1049,6 +1048,18 @@ func (e ProofOfLockChange) ValidateBasic() error {
 func (e ProofOfLockChange) String() string {
 	return fmt.Sprintf("ProofOfLockChange for %X at height %d and round %d", e.Address(), e.Height(),
 		e.Votes[0].Round)
+}
+
+type AmensiaEvidence struct {
+	PotentialAmnesiaEvidence
+	polc ProofOfLockChange
+}
+
+var _ Evidence = &AmensiaEvidence{}
+var _ Evidence = AmensiaEvidence{}
+
+func (e AmensiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return e.PotentialAmnesiaEvidence.Verify(chainID, pubKey)
 }
 
 //-----------------------------------------------------------------
