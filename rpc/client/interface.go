@@ -121,3 +121,11 @@ type MempoolClient interface {
 type EvidenceClient interface {
 	BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 }
+
+// RemoteClient is a Client, which can also return the remote network address.
+type RemoteClient interface {
+	Client
+
+	// Remote returns the remote network address in a string form.
+	Remote() string
+}

@@ -769,8 +769,9 @@ type SignedHeader struct {
 
 // ValidateBasic does basic consistency checks and makes sure the header
 // and commit are consistent.
-// NOTE: This does not actually check the cryptographic signatures.  Make
-// sure to use a Verifier to validate the signatures actually provide a
+//
+// NOTE: This does not actually check the cryptographic signatures.  Make sure
+// to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
 	if sh.Header == nil {
@@ -788,15 +789,15 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	}
 
 	if sh.ChainID != chainID {
-		return fmt.Errorf("signedHeader belongs to another chain %q, not %q", sh.ChainID, chainID)
+		return fmt.Errorf("header belongs to another chain %q, not %q", sh.ChainID, chainID)
 	}
 
 	// Make sure the header is consistent with the commit.
 	if sh.Commit.Height != sh.Height {
-		return fmt.Errorf("signedHeader header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
+		return fmt.Errorf("header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
 	}
 	if hhash, chash := sh.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("signedHeader commit signs block %X, header is block %X", chash, hhash)
+		return fmt.Errorf("commit signs block %X, header is block %X", chash, hhash)
 	}
 
 	return nil

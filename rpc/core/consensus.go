@@ -10,9 +10,11 @@ import (
 )
 
 // Validators gets the validator set at the given block height.
-// If no height is provided, it will fetch the current validator set.
-// Note the validators are sorted by their address - this is the canonical
-// order for the validators in the set as used in computing their Merkle root.
+//
+// If no height is provided, it will fetch the current validator set. Note the
+// validators are sorted by their address - this is the canonical order for the
+// validators in the set as used in computing their Merkle root.
+//
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
 func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
@@ -41,7 +43,9 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 
 	return &ctypes.ResultValidators{
 		BlockHeight: height,
-		Validators:  v}, nil
+		Validators:  v,
+		Count:       len(v),
+		Total:       totalCount}, nil
 }
 
 // DumpConsensusState dumps consensus state.
