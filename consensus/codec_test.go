@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -195,6 +196,135 @@ func TestMsgToProto(t *testing.T) {
 			if !tt.wantErr {
 				require.NoError(t, err)
 				bcm := assert.Equal(t, tt.msg, msg, tt.testName)
+				assert.True(t, bcm, tt.testName)
+			} else {
+				require.Error(t, err, tt.testName)
+			}
+		})
+	}
+}
+
+func TestWALMsgToProto(t *testing.T) {
+	// psh := types.PartSetHeader{
+	// 	Total: 1,
+	// 	Hash:  tmrand.Bytes(32),
+	// }
+	// pbPsh := psh.ToProto()
+	// bi := types.BlockID{
+	// 	Hash:        tmrand.Bytes(32),
+	// 	PartsHeader: psh,
+	// }
+	// pbBi := bi.ToProto()
+	// bits := bits.NewBitArray(1)
+	// pbBits := bits.ToProto()
+
+	// parts := types.Part{
+	// 	Index: 1,
+	// 	Bytes: []byte("test"),
+	// 	Proof: merkle.SimpleProof{
+	// 		Total:    1,
+	// 		Index:    1,
+	// 		LeafHash: tmrand.Bytes(32),
+	// 		Aunts:    [][]byte{},
+	// 	},
+	// }
+	// pbParts, err := parts.ToProto()
+	// require.NoError(t, err)
+
+	// proposal := types.Proposal{
+	// 	Type:      3, //proposal type in enum is 3
+	// 	Height:    1,
+	// 	Round:     1,
+	// 	POLRound:  1,
+	// 	BlockID:   bi,
+	// 	Timestamp: time.Now(),
+	// 	Signature: tmrand.Bytes(20),
+	// }
+	// pbProposal := proposal.ToProto()
+
+	testsCases := []struct {
+		testName string
+		msg      WALMessage
+		want     *tmcons.WALMessage
+		wantErr  bool
+	}{
+		{"successful EventDataRoundState", &types.EventDataRoundState{
+			Height: 2,
+			Round:  1,
+			Step:   "ronies",
+		}, &tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_EventDataRoundState{
+				EventDataRoundState: &tmproto.EventDataRoundState{
+					Height: 2,
+					Round:  1,
+					Step:   "ronies",
+				},
+			},
+		}, false},
+		// {"successful msgInfo", &msgInfo{
+		// 	Msg: &BlockPartMessage{
+		// 		Height: 100,
+		// 		Round:  1,
+		// 		Part:   &parts,
+		// 	},
+		// 	PeerID: p2p.ID("string"),
+		// }, &tmcons.WALMessage{
+		// 	Sum: &tmcons.WALMessage_MsgInfo{
+		// 		MsgInfo: &tmcons.MsgInfo{
+		// 			Msg: tmcons.Message{
+		// 				Sum: &tmcons.Message_BlockPart{
+		// 					BlockPart: &tmcons.BlockPart{
+		// 						Height: 100,
+		// 						Round:  1,
+		// 						Part:   *pbParts,
+		// 					},
+		// 				},
+		// 			},
+		// 			PeerId: "string",
+		// 		},
+		// 	},
+		// }, false},
+		// {"successful timeoutInfo", &timeoutInfo{
+		// 	Duration: time.Duration(100),
+		// 	Height:   1,
+		// 	Round:    1,
+		// 	Step:     1,
+		// }, &tmcons.WALMessage{
+		// 	Sum: &tmcons.WALMessage_TimeoutInfo{
+		// 		TimeoutInfo: &tmcons.TimeoutInfo{
+		// 			Duration: time.Duration(100),
+		// 			Height:   1,
+		// 			Round:    1,
+		// 			Step:     1,
+		// 		},
+		// 	},
+		// }, false},
+		// {"successful EndHeightMessage", &EndHeightMessage{
+		// 	Height: 1,
+		// }, &tmcons.WALMessage{
+		// 	Sum: &tmcons.WALMessage_EndHeight{
+		// 		EndHeight: &tmcons.EndHeight{
+		// 			Height: 1,
+		// 		},
+		// 	},
+		// }, false},
+		{"failure", nil, &tmcons.WALMessage{}, true},
+	}
+	for _, tt := range testsCases {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			pb, err := WALToProto(tt.msg)
+			if tt.wantErr == true {
+				assert.Equal(t, err != nil, tt.wantErr)
+				return
+			}
+			assert.EqualValues(t, tt.want, pb, tt.testName)
+
+			msg, err := WALFromProto(pb)
+
+			if !tt.wantErr {
+				require.NoError(t, err)
+				bcm := assert.Equal(t, tt.msg, &msg, tt.testName)
 				assert.True(t, bcm, tt.testName)
 			} else {
 				require.Error(t, err, tt.testName)
