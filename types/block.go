@@ -76,6 +76,7 @@ func (b *Block) ValidateBasic() error {
 		)
 	}
 
+	// NOTE: b.Data.Txs may be nil, but b.Data.Hash() still works fine.
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return fmt.Errorf(
 			"wrong Header.DataHash. Expected %v, got %v",
@@ -326,8 +327,8 @@ func (h *Header) Populate(
 	h.ProposerAddress = proposerAddress
 }
 
-// ValidateBasic performs stateless validation on a Header returning an error if
-// any validation fails.
+// ValidateBasic performs stateless validation on a Header returning an error
+// if any validation fails.
 //
 // NOTE: Timestamp validation is subtle and handled elsewhere.
 func (h Header) ValidateBasic() error {
@@ -336,46 +337,25 @@ func (h Header) ValidateBasic() error {
 	}
 
 	if h.Height < 0 {
-		return errors.New("negative Header.Height")
+		return errors.New("negative Height")
 	} else if h.Height == 0 {
-		return errors.New("zero Header.Height")
+		return errors.New("zero Height")
 	}
 
 	if err := h.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
+		return fmt.Errorf("wrong LastBlockID: %w", err)
 	}
 
 	if err := ValidateHash(h.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
+		return fmt.Errorf("wrong LastCommitHash: %v", err)
 	}
 
-	// Validate the hash of the transactions.
-	// NOTE: b.Data.Txs may be nil, but b.Data.Hash()
-	// still works fine
 	if err := ValidateHash(h.DataHash); err != nil {
-		return fmt.Errorf("wrong Header.DataHash: %v", err)
+		return fmt.Errorf("wrong DataHash: %v", err)
 	}
 
-	// Basic validation of hashes related to application data.
-	// Will validate fully against state in state#ValidateBlock.
-	if err := ValidateHash(h.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(h.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
-	}
-	if err := ValidateHash(h.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
-	}
-
-	// NOTE: AppHash is arbitrary length
-	if err := ValidateHash(h.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
-	}
-
-	// Validate evidence and its hash.
 	if err := ValidateHash(h.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
+		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
 	if len(h.ProposerAddress) != crypto.AddressSize {
@@ -383,6 +363,22 @@ func (h Header) ValidateBasic() error {
 			"invalid ProposerAddress length; got: %d, expected: %d",
 			len(h.ProposerAddress), crypto.AddressSize,
 		)
+	}
+
+	// Basic validation of hashes related to application data.
+	// Will validate fully against state in state#ValidateBlock.
+	if err := ValidateHash(h.ValidatorsHash); err != nil {
+		return fmt.Errorf("wrong ValidatorsHash: %v", err)
+	}
+	if err := ValidateHash(h.NextValidatorsHash); err != nil {
+		return fmt.Errorf("wrong NextValidatorsHash: %v", err)
+	}
+	if err := ValidateHash(h.ConsensusHash); err != nil {
+		return fmt.Errorf("wrong ConsensusHash: %v", err)
+	}
+	// NOTE: AppHash is arbitrary length
+	if err := ValidateHash(h.LastResultsHash); err != nil {
+		return fmt.Errorf("wrong LastResultsHash: %v", err)
 	}
 
 	return nil
@@ -777,38 +773,30 @@ type SignedHeader struct {
 // sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
-	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
-		return errors.New("signedHeader missing header")
+		return errors.New("missing header")
 	}
 	if sh.Commit == nil {
-		return errors.New("signedHeader missing commit (precommit votes)")
+		return errors.New("missing commit")
 	}
 
 	if err := sh.Header.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "header.ValidateBasic failed during SignedHeader.ValidateBasic")
+		return fmt.Errorf("invalid header: %w", err)
 	}
-
-	// validate ChainID
-	if sh.ChainID != chainID {
-		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'", sh.ChainID, chainID)
-	}
-
-	// validate Height
-	if sh.Commit.Height != sh.Height {
-		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v", sh.Height, sh.Commit.Height)
-	}
-
-	// validate Hash
-	hhash := sh.Hash()
-	chash := sh.Commit.BlockID.Hash
-	if !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("signedHeader commit signs block %X, header is block %X", chash, hhash)
-	}
-
-	// validate commit
 	if err := sh.Commit.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "commit.ValidateBasic failed during SignedHeader.ValidateBasic")
+		return fmt.Errorf("invalid commit: %w", err)
+	}
+
+	if sh.ChainID != chainID {
+		return fmt.Errorf("signedHeader belongs to another chain %q, not %q", sh.ChainID, chainID)
+	}
+
+	// Make sure the header is consistent with the commit.
+	if sh.Commit.Height != sh.Height {
+		return fmt.Errorf("signedHeader header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
+	}
+	if hhash, chash := sh.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
+		return fmt.Errorf("signedHeader commit signs block %X, header is block %X", chash, hhash)
 	}
 
 	return nil
