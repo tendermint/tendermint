@@ -253,6 +253,7 @@ message ResponseOfferSnapshot {
     abort         = 1;  // Abort all snapshot restoration
     reject        = 2;  // Reject this specific snapshot, and try a different one
     reject_format = 3;  // Reject all snapshots of this format, and try a different one
+    reject_sender = 4;  // Reject all snapshots from this sender, and try a different one
   }
 }
 
