@@ -2,13 +2,12 @@ package config
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -120,25 +119,25 @@ func (cfg *Config) ValidateBasic() error {
 		return err
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [rpc] section")
+		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
 	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [p2p] section")
+		return fmt.Errorf("error in [p2p] section: %w", err)
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [mempool] section")
+		return fmt.Errorf("error in [mempool] section: %w", err)
 	}
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [statesync] section")
+		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [fastsync] section")
+		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [consensus] section")
+		return fmt.Errorf("error in [consensus] section: %w", err)
 	}
 	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [instrumentation] section")
+		return fmt.Errorf("error in [instrumentation] section: %w", err)
 	}
 	return nil
 }
