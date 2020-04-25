@@ -28,3 +28,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
 
 ### BUG FIXES:
+
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
