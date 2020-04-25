@@ -8,7 +8,7 @@ import "proto/crypto/keys/types.proto";
 import "proto/types/types.proto";
 
 message RemoteSignerError {
-  int64  code        = 1;
+  int32  code        = 1;
   string description = 2;
 }
 

@@ -19,7 +19,7 @@ message FilePVKey {
 message FilePVLastSignState {
   int64 height     = 1;
   int64 round      = 2;
-  int32 step       = 3 [(gogoproto.casttype) = "int8"];
+  int32 step       = 3;
   bytes signature  = 4;
   bytes sign_bytes = 5;
 
