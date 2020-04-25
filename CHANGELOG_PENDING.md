@@ -31,3 +31,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/server] [\#4719](https://github.com/tendermint/tendermint/pull/4719) Print panic & stack trace to STDERR if logger is not set (@melekes)
 
 ### BUG FIXES:
+
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
