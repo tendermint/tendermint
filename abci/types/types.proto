@@ -6,7 +6,6 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "third_party/proto/gogoproto/gogo.proto";
 import "crypto/merkle/merkle.proto";
-import "libs/kv/types.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 
@@ -247,10 +246,18 @@ message LastCommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
+
+// EventAttribute represents an event to the indexing service.
+message EventAttribute {
+  bytes key = 1;
+  bytes value = 2;
+  bool index = 3;
+}
+
 message Event {
   string   type                               = 1;
-  repeated tendermint.libs.kv.Pair attributes = 2
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
+  repeated EventAttribute attributes = 2
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
 //----------------------------------------

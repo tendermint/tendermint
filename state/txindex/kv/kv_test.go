@@ -13,7 +13,6 @@ import (
 	db "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -71,9 +70,9 @@ func TestTxSearch(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
-		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "", Attributes: []abci.EventAttribute{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
 	hash := txResult.Tx.Hash()
 
@@ -140,9 +139,9 @@ func TestTxSearchWithCancelation(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
-		{Type: "", Attributes: []kv.Pair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "", Attributes: []abci.EventAttribute{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
@@ -160,7 +159,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1")}}},
 	})
 	hash1 := txResult1.Tx.Hash()
 
@@ -231,8 +230,8 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("2")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 
 	err := indexer.Index(txResult)
@@ -253,7 +252,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1")}}},
 	})
 
 	txResult.Tx = types.Tx("Bob's account")
@@ -264,7 +263,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	// indexed second, but smaller height (to test the order of transactions)
 	txResult2 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("2")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 	txResult2.Tx = types.Tx("Alice's account")
 	txResult2.Height = 1
@@ -275,7 +274,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	// indexed third (to test the order of transactions)
 	txResult3 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number"), Value: []byte("3")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("3")}}},
 	})
 	txResult3.Tx = types.Tx("Jack's account")
 	txResult3.Height = 1
@@ -286,7 +285,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	// indexed fourth (to test we don't include txs with similar events)
 	// https://github.com/tendermint/tendermint/issues/2908
 	txResult4 := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []kv.Pair{{Key: []byte("number.id"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number.id"), Value: []byte("1")}}},
 	})
 	txResult4.Tx = types.Tx("Mike's account")
 	txResult4.Height = 2

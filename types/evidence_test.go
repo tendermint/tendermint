@@ -171,12 +171,12 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 }
 
 func TestMockGoodEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockEvidence(int64(1), time.Now(), 1, []byte{1})
+	goodEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
 func TestMockBadEvidenceValidateBasic(t *testing.T) {
-	badEvidence := NewMockEvidence(int64(1), time.Now(), 1, []byte{1})
+	badEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
 	assert.Nil(t, badEvidence.ValidateBasic())
 }
 
@@ -368,6 +368,6 @@ func makeHeaderRandom() *Header {
 		AppHash:            crypto.CRandBytes(tmhash.Size),
 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(tmhash.Size),
+		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
 	}
 }

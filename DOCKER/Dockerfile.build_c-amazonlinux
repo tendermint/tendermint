@@ -24,5 +24,5 @@ ENV GOPATH=/go/src
 RUN mkdir -p /tendermint
 WORKDIR /tendermint
 
-CMD ["/usr/bin/make", "build_c"]
+CMD ["/usr/bin/make", "build", "TENDERMINT_BUILD_OPTIONS=cleveldb"]
 
