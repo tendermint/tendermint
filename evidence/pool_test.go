@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"os"
 	"testing"
 	"time"
@@ -108,7 +109,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	// evidence should
 }
 
-func TestEvidencePoolAddEvidence(t *testing.T) {
+func TestAddEvidence(t *testing.T) {
 	var (
 		valAddr      = []byte("val1")
 		height       = int64(30)
@@ -193,6 +194,54 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 	assert.Equal(t, height, pool.ValidatorLastHeight(valAddr))
 	assert.EqualValues(t, 0, pool.ValidatorLastHeight([]byte("non-existent-validator")))
+}
+
+func TestAddingAndPruningPOLC(t *testing.T) {
+	var (
+		valAddr      = []byte("validator_address")
+		stateDB      = initializeValidatorState(valAddr, 1)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		state        = sm.LoadState(stateDB)
+		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
+		height       = state.ConsensusParams.Evidence.MaxAgeNumBlocks * 2
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	privKey := ed25519.GenPrivKey()
+	polc := types.ProofOfLockChange{
+		Votes: []types.Vote{{types.PrecommitType, 1, 1, types.BlockID{},
+			evidenceTime, valAddr, 1, []byte{}}},
+		PubKey: privKey.PubKey(),
+	}
+
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+
+	err = pool.AddPOLC(polc)
+	assert.NoError(t, err)
+
+	shouldExist, newPolc, err := pool.RetrievePOLC(1, 1)
+	assert.NoError(t, err)
+	assert.True(t, shouldExist)
+	assert.True(t, polc.Equal(newPolc))
+
+	shouldNotExist, _, err := pool.RetrievePOLC(2, 1)
+	assert.NoError(t, err)
+	assert.False(t, shouldNotExist)
+
+	lastCommit := makeCommit(height-1, valAddr)
+	block := types.MakeBlock(height, []types.Tx{}, lastCommit, []types.Evidence{})
+	// update state (partially)
+	state.LastBlockHeight = height
+
+	// update should prune the polc
+	pool.Update(block, state)
+
+	shouldNotExist, _, err = pool.RetrievePOLC(1, 1)
+	assert.NoError(t, err)
+	assert.False(t, shouldNotExist)
+
 }
 
 func TestRecoverPendingEvidence(t *testing.T) {
