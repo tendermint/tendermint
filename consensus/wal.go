@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	amino "github.com/tendermint/go-amino"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
-	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -49,14 +47,6 @@ type EndHeightMessage struct {
 }
 
 type WALMessage interface{}
-
-func RegisterWALMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*WALMessage)(nil), nil)
-	cdc.RegisterConcrete(types.EventDataRoundState{}, "tendermint/wal/EventDataRoundState", nil)
-	cdc.RegisterConcrete(msgInfo{}, "tendermint/wal/MsgInfo", nil)
-	cdc.RegisterConcrete(timeoutInfo{}, "tendermint/wal/TimeoutInfo", nil)
-	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessage", nil)
-}
 
 //--------------------------------------------------------
 // Simple write-ahead logger
