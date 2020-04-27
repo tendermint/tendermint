@@ -2,6 +2,7 @@ package statesync
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -135,6 +136,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 		AppHash: []byte("app_hash"),
 	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_accept}, nil)
 
+	chunkRequests := make(map[uint32]int)
+	chunkRequestsMtx := sync.Mutex{}
 	onChunkRequest := func(args mock.Arguments) {
 		msg := &chunkRequestMessage{}
 		err := cdc.UnmarshalBinaryBare(args[1].([]byte), &msg)
@@ -146,22 +149,31 @@ func TestSyncer_SyncAny(t *testing.T) {
 		added, err := syncer.AddChunk(chunks[msg.Index])
 		require.NoError(t, err)
 		assert.True(t, added)
+
+		chunkRequestsMtx.Lock()
+		chunkRequests[msg.Index]++
+		chunkRequestsMtx.Unlock()
 	}
 	peerA.On("Send", ChunkChannel, mock.Anything).Maybe().Run(onChunkRequest).Return(true)
 	peerB.On("Send", ChunkChannel, mock.Anything).Maybe().Run(onChunkRequest).Return(true)
 
-	// The first time we're applying chunk 1 we tell it to retry the snapshot, which should
-	// cause it to reuse the existing chunks but start restoration from the beginning.
+	// The first time we're applying chunk 2 we tell it to retry the snapshot and discard chunk 1,
+	// which should cause it to keep the existing chunk 0 and 2, and restart restoration from
+	// beginning. We also wait for a little while, to exercise the retry logic in fetchChunks().
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-		Index: 1, Chunk: []byte{1, 1, 1},
-	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_retry_snapshot}, nil)
+		Index: 2, Chunk: []byte{1, 1, 2},
+	}).Once().Run(func(args mock.Arguments) { time.Sleep(2 * time.Second) }).Return(
+		&abci.ResponseApplySnapshotChunk{
+			Result:        abci.ResponseApplySnapshotChunk_retry_snapshot,
+			RefetchChunks: []uint32{1},
+		}, nil)
 
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 0, Chunk: []byte{1, 1, 0},
 	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 1, Chunk: []byte{1, 1, 1},
-	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
@@ -173,6 +185,10 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 	newState, lastCommit, err := syncer.SyncAny(0)
 	require.NoError(t, err)
+
+	chunkRequestsMtx.Lock()
+	assert.Equal(t, map[uint32]int{0: 1, 1: 2, 2: 1}, chunkRequests)
+	chunkRequestsMtx.Unlock()
 
 	// The syncer should have updated the state app version from the ABCI info response.
 	expectState := state

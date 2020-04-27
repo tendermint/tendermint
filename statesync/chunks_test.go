@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,12 +143,12 @@ func TestChunkQueue_Allocate(t *testing.T) {
 	defer teardown()
 
 	for i := uint32(0); i < queue.Size(); i++ {
-		index, err := queue.Allocate(false)
+		index, err := queue.Allocate()
 		require.NoError(t, err)
 		assert.EqualValues(t, i, index)
 	}
 
-	_, err := queue.Allocate(false)
+	_, err := queue.Allocate()
 	require.Error(t, err)
 	assert.Equal(t, errDone, err)
 
@@ -158,26 +157,23 @@ func TestChunkQueue_Allocate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// After all chunks have been allocated and retrieved, asking it to wait and then discarding a
-	// chunk will cause it to be allocated the discarded chunk.
-	go func() {
-		time.Sleep(500 * time.Millisecond)
-		err := queue.Discard(2)
-		require.NoError(t, err)
-	}()
+	// After all chunks have been allocated and retrieved, discarding a chunk will reallocate it.
+	err = queue.Discard(2)
+	require.NoError(t, err)
 
-	index, err := queue.Allocate(true)
+	index, err := queue.Allocate()
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, index)
+	_, err = queue.Allocate()
+	require.Error(t, err)
+	assert.Equal(t, errDone, err)
 
-	// Asking it to wait and then closing the queue will cause it to receive errDone.
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		err := queue.Close()
-		require.NoError(t, err)
-	}()
-
-	_, err = queue.Allocate(false)
+	// Discarding a chunk the closing the queue will return errDone.
+	err = queue.Discard(2)
+	require.NoError(t, err)
+	err = queue.Close()
+	require.NoError(t, err)
+	_, err = queue.Allocate()
 	require.Error(t, err)
 	assert.Equal(t, errDone, err)
 }
@@ -221,7 +217,7 @@ func TestChunkQueue_Discard(t *testing.T) {
 		require.NoError(t, err)
 	}
 	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate(false)
+		_, err := queue.Allocate()
 		require.NoError(t, err)
 		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
 		require.NoError(t, err)
@@ -240,10 +236,10 @@ func TestChunkQueue_Discard(t *testing.T) {
 	err = queue.Discard(1)
 	require.NoError(t, err)
 
-	index, err := queue.Allocate(false)
+	index, err := queue.Allocate()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, index)
-	index, err = queue.Allocate(false)
+	index, err = queue.Allocate()
 	require.NoError(t, err)
 	assert.EqualValues(t, 3, index)
 
@@ -280,7 +276,7 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	// Allocate and add all chunks to the queue
 	senders := []p2p.ID{"a", "b", "c"}
 	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate(false)
+		_, err := queue.Allocate()
 		require.NoError(t, err)
 		_, err = queue.Add(&chunk{
 			Height: 3,
@@ -301,17 +297,17 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	// Discarding an unknown sender should do nothing
 	err := queue.DiscardSender("x")
 	require.NoError(t, err)
-	_, err = queue.Allocate(false)
+	_, err = queue.Allocate()
 	assert.Equal(t, errDone, err)
 
 	// Discarding sender b should discard chunk 4, but not chunk 1 which has already been
 	// returned.
 	err = queue.DiscardSender("b")
 	require.NoError(t, err)
-	index, err := queue.Allocate(false)
+	index, err := queue.Allocate()
 	require.NoError(t, err)
 	assert.EqualValues(t, 4, index)
-	_, err = queue.Allocate(false)
+	_, err = queue.Allocate()
 	assert.Equal(t, errDone, err)
 }
 
@@ -424,7 +420,7 @@ func TestChunkQueue_Retry(t *testing.T) {
 
 	// Allocate and add all chunks to the queue
 	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate(false)
+		_, err := queue.Allocate()
 		require.NoError(t, err)
 		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
 		require.NoError(t, err)
@@ -436,7 +432,7 @@ func TestChunkQueue_Retry(t *testing.T) {
 	queue.Retry(3)
 	queue.Retry(1)
 
-	_, err := queue.Allocate(false)
+	_, err := queue.Allocate()
 	assert.Equal(t, errDone, err)
 
 	chunk, err := queue.Next()
@@ -457,7 +453,7 @@ func TestChunkQueue_RetryAll(t *testing.T) {
 
 	// Allocate and add all chunks to the queue
 	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate(false)
+		_, err := queue.Allocate()
 		require.NoError(t, err)
 		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
 		require.NoError(t, err)
@@ -470,7 +466,7 @@ func TestChunkQueue_RetryAll(t *testing.T) {
 
 	queue.RetryAll()
 
-	_, err = queue.Allocate(false)
+	_, err = queue.Allocate()
 	assert.Equal(t, errDone, err)
 
 	for i := uint32(0); i < queue.Size(); i++ {

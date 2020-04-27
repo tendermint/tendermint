@@ -368,9 +368,17 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
 func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
 	for {
-		index, err := chunks.Allocate(true)
+		index, err := chunks.Allocate()
 		if err == errDone {
-			return
+			// Keep checking until the context is cancelled (restore is done), in case any
+			// chunks need to be refetched.
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			time.Sleep(2 * time.Second)
+			continue
 		}
 		if err != nil {
 			s.logger.Error("Failed to allocate chunk from queue", "err", err)

@@ -101,33 +101,24 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	return true, nil
 }
 
-// Allocate allocates a chunk to the caller, making it responsible for fetching it. If wait is
-// true, it waits until either the queue is closed or a chunk needs to be refetched. Returns
-// errDone once the queue is closed or when no blocks are left and wait is false.
-func (q *chunkQueue) Allocate(wait bool) (uint32, error) {
-	for {
-		q.Lock()
-		if q.snapshot == nil {
-			q.Unlock()
-			return 0, errDone
-		}
-		if uint32(len(q.chunkAllocated)) < q.snapshot.Chunks {
-			for i := uint32(0); i < q.snapshot.Chunks; i++ {
-				if !q.chunkAllocated[i] {
-					q.chunkAllocated[i] = true
-					q.Unlock()
-					return i, nil
-				}
-			}
-		}
-		q.Unlock()
-
-		if !wait {
-			return 0, errDone
-		}
-		// sleep instead of using a channel, to avoid overfilling channel and blocking sender
-		time.Sleep(1 * time.Second)
+// Allocate allocates a chunk to the caller, making it responsible for fetching it. Returns
+// errDone once no chunks are left or the queue is closed.
+func (q *chunkQueue) Allocate() (uint32, error) {
+	q.Lock()
+	defer q.Unlock()
+	if q.snapshot == nil {
+		return 0, errDone
 	}
+	if uint32(len(q.chunkAllocated)) >= q.snapshot.Chunks {
+		return 0, errDone
+	}
+	for i := uint32(0); i < q.snapshot.Chunks; i++ {
+		if !q.chunkAllocated[i] {
+			q.chunkAllocated[i] = true
+			return i, nil
+		}
+	}
+	return 0, errDone
 }
 
 // Close closes the chunk queue, cleaning up all temporary files.
