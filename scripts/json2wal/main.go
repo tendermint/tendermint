@@ -17,14 +17,14 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	cs "github.com/tendermint/tendermint/consensus"
+	tmencode "github.com/tendermint/tendermint/libs/encode"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
 var cdc = amino.NewCodec()
 
 func init() {
-	cs.RegisterMessages(cdc)
-	cs.RegisterWALMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }
 
@@ -64,15 +64,28 @@ func main() {
 			continue
 		}
 
-		var msg cs.TimedWALMessage
-		err = cdc.UnmarshalJSON(msgJSON, &msg)
+		// var msg tmcons.TimedWALMessage
+		pb, err := tmencode.UnmarshalJSON(msgJSON)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}
 
-		err = dec.Encode(&msg)
-		if err != nil {
-			panic(fmt.Errorf("failed to encode msg: %v", err))
+		if msg, ok := pb.(*tmcons.TimedWALMessage); ok {
+			wal, err := cs.WALFromProto(msg.Msg)
+			if err != nil {
+				panic("error on transforming WAL message from proto")
+			}
+			walMsg := cs.TimedWALMessage{
+				Time: msg.Time,
+				Msg:  wal,
+			}
+
+			err = dec.Encode(&walMsg)
+			if err != nil {
+				panic(fmt.Errorf("failed to encode msg: %v", err))
+			}
+		} else {
+			panic("failed to identify message")
 		}
 	}
 }
