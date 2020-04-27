@@ -293,7 +293,6 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	pbMsg, err := WALToProto(v.Msg)
 	if err != nil {
-		fmt.Println("here")
 		return err
 	}
 	pv := tmcons.TimedWALMessage{

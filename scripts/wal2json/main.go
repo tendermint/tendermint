@@ -16,6 +16,7 @@ import (
 
 	cs "github.com/tendermint/tendermint/consensus"
 	tmencode "github.com/tendermint/tendermint/libs/encode"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -46,11 +47,17 @@ func main() {
 			panic(fmt.Errorf("failed to decode msg: %v", err))
 		}
 
-		pbWal, err := cs.WALToProto(msg)
+		pbWal, err := cs.WALToProto(msg.Msg)
 		if err != nil {
-			panic(fmt.Errorf("failed to transfrom walMessage into proto"))
+			panic(fmt.Errorf("failed to transform walMessage into proto"))
 		}
-		json, err := tmencode.MarshalJSON(pbWal)
+
+		pbWalMsg := tmcons.TimedWALMessage{
+			Time: msg.Time,
+			Msg:  pbWal,
+		}
+
+		json, err := tmencode.MarshalJSON(&pbWalMsg)
 		if err != nil {
 			panic(fmt.Errorf("failed to marshal msg: %v", err))
 		}
