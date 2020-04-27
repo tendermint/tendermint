@@ -9,6 +9,7 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -36,7 +37,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 				NewRoundStep: &tmcons.NewRoundStep{
 					Height:                msg.Height,
 					Round:                 msg.Round,
-					Step:                  uint8(msg.Step),
+					Step:                  uint32(msg.Step),
 					SecondsSinceStartTime: int64(msg.SecondsSinceStartTime),
 					LastCommitRound:       msg.LastCommitRound,
 				},
@@ -166,10 +167,15 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 
 	switch msg := msg.Sum.(type) {
 	case *tmcons.Message_NewRoundStep:
+		rs, err := tmmath.SafeConvertUint8(int64(msg.NewRoundStep.Step))
+		// deny message based on possible overflow
+		if err != nil {
+			return nil, fmt.Errorf("denying message due to possible overflow: %w", err)
+		}
 		pb = &NewRoundStepMessage{
 			Height:                msg.NewRoundStep.Height,
 			Round:                 msg.NewRoundStep.Round,
-			Step:                  cstypes.RoundStepType(msg.NewRoundStep.Step),
+			Step:                  cstypes.RoundStepType(rs),
 			SecondsSinceStartTime: int(msg.NewRoundStep.SecondsSinceStartTime),
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}

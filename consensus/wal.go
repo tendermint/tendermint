@@ -301,7 +301,6 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 // the amino-encoded size of v is greater than 1MB. Any error encountered
 // during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
-	// data := cdc.MustMarshalBinaryBare(v)
 	pbMsg, err := WALToProto(v.Msg)
 	if err != nil {
 		fmt.Println("here")
@@ -421,11 +420,6 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		Time: res.Time,
 		Msg:  walMsg,
 	}
-
-	// switch msg := walMsg.(type) {
-	// case EndHeightMessage:
-	// 	tMsgWal.Msg = EndHeightMessage{msg.Height}
-	// }
 
 	return tMsgWal, err
 }

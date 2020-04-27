@@ -54,6 +54,17 @@ func SafeConvertUint32(a int64) uint32 {
 	return uint32(a)
 }
 
+// SafeConvertUint32 takes an int64 and checks if it overflows
+// If there is an overflow it returns an error
+func SafeConvertUint8(a int64) (uint8, error) {
+	if a > math.MaxUint32 {
+		return 0, ErrOverflowUint32
+	} else if a < 0 {
+		return 0, ErrOverflowUint32
+	}
+	return uint8(a), nil
+}
+
 // SafeConvertUint64 takes an int64 and checks if it overflows
 // If there is an overflow this will panic
 func SafeConvertUint64(a int64) uint64 {

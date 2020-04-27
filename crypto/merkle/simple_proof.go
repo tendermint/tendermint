@@ -119,6 +119,9 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 }
 
 func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
+	if sp == nil {
+		return nil
+	}
 	pb := new(tmmerkle.SimpleProof)
 
 	pb.Total = sp.Total

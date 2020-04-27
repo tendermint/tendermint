@@ -56,9 +56,7 @@ func (part *Part) ToProto() (*tmproto.Parts, error) {
 	if part == nil {
 		return nil, errors.New("nil part")
 	}
-
 	pb := new(tmproto.Parts)
-
 	proof := part.Proof.ToProto()
 
 	pb.Index = part.Index
