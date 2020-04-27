@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	baseKeyCommitted = byte(0x00) // committed evidence
-	baseKeyPending   = byte(0x01) // pending evidence
-	baseKeyPOLC = byte(0x02)
+	baseKeyCommitted = byte(0x00)
+	baseKeyPending   = byte(0x01)
+	baseKeyPOLC      = byte(0x02)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -66,10 +66,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
-	evList, err := pool.listEvidence(baseKeyPending, -1)
-	if err != nil {
-		return nil, err
-	}
+	evList := pool.PendingEvidence(-1)
 	for _, ev := range evList {
 		if pool.IsExpired(ev) {
 			pool.removePendingEvidence(ev)
@@ -84,9 +81,29 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
 func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	evidence, err := evpool.listEvidence(baseKeyPending, maxNum)
+	var count int64
+	var evidence []types.Evidence
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
 	if err != nil {
-		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
+		evpool.logger.Error("Unable to iterate over evidence", "err", err)
+		return nil
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		val := iter.Value()
+		fmt.Println(val)
+		if count == maxNum {
+			return evidence
+		}
+		count++
+
+		var ev types.Evidence
+		err := cdc.UnmarshalBinaryBare(val, &ev)
+		if err != nil {
+			evpool.logger.Error("Unable to unmarshal evidence", "err", err)
+			continue
+		}
+		evidence = append(evidence, ev)
 	}
 	return evidence
 }
@@ -113,12 +130,19 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
 	evpool.updateValToLastHeight(block.Height, state)
+
+	// as it's not vital to remove expired POLCs, we only prune periodically
+	if block.Height%evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
+		evpool.pruneExpiredPOLC()
+	}
 }
 
+// AddPOLC adds a proof of lock change to the evidence database
+// that may be needed in the future to verify votes
 func (evpool *Pool) AddPOLC(polc types.ProofOfLockChange) error {
 	key := keyPOLC(polc)
 	polcBytes := cdc.MustMarshalBinaryBare(polc)
-	return evpool.store.db.Set(key, polcBytes)
+	return evpool.evidenceStore.Set(key, polcBytes)
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool. If
@@ -249,6 +273,18 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
+func (evpool *Pool) RetrievePOLC(height int64, round int) (exists bool, polc types.ProofOfLockChange, err error) {
+	key := keyPOLCFomHeightAndRound(height, round)
+	exists = false
+	polcBytes, err := evpool.evidenceStore.Get(key)
+	if err != nil || polcBytes == nil {
+		return
+	}
+	exists = true
+	err = cdc.UnmarshalBinaryBare(polcBytes, &polc)
+	return
+}
+
 // EvidenceFront goes to the first evidence in the clist
 func (evpool *Pool) EvidenceFront() *clist.CElement {
 	return evpool.evidenceList.Front()
@@ -296,35 +332,6 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
-// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
-// It is wrapped by PriorityEvidence and PendingEvidence for convenience.
-// If maxNum is -1, there's no cap on the size of returned evidence.
-func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
-	var count int64
-	var evidence []types.Evidence
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
-	if err != nil {
-		return nil, fmt.Errorf("database error: %v", err)
-	}
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		val := iter.Value()
-
-		if count == maxNum {
-			return evidence, nil
-		}
-		count++
-
-		var ev types.Evidence
-		err := cdc.UnmarshalBinaryBare(val, &ev)
-		if err != nil {
-			return nil, err
-		}
-		evidence = append(evidence, ev)
-	}
-	return evidence, nil
-}
-
 func (evpool *Pool) removeEvidenceFromList(
 	height int64,
 	lastBlockTime time.Time,
@@ -348,6 +355,30 @@ func (evpool *Pool) removeEvidenceFromList(
 	}
 }
 
+func (evpool *Pool) pruneExpiredPOLC() {
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPOLC})
+	if err != nil {
+		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
+		return
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		proofBytes := iter.Value()
+		var proof types.ProofOfLockChange
+		err := cdc.UnmarshalBinaryBare(proofBytes, &proof)
+		if err != nil {
+			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
+			continue
+		}
+		if evpool.IsExpired(proof) {
+			err = evpool.evidenceStore.Delete(iter.Key())
+			if err != nil {
+				evpool.logger.Error("Unable to delete expired POLC", "err", err)
+			}
+		}
+	}
+}
+
 func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
 }
@@ -362,7 +393,7 @@ func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
 	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
 		valSet, err := sm.LoadValidators(evpool.stateDB, removeHeight)
-		if err != nil {
+		if err != nil && valSet != nil {
 			for _, val := range valSet.Validators {
 				h, ok := evpool.valToLastHeight[string(val.Address)]
 				if ok && h == removeHeight {
@@ -446,7 +477,11 @@ func keyPending(evidence types.Evidence) []byte {
 }
 
 func keyPOLC(polc types.ProofOfLockChange) []byte {
-	return []byte(fmt.Sprintf("%v/%s/%s", baseKeyPOLC, bE(polc.Height()), bE(int64(polc.Round()))))
+	return keyPOLCFomHeightAndRound(polc.Height(), polc.Round())
+}
+
+func keyPOLCFomHeightAndRound(height int64, round int) []byte {
+	return append([]byte{baseKeyPOLC}, []byte(fmt.Sprintf("%s/%s", bE(height), bE(int64(round))))...)
 }
 
 func keySuffix(evidence types.Evidence) []byte {
