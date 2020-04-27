@@ -88,8 +88,6 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				// punish peer
 				evR.Switch.StopPeerForError(src, err)
 				return
-			case ErrEvidenceAlreadyStored:
-				evR.Logger.Debug("Evidence already exists", "evidence", msg.Evidence)
 			case nil:
 			default:
 				evR.Logger.Error("Evidence has not been added", "evidence", msg.Evidence, "err", err)
