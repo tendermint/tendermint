@@ -286,7 +286,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 	var pb tmcons.WALMessage
 
 	switch msg := msg.(type) {
-	case *types.EventDataRoundState:
+	case types.EventDataRoundState:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_EventDataRoundState{
 				EventDataRoundState: &tmproto.EventDataRoundState{
@@ -296,7 +296,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
-	case *msgInfo:
+	case msgInfo:
 		consMsg, err := MsgToProto(msg.Msg)
 		if err != nil {
 			return nil, err
@@ -309,7 +309,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
-	case *timeoutInfo:
+	case timeoutInfo:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_TimeoutInfo{
 				TimeoutInfo: &tmcons.TimeoutInfo{
@@ -320,7 +320,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
-	case *EndHeightMessage:
+	case EndHeightMessage:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_EndHeight{
 				EndHeight: &tmcons.EndHeight{
@@ -344,24 +344,23 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 
 	switch msg := msg.Sum.(type) {
 	case *tmcons.WALMessage_EventDataRoundState:
-		pb = &types.EventDataRoundState{
+		pb = types.EventDataRoundState{
 			Height: msg.EventDataRoundState.Height,
 			Round:  msg.EventDataRoundState.Round,
 			Step:   msg.EventDataRoundState.Step,
 		}
-		return pb
 	case *tmcons.WALMessage_MsgInfo:
 		walMsg, err := MsgFromProto(&msg.MsgInfo.Msg)
 		if err != nil {
 			return nil, fmt.Errorf("msgInfo from proto error: %w", err)
 		}
-		pb = &msgInfo{
+		pb = msgInfo{
 			Msg:    walMsg,
 			PeerID: p2p.ID(msg.MsgInfo.PeerId),
 		}
 
 	case *tmcons.WALMessage_TimeoutInfo:
-		pb = &timeoutInfo{
+		pb = timeoutInfo{
 			Duration: msg.TimeoutInfo.Duration,
 			Height:   msg.TimeoutInfo.Height,
 			Round:    msg.TimeoutInfo.Round,
@@ -369,7 +368,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 		return pb, nil
 	case *tmcons.WALMessage_EndHeight:
-		pb := &EndHeightMessage{
+		pb := EndHeightMessage{
 			Height: msg.EndHeight.Height,
 		}
 		return pb, nil

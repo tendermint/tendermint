@@ -304,7 +304,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	// data := cdc.MustMarshalBinaryBare(v)
 	pbMsg, err := WALToProto(v.Msg)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("here")
 		return err
 	}
 	pv := tmcons.TimedWALMessage{
@@ -319,7 +319,6 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
-	fmt.Println(length, "<-> v", v)
 	if length > maxMsgSizeBytes {
 		return fmt.Errorf("msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
 	}
@@ -410,7 +409,6 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 	var res = new(tmcons.TimedWALMessage)
 	err = proto.Unmarshal(data, res)
-	// err = cdc.UnmarshalBinaryBare(data, res)
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}
@@ -419,13 +417,17 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to convert from proto: %w", err)}
 	}
-
-	tMsgWal := TimedWALMessage{
+	tMsgWal := &TimedWALMessage{
 		Time: res.Time,
 		Msg:  walMsg,
 	}
 
-	return &tMsgWal, err
+	// switch msg := walMsg.(type) {
+	// case EndHeightMessage:
+	// 	tMsgWal.Msg = EndHeightMessage{msg.Height}
+	// }
+
+	return tMsgWal, err
 }
 
 type nilWAL struct{}

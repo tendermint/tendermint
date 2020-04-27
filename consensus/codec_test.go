@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
@@ -204,43 +205,20 @@ func TestMsgToProto(t *testing.T) {
 	}
 }
 
-func TestWALMsgToProto(t *testing.T) {
-	// psh := types.PartSetHeader{
-	// 	Total: 1,
-	// 	Hash:  tmrand.Bytes(32),
-	// }
-	// pbPsh := psh.ToProto()
-	// bi := types.BlockID{
-	// 	Hash:        tmrand.Bytes(32),
-	// 	PartsHeader: psh,
-	// }
-	// pbBi := bi.ToProto()
-	// bits := bits.NewBitArray(1)
-	// pbBits := bits.ToProto()
+func TestWALMsgProto(t *testing.T) {
 
-	// parts := types.Part{
-	// 	Index: 1,
-	// 	Bytes: []byte("test"),
-	// 	Proof: merkle.SimpleProof{
-	// 		Total:    1,
-	// 		Index:    1,
-	// 		LeafHash: tmrand.Bytes(32),
-	// 		Aunts:    [][]byte{},
-	// 	},
-	// }
-	// pbParts, err := parts.ToProto()
-	// require.NoError(t, err)
-
-	// proposal := types.Proposal{
-	// 	Type:      3, //proposal type in enum is 3
-	// 	Height:    1,
-	// 	Round:     1,
-	// 	POLRound:  1,
-	// 	BlockID:   bi,
-	// 	Timestamp: time.Now(),
-	// 	Signature: tmrand.Bytes(20),
-	// }
-	// pbProposal := proposal.ToProto()
+	parts := types.Part{
+		Index: 1,
+		Bytes: []byte("test"),
+		Proof: merkle.SimpleProof{
+			Total:    1,
+			Index:    1,
+			LeafHash: tmrand.Bytes(32),
+			Aunts:    [][]byte{},
+		},
+	}
+	pbParts, err := parts.ToProto()
+	require.NoError(t, err)
 
 	testsCases := []struct {
 		testName string
@@ -248,7 +226,7 @@ func TestWALMsgToProto(t *testing.T) {
 		want     *tmcons.WALMessage
 		wantErr  bool
 	}{
-		{"successful EventDataRoundState", &types.EventDataRoundState{
+		{"successful EventDataRoundState", types.EventDataRoundState{
 			Height: 2,
 			Round:  1,
 			Step:   "ronies",
@@ -261,53 +239,53 @@ func TestWALMsgToProto(t *testing.T) {
 				},
 			},
 		}, false},
-		// {"successful msgInfo", &msgInfo{
-		// 	Msg: &BlockPartMessage{
-		// 		Height: 100,
-		// 		Round:  1,
-		// 		Part:   &parts,
-		// 	},
-		// 	PeerID: p2p.ID("string"),
-		// }, &tmcons.WALMessage{
-		// 	Sum: &tmcons.WALMessage_MsgInfo{
-		// 		MsgInfo: &tmcons.MsgInfo{
-		// 			Msg: tmcons.Message{
-		// 				Sum: &tmcons.Message_BlockPart{
-		// 					BlockPart: &tmcons.BlockPart{
-		// 						Height: 100,
-		// 						Round:  1,
-		// 						Part:   *pbParts,
-		// 					},
-		// 				},
-		// 			},
-		// 			PeerId: "string",
-		// 		},
-		// 	},
-		// }, false},
-		// {"successful timeoutInfo", &timeoutInfo{
-		// 	Duration: time.Duration(100),
-		// 	Height:   1,
-		// 	Round:    1,
-		// 	Step:     1,
-		// }, &tmcons.WALMessage{
-		// 	Sum: &tmcons.WALMessage_TimeoutInfo{
-		// 		TimeoutInfo: &tmcons.TimeoutInfo{
-		// 			Duration: time.Duration(100),
-		// 			Height:   1,
-		// 			Round:    1,
-		// 			Step:     1,
-		// 		},
-		// 	},
-		// }, false},
-		// {"successful EndHeightMessage", &EndHeightMessage{
-		// 	Height: 1,
-		// }, &tmcons.WALMessage{
-		// 	Sum: &tmcons.WALMessage_EndHeight{
-		// 		EndHeight: &tmcons.EndHeight{
-		// 			Height: 1,
-		// 		},
-		// 	},
-		// }, false},
+		{"successful msgInfo", msgInfo{
+			Msg: &BlockPartMessage{
+				Height: 100,
+				Round:  1,
+				Part:   &parts,
+			},
+			PeerID: p2p.ID("string"),
+		}, &tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_MsgInfo{
+				MsgInfo: &tmcons.MsgInfo{
+					Msg: tmcons.Message{
+						Sum: &tmcons.Message_BlockPart{
+							BlockPart: &tmcons.BlockPart{
+								Height: 100,
+								Round:  1,
+								Part:   *pbParts,
+							},
+						},
+					},
+					PeerId: "string",
+				},
+			},
+		}, false},
+		{"successful timeoutInfo", timeoutInfo{
+			Duration: time.Duration(100),
+			Height:   1,
+			Round:    1,
+			Step:     1,
+		}, &tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_TimeoutInfo{
+				TimeoutInfo: &tmcons.TimeoutInfo{
+					Duration: time.Duration(100),
+					Height:   1,
+					Round:    1,
+					Step:     1,
+				},
+			},
+		}, false},
+		{"successful EndHeightMessage", EndHeightMessage{
+			Height: 1,
+		}, &tmcons.WALMessage{
+			Sum: &tmcons.WALMessage_EndHeight{
+				EndHeight: &tmcons.EndHeight{
+					Height: 1,
+				},
+			},
+		}, false},
 		{"failure", nil, &tmcons.WALMessage{}, true},
 	}
 	for _, tt := range testsCases {
@@ -324,7 +302,7 @@ func TestWALMsgToProto(t *testing.T) {
 
 			if !tt.wantErr {
 				require.NoError(t, err)
-				assert.Equal(t, tt.msg, &msg, tt.testName) // need the concrete type as WAL Message is a empty interface
+				assert.Equal(t, tt.msg, msg, tt.testName) // need the concrete type as WAL Message is a empty interface
 			} else {
 				require.Error(t, err, tt.testName)
 			}

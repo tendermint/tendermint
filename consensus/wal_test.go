@@ -82,6 +82,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 	msgs := []TimedWALMessage{
 		{Time: now, Msg: EndHeightMessage{0}},
 		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: tmtypes.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
 	}
 
 	b := new(bytes.Buffer)
@@ -134,7 +135,12 @@ func TestWALWrite(t *testing.T) {
 			},
 		},
 	}
-	err = wal.Write(msg)
+
+	twal := msgInfo{
+		Msg: msg,
+	}
+
+	err = wal.Write(twal)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}
