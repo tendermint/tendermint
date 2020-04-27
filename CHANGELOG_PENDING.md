@@ -29,5 +29,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement `Header#ValidateBasic` (@alexanderbez)
 - [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
 - [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Improved evidence db (@cmwaters)
+- [buildsystem] [\#4378](https://github.com/tendermint/tendermint/pull/4738) Replace build_c and install_c with TENDERMINT_BUILD_OPTIONS parsing. The following options are available:
+  - nostrip: don't strip debugging symbols nor DWARF tables.
+  - cleveldb: use cleveldb as db backend instead of goleveldb.
+  - race: pass -race to go build and enable data race detection.
 
 ### BUG FIXES:
+
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)

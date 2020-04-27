@@ -1,11 +1,33 @@
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
-BUILD_TAGS?='tendermint'
-LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
+BUILD_TAGS?=tendermint
+LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+CGO_ENABLED ?= 0
+
+# handle nostrip
+ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_FLAGS += -trimpath
+  LD_FLAGS += -s -w
+endif
+
+# handle race
+ifeq (race,$(findstring race,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_FLAGS += -race
+endif
+
+# handle cleveldb
+ifeq (cleveldb,$(findstring cleveldb,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_TAGS += cleveldb
+endif
+
+# allow users to pass additional flags via the conventional LDFLAGS variable
+LD_FLAGS += $(LDFLAGS)
 
 all: check build test install
 .PHONY: all
@@ -19,24 +41,12 @@ include tests.mk
 ###############################################################################
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=$(CGO_ENABLED) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(OUTPUT) ./cmd/tendermint/
 .PHONY: build
 
-build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
-.PHONY: build_c
-
-build_race:
-	CGO_ENABLED=1 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
-.PHONY: build_race
-
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
-
-install_c:
-	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
-.PHONY: install_c
 
 ###############################################################################
 ###                                Protobuf                                 ###
@@ -197,9 +207,9 @@ build-docker-localnode:
 	@cd networks/local && make
 .PHONY: build-docker-localnode
 
-# Runs `make build_c` from within an Amazon Linux (v2)-based Docker build
-# container in order to build an Amazon Linux-compatible binary. Produces a
-# compatible binary at ./build/tendermint
+# Runs `make build TENDERMINT_BUILD_OPTIONS=cleveldb` from within an Amazon
+# Linux (v2)-based Docker build container in order to build an Amazon
+# Linux-compatible binary. Produces a compatible binary at ./build/tendermint
 build_c-amazonlinux:
 	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
 	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
