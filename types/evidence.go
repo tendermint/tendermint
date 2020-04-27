@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/proto/types"
 	"strings"
 	"time"
 
@@ -933,14 +932,14 @@ var _ Evidence = &ProofOfLockChange{}
 var _ Evidence = ProofOfLockChange{}
 
 func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) (ProofOfLockChange, error) {
-	if !voteSet.HasTwoThirdsMajority() {
-		return ProofOfLockChange{}, errors.New("vote set does not have two-thirds majority")
+	if blockID, ok := voteSet.TwoThirdsMajority(); !ok || !blockID.IsComplete() {
+		return ProofOfLockChange{}, errors.New("vote set does not have two-thirds majority of a non nil block")
 	}
 	var votes []Vote
 	valSetSize := voteSet.Size()
 	for valIdx := 0; valIdx < valSetSize; valIdx++ {
 		vote := voteSet.GetByIndex(valIdx)
-		if vote != nil && vote.BlockID.IsZero() {
+		if vote != nil && vote.BlockID.IsComplete() {
 			votes = append(votes, *vote)
 		}
 	}

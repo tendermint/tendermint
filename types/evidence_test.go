@@ -354,6 +354,34 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NotEmpty(t, ev.String())
 }
 
+func TestProofOfLockChange(t *testing.T) {
+	const (
+		chainID       = "TestProofOfLockChange"
+		height  int64 = 37
+	)
+	voteSet, privValidators := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	// first validator is the one creating the polc
+	pubKey, err := privValidators[7].GetPubKey()
+	require.NoError(t, err)
+	polc, err := MakePOLCFromVoteSet(voteSet, pubKey)
+	require.NoError(t, err)
+	// has already voted
+	badPubKey, err := privValidators[0].GetPubKey()
+	require.NoError(t, err)
+	badPolc, err := MakePOLCFromVoteSet(voteSet, badPubKey)
+	require.NoError(t, err)
+
+	assert.Equal(t, height, polc.Height())
+	assert.NoError(t, polc.ValidateBasic())
+	assert.Error(t, badPolc.ValidateBasic())
+	assert.NoError(t, polc.Verify(chainID, pubKey))
+	assert.Error(t, polc.Verify(chainID, badPubKey))
+	assert.NotEmpty(t, polc.Hash())
+	assert.NotEmpty(t, polc.Bytes())
+	assert.NotEmpty(t, polc.String())
+
+}
+
 func makeHeaderRandom() *Header {
 	return &Header{
 		ChainID:            tmrand.Str(12),
