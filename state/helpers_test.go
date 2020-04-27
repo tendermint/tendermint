@@ -29,6 +29,7 @@ func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { ret
 func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
 func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)          {}
 func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+func (m mockEvPoolAlwaysCommitted) IsPending(types.Evidence) bool          { return false }
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}

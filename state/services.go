@@ -43,6 +43,7 @@ type EvidencePool interface {
 	Update(*types.Block, State)
 	// IsCommitted indicates if this evidence was already marked committed in another block.
 	IsCommitted(types.Evidence) bool
+	IsPending(types.Evidence) bool
 }
 
 // MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
@@ -52,3 +53,4 @@ func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
 func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
 func (m MockEvidencePool) Update(*types.Block, State)             {}
 func (m MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (m MockEvidencePool) IsPending(types.Evidence) bool          { return false }
