@@ -36,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
 - [evidence] \#4617 Remove `Pubkey` from DuplicateVoteEvidence
 - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
+- [script] \#4733 Transition Wal2json & json2Wal scripts to work with protobuf
 - [state] \#4679 `TxResult` is a protobuf type defined in `abci` types directory
 
 - Apps
