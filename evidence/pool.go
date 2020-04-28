@@ -28,17 +28,17 @@ type Pool struct {
 
 	// needed to load validators to verify evidence
 	stateDB    dbm.DB
+	// needed to load headers to verify evidence
 	blockStore *store.BlockStore
 
+	mtx sync.Mutex
+	// latest state
+	state sm.State
 	// a map of active validators and respective last heights validator is active
 	// if it was in validator set after EvidenceParams.MaxAgeNumBlocks or
 	// currently is (ie. [MaxAgeNumBlocks, CurrentHeight])
 	// In simple words, it means it's still bonded -> therefore slashable.
 	valToLastHeight valToLastHeightMap
-
-	// latest state
-	mtx   sync.Mutex
-	state sm.State
 }
 
 // Validator.Address -> Last height it was in validator set
@@ -90,8 +90,8 @@ func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
 	return evidence
 }
 
-// Update uses the latest block to update the state, the ValToLastHeight map for evidence expiration
-// and to mark committed evidence
+// Update uses the latest block & state to update its copy of the state,
+// validator to last height map and calls MarkEvidenceAsCommitted.
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
@@ -103,14 +103,13 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 		)
 	}
 
-	// update the state
-	evpool.mtx.Lock()
-	evpool.state = state
-	evpool.mtx.Unlock()
-
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
+	// update the state
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
+	evpool.state = state
 	evpool.updateValToLastHeight(block.Height, state)
 }
 
@@ -141,7 +140,15 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return err
 		}
 
-		evList = ce.Split(&blockMeta.Header, valSet, evpool.valToLastHeight)
+		// XXX: Copy here since this should be a rare case.
+		evpool.mtx.Lock()
+		valToLastHeightCopy := make(valToLastHeightMap, len(evpool.valToLastHeight))
+		for k, v := range evpool.valToLastHeight {
+			valToLastHeightCopy[k] = v
+		}
+		evpool.mtx.Unlock()
+
+		evList = ce.Split(&blockMeta.Header, valSet, valToLastHeightCopy)
 	}
 
 	for _, ev := range evList {
@@ -262,6 +269,9 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 // long time ago (> ConsensusParams.Evidence.MaxAgeDuration && >
 // ConsensusParams.Evidence.MaxAgeNumBlocks).
 func (evpool *Pool) ValidatorLastHeight(address []byte) int64 {
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
+
 	h, ok := evpool.valToLastHeight[string(address)]
 	if !ok {
 		return 0
@@ -352,15 +362,11 @@ func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
 	}
 
 	// Remove validators outside of MaxAgeNumBlocks & MaxAgeDuration.
-	removeHeight := blockHeight - evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks
+	removeHeight := blockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
-		valSet, err := sm.LoadValidators(evpool.stateDB, removeHeight)
-		if err != nil {
-			for _, val := range valSet.Validators {
-				h, ok := evpool.valToLastHeight[string(val.Address)]
-				if ok && h == removeHeight {
-					delete(evpool.valToLastHeight, string(val.Address))
-				}
+		for val, height := range evpool.valToLastHeight {
+			if height <= removeHeight {
+				delete(evpool.valToLastHeight, val)
 			}
 		}
 	}
