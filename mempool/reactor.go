@@ -136,10 +136,12 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       MempoolChannel,
-			Priority: 5,
+			ID:                  MempoolChannel,
+			Priority:            5,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -260,10 +262,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // Messages
 
 func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
-	if l := len(bz); l > maxMsgSize {
-		return TxMessage{}, ErrTxTooLarge{maxMsgSize, l}
-	}
 
 	msg := gogotypes.BytesValue{}
 	err := msg.Unmarshal(bz)
