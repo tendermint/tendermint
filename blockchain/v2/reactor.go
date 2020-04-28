@@ -363,6 +363,8 @@ func (r *BlockchainReactor) demux() {
 				r.scheduler.send(event)
 			case bcAddNewPeer, bcRemovePeer, bcBlockResponse, bcNoBlockResponse:
 				r.scheduler.send(event)
+			default:
+				r.logger.Error("Received unknown event", "event", fmt.Sprintf("%T", event))
 			}
 
 		// Incremental events form scheduler
@@ -378,6 +380,8 @@ func (r *BlockchainReactor) demux() {
 			case scFinishedEv:
 				r.processor.send(event)
 				r.scheduler.stop()
+			default:
+				r.logger.Error("Received unknown scheduler event", "event", fmt.Sprintf("%T", event))
 			}
 
 		// Incremental events from processor
@@ -397,6 +401,8 @@ func (r *BlockchainReactor) demux() {
 			case pcFinished:
 				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced)
 				r.processor.stop()
+			default:
+				r.logger.Error("Received unknown processor event", "event", fmt.Sprintf("%T", event))
 			}
 
 		// Terminal events from scheduler
