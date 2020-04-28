@@ -19,34 +19,35 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery -case underscore -name StateSource
+//go:generate mockery -case underscore -name StateProvider
 
-// StateSource is a trusted source of state data for bootstrapping a node.
-type StateSource interface {
-	// AppHash returns the app hash after the given height (from height+1 header).
+// StateProvider is a provider of trusted state data for bootstrapping a node. This refers
+// to the state.State object, not the state machine.
+type StateProvider interface {
+	// AppHash returns the app hash after the given height has been committed.
 	AppHash(height uint64) ([]byte, error)
 	// Commit returns the commit at the given height.
 	Commit(height uint64) (*types.Commit, error)
-	// State builds state at the given height. The caller may need to update the app version.
+	// State returns a state object at the given height.
 	State(height uint64) (sm.State, error)
 }
 
-// lightClientStateSource is a state source using the light client.
-type lightClientStateSource struct {
+// lightClientStateProvider is a state provider using the light client.
+type lightClientStateProvider struct {
 	sync.Mutex // lite.Client is not concurrency-safe
 	lc         *lite.Client
 	version    sm.Version
 	providers  map[liteprovider.Provider]string
 }
 
-// NewLightClientStateSource creates a new StateSource using a light client and RPC clients.
-func NewLightClientStateSource(
+// NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
+func NewLightClientStateProvider(
 	chainID string,
 	version sm.Version,
 	servers []string,
 	trustOptions lite.TrustOptions,
 	logger log.Logger,
-) (StateSource, error) {
+) (StateProvider, error) {
 	if len(servers) < 2 {
 		return nil, fmt.Errorf("at least 2 RPC servers are required, got %v", len(servers))
 	}
@@ -70,15 +71,15 @@ func NewLightClientStateSource(
 	if err != nil {
 		return nil, err
 	}
-	return &lightClientStateSource{
+	return &lightClientStateProvider{
 		lc:        lc,
 		version:   version,
 		providers: providerRemotes,
 	}, nil
 }
 
-// AppHash implements StateSource.
-func (s *lightClientStateSource) AppHash(height uint64) ([]byte, error) {
+// AppHash implements StateProvider.
+func (s *lightClientStateProvider) AppHash(height uint64) ([]byte, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -90,8 +91,8 @@ func (s *lightClientStateSource) AppHash(height uint64) ([]byte, error) {
 	return header.AppHash, nil
 }
 
-// Commit implements StateSource.
-func (s *lightClientStateSource) Commit(height uint64) (*types.Commit, error) {
+// Commit implements StateProvider.
+func (s *lightClientStateProvider) Commit(height uint64) (*types.Commit, error) {
 	s.Lock()
 	defer s.Unlock()
 	header, err := s.lc.VerifyHeaderAtHeight(int64(height), time.Now())
@@ -101,8 +102,8 @@ func (s *lightClientStateSource) Commit(height uint64) (*types.Commit, error) {
 	return header.Commit, nil
 }
 
-// State implements StateSource.
-func (s *lightClientStateSource) State(height uint64) (sm.State, error) {
+// State implements StateProvider.
+func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 	s.Lock()
 	defer s.Unlock()
 

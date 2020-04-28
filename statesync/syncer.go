@@ -51,12 +51,12 @@ var (
 // sync all snapshots in the pool (pausing to discover new ones), or Sync() to sync a specific
 // snapshot. Snapshots and chunks are fed via AddSnapshot() and AddChunk() as appropriate.
 type syncer struct {
-	logger      log.Logger
-	stateSource StateSource
-	conn        proxy.AppConnSnapshot
-	connQuery   proxy.AppConnQuery
-	snapshots   *snapshotPool
-	tempDir     string
+	logger        log.Logger
+	stateProvider StateProvider
+	conn          proxy.AppConnSnapshot
+	connQuery     proxy.AppConnQuery
+	snapshots     *snapshotPool
+	tempDir       string
 
 	mtx    sync.RWMutex
 	chunks *chunkQueue
@@ -64,14 +64,14 @@ type syncer struct {
 
 // newSyncer creates a new syncer.
 func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	stateSource StateSource, tempDir string) *syncer {
+	stateProvider StateProvider, tempDir string) *syncer {
 	return &syncer{
-		logger:      logger,
-		stateSource: stateSource,
-		conn:        conn,
-		connQuery:   connQuery,
-		snapshots:   newSnapshotPool(stateSource),
-		tempDir:     tempDir,
+		logger:        logger,
+		stateProvider: stateProvider,
+		conn:          conn,
+		connQuery:     connQuery,
+		snapshots:     newSnapshotPool(stateProvider),
+		tempDir:       tempDir,
 	}
 }
 
@@ -242,11 +242,11 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	}
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
-	state, err := s.stateSource.State(snapshot.Height)
+	state, err := s.stateProvider.State(snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
 	}
-	commit, err := s.stateSource.Commit(snapshot.Height)
+	commit, err := s.stateProvider.Commit(snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}

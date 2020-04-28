@@ -40,7 +40,7 @@ func (s *snapshot) Key() snapshotKey {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
-	stateSource StateSource
+	stateProvider StateProvider
 
 	sync.Mutex
 	snapshots     map[snapshotKey]*snapshot
@@ -58,9 +58,9 @@ type snapshotPool struct {
 }
 
 // newSnapshotPool creates a new snapshot pool. The state source is used for
-func newSnapshotPool(stateSource StateSource) *snapshotPool {
+func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 	return &snapshotPool{
-		stateSource:       stateSource,
+		stateProvider:     stateProvider,
 		snapshots:         make(map[snapshotKey]*snapshot),
 		snapshotPeers:     make(map[snapshotKey]map[p2p.ID]p2p.Peer),
 		formatIndex:       make(map[uint32]map[snapshotKey]bool),
@@ -76,7 +76,7 @@ func newSnapshotPool(stateSource StateSource) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	appHash, err := p.stateSource.AppHash(snapshot.Height)
+	appHash, err := p.stateProvider.AppHash(snapshot.Height)
 	if err != nil {
 		return false, err
 	}

@@ -156,6 +156,15 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	}
 }
 
+// StateProvider overrides the state provider used by state sync to retrieve trusted app hashes and
+// build a State object for bootstrapping the node.
+// WARNING: this interface is considered unstable and subject to change.
+func StateProvider(stateProvider statesync.StateProvider) Option {
+	return func(n *Node) {
+		n.stateSyncProvider = stateProvider
+	}
+}
+
 //------------------------------------------------------------------------------
 
 // Node is the highest level interface to a full Tendermint node.
@@ -177,23 +186,24 @@ type Node struct {
 	isListening bool
 
 	// services
-	eventBus         *types.EventBus // pub/sub for services
-	stateDB          dbm.DB
-	blockStore       *store.BlockStore // store the blockchain to disk
-	bcReactor        p2p.Reactor       // for fast-syncing
-	mempoolReactor   *mempl.Reactor    // for gossipping transactions
-	mempool          mempl.Mempool
-	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	stateSync        bool               // whether node should state sync on startup
-	consensusState   *cs.State          // latest consensus state
-	consensusReactor *cs.Reactor        // for participating in the consensus
-	pexReactor       *pex.Reactor       // for exchanging peer addresses
-	evidencePool     *evidence.Pool     // tracking evidence
-	proxyApp         proxy.AppConns     // connection to the application
-	rpcListeners     []net.Listener     // rpc servers
-	txIndexer        txindex.TxIndexer
-	indexerService   *txindex.IndexerService
-	prometheusSrv    *http.Server
+	eventBus          *types.EventBus // pub/sub for services
+	stateDB           dbm.DB
+	blockStore        *store.BlockStore // store the blockchain to disk
+	bcReactor         p2p.Reactor       // for fast-syncing
+	mempoolReactor    *mempl.Reactor    // for gossipping transactions
+	mempool           mempl.Mempool
+	stateSync         bool                    // whether the node should state sync on startup
+	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
+	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
+	consensusState    *cs.State               // latest consensus state
+	consensusReactor  *cs.Reactor             // for participating in the consensus
+	pexReactor        *pex.Reactor            // for exchanging peer addresses
+	evidencePool      *evidence.Pool          // tracking evidence
+	proxyApp          proxy.AppConns          // connection to the application
+	rpcListeners      []net.Listener          // rpc servers
+	txIndexer         txindex.TxIndexer
+	indexerService    *txindex.IndexerService
+	prometheusSrv     *http.Server
 }
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
@@ -557,22 +567,26 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus.Reactor,
-	config *cfg.StateSyncConfig, fastSync bool, stateDB dbm.DB, blockStore *store.BlockStore) error {
+	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
+	stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
 	state := sm.LoadState(stateDB)
-	stateSource, err := statesync.NewLightClientStateSource(state.ChainID, state.Version,
-		config.RPCServers, lite.TrustOptions{
-			Period: config.TrustPeriod,
-			Height: config.TrustHeight,
-			Hash:   config.TrustHashBytes(),
-		}, ssR.Logger.With("module", "lite"))
-	if err != nil {
-		return fmt.Errorf("failed to set up light client: %w", err)
+	if stateProvider == nil {
+		var err error
+		stateProvider, err = statesync.NewLightClientStateProvider(state.ChainID, state.Version,
+			config.RPCServers, lite.TrustOptions{
+				Period: config.TrustPeriod,
+				Height: config.TrustHeight,
+				Hash:   config.TrustHashBytes(),
+			}, ssR.Logger.With("module", "lite"))
+		if err != nil {
+			return fmt.Errorf("failed to set up light client state provider: %w", err)
+		}
 	}
 
 	go func() {
-		state, commit, err := ssR.Sync(stateSource)
+		state, commit, err := ssR.Sync(stateProvider)
 		if err != nil {
 			ssR.Logger.Error("State sync failed", "err", err)
 			return
@@ -886,8 +900,8 @@ func (n *Node) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.config.StateSync,
-			n.config.FastSyncMode, n.stateDB, n.blockStore)
+		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
+			n.config.StateSync, n.config.FastSyncMode, n.stateDB, n.blockStore)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}

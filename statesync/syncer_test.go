@@ -26,9 +26,9 @@ import (
 func setupOfferSyncer(t *testing.T) (*syncer, *proxymocks.AppConnSnapshot) {
 	connQuery := &proxymocks.AppConnQuery{}
 	connSnapshot := &proxymocks.AppConnSnapshot{}
-	stateSource := &mocks.StateSource{}
-	stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+	stateProvider := &mocks.StateProvider{}
+	stateProvider.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 	return syncer, connSnapshot
 }
 
@@ -73,15 +73,15 @@ func TestSyncer_SyncAny(t *testing.T) {
 	}
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	stateSource := &mocks.StateSource{}
-	stateSource.On("AppHash", uint64(1)).Return(state.AppHash, nil)
-	stateSource.On("AppHash", uint64(2)).Return([]byte("app_hash_2"), nil)
-	stateSource.On("Commit", uint64(1)).Return(commit, nil)
-	stateSource.On("State", uint64(1)).Return(state, nil)
+	stateProvider := &mocks.StateProvider{}
+	stateProvider.On("AppHash", uint64(1)).Return(state.AppHash, nil)
+	stateProvider.On("AppHash", uint64(2)).Return([]byte("app_hash_2"), nil)
+	stateProvider.On("Commit", uint64(1)).Return(commit, nil)
+	stateProvider.On("State", uint64(1)).Return(state, nil)
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
@@ -390,9 +390,9 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
-			stateSource := &mocks.StateSource{}
-			stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+			stateProvider := &mocks.StateProvider{}
+			stateProvider.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -440,9 +440,9 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
-			stateSource := &mocks.StateSource{}
-			stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+			stateProvider := &mocks.StateProvider{}
+			stateProvider.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -503,9 +503,9 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
-			stateSource := &mocks.StateSource{}
-			stateSource.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+			stateProvider := &mocks.StateProvider{}
+			stateProvider.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
+			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
@@ -611,8 +611,8 @@ func TestSyncer_verifyApp(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
-			stateSource := &mocks.StateSource{}
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateSource, "")
+			stateProvider := &mocks.StateProvider{}
+			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			connQuery.On("InfoSync", proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := syncer.verifyApp(s)
