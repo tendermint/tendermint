@@ -247,15 +247,14 @@ $EDITOR /tmp/corrupted_wal
 
 ### Processor and Memory
 
-While actual specs vary depending on the load and validators count,
-minimal requirements are:
+While actual specs vary depending on the load and validators count, minimal
+requirements are:
 
 - 1GB RAM
 - 25GB of disk space
 - 1.4 GHz CPU
 
-SSD disks are preferable for applications with high transaction
-throughput.
+SSD disks are preferable for applications with high transaction throughput.
 
 Recommended:
 
@@ -263,21 +262,34 @@ Recommended:
 - 100GB SSD
 - x64 2.0 GHz 2v CPU
 
-While for now, Tendermint stores all the history and it may require
-significant disk space over time, we are planning to implement state
-syncing (See
-[this issue](https://github.com/tendermint/tendermint/issues/828)). So,
-storing all the past blocks will not be necessary.
+While for now, Tendermint stores all the history and it may require significant
+disk space over time, we are planning to implement state syncing (See [this
+issue](https://github.com/tendermint/tendermint/issues/828)). So, storing all
+the past blocks will not be necessary.
+
+### Validator signing on 32 bit architectures (or ARM)
+
+Both our `ed25519` and `secp256k1` implementations require constant time
+`uint64` multiplication. Non-constant time crypto can (and has) leaked
+private keys on both `ed25519` and `secp256k1`. This doesn't exist in hardware
+on 32 bit x86 platforms ([source](https://bearssl.org/ctmul.html)), and it
+depends on the compiler to enforce that it is constant time. It's unclear at
+this point whenever the Golang compiler does this correctly for all
+implementations.
+
+**We do not support nor recommend running a validator on 32 bit architectures OR
+the "VIA Nano 2000 Series", and the architectures in the ARM section rated
+"S-".**
 
 ### Operating Systems
 
-Tendermint can be compiled for a wide range of operating systems thanks
-to Go language (the list of \$OS/\$ARCH pairs can be found
+Tendermint can be compiled for a wide range of operating systems thanks to Go
+language (the list of \$OS/\$ARCH pairs can be found
 [here](https://golang.org/doc/install/source#environment)).
 
-While we do not favor any operation system, more secure and stable Linux
-server distributions (like Centos) should be preferred over desktop
-operation systems (like Mac OS).
+While we do not favor any operation system, more secure and stable Linux server
+distributions (like Centos) should be preferred over desktop operation systems
+(like Mac OS).
 
 ### Miscellaneous
 
