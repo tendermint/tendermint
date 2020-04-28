@@ -12,6 +12,7 @@ jobs:
           SET_ENV_NAME_INSERTIONS: 1
           SET_ENV_NAME_LINES: 1
       - uses: docker-practice/actions-setup-docker@master
+        if: "env.GIT_DIFF != ''"
       - name: lint
         run: make proto-lint
         if: "env.GIT_DIFF != ''"
