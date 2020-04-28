@@ -776,7 +776,10 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	if n.config.Mempool.WalEnabled() {
-		n.mempool.InitWAL() // no need to have the mempool wal during tests
+		err = n.mempool.InitWAL() // no need to have the mempool wal during tests
+		if err != nil {
+			return err
+		}
 	}
 
 	// Start the switch (the P2P server).

@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -47,6 +45,7 @@ type CListMempool struct {
 	txs          *clist.CList // concurrent linked-list of good txs
 	preCheck     PreCheckFunc
 	postCheck    PostCheckFunc
+	wal          *auto.AutoFile // a log of mempool txs
 
 	// Track whether we're rechecking txs.
 	// These are not protected by a mutex and are expected to be mutated
@@ -61,9 +60,6 @@ type CListMempool struct {
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
 	cache txCache
-
-	// A log of mempool txs
-	wal *auto.AutoFile
 
 	logger log.Logger
 
@@ -132,21 +128,28 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 
-// *panics* if can't create directory or open file.
-// *not thread safe*
-func (mem *CListMempool) InitWAL() {
-	walDir := mem.config.WalDir()
-	err := tmos.EnsureDir(walDir, 0700)
-	if err != nil {
-		panic(errors.Wrap(err, "Error ensuring WAL dir"))
+// Panics if can't create directory or open file.
+func (mem *CListMempool) InitWAL() error {
+	var (
+		walDir  = mem.config.WalDir()
+		walFile = walDir + "/wal"
+	)
+
+	const perm = 0700
+	if err := tmos.EnsureDir(walDir, perm); err != nil {
+		return err
 	}
-	af, err := auto.OpenAutoFile(walDir + "/wal")
+
+	af, err := auto.OpenAutoFile(walFile)
 	if err != nil {
-		panic(errors.Wrap(err, "Error opening WAL file"))
+		return fmt.Errorf("can't open autofile %s: %w", walFile, err)
 	}
+
 	mem.wal = af
+	return nil
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CloseWAL() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
