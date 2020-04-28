@@ -258,7 +258,7 @@ func TestWALMsgProto(t *testing.T) {
 							},
 						},
 					},
-					PeerId: "string",
+					PeerID: "string",
 				},
 			},
 		}, false},

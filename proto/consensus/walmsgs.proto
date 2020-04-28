@@ -11,7 +11,7 @@ import "google/protobuf/timestamp.proto";
 
 message MsgInfo {
   Message msg     = 1 [(gogoproto.nullable) = false];
-  string  peer_id = 2;
+  string  peer_id = 2 [(gogoproto.customname) = "PeerID"];
 }
 
 message TimeoutInfo {
@@ -19,7 +19,7 @@ message TimeoutInfo {
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   int64 height = 2;
   int32 round  = 3;
-  int32 step   = 4 [(gogoproto.casttype) = "uint8"];
+  uint32 step   = 4;
 }
 
 message EndHeight {

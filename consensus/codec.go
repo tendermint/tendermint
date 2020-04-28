@@ -309,7 +309,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
 					Msg:    *consMsg,
-					PeerId: string(msg.PeerID),
+					PeerID: string(msg.PeerID),
 				},
 			},
 		}
@@ -320,7 +320,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 					Duration: msg.Duration,
 					Height:   msg.Height,
 					Round:    msg.Round,
-					Step:     uint8(msg.Step),
+					Step:     uint32(msg.Step),
 				},
 			},
 		}
@@ -360,15 +360,20 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 		pb = msgInfo{
 			Msg:    walMsg,
-			PeerID: p2p.ID(msg.MsgInfo.PeerId),
+			PeerID: p2p.ID(msg.MsgInfo.PeerID),
 		}
 
 	case *tmcons.WALMessage_TimeoutInfo:
+		tis, err := tmmath.SafeConvertUint8(int64(msg.TimeoutInfo.Step))
+		// deny message based on possible overflow
+		if err != nil {
+			return nil, fmt.Errorf("denying message due to possible overflow: %w", err)
+		}
 		pb = timeoutInfo{
 			Duration: msg.TimeoutInfo.Duration,
 			Height:   msg.TimeoutInfo.Height,
 			Round:    msg.TimeoutInfo.Round,
-			Step:     cstypes.RoundStepType(msg.TimeoutInfo.Step),
+			Step:     cstypes.RoundStepType(tis),
 		}
 		return pb, nil
 	case *tmcons.WALMessage_EndHeight:

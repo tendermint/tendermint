@@ -49,7 +49,7 @@ func main() {
 
 		pbWal, err := cs.WALToProto(msg.Msg)
 		if err != nil {
-			panic(fmt.Errorf("failed to transform walMessage into proto"))
+			panic(fmt.Errorf("failed to transform walMessage into proto: %w", err))
 		}
 
 		pbWalMsg := tmcons.TimedWALMessage{
