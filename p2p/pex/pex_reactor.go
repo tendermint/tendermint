@@ -180,9 +180,10 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
 	return []*conn.ChannelDescriptor{
 		{
-			ID:                PexChannel,
-			Priority:          1,
-			SendQueueCapacity: 10,
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
