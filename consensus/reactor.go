@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -271,7 +272,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
-			src.TrySend(VoteSetBitsChannel, cdc.MustMarshalBinaryBare(&VoteSetBitsMessage{
+			src.TrySend(VoteSetBitsChannel, MustEncode(&VoteSetBitsMessage{
 				Height:  msg.Height,
 				Round:   msg.Round,
 				Type:    msg.Type,
@@ -403,7 +404,7 @@ func (conR *Reactor) unsubscribeFromBroadcastEvents() {
 
 func (conR *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
-	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
+	conR.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
 }
 
 func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
@@ -414,7 +415,7 @@ func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 		BlockParts:       rs.ProposalBlockParts.BitArray(),
 		IsCommit:         rs.Step == cstypes.RoundStepCommit,
 	}
-	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(csMsg))
+	conR.Switch.Broadcast(StateChannel, MustEncode(csMsg))
 }
 
 // Broadcasts HasVoteMessage to peers that care.
@@ -425,7 +426,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 		Type:   vote.Type,
 		Index:  vote.ValidatorIndex,
 	}
-	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
+	conR.Switch.Broadcast(StateChannel, MustEncode(msg))
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
@@ -460,7 +461,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg := makeRoundStepMessage(rs)
-	peer.Send(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
+	peer.Send(StateChannel, MustEncode(nrsMsg))
 }
 
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
@@ -486,7 +487,7 @@ OUTER_LOOP:
 					Part:   part,
 				}
 				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
+				if peer.Send(DataChannel, MustEncode(msg)) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -532,7 +533,7 @@ OUTER_LOOP:
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
 				logger.Debug("Sending proposal", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
+				if peer.Send(DataChannel, MustEncode(msg)) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -548,7 +549,7 @@ OUTER_LOOP:
 					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
 				}
 				logger.Debug("Sending POL", "height", prs.Height, "round", prs.Round)
-				peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
+				peer.Send(DataChannel, MustEncode(msg))
 			}
 			continue OUTER_LOOP
 		}
@@ -591,7 +592,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			Part:   part,
 		}
 		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
-		if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
+		if peer.Send(DataChannel, MustEncode(msg)) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -751,7 +752,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrevoteType,
@@ -768,7 +769,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrecommitType,
@@ -785,7 +786,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
 						Type:    tmproto.PrevoteType,
@@ -805,7 +806,7 @@ OUTER_LOOP:
 			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= conR.conS.blockStore.Height() &&
 				prs.Height >= conR.conS.blockStore.Base() {
 				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
-					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   commit.Round,
 						Type:    tmproto.PrecommitType,
@@ -1026,7 +1027,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		if ps.peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(msg)) {
+		if ps.peer.Send(VoteChannel, MustEncode(msg)) {
 			ps.SetHasVote(vote)
 			return true
 		}
@@ -1380,22 +1381,14 @@ type Message interface {
 	ValidateBasic() error
 }
 
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage", nil)
-	cdc.RegisterConcrete(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage", nil)
-	cdc.RegisterConcrete(&ProposalMessage{}, "tendermint/Proposal", nil)
-	cdc.RegisterConcrete(&ProposalPOLMessage{}, "tendermint/ProposalPOL", nil)
-	cdc.RegisterConcrete(&BlockPartMessage{}, "tendermint/BlockPart", nil)
-	cdc.RegisterConcrete(&VoteMessage{}, "tendermint/Vote", nil)
-	cdc.RegisterConcrete(&HasVoteMessage{}, "tendermint/HasVote", nil)
-	cdc.RegisterConcrete(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23", nil)
-	cdc.RegisterConcrete(&VoteSetBitsMessage{}, "tendermint/VoteSetBits", nil)
-}
-
 func decodeMsg(bz []byte) (msg Message, err error) {
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	return
+	pb := &tmcons.Message{}
+	if err = proto.Unmarshal(bz, pb); err != nil {
+		return msg, err
+	}
+
+	message, err := MsgFromProto(pb)
+	return message, err
 }
 
 //-------------------------------------
