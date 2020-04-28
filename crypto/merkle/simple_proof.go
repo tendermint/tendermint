@@ -47,31 +47,6 @@ func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Simp
 	return
 }
 
-// SimpleProofsFromMap generates proofs from a map. The keys/values of the map will be used as the keys/values
-// in the underlying key-value pairs.
-// The keys are sorted before the proofs are computed.
-func SimpleProofsFromMap(m map[string][]byte) (rootHash []byte, proofs map[string]*SimpleProof, keys []string) {
-	sm := newSimpleMap()
-	for k, v := range m {
-		sm.Set(k, v)
-	}
-	sm.Sort()
-	kvs := sm.kvs
-	kvsBytes := make([][]byte, len(kvs))
-	for i, kvp := range kvs {
-		kvsBytes[i] = KVPair(kvp).Bytes()
-	}
-
-	rootHash, proofList := SimpleProofsFromByteSlices(kvsBytes)
-	proofs = make(map[string]*SimpleProof)
-	keys = make([]string, len(proofList))
-	for i, kvp := range kvs {
-		proofs[string(kvp.Key)] = proofList[i]
-		keys[i] = string(kvp.Key)
-	}
-	return
-}
-
 // Verify that the SimpleProof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
 func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
