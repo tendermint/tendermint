@@ -261,7 +261,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
@@ -284,7 +284,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
@@ -765,7 +765,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
-			"ProposalPOL bit array is too big: 10001, max: 10000"},
+			"proposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
 	for i, tc := range testCases {

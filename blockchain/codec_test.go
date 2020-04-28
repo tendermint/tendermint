@@ -92,8 +92,7 @@ func TestMsgToProto(t *testing.T) {
 
 			if !tt.wantErr {
 				require.NoError(t, err)
-				// bcm := reflect.DeepEqual(tt.msg, msg)
-				// assert.True(t, bcm, tt.name)
+				assert.Equal(t, tt.msg, msg, tt.name)
 			} else {
 				require.Error(t, err, tt.name)
 			}

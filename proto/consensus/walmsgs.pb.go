@@ -9,6 +9,8 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	_ "github.com/golang/protobuf/ptypes/duration"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
+	types "github.com/tendermint/tendermint/proto/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -31,7 +33,7 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type MsgInfo struct {
 	Msg    Message `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg"`
-	PeerId string  `protobuf:"bytes,2,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
+	PeerID string  `protobuf:"bytes,2,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
 }
 
 func (m *MsgInfo) Reset()      { *m = MsgInfo{} }
@@ -73,9 +75,9 @@ func (m *MsgInfo) GetMsg() Message {
 	return Message{}
 }
 
-func (m *MsgInfo) GetPeerId() string {
+func (m *MsgInfo) GetPeerID() string {
 	if m != nil {
-		return m.PeerId
+		return m.PeerID
 	}
 	return ""
 }
@@ -84,7 +86,7 @@ type TimeoutInfo struct {
 	Duration time.Duration `protobuf:"bytes,1,opt,name=duration,proto3,stdduration" json:"duration"`
 	Height   int64         `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
 	Round    int32         `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
-	Step     int8          `protobuf:"varint,4,opt,name=step,proto3,casttype=int8" json:"step,omitempty"`
+	Step     uint32        `protobuf:"varint,4,opt,name=step,proto3" json:"step,omitempty"`
 }
 
 func (m *TimeoutInfo) Reset()      { *m = TimeoutInfo{} }
@@ -140,28 +142,28 @@ func (m *TimeoutInfo) GetRound() int32 {
 	return 0
 }
 
-func (m *TimeoutInfo) GetStep() int8 {
+func (m *TimeoutInfo) GetStep() uint32 {
 	if m != nil {
 		return m.Step
 	}
 	return 0
 }
 
-type EndHeightMessage struct {
+type EndHeight struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *EndHeightMessage) Reset()      { *m = EndHeightMessage{} }
-func (*EndHeightMessage) ProtoMessage() {}
-func (*EndHeightMessage) Descriptor() ([]byte, []int) {
+func (m *EndHeight) Reset()      { *m = EndHeight{} }
+func (*EndHeight) ProtoMessage() {}
+func (*EndHeight) Descriptor() ([]byte, []int) {
 	return fileDescriptor_60ad80fa14e37285, []int{2}
 }
-func (m *EndHeightMessage) XXX_Unmarshal(b []byte) error {
+func (m *EndHeight) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EndHeightMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EndHeight) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EndHeightMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EndHeight.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -171,60 +173,237 @@ func (m *EndHeightMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *EndHeightMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EndHeightMessage.Merge(m, src)
+func (m *EndHeight) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EndHeight.Merge(m, src)
 }
-func (m *EndHeightMessage) XXX_Size() int {
+func (m *EndHeight) XXX_Size() int {
 	return m.Size()
 }
-func (m *EndHeightMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_EndHeightMessage.DiscardUnknown(m)
+func (m *EndHeight) XXX_DiscardUnknown() {
+	xxx_messageInfo_EndHeight.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EndHeightMessage proto.InternalMessageInfo
+var xxx_messageInfo_EndHeight proto.InternalMessageInfo
 
-func (m *EndHeightMessage) GetHeight() int64 {
+func (m *EndHeight) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
+type WALMessage struct {
+	// Types that are valid to be assigned to Sum:
+	//	*WALMessage_EventDataRoundState
+	//	*WALMessage_MsgInfo
+	//	*WALMessage_TimeoutInfo
+	//	*WALMessage_EndHeight
+	Sum isWALMessage_Sum `protobuf_oneof:"sum"`
+}
+
+func (m *WALMessage) Reset()      { *m = WALMessage{} }
+func (*WALMessage) ProtoMessage() {}
+func (*WALMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_60ad80fa14e37285, []int{3}
+}
+func (m *WALMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WALMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WALMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *WALMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WALMessage.Merge(m, src)
+}
+func (m *WALMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *WALMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_WALMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WALMessage proto.InternalMessageInfo
+
+type isWALMessage_Sum interface {
+	isWALMessage_Sum()
+	Equal(interface{}) bool
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type WALMessage_EventDataRoundState struct {
+	EventDataRoundState *types.EventDataRoundState `protobuf:"bytes,1,opt,name=event_data_round_state,json=eventDataRoundState,proto3,oneof" json:"event_data_round_state,omitempty"`
+}
+type WALMessage_MsgInfo struct {
+	MsgInfo *MsgInfo `protobuf:"bytes,2,opt,name=msg_info,json=msgInfo,proto3,oneof" json:"msg_info,omitempty"`
+}
+type WALMessage_TimeoutInfo struct {
+	TimeoutInfo *TimeoutInfo `protobuf:"bytes,3,opt,name=timeout_info,json=timeoutInfo,proto3,oneof" json:"timeout_info,omitempty"`
+}
+type WALMessage_EndHeight struct {
+	EndHeight *EndHeight `protobuf:"bytes,4,opt,name=end_height,json=endHeight,proto3,oneof" json:"end_height,omitempty"`
+}
+
+func (*WALMessage_EventDataRoundState) isWALMessage_Sum() {}
+func (*WALMessage_MsgInfo) isWALMessage_Sum()             {}
+func (*WALMessage_TimeoutInfo) isWALMessage_Sum()         {}
+func (*WALMessage_EndHeight) isWALMessage_Sum()           {}
+
+func (m *WALMessage) GetSum() isWALMessage_Sum {
+	if m != nil {
+		return m.Sum
+	}
+	return nil
+}
+
+func (m *WALMessage) GetEventDataRoundState() *types.EventDataRoundState {
+	if x, ok := m.GetSum().(*WALMessage_EventDataRoundState); ok {
+		return x.EventDataRoundState
+	}
+	return nil
+}
+
+func (m *WALMessage) GetMsgInfo() *MsgInfo {
+	if x, ok := m.GetSum().(*WALMessage_MsgInfo); ok {
+		return x.MsgInfo
+	}
+	return nil
+}
+
+func (m *WALMessage) GetTimeoutInfo() *TimeoutInfo {
+	if x, ok := m.GetSum().(*WALMessage_TimeoutInfo); ok {
+		return x.TimeoutInfo
+	}
+	return nil
+}
+
+func (m *WALMessage) GetEndHeight() *EndHeight {
+	if x, ok := m.GetSum().(*WALMessage_EndHeight); ok {
+		return x.EndHeight
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*WALMessage) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*WALMessage_EventDataRoundState)(nil),
+		(*WALMessage_MsgInfo)(nil),
+		(*WALMessage_TimeoutInfo)(nil),
+		(*WALMessage_EndHeight)(nil),
+	}
+}
+
+// TimedWALMessage wraps WALMessage and adds Time for debugging purposes.
+type TimedWALMessage struct {
+	Time time.Time   `protobuf:"bytes,1,opt,name=time,proto3,stdtime" json:"time"`
+	Msg  *WALMessage `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
+}
+
+func (m *TimedWALMessage) Reset()      { *m = TimedWALMessage{} }
+func (*TimedWALMessage) ProtoMessage() {}
+func (*TimedWALMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_60ad80fa14e37285, []int{4}
+}
+func (m *TimedWALMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TimedWALMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TimedWALMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TimedWALMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TimedWALMessage.Merge(m, src)
+}
+func (m *TimedWALMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *TimedWALMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_TimedWALMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TimedWALMessage proto.InternalMessageInfo
+
+func (m *TimedWALMessage) GetTime() time.Time {
+	if m != nil {
+		return m.Time
+	}
+	return time.Time{}
+}
+
+func (m *TimedWALMessage) GetMsg() *WALMessage {
+	if m != nil {
+		return m.Msg
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*MsgInfo)(nil), "tendermint.proto.consensus.MsgInfo")
 	proto.RegisterType((*TimeoutInfo)(nil), "tendermint.proto.consensus.TimeoutInfo")
-	proto.RegisterType((*EndHeightMessage)(nil), "tendermint.proto.consensus.EndHeightMessage")
+	proto.RegisterType((*EndHeight)(nil), "tendermint.proto.consensus.EndHeight")
+	proto.RegisterType((*WALMessage)(nil), "tendermint.proto.consensus.WALMessage")
+	proto.RegisterType((*TimedWALMessage)(nil), "tendermint.proto.consensus.TimedWALMessage")
 }
 
 func init() { proto.RegisterFile("proto/consensus/walmsgs.proto", fileDescriptor_60ad80fa14e37285) }
 
 var fileDescriptor_60ad80fa14e37285 = []byte{
-	// 387 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x51, 0x3d, 0x6b, 0xe3, 0x30,
-	0x18, 0xb6, 0x2e, 0xce, 0xc7, 0x29, 0xcb, 0x61, 0x8e, 0x3b, 0x9f, 0xb9, 0x53, 0x42, 0x0e, 0x8e,
-	0x70, 0x83, 0x5c, 0xda, 0xa5, 0xd0, 0xa1, 0x60, 0x5a, 0x68, 0x86, 0x2c, 0xa6, 0x53, 0x97, 0xe0,
-	0xc4, 0x8a, 0x2c, 0x88, 0x25, 0x63, 0xc9, 0x94, 0x6e, 0xfd, 0x09, 0x1d, 0x4b, 0x7f, 0x41, 0x7f,
-	0x4a, 0xc6, 0x8c, 0x99, 0xd2, 0xc6, 0x59, 0x3a, 0x66, 0xee, 0x54, 0xfc, 0x91, 0x0f, 0x02, 0xdd,
-	0xde, 0xe7, 0xd1, 0xfb, 0x7c, 0x48, 0x82, 0x7f, 0xa2, 0x58, 0x28, 0x61, 0x8f, 0x04, 0x97, 0x84,
-	0xcb, 0x44, 0xda, 0xb7, 0xde, 0x24, 0x94, 0x54, 0xe2, 0x9c, 0x37, 0x2c, 0x45, 0xb8, 0x4f, 0xe2,
-	0x90, 0x71, 0x55, 0x30, 0x78, 0xbb, 0x69, 0xfd, 0x53, 0x01, 0x8b, 0xfd, 0x41, 0xe4, 0xc5, 0xea,
-	0xce, 0x2e, 0x6c, 0xa8, 0xa0, 0x62, 0x37, 0x15, 0x0a, 0xcb, 0x3a, 0x8c, 0xd8, 0xf9, 0x5b, 0x88,
-	0x0a, 0x41, 0x27, 0xa4, 0x90, 0x0f, 0x93, 0xb1, 0xed, 0x27, 0xb1, 0xa7, 0x98, 0xe0, 0xc5, 0x79,
-	0x67, 0x00, 0xeb, 0x7d, 0x49, 0x7b, 0x7c, 0x2c, 0x8c, 0x33, 0x58, 0x09, 0x25, 0x35, 0x41, 0x1b,
-	0x74, 0x9b, 0xc7, 0x7f, 0xf1, 0xe7, 0xc5, 0x70, 0x9f, 0x48, 0xe9, 0x51, 0xe2, 0xe8, 0xd3, 0x45,
-	0x4b, 0x73, 0x33, 0x95, 0xf1, 0x13, 0xd6, 0x23, 0x42, 0xe2, 0x01, 0xf3, 0xcd, 0x2f, 0x6d, 0xd0,
-	0xfd, 0xea, 0xd6, 0x32, 0xd8, 0xf3, 0x3b, 0x4f, 0x00, 0x36, 0xaf, 0x59, 0x48, 0x44, 0xa2, 0xf2,
-	0x94, 0x73, 0xd8, 0xd8, 0x54, 0x28, 0xa3, 0x7e, 0xe1, 0xa2, 0x23, 0xde, 0x74, 0xc4, 0x17, 0xe5,
-	0x82, 0xd3, 0xc8, 0x02, 0x1e, 0x5f, 0x5a, 0xc0, 0xdd, 0x8a, 0x8c, 0x1f, 0xb0, 0x16, 0x10, 0x46,
-	0x03, 0x95, 0x07, 0x55, 0xdc, 0x12, 0x19, 0xdf, 0x61, 0x35, 0x16, 0x09, 0xf7, 0xcd, 0x4a, 0x1b,
-	0x74, 0xab, 0x6e, 0x01, 0x8c, 0xdf, 0x50, 0x97, 0x8a, 0x44, 0xa6, 0x9e, 0x91, 0x4e, 0xe3, 0x7d,
-	0xd1, 0xd2, 0x19, 0x57, 0xa7, 0x6e, 0xce, 0x76, 0xfe, 0xc3, 0x6f, 0x97, 0xdc, 0xbf, 0xca, 0x0d,
-	0xca, 0x4b, 0xed, 0xf9, 0x83, 0x7d, 0x7f, 0x67, 0x3c, 0x5b, 0x22, 0x6d, 0xbe, 0x44, 0xda, 0x7a,
-	0x89, 0xc0, 0x7d, 0x8a, 0xc0, 0x73, 0x8a, 0xc0, 0x34, 0x45, 0x60, 0x96, 0x22, 0xf0, 0x9a, 0x22,
-	0xf0, 0x96, 0x22, 0x6d, 0x9d, 0x22, 0xf0, 0xb0, 0x42, 0xda, 0x6c, 0x85, 0xb4, 0xf9, 0x0a, 0x69,
-	0x37, 0x47, 0x94, 0xa9, 0x20, 0x19, 0xe2, 0x91, 0x08, 0xed, 0xdd, 0x8b, 0xee, 0x8f, 0x07, 0x9f,
-	0x37, 0xac, 0xe5, 0xc4, 0xc9, 0x47, 0x00, 0x00, 0x00, 0xff, 0xff, 0x6f, 0x1c, 0xa2, 0xeb, 0x39,
-	0x02, 0x00, 0x00,
+	// 582 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0xcf, 0x8b, 0xd3, 0x40,
+	0x14, 0xce, 0x6c, 0xfa, 0x73, 0xaa, 0x08, 0x51, 0x96, 0x1a, 0x70, 0x5a, 0x5a, 0x5c, 0x0b, 0x42,
+	0x22, 0x7a, 0x59, 0xf0, 0xa0, 0x96, 0xae, 0xb4, 0xb0, 0x05, 0x19, 0x17, 0x04, 0x2f, 0x21, 0xdd,
+	0x4c, 0xa7, 0xc1, 0x4d, 0x26, 0x64, 0x26, 0xca, 0xde, 0xbc, 0x78, 0xef, 0xd1, 0x3f, 0xc1, 0x3f,
+	0x65, 0x6f, 0xf6, 0xb8, 0xa7, 0xd5, 0xa6, 0x17, 0x8f, 0xfb, 0x27, 0x48, 0x66, 0xd2, 0x1f, 0xb4,
+	0x58, 0x6f, 0x33, 0xef, 0xcd, 0xf7, 0x7d, 0xef, 0xbd, 0xef, 0x0d, 0x7c, 0x14, 0xc5, 0x4c, 0x30,
+	0xfb, 0x9c, 0x85, 0x9c, 0x84, 0x3c, 0xe1, 0xf6, 0x17, 0xf7, 0x22, 0xe0, 0x94, 0x5b, 0x32, 0x6e,
+	0x98, 0x82, 0x84, 0x1e, 0x89, 0x03, 0x3f, 0x14, 0x2a, 0x62, 0xad, 0x5e, 0x9a, 0x47, 0x62, 0xe2,
+	0xc7, 0x9e, 0x13, 0xb9, 0xb1, 0xb8, 0xb4, 0x15, 0x0d, 0x65, 0x94, 0xad, 0x4f, 0x0a, 0x61, 0x9a,
+	0xdb, 0x12, 0x6b, 0x7e, 0xb3, 0xae, 0x72, 0xe2, 0x32, 0x22, 0xdc, 0x26, 0x9f, 0x49, 0x28, 0x96,
+	0x19, 0x44, 0x19, 0xa3, 0x17, 0x44, 0x11, 0x8f, 0x92, 0xb1, 0xed, 0x25, 0xb1, 0x2b, 0x7c, 0x16,
+	0xe6, 0xf9, 0xc6, 0x76, 0x5e, 0xf8, 0x01, 0xe1, 0xc2, 0x0d, 0x22, 0xf5, 0xa0, 0xf5, 0x09, 0x96,
+	0x87, 0x9c, 0x0e, 0xc2, 0x31, 0x33, 0x5e, 0x42, 0x3d, 0xe0, 0xb4, 0x0e, 0x9a, 0xa0, 0x53, 0x7b,
+	0xde, 0xb6, 0xfe, 0xdd, 0x93, 0x35, 0x24, 0x9c, 0xbb, 0x94, 0x74, 0x0b, 0x57, 0x37, 0x0d, 0x0d,
+	0x67, 0x28, 0xa3, 0x0d, 0xcb, 0x11, 0x21, 0xb1, 0xe3, 0x7b, 0xf5, 0x83, 0x26, 0xe8, 0x54, 0xbb,
+	0x30, 0xbd, 0x69, 0x94, 0xde, 0x11, 0x12, 0x0f, 0x7a, 0xb8, 0x94, 0xa5, 0x06, 0x5e, 0x6b, 0x0a,
+	0x60, 0xed, 0xcc, 0x0f, 0x08, 0x4b, 0x84, 0x54, 0x7c, 0x05, 0x2b, 0xcb, 0x7a, 0x73, 0xd9, 0x87,
+	0x96, 0x2a, 0xd8, 0x5a, 0x16, 0x6c, 0xf5, 0xf2, 0x07, 0xdd, 0x4a, 0x26, 0xf6, 0xfd, 0x57, 0x03,
+	0xe0, 0x15, 0xc8, 0x38, 0x84, 0xa5, 0x09, 0xf1, 0xe9, 0x44, 0x48, 0x51, 0x1d, 0xe7, 0x37, 0xe3,
+	0x01, 0x2c, 0xc6, 0x2c, 0x09, 0xbd, 0xba, 0xde, 0x04, 0x9d, 0x22, 0x56, 0x17, 0xc3, 0x80, 0x05,
+	0x2e, 0x48, 0x54, 0x2f, 0x34, 0x41, 0xe7, 0x2e, 0x96, 0xe7, 0x56, 0x1b, 0x56, 0x4f, 0x42, 0xaf,
+	0xaf, 0x60, 0x6b, 0x3a, 0xb0, 0x49, 0xd7, 0xfa, 0x79, 0x00, 0xe1, 0x87, 0x37, 0xa7, 0x79, 0xdb,
+	0xc6, 0x08, 0x1e, 0x4a, 0x13, 0x1c, 0xcf, 0x15, 0xae, 0x23, 0xb9, 0x1d, 0x2e, 0x5c, 0x41, 0xf2,
+	0x26, 0x9e, 0xee, 0xce, 0x4e, 0x5a, 0x67, 0x9d, 0x64, 0xa8, 0x9e, 0x2b, 0x5c, 0x9c, 0x61, 0xde,
+	0x67, 0x90, 0xbe, 0x86, 0xef, 0x93, 0xdd, 0xb0, 0xf1, 0x1a, 0x56, 0x02, 0x4e, 0x1d, 0x3f, 0x1c,
+	0x33, 0xd9, 0xdb, 0xff, 0x1c, 0x51, 0x1e, 0xf6, 0x35, 0x5c, 0x0e, 0x72, 0x3b, 0x4f, 0xe1, 0x1d,
+	0xa1, 0x66, 0xad, 0x58, 0x74, 0xc9, 0xf2, 0x64, 0x1f, 0xcb, 0x86, 0x37, 0x7d, 0x0d, 0xd7, 0xc4,
+	0x86, 0x55, 0x6f, 0x21, 0x24, 0xa1, 0xe7, 0xe4, 0xe3, 0x29, 0x48, 0xae, 0xc7, 0xfb, 0xb8, 0x56,
+	0x53, 0xed, 0x6b, 0xb8, 0x4a, 0x96, 0x97, 0x6e, 0x11, 0xea, 0x3c, 0x09, 0x5a, 0xdf, 0x00, 0xbc,
+	0x97, 0xa9, 0x79, 0x1b, 0x63, 0x3d, 0x86, 0x85, 0x4c, 0x31, 0x1f, 0xa2, 0xb9, 0xb3, 0x09, 0x67,
+	0xcb, 0xd5, 0x55, 0xab, 0x30, 0xcd, 0x56, 0x41, 0x22, 0x8c, 0x63, 0xa8, 0x0f, 0x39, 0xcd, 0xe7,
+	0x74, 0xb4, 0xaf, 0xaa, 0xb5, 0x1c, 0xce, 0x20, 0xdd, 0xf1, 0x6c, 0x8e, 0xb4, 0xeb, 0x39, 0xd2,
+	0x6e, 0xe7, 0x08, 0x7c, 0x4d, 0x11, 0xf8, 0x91, 0x22, 0x70, 0x95, 0x22, 0x30, 0x4b, 0x11, 0xf8,
+	0x9d, 0x22, 0xf0, 0x27, 0x45, 0xda, 0x6d, 0x8a, 0xc0, 0x74, 0x81, 0xb4, 0xd9, 0x02, 0x69, 0xd7,
+	0x0b, 0xa4, 0x7d, 0x7c, 0x46, 0x7d, 0x31, 0x49, 0x46, 0xd6, 0x39, 0x0b, 0xec, 0xb5, 0xd8, 0xe6,
+	0x71, 0xeb, 0x33, 0x8f, 0x4a, 0x32, 0xf0, 0xe2, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb0, 0xf5,
+	0x8f, 0xe3, 0x49, 0x04, 0x00, 0x00,
 }
 
 func (this *MsgInfo) Equal(that interface{}) bool {
@@ -249,7 +428,7 @@ func (this *MsgInfo) Equal(that interface{}) bool {
 	if !this.Msg.Equal(&that1.Msg) {
 		return false
 	}
-	if this.PeerId != that1.PeerId {
+	if this.PeerID != that1.PeerID {
 		return false
 	}
 	return true
@@ -287,14 +466,14 @@ func (this *TimeoutInfo) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *EndHeightMessage) Equal(that interface{}) bool {
+func (this *EndHeight) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*EndHeightMessage)
+	that1, ok := that.(*EndHeight)
 	if !ok {
-		that2, ok := that.(EndHeightMessage)
+		that2, ok := that.(EndHeight)
 		if ok {
 			that1 = &that2
 		} else {
@@ -311,6 +490,159 @@ func (this *EndHeightMessage) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *WALMessage) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*WALMessage)
+	if !ok {
+		that2, ok := that.(WALMessage)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if that1.Sum == nil {
+		if this.Sum != nil {
+			return false
+		}
+	} else if this.Sum == nil {
+		return false
+	} else if !this.Sum.Equal(that1.Sum) {
+		return false
+	}
+	return true
+}
+func (this *WALMessage_EventDataRoundState) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*WALMessage_EventDataRoundState)
+	if !ok {
+		that2, ok := that.(WALMessage_EventDataRoundState)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.EventDataRoundState.Equal(that1.EventDataRoundState) {
+		return false
+	}
+	return true
+}
+func (this *WALMessage_MsgInfo) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*WALMessage_MsgInfo)
+	if !ok {
+		that2, ok := that.(WALMessage_MsgInfo)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.MsgInfo.Equal(that1.MsgInfo) {
+		return false
+	}
+	return true
+}
+func (this *WALMessage_TimeoutInfo) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*WALMessage_TimeoutInfo)
+	if !ok {
+		that2, ok := that.(WALMessage_TimeoutInfo)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.TimeoutInfo.Equal(that1.TimeoutInfo) {
+		return false
+	}
+	return true
+}
+func (this *WALMessage_EndHeight) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*WALMessage_EndHeight)
+	if !ok {
+		that2, ok := that.(WALMessage_EndHeight)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.EndHeight.Equal(that1.EndHeight) {
+		return false
+	}
+	return true
+}
+func (this *TimedWALMessage) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*TimedWALMessage)
+	if !ok {
+		that2, ok := that.(TimedWALMessage)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.Time.Equal(that1.Time) {
+		return false
+	}
+	if !this.Msg.Equal(that1.Msg) {
+		return false
+	}
+	return true
+}
 func (this *MsgInfo) GoString() string {
 	if this == nil {
 		return "nil"
@@ -318,7 +650,7 @@ func (this *MsgInfo) GoString() string {
 	s := make([]string, 0, 6)
 	s = append(s, "&consensus.MsgInfo{")
 	s = append(s, "Msg: "+strings.Replace(this.Msg.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "PeerId: "+fmt.Sprintf("%#v", this.PeerId)+",\n")
+	s = append(s, "PeerID: "+fmt.Sprintf("%#v", this.PeerID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -335,13 +667,70 @@ func (this *TimeoutInfo) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *EndHeightMessage) GoString() string {
+func (this *EndHeight) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&consensus.EndHeightMessage{")
+	s = append(s, "&consensus.EndHeight{")
 	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *WALMessage) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&consensus.WALMessage{")
+	if this.Sum != nil {
+		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *WALMessage_EventDataRoundState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&consensus.WALMessage_EventDataRoundState{` +
+		`EventDataRoundState:` + fmt.Sprintf("%#v", this.EventDataRoundState) + `}`}, ", ")
+	return s
+}
+func (this *WALMessage_MsgInfo) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&consensus.WALMessage_MsgInfo{` +
+		`MsgInfo:` + fmt.Sprintf("%#v", this.MsgInfo) + `}`}, ", ")
+	return s
+}
+func (this *WALMessage_TimeoutInfo) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&consensus.WALMessage_TimeoutInfo{` +
+		`TimeoutInfo:` + fmt.Sprintf("%#v", this.TimeoutInfo) + `}`}, ", ")
+	return s
+}
+func (this *WALMessage_EndHeight) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&consensus.WALMessage_EndHeight{` +
+		`EndHeight:` + fmt.Sprintf("%#v", this.EndHeight) + `}`}, ", ")
+	return s
+}
+func (this *TimedWALMessage) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&consensus.TimedWALMessage{")
+	s = append(s, "Time: "+fmt.Sprintf("%#v", this.Time)+",\n")
+	if this.Msg != nil {
+		s = append(s, "Msg: "+fmt.Sprintf("%#v", this.Msg)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -373,10 +762,10 @@ func (m *MsgInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.PeerId) > 0 {
-		i -= len(m.PeerId)
-		copy(dAtA[i:], m.PeerId)
-		i = encodeVarintWalmsgs(dAtA, i, uint64(len(m.PeerId)))
+	if len(m.PeerID) > 0 {
+		i -= len(m.PeerID)
+		copy(dAtA[i:], m.PeerID)
+		i = encodeVarintWalmsgs(dAtA, i, uint64(len(m.PeerID)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -439,7 +828,7 @@ func (m *TimeoutInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *EndHeightMessage) Marshal() (dAtA []byte, err error) {
+func (m *EndHeight) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -449,12 +838,12 @@ func (m *EndHeightMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EndHeightMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *EndHeight) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EndHeightMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EndHeight) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -464,6 +853,165 @@ func (m *EndHeightMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x8
 	}
+	return len(dAtA) - i, nil
+}
+
+func (m *WALMessage) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *WALMessage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WALMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Sum != nil {
+		{
+			size := m.Sum.Size()
+			i -= size
+			if _, err := m.Sum.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *WALMessage_EventDataRoundState) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WALMessage_EventDataRoundState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.EventDataRoundState != nil {
+		{
+			size, err := m.EventDataRoundState.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintWalmsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *WALMessage_MsgInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WALMessage_MsgInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.MsgInfo != nil {
+		{
+			size, err := m.MsgInfo.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintWalmsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *WALMessage_TimeoutInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WALMessage_TimeoutInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.TimeoutInfo != nil {
+		{
+			size, err := m.TimeoutInfo.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintWalmsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *WALMessage_EndHeight) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WALMessage_EndHeight) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.EndHeight != nil {
+		{
+			size, err := m.EndHeight.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintWalmsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
+func (m *TimedWALMessage) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TimedWALMessage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TimedWALMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Msg != nil {
+		{
+			size, err := m.Msg.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintWalmsgs(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	n8, err8 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Time, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Time):])
+	if err8 != nil {
+		return 0, err8
+	}
+	i -= n8
+	i = encodeVarintWalmsgs(dAtA, i, uint64(n8))
+	i--
+	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -486,7 +1034,7 @@ func (m *MsgInfo) Size() (n int) {
 	_ = l
 	l = m.Msg.Size()
 	n += 1 + l + sovWalmsgs(uint64(l))
-	l = len(m.PeerId)
+	l = len(m.PeerID)
 	if l > 0 {
 		n += 1 + l + sovWalmsgs(uint64(l))
 	}
@@ -513,7 +1061,7 @@ func (m *TimeoutInfo) Size() (n int) {
 	return n
 }
 
-func (m *EndHeightMessage) Size() (n int) {
+func (m *EndHeight) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -521,6 +1069,81 @@ func (m *EndHeightMessage) Size() (n int) {
 	_ = l
 	if m.Height != 0 {
 		n += 1 + sovWalmsgs(uint64(m.Height))
+	}
+	return n
+}
+
+func (m *WALMessage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Sum != nil {
+		n += m.Sum.Size()
+	}
+	return n
+}
+
+func (m *WALMessage_EventDataRoundState) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.EventDataRoundState != nil {
+		l = m.EventDataRoundState.Size()
+		n += 1 + l + sovWalmsgs(uint64(l))
+	}
+	return n
+}
+func (m *WALMessage_MsgInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.MsgInfo != nil {
+		l = m.MsgInfo.Size()
+		n += 1 + l + sovWalmsgs(uint64(l))
+	}
+	return n
+}
+func (m *WALMessage_TimeoutInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.TimeoutInfo != nil {
+		l = m.TimeoutInfo.Size()
+		n += 1 + l + sovWalmsgs(uint64(l))
+	}
+	return n
+}
+func (m *WALMessage_EndHeight) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.EndHeight != nil {
+		l = m.EndHeight.Size()
+		n += 1 + l + sovWalmsgs(uint64(l))
+	}
+	return n
+}
+func (m *TimedWALMessage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.Time)
+	n += 1 + l + sovWalmsgs(uint64(l))
+	if m.Msg != nil {
+		l = m.Msg.Size()
+		n += 1 + l + sovWalmsgs(uint64(l))
 	}
 	return n
 }
@@ -537,7 +1160,7 @@ func (this *MsgInfo) String() string {
 	}
 	s := strings.Join([]string{`&MsgInfo{`,
 		`Msg:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Msg), "Message", "Message", 1), `&`, ``, 1) + `,`,
-		`PeerId:` + fmt.Sprintf("%v", this.PeerId) + `,`,
+		`PeerID:` + fmt.Sprintf("%v", this.PeerID) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -555,12 +1178,73 @@ func (this *TimeoutInfo) String() string {
 	}, "")
 	return s
 }
-func (this *EndHeightMessage) String() string {
+func (this *EndHeight) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&EndHeightMessage{`,
+	s := strings.Join([]string{`&EndHeight{`,
 		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WALMessage) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WALMessage{`,
+		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WALMessage_EventDataRoundState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WALMessage_EventDataRoundState{`,
+		`EventDataRoundState:` + strings.Replace(fmt.Sprintf("%v", this.EventDataRoundState), "EventDataRoundState", "types.EventDataRoundState", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WALMessage_MsgInfo) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WALMessage_MsgInfo{`,
+		`MsgInfo:` + strings.Replace(fmt.Sprintf("%v", this.MsgInfo), "MsgInfo", "MsgInfo", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WALMessage_TimeoutInfo) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WALMessage_TimeoutInfo{`,
+		`TimeoutInfo:` + strings.Replace(fmt.Sprintf("%v", this.TimeoutInfo), "TimeoutInfo", "TimeoutInfo", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WALMessage_EndHeight) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WALMessage_EndHeight{`,
+		`EndHeight:` + strings.Replace(fmt.Sprintf("%v", this.EndHeight), "EndHeight", "EndHeight", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TimedWALMessage) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TimedWALMessage{`,
+		`Time:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Time), "Timestamp", "timestamp.Timestamp", 1), `&`, ``, 1) + `,`,
+		`Msg:` + strings.Replace(this.Msg.String(), "WALMessage", "WALMessage", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -637,7 +1321,7 @@ func (m *MsgInfo) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PeerId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PeerID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -665,7 +1349,7 @@ func (m *MsgInfo) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PeerId = string(dAtA[iNdEx:postIndex])
+			m.PeerID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -805,7 +1489,7 @@ func (m *TimeoutInfo) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Step |= int8(b&0x7F) << shift
+				m.Step |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -834,7 +1518,7 @@ func (m *TimeoutInfo) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EndHeightMessage) Unmarshal(dAtA []byte) error {
+func (m *EndHeight) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -857,10 +1541,10 @@ func (m *EndHeightMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: EndHeightMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: EndHeight: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: EndHeightMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: EndHeight: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -882,6 +1566,321 @@ func (m *EndHeightMessage) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipWalmsgs(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *WALMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowWalmsgs
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WALMessage: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WALMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EventDataRoundState", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &types.EventDataRoundState{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &WALMessage_EventDataRoundState{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MsgInfo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &MsgInfo{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &WALMessage_MsgInfo{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeoutInfo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &TimeoutInfo{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &WALMessage_TimeoutInfo{v}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EndHeight", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EndHeight{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &WALMessage_EndHeight{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipWalmsgs(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TimedWALMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowWalmsgs
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TimedWALMessage: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TimedWALMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Time", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.Time, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Msg", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowWalmsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthWalmsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Msg == nil {
+				m.Msg = &WALMessage{}
+			}
+			if err := m.Msg.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipWalmsgs(dAtA[iNdEx:])

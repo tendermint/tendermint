@@ -15,14 +15,14 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	cs "github.com/tendermint/tendermint/consensus"
+	tmencode "github.com/tendermint/tendermint/libs/encode"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
 var cdc = amino.NewCodec()
 
 func init() {
-	cs.RegisterMessages(cdc)
-	cs.RegisterWALMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }
 
@@ -47,7 +47,17 @@ func main() {
 			panic(fmt.Errorf("failed to decode msg: %v", err))
 		}
 
-		json, err := cdc.MarshalJSON(msg)
+		pbWal, err := cs.WALToProto(msg.Msg)
+		if err != nil {
+			panic(fmt.Errorf("failed to transform walMessage into proto: %w", err))
+		}
+
+		pbWalMsg := tmcons.TimedWALMessage{
+			Time: msg.Time,
+			Msg:  pbWal,
+		}
+
+		json, err := tmencode.MarshalJSON(&pbWalMsg)
 		if err != nil {
 			panic(fmt.Errorf("failed to marshal msg: %v", err))
 		}

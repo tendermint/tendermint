@@ -24,6 +24,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#4680 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now protobuf types
 - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
 - [consensus] \#4582 HeightVoteSet: `round` is now int32
+- [consensus] \#4733 Msgs & WALMsgs are now moved to proto
+- [crypto] \#4733 `SimpleProof` Total & Index fields have become int64's
 - [crypto] \#4633 Remove suffixes from all keys.
     - ed25519: type `PrivKeyEd25519` is now `PrivKey`
     - ed25519: type `PubKeyEd25519` is now `PubKey`
@@ -34,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
 - [evidence] \#4617 Remove `Pubkey` from DuplicateVoteEvidence
 - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
+- [script] \#4733 Transition Wal2json & json2Wal scripts to work with protobuf
 - [state] \#4679 `TxResult` is a protobuf type defined in `abci` types directory
 
 - Apps

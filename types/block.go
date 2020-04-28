@@ -656,7 +656,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 
 	c.Height = commit.Height
 	c.Round = commit.Round
-	c.BlockID = *commit.BlockID.ToProto()
+	c.BlockID = commit.BlockID.ToProto()
 	c.Hash = commit.hash
 	c.BitArray = commit.bitArray.ToProto()
 	return c
@@ -1018,12 +1018,12 @@ func (blockID BlockID) String() string {
 }
 
 // ToProto converts BlockID to protobuf
-func (blockID *BlockID) ToProto() *tmproto.BlockID {
+func (blockID *BlockID) ToProto() tmproto.BlockID {
 	if blockID == nil {
-		return nil
+		return tmproto.BlockID{}
 	}
 
-	return &tmproto.BlockID{
+	return tmproto.BlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: blockID.PartsHeader.ToProto(),
 	}
