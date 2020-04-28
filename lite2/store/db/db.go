@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
@@ -51,7 +52,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	pbsh := sh.ToProto()
 
-	shBz, err := pbsh.Marshal()
+	shBz, err := proto.Marshal(pbsh)
 	if err != nil {
 		return errors.Wrap(err, "marshalling SignedHeader")
 	}
@@ -61,7 +62,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 		return err
 	}
 
-	valSetBz, err := pbvs.Marshal()
+	valSetBz, err := proto.Marshal(pbvs)
 	if err != nil {
 		return errors.Wrap(err, "marshalling validator set")
 	}
@@ -158,7 +159,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	var pbvs tmproto.ValidatorSet
-	pbvs.Unmarshal(bz)
+	err := proto.Unmarshal(bz, &pbvs)
 	if err != nil {
 		return nil, err
 	}
