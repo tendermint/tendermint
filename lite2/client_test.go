@@ -297,7 +297,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 	}
 }
 
-func TestClient_Cleanup(t *testing.T) {
+func Cleanup(t *testing.T) {
 	c, err := lite.NewClient(
 		chainID,
 		trustOptions,

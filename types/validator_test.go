@@ -14,7 +14,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 		expPass1 bool
 		expPass2 bool
 	}{
-		{"success empty", val, true, true},
+		{"success validator", val, true, true},
 		{"failure empty", &Validator{}, false, false},
 		{"failure nil", nil, false, false},
 	}
@@ -27,8 +27,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 			require.Error(t, err, tc.msg)
 		}
 
-		val := new(Validator)
-		err = val.FromProto(protoVal)
+		val, err := ValidatorFromProto(protoVal)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, tc.v1, val, tc.msg)

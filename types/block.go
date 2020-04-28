@@ -656,7 +656,6 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 
 	c.Height = commit.Height
 	c.Round = commit.Round
-	c.BlockID = commit.BlockID.ToProto()
 	c.Hash = commit.hash
 	c.BitArray = commit.bitArray.ToProto()
 	return c
@@ -777,10 +776,12 @@ func (sh *SignedHeader) ToProto() *tmproto.SignedHeader {
 
 // FromProto sets a protobuf SignedHeader to the given pointer.
 // It returns an error if the hader or the commit is invalid.
-func (sh *SignedHeader) FromProto(shp *tmproto.SignedHeader) error {
+func SignedHeaderFromProto(shp *tmproto.SignedHeader) (*SignedHeader, error) {
 	if shp == nil {
-		return errors.New("nil SignedHeader")
+		return nil, errors.New("nil SignedHeader")
 	}
+
+	sh := new(SignedHeader)
 
 	var (
 		h Header
@@ -789,19 +790,19 @@ func (sh *SignedHeader) FromProto(shp *tmproto.SignedHeader) error {
 
 	if shp.Header != nil {
 		if err := h.FromProto(shp.Header); err != nil {
-			return err
+			return nil, err
 		}
 		sh.Header = &h
 	}
 
 	if shp.Commit != nil {
 		if err := c.FromProto(shp.Commit); err != nil {
-			return err
+			return nil, err
 		}
 		sh.Commit = &c
 	}
 
-	return nil
+	return sh, nil
 }
 
 //-----------------------------------------------------------------------------

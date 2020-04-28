@@ -753,8 +753,7 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoSignedHeader := tc.sh1.ToProto()
 
-		sh := new(SignedHeader)
-		err := sh.FromProto(protoSignedHeader)
+		sh, err := SignedHeaderFromProto(protoSignedHeader)
 
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)

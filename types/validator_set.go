@@ -339,7 +339,7 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
 		return nil, errors.New("nil validator set") // validator set should never be nil
 	}
-
+	vp := new(tmproto.ValidatorSet)
 	valsProto := make([]*tmproto.Validator, len(vals.Validators))
 	for i := 0; i < len(vals.Validators); i++ {
 		valp, err := vals.Validators[i].ToProto()
@@ -348,51 +348,48 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		}
 		valsProto[i] = valp
 	}
+	vp.Validators = valsProto
 
 	valProposer, err := vals.Proposer.ToProto()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("toProto: validatorSet proposer error: %w", err)
 	}
+	vp.Proposer = valProposer
 
-	vp := tmproto.ValidatorSet{
-		Validators:       valsProto,
-		Proposer:         valProposer,
-		TotalVotingPower: vals.TotalVotingPower(),
-	}
+	vp.TotalVotingPower = vals.totalVotingPower
 
-	return &vp, nil
+	return vp, nil
 }
 
-// FromProto sets a protobuf ValidatorSet to the given pointer.
+// ValidatorSetFromProto sets a protobuf ValidatorSet to the given pointer.
 // It returns an error if any of the validators from the set or the proposer
 // is invalid
-func (vals *ValidatorSet) FromProto(vp *tmproto.ValidatorSet) error {
+func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	if vp == nil {
-		return errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
+		return nil, errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
 	}
+	vals := new(ValidatorSet)
 
 	valsProto := make([]*Validator, len(vp.Validators))
 	for i := 0; i < len(vp.Validators); i++ {
-		v := new(Validator)
-		err := v.FromProto(vp.Validators[i])
+		v, err := ValidatorFromProto(vp.Validators[i])
 		if err != nil {
-			return err
+			return nil, err
 		}
 		valsProto[i] = v
 	}
 	vals.Validators = valsProto
 
-	p := new(Validator)
-	err := p.FromProto(vp.GetProposer())
+	p, err := ValidatorFromProto(vp.GetProposer())
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("fromProto: validatorSet proposer error: %w", err)
 	}
 
 	vals.Proposer = p
 
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 
-	return nil
+	return vals, nil
 }
 
 // Checks changes against duplicates, splits the changes in updates and

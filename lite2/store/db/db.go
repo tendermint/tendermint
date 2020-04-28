@@ -8,11 +8,10 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
-	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	"github.com/tendermint/tendermint/lite2/store"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -26,17 +25,11 @@ type dbs struct {
 
 	mtx  sync.RWMutex
 	size uint16
-
-	cdc *amino.Codec
 }
 
 // New returns a Store that wraps any DB (with an optional prefix in case you
 // want to use one DB with many light clients).
-//
-// Objects are marshalled using amino (github.com/tendermint/go-amino)
 func New(db dbm.DB, prefix string) store.Store {
-	cdc := amino.NewCodec()
-	cryptoAmino.RegisterAmino(cdc)
 
 	size := uint16(0)
 	bz, err := db.Get(sizeKey)
@@ -44,7 +37,7 @@ func New(db dbm.DB, prefix string) store.Store {
 		size = unmarshalSize(bz)
 	}
 
-	return &dbs{db: db, prefix: prefix, cdc: cdc, size: size}
+	return &dbs{db: db, prefix: prefix, size: size}
 }
 
 // SaveSignedHeaderAndValidatorSet persists SignedHeader and ValidatorSet to
@@ -56,12 +49,19 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 		panic("negative or zero height")
 	}
 
-	shBz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
+	pbsh := sh.ToProto()
+
+	shBz, err := pbsh.Marshal()
 	if err != nil {
-		return errors.Wrap(err, "marshalling header")
+		return errors.Wrap(err, "marshalling SignedHeader")
 	}
 
-	valSetBz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
+	pbvs, err := valSet.ToProto()
+	if err != nil {
+		return err
+	}
+
+	valSetBz, err := pbvs.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "marshalling validator set")
 	}
@@ -127,8 +127,17 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, store.ErrSignedHeaderNotFound
 	}
 
-	var signedHeader *types.SignedHeader
-	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &signedHeader)
+	var pbsh tmproto.SignedHeader
+	err = pbsh.Unmarshal(bz)
+	if err != nil {
+		return nil, err
+	}
+
+	signedHeader, err := types.SignedHeaderFromProto(&pbsh)
+	if err != nil {
+		return nil, err
+	}
+
 	return signedHeader, err
 }
 
@@ -148,8 +157,17 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		return nil, store.ErrValidatorSetNotFound
 	}
 
-	var valSet *types.ValidatorSet
-	err = s.cdc.UnmarshalBinaryLengthPrefixed(bz, &valSet)
+	var pbvs tmproto.ValidatorSet
+	pbvs.Unmarshal(bz)
+	if err != nil {
+		return nil, err
+	}
+
+	valSet, err := types.ValidatorSetFromProto(&pbvs)
+	if err != nil {
+		return nil, err
+	}
+
 	return valSet, err
 }
 

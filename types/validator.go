@@ -120,22 +120,22 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 
 // FromProto sets a protobuf Validator to the given pointer.
 // It returns an error if the public key is invalid.
-func (v *Validator) FromProto(vp *tmproto.Validator) error {
+func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	if vp == nil {
-		return errors.New("nil validator")
+		return nil, errors.New("nil validator")
 	}
 
 	pk, err := ce.PubKeyFromProto(vp.PubKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	v := new(Validator)
 	v.Address = vp.GetAddress()
 	v.PubKey = pk
 	v.VotingPower = vp.GetVotingPower()
 	v.ProposerPriority = vp.GetProposerPriority()
 
-	return nil
+	return v, nil
 }
 
 //----------------------------------------
