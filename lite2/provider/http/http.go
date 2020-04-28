@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/tendermint/tendermint/lite2/provider"
@@ -10,6 +11,9 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
 )
+
+// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
+var regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
 // http provider uses an RPC client to obtain the necessary information.
 type http struct {
@@ -62,7 +66,7 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 	commit, err := p.client.Commit(h)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
-		if strings.Contains(err.Error(), "height must be less than or equal") {
+		if regexpMissingHeight.MatchString(err.Error()) {
 			return nil, provider.ErrSignedHeaderNotFound
 		}
 		return nil, err
@@ -92,7 +96,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	res, err := p.client.Validators(h, 0, maxPerPage)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
-		if strings.Contains(err.Error(), "height must be less than or equal") {
+		if regexpMissingHeight.MatchString(err.Error()) {
 			return nil, provider.ErrValidatorSetNotFound
 		}
 		return nil, err

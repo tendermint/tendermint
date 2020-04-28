@@ -19,7 +19,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 484
+	MaxEvidenceBytes int64 = 444
 
 	// An invalid field in the header from LunaticValidatorEvidence.
 	// Must be a function of the ABCI application state.
@@ -117,16 +117,15 @@ func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
+	VoteA *Vote
+	VoteB *Vote
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil {
 		return nil
@@ -139,9 +138,8 @@ func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *D
 		voteB = vote1
 	}
 	return &DuplicateVoteEvidence{
-		PubKey: pubkey,
-		VoteA:  voteA,
-		VoteB:  voteB,
+		VoteA: voteA,
+		VoteB: voteB,
 	}
 }
 
@@ -163,7 +161,7 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.PubKey.Address()
+	return dve.VoteA.ValidatorAddress
 }
 
 // Hash returns the hash of the evidence.
@@ -247,9 +245,6 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
-	if len(dve.PubKey.Bytes()) == 0 {
-		return errors.New("empty PubKey")
-	}
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
@@ -424,9 +419,8 @@ OUTER_LOOP:
 				// immediately slashable (#F1).
 				if ev.H1.Commit.Round == ev.H2.Commit.Round {
 					evList = append(evList, &DuplicateVoteEvidence{
-						PubKey: val.PubKey,
-						VoteA:  ev.H1.Commit.GetVote(i),
-						VoteB:  ev.H2.Commit.GetVote(j),
+						VoteA: ev.H1.Commit.GetVote(i),
+						VoteB: ev.H2.Commit.GetVote(j),
 					})
 				} else {
 					// if H1.Round != H2.Round we need to run full detection procedure => not
@@ -632,9 +626,9 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 		return errors.New("empty vote")
 	}
 
-	// if err := e.Header.ValidateBasic(); err != nil {
-	// 	return fmt.Errorf("invalid header: %v", err)
-	// }
+	if err := e.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid header: %v", err)
+	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid signature: %v", err)
@@ -735,9 +729,9 @@ func (e LunaticValidatorEvidence) ValidateBasic() error {
 		return errors.New("empty vote")
 	}
 
-	// if err := e.Header.ValidateBasic(); err != nil {
-	// 	return fmt.Errorf("invalid header: %v", err)
-	// }
+	if err := e.Header.ValidateBasic(); err != nil {
+		return fmt.Errorf("invalid header: %v", err)
+	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid signature: %v", err)
@@ -957,7 +951,7 @@ type MockEvidence struct {
 var _ Evidence = &MockEvidence{}
 
 // UNSTABLE
-func NewMockEvidence(height int64, eTime time.Time, idx int, address []byte) MockEvidence {
+func NewMockEvidence(height int64, eTime time.Time, address []byte) MockEvidence {
 	return MockEvidence{
 		EvidenceHeight:  height,
 		EvidenceTime:    eTime,

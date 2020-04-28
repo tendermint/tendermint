@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
@@ -108,15 +107,49 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		PubKey: secp256k1.GenPrivKey().PubKey(), // use secp because it's pubkey is longer
-		VoteA:  makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID),
-		VoteB:  makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+		VoteA: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID),
+		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
-	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
-	require.NoError(t, err)
+	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
 
-	assert.EqualValues(t, MaxEvidenceBytes, len(bz))
+	// evl := &LunaticValidatorEvidence{
+	// Header: makeHeaderRandom(),
+	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+
+	// 	InvalidHeaderField: "",
+	// }
+
+	// evp := &PhantomValidatorEvidence{
+	// 	Header: makeHeaderRandom(),
+	// 	Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+
+	// 	LastHeightValidatorWasInSet: math.MaxInt64,
+	// }
+
+	// signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
+	// evc := &ConflictingHeadersEvidence{
+	// 	H1: &signedHeader,
+	// 	H2: &signedHeader,
+	// }
+
+	testCases := []struct {
+		testName string
+		evidence Evidence
+	}{
+		{"DuplicateVote", ev},
+		// {"LunaticValidatorEvidence", evl},
+		// {"PhantomValidatorEvidence", evp},
+		// {"ConflictingHeadersEvidence", evc},
+	}
+
+	for _, tt := range testCases {
+		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
+		require.NoError(t, err, tt.testName)
+
+		assert.LessOrEqual(t, MaxEvidenceBytes, int64(len(bz)), tt.testName)
+	}
+
 }
 
 func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
@@ -160,10 +193,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			pk := secp256k1.GenPrivKey().PubKey()
 			vote1 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID)
 			vote2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2)
-			ev := NewDuplicateVoteEvidence(pk, vote1, vote2)
+			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -171,12 +203,12 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 }
 
 func TestMockGoodEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockEvidence(int64(1), time.Now(), 1, []byte{1})
+	goodEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
 func TestMockBadEvidenceValidateBasic(t *testing.T) {
-	badEvidence := NewMockEvidence(int64(1), time.Now(), 1, []byte{1})
+	badEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
 	assert.Nil(t, badEvidence.ValidateBasic())
 }
 
@@ -368,6 +400,6 @@ func makeHeaderRandom() *Header {
 		AppHash:            crypto.CRandBytes(tmhash.Size),
 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(tmhash.Size),
+		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
 	}
 }

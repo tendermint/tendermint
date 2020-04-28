@@ -29,7 +29,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(vote2.SignBytes(chainID))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(val.Key.PubKey, vote, vote2)
+	return types.NewDuplicateVoteEvidence(vote, vote2)
 }
 
 func makeEvidences(
@@ -123,7 +123,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.NoError(t, err)
 		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 
-		ed25519pub := correct.PubKey.(ed25519.PubKeyEd25519)
+		ed25519pub := pv.Key.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
 		result2, err := c.ABCIQuery("/val", rawpub)
 		require.NoError(t, err)

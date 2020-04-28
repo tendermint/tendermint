@@ -13,7 +13,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -116,7 +115,7 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *Pool, valAddr []byte, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockEvidence(int64(i+1), time.Now().UTC(), 0, valAddr)
+		ev := types.NewMockEvidence(int64(i+1), time.Now().UTC(), valAddr)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -214,7 +213,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 		{"Good ListMessage", func(evList *ListMessage) {}, false},
 		{"Invalid ListMessage", func(evList *ListMessage) {
 			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{PubKey: secp256k1.GenPrivKey().PubKey()})
+				&types.DuplicateVoteEvidence{})
 		}, true},
 	}
 	for _, tc := range testCases {
@@ -225,7 +224,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 			valAddr := []byte("myval")
 			evListMsg.Evidence = make([]types.Evidence, n)
 			for i := 0; i < n; i++ {
-				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), 0, valAddr)
+				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), valAddr)
 			}
 			tc.malleateEvListMsg(evListMsg)
 			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
