@@ -38,12 +38,15 @@ type CListMempool struct {
 
 	config *cfg.MempoolConfig
 
-	proxyMtx     sync.Mutex
-	proxyAppConn proxy.AppConnMempool
-	txs          *clist.CList // concurrent linked-list of good txs
-	preCheck     PreCheckFunc
-	postCheck    PostCheckFunc
+	// Exclusive mutex for Update method to prevent concurrent execution of
+	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
+	updateMtx sync.RWMutex
+	preCheck  PreCheckFunc
+	postCheck PostCheckFunc
+
 	wal          *auto.AutoFile // a log of mempool txs
+	txs          *clist.CList   // concurrent linked-list of good txs
+	proxyAppConn proxy.AppConnMempool
 
 	// Track whether we're rechecking txs.
 	// These are not protected by a mutex and are expected to be mutated in
@@ -146,11 +149,7 @@ func (mem *CListMempool) InitWAL() error {
 	return nil
 }
 
-// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CloseWAL() {
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
-
 	if err := mem.wal.Close(); err != nil {
 		mem.logger.Error("Error closing WAL", "err", err)
 	}
@@ -158,11 +157,11 @@ func (mem *CListMempool) CloseWAL() {
 }
 
 func (mem *CListMempool) Lock() {
-	mem.proxyMtx.Lock()
+	mem.updateMtx.Lock()
 }
 
 func (mem *CListMempool) Unlock() {
-	mem.proxyMtx.Unlock()
+	mem.updateMtx.Unlock()
 }
 
 func (mem *CListMempool) Size() int {
@@ -178,9 +177,6 @@ func (mem *CListMempool) FlushAppConn() error {
 }
 
 func (mem *CListMempool) Flush() {
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
-
 	mem.cache.Reset()
 
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
@@ -211,9 +207,9 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
-	mem.proxyMtx.Lock()
+	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
-	defer mem.proxyMtx.Unlock()
+	defer mem.updateMtx.RUnlock()
 
 	var (
 		memSize  = mem.Size()
@@ -470,11 +466,13 @@ func (mem *CListMempool) notifyTxsAvailable() {
 }
 
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
 
-	var totalBytes int64
-	var totalGas int64
+	var (
+		totalBytes int64
+		totalGas   int64
+	)
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
@@ -502,8 +500,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 }
 
 func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
 
 	if max < 0 {
 		max = mem.txs.Len()
