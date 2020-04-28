@@ -10,7 +10,8 @@ go) which operates both the sending and receiving of evidence.
 
 The `Receive` function takes a list of evidence and does the following:
 
-1. Breaks it down into individual evidence if it is `Composite Evidence` (see types/evidence.go#ConflictingHeadersEvidence)
+1. Breaks it down into individual evidence if it is `Composite Evidence`
+(see types/evidence.go#ConflictingHeadersEvidence)
 
 2. Checks that it does not already have the evidence stored
 
