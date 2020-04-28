@@ -137,7 +137,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 			}
 			if evidencePool.IsPending(ev) {
-				return nil
+				continue
 			}
 		}
 		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {

@@ -975,7 +975,13 @@ func (e MockEvidence) Bytes() []byte {
 	return []byte(fmt.Sprintf("%d-%x-%s",
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
-func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
+func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	if !bytes.Equal(pubKey.Address(), e.Address()) {
+		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
+			e.Address(), pubKey, pubKey.Address())
+	}
+	return nil
+}
 func (e MockEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockEvidence)
 	return e.EvidenceHeight == e2.EvidenceHeight &&
