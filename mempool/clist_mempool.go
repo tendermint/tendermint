@@ -156,27 +156,37 @@ func (mem *CListMempool) CloseWAL() {
 	mem.wal = nil
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) Lock() {
 	mem.updateMtx.Lock()
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) Unlock() {
 	mem.updateMtx.Unlock()
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) Size() int {
 	return mem.txs.Len()
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) TxsBytes() int64 {
 	return atomic.LoadInt64(&mem.txsBytes)
 }
 
+// Lock() must be help by the caller during execution.
 func (mem *CListMempool) FlushAppConn() error {
 	return mem.proxyAppConn.FlushSync()
 }
 
+// XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
 func (mem *CListMempool) Flush() {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
 
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
@@ -184,13 +194,17 @@ func (mem *CListMempool) Flush() {
 		e.DetachPrev()
 	}
 
-	mem.txsMap = sync.Map{}
-	_ = atomic.SwapInt64(&mem.txsBytes, 0)
+	mem.txsMap.Range(func(key, _ interface{}) bool {
+		mem.txsMap.Delete(key)
+		return true
+	})
 }
 
 // TxsFront returns the first transaction in the ordered list for peer
 // goroutines to call .NextWait() on.
 // FIXME: leaking implementation details!
+//
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) TxsFront() *clist.CElement {
 	return mem.txs.Front()
 }
@@ -198,6 +212,8 @@ func (mem *CListMempool) TxsFront() *clist.CElement {
 // TxsWaitChan returns a channel to wait on transactions. It will be closed
 // once the mempool is not empty (ie. the internal `mem.txs` has at least one
 // element)
+//
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 	return mem.txs.WaitChan()
 }
@@ -206,6 +222,8 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
+//
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
@@ -447,6 +465,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	}
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) TxsAvailable() <-chan struct{} {
 	return mem.txsAvailable
 }
@@ -465,6 +484,7 @@ func (mem *CListMempool) notifyTxsAvailable() {
 	}
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
@@ -499,6 +519,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	return txs
 }
 
+// Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
@@ -515,6 +536,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	return txs
 }
 
+// Lock() must be help by the caller during execution.
 func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,
