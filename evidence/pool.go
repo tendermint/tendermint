@@ -364,14 +364,10 @@ func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
 	// Remove validators outside of MaxAgeNumBlocks & MaxAgeDuration.
 	removeHeight := blockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks
 	if removeHeight >= 1 {
-		valsToRemove := make([]string, 0)
 		for val, height := range evpool.valToLastHeight {
 			if height <= removeHeight {
-				valsToRemove = append(valsToRemove, val)
+				delete(evpool.valToLastHeight, val)
 			}
-		}
-		for _, v := range valsToRemove {
-			delete(evpool.valToLastHeight, v)
 		}
 	}
 }
