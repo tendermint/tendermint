@@ -776,9 +776,9 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	if n.config.Mempool.WalEnabled() {
-		err = n.mempool.InitWAL() // no need to have the mempool wal during tests
+		err = n.mempool.InitWAL()
 		if err != nil {
-			return err
+			return fmt.Errorf("init mempool WAL: %w", err)
 		}
 	}
 
