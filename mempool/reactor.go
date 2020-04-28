@@ -273,10 +273,6 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
-	if l := len(bz); l > maxMsgSize {
-		return msg, ErrTxTooLarge{maxMsgSize, l}
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
