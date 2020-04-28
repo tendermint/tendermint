@@ -130,7 +130,6 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	events    chan Event // XXX: Rename eventsFromPeers
-	stopDemux chan struct{}
 	scheduler *Routine
 	processor *Routine
 	logger    log.Logger
@@ -166,7 +165,6 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 
 	return &BlockchainReactor{
 		events:    make(chan Event, bufferSize),
-		stopDemux: make(chan struct{}),
 		scheduler: newRoutine("scheduler", scheduler.handle, bufferSize),
 		processor: newRoutine("processor", processor.handle, bufferSize),
 		store:     store,
@@ -357,8 +355,12 @@ func (r *BlockchainReactor) demux() {
 		case <-doStatusCh:
 			r.io.broadcastStatusRequest(r.store.Base(), r.SyncHeight())
 
-		// Events from peers
-		case event := <-r.events:
+		// Events from peers. Closing the channel signals termination.
+		case event, ok := <-r.events:
+			if !ok {
+				r.logger.Info("demuxing stopped")
+				return
+			}
 			switch event := event.(type) {
 			case bcStatusResponse:
 				r.setMaxPeerHeight(event.height)
@@ -415,10 +417,6 @@ func (r *BlockchainReactor) demux() {
 		// Terminal event from processor
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
-
-		case <-r.stopDemux:
-			r.logger.Info("demuxing stopped")
-			return
 		}
 	}
 }
@@ -429,7 +427,6 @@ func (r *BlockchainReactor) Stop() error {
 
 	r.scheduler.stop()
 	r.processor.stop()
-	close(r.stopDemux)
 	close(r.events)
 
 	r.logger.Info("reactor stopped")
