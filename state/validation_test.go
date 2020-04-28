@@ -30,7 +30,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
-		sm.MockEvidencePool{},
+		evmock.NewDefaultEvidencePool(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
