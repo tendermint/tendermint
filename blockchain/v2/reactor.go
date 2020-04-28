@@ -355,10 +355,10 @@ func (r *BlockchainReactor) demux() {
 		case <-doStatusCh:
 			r.io.broadcastStatusRequest(r.store.Base(), r.SyncHeight())
 
-		// Events from peers. Closing the channel signals termination.
+		// Events from peers. Closing the channel signals event loop termination.
 		case event, ok := <-r.events:
 			if !ok {
-				r.logger.Info("demuxing stopped")
+				r.logger.Info("Stopping event processing")
 				return
 			}
 			switch event := event.(type) {
@@ -384,6 +384,7 @@ func (r *BlockchainReactor) demux() {
 			case scFinishedEv:
 				r.processor.send(event)
 				r.scheduler.stop()
+			case noOpEvent:
 			default:
 				r.logger.Error("Received unknown scheduler event", "event", fmt.Sprintf("%T", event))
 			}
@@ -405,18 +406,28 @@ func (r *BlockchainReactor) demux() {
 			case pcFinished:
 				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced)
 				r.processor.stop()
+			case noOpEvent:
 			default:
 				r.logger.Error("Received unknown processor event", "event", fmt.Sprintf("%T", event))
 			}
 
-		// Terminal events from scheduler
+		// Terminal event from scheduler
 		case err := <-r.scheduler.final():
-			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
-			// send the processor stop?
+			switch err {
+			case nil:
+				r.logger.Info("Scheduler stopped")
+			default:
+				r.logger.Error("Scheduler aborted with error", "err", err)
+			}
 
 		// Terminal event from processor
-		case event := <-r.processor.final():
-			r.logger.Info(fmt.Sprintf("processor final %s", event))
+		case err := <-r.processor.final():
+			switch err {
+			case nil:
+				r.logger.Info("Processor stopped")
+			default:
+				r.logger.Error("Processor aborted with error", "err", err)
+			}
 		}
 	}
 }
