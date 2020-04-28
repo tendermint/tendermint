@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -30,9 +29,8 @@ import (
 // be efficiently accessed by multiple concurrent readers.
 type CListMempool struct {
 	// Atomic integers
-	height     int64 // the last block Update()'d to
-	txsBytes   int64 // total size of mempool, in bytes
-	rechecking int32 // for re-checking filtered txs on Update()
+	height   int64 // the last block Update()'d to
+	txsBytes int64 // total size of mempool, in bytes
 
 	// notify listeners (ie. consensus) when txs are available
 	notifiedTxsAvailable bool
@@ -48,8 +46,8 @@ type CListMempool struct {
 	wal          *auto.AutoFile // a log of mempool txs
 
 	// Track whether we're rechecking txs.
-	// These are not protected by a mutex and are expected to be mutated
-	// in serial (ie. by abci responses which are called in serial).
+	// These are not protected by a mutex and are expected to be mutated in
+	// serial (ie. by abci responses which are called in serial).
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
 
@@ -83,7 +81,6 @@ func NewCListMempool(
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
 		height:        height,
-		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
@@ -293,7 +290,9 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 // and peerID is not included in the ABCI request, so we have to set request-specific callbacks that
 // include this information. If we're not in the midst of a recheck, this function will just return,
 // so the request specific callback can do the work.
-// When rechecking, we don't need the peerID, so the recheck callback happens here.
+//
+// When rechecking, we don't need the peerID, so the recheck callback happens
+// here.
 func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
 		return
@@ -440,7 +439,6 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		}
 		if mem.recheckCursor == nil {
 			// Done!
-			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
 
 			// incase the recheck removed all txs
@@ -474,11 +472,6 @@ func (mem *CListMempool) notifyTxsAvailable() {
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
-
-	for atomic.LoadInt32(&mem.rechecking) > 0 {
-		// TODO: Something better?
-		time.Sleep(time.Millisecond * 10)
-	}
 
 	var totalBytes int64
 	var totalGas int64
@@ -514,11 +507,6 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 
 	if max < 0 {
 		max = mem.txs.Len()
-	}
-
-	for atomic.LoadInt32(&mem.rechecking) > 0 {
-		// TODO: Something better?
-		time.Sleep(time.Millisecond * 10)
 	}
 
 	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
@@ -596,7 +584,6 @@ func (mem *CListMempool) recheckTxs() {
 		panic("recheckTxs is called, but the mempool is empty")
 	}
 
-	atomic.StoreInt32(&mem.rechecking, 1)
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
 
