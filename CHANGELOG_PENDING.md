@@ -10,6 +10,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
+  - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
+
 - Apps
 
 - P2P Protocol
