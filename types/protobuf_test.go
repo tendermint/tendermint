@@ -136,9 +136,8 @@ func TestABCIEvidence(t *testing.T) {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
 	ev := &DuplicateVoteEvidence{
-		PubKey: pubKey,
-		VoteA:  makeVote(t, val, chainID, 0, 10, 2, 1, blockID),
-		VoteB:  makeVote(t, val, chainID, 0, 10, 2, 1, blockID2),
+		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID),
+		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,
