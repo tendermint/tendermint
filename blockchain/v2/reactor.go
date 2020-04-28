@@ -302,23 +302,25 @@ func (r *BlockchainReactor) demux() {
 	var lastRate = 0.0
 	var lastHundred = time.Now()
 
-	var (
-		processBlockFreq = 20 * time.Millisecond
-		doProcessBlockCh = make(chan struct{}, 1)
-		doProcessBlockTk = time.NewTicker(processBlockFreq)
+	processBlockFreq := 20 * time.Millisecond
+	doProcessBlockCh := make(chan struct{}, 1)
+	doProcessBlockTk := time.NewTicker(processBlockFreq)
+	defer doProcessBlockTk.Stop()
 
-		prunePeerFreq = 1 * time.Second
-		doPrunePeerCh = make(chan struct{}, 1)
-		doPrunePeerTk = time.NewTicker(prunePeerFreq)
+	prunePeerFreq := 1 * time.Second
+	doPrunePeerCh := make(chan struct{}, 1)
+	doPrunePeerTk := time.NewTicker(prunePeerFreq)
+	defer doPrunePeerTk.Stop()
 
-		scheduleFreq = 20 * time.Millisecond
-		doScheduleCh = make(chan struct{}, 1)
-		doScheduleTk = time.NewTicker(scheduleFreq)
+	scheduleFreq := 20 * time.Millisecond
+	doScheduleCh := make(chan struct{}, 1)
+	doScheduleTk := time.NewTicker(scheduleFreq)
+	defer doScheduleTk.Stop()
 
-		statusFreq = 10 * time.Second
-		doStatusCh = make(chan struct{}, 1)
-		doStatusTk = time.NewTicker(statusFreq)
-	)
+	statusFreq := 10 * time.Second
+	doStatusCh := make(chan struct{}, 1)
+	doStatusTk := time.NewTicker(statusFreq)
+	defer doStatusTk.Stop()
 
 	// XXX: Extract timers to make testing atemporal
 	for {
