@@ -112,10 +112,45 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID2),
 	}
 
-	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
-	require.NoError(t, err)
+	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
 
-	assert.EqualValues(t, MaxEvidenceBytes, len(bz))
+	// evl := &LunaticValidatorEvidence{
+	// Header: makeHeaderRandom(),
+	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+
+	// 	InvalidHeaderField: "",
+	// }
+
+	// evp := &PhantomValidatorEvidence{
+	// 	Header: makeHeaderRandom(),
+	// 	Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+
+	// 	LastHeightValidatorWasInSet: math.MaxInt64,
+	// }
+
+	// signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
+	// evc := &ConflictingHeadersEvidence{
+	// 	H1: &signedHeader,
+	// 	H2: &signedHeader,
+	// }
+
+	testCases := []struct {
+		testName string
+		evidence Evidence
+	}{
+		{"DuplicateVote", ev},
+		// {"LunaticValidatorEvidence", evl},
+		// {"PhantomValidatorEvidence", evp},
+		// {"ConflictingHeadersEvidence", evc},
+	}
+
+	for _, tt := range testCases {
+		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
+		require.NoError(t, err, tt.testName)
+
+		assert.LessOrEqual(t, MaxEvidenceBytes, int64(len(bz)), tt.testName)
+	}
+
 }
 
 func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {

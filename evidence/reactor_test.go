@@ -213,7 +213,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 		{"Good ListMessage", func(evList *ListMessage) {}, false},
 		{"Invalid ListMessage", func(evList *ListMessage) {
 			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{VoteA: &types.Vote{}})
+				&types.DuplicateVoteEvidence{})
 		}, true},
 	}
 	for _, tc := range testCases {
