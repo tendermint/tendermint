@@ -7,6 +7,20 @@ on:
       - release/**
 
 jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v1
+        id: git_diff
+        with:
+          SUFFIX_FILTER: .go
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
+      - name: test
+        run: exit 1
+        if: "env.GIT_DIFF == ''"
+
   cleanup-runs:
     runs-on: ubuntu-latest
     steps:
@@ -14,8 +28,10 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
+
   build:
     name: Build
+    needs: diff
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v2-beta
