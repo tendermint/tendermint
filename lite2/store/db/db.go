@@ -159,7 +159,7 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 	}
 
 	var pbvs tmproto.ValidatorSet
-	err := proto.Unmarshal(bz, &pbvs)
+	err = proto.Unmarshal(bz, &pbvs)
 	if err != nil {
 		return nil, err
 	}
