@@ -1404,9 +1404,6 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
