@@ -118,7 +118,7 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
@@ -157,7 +157,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, appl, p.bufferSize, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
