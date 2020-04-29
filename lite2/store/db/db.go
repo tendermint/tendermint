@@ -136,7 +136,6 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 	signedHeader, err := types.SignedHeaderFromProto(&pbsh)
 	if err != nil {
-		fmt.Println("here")
 		return nil, err
 	}
 
