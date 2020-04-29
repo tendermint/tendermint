@@ -69,9 +69,11 @@ func (rt *Routine) start() {
 
 	for {
 		events, err := rt.queue.Get(1)
-		if err != nil {
-			rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
-			rt.terminate(fmt.Errorf("stopped"))
+		if err == queue.ErrDisposed {
+			rt.terminate(nil)
+			return
+		} else if err != nil {
+			rt.terminate(err)
 			return
 		}
 		oEvent, err := rt.handle(events[0].(Event))
@@ -131,6 +133,7 @@ func (rt *Routine) final() chan error {
 
 // XXX: Maybe get rid of this
 func (rt *Routine) terminate(reason error) {
-	close(rt.out)
+	// We don't close the rt.out channel here, to avoid spinning on the closed channel
+	// in the event loop.
 	rt.fin <- reason
 }
