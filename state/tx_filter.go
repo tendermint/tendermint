@@ -11,7 +11,7 @@ func TxPreCheck(state State) mempl.PreCheckFunc {
 	maxDataBytes := types.MaxDataBytesUnknownEvidence(
 		state.ConsensusParams.Block.MaxBytes,
 		state.Validators.Size(),
-		state.ConsensusParams.Evidence.MaxEvidenceToValidatorsRatio,
+		state.ConsensusParams.Evidence.MaxNumEvidence,
 	)
 	return mempl.PreCheckAminoMaxBytes(maxDataBytes)
 }

@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -98,14 +97,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	valSize := state.Validators.Size()
-	evidenceRatio := state.ConsensusParams.Evidence.MaxEvidenceToValidatorsRatio
 
-	maxNumEvidence := MaxEvidencePerBlock(evidenceRatio, valSize, maxBytes)
+	maxNumEvidence := state.ConsensusParams.Evidence.MaxNumEvidence
 	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
 
 	// Fetch a limited amount of valid txs
-	maxDataBytes := types.MaxDataBytes(maxBytes, valSize, len(evidence))
+	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
@@ -508,13 +505,4 @@ func ExecCommitBlock(
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
-}
-
-// MaxEvidencePerBlock uses the current state to calculate how much evidence to
-func MaxEvidencePerBlock(evidenceRatio float64, valSize int, maxBytes int64) int64 {
-	maxNumEvidence := int64(math.Ceil(float64(valSize) * evidenceRatio))
-	if maxNumEvidence*types.MaxEvidenceBytes > maxBytes {
-		maxNumEvidence = maxBytes / types.MaxEvidenceBytes
-	}
-	return maxNumEvidence
 }

@@ -97,10 +97,6 @@ func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
 }
 
-const (
-	MaxEvidenceBytesDenominator = 10
-)
-
 //-------------------------------------------
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting

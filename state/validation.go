@@ -123,14 +123,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Limit the amount of evidence
-	evidenceRatio := state.ConsensusParams.Evidence.MaxEvidenceToValidatorsRatio
-	valSize := state.Validators.Size()
-	maxBytes := state.ConsensusParams.Block.MaxBytes
-	maxNumEvidence := MaxEvidencePerBlock(evidenceRatio, valSize, maxBytes)
 	numEvidence := int64(len(block.Evidence.Evidence))
-	if numEvidence > maxNumEvidence {
-		return types.NewErrEvidenceOverflow(maxNumEvidence, numEvidence)
-
+	if numEvidence > state.ConsensusParams.Evidence.MaxNumEvidence {
+		return types.NewErrEvidenceOverflow(state.ConsensusParams.Evidence.MaxNumEvidence, numEvidence)
 	}
 
 	// Validate all evidence.

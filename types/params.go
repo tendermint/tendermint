@@ -71,7 +71,7 @@ type EvidenceParams struct {
 	// Ratio for the max amount of evidence relative to the amount of validators to be included in a block
 	// i.e. MaxNumEvidence = ValSize * MaxEvidenceToValidatorsRatio
 	// where MaxNumEvidence is always rounded up. Default is 1/3 of validator size
-	MaxEvidenceToValidatorsRatio float64 `json:"max_evidence_to_validators_ratio"`
+	MaxNumEvidence int64 `json:"max_num_evidence"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -101,9 +101,9 @@ func DefaultBlockParams() BlockParams {
 // DefaultEvidenceParams returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAgeNumBlocks:              100000, // 27.8 hrs at 1block/s
-		MaxAgeDuration:               48 * time.Hour,
-		MaxEvidenceToValidatorsRatio: 0.34,
+		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:  48 * time.Hour,
+		MaxNumEvidence:  50,
 	}
 }
 
@@ -154,9 +154,14 @@ func (params *ConsensusParams) Validate() error {
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxEvidenceToValidatorsRatio <= 0 {
-		return errors.Errorf("evidenceParams.MaxEvidenceToValidatorsRatio must be greater than 0 if provided, Got %f",
-			params.Evidence.MaxEvidenceToValidatorsRatio)
+	if params.Evidence.MaxNumEvidence <= 0 {
+		return errors.Errorf("evidenceParams.MaxNumEvidence must be greater than 0 if provided, Got %d",
+			params.Evidence.MaxNumEvidence)
+	}
+
+	if params.Evidence.MaxNumEvidence > params.Block.MaxBytes {
+		return errors.Errorf("evidenceParams.MaxNumEvidence is bigger than block.MaxBytes, %d > %d",
+			params.Evidence.MaxNumEvidence, params.Block.MaxBytes)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {

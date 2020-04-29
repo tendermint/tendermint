@@ -232,7 +232,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB := state(1, height)
 	maxBytes := 16384
+	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Evidence.MaxNumEvidence = int64(maxEvidence)
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
@@ -258,10 +260,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	minEvSize := 12
-	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
-	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomEvidence(1, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
+	for i := 0; i < maxEvidence+1; i++ {
+		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(12))
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}
