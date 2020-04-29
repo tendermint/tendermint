@@ -9,7 +9,7 @@ import (
 )
 
 // ABCIQuery queries the application for some information.
-// More: https://tendermint.com/rpc/#/ABCI/abci_query
+// More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_query
 func ABCIQuery(
 	ctx *rpctypes.Context,
 	path string,
@@ -31,7 +31,7 @@ func ABCIQuery(
 }
 
 // ABCIInfo gets some info about the application.
-// More: https://tendermint.com/rpc/#/ABCI/abci_info
+// More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_info
 func ABCIInfo(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
 	resInfo, err := proxyAppQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {

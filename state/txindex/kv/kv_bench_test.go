@@ -1,16 +1,17 @@
 package kv
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func BenchmarkTxSearch(b *testing.B) {
@@ -31,7 +32,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		events := []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []kv.Pair{
+				Attributes: []abci.EventAttribute{
 					{Key: []byte("address"), Value: []byte(fmt.Sprintf("address_%d", i%100))},
 					{Key: []byte("amount"), Value: []byte("50")},
 				},
@@ -64,8 +65,10 @@ func BenchmarkTxSearch(b *testing.B) {
 
 	b.ResetTimer()
 
+	ctx := context.Background()
+
 	for i := 0; i < b.N; i++ {
-		if _, err := indexer.Search(txQuery); err != nil {
+		if _, err := indexer.Search(ctx, txQuery); err != nil {
 			b.Errorf("failed to query for txs: %s", err)
 		}
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 // NetInfo returns network info.
-// More: https://tendermint.com/rpc/#/Info/net_info
+// More: https://docs.tendermint.com/master/rpc/#/Info/net_info
 func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	peersList := p2pPeers.Peers().List()
 	peers := make([]ctypes.Peer, 0, len(peersList))
@@ -69,7 +69,7 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 }
 
 // Genesis returns genesis file.
-// More: https://tendermint.com/rpc/#/Info/genesis
+// More: https://docs.tendermint.com/master/rpc/#/Info/genesis
 func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 	return &ctypes.ResultGenesis{Genesis: genDoc}, nil
 }

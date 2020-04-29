@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
-	"os"
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"strings"
 	"time"
 
@@ -17,9 +16,12 @@ import (
 	"github.com/rs/cors"
 
 	amino "github.com/tendermint/go-amino"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
 	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
+	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -45,7 +47,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 //------------------------------------------------------------------------------
@@ -86,31 +87,13 @@ type Provider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
-	// Generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil, err
-	}
-
-	// Convert old PrivValidator if it exists.
-	oldPrivVal := config.OldPrivValidatorFile()
-	newPrivValKey := config.PrivValidatorKeyFile()
-	newPrivValState := config.PrivValidatorStateFile()
-	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
-		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
-		if err != nil {
-			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPrivVal, err)
-		}
-		logger.Info("Upgrading PrivValidator file",
-			"old", oldPrivVal,
-			"newKey", newPrivValKey,
-			"newState", newPrivValState,
-		)
-		oldPV.Upgrade(newPrivValKey, newPrivValState)
+		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 
 	return NewNode(config,
-		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
+		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
@@ -309,12 +292,12 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
+func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 	if state.Validators.Size() > 1 {
 		return false
 	}
 	addr, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(privVal.GetPubKey().Address(), addr)
+	return bytes.Equal(pubKey.Address(), addr)
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
@@ -339,14 +322,17 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
+	stateDB dbm.DB, blockStore *store.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool := evidence.NewPool(stateDB, evidenceDB)
+	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	if err != nil {
+		return nil, nil, err
+	}
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
@@ -365,6 +351,8 @@ func createBlockchainReactor(config *cfg.Config,
 		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	case "v2":
+		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -467,6 +455,11 @@ func createTransport(
 	}
 
 	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
+
+	// Limit the number of incoming connections.
+	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
+
 	return transport, peerFilters
 }
 
@@ -613,17 +606,16 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	pubKey := privValidator.GetPubKey()
-	if pubKey == nil {
-		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
-		return nil, errors.New("could not retrieve public key from private validator")
+	pubKey, err := privValidator.GetPubKey()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get pubkey")
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -631,7 +623,7 @@ func NewNode(config *cfg.Config,
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
 	// Make Evidence Reactor
-	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, logger)
+	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -856,7 +848,10 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
-	pubKey := n.privValidator.GetPubKey()
+	pubKey, err := n.privValidator.GetPubKey()
+	if err != nil {
+		panic(err)
+	}
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -948,7 +943,16 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
+		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
+		// If necessary adjust global WriteTimeout to ensure it's greater than
+		// TimeoutBroadcastTxCommit.
+		// See https://github.com/tendermint/tendermint/issues/3435
+		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		}
 		listener, err := rpcserver.Listen(grpcListenAddr, config)
 		if err != nil {
 			return nil, err
@@ -1082,6 +1086,8 @@ func makeNodeInfo(
 		bcChannel = bcv0.BlockchainChannel
 	case "v1":
 		bcChannel = bcv1.BlockchainChannel
+	case "v2":
+		bcChannel = bcv2.BlockchainChannel
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}

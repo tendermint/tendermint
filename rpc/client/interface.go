@@ -69,7 +69,7 @@ type SignClient interface {
 	Commit(height *int64) (*ctypes.ResultCommit, error)
 	Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
-	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
+	TxSearch(query string, prove bool, page, perPage int, orderBy string) (*ctypes.ResultTxSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
@@ -120,4 +120,12 @@ type MempoolClient interface {
 // behaviour.
 type EvidenceClient interface {
 	BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+}
+
+// RemoteClient is a Client, which can also return the remote network address.
+type RemoteClient interface {
+	Client
+
+	// Remote returns the remote network address in a string form.
+	Remote() string
 }

@@ -78,7 +78,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
 	cmd.Flags().String(
 		"consensus.create_empty_blocks_interval",
-		string(config.Consensus.CreateEmptyBlocksInterval),
+		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
 
 	// db flags
@@ -99,10 +99,20 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkGenesisHash(config); err != nil {
+				return err
+			}
+
 			n, err := nodeProvider(config, logger)
 			if err != nil {
-				return fmt.Errorf("failed to create node: %v", err)
+				return fmt.Errorf("failed to create node: %w", err)
 			}
+
+			if err := n.Start(); err != nil {
+				return fmt.Errorf("failed to start node: %w", err)
+			}
+
+			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
@@ -110,15 +120,6 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 					n.Stop()
 				}
 			})
-
-			if err := checkGenesisHash(config); err != nil {
-				return err
-			}
-
-			if err := n.Start(); err != nil {
-				return fmt.Errorf("failed to start node: %v", err)
-			}
-			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Run forever.
 			select {}

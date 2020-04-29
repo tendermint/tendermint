@@ -7,6 +7,7 @@ import (
 	"time"
 
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -43,7 +44,7 @@ var (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, int)
+	SwitchToConsensus(sm.State, uint64)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -59,7 +60,7 @@ type BlockchainReactor struct {
 	fastSync bool
 
 	fsm          *BcReactorFSM
-	blocksSynced int
+	blocksSynced uint64
 
 	// Receive goroutine forwards messages to this channel to be processed in the context of the poolRoutine.
 	messagesForFSMCh chan bcReactorMessage
@@ -103,7 +104,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	fsm := NewFSM(startHeight, bcR)
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
-	//bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+	//bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
 
 	return bcR
 }
@@ -141,7 +142,7 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+	bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
 		go bcR.poolRoutine()
 	}
@@ -168,7 +169,10 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	peer.Send(BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
@@ -195,7 +199,10 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcStatusRequestMessage, src p2p.Peer) (queued bool) {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	return src.TrySend(BlockchainChannel, msgBytes)
 }
 
@@ -429,7 +436,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
@@ -440,7 +447,10 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 }
 
@@ -529,9 +539,6 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 }
 
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
@@ -589,6 +596,7 @@ func (m *bcBlockResponseMessage) String() string {
 
 type bcStatusRequestMessage struct {
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
@@ -596,17 +604,24 @@ func (m *bcStatusRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
 	return nil
 }
 
 func (m *bcStatusRequestMessage) String() string {
-	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
 }
 
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
 	Height int64
+	Base   int64
 }
 
 // ValidateBasic performs basic validation.
@@ -614,9 +629,15 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
 	return nil
 }
 
 func (m *bcStatusResponseMessage) String() string {
-	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
 }

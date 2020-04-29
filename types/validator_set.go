@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 )
@@ -636,6 +637,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	}
 
 	talliedVotingPower := int64(0)
+	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some signatures can be absent.
@@ -658,13 +660,15 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		// It's OK that the BlockID doesn't match.  We include stray
 		// signatures (~votes for nil) to measure validator availability.
 		// }
+
+		// return as soon as +2/3 of the signatures are verified
+		if talliedVotingPower > votingPowerNeeded {
+			return nil
+		}
 	}
 
-	if got, needed := talliedVotingPower, vals.TotalVotingPower()*2/3; got <= needed {
-		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
-	}
-
-	return nil
+	// talliedVotingPower <= needed, thus return error
+	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -762,6 +766,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	var (
 		talliedVotingPower int64
 		seenVals           = make(map[int]int, len(commit.Signatures)) // validator index -> commit index
+		votingPowerNeeded  = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	)
 
 	for idx, commitSig := range commit.Signatures {
@@ -773,12 +778,12 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		// check for each vote if its validator is already known.
 		valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
 
-		if firstIndex, ok := seenVals[valIdx]; ok { // double vote
-			secondIndex := idx
-			return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
-		}
-
 		if val != nil {
+			// check for double vote of validator on the same commit
+			if firstIndex, ok := seenVals[valIdx]; ok {
+				secondIndex := idx
+				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+			}
 			seenVals[valIdx] = idx
 
 			// Validate signature.
@@ -795,16 +800,14 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			// It's OK that the BlockID doesn't match.  We include stray
 			// signatures (~votes for nil) to measure validator availability.
 			// }
+
+			if talliedVotingPower > votingPowerNeeded {
+				return nil
+			}
 		}
 	}
 
-	got := talliedVotingPower
-	needed := (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
-	if got <= needed {
-		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
-	}
-
-	return nil
+	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {

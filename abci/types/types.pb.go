@@ -14,7 +14,6 @@ import (
 	_ "github.com/golang/protobuf/ptypes/duration"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	merkle "github.com/tendermint/tendermint/crypto/merkle"
-	kv "github.com/tendermint/tendermint/libs/kv"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -1865,6 +1864,7 @@ func (m *ResponseEndBlock) GetEvents() []Event {
 type ResponseCommit struct {
 	// reserve 1
 	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	RetainHeight         int64    `protobuf:"varint,3,opt,name=retain_height,json=retainHeight,proto3" json:"retain_height,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1908,6 +1908,13 @@ func (m *ResponseCommit) GetData() []byte {
 		return m.Data
 	}
 	return nil
+}
+
+func (m *ResponseCommit) GetRetainHeight() int64 {
+	if m != nil {
+		return m.RetainHeight
+	}
+	return 0
 }
 
 // ConsensusParams contains all consensus-relevant parameters
@@ -2248,12 +2255,76 @@ func (m *LastCommitInfo) GetVotes() []VoteInfo {
 	return nil
 }
 
+// EventAttribute represents an event to the indexing service.
+type EventAttribute struct {
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Index                bool     `protobuf:"varint,3,opt,name=index,proto3" json:"index,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *EventAttribute) Reset()         { *m = EventAttribute{} }
+func (m *EventAttribute) String() string { return proto.CompactTextString(m) }
+func (*EventAttribute) ProtoMessage()    {}
+func (*EventAttribute) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9f1eaa49c51fa1ac, []int{30}
+}
+func (m *EventAttribute) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventAttribute) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventAttribute.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventAttribute) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventAttribute.Merge(m, src)
+}
+func (m *EventAttribute) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventAttribute) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventAttribute.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventAttribute proto.InternalMessageInfo
+
+func (m *EventAttribute) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *EventAttribute) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+func (m *EventAttribute) GetIndex() bool {
+	if m != nil {
+		return m.Index
+	}
+	return false
+}
+
 type Event struct {
-	Type                 string    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Attributes           []kv.Pair `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
-	XXX_unrecognized     []byte    `json:"-"`
-	XXX_sizecache        int32     `json:"-"`
+	Type                 string           `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Attributes           []EventAttribute `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *Event) Reset()         { *m = Event{} }
@@ -2296,7 +2367,7 @@ func (m *Event) GetType() string {
 	return ""
 }
 
-func (m *Event) GetAttributes() []kv.Pair {
+func (m *Event) GetAttributes() []EventAttribute {
 	if m != nil {
 		return m.Attributes
 	}
@@ -2627,7 +2698,7 @@ func (m *PartSetHeader) GetHash() []byte {
 // Validator
 type Validator struct {
 	Address []byte `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	//PubKey pub_key = 2 [(gogoproto.nullable)=false];
+	// PubKey pub_key = 2 [(gogoproto.nullable)=false];
 	Power                int64    `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -2992,6 +3063,8 @@ func init() {
 	golang_proto.RegisterType((*VersionParams)(nil), "tendermint.abci.types.VersionParams")
 	proto.RegisterType((*LastCommitInfo)(nil), "tendermint.abci.types.LastCommitInfo")
 	golang_proto.RegisterType((*LastCommitInfo)(nil), "tendermint.abci.types.LastCommitInfo")
+	proto.RegisterType((*EventAttribute)(nil), "tendermint.abci.types.EventAttribute")
+	golang_proto.RegisterType((*EventAttribute)(nil), "tendermint.abci.types.EventAttribute")
 	proto.RegisterType((*Event)(nil), "tendermint.abci.types.Event")
 	golang_proto.RegisterType((*Event)(nil), "tendermint.abci.types.Event")
 	proto.RegisterType((*Header)(nil), "tendermint.abci.types.Header")
@@ -4571,6 +4644,9 @@ func (this *ResponseCommit) Equal(that interface{}) bool {
 	if !bytes.Equal(this.Data, that1.Data) {
 		return false
 	}
+	if this.RetainHeight != that1.RetainHeight {
+		return false
+	}
 	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
 		return false
 	}
@@ -4760,6 +4836,39 @@ func (this *LastCommitInfo) Equal(that interface{}) bool {
 		if !this.Votes[i].Equal(&that1.Votes[i]) {
 			return false
 		}
+	}
+	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
+	return true
+}
+func (this *EventAttribute) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*EventAttribute)
+	if !ok {
+		that2, ok := that.(EventAttribute)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Key, that1.Key) {
+		return false
+	}
+	if !bytes.Equal(this.Value, that1.Value) {
+		return false
+	}
+	if this.Index != that1.Index {
+		return false
 	}
 	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
 		return false
@@ -7232,6 +7341,11 @@ func (m *ResponseCommit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i -= len(m.XXX_unrecognized)
 		copy(dAtA[i:], m.XXX_unrecognized)
 	}
+	if m.RetainHeight != 0 {
+		i = encodeVarintTypes(dAtA, i, uint64(m.RetainHeight))
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.Data) > 0 {
 		i -= len(m.Data)
 		copy(dAtA[i:], m.Data)
@@ -7504,6 +7618,57 @@ func (m *LastCommitInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintTypes(dAtA, i, uint64(m.Round))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventAttribute) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventAttribute) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventAttribute) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Index {
+		i--
+		if m.Index {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -8612,8 +8777,12 @@ func NewPopulatedResponseCommit(r randyTypes, easy bool) *ResponseCommit {
 	for i := 0; i < v30; i++ {
 		this.Data[i] = byte(r.Intn(256))
 	}
+	this.RetainHeight = int64(r.Int63())
+	if r.Intn(2) == 0 {
+		this.RetainHeight *= -1
+	}
 	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 4)
 	}
 	return this
 }
@@ -8710,15 +8879,34 @@ func NewPopulatedLastCommitInfo(r randyTypes, easy bool) *LastCommitInfo {
 	return this
 }
 
+func NewPopulatedEventAttribute(r randyTypes, easy bool) *EventAttribute {
+	this := &EventAttribute{}
+	v35 := r.Intn(100)
+	this.Key = make([]byte, v35)
+	for i := 0; i < v35; i++ {
+		this.Key[i] = byte(r.Intn(256))
+	}
+	v36 := r.Intn(100)
+	this.Value = make([]byte, v36)
+	for i := 0; i < v36; i++ {
+		this.Value[i] = byte(r.Intn(256))
+	}
+	this.Index = bool(bool(r.Intn(2) == 0))
+	if !easy && r.Intn(10) != 0 {
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 4)
+	}
+	return this
+}
+
 func NewPopulatedEvent(r randyTypes, easy bool) *Event {
 	this := &Event{}
 	this.Type = string(randStringTypes(r))
 	if r.Intn(5) != 0 {
-		v35 := r.Intn(5)
-		this.Attributes = make([]kv.Pair, v35)
-		for i := 0; i < v35; i++ {
-			v36 := kv.NewPopulatedPair(r, easy)
-			this.Attributes[i] = *v36
+		v37 := r.Intn(5)
+		this.Attributes = make([]EventAttribute, v37)
+		for i := 0; i < v37; i++ {
+			v38 := NewPopulatedEventAttribute(r, easy)
+			this.Attributes[i] = *v38
 		}
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -8729,60 +8917,60 @@ func NewPopulatedEvent(r randyTypes, easy bool) *Event {
 
 func NewPopulatedHeader(r randyTypes, easy bool) *Header {
 	this := &Header{}
-	v37 := NewPopulatedVersion(r, easy)
-	this.Version = *v37
+	v39 := NewPopulatedVersion(r, easy)
+	this.Version = *v39
 	this.ChainID = string(randStringTypes(r))
 	this.Height = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.Height *= -1
 	}
-	v38 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
-	this.Time = *v38
-	v39 := NewPopulatedBlockID(r, easy)
-	this.LastBlockId = *v39
-	v40 := r.Intn(100)
-	this.LastCommitHash = make([]byte, v40)
-	for i := 0; i < v40; i++ {
+	v40 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
+	this.Time = *v40
+	v41 := NewPopulatedBlockID(r, easy)
+	this.LastBlockId = *v41
+	v42 := r.Intn(100)
+	this.LastCommitHash = make([]byte, v42)
+	for i := 0; i < v42; i++ {
 		this.LastCommitHash[i] = byte(r.Intn(256))
 	}
-	v41 := r.Intn(100)
-	this.DataHash = make([]byte, v41)
-	for i := 0; i < v41; i++ {
+	v43 := r.Intn(100)
+	this.DataHash = make([]byte, v43)
+	for i := 0; i < v43; i++ {
 		this.DataHash[i] = byte(r.Intn(256))
 	}
-	v42 := r.Intn(100)
-	this.ValidatorsHash = make([]byte, v42)
-	for i := 0; i < v42; i++ {
+	v44 := r.Intn(100)
+	this.ValidatorsHash = make([]byte, v44)
+	for i := 0; i < v44; i++ {
 		this.ValidatorsHash[i] = byte(r.Intn(256))
 	}
-	v43 := r.Intn(100)
-	this.NextValidatorsHash = make([]byte, v43)
-	for i := 0; i < v43; i++ {
+	v45 := r.Intn(100)
+	this.NextValidatorsHash = make([]byte, v45)
+	for i := 0; i < v45; i++ {
 		this.NextValidatorsHash[i] = byte(r.Intn(256))
 	}
-	v44 := r.Intn(100)
-	this.ConsensusHash = make([]byte, v44)
-	for i := 0; i < v44; i++ {
+	v46 := r.Intn(100)
+	this.ConsensusHash = make([]byte, v46)
+	for i := 0; i < v46; i++ {
 		this.ConsensusHash[i] = byte(r.Intn(256))
 	}
-	v45 := r.Intn(100)
-	this.AppHash = make([]byte, v45)
-	for i := 0; i < v45; i++ {
+	v47 := r.Intn(100)
+	this.AppHash = make([]byte, v47)
+	for i := 0; i < v47; i++ {
 		this.AppHash[i] = byte(r.Intn(256))
 	}
-	v46 := r.Intn(100)
-	this.LastResultsHash = make([]byte, v46)
-	for i := 0; i < v46; i++ {
+	v48 := r.Intn(100)
+	this.LastResultsHash = make([]byte, v48)
+	for i := 0; i < v48; i++ {
 		this.LastResultsHash[i] = byte(r.Intn(256))
 	}
-	v47 := r.Intn(100)
-	this.EvidenceHash = make([]byte, v47)
-	for i := 0; i < v47; i++ {
+	v49 := r.Intn(100)
+	this.EvidenceHash = make([]byte, v49)
+	for i := 0; i < v49; i++ {
 		this.EvidenceHash[i] = byte(r.Intn(256))
 	}
-	v48 := r.Intn(100)
-	this.ProposerAddress = make([]byte, v48)
-	for i := 0; i < v48; i++ {
+	v50 := r.Intn(100)
+	this.ProposerAddress = make([]byte, v50)
+	for i := 0; i < v50; i++ {
 		this.ProposerAddress[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -8803,13 +8991,13 @@ func NewPopulatedVersion(r randyTypes, easy bool) *Version {
 
 func NewPopulatedBlockID(r randyTypes, easy bool) *BlockID {
 	this := &BlockID{}
-	v49 := r.Intn(100)
-	this.Hash = make([]byte, v49)
-	for i := 0; i < v49; i++ {
+	v51 := r.Intn(100)
+	this.Hash = make([]byte, v51)
+	for i := 0; i < v51; i++ {
 		this.Hash[i] = byte(r.Intn(256))
 	}
-	v50 := NewPopulatedPartSetHeader(r, easy)
-	this.PartsHeader = *v50
+	v52 := NewPopulatedPartSetHeader(r, easy)
+	this.PartsHeader = *v52
 	if !easy && r.Intn(10) != 0 {
 		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
 	}
@@ -8822,9 +9010,9 @@ func NewPopulatedPartSetHeader(r randyTypes, easy bool) *PartSetHeader {
 	if r.Intn(2) == 0 {
 		this.Total *= -1
 	}
-	v51 := r.Intn(100)
-	this.Hash = make([]byte, v51)
-	for i := 0; i < v51; i++ {
+	v53 := r.Intn(100)
+	this.Hash = make([]byte, v53)
+	for i := 0; i < v53; i++ {
 		this.Hash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -8835,9 +9023,9 @@ func NewPopulatedPartSetHeader(r randyTypes, easy bool) *PartSetHeader {
 
 func NewPopulatedValidator(r randyTypes, easy bool) *Validator {
 	this := &Validator{}
-	v52 := r.Intn(100)
-	this.Address = make([]byte, v52)
-	for i := 0; i < v52; i++ {
+	v54 := r.Intn(100)
+	this.Address = make([]byte, v54)
+	for i := 0; i < v54; i++ {
 		this.Address[i] = byte(r.Intn(256))
 	}
 	this.Power = int64(r.Int63())
@@ -8852,8 +9040,8 @@ func NewPopulatedValidator(r randyTypes, easy bool) *Validator {
 
 func NewPopulatedValidatorUpdate(r randyTypes, easy bool) *ValidatorUpdate {
 	this := &ValidatorUpdate{}
-	v53 := NewPopulatedPubKey(r, easy)
-	this.PubKey = *v53
+	v55 := NewPopulatedPubKey(r, easy)
+	this.PubKey = *v55
 	this.Power = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.Power *= -1
@@ -8866,8 +9054,8 @@ func NewPopulatedValidatorUpdate(r randyTypes, easy bool) *ValidatorUpdate {
 
 func NewPopulatedVoteInfo(r randyTypes, easy bool) *VoteInfo {
 	this := &VoteInfo{}
-	v54 := NewPopulatedValidator(r, easy)
-	this.Validator = *v54
+	v56 := NewPopulatedValidator(r, easy)
+	this.Validator = *v56
 	this.SignedLastBlock = bool(bool(r.Intn(2) == 0))
 	if !easy && r.Intn(10) != 0 {
 		this.XXX_unrecognized = randUnrecognizedTypes(r, 3)
@@ -8878,9 +9066,9 @@ func NewPopulatedVoteInfo(r randyTypes, easy bool) *VoteInfo {
 func NewPopulatedPubKey(r randyTypes, easy bool) *PubKey {
 	this := &PubKey{}
 	this.Type = string(randStringTypes(r))
-	v55 := r.Intn(100)
-	this.Data = make([]byte, v55)
-	for i := 0; i < v55; i++ {
+	v57 := r.Intn(100)
+	this.Data = make([]byte, v57)
+	for i := 0; i < v57; i++ {
 		this.Data[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -8892,14 +9080,14 @@ func NewPopulatedPubKey(r randyTypes, easy bool) *PubKey {
 func NewPopulatedEvidence(r randyTypes, easy bool) *Evidence {
 	this := &Evidence{}
 	this.Type = string(randStringTypes(r))
-	v56 := NewPopulatedValidator(r, easy)
-	this.Validator = *v56
+	v58 := NewPopulatedValidator(r, easy)
+	this.Validator = *v58
 	this.Height = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.Height *= -1
 	}
-	v57 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
-	this.Time = *v57
+	v59 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
+	this.Time = *v59
 	this.TotalVotingPower = int64(r.Int63())
 	if r.Intn(2) == 0 {
 		this.TotalVotingPower *= -1
@@ -8929,9 +9117,9 @@ func randUTF8RuneTypes(r randyTypes) rune {
 	return rune(ru + 61)
 }
 func randStringTypes(r randyTypes) string {
-	v58 := r.Intn(100)
-	tmps := make([]rune, v58)
-	for i := 0; i < v58; i++ {
+	v60 := r.Intn(100)
+	tmps := make([]rune, v60)
+	for i := 0; i < v60; i++ {
 		tmps[i] = randUTF8RuneTypes(r)
 	}
 	return string(tmps)
@@ -8953,11 +9141,11 @@ func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte
 	switch wire {
 	case 0:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v59 := r.Int63()
+		v61 := r.Int63()
 		if r.Intn(2) == 0 {
-			v59 *= -1
+			v61 *= -1
 		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v59))
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v61))
 	case 1:
 		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
 		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -9810,6 +9998,9 @@ func (m *ResponseCommit) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	if m.RetainHeight != 0 {
+		n += 1 + sovTypes(uint64(m.RetainHeight))
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -9926,6 +10117,29 @@ func (m *LastCommitInfo) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovTypes(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *EventAttribute) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Index {
+		n += 2
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -14210,6 +14424,25 @@ func (m *ResponseCommit) Unmarshal(dAtA []byte) error {
 				m.Data = []byte{}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RetainHeight", wireType)
+			}
+			m.RetainHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RetainHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(dAtA[iNdEx:])
@@ -14897,6 +15130,148 @@ func (m *LastCommitInfo) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *EventAttribute) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: EventAttribute: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: EventAttribute: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Index = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *Event) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -14987,7 +15362,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Attributes = append(m.Attributes, kv.Pair{})
+			m.Attributes = append(m.Attributes, EventAttribute{})
 			if err := m.Attributes[len(m.Attributes)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

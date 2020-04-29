@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -57,7 +58,7 @@ func NewReactor(consensusState *State, fastSync bool, options ...ReactorOption) 
 		metrics:  NopMetrics(),
 	}
 	conR.updateFastSyncingMetric()
-	conR.BaseReactor = *p2p.NewBaseReactor("Reactor", conR)
+	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
 
 	for _, option := range options {
 		option(conR)
@@ -98,7 +99,7 @@ func (conR *Reactor) OnStop() {
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
-func (conR *Reactor) SwitchToConsensus(state sm.State, blocksSynced int) {
+func (conR *Reactor) SwitchToConsensus(state sm.State, blocksSynced uint64) {
 	conR.Logger.Info("SwitchToConsensus")
 	conR.conS.reconstructLastCommit(state)
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
@@ -493,8 +494,8 @@ OUTER_LOOP:
 			}
 		}
 
-		// If the peer is on a previous height, help catch up.
-		if (0 < prs.Height) && (prs.Height < rs.Height) {
+		// If the peer is on a previous height that we have, help catch up.
+		if (0 < prs.Height) && (prs.Height < rs.Height) && (prs.Height >= conR.conS.blockStore.Base()) {
 			heightLogger := logger.With("height", prs.Height)
 
 			// if we never received the commit message from the peer, the block parts wont be initialized
@@ -502,7 +503,7 @@ OUTER_LOOP:
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
 					heightLogger.Error("Failed to load block meta",
-						"blockstoreHeight", conR.conS.blockStore.Height())
+						"blockstoreBase", conR.conS.blockStore.Base(), "blockstoreHeight", conR.conS.blockStore.Height())
 					time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
@@ -566,8 +567,8 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 		// Ensure that the peer's PartSetHeader is correct
 		blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 		if blockMeta == nil {
-			logger.Error("Failed to load block meta",
-				"ourHeight", rs.Height, "blockstoreHeight", conR.conS.blockStore.Height())
+			logger.Error("Failed to load block meta", "ourHeight", rs.Height,
+				"blockstoreBase", conR.conS.blockStore.Base(), "blockstoreHeight", conR.conS.blockStore.Height())
 			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 			return
 		} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
@@ -802,15 +803,17 @@ OUTER_LOOP:
 		// Maybe send Height/CatchupCommitRound/CatchupCommit.
 		{
 			prs := ps.GetRoundState()
-			if prs.CatchupCommitRound != -1 && 0 < prs.Height && prs.Height <= conR.conS.blockStore.Height() {
-				commit := conR.conS.LoadCommit(prs.Height)
-				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
-					Height:  prs.Height,
-					Round:   commit.Round,
-					Type:    types.PrecommitType,
-					BlockID: commit.BlockID,
-				}))
-				time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
+			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= conR.conS.blockStore.Height() &&
+				prs.Height >= conR.conS.blockStore.Base() {
+				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
+					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
+						Height:  prs.Height,
+						Round:   commit.Round,
+						Type:    types.PrecommitType,
+						BlockID: commit.BlockID,
+					}))
+					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
+				}
 			}
 		}
 
@@ -1401,9 +1404,6 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }

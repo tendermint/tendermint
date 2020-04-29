@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -26,7 +27,9 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	app := kvstore.NewApplication()
+	app.RetainBlocks = 1
+	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -40,9 +43,9 @@ func TestApplyBlock(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
-	//nolint:ineffassign
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	_, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
+	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
 }
@@ -124,10 +127,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
-	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
-	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
-	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
-	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
+	height1, val1 := int64(8), state.Validators.Validators[0].Address
+	height2, val2 := int64(3), state.Validators.Validators[1].Address
+	ev1 := types.NewMockEvidence(height1, time.Now(), val1)
+	ev2 := types.NewMockEvidence(height2, time.Now(), val2)
 
 	now := tmtime.Now()
 	valSet := state.Validators
@@ -355,7 +358,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		{PubKey: types.TM2PB.PubKey(pubkey), Power: 10},
 	}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	state, _, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 
 	// test new validator was added to NextValidators
@@ -409,7 +412,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		{PubKey: types.TM2PB.PubKey(state.Validators.Validators[0].PubKey), Power: 0},
 	}
 
-	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, blockID, block) })
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 

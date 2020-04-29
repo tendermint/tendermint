@@ -3,8 +3,9 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
-N=$3
-PROXY_APP=$4
+IPV=$3
+N=$4
+PROXY_APP=$5
 
 ID=1
 
@@ -24,11 +25,11 @@ docker rm -vf "local_testnet_$ID"
 set -e
 
 # NOTE that we do not provide persistent_peers
-bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
+bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" $IPV "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 echo "started local_testnet_$ID"
 
 # if the client runs forever, it means addrbook wasn't saved or was empty
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $IPV $ID $N"
 
 # Now we know that the node is up.
 
@@ -53,11 +54,11 @@ docker rm -vf "local_testnet_$ID"
 set -e
 
 # NOTE that we do not provide persistent_peers
-bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
+bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" $IPV "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 echo "started local_testnet_$ID"
 
 # if the client runs forever, it means other peers have removed us from their books (which should not happen)
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $IPV $ID $N"
 
 # Now we know that the node is up.
 

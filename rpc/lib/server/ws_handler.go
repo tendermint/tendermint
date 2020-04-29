@@ -92,7 +92,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := newWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
@@ -154,7 +154,7 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(
+func newWSConnection(
 	baseConn *websocket.Conn,
 	funcMap map[string]*RPCFunc,
 	cdc *amino.Codec,
@@ -299,8 +299,6 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
-	var request types.RPCRequest
-
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -308,7 +306,7 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(-1), err))
 			go wsc.readRoutine()
 		}
 	}()
@@ -339,6 +337,7 @@ func (wsc *wsConnection) readRoutine() {
 				return
 			}
 
+			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCParseError(errors.Wrap(err, "error unmarshaling request")))

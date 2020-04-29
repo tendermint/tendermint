@@ -34,21 +34,21 @@ The following metrics are available:
 | consensus_rounds                       | Gauge     | 0.21.0    |               | Number of rounds                                                       |
 | consensus_num_txs                      | Gauge     | 0.21.0    |               | Number of transactions                                                 |
 | consensus_total_txs                    | Gauge     | 0.21.0    |               | Total number of transactions committed                                 |
-| consensus_block_parts                  | counter   | on dev    | peer_id       | number of blockparts transmitted by peer                               |
-| consensus_latest_block_height          | gauge     | on dev    |               | /status sync_info number                                               |
-| consensus_fast_syncing                 | gauge     | on dev    |               | either 0 (not fast syncing) or 1 (syncing)                             |
+| consensus_block_parts                  | counter   | 0.25.0    | peer_id       | number of blockparts transmitted by peer                               |
+| consensus_latest_block_height          | gauge     | 0.25.0    |               | /status sync_info number                                               |
+| consensus_fast_syncing                 | gauge     | 0.25.0    |               | either 0 (not fast syncing) or 1 (syncing)                             |
 | consensus_block_size_bytes             | Gauge     | 0.21.0    |               | Block size in bytes                                                    |
 | p2p_peers                              | Gauge     | 0.21.0    |               | Number of peers node's connected to                                    |
-| p2p_peer_receive_bytes_total           | counter   | on dev    | peer_id, chID | number of bytes per channel received from a given peer                 |
-| p2p_peer_send_bytes_total              | counter   | on dev    | peer_id, chID | number of bytes per channel sent to a given peer                       |
-| p2p_peer_pending_send_bytes            | gauge     | on dev    | peer_id       | number of pending bytes to be sent to a given peer                     |
-| p2p_num_txs                            | gauge     | on dev    | peer_id       | number of transactions submitted by each peer_id                       |
-| p2p_pending_send_bytes                 | gauge     | on dev    | peer_id       | amount of data pending to be sent to peer                              |
+| p2p_peer_receive_bytes_total           | counter   | 0.25.0    | peer_id, chID | number of bytes per channel received from a given peer                 |
+| p2p_peer_send_bytes_total              | counter   | 0.25.0    | peer_id, chID | number of bytes per channel sent to a given peer                       |
+| p2p_peer_pending_send_bytes            | gauge     | 0.25.0    | peer_id       | number of pending bytes to be sent to a given peer                     |
+| p2p_num_txs                            | gauge     | 0.25.0    | peer_id       | number of transactions submitted by each peer_id                       |
+| p2p_pending_send_bytes                 | gauge     | 0.25.0    | peer_id       | amount of data pending to be sent to peer                              |
 | mempool_size                           | Gauge     | 0.21.0    |               | Number of uncommitted transactions                                     |
-| mempool_tx_size_bytes                  | histogram | on dev    |               | transaction sizes in bytes                                             |
-| mempool_failed_txs                     | counter   | on dev    |               | number of failed transactions                                          |
-| mempool_recheck_times                  | counter   | on dev    |               | number of transactions rechecked in the mempool                        |
-| state_block_processing_time            | histogram | on dev    |               | time between BeginBlock and EndBlock in ms                             |
+| mempool_tx_size_bytes                  | histogram | 0.25.0    |               | transaction sizes in bytes                                             |
+| mempool_failed_txs                     | counter   | 0.25.0    |               | number of failed transactions                                          |
+| mempool_recheck_times                  | counter   | 0.25.0    |               | number of transactions rechecked in the mempool                        |
+| state_block_processing_time            | histogram | 0.25.0    |               | time between BeginBlock and EndBlock in ms                             |
 
 ## Useful queries
 

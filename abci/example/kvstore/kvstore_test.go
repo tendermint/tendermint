@@ -30,6 +30,11 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	// repeating tx doesn't raise error
 	ar = app.DeliverTx(req)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	app.Commit()
+
+	info := app.Info(types.RequestInfo{})
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery := app.Query(types.RequestQuery{
@@ -37,7 +42,9 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Data: []byte(key),
 	})
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery = app.Query(types.RequestQuery{
@@ -46,7 +53,9 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Prove: true,
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }
 
 func TestKVStoreKV(t *testing.T) {
@@ -300,6 +309,13 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	ar, err = app.DeliverTxSync(types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	_, err = app.CommitSync()
+	require.NoError(t, err)
+
+	info, err := app.InfoSync(types.RequestInfo{})
+	require.NoError(t, err)
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery, err := app.QuerySync(types.RequestQuery{
@@ -308,7 +324,9 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery, err = app.QuerySync(types.RequestQuery{
@@ -318,5 +336,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }

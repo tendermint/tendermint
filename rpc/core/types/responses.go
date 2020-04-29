@@ -65,7 +65,13 @@ type SyncInfo struct {
 	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
 	LatestBlockHeight int64          `json:"latest_block_height"`
 	LatestBlockTime   time.Time      `json:"latest_block_time"`
-	CatchingUp        bool           `json:"catching_up"`
+
+	EarliestBlockHash   bytes.HexBytes `json:"earliest_block_hash"`
+	EarliestAppHash     bytes.HexBytes `json:"earliest_app_hash"`
+	EarliestBlockHeight int64          `json:"earliest_block_height"`
+	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
+
+	CatchingUp bool `json:"catching_up"`
 }
 
 // Info about the node's validator
@@ -116,10 +122,14 @@ type Peer struct {
 	RemoteIP         string               `json:"remote_ip"`
 }
 
-// Validators for a height
+// Validators for a height.
 type ResultValidators struct {
 	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
+	// Count of actual validators in this result
+	Count int `json:"count"`
+	// Total number of validators
+	Total int `json:"total"`
 }
 
 // ConsensusParams for given height
@@ -148,9 +158,10 @@ type ResultConsensusState struct {
 
 // CheckTx result
 type ResultBroadcastTx struct {
-	Code uint32         `json:"code"`
-	Data bytes.HexBytes `json:"data"`
-	Log  string         `json:"log"`
+	Code      uint32         `json:"code"`
+	Data      bytes.HexBytes `json:"data"`
+	Log       string         `json:"log"`
+	Codespace string         `json:"codespace"`
 
 	Hash bytes.HexBytes `json:"hash"`
 }

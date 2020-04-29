@@ -263,12 +263,6 @@ func (cfg BaseConfig) PrivValidatorStateFile() string {
 	return rootify(cfg.PrivValidatorState, cfg.RootDir)
 }
 
-// OldPrivValidatorFile returns the full path of the priv_validator.json from pre v0.28.0.
-// TODO: eventually remove.
-func (cfg BaseConfig) OldPrivValidatorFile() string {
-	return rootify(oldPrivValPath, cfg.RootDir)
-}
-
 // NodeKeyFile returns the full path to the node_key.json file
 func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
@@ -733,6 +727,8 @@ func (cfg *FastSyncConfig) ValidateBasic() error {
 	case "v0":
 		return nil
 	case "v1":
+		return nil
+	case "v2":
 		return nil
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)

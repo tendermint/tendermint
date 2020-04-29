@@ -5,12 +5,13 @@ import (
 	"sync/atomic"
 
 	"github.com/Workiva/go-datastructures/queue"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 type handleFunc = func(event Event) (Event, error)
 
-// Routines are a structure which model a finite state machine as serialized
+// Routine is a structure that models a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
 // handles the concurrency and messaging guarantees. Events are sent via
 // `send` are handled by the `handle` function to produce an iterator
@@ -80,7 +81,7 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s produced %T %+v\n", rt.name, oEvent, oEvent))
+		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v\n", rt.name, oEvent, oEvent))
 
 		rt.out <- oEvent
 	}
@@ -98,6 +99,7 @@ func (rt *Routine) send(event Event) bool {
 		rt.logger.Info(fmt.Sprintf("%s: send failed, queue was full/stopped \n", rt.name))
 		return false
 	}
+
 	rt.metrics.EventsSent.With("routine", rt.name).Add(1)
 	return true
 }

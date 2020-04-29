@@ -4,6 +4,7 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 )
 
+// Event is the type that can be added to the priority queue.
 type Event queue.Item
 
 type priority interface {

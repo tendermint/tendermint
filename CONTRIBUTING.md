@@ -12,7 +12,7 @@ landing changes in master.
 All work on the code base should be motivated by a [Github
 Issue](https://github.com/tendermint/tendermint/issues).
 [Search](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)
-is a good place start when looking for places to contribute.  If you
+is a good place start when looking for places to contribute. If you
 would like to work on an issue which already exists, please indicate so
 by leaving a comment.
 
@@ -31,7 +31,7 @@ at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
 When the problem is well understood but the solution leads to large
-strucural changes to the code base, these changes should be proposed in
+structural changes to the code base, these changes should be proposed in
 the form of an [Architectural Decision Record
 (ADR)](./docs/architecture/). The ADR will help build consensus on an
 overall strategy to ensure the code base maintains coherence
@@ -49,8 +49,9 @@ maintainers to take a look.
 ![Contributing flow](./docs/imgs/contributing.png)
 
 Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
-* Contributors don’t waste their time implementing/proposing features which won’t land in master.
-* Maintainers have the necessary context in order to support and review contributions.
+
+- Contributors don’t waste their time implementing/proposing features which won’t land in master.
+- Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
 
@@ -97,6 +98,31 @@ When updating dependencies, please only update the particular dependencies you
 need. Instead of running `go get -u=patch`, which will update anything,
 specify exactly the dependency you want to update, eg.
 `GO111MODULE=on go get -u github.com/tendermint/go-amino@master`.
+
+## Protobuf
+
+We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
+
+For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+
+There are two ways to generate your proto stubs.
+
+1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
+2. Run `make proto-gen` after installing `protoc` and gogoproto.
+
+### Installation Instructions
+
+To install `protoc`, download an appropriate release (https://github.com/protocolbuffers/protobuf) and then move the provided binaries into your PATH (follow instructions in README included with the download).
+
+To install `gogoproto`, do the following:
+
+```sh
+$ go get github.com/gogo/protobuf/gogoproto
+$ cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
+$ make install
+```
+
+You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
 
 ## Vagrant
 
@@ -164,12 +190,28 @@ easy to reference the pull request where a change was introduced.
 - make changes and update the `CHANGELOG_PENDING.md` to record your change
 - before submitting a pull request, run `git rebase` on top of the latest `master`
 
+When you have submitted a pull request label the pull request with either `R:minor`, if the change can be accepted in a minor release, or `R:major`, if the change is meant for a major release.
+
 ### Pull Merge Procedure
 
 - ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
-- squash merge pull request
+- [squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
+
+### Git Commit Style
+
+We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
+
+\```
+cmd/debug: execute p.Signal only when p is not nil
+
+[potentially longer description in the body]
+
+Fixes #nnnn
+\```
+
+Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
 ### Release Procedure
 
@@ -185,20 +227,50 @@ easy to reference the pull request where a change was introduced.
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - reset the `CHANGELOG_PENDING.md`
-   - bump versions
+   - bump the appropriate versions in `version.go`
 4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
 5. merge back to master (don't squash merge!)
 
 #### Minor Release
 
-If there were no breaking changes and you need to create a release nonetheless,
-the procedure is almost exactly like with a new release above.
+Minor releases are done differently from major releases. Minor release pull requests should be labeled with `R:minor` if they are to be included.
 
-The only difference is that in the end you create a pull request against the existing `X.X` branch.
-The branch name should match the release number you want to create.
-Merging this PR will trigger the next release.
-For example, if the PR is against an existing 0.34 branch which already contains a v0.34.0 release/tag,
-the patch version will be incremented and the created release will be v0.34.1.
+1. Checkout the last major release, `vX.X`.
+
+   - `git checkout vX.X`
+
+2. Create a release candidate branch off the most recent major release with your upcoming version specified, `rc1/vX.X.x`, and push the branch.
+
+   - `git checkout -b rc1/vX.X.x`
+   - `git push -u origin rc1/vX.X.x`
+
+3. Create a cherry-picking branch, and make a pull request into the release candidate.
+
+   - `git checkout -b cherry-picks/rc1/vX.X.x`
+
+     - This is for devs to approve the commits that are entering the release candidate.
+     - There may be merge conflicts.
+
+4. Begin cherry-picking.
+
+   - `git cherry-pick {PR commit from master you wish to cherry pick}`
+   - Fix conflicts
+   - `git cherry-pick --continue`
+   - `git push cherry-picks/rc1/vX.X.x`
+
+   > Once all commits are included and CI/tests have passed, then it is ready for a release.
+
+5. Create a release branch `release/vX.X.x` off the release candidate branch.
+
+   - `git checkout -b release/vX.X.x`
+   - `git push -u origin release/vX.X.x`
+     > Note this Branch is protected once pushed, you will need admin help to make any change merges into the branch.
+
+6. Merge Commit the release branch into the latest major release branch `vX.X`, this will start the release process.
+
+7. Create a Pull Request back to master with the CHANGELOG & version changes from the latest release.
+   - Remove all `R:minor` labels from the pull requests that were included in the release.
+     > Note: Do not merge the release branch into master.
 
 #### Backport Release
 

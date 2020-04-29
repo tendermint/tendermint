@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/mock"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -117,6 +117,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.Validators,
 				privVals[proposerAddr.String()],
 				chainID,
+				time.Now(),
 			)
 			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := types.NewCommit(
@@ -162,10 +163,20 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote, err := types.MakeVote(height, blockID, state.Validators, privVals[proposerAddr.String()], chainID)
+		goodVote, err := types.MakeVote(height,
+			blockID,
+			state.Validators,
+			privVals[proposerAddr.String()],
+			chainID,
+			time.Now(),
+		)
 		require.NoError(t, err, "height %d", height)
+
+		bpvPubKey, err := badPrivVal.GetPubKey()
+		require.NoError(t, err)
+
 		badVote := &types.Vote{
-			ValidatorAddress: badPrivVal.GetPubKey().Address(),
+			ValidatorAddress: bpvPubKey.Address(),
 			ValidatorIndex:   0,
 			Height:           height,
 			Round:            0,
@@ -200,8 +211,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
-		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerIdx, proposerAddr)
+		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
 		if height > 1 {
 			/*
 				A block with too much evidence fails
@@ -254,7 +264,7 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
 	addr, _ := state.Validators.GetByIndex(0)
-	alreadyCommittedEvidence := types.NewMockEvidence(height, time.Now(), 0, addr)
+	alreadyCommittedEvidence := types.NewMockEvidence(height, time.Now(), addr)
 	block.Evidence.Evidence = []types.Evidence{alreadyCommittedEvidence}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)

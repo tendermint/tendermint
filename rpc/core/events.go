@@ -12,8 +12,13 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+const (
+	// Buffer on the Tendermint (server) side to allow some slowness in clients.
+	subBufferSize = 100
+)
+
 // Subscribe for events via WebSocket.
-// More: https://tendermint.com/rpc/#/Websocket/subscribe
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
 func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	addr := ctx.RemoteAddr()
 
@@ -33,11 +38,13 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := eventBus.Subscribe(subCtx, addr, q)
+	sub, err := eventBus.Subscribe(subCtx, addr, q, subBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
+	// Capture the current ID, since it can change in the future.
+	subscriptionID := ctx.JSONReq.ID
 	go func() {
 		for {
 			select {
@@ -46,7 +53,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
-						ctx.JSONReq.ID,
+						subscriptionID,
 						resultEvent,
 					))
 			case <-sub.Cancelled():
@@ -59,7 +66,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 					}
 					ctx.WSConn.TryWriteRPCResponse(
 						rpctypes.RPCServerError(
-							ctx.JSONReq.ID,
+							subscriptionID,
 							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
 						))
 				}
@@ -72,7 +79,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 }
 
 // Unsubscribe from events via WebSocket.
-// More: https://tendermint.com/rpc/#/Websocket/unsubscribe
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe
 func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
 	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
@@ -88,7 +95,7 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 }
 
 // UnsubscribeAll from all events via WebSocket.
-// More: https://tendermint.com/rpc/#/Websocket/unsubscribe_all
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe_all
 func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
 	logger.Info("Unsubscribe from all", "remote", addr)

@@ -14,6 +14,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
+
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
