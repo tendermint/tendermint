@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/lite2/store"
@@ -54,7 +53,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	shBz, err := proto.Marshal(pbsh)
 	if err != nil {
-		return errors.Wrap(err, "marshalling SignedHeader")
+		return fmt.Errorf("marshalling SignedHeader: %w", err)
 	}
 
 	pbvs, err := valSet.ToProto()
@@ -64,7 +63,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	valSetBz, err := proto.Marshal(pbvs)
 	if err != nil {
-		return errors.Wrap(err, "marshalling validator set")
+		return fmt.Errorf("marshalling validator set: %w", err)
 	}
 
 	s.mtx.Lock()
@@ -306,7 +305,7 @@ func (s *dbs) Prune(size uint16) error {
 	s.size -= uint16(pruned)
 
 	if wErr := s.db.SetSync(sizeKey, marshalSize(s.size)); wErr != nil {
-		return errors.Wrap(wErr, "failed to persist size")
+		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
 	return nil
