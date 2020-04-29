@@ -91,7 +91,6 @@ func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()
-		fmt.Println(val)
 		if count == maxNum {
 			return evidence
 		}
@@ -366,6 +365,7 @@ func (evpool *Pool) removeEvidenceFromList(
 }
 
 func (evpool *Pool) pruneExpiredPOLC() {
+	evpool.logger.Debug("Pruning expired POLC's")
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPOLC})
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
