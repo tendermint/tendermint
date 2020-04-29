@@ -333,6 +333,12 @@ func (bs *BlockStore) saveState() {
 	bsJSON.Save(bs.db)
 }
 
+// SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
+func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) error {
+	seenCommitBytes := cdc.MustMarshalBinaryBare(seenCommit)
+	return bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
+}
+
 //-----------------------------------------------------------------------------
 
 func calcBlockMetaKey(height int64) []byte {

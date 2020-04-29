@@ -291,7 +291,7 @@ func (r *BlockchainReactor) demux() {
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
 			case pcFinished:
-				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced)
+				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced > 0)
 				r.processor.stop()
 			}
 

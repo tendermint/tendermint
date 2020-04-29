@@ -1,13 +1,13 @@
 package config
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -65,6 +65,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
 	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
@@ -78,6 +79,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		StateSync:       DefaultStateSyncConfig(),
 		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
@@ -92,6 +94,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		StateSync:       TestStateSyncConfig(),
 		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
@@ -116,24 +119,27 @@ func (cfg *Config) ValidateBasic() error {
 		return err
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [rpc] section")
+		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
 	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [p2p] section")
+		return fmt.Errorf("error in [p2p] section: %w", err)
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [mempool] section")
+		return fmt.Errorf("error in [mempool] section: %w", err)
+	}
+	if err := cfg.StateSync.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [fastsync] section")
+		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [consensus] section")
+		return fmt.Errorf("error in [consensus] section: %w", err)
 	}
-	return errors.Wrap(
-		cfg.Instrumentation.ValidateBasic(),
-		"Error in [instrumentation] section",
-	)
+	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [instrumentation] section: %w", err)
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -292,7 +298,7 @@ func DefaultLogLevel() string {
 // DefaultPackageLogLevels returns a default log level setting so all packages
 // log at "error", while the `state` and `main` packages log at "info"
 func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,*:%s", DefaultLogLevel())
+	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
@@ -697,6 +703,69 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+// StateSyncConfig
+
+// StateSyncConfig defines the configuration for the Tendermint state sync service
+type StateSyncConfig struct {
+	Enable      bool          `mapstructure:"enable"`
+	TempDir     string        `mapstructure:"temp_dir"`
+	RPCServers  []string      `mapstructure:"rpc_servers"`
+	TrustPeriod time.Duration `mapstructure:"trust_period"`
+	TrustHeight int64         `mapstructure:"trust_height"`
+	TrustHash   string        `mapstructure:"trust_hash"`
+}
+
+func (cfg *StateSyncConfig) TrustHashBytes() []byte {
+	// validated in ValidateBasic, so we can safely panic here
+	bytes, err := hex.DecodeString(cfg.TrustHash)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+// DefaultStateSyncConfig returns a default configuration for the state sync service
+func DefaultStateSyncConfig() *StateSyncConfig {
+	return &StateSyncConfig{}
+}
+
+// TestFastSyncConfig returns a default configuration for the state sync service
+func TestStateSyncConfig() *StateSyncConfig {
+	return DefaultStateSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *StateSyncConfig) ValidateBasic() error {
+	if cfg.Enable {
+		if len(cfg.RPCServers) == 0 {
+			return errors.New("rpc_servers is required")
+		}
+		if len(cfg.RPCServers) < 2 {
+			return errors.New("at least two rpc_servers entries is required")
+		}
+		for _, server := range cfg.RPCServers {
+			if len(server) == 0 {
+				return errors.New("found empty rpc_servers entry")
+			}
+		}
+		if cfg.TrustPeriod <= 0 {
+			return errors.New("trusted_period is required")
+		}
+		if cfg.TrustHeight <= 0 {
+			return errors.New("trusted_height is required")
+		}
+		if len(cfg.TrustHash) == 0 {
+			return errors.New("trusted_hash is required")
+		}
+		_, err := hex.DecodeString(cfg.TrustHash)
+		if err != nil {
+			return fmt.Errorf("invalid trusted_hash: %w", err)
+		}
 	}
 	return nil
 }
