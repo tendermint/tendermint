@@ -224,7 +224,8 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 	}
 	m.height++
 }
-func (m *mockEvidencePool) IsCommitted(types.Evidence) bool { return false }
+func (m *mockEvidencePool) IsCommitted(types.Evidence) bool       { return false }
+func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
 
 //------------------------------------
 

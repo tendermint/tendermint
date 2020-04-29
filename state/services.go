@@ -52,3 +52,4 @@ func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
 func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
 func (m MockEvidencePool) Update(*types.Block, State)             {}
 func (m MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (m MockEvidencePool) AddPOLC(types.ProofOfLockChange) error  { return nil }
