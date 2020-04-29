@@ -15,6 +15,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	// chBufferSize is the buffer size of all event channels.
+	chBufferSize int = 1000
+)
+
 //-------------------------------------
 
 type bcBlockRequestMessage struct {
@@ -156,7 +161,7 @@ type blockApplier interface {
 // XXX: unify naming in this package around tmState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
-	blockApplier blockApplier, bufferSize int, fastSync bool) *BlockchainReactor {
+	blockApplier blockApplier, fastSync bool) *BlockchainReactor {
 	scheduler := newScheduler(state.LastBlockHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
 	// TODO: Fix naming to just newProcesssor
@@ -164,9 +169,9 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 	processor := newPcState(pContext)
 
 	return &BlockchainReactor{
-		events:    make(chan Event, bufferSize),
-		scheduler: newRoutine("scheduler", scheduler.handle, bufferSize),
-		processor: newRoutine("processor", processor.handle, bufferSize),
+		events:    make(chan Event, chBufferSize),
+		scheduler: newRoutine("scheduler", scheduler.handle, chBufferSize),
+		processor: newRoutine("processor", processor.handle, chBufferSize),
 		store:     store,
 		reporter:  reporter,
 		logger:    log.NewNopLogger(),
@@ -181,7 +186,7 @@ func NewBlockchainReactor(
 	store blockStore,
 	fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
-	return newReactor(state, store, reporter, blockApplier, 1000, fastSync)
+	return newReactor(state, store, reporter, blockApplier, fastSync)
 }
 
 // SetSwitch implements Reactor interface.
