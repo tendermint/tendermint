@@ -19,10 +19,9 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [abci] [\#4225](https://github.com/tendermint/tendermint/issues/3007) Add VersionParams in ResponseEndBlock to allow the app inform Tendermint its updated version
+- [abci] \#2671 Add Version in ConsensusParams to allow the app inform Tendermint its updated version
 
 ### BUG FIXES:
 
 - [rpc] [#\4319] Check BlockMeta is not nil in Blocks & BlockByHash
-
 
