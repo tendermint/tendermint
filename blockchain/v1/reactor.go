@@ -44,7 +44,7 @@ var (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(sm.State, uint64)
+	SwitchToConsensus(state sm.State, skipWAL bool)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -57,7 +57,8 @@ type BlockchainReactor struct {
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
 
-	fastSync bool
+	fastSync    bool
+	stateSynced bool
 
 	fsm          *BcReactorFSM
 	blocksSynced uint64
@@ -152,6 +153,19 @@ func (bcR *BlockchainReactor) OnStart() error {
 // OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	_ = bcR.Stop()
+}
+
+// SwitchToFastSync is called by the state sync reactor when switching to fast sync.
+func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
+	bcR.fastSync = true
+	bcR.initialState = state
+	bcR.state = state
+	bcR.stateSynced = true
+
+	bcR.fsm = NewFSM(state.LastBlockHeight+1, bcR)
+	bcR.fsm.SetLogger(bcR.Logger)
+	go bcR.poolRoutine()
+	return nil
 }
 
 // GetChannels implements Reactor
@@ -474,7 +488,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
-		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced)
+		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)
 		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
 	}
 	// else {
