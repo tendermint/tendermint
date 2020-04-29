@@ -19,7 +19,7 @@ func (sp *SideTxResult) String() string {
 		return ""
 	}
 
-	return fmt.Sprintf("SideTxResult{%X (Result: %v) %X}",
+	return fmt.Sprintf("SideTxResult{%X (%v) %X}",
 		cmn.Fingerprint(sp.TxHash),
 		sp.Result,
 		cmn.Fingerprint(sp.Sig),
@@ -52,7 +52,7 @@ func (sp *SideTxResultWithData) String() string {
 	}
 
 	return fmt.Sprintf("SideTxResultWithData {%s %X}",
-		sp.String(),
+		sp.SideTxResult.String(),
 		cmn.Fingerprint(sp.Data),
 	)
 }
