@@ -128,7 +128,6 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 
-// Panics if can't create directory or open file.
 func (mem *CListMempool) InitWAL() error {
 	var (
 		walDir  = mem.config.WalDir()
