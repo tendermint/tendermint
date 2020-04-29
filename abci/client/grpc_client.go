@@ -223,6 +223,42 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
 }
 
+func (cli *grpcClient) ListSnapshotsAsync(params types.RequestListSnapshots) *ReqRes {
+	req := types.ToRequestListSnapshots(params)
+	res, err := cli.client.ListSnapshots(context.Background(), req.GetListSnapshots(), grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ListSnapshots{ListSnapshots: res}})
+}
+
+func (cli *grpcClient) OfferSnapshotAsync(params types.RequestOfferSnapshot) *ReqRes {
+	req := types.ToRequestOfferSnapshot(params)
+	res, err := cli.client.OfferSnapshot(context.Background(), req.GetOfferSnapshot(), grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_OfferSnapshot{OfferSnapshot: res}})
+}
+
+func (cli *grpcClient) LoadSnapshotChunkAsync(params types.RequestLoadSnapshotChunk) *ReqRes {
+	req := types.ToRequestLoadSnapshotChunk(params)
+	res, err := cli.client.LoadSnapshotChunk(context.Background(), req.GetLoadSnapshotChunk(), grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_LoadSnapshotChunk{LoadSnapshotChunk: res}})
+}
+
+func (cli *grpcClient) ApplySnapshotChunkAsync(params types.RequestApplySnapshotChunk) *ReqRes {
+	req := types.ToRequestApplySnapshotChunk(params)
+	res, err := cli.client.ApplySnapshotChunk(context.Background(), req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}})
+}
+
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
 	reqres := NewReqRes(req)
 	reqres.Response = res // Set response
@@ -303,4 +339,26 @@ func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (*types.Re
 func (cli *grpcClient) EndBlockSync(params types.RequestEndBlock) (*types.ResponseEndBlock, error) {
 	reqres := cli.EndBlockAsync(params)
 	return reqres.Response.GetEndBlock(), cli.Error()
+}
+
+func (cli *grpcClient) ListSnapshotsSync(params types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	reqres := cli.ListSnapshotsAsync(params)
+	return reqres.Response.GetListSnapshots(), cli.Error()
+}
+
+func (cli *grpcClient) OfferSnapshotSync(params types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	reqres := cli.OfferSnapshotAsync(params)
+	return reqres.Response.GetOfferSnapshot(), cli.Error()
+}
+
+func (cli *grpcClient) LoadSnapshotChunkSync(
+	params types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	reqres := cli.LoadSnapshotChunkAsync(params)
+	return reqres.Response.GetLoadSnapshotChunk(), cli.Error()
+}
+
+func (cli *grpcClient) ApplySnapshotChunkSync(
+	params types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	reqres := cli.ApplySnapshotChunkAsync(params)
+	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
 }
