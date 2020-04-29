@@ -28,7 +28,7 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB    dbm.DB
+	stateDB dbm.DB
 	// needed to load headers to verify evidence
 	blockStore *store.BlockStore
 
@@ -124,16 +124,16 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
+	// as it's not vital to remove expired POLCs, we only prune periodically
+	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
+		evpool.pruneExpiredPOLC()
+	}
+
 	// update the state
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	evpool.state = state
 	evpool.updateValToLastHeight(block.Height, state)
-
-	// as it's not vital to remove expired POLCs, we only prune periodically
-	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
-		evpool.pruneExpiredPOLC()
-	}
 }
 
 // AddPOLC adds a proof of lock change to the evidence database
