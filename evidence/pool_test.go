@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"os"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -210,8 +210,8 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 
 	privKey := ed25519.GenPrivKey()
 	polc := types.ProofOfLockChange{
-		Votes: []types.Vote{{types.PrecommitType, 1, 1, types.BlockID{},
-			evidenceTime, valAddr, 1, []byte{}}},
+		Votes: []types.Vote{{Type: types.PrecommitType, Height: 1, Round: 1, BlockID: types.BlockID{},
+			Timestamp: evidenceTime, ValidatorAddress: valAddr, ValidatorIndex: 1, Signature: []byte{}}},
 		PubKey: privKey.PubKey(),
 	}
 
