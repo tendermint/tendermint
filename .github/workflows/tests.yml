@@ -7,23 +7,6 @@ on:
       - release/**
 
 jobs:
-  Diff:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
-        id: git_diff
-        with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
-      - name: test
-        run: exit 1
-        if: "env.GIT_DIFF == ''"
-
   cleanup-runs:
     runs-on: ubuntu-latest
     steps:
@@ -36,24 +19,40 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: technote-space/get-diff-action@v1
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2
       - name: install
         run: make install install_abci
+        if: "env.GIT_DIFF != ''"
       # Cache bin
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tm-binary
+        if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
     runs-on: ubuntu-latest
-    needs: [Build, Diff]
+    needs: Build
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: technote-space/get-diff-action@v1
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -62,15 +61,24 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tm-binary
+        if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
         shell: bash
+        if: "env.GIT_DIFF != ''"
 
   test_abci_cli:
     runs-on: ubuntu-latest
-    needs: [Build, Diff]
+    needs: Build
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: technote-space/get-diff-action@v1
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -79,8 +87,10 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tm-binary
+        if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
+        if: "env.GIT_DIFF != ''"
 
   test_apps:
     runs-on: ubuntu-latest
@@ -88,7 +98,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v1
-        id: git_diff
         with:
           SUFFIX_FILTER: |
             .go
