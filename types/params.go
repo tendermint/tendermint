@@ -67,6 +67,11 @@ type EvidenceParams struct {
 	// mechanism for handling [Nothing-At-Stake
 	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
 	MaxAgeDuration time.Duration `json:"max_age_duration"`
+
+	// Ratio for the max amount of evidence relative to the amount of validators to be included in a block
+	// i.e. MaxNumEvidence = ValSize * MaxEvidenceToValidatorsRatio
+	// where MaxNumEvidence is always rounded up. Default is 1/3 of validator size
+	MaxEvidenceToValidatorsRatio float64 `json:"max_evidence_to_validators_ratio"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -96,8 +101,9 @@ func DefaultBlockParams() BlockParams {
 // DefaultEvidenceParams returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
-		MaxAgeDuration:  48 * time.Hour,
+		MaxAgeNumBlocks:              100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:               48 * time.Hour,
+		MaxEvidenceToValidatorsRatio: 0.34,
 	}
 }
 
@@ -146,6 +152,11 @@ func (params *ConsensusParams) Validate() error {
 	if params.Evidence.MaxAgeDuration <= 0 {
 		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
+	}
+
+	if params.Evidence.MaxEvidenceToValidatorsRatio <= 0 {
+		return errors.Errorf("evidenceParams.MaxEvidenceToValidatorsRatio must be greater than 0 if provided, Got %f",
+			params.Evidence.MaxEvidenceToValidatorsRatio)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {

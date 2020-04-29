@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -97,9 +98,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
+	evidenceRatio := state.ConsensusParams.Evidence.MaxEvidenceToValidatorsRatio
 
 	// Fetch a limited amount of valid evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBytes)
+	maxNumEvidence := int64(math.Ceil(float64(state.NextValidators.Size()) * evidenceRatio))
+	if maxNumEvidence*types.MaxEvidenceBytes > maxBytes {
+		maxNumEvidence = maxBytes / types.MaxEvidenceBytes
+	}
 	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
 
 	// Fetch a limited amount of valid txs
