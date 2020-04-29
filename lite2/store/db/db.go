@@ -129,13 +129,14 @@ func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
 	}
 
 	var pbsh tmproto.SignedHeader
-	err = pbsh.Unmarshal(bz)
+	err = proto.Unmarshal(bz, &pbsh)
 	if err != nil {
 		return nil, err
 	}
 
 	signedHeader, err := types.SignedHeaderFromProto(&pbsh)
 	if err != nil {
+		fmt.Println("here")
 		return nil, err
 	}
 
