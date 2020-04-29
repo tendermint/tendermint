@@ -1092,10 +1092,10 @@ func (e MockEvidence) Bytes() []byte {
 		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
 }
 func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	if !bytes.Equal(pubKey.Address(), e.Address()) {
-		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
-			e.Address(), pubKey, pubKey.Address())
-	}
+	// if !bytes.Equal(pubKey.Address(), e.Address()) {
+	// 	return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
+	// 		e.Address(), pubKey, pubKey.Address())
+	// }
 	return nil
 }
 func (e MockEvidence) Equal(ev Evidence) bool {

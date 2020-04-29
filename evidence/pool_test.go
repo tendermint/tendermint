@@ -225,6 +225,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	stateDB := dbm.NewMemDB()
+	// pk := ed25519.GenPrivKey().PubKey()
 
 	// create validator set and state
 	valSet := &types.ValidatorSet{

@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/mock"
@@ -154,7 +155,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(errors.Wrap(err, "error start app"))
 		}
 		db := dbm.NewMemDB()
-		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, evmock.NewDefaultEvidencePool())
 		sm.SaveState(db, state)
 	}
 
@@ -508,7 +509,7 @@ func newReactorStore(
 
 	db := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.MockEvidencePool{})
+		mock.Mempool{}, evmock.NewDefaultEvidencePool())
 	sm.SaveState(db, state)
 
 	// add blocks in
