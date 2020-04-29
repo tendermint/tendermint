@@ -63,7 +63,7 @@ message State {
 
   // Consensus parameters used for validating blocks.
   // Changes returned by EndBlock and updated after Commit.
-  tendermint.proto.types.ConsensusParams consensus_params = 10 [(gogoproto.nullable) = false];
+  tendermint.proto.types.ConsensusParams consensus_params                     = 10 [(gogoproto.nullable) = false];
   int64                                  last_height_consensus_params_changed = 11;
 
   // Merkle root of the results from executing prev block

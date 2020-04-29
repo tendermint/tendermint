@@ -1,0 +1,16 @@
+pullRequestOpened: |
+  :wave: Thanks for creating a PR!   
+
+  Before we can merge this PR, please make sure that all the following items have been 
+  checked off. If any of the checklist items are not applicable, please leave them but
+  write a little note why.   
+
+  - [ ] Wrote tests  
+  - [ ] Updated CHANGELOG_PENDING.md   
+  - [ ] Linked to Github issue with discussion and accepted design OR link to spec that describes this work.  
+  - [ ] Updated relevant documentation (`docs/`) and code comments  
+  - [ ] Re-reviewed `Files changed` in the Github PR explorer  
+  - [ ] Applied Appropriate Labels  
+
+
+  Thank you for your contribution to Tendermint! :rocket:   

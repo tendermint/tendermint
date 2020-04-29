@@ -76,7 +76,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 	// TODO: is this still true with new pubsub?
 	for i := 0; i < n; i++ {
 		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToConsensus(s, 0)
+		reactors[i].SwitchToConsensus(s, false)
 	}
 	return reactors, blocksSubs, eventBuses
 }
@@ -205,7 +205,7 @@ type mockEvidencePool struct {
 
 func newMockEvidencePool(val []byte) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), 1, val)},
+		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), val)},
 	}
 }
 
@@ -226,6 +226,16 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 	m.height++
 }
 func (m *mockEvidencePool) IsCommitted(types.Evidence) bool { return false }
+func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
+	if m.height > 0 {
+		for _, e := range m.ev {
+			if e.Equal(evidence) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 //------------------------------------
 
