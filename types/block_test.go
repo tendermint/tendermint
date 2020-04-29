@@ -398,6 +398,8 @@ func TestBlockMaxDataBytes(t *testing.T) {
 }
 
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
+	evidenceRatio := 0.34
+
 	testCases := []struct {
 		maxBytes  int64
 		valsCount int
@@ -415,12 +417,12 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, evidenceRatio)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, evidenceRatio),
 				"#%v", i)
 		}
 	}
