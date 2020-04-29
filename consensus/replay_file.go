@@ -16,7 +16,7 @@ import (
 	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
