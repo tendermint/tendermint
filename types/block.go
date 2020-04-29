@@ -398,13 +398,11 @@ func (h Header) ValidateBasic() error {
 		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
-	if h.Height > 1 {
-		if len(h.ProposerAddress) != crypto.AddressSize {
-			return fmt.Errorf(
-				"invalid ProposerAddress length; got: %d, expected: %d",
-				len(h.ProposerAddress), crypto.AddressSize,
-			)
-		}
+	if len(h.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf(
+			"invalid ProposerAddress length; got: %d, expected: %d",
+			len(h.ProposerAddress), crypto.AddressSize,
+		)
 	}
 
 	// Basic validation of hashes related to application data.
