@@ -27,7 +27,7 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB    dbm.DB
+	stateDB dbm.DB
 	// needed to load headers to verify evidence
 	blockStore *store.BlockStore
 
