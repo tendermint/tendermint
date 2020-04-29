@@ -17,6 +17,6 @@ option (gogoproto.testgen_all)  = true;
 // Abstract types
 
 message Pair {
-  bytes key   = 1;
+  bytes key = 1;
   bytes value = 2;
 }

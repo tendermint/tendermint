@@ -16,9 +16,10 @@ import (
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/proxy"
@@ -118,7 +119,7 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
@@ -154,11 +155,11 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(errors.Wrap(err, "error start app"))
 		}
 		db := dbm.NewMemDB()
-		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, evmock.NewDefaultEvidencePool())
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, appl, p.bufferSize, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -425,6 +426,22 @@ func TestReactorHelperMode(t *testing.T) {
 	}
 }
 
+func TestReactorSetSwitchNil(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+
+	reactor := newTestReactor(testReactorParams{
+		logger:   log.TestingLogger(),
+		genDoc:   genDoc,
+		privVals: privVals,
+	})
+	reactor.SetSwitch(nil)
+
+	assert.Nil(t, reactor.Switch)
+	assert.Nil(t, reactor.io)
+}
+
 //----------------------------------------------
 // utility funcs
 
@@ -492,7 +509,7 @@ func newReactorStore(
 
 	db := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.MockEvidencePool{})
+		mock.Mempool{}, evmock.NewDefaultEvidencePool())
 	sm.SaveState(db, state)
 
 	// add blocks in

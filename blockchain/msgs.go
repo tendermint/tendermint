@@ -23,9 +23,6 @@ type Message interface {
 }
 
 func DecodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > MaxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), MaxMsgSize)
-	}
 	bm := new(bcproto.Message)
 	bm.Unmarshal(bz)
 	msg, err = MsgFromProto(bm)

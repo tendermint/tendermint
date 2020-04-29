@@ -48,8 +48,9 @@ func (evR *Reactor) SetLogger(l log.Logger) {
 func (evR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       EvidenceChannel,
-			Priority: 5,
+			ID:                  EvidenceChannel,
+			Priority:            5,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -87,8 +88,6 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				// punish peer
 				evR.Switch.StopPeerForError(src, err)
 				return
-			case ErrEvidenceAlreadyStored:
-				evR.Logger.Debug("Evidence already exists", "evidence", msg.Evidence)
 			case nil:
 			default:
 				evR.Logger.Error("Evidence has not been added", "evidence", msg.Evidence, "err", err)
@@ -201,7 +200,7 @@ func (evR Reactor) checkSendEvidenceMessage(
 
 	if peerHeight < evHeight { // peer is behind. sleep while he catches up
 		return nil, true
-	} else if ageNumBlocks > params.MaxAgeNumBlocks ||
+	} else if ageNumBlocks > params.MaxAgeNumBlocks &&
 		ageDuration > params.MaxAgeDuration { // evidence is too old, skip
 
 		// NOTE: if evidence is too old for an honest peer, then we're behind and
@@ -238,9 +237,6 @@ type Message interface {
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
 
 	lm := ep.List{}
 	lm.Unmarshal(bz)

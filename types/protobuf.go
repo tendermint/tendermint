@@ -154,6 +154,12 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
+	case *PhantomValidatorEvidence:
+		evType = "phantom"
+	case *LunaticValidatorEvidence:
+		evType = "lunatic"
+	case *PotentialAmnesiaEvidence:
+		evType = "potential_amnesia"
 	case MockEvidence:
 		// XXX: not great to have test types in production paths ...
 		evType = ABCIEvidenceTypeMock

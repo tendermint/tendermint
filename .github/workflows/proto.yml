@@ -5,8 +5,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: docker-practice/actions-setup-docker@master
+      - uses: technote-space/get-diff-action@v1
+        id: git_diff
+        with:
+          SUFFIX_FILTER: .proto
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
       - name: lint
         run: make proto-lint
+        if: "env.GIT_DIFF != ''"
       - name: check-breakage
         run: make proto-check-breaking-ci
+        if: "env.GIT_DIFF != ''"

@@ -12,8 +12,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -39,7 +40,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.MockEvidencePool{})
+		mock.Mempool{}, evmock.NewDefaultEvidencePool())
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
@@ -128,10 +129,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
-	height1, idx1, val1 := int64(8), uint32(0), state.Validators.Validators[0].Address
-	height2, idx2, val2 := int64(3), uint32(1), state.Validators.Validators[1].Address
-	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
-	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
+	height1, val1 := int64(8), state.Validators.Validators[0].Address
+	height2, val2 := int64(3), state.Validators.Validators[1].Address
+	ev1 := types.NewMockEvidence(height1, time.Now(), val1)
+	ev2 := types.NewMockEvidence(height2, time.Now(), val2)
 
 	now := tmtime.Now()
 	valSet := state.Validators
@@ -335,7 +336,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
-		sm.MockEvidencePool{},
+		evmock.NewDefaultEvidencePool(),
 	)
 
 	eventBus := types.NewEventBus()
@@ -402,7 +403,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
-		sm.MockEvidencePool{},
+		evmock.NewDefaultEvidencePool(),
 	)
 
 	block := makeBlock(state, 1)

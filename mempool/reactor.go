@@ -46,7 +46,7 @@ type mempoolIDs struct {
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
 }
 
-// Reserve searches for the next unused ID and assignes it to the
+// Reserve searches for the next unused ID and assigns it to the
 // peer.
 func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
 	ids.mtx.Lock()
@@ -113,6 +113,12 @@ func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
 	return memR
 }
 
+// InitPeer implements Reactor by creating a state for the peer.
+func (memR *Reactor) InitPeer(peer p2p.Peer) p2p.Peer {
+	memR.ids.ReserveForPeer(peer)
+	return peer
+}
+
 // SetLogger sets the Logger on the reactor and the underlying mempool.
 func (memR *Reactor) SetLogger(l log.Logger) {
 	memR.Logger = l
@@ -130,10 +136,12 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       MempoolChannel,
-			Priority: 5,
+			ID:                  MempoolChannel,
+			Priority:            5,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -141,7 +149,6 @@ func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *Reactor) AddPeer(peer p2p.Peer) {
-	memR.ids.ReserveForPeer(peer)
 	go memR.broadcastTxRoutine(peer)
 }
 
@@ -255,10 +262,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // Messages
 
 func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
-	if l := len(bz); l > maxMsgSize {
-		return TxMessage{}, ErrTxTooLarge{maxMsgSize, l}
-	}
 
 	msg := gogotypes.BytesValue{}
 	err := msg.Unmarshal(bz)

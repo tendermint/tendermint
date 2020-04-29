@@ -75,26 +75,6 @@ jobs:
           paths:
             - "."
 
-  test_abci_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_app/test.sh
-
-  # if this test fails, fix it and update the docs at:
-  # https://github.com/tendermint/tendermint/blob/master/docs/abci-cli.md
-  test_abci_cli:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_cli/test.sh
-
-  test_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/app/test.sh
-
   test_persistence:
     executor: golang
     steps:
@@ -122,7 +102,7 @@ jobs:
             mkdir -p /tmp/logs /tmp/workspace/profiles
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
-              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              go test -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -392,15 +372,6 @@ workflows:
               only:
                 - docs-staging
       - setup_dependencies
-      - test_abci_apps:
-          requires:
-            - setup_dependencies
-      - test_abci_cli:
-          requires:
-            - setup_dependencies
-      - test_apps:
-          requires:
-            - setup_dependencies
       - test_cover:
           requires:
             - setup_dependencies
