@@ -90,7 +90,7 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 	// 3) Start a client.
 	if !p.Client.IsRunning() {
 		if err := p.Client.Start(); err != nil {
-			return nil, mux, fmt.Errorf("Client#Start: %w", err)
+			return nil, mux, fmt.Errorf("client#Start: %w", err)
 		}
 	}
 
