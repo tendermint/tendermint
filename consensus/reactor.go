@@ -41,23 +41,22 @@ type Reactor struct {
 	conS *State
 
 	mtx      sync.RWMutex
-	fastSync bool
+	waitSync bool
 	eventBus *types.EventBus
 
-	metrics *Metrics
+	Metrics *Metrics
 }
 
 type ReactorOption func(*Reactor)
 
 // NewReactor returns a new Reactor with the given
 // consensusState.
-func NewReactor(consensusState *State, fastSync bool, options ...ReactorOption) *Reactor {
+func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) *Reactor {
 	conR := &Reactor{
 		conS:     consensusState,
-		fastSync: fastSync,
-		metrics:  NopMetrics(),
+		waitSync: waitSync,
+		Metrics:  NopMetrics(),
 	}
-	conR.updateFastSyncingMetric()
 	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
 
 	for _, option := range options {
@@ -70,14 +69,14 @@ func NewReactor(consensusState *State, fastSync bool, options ...ReactorOption) 
 // OnStart implements BaseService by subscribing to events, which later will be
 // broadcasted to other peers and starting state if we're not in fast sync.
 func (conR *Reactor) OnStart() error {
-	conR.Logger.Info("Reactor ", "fastSync", conR.FastSync())
+	conR.Logger.Info("Reactor ", "waitSync", conR.WaitSync())
 
 	// start routine that computes peer statistics for evaluating peer quality
 	go conR.peerStatsRoutine()
 
 	conR.subscribeToBroadcastEvents()
 
-	if !conR.FastSync() {
+	if !conR.WaitSync() {
 		err := conR.conS.Start()
 		if err != nil {
 			return err
@@ -92,14 +91,14 @@ func (conR *Reactor) OnStart() error {
 func (conR *Reactor) OnStop() {
 	conR.unsubscribeFromBroadcastEvents()
 	conR.conS.Stop()
-	if !conR.FastSync() {
+	if !conR.WaitSync() {
 		conR.conS.Wait()
 	}
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
-func (conR *Reactor) SwitchToConsensus(state sm.State, blocksSynced uint64) {
+func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.Logger.Info("SwitchToConsensus")
 	conR.conS.reconstructLastCommit(state)
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
@@ -107,12 +106,12 @@ func (conR *Reactor) SwitchToConsensus(state sm.State, blocksSynced uint64) {
 	conR.conS.updateToState(state)
 
 	conR.mtx.Lock()
-	conR.fastSync = false
+	conR.waitSync = false
 	conR.mtx.Unlock()
-	conR.metrics.FastSyncing.Set(0)
+	conR.Metrics.FastSyncing.Set(0)
+	conR.Metrics.StateSyncing.Set(0)
 
-	if blocksSynced > 0 {
-		// dont bother with the WAL if we fast synced
+	if skipWAL {
 		conR.conS.doWALCatchup = false
 	}
 	err := conR.conS.Start()
@@ -187,7 +186,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !conR.FastSync() {
+	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}
 }
@@ -284,8 +283,8 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case DataChannel:
-		if conR.FastSync() {
-			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
+		if conR.WaitSync() {
+			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
 		switch msg := msg.(type) {
@@ -296,15 +295,15 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
-			conR.metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
+			conR.Metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case VoteChannel:
-		if conR.FastSync() {
-			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
+		if conR.WaitSync() {
+			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
 		switch msg := msg.(type) {
@@ -325,8 +324,8 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case VoteSetBitsChannel:
-		if conR.FastSync() {
-			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
+		if conR.WaitSync() {
+			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
 		switch msg := msg.(type) {
@@ -366,11 +365,11 @@ func (conR *Reactor) SetEventBus(b *types.EventBus) {
 	conR.conS.SetEventBus(b)
 }
 
-// FastSync returns whether the consensus reactor is in fast-sync mode.
-func (conR *Reactor) FastSync() bool {
+// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+func (conR *Reactor) WaitSync() bool {
 	conR.mtx.RLock()
 	defer conR.mtx.RUnlock()
-	return conR.fastSync
+	return conR.waitSync
 }
 
 //--------------------------------------
@@ -886,19 +885,9 @@ func (conR *Reactor) StringIndented(indent string) string {
 	return s
 }
 
-func (conR *Reactor) updateFastSyncingMetric() {
-	var fastSyncing float64
-	if conR.fastSync {
-		fastSyncing = 1
-	} else {
-		fastSyncing = 0
-	}
-	conR.metrics.FastSyncing.Set(fastSyncing)
-}
-
 // ReactorMetrics sets the metrics
 func ReactorMetrics(metrics *Metrics) ReactorOption {
-	return func(conR *Reactor) { conR.metrics = metrics }
+	return func(conR *Reactor) { conR.Metrics = metrics }
 }
 
 //-----------------------------------------------------------------------------

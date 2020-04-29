@@ -144,6 +144,26 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
+func (app *PersistentKVStoreApplication) ListSnapshots(
+	req types.RequestListSnapshots) types.ResponseListSnapshots {
+	return types.ResponseListSnapshots{}
+}
+
+func (app *PersistentKVStoreApplication) LoadSnapshotChunk(
+	req types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
+	return types.ResponseLoadSnapshotChunk{}
+}
+
+func (app *PersistentKVStoreApplication) OfferSnapshot(
+	req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_abort}
+}
+
+func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
+	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_abort}
+}
+
 //---------------------------------------------
 // update validators
 
