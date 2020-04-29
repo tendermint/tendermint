@@ -932,9 +932,11 @@ var _ Evidence = &ProofOfLockChange{}
 var _ Evidence = ProofOfLockChange{}
 
 func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) (ProofOfLockChange, error) {
-	if blockID, ok := voteSet.TwoThirdsMajority(); !ok || !blockID.IsComplete() {
-		return ProofOfLockChange{}, errors.New("vote set does not have two-thirds majority of a non nil block")
-	}
+	polc := makePOLCFromVoteSet(voteSet, pubKey)
+	return polc, polc.ValidateBasic()
+}
+
+func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) ProofOfLockChange {
 	var votes []Vote
 	valSetSize := voteSet.Size()
 	for valIdx := 0; valIdx < valSetSize; valIdx++ {
@@ -946,7 +948,7 @@ func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) (ProofOfLockCha
 	return ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
-	}, nil
+	}
 }
 
 func (e ProofOfLockChange) Height() int64 {
@@ -1015,6 +1017,9 @@ func (e ProofOfLockChange) ValidateBasic() error {
 	// height, round and vote type must be the same for all votes
 	height := e.Height()
 	round := e.Round()
+	if round == 0 {
+		return errors.New("can't have a polc for the first round")
+	}
 	voteType := e.Votes[0].Type
 	for idx, vote := range e.Votes {
 		if err := vote.ValidateBasic(); err != nil {

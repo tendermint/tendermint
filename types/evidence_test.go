@@ -359,26 +359,58 @@ func TestProofOfLockChange(t *testing.T) {
 		chainID       = "TestProofOfLockChange"
 		height  int64 = 37
 	)
+	// 1: valid POLC - nothing should fail
 	voteSet, privValidators := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
-	// first validator is the one creating the polc
 	pubKey, err := privValidators[7].GetPubKey()
 	require.NoError(t, err)
-	polc, err := MakePOLCFromVoteSet(voteSet, pubKey)
-	require.NoError(t, err)
-	// has already voted
-	badPubKey, err := privValidators[0].GetPubKey()
-	require.NoError(t, err)
-	badPolc, err := MakePOLCFromVoteSet(voteSet, badPubKey)
-	require.NoError(t, err)
+	polc := makePOLCFromVoteSet(voteSet, pubKey)
 
 	assert.Equal(t, height, polc.Height())
 	assert.NoError(t, polc.ValidateBasic())
-	assert.Error(t, badPolc.ValidateBasic())
 	assert.NoError(t, polc.Verify(chainID, pubKey))
-	assert.Error(t, polc.Verify(chainID, badPubKey))
 	assert.NotEmpty(t, polc.Hash())
 	assert.NotEmpty(t, polc.Bytes())
 	assert.NotEmpty(t, polc.String())
+
+	// test validate basic on a set of bad cases
+	var badPOLCs []ProofOfLockChange
+	// 2: node has already voted in next round
+	pubKey, err = privValidators[0].GetPubKey()
+	require.NoError(t, err)
+	polc2 := makePOLCFromVoteSet(voteSet, pubKey)
+	badPOLCs = append(badPOLCs, polc2)
+	// 3: one vote was from a different round
+	voteSet, privValidators = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	pubKey, err = privValidators[7].GetPubKey()
+	require.NoError(t, err)
+	blockID := voteSet.GetByIndex(0).BlockID
+	polc = makePOLCFromVoteSet(voteSet, pubKey)
+	badVote := makeVote(t, privValidators[8], chainID, 8, height, 2, 2, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 4: one vote was from a different height
+	polc = makePOLCFromVoteSet(voteSet, pubKey)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height+1, 1, 2, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 5: one vote was from a different vote type
+	polc = makePOLCFromVoteSet(voteSet, pubKey)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 1, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 5: one of the votes was for a nil block
+	polc = makePOLCFromVoteSet(voteSet, pubKey)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 2, BlockID{})
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+
+	for idx, polc := range badPOLCs {
+		err := polc.ValidateBasic()
+		assert.Error(t, err)
+		if err == nil {
+			t.Errorf("test no. %d failed", idx+2)
+		}
+	}
 
 }
 
