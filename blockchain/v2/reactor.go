@@ -25,6 +25,7 @@ type blockStore interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
+	fastSync  bool       // if true, enable fast sync on start
 	events    chan Event // XXX: Rename eventsFromPeers
 	scheduler *Routine
 	processor *Routine
@@ -52,7 +53,7 @@ type blockApplier interface {
 // XXX: unify naming in this package around tmState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
-	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
+	blockApplier blockApplier, bufferSize int, fastSync bool) *BlockchainReactor {
 	scheduler := newScheduler(state.LastBlockHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
 	// TODO: Fix naming to just newProcesssor
@@ -66,6 +67,7 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 		store:     store,
 		reporter:  reporter,
 		logger:    log.NewNopLogger(),
+		fastSync:  fastSync,
 	}
 }
 
@@ -76,7 +78,7 @@ func NewBlockchainReactor(
 	store blockStore,
 	fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
-	return newReactor(state, store, reporter, blockApplier, 1000)
+	return newReactor(state, store, reporter, blockApplier, 1000, fastSync)
 }
 
 // SetSwitch implements Reactor interface.
@@ -120,9 +122,11 @@ func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 // Start implements cmn.Service interface
 func (r *BlockchainReactor) Start() error {
 	r.reporter = behaviour.NewSwitchReporter(r.BaseReactor.Switch)
-	go r.scheduler.start()
-	go r.processor.start()
-	go r.demux()
+	if r.fastSync {
+		go r.scheduler.start()
+		go r.processor.start()
+		go r.demux()
+	}
 	return nil
 }
 
