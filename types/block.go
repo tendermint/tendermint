@@ -253,8 +253,8 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 // of evidence.
 //
 // XXX: Panics on negative result.
-func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int, maxEvidence int64) int64 {
-	maxEvidenceBytes := maxEvidence * MaxEvidenceBytes
+func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int, maxNumEvidence int64) int64 {
+	maxEvidenceBytes := maxNumEvidence * MaxEvidenceBytes
 	maxDataBytes := maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
