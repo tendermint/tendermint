@@ -41,6 +41,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - nostrip: don't strip debugging symbols nor DWARF tables.
   - cleveldb: use cleveldb as db backend instead of goleveldb.
   - race: pass -race to go build and enable data race detection.
+- [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
 
 ### BUG FIXES:
 
