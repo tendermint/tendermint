@@ -36,7 +36,7 @@ message ProposalPOL {
 message BlockPart {
   int64                        height = 1;
   int32                        round  = 2;
-  tendermint.proto.types.Parts part   = 3 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Part part   = 3 [(gogoproto.nullable) = false];
 }
 
 message Vote {

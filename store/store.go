@@ -3,12 +3,17 @@ package store
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/libs/encode"
+	tmstore "github.com/tendermint/tendermint/proto/store"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -87,11 +92,17 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		buf = append(buf, part.Bytes...)
 	}
 	err := cdc.UnmarshalBinaryLengthPrefixed(buf, block)
+	// err := proto.Unmarshal(buf, pbb)
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
 		panic(fmt.Errorf("error reading block: %w", err))
 	}
+
+	// block, err := types.BlockFromProto(pbb)
+	// if err != nil {
+	// 	panic(fmt.Errorf("error from proto block: %w", err))
+	// }
 	return block
 }
 
@@ -120,7 +131,8 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
-	var part = new(types.Part)
+	var pbpart = new(tmproto.Part)
+
 	bz, err := bs.db.Get(calcBlockPartKey(height, index))
 	if err != nil {
 		panic(err)
@@ -128,17 +140,23 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	if len(bz) == 0 {
 		return nil
 	}
-	err = cdc.UnmarshalBinaryBare(bz, part)
+
+	err = proto.Unmarshal(bz, pbpart)
 	if err != nil {
-		panic(fmt.Errorf("Error reading block part: %w", err))
+		panic(fmt.Errorf("error reading block part: %w", err))
 	}
+	part, err := types.PartFromProto(pbpart)
+	if err != nil {
+		panic(fmt.Errorf("error from proto block part: %w", err))
+	}
+
 	return part
 }
 
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
-	var blockMeta = new(types.BlockMeta)
+	var pbbm = new(tmproto.BlockMeta)
 	bz, err := bs.db.Get(calcBlockMetaKey(height))
 	if err != nil {
 		panic(err)
@@ -146,9 +164,14 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	if len(bz) == 0 {
 		return nil
 	}
-	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
+	err = proto.Unmarshal(bz, pbbm)
 	if err != nil {
-		panic(fmt.Errorf("Error reading block meta: %w", err))
+		panic(fmt.Errorf("error reading block meta: %w", err))
+	}
+
+	blockMeta, err := types.BlockMetaFromProto(pbbm)
+	if err != nil {
+		panic(fmt.Errorf("error from proto blockMeta: %w", err))
 	}
 	return blockMeta
 }
@@ -158,7 +181,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // and it comes from the block.LastCommit for `height+1`.
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
-	var commit = new(types.Commit)
+	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(calcBlockCommitKey(height))
 	if err != nil {
 		panic(err)
@@ -166,9 +189,13 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	if len(bz) == 0 {
 		return nil
 	}
-	err = cdc.UnmarshalBinaryBare(bz, commit)
+	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Errorf("Error reading block commit: %w", err))
+		panic(fmt.Errorf("error reading block commit: %w", err))
+	}
+	commit, err := types.CommitFromProto(pbc)
+	if err != nil {
+		panic(fmt.Errorf("unable to make commit from proto "))
 	}
 	return commit
 }
@@ -177,7 +204,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // This is useful when we've seen a commit, but there has not yet been
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
-	var commit = new(types.Commit)
+	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(calcSeenCommitKey(height))
 	if err != nil {
 		panic(err)
@@ -185,9 +212,14 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	if len(bz) == 0 {
 		return nil
 	}
-	err = cdc.UnmarshalBinaryBare(bz, commit)
+	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Errorf("Error reading block seen commit: %w", err))
+		panic(fmt.Errorf("error reading block seen commit: %w", err))
+	}
+
+	commit, err := types.CommitFromProto(pbc)
+	if err != nil {
+		panic(fmt.Errorf("error from proto commit: %w", err))
 	}
 	return commit
 }
@@ -283,7 +315,11 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
-	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
+	pbm := blockMeta.ToProto()
+	if pbm == nil {
+		panic("nil blockmeta")
+	}
+	metaBytes := mustEncode(pbm)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
 
@@ -294,12 +330,14 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block commit (duplicate and separate from the Block)
-	blockCommitBytes := cdc.MustMarshalBinaryBare(block.LastCommit)
+	pbc := block.LastCommit.ToProto()
+	blockCommitBytes := mustEncode(pbc)
 	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
-	seenCommitBytes := cdc.MustMarshalBinaryBare(seenCommit)
+	pbsc := seenCommit.ToProto()
+	seenCommitBytes := mustEncode(pbsc)
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
 	// Done!
@@ -318,24 +356,28 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
-	partBytes := cdc.MustMarshalBinaryBare(part)
+	pbp, err := part.ToProto()
+	if err != nil {
+		panic(fmt.Errorf("unable to make part into proto: %w", err))
+	}
+	partBytes := mustEncode(pbp)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 
 func (bs *BlockStore) saveState() {
 	bs.mtx.RLock()
-	bsJSON := BlockStoreStateJSON{
+	bsJSON := tmstore.BlockStoreStateJSON{
 		Base:   bs.base,
 		Height: bs.height,
 	}
 	bs.mtx.RUnlock()
-	bsJSON.Save(bs.db)
+	SaveBlockStoreStateJSON(&bsJSON, bs.db)
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
 func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) error {
 	pbc := seenCommit.ToProto()
-	seenCommitBytes, err := proto.Marshal(seenCommit)
+	seenCommitBytes, err := proto.Marshal(pbc)
 	if err != nil {
 		return fmt.Errorf("unable to marshal commit: %w", err)
 	}
@@ -375,8 +417,8 @@ type BlockStoreStateJSON struct {
 }
 
 // Save persists the blockStore state to the database as JSON.
-func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
-	bytes, err := cdc.MarshalJSON(bsj)
+func SaveBlockStoreStateJSON(bsj *tmstore.BlockStoreStateJSON, db dbm.DB) {
+	bytes, err := encode.MarshalJSON(bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not marshal state bytes: %v", err))
 	}
@@ -385,25 +427,34 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 
 // LoadBlockStoreStateJSON returns the BlockStoreStateJSON as loaded from disk.
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
-func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
+func LoadBlockStoreStateJSON(db dbm.DB) tmstore.BlockStoreStateJSON {
 	bytes, err := db.Get(blockStoreKey)
 	if err != nil {
 		panic(err)
 	}
 	if len(bytes) == 0 {
-		return BlockStoreStateJSON{
+		return tmstore.BlockStoreStateJSON{
 			Base:   0,
 			Height: 0,
 		}
 	}
-	bsj := BlockStoreStateJSON{}
-	err = cdc.UnmarshalJSON(bytes, &bsj)
-	if err != nil {
+	bsj := tmstore.BlockStoreStateJSON{}
+	if err := jsonpb.Unmarshal(strings.NewReader(string(bytes)), &bsj); err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
 	}
+
 	// Backwards compatibility with persisted data from before Base existed.
 	if bsj.Height > 0 && bsj.Base == 0 {
 		bsj.Base = 1
 	}
 	return bsj
+}
+
+//mustEncode eproto encodes a proto.message and panics if fails
+func mustEncode(pb proto.Message) []byte {
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal: %w", err))
+	}
+	return bz
 }

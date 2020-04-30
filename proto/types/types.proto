@@ -40,7 +40,7 @@ message PartSetHeader {
   bytes  hash  = 2;
 }
 
-message Parts {
+message Part {
   uint32                                     index = 1;
   bytes                                      bytes = 2;
   tendermint.proto.crypto.merkle.SimpleProof proof = 3 [(gogoproto.nullable) = false];
@@ -144,4 +144,11 @@ message Proposal {
 message SignedHeader {
   Header header = 1;
   Commit commit = 2;
+}
+
+message BlockMeta {
+  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  int64   block_size = 2;
+  Header  header     = 3 [(gogoproto.nullable) = false];
+  int64   num_txs    = 4;
 }

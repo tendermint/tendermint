@@ -632,8 +632,8 @@ func TestBlockProtoBuf(t *testing.T) {
 		} else {
 			require.Error(t, err, tc.msg)
 		}
-		block := new(Block)
-		err = block.FromProto(pb)
+
+		block, err := BlockFromProto(pb)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
@@ -723,8 +723,7 @@ func TestCommitProtoBuf(t *testing.T) {
 		tc := tc
 		protoCommit := tc.c1.ToProto()
 
-		c := new(Commit)
-		err := c.FromProto(protoCommit)
+		c, err := CommitFromProto(protoCommit)
 
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)

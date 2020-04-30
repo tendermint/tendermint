@@ -82,11 +82,11 @@ func MsgFromProto(bcm *bcproto.Message) (Message, error) {
 	case *bcproto.Message_NoBlockResponse:
 		bm = &NoBlockResponseMessage{Height: msg.NoBlockResponse.Height}
 	case *bcproto.Message_BlockResponse:
-		b := types.Block{}
-		if err := b.FromProto(&msg.BlockResponse.Block); err != nil {
+		b, err := types.BlockFromProto(&msg.BlockResponse.Block)
+		if err != nil {
 			return nil, err
 		}
-		bm = &BlockResponseMessage{Block: &b}
+		bm = &BlockResponseMessage{Block: b}
 	case *bcproto.Message_StatusRequest:
 		bm = &StatusRequestMessage{
 			Height: msg.StatusRequest.Height,
