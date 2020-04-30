@@ -420,7 +420,10 @@ func (r *BlockchainReactor) demux() {
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
 			case pcFinished:
-				r.io.trySwitchToConsensus(event.tmState, event.blocksSynced > 0)
+				r.logger.Info("Fast sync complete, switching to consensus")
+				if !r.io.trySwitchToConsensus(event.tmState, event.blocksSynced > 0) {
+					r.logger.Error("Failed to switch to consensus reactor")
+				}
 				r.processor.stop()
 			case noOpEvent:
 			default:

@@ -118,10 +118,11 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
+	return true
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {

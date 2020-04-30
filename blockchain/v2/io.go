@@ -16,7 +16,7 @@ type iIO interface {
 
 	broadcastStatusRequest(base int64, height int64)
 
-	trySwitchToConsensus(state state.State, skipWAL bool)
+	trySwitchToConsensus(state state.State, skipWAL bool) bool
 }
 
 type switchIO struct {
@@ -97,11 +97,12 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIO) trySwitchToConsensus(state state.State, skipWAL bool) {
+func (sio *switchIO) trySwitchToConsensus(state state.State, skipWAL bool) bool {
 	conR, ok := sio.sw.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
 		conR.SwitchToConsensus(state, skipWAL)
 	}
+	return ok
 }
 
 func (sio *switchIO) broadcastStatusRequest(base int64, height int64) {
