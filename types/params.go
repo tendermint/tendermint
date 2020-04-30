@@ -155,11 +155,6 @@ func (params *ConsensusParams) Validate() error {
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxNumEvidence < 0 {
-		return errors.Errorf("evidenceParams.MaxNumEvidence must be equal or grater than 0 if provided, Got %v",
-			params.Evidence.MaxNumEvidence)
-	}
-
 	if int64(params.Evidence.MaxNumEvidence)*MaxEvidenceBytes > params.Block.MaxBytes {
 		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
 			int64(params.Evidence.MaxNumEvidence)*MaxEvidenceBytes, params.Block.MaxBytes)
