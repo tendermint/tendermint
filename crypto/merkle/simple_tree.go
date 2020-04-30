@@ -91,18 +91,6 @@ func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
 	}
 }
 
-// SimpleHashFromMap computes a Merkle tree from sorted map.
-// Like calling SimpleHashFromHashers with
-// `item = []byte(Hash(key) | Hash(value))`,
-// sorted by `item`.
-func SimpleHashFromMap(m map[string][]byte) []byte {
-	sm := newSimpleMap()
-	for k, v := range m {
-		sm.Set(k, v)
-	}
-	return sm.Hash()
-}
-
 // getSplitPoint returns the largest power of 2 less than length
 func getSplitPoint(length int) int {
 	if length < 1 {

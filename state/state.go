@@ -27,11 +27,11 @@ type Version struct {
 	Software  string
 }
 
-// initStateVersion sets the Consensus.Block and Software versions,
+// InitStateVersion sets the Consensus.Block and Software versions,
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var initStateVersion = Version{
+var InitStateVersion = Version{
 	Consensus: version.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
@@ -231,7 +231,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-		Version: initStateVersion,
+		Version: InitStateVersion,
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,
