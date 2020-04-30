@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -141,9 +142,11 @@ func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	// We prefix the byte length, so that unmarshaling
-	// can easily happen via a reader.
-	bz, err := cdc.MarshalBinaryLengthPrefixed(b)
+	pbb, err := b.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(pbb)
 	if err != nil {
 		panic(err)
 	}
@@ -236,7 +239,11 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		return nil, err
 	}
 	b.Header = h
-	b.Data.FromProto(bp.Data)
+	data, err := DataFromProto(&bp.Data)
+	if err != nil {
+		return nil, err
+	}
+	b.Data = data
 	b.Evidence.FromProto(&bp.Evidence)
 
 	if bp.LastCommit != nil {
@@ -1096,13 +1103,20 @@ func (data *Data) ToProto() tmproto.Data {
 		tp.Txs = txBzs
 	}
 
-	tp.Hash = data.hash
+	if data.hash != nil {
+		tp.Hash = data.hash
+	}
 
 	return *tp
 }
 
 // FromProto sets a protobuf Data to the given pointer.
-func (data *Data) FromProto(dp tmproto.Data) error {
+func DataFromProto(dp *tmproto.Data) (Data, error) {
+	if dp == nil {
+		return Data{}, errors.New("nil data")
+	}
+	data := new(Data)
+
 	if len(dp.Txs) > 0 {
 		txBzs := make(Txs, len(dp.Txs))
 		for i := range dp.Txs {
@@ -1112,8 +1126,10 @@ func (data *Data) FromProto(dp tmproto.Data) error {
 	} else {
 		data.Txs = Txs{}
 	}
+
 	data.hash = dp.Hash
-	return nil
+
+	return *data, nil
 }
 
 //-----------------------------------------------------------------------------

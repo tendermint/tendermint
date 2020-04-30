@@ -661,11 +661,10 @@ func TestDataProtoBuf(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		protoData := tc.data1.ToProto()
-		d := new(Data)
-		err := d.FromProto(protoData)
+		d, err := DataFromProto(&protoData)
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
-			require.EqualValues(t, tc.data1, d, tc.msg)
+			require.EqualValues(t, tc.data1, &d, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
