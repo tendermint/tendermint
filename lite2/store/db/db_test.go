@@ -9,7 +9,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +27,7 @@ func TestLast_FirstSignedHeaderHeight(t *testing.T) {
 
 	// 1 key
 	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
+		&types.SignedHeader{Header: &types.Header{Height: 1}}, vals)
 	require.NoError(t, err)
 
 	height, err = dbStore.LastSignedHeaderHeight()
@@ -54,7 +53,7 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 
 	// 1 key
 	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
+		&types.SignedHeader{Header: &types.Header{Height: 1}}, vals)
 	require.NoError(t, err)
 
 	h, err = dbStore.SignedHeader(1)
@@ -88,7 +87,7 @@ func Test_SignedHeaderBefore(t *testing.T) {
 	})
 
 	err := dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 2, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, valSet)
+		&types.SignedHeader{Header: &types.Header{Height: 2}}, valSet)
 	require.NoError(t, err)
 
 	h, err := dbStore.SignedHeaderBefore(3)
@@ -109,7 +108,7 @@ func Test_Prune(t *testing.T) {
 
 	// One header
 	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 2, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, valSet)
+		&types.SignedHeader{Header: &types.Header{Height: 2}}, valSet)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 1, dbStore.Size())
@@ -125,7 +124,7 @@ func Test_Prune(t *testing.T) {
 	// Multiple headers
 	for i := 1; i <= 10; i++ {
 		err = dbStore.SaveSignedHeaderAndValidatorSet(
-			&types.SignedHeader{Header: &types.Header{Height: int64(i), ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, valSet)
+			&types.SignedHeader{Header: &types.Header{Height: int64(i)}}, valSet)
 		require.NoError(t, err)
 	}
 
@@ -149,7 +148,7 @@ func Test_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			dbStore.SaveSignedHeaderAndValidatorSet(
-				&types.SignedHeader{Header: &types.Header{Height: i, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
+				&types.SignedHeader{Header: &types.Header{Height: i}}, vals)
 
 			dbStore.SignedHeader(i)
 			dbStore.ValidatorSet(i)
