@@ -832,11 +832,10 @@ func TestHeaderProto(t *testing.T) {
 		tt := tt
 		t.Run(tt.msg, func(t *testing.T) {
 			pb := tt.h1.ToProto()
-			h := new(Header)
-			err := h.FromProto(pb)
+			h, err := HeaderFromProto(pb)
 			if tt.expPass {
 				require.NoError(t, err, tt.msg)
-				require.Equal(t, tt.h1, h, tt.msg)
+				require.Equal(t, tt.h1, &h, tt.msg)
 			} else {
 				require.Error(t, err, tt.msg)
 			}

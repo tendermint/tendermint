@@ -191,8 +191,8 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 		}
 		return tp, nil
 	case *tmproto.Evidence_LunaticValidatorEvidence:
-		h := new(Header)
-		err := h.FromProto(evi.LunaticValidatorEvidence.GetHeader())
+
+		h, err := HeaderFromProto(evi.LunaticValidatorEvidence.GetHeader())
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 		}
 
 		tp := LunaticValidatorEvidence{
-			Header:             h,
+			Header:             &h,
 			Vote:               v,
 			InvalidHeaderField: evi.LunaticValidatorEvidence.InvalidHeaderField,
 		}

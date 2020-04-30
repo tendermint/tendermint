@@ -231,7 +231,11 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	}
 
 	b := new(Block)
-	b.Header.FromProto(&bp.Header)
+	h, err := HeaderFromProto(&bp.Header)
+	if err != nil {
+		return nil, err
+	}
+	b.Header = h
 	b.Data.FromProto(bp.Data)
 	b.Evidence.FromProto(&bp.Evidence)
 
@@ -401,7 +405,7 @@ func (h Header) ValidateBasic() error {
 		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
-	if len(h.ProposerAddress) != crypto.AddressSize {
+	if len(h.ProposerAddress) > 0 && len(h.ProposerAddress) != crypto.AddressSize {
 		return fmt.Errorf(
 			"invalid ProposerAddress length; got: %d, expected: %d",
 			len(h.ProposerAddress), crypto.AddressSize,
@@ -518,14 +522,15 @@ func (h *Header) ToProto() *tmproto.Header {
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
-func (h *Header) FromProto(ph *tmproto.Header) error {
+func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	var blockID BlockID
 	if ph == nil {
-		return nil
+		return Header{}, errors.New("nil Header")
 	}
 
+	h := new(Header)
 	if err := blockID.FromProto(&ph.LastBlockID); err != nil {
-		return err
+		return Header{}, err
 	}
 
 	h.Version = ph.Version
@@ -544,7 +549,7 @@ func (h *Header) FromProto(ph *tmproto.Header) error {
 	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
 
-	return h.ValidateBasic()
+	return *h, h.ValidateBasic()
 }
 
 //-------------------------------------
@@ -888,7 +893,9 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Height = commit.Height
 	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
-	c.Hash = commit.hash
+	if commit.hash == nil {
+		c.Hash = commit.hash
+	}
 	c.BitArray = commit.bitArray.ToProto()
 	return c
 }
@@ -1013,12 +1020,9 @@ func (sh *SignedHeader) FromProto(shp *tmproto.SignedHeader) error {
 		return errors.New("nil SignedHeader")
 	}
 
-	var (
-		h Header
-	)
-
 	if shp.Header != nil {
-		if err := h.FromProto(shp.Header); err != nil {
+		h, err := HeaderFromProto(shp.Header)
+		if err != nil {
 			return err
 		}
 		sh.Header = &h

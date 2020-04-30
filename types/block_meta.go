@@ -49,13 +49,14 @@ func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
 	var (
 		bm = new(BlockMeta)
 		bi BlockID
-		h  Header
 	)
 
 	if err := bi.FromProto(&pb.BlockID); err != nil {
 		return nil, err
 	}
-	if err := h.FromProto(&pb.Header); err != nil {
+
+	h, err := HeaderFromProto(&pb.Header)
+	if err != nil {
 		return nil, err
 	}
 
