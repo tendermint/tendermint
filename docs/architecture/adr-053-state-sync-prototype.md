@@ -1,5 +1,7 @@
 # ADR 053: State Sync Prototype
 
+State sync is now [merged](https://github.com/tendermint/tendermint/pull/4705). Up-to-date ABCI documentation is [available](https://github.com/tendermint/spec/pull/90), refer to it rather than this ADR for details.
+
 This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see that for background information.
 
 ## Changelog
@@ -21,6 +23,8 @@ This ADR outlines the plan for an initial state sync prototype, and is subject t
     * ABCI: chunks are now exchanged simply as `bytes`.
     * ABCI: chunks are now 0-indexed, for parity with `chunk_hashes` array.
     * Reduced maximum chunk size to 16 MB, and increased snapshot message size to 4 MB.
+
+* 2020-04-29: Update with final released ABCI interface (Erik Grinaker)
 
 ## Context
 
@@ -48,10 +52,11 @@ A node can have multiple snapshots taken at various heights. Snapshots can be ta
 
 ```proto
 message Snapshot {
-    uint64         height       = 1;  // The height at which the snapshot was taken
-    uint32         format       = 2;  // The application-specific snapshot format
-    repeated bytes chunk_hashes = 3;  // SHA-256 checksums of all chunks, in order
-    bytes          metadata     = 4;  // Arbitrary application metadata
+  uint64 height   = 1;  // The height at which the snapshot was taken
+  uint32 format   = 2;  // The application-specific snapshot format
+  uint32 chunks   = 3;  // Number of chunks in the snapshot
+  bytes  hash     = 4;  // Arbitrary snapshot hash - should be equal only for identical snapshots
+  bytes  metadata = 5;  // Arbitrary application metadata
 }
 ```
 
@@ -64,50 +69,57 @@ Chunks are exchanged simply as `bytes`, and cannot be larger than 16 MB. `Snapsh
 message RequestListSnapshots {}
 
 message ResponseListSnapshots {
-    repeated Snapshot snapshots = 1;
+  repeated Snapshot snapshots = 1;
 }
 
 // Offers a snapshot to the application
 message RequestOfferSnapshot {
-    Snapshot snapshot = 1;
-    bytes    app_hash = 2;
-}
+  Snapshot snapshot = 1;  // snapshot offered by peers
+  bytes    app_hash = 2;  // light client-verified app hash for snapshot height
+ }
 
 message ResponseOfferSnapshot {
-    bool   accepted = 1;
-    Reason reason = 2;
+  Result result = 1;
 
-    enum Reason {            // Reason why snapshot was rejected
-        unknown        = 0;  // Unknown or generic reason
-        invalid_height = 1;  // Height is rejected: avoid this height
-        invalid_format = 2;  // Format is rejected: avoid this format
-    }
+  enum Result {
+    accept        = 0;  // Snapshot accepted, apply chunks
+    abort         = 1;  // Abort all snapshot restoration
+    reject        = 2;  // Reject this specific snapshot, and try a different one
+    reject_format = 3;  // Reject all snapshots of this format, and try a different one
+    reject_sender = 4;  // Reject all snapshots from the sender(s), and try a different one
+  }
 }
 
 // Loads a snapshot chunk
 message RequestLoadSnapshotChunk {
-    uint64 height = 1;
-    uint32 format = 2;
-    uint32 chunk  = 3; // Zero-indexed
+  uint64 height = 1;
+  uint32 format = 2;
+  uint32 chunk  = 3; // Zero-indexed
 }
 
 message ResponseLoadSnapshotChunk {
-    bytes chunk = 1;
+  bytes chunk = 1;
 }
 
 // Applies a snapshot chunk
 message RequestApplySnapshotChunk {
-    bytes chunk = 1;
-}
+  uint32 index  = 1;
+  bytes  chunk  = 2;
+  string sender = 3;
+ }
 
 message ResponseApplySnapshotChunk {
-    bool   applied = 1;
-    Reason reason  = 2;      // Reason why chunk failed
+  Result          result         = 1;
+  repeated uint32 refetch_chunks = 2;  // Chunks to refetch and reapply (regardless of result)
+  repeated string reject_senders = 3;  // Chunk senders to reject and ban (regardless of result)
 
-    enum Reason {            // Reason why chunk failed
-        unknown        = 0;  // Unknown or generic reason
-        verify_failed  = 1;  // Snapshot verification failed
-    }
+  enum Result {
+    accept          = 0;  // Chunk successfully accepted
+    abort           = 1;  // Abort all snapshot restoration
+    retry           = 2;  // Retry chunk, combine with refetch and reject as appropriate
+    retry_snapshot  = 3;  // Retry snapshot, combine with refetch and reject as appropriate
+    reject_snapshot = 4;  // Reject this snapshot, try a different one but keep sender rejections
+  }
 }
 ```
 
@@ -141,15 +153,15 @@ When starting an empty node with state sync and fast sync enabled, snapshots are
 
 4. The node requests available snapshots via P2P from peers, via `RequestListSnapshots`. Peers will return the 10 most recent snapshots, one message per snapshot.
 
-5. The node aggregates snapshots from multiple peers, ordered by height and format (in reverse). If there are `chunk_hashes` mismatches between different snapshots, the one hosted by the largest amount of peers is chosen. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
+5. The node aggregates snapshots from multiple peers, ordered by height and format (in reverse). If there are mismatches between different snapshots, the one hosted by the largest amount of peers is chosen. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
 
     * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
 
-    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOfferSnapshot` call (via `invalid_height` or `invalid_format`).
+    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOfferSnapshot`.
 
     * The application accepts the `RequestOfferSnapshot` call.
 
-6. The node downloads chunks in parallel from multiple peers, via `RequestLoadSnapshotChunk`, and both the sender and receiver verifies their checksums. Chunk messages cannot exceed 16 MB.
+6. The node downloads chunks in parallel from multiple peers, via `RequestLoadSnapshotChunk`. Chunk messages cannot exceed 16 MB.
 
 7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`.
 
@@ -190,38 +202,6 @@ Snapshots should be taken at some configurable height interval, e.g. every 1000 
 Taking consistent snapshots of IAVL trees is greatly simplified by them being versioned: simply snapshot the version that corresponds to the snapshot height, while concurrent writes create new versions. IAVL pruning must not prune a version that is being snapshotted.
 
 Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
-
-## Experimental Prototype
-
-An experimental but functional state sync prototype is available in the `erik/statesync-prototype` branches of the Tendermint, IAVL, Cosmos SDK, and Gaia repositories. To fetch the necessary branches:
-
-```sh
-$ mkdir statesync
-$ cd statesync
-$ git clone git@github.com:tendermint/tendermint -b erik/statesync-prototype
-$ git clone git@github.com:tendermint/iavl -b erik/statesync-prototype
-$ git clone git@github.com:cosmos/cosmos-sdk -b erik/statesync-prototype
-$ git clone git@github.com:cosmos/gaia -b erik/statesync-prototype
-```
-
-To spin up three nodes of a four-node testnet:
-
-```sh
-$ cd gaia
-$ ./tools/start.sh
-```
-
-Wait for the first snapshot to be taken at height 3, then (in a separate terminal) start the fourth node with state sync enabled:
-
-```sh
-$ ./tools/sync.sh
-```
-
-To stop the testnet, run:
-
-```sh
-$ ./tools/stop.sh
-```
 
 ## Resolved Questions
 
@@ -264,46 +244,6 @@ $ ./tools/stop.sh
 * Should `ListSnapshots` be a streaming API instead of a request/response API?
 
     > No, just use a max message size.
-
-## Implementation Plan
-
-### Core Tasks
-
-* **Tendermint:** light client P2P transport [#4456](https://github.com/tendermint/tendermint/issues/4456)
-
-* **IAVL:** export/import API [#210](https://github.com/tendermint/iavl/issues/210)
-
-* **Cosmos SDK:** snapshotting, scheduling, and pruning [#5689](https://github.com/cosmos/cosmos-sdk/issues/5689)
-
-* **Tendermint:** support starting with a truncated block history
-
-* **Tendermint:** state sync reactor and ABCI interface [#828](https://github.com/tendermint/tendermint/issues/828)
-
-* **Cosmos SDK:** snapshot ABCI implementation [#5690](https://github.com/cosmos/cosmos-sdk/issues/5690)
-
-### Nice-to-Haves
-
-* **Tendermint:** staged reactor startup (state sync → fast sync → block replay → wal replay → consensus)
-
-    > Let's do a time-boxed prototype (a few days) and see how much work it will be.
-
-  * Notify P2P peers about channel changes [#4394](https://github.com/tendermint/tendermint/issues/4394)
-
-  * Check peers have certain channels [#1148](https://github.com/tendermint/tendermint/issues/1148)
-
-* **Tendermint:** prune blockchain history [#3652](https://github.com/tendermint/tendermint/issues/3652)
-
-* **Tendermint:** allow genesis to start from non-zero height [#2543](https://github.com/tendermint/tendermint/issues/2543)
-
-### Follow-up Tasks
-
-* **Tendermint:** light client verification for fast sync [#4457](https://github.com/tendermint/tendermint/issues/4457)
-
-* **Tendermint:** allow start with only blockstore [#3713](https://github.com/tendermint/tendermint/issues/3713)
-
-* **Tendermint:** node should go back to fast-syncing when lagging significantly [#129](https://github.com/tendermint/tendermint/issues/129)
-
-* **Tendermint:** backfill historical blocks [#4629](https://github.com/tendermint/tendermint/issues/4629)
 
 ## Status
 
