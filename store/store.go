@@ -143,7 +143,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 
 	err = proto.Unmarshal(bz, pbpart)
 	if err != nil {
-		panic(fmt.Errorf("error reading block part: %w", err))
+		panic(fmt.Errorf("unmarshal to tmproto.Part failed: %w", err))
 	}
 	part, err := types.PartFromProto(pbpart)
 	if err != nil {
@@ -158,15 +158,18 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var pbbm = new(tmproto.BlockMeta)
 	bz, err := bs.db.Get(calcBlockMetaKey(height))
+
 	if err != nil {
 		panic(err)
 	}
+
 	if len(bz) == 0 {
 		return nil
 	}
+
 	err = proto.Unmarshal(bz, pbbm)
 	if err != nil {
-		panic(fmt.Errorf("error reading block meta: %w", err))
+		panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
 	}
 
 	blockMeta, err := types.BlockMetaFromProto(pbbm)

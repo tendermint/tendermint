@@ -381,7 +381,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "unmarshal to types.Part failed")
+	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
 	pb1, err := part1.ToProto()
@@ -483,7 +483,7 @@ func TestPruneBlocks(t *testing.T) {
 
 func TestLoadBlockMeta(t *testing.T) {
 	bs, db := freshBlockStore()
-	height := int64(10)
+	height := int64(1)
 	loadMeta := func() (interface{}, error) {
 		meta := bs.LoadBlockMeta(height)
 		return meta, nil
@@ -500,10 +500,10 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "unmarshal to types.BlockMeta")
+	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
-	meta := &types.BlockMeta{}
+	meta := &types.BlockMeta{Header: types.Header{Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
 	pbm := meta.ToProto()
 	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)
@@ -534,9 +534,11 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	require.NoError(t, err)
 	b2, err := blockAtHeight.ToProto()
 	require.NoError(t, err)
-	bz1 := mustEncode(b1)
-	bz2 := mustEncode(b2)
-	require.Equal(t, bz1, bz2)
+	fmt.Println("proto:", b1, "<->", b2)
+	require.Equal(t, block, blockAtHeight)
+	// bz1 := mustEncode(b1)
+	// bz2 := mustEncode(b2)
+	// require.Equal(t, bz1, bz2)
 	require.Equal(t, block.Hash(), blockAtHeight.Hash(),
 		"expecting a successful load of the last saved block")
 
