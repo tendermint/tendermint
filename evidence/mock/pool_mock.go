@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"fmt"
 	"time"
 
 	sm "github.com/tendermint/tendermint/state"
@@ -13,6 +14,7 @@ import (
 type EvidencePool struct {
 	PendingEvidenceList   []types.Evidence
 	CommittedEvidenceList []types.Evidence
+	POLCList              []types.ProofOfLockChange
 	ExpirationAgeTime     time.Duration
 	ExpirationAgeBlock    int64
 	BlockHeight           int64
@@ -25,6 +27,7 @@ func NewEvidencePool(height, expiryHeight int64, currentTime time.Time, expiryTi
 	return &EvidencePool{
 		[]types.Evidence{},
 		[]types.Evidence{},
+		[]types.ProofOfLockChange{},
 		expiryTime,
 		expiryHeight,
 		height,
@@ -87,6 +90,20 @@ func (p *EvidencePool) IsCommitted(evidence types.Evidence) bool {
 func (p *EvidencePool) IsExpired(evidence types.Evidence) bool {
 	return evidence.Height()+p.ExpirationAgeBlock < p.BlockHeight &&
 		evidence.Time().Add(p.ExpirationAgeTime).Before(p.BlockTime)
+}
+
+func (p *EvidencePool) AddPOLC(polc types.ProofOfLockChange) error {
+	p.POLCList = append(p.POLCList, polc)
+	return nil
+}
+
+func (p *EvidencePool) RetrievePOLC(height int64, round int) (types.ProofOfLockChange, error) {
+	for _, polc := range p.POLCList {
+		if polc.Height() == height && polc.Round() == round {
+			return polc, nil
+		}
+	}
+	return types.ProofOfLockChange{}, fmt.Errorf("unable to find polc at height %d and round %d", height, round)
 }
 
 // ------------------------------- HELPER METHODS --------------------------------------

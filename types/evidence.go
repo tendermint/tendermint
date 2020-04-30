@@ -1111,3 +1111,16 @@ func (e MockEvidence) ValidateBasic() error { return nil }
 func (e MockEvidence) String() string {
 	return fmt.Sprintf("Evidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
 }
+
+// mock polc - fails validate basic, not stable
+func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLockChange {
+	voteVal := NewMockPV()
+	pKey, _ := voteVal.GetPubKey()
+	vote := Vote{Type: PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
+		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
+	_ = voteVal.SignVote("mock-chain-id", &vote)
+	return ProofOfLockChange{
+		Votes:  []Vote{vote},
+		PubKey: pubKey,
+	}
+}

@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -10,7 +11,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -208,12 +208,8 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
-	privKey := ed25519.GenPrivKey()
-	polc := types.ProofOfLockChange{
-		Votes: []types.Vote{{Type: types.PrecommitType, Height: 1, Round: 1, BlockID: types.BlockID{},
-			Timestamp: evidenceTime, ValidatorAddress: valAddr, ValidatorIndex: 1, Signature: []byte{}}},
-		PubKey: privKey.PubKey(),
-	}
+	pubKey, _ := types.NewMockPV().GetPubKey()
+	polc := types.NewMockPOLC(1, evidenceTime, pubKey)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
@@ -221,14 +217,15 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	err = pool.AddPOLC(polc)
 	assert.NoError(t, err)
 
-	shouldExist, newPolc, err := pool.RetrievePOLC(1, 1)
+	// should be able to retrieve polc
+	newPolc, err := pool.RetrievePOLC(1, 1)
 	assert.NoError(t, err)
-	assert.True(t, shouldExist)
 	assert.True(t, polc.Equal(newPolc))
 
-	shouldNotExist, _, err := pool.RetrievePOLC(2, 1)
-	assert.NoError(t, err)
-	assert.False(t, shouldNotExist)
+	// should not be able to retrieve
+	emptyPolc, err := pool.RetrievePOLC(2, 1)
+	assert.Error(t, err)
+	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 	lastCommit := makeCommit(height-1, valAddr)
 	block := types.MakeBlock(height, []types.Tx{}, lastCommit, []types.Evidence{})
@@ -238,9 +235,12 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	// update should prune the polc
 	pool.Update(block, state)
 
-	shouldNotExist, _, err = pool.RetrievePOLC(1, 1)
-	assert.NoError(t, err)
-	assert.False(t, shouldNotExist)
+	fmt.Println(pool.IsExpired(newPolc))
+
+	emptyPolc, err = pool.RetrievePOLC(1, 1)
+	assert.Error(t, err)
+	assert.Equal(t, "unable to find polc at height 1 and round 1", err.Error())
+	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }
 

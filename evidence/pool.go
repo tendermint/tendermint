@@ -123,16 +123,16 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
+	// update the state
+	evpool.mtx.Lock()
+	evpool.state = state
+	evpool.updateValToLastHeight(block.Height, state)
+	evpool.mtx.Unlock()
+
 	// as it's not vital to remove expired POLCs, we only prune periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.pruneExpiredPOLC()
 	}
-
-	// update the state
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
-	evpool.state = state
-	evpool.updateValToLastHeight(block.Height, state)
 }
 
 // AddPOLC adds a proof of lock change to the evidence database
@@ -279,16 +279,18 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
-func (evpool *Pool) RetrievePOLC(height int64, round int) (exists bool, polc types.ProofOfLockChange, err error) {
+func (evpool *Pool) RetrievePOLC(height int64, round int) (types.ProofOfLockChange, error) {
+	var polc types.ProofOfLockChange
 	key := keyPOLCFomHeightAndRound(height, round)
-	exists = false
 	polcBytes, err := evpool.evidenceStore.Get(key)
-	if err != nil || polcBytes == nil {
-		return
+	if err != nil {
+		return polc, err
 	}
-	exists = true
+	if polcBytes == nil {
+		return polc, fmt.Errorf("unable to find polc at height %d and round %d", height, round)
+	}
 	err = cdc.UnmarshalBinaryBare(polcBytes, &polc)
-	return
+	return polc, err
 }
 
 // EvidenceFront goes to the first evidence in the clist
