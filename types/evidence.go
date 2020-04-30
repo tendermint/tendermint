@@ -48,12 +48,12 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
 type ErrEvidenceOverflow struct {
-	MaxNum int64
-	GotNum int64
+	MaxNum int
+	GotNum int
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
 	return &ErrEvidenceOverflow{max, got}
 }
 

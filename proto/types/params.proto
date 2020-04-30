@@ -31,7 +31,8 @@ message EvidenceParams {
   option (gogoproto.equal)    = true;
   // Note: must be greater than 0
   int64                    max_age_num_blocks = 1;
-  google.protobuf.Duration max_age_duration   = 2
+  google.protobuf.Duration max_age_duration   = 2;
+  uint32                   max_num_evidence   = 3
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
 }
 

@@ -220,7 +220,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			require.True(t, maxNumEvidence > 2)
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
-			for i := int64(0); i <= maxNumEvidence; i++ {
+			for i := uint32(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
@@ -235,7 +235,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := int64(0); i < maxNumEvidence; i++ {
+		for i := uint32(0); i < maxNumEvidence; i++ {
 			evidence = append(evidence, goodEvidence)
 		}
 

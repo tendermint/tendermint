@@ -400,7 +400,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	testCases := []struct {
 		maxBytes    int64
-		maxEvidence int64
+		maxEvidence uint32
 		valsCount   int
 		panics      bool
 		result      int64
