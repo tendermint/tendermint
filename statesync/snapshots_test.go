@@ -213,7 +213,6 @@ func TestSnapshotPool_Reject(t *testing.T) {
 	assert.True(t, added)
 }
 
-// nolint: dupl
 func TestSnapshotPool_RejectFormat(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything).Return([]byte("app_hash"), nil)
