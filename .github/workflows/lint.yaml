@@ -6,7 +6,6 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: golangci-lint
-        uses: marbar3778/action-golangci-lint@master
+        uses: golangci/golangci-lint-action@master
         with:
           github_token: ${{ secrets.github_token }}
-          reporter: github-pr-review
