@@ -47,6 +47,11 @@ func (rt *Routine) setLogger(logger log.Logger) {
 	rt.logger = logger
 }
 
+// nolint:unused
+func (rt *Routine) setMetrics(metrics *Metrics) {
+	rt.metrics = metrics
+}
+
 func (rt *Routine) start() {
 	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
