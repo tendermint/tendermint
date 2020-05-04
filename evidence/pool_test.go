@@ -192,7 +192,7 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 func TestRecoverPendingEvidence(t *testing.T) {
 	var (
-		valAddr         = []byte("val1")
+		valAddr         = []byte("validator_address123")
 		height          = int64(30)
 		stateDB         = initializeValidatorState(valAddr, height)
 		evidenceDB      = dbm.NewMemDB()

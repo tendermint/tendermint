@@ -37,7 +37,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+	return types.NewCommit(height, 0, types.BlockID{Hash: []byte(""), PartsHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {
@@ -180,7 +180,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
-	// incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
+	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
 	uncontiguousPartSet.AddPart(part2)
 
@@ -213,72 +213,72 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			seenCommit: seenCommit1,
 		},
 
-		// {
-		// 	block:     nil,
-		// 	wantPanic: "only save a non-nil block",
-		// },
+		{
+			block:     nil,
+			wantPanic: "only save a non-nil block",
+		},
 
-		// {
-		// 	block: newBlock( // New block at height 5 in empty block store is fine
-		// 		types.Header{
-		// 			Height:          5,
-		// 			ChainID:         "block_test",
-		// 			Time:            tmtime.Now(),
-		// 			ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
-		// 		makeTestCommit(5, tmtime.Now()),
-		// 	),
-		// 	parts:      validPartSet,
-		// 	seenCommit: makeTestCommit(5, tmtime.Now()),
-		// },
+		{
+			block: newBlock( // New block at height 5 in empty block store is fine
+				types.Header{
+					Height:          5,
+					ChainID:         "block_test",
+					Time:            tmtime.Now(),
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
+				makeTestCommit(5, tmtime.Now()),
+			),
+			parts:      validPartSet,
+			seenCommit: makeTestCommit(5, tmtime.Now()),
+		},
 
-		// {
-		// 	block:     newBlock(header1, commitAtH10),
-		// 	parts:     incompletePartSet,
-		// 	wantPanic: "only save complete block", // incomplete parts
-		// },
+		{
+			block:     newBlock(header1, commitAtH10),
+			parts:     incompletePartSet,
+			wantPanic: "only save complete block", // incomplete parts
+		},
 
-		// {
-		// 	block:             newBlock(header1, commitAtH10),
-		// 	parts:             validPartSet,
-		// 	seenCommit:        seenCommit1,
-		// 	corruptCommitInDB: true, // Corrupt the DB's commit entry
-		// 	wantPanic:         "unmarshal to types.Commit failed",
-		// },
+		{
+			block:             newBlock(header1, commitAtH10),
+			parts:             validPartSet,
+			seenCommit:        seenCommit1,
+			corruptCommitInDB: true, // Corrupt the DB's commit entry
+			wantPanic:         "error reading block commit",
+		},
 
-		// {
-		// 	block:            newBlock(header1, commitAtH10),
-		// 	parts:            validPartSet,
-		// 	seenCommit:       seenCommit1,
-		// 	wantPanic:        "unmarshal to types.BlockMeta failed",
-		// 	corruptBlockInDB: true, // Corrupt the DB's block entry
-		// },
+		{
+			block:            newBlock(header1, commitAtH10),
+			parts:            validPartSet,
+			seenCommit:       seenCommit1,
+			wantPanic:        "unmarshal to tmproto.BlockMeta",
+			corruptBlockInDB: true, // Corrupt the DB's block entry
+		},
 
-		// {
-		// 	block:      newBlock(header1, commitAtH10),
-		// 	parts:      validPartSet,
-		// 	seenCommit: seenCommit1,
+		{
+			block:      newBlock(header1, commitAtH10),
+			parts:      validPartSet,
+			seenCommit: seenCommit1,
 
-		// 	// Expecting no error and we want a nil back
-		// 	eraseSeenCommitInDB: true,
-		// },
+			// Expecting no error and we want a nil back
+			eraseSeenCommitInDB: true,
+		},
 
-		// {
-		// 	block:      newBlock(header1, commitAtH10),
-		// 	parts:      validPartSet,
-		// 	seenCommit: seenCommit1,
+		{
+			block:      newBlock(header1, commitAtH10),
+			parts:      validPartSet,
+			seenCommit: seenCommit1,
 
-		// 	corruptSeenCommitInDB: true,
-		// 	wantPanic:             "unmarshal to types.Commit failed",
-		// },
+			corruptSeenCommitInDB: true,
+			wantPanic:             "error reading block seen commit",
+		},
 
-		// {
-		// 	block:      newBlock(header1, commitAtH10),
-		// 	parts:      validPartSet,
-		// 	seenCommit: seenCommit1,
+		{
+			block:      newBlock(header1, commitAtH10),
+			parts:      validPartSet,
+			seenCommit: seenCommit1,
 
-		// 	// Expecting no error and we want a nil back
-		// 	eraseCommitInDB: true,
-		// },
+			// Expecting no error and we want a nil back
+			eraseCommitInDB: true,
+		},
 	}
 
 	type quad struct {
@@ -534,11 +534,9 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	require.NoError(t, err)
 	b2, err := blockAtHeight.ToProto()
 	require.NoError(t, err)
-	fmt.Println("proto:", b1, "<->", b2)
-	require.Equal(t, block, blockAtHeight)
-	// bz1 := mustEncode(b1)
-	// bz2 := mustEncode(b2)
-	// require.Equal(t, bz1, bz2)
+	bz1 := mustEncode(b1)
+	bz2 := mustEncode(b2)
+	require.Equal(t, bz1, bz2)
 	require.Equal(t, block.Hash(), blockAtHeight.Hash(),
 		"expecting a successful load of the last saved block")
 
