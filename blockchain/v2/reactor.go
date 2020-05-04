@@ -232,14 +232,14 @@ func (r *BlockchainReactor) Start() error {
 	if r.fastSync {
 		err := r.startSync(nil)
 		if err != nil {
-			r.logger.Error("Failed to start fast sync", "err", err)
+			return fmt.Errorf("failed to start fast sync: %w", err)
 		}
 	}
 	return nil
 }
 
 // startSync begins a fast sync, signalled by r.events being non-nil. If state is non-nil,
-// a bcResetState message is sent immediately after start.
+// the scheduler and processor is updated with this state on startup.
 func (r *BlockchainReactor) startSync(state *state.State) error {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()

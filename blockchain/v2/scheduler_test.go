@@ -1747,7 +1747,7 @@ func TestScHandleAddNewPeer(t *testing.T) {
 				allB:   []int64{6, 7, 8},
 			},
 			args:      args{event: addP1},
-			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 		{
 			name: "add P1 to non empty scheduler",
@@ -1993,7 +1993,7 @@ func TestScHandleStatusResponse(t *testing.T) {
 				allB:  []int64{1, 2},
 			},
 			args:      args{event: statusRespP1Ev},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 
 		{
