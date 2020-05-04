@@ -23,7 +23,7 @@ message DefaultNodeInfo {
   string               default_node_id  = 2 [(gogoproto.customname) = "DefaultNodeID"];
   string               listen_addr      = 3;
   string               network          = 4;
-  string               Version          = 5;
+  string               version          = 5;
   bytes                channels         = 6;
   string               moniker          = 7;
   DefaultNodeInfoOther other            = 8 [(gogoproto.nullable) = false];
