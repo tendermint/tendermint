@@ -224,6 +224,18 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_EndBlock:
 		res := s.app.EndBlock(*r.EndBlock)
 		responses <- types.ToResponseEndBlock(res)
+	case *types.Request_ListSnapshots:
+		res := s.app.ListSnapshots(*r.ListSnapshots)
+		responses <- types.ToResponseListSnapshots(res)
+	case *types.Request_OfferSnapshot:
+		res := s.app.OfferSnapshot(*r.OfferSnapshot)
+		responses <- types.ToResponseOfferSnapshot(res)
+	case *types.Request_LoadSnapshotChunk:
+		res := s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk)
+		responses <- types.ToResponseLoadSnapshotChunk(res)
+	case *types.Request_ApplySnapshotChunk:
+		res := s.app.ApplySnapshotChunk(*r.ApplySnapshotChunk)
+		responses <- types.ToResponseApplySnapshotChunk(res)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

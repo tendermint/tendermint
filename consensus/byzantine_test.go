@@ -112,13 +112,13 @@ func TestByzantine(t *testing.T) {
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*Reactor)
-		cr.SwitchToConsensus(cr.conS.GetState(), 0)
+		cr.SwitchToConsensus(cr.conS.GetState(), false)
 	}
 
 	// start the byzantine state machine
 	byzR := reactors[0].(*ByzantineReactor)
 	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s, 0)
+	byzR.reactor.SwitchToConsensus(s, false)
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].
@@ -268,8 +268,8 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !br.reactor.fastSync {
+	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	if !br.reactor.waitSync {
 		br.reactor.sendNewRoundStepMessage(peer)
 	}
 }

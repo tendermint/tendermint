@@ -49,8 +49,8 @@ func (evR *Reactor) SetLogger(l log.Logger) {
 func (evR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       EvidenceChannel,
-			Priority: 5,
+			ID:                  EvidenceChannel,
+			Priority:            5,
 			RecvMessageCapacity: maxMsgSize,
 		},
 	}
