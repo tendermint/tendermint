@@ -20,7 +20,7 @@ func TestCacheRemove(t *testing.T) {
 	for i := 0; i < numTxs; i++ {
 		// probability of collision is 2**-256
 		txBytes := make([]byte, 32)
-		rand.Read(txBytes) // nolint: gosec
+		rand.Read(txBytes)
 		txs[i] = txBytes
 		cache.Push(txBytes)
 		// make sure its added to both the linked list and the map
