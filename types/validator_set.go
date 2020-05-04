@@ -749,11 +749,15 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 // VerifyCommitTrusting verifies that trustLevel ([1/3, 1]) of the validator
 // set signed this commit.
+//
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
+//
+// Panics if trustLevel is invalid.
 func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	height int64, commit *Commit, trustLevel tmmath.Fraction) error {
 
+	// sanity check
 	if trustLevel.Numerator*3 < trustLevel.Denominator || // < 1/3
 		trustLevel.Numerator > trustLevel.Denominator { // > 1
 		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
@@ -766,8 +770,14 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	var (
 		talliedVotingPower int64
 		seenVals           = make(map[int]int, len(commit.Signatures)) // validator index -> commit index
-		votingPowerNeeded  = (vals.TotalVotingPower() * trustLevel.Numerator) / trustLevel.Denominator
 	)
+
+	// Safely calculate voting power needed.
+	totalVotingPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), trustLevel.Numerator)
+	if overflow {
+		return errors.New("int64 overflow while calculating voting power needed. please provide smaller trustLevel numerator")
+	}
+	votingPowerNeeded := totalVotingPowerMulByNumerator / trustLevel.Denominator
 
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -912,7 +922,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// safe addition/subtraction
+// safe addition/subtraction/multiplication
 
 func safeAdd(a, b int64) (int64, bool) {
 	if b > 0 && a > math.MaxInt64-b {
@@ -952,4 +962,34 @@ func safeSubClip(a, b int64) int64 {
 		return math.MaxInt64
 	}
 	return c
+}
+
+func safeMul(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+		return 0, false
+	}
+
+	absOfB := b
+	if b < 0 {
+		absOfB = -b
+	}
+
+	var (
+		c        = a
+		overflow bool
+	)
+
+	for absOfB > 1 {
+		c, overflow = safeAdd(c, a)
+		if overflow {
+			return c, true
+		}
+		absOfB--
+	}
+
+	if (b < 0 && a > 0) || (b < 0 && a < 0) {
+		return -c, false
+	}
+
+	return c, false
 }
