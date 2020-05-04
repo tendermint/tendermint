@@ -50,7 +50,7 @@ issues:
     - linters:
         - lll
       source: "https://"
-  max-same-issues: 10000
+  max-same-issues: 50
 
 linters-settings:
   dogsled:
