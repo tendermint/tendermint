@@ -98,7 +98,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 
-	maxNumEvidence := int64(state.ConsensusParams.Evidence.MaxNumEvidence)
+	maxNumEvidence := state.ConsensusParams.Evidence.MaxNumEvidence
 	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
 
 	// Fetch a limited amount of valid txs

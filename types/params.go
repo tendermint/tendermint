@@ -19,6 +19,9 @@ const (
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
+
+	// Restrict the upper bound of the amount of evidence (uint16)
+	MaxEvidencePerBlock = 65535
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
@@ -153,6 +156,11 @@ func (params *ConsensusParams) Validate() error {
 	if params.Evidence.MaxAgeDuration <= 0 {
 		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
+	}
+
+	if params.Evidence.MaxNumEvidence > MaxEvidencePerBlock {
+		return errors.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
+			params.Evidence.MaxNumEvidence, MaxEvidencePerBlock)
 	}
 
 	if int64(params.Evidence.MaxNumEvidence)*MaxEvidenceBytes > params.Block.MaxBytes {

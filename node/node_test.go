@@ -219,6 +219,8 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	const minEvSize = 12
+
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -261,7 +263,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// fill the evidence pool with more evidence
 	// than can fit in a block
 	for i := 0; i < maxEvidence+1; i++ {
-		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(12))
+		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}
