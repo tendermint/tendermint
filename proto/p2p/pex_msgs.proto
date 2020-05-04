@@ -4,11 +4,12 @@ package tendermint.proto.p2p;
 option go_package = "github.com/tendermint/tendermint/proto/p2p";
 
 import "proto/p2p/types.proto";
+import "third_party/proto/gogoproto/gogo.proto";
 
 message PexRequest {}
 
 message PexAddrs {
-  NetAddress addrs = 1;
+  NetAddress addrs = 1 [(gogoproto.nullable) = false];
 }
 
 message Message {
