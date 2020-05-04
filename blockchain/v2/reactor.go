@@ -257,7 +257,7 @@ func (r *BlockchainReactor) startSync(state *state.State) error {
 		r.scheduler.send(bcResetState{state: *state})
 		r.processor.send(bcResetState{state: *state})
 	}
-	go r.demux()
+	go r.demux(r.events)
 	return nil
 }
 
@@ -352,7 +352,8 @@ type bcResetState struct {
 	state state.State
 }
 
-func (r *BlockchainReactor) demux() {
+// Takes the channel as a parameter to avoid race conditions on r.events.
+func (r *BlockchainReactor) demux(events <-chan Event) {
 	var lastRate = 0.0
 	var lastHundred = time.Now()
 
@@ -421,7 +422,7 @@ func (r *BlockchainReactor) demux() {
 			r.io.broadcastStatusRequest(r.store.Base(), r.SyncHeight())
 
 		// Events from peers. Closing the channel signals event loop termination.
-		case event, ok := <-r.events:
+		case event, ok := <-events:
 			if !ok {
 				r.logger.Info("Stopping event processing")
 				return

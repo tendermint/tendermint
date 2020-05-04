@@ -383,9 +383,9 @@ func TestReactorHelperMode(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
-			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
+			reactor.Start()
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
