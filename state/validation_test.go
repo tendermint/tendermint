@@ -19,6 +19,8 @@ import (
 
 const validationTestsStopHeight int64 = 10
 
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
@@ -260,10 +262,16 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(1, int(height))
+	state, stateDB, _ := makeState(2, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(true)
+	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsCommitted", ev).Return(false)
+	evpool.On("IsCommitted", ev2).Return(true)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -272,8 +280,7 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 		evpool)
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
-	addr, _ := state.Validators.GetByIndex(0)
-	block.Evidence.Evidence = []types.Evidence{types.NewMockEvidence(height, time.Now(), addr)}
+	block.Evidence.Evidence = []types.Evidence{ev, ev2}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
@@ -285,14 +292,13 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := makeState(2, int(height))
 	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(0)
-	ev := types.NewMockEvidence(height, time.Now(), addr)
-	ev2 := types.NewMockEvidence(height, time.Now(), addr2)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(func(e types.Evidence) bool {
-		return e.Equal(ev)
-	})
+	evpool.On("IsPending", ev).Return(false)
+	evpool.On("IsPending", ev2).Return(true)
 	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(false)
 
 	blockExec := sm.NewBlockExecutor(
