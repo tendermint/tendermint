@@ -474,6 +474,8 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
+	// Use mocks for both mempool and evidence pool since we don't need them
+	// during replay.
 	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, evmock.NewDefaultEvidencePool())
 	blockExec.SetEventBus(h.eventBus)
 
