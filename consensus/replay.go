@@ -15,7 +15,6 @@ import (
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/proxy"
@@ -474,7 +473,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, evmock.NewDefaultEvidencePool())
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, emptyEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
@@ -552,3 +551,11 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
 	return abci.ResponseCommit{Data: mock.appHash}
 }
+
+type emptyEvidencePool struct{}
+
+func (ev emptyEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (ev emptyEvidencePool) AddEvidence(types.Evidence) error       { return nil }
+func (ev emptyEvidencePool) Update(*types.Block, sm.State)          {}
+func (ev emptyEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (ev emptyEvidencePool) IsPending(types.Evidence) bool          { return true }
