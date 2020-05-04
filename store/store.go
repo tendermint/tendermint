@@ -85,24 +85,23 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		return nil
 	}
 
-	block := new(types.Block)
+	pbb := new(tmproto.Block)
 	buf := []byte{}
 	for i := 0; i < int(blockMeta.BlockID.PartsHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
-	err := cdc.UnmarshalBinaryLengthPrefixed(buf, block)
-	// err := proto.Unmarshal(buf, pbb)
+	err := proto.Unmarshal(buf, pbb)
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
 		panic(fmt.Errorf("error reading block: %w", err))
 	}
 
-	// block, err := types.BlockFromProto(pbb)
-	// if err != nil {
-	// 	panic(fmt.Errorf("error from proto block: %w", err))
-	// }
+	block, err := types.BlockFromProto(pbb)
+	if err != nil {
+		panic(fmt.Errorf("error from proto block: %w", err))
+	}
 
 	return block
 }

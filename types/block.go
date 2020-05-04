@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -141,12 +142,11 @@ func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	// pbb, err := b.ToProto()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// bz, err := proto.Marshal(pbb)
-	bz, err := cdc.MarshalBinaryLengthPrefixed(b)
+	pbb, err := b.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(pbb)
 	if err != nil {
 		panic(err)
 	}
@@ -900,7 +900,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Height = commit.Height
 	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
-	if commit.hash == nil {
+	if commit.hash != nil {
 		c.Hash = commit.hash
 	}
 	c.BitArray = commit.bitArray.ToProto()
