@@ -51,11 +51,6 @@ var (
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 )
 
-var (
-	oldPrivVal     = "priv_validator.json"
-	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
-)
-
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
