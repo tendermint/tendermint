@@ -1440,15 +1440,13 @@ func TestValidatorSetProtoBuf(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		protoValSet, err := tc.v1.ToProto()
-
 		if tc.expPass1 {
 			require.NoError(t, err, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
 
-		valSet := new(ValidatorSet)
-		err = valSet.FromProto(protoValSet)
+		valSet, err := ValidatorSetFromProto(protoValSet)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.v1, valSet, tc.msg)

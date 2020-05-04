@@ -171,14 +171,12 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 
 		return &dve, nil
 	case *tmproto.Evidence_ConflictingHeadersEvidence:
-		h1 := new(SignedHeader)
-		h2 := new(SignedHeader)
 
-		err := h1.FromProto(evi.ConflictingHeadersEvidence.H1)
+		h1, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H1)
 		if err != nil {
 			return nil, fmt.Errorf("from proto err: %w", err)
 		}
-		err = h2.FromProto(evi.ConflictingHeadersEvidence.H1)
+		h2, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H2)
 		if err != nil {
 			return nil, fmt.Errorf("from proto err: %w", err)
 		}
