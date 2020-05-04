@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -120,6 +121,11 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 		assert.Error(t, cfg.ValidateBasic())
 		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
 	}
+}
+
+func TestStateSyncConfigValidateBasic(t *testing.T) {
+	cfg := TestStateSyncConfig()
+	require.NoError(t, cfg.ValidateBasic())
 }
 
 func TestFastSyncConfigValidateBasic(t *testing.T) {
