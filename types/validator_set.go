@@ -535,9 +535,9 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (votingPower int64
 
 // Removes the validators specified in 'deletes' from validator set 'vals'.
 // Should not fail as verification has been done before.
+// Expects vals to be sorted by address (done by applyUpdates).
 func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	existing := vals.Validators
-	sort.Sort(ValidatorsByAddress(existing))
 
 	merged := make([]*Validator, len(existing)-len(deletes))
 	i := 0
