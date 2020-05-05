@@ -15,9 +15,7 @@ import (
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -474,9 +472,9 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	// Use mocks for both mempool and evidence pool since we don't need them
-	// during replay.
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, evmock.NewDefaultEvidencePool())
+	// Use stubs for both mempool and evidence pool since no transactions nor
+	// evidence are needed here - block already exists.
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mempoolStub{}, evPoolStub{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
@@ -510,47 +508,4 @@ State: %v
 Did you reset Tendermint without resetting your application's data?`,
 			appHash, state.AppHash, state))
 	}
-}
-
-//--------------------------------------------------------------------------------
-// mockProxyApp uses ABCIResponses to give the right results
-// Useful because we don't want to call Commit() twice for the same block on the real app.
-
-func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
-		appHash:       appHash,
-		abciResponses: abciResponses,
-	})
-	cli, _ := clientCreator.NewABCIClient()
-	err := cli.Start()
-	if err != nil {
-		panic(err)
-	}
-	return proxy.NewAppConnConsensus(cli)
-}
-
-type mockProxyApp struct {
-	abci.BaseApplication
-
-	appHash       []byte
-	txCount       int
-	abciResponses *sm.ABCIResponses
-}
-
-func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
-	mock.txCount++
-	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
-		return abci.ResponseDeliverTx{}
-	}
-	return *r
-}
-
-func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
-}
-
-func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
 }
