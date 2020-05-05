@@ -11,6 +11,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
+  - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
 
 - Apps
 
@@ -24,8 +25,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
 
 - Blockchain Protocol
-
-  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power (@melekes)
 
 ### FEATURES:
 
@@ -44,6 +43,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - cleveldb: use cleveldb as db backend instead of goleveldb.
   - race: pass -race to go build and enable data race detection.
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
+- [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
 
 ### BUG FIXES:
 
