@@ -2,17 +2,20 @@ package conn
 
 import (
 	"bytes"
+	"io"
+	"io/ioutil"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 const maxPingPongPacketSize = 1024 // bytes
@@ -182,8 +185,11 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
+		var pkt tmp2p.PacketPing
+
+		bz, err := readAll(server, maxPingPongPacketSize)
+		require.NoError(t, err)
+		proto.Unmarshal(bz, &pkt)
 		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
@@ -219,25 +225,39 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	defer mconn.Stop()
 
 	// sending 3 pongs in a row (abuse)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
+	bz, err := encodeMsg(&tmp2p.PacketPong{})
+	require.NoError(t, err)
+	_, err = server.Write(bz)
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
+	bz2, err := encodeMsg(&tmp2p.PacketPong{})
+	require.NoError(t, err)
+	_, err = server.Write(bz2)
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
+	bz3, err := encodeMsg(&tmp2p.PacketPong{})
+	require.NoError(t, err)
+	_, err = server.Write(bz3)
 	require.Nil(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
 		var (
-			packet Packet
+			packet tmp2p.Packet
 			err    error
 		)
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &packet, maxPingPongPacketSize)
-		require.Nil(t, err)
+
+		rl := io.LimitReader(server, maxPingPongPacketSize)
+		pz, err := ioutil.ReadAll(rl)
+		require.NoError(t, err)
+
+		err = proto.Unmarshal(pz, &packet)
+		require.NoError(t, err)
+
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
+		bz, err = encodeMsg(&tmp2p.PacketPong{})
+		require.NoError(t, err)
+		_, err = server.Write(bz)
 		require.Nil(t, err)
 	}()
 	<-serverGotPing

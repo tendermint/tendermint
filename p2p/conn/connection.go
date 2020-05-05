@@ -2,19 +2,19 @@ package conn
 
 import (
 	"bufio"
-	"runtime/debug"
-
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"net"
 	"reflect"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 
 	flow "github.com/tendermint/tendermint/libs/flowrate"
@@ -22,6 +22,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/timer"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 const (
@@ -435,7 +436,12 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.C:
 			c.Logger.Debug("Send Ping")
-			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPing{})
+			bz, err := encodeMsg(&tmp2p.PacketPing{})
+			if err != nil {
+				c.Logger.Error("Failure to encode PacketPing")
+				break SELECTION
+			}
+			_, err = c.bufConnWriter.Write(bz)
 			if err != nil {
 				break SELECTION
 			}
@@ -457,7 +463,12 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPong{})
+			bz, err := encodeMsg(&tmp2p.PacketPong{})
+			if err != nil {
+				c.Logger.Error("Failure to encode PacketPong")
+				break SELECTION
+			}
+			_, err = c.bufConnWriter.Write(bz)
 			if err != nil {
 				break SELECTION
 			}
@@ -573,11 +584,14 @@ FOR_LOOP:
 		*/
 
 		// Read packet type
-		var packet Packet
-		var _n int64
-		var err error
-		_n, err = cdc.UnmarshalBinaryLengthPrefixedReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
-		c.recvMonitor.Update(int(_n))
+		var (
+			packet tmp2p.Packet
+			err    error
+		)
+
+		bz, err := readAll(c.bufConnReader, int64(c._maxPacketMsgSize))
+		proto.Unmarshal(bz, &packet)
+		c.recvMonitor.Update(len(bz))
 
 		if err != nil {
 			// stopServices was invoked and we are shutting down
@@ -600,8 +614,8 @@ FOR_LOOP:
 		}
 
 		// Read more depending on packet type.
-		switch pkt := packet.(type) {
-		case PacketPing:
+		switch pkt := packet.Sum.(type) {
+		case *tmp2p.Packet_PacketPing:
 			// TODO: prevent abuse, as they cause flush()'s.
 			// https://github.com/tendermint/tendermint/issues/1190
 			c.Logger.Debug("Receive Ping")
@@ -610,23 +624,23 @@ FOR_LOOP:
 			default:
 				// never block
 			}
-		case PacketPong:
+		case *tmp2p.Packet_PacketPong:
 			c.Logger.Debug("Receive Pong")
 			select {
 			case c.pongTimeoutCh <- false:
 			default:
 				// never block
 			}
-		case PacketMsg:
-			channel, ok := c.channelsIdx[pkt.ChannelID]
+		case *tmp2p.Packet_PacketMsg:
+			channel, ok := c.channelsIdx[byte(pkt.PacketMsg.ChannelID)]
 			if !ok || channel == nil {
-				err := fmt.Errorf("unknown channel %X", pkt.ChannelID)
+				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
 				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
 				break FOR_LOOP
 			}
 
-			msgBytes, err := channel.recvPacketMsg(pkt)
+			msgBytes, err := channel.recvPacketMsg(*pkt.PacketMsg)
 			if err != nil {
 				if c.IsRunning() {
 					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
@@ -635,9 +649,9 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", pkt.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
-				c.onReceive(pkt.ChannelID, msgBytes)
+				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
@@ -662,14 +676,18 @@ func (c *MConnection) stopPongTimer() {
 	}
 }
 
-// maxPacketMsgSize returns a maximum size of PacketMsg, including the overhead
-// of amino encoding.
+// maxPacketMsgSize returns a maximum size of PacketMsg
 func (c *MConnection) maxPacketMsgSize() int {
-	return len(cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{
+	bz, err := encodeMsg(&tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, c.config.MaxPacketMsgPayloadSize),
-	})) + 10 // leave room for changes in amino
+		Data:      make([]byte, c.config.MaxPacketMsgPayloadSize),
+	})
+
+	if err != nil {
+		panic(err)
+	}
+	return len(bz)
 }
 
 type ConnectionStatus struct {
@@ -815,17 +833,17 @@ func (ch *Channel) isSendPending() bool {
 
 // Creates a new PacketMsg to send.
 // Not goroutine-safe
-func (ch *Channel) nextPacketMsg() PacketMsg {
-	packet := PacketMsg{}
-	packet.ChannelID = ch.desc.ID
+func (ch *Channel) nextPacketMsg() tmp2p.PacketMsg {
+	packet := tmp2p.PacketMsg{}
+	packet.ChannelID = int32(ch.desc.ID)
 	maxSize := ch.maxPacketMsgPayloadSize
-	packet.Bytes = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
+	packet.Data = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
-		packet.EOF = byte(0x01)
+		packet.EOF = int32(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
-		packet.EOF = byte(0x00)
+		packet.EOF = int32(0x00)
 		ch.sending = ch.sending[tmmath.MinInt(maxSize, len(ch.sending)):]
 	}
 	return packet
@@ -835,22 +853,26 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 	var packet = ch.nextPacketMsg()
-	n, err = cdc.MarshalBinaryLengthPrefixedWriter(w, packet)
-	atomic.AddInt64(&ch.recentlySent, n)
+	bz, err := encodeMsg(&packet)
+	if err != nil {
+		return
+	}
+	i, err := w.Write(bz)
+	atomic.AddInt64(&ch.recentlySent, int64(i))
 	return
 }
 
 // Handles incoming PacketMsgs. It returns a message bytes if message is
 // complete. NOTE message bytes may change on next call to recvPacketMsg.
 // Not goroutine-safe
-func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
+func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
-	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Bytes)
+	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
 	if recvCap < recvReceived {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)
 	}
-	ch.recving = append(ch.recving, packet.Bytes...)
-	if packet.EOF == byte(0x01) {
+	ch.recving = append(ch.recving, packet.Data...)
+	if packet.EOF == int32(0x01) {
 		msgBytes := ch.recving
 
 		// clear the slice without re-allocating.
@@ -873,6 +895,51 @@ func (ch *Channel) updateStats() {
 
 //----------------------------------------
 // Packet
+
+// encodeMsg takes a proto.message creates a tmp2p.Packet and encodes it
+// returns []byte and error
+func encodeMsg(pb proto.Message) ([]byte, error) {
+	var msg tmp2p.Packet
+
+	switch pb := pb.(type) {
+	case *tmp2p.PacketPing:
+		msg = tmp2p.Packet{
+			Sum: &tmp2p.Packet_PacketPing{
+				PacketPing: &tmp2p.PacketPing{},
+			},
+		}
+	case *tmp2p.PacketPong:
+		msg = tmp2p.Packet{
+			Sum: &tmp2p.Packet_PacketPong{
+				PacketPong: &tmp2p.PacketPong{},
+			},
+		}
+	case *tmp2p.PacketMsg:
+		msg = tmp2p.Packet{
+			Sum: &tmp2p.Packet_PacketMsg{
+				PacketMsg: &tmp2p.PacketMsg{
+					ChannelID: pb.ChannelID,
+					EOF:       pb.EOF,
+					Data:      pb.Data,
+				},
+			},
+		}
+	default:
+		return nil, fmt.Errorf("msg not recoginized: %T", pb)
+	}
+
+	return proto.Marshal(&msg)
+}
+
+func readAll(r io.Reader, maxSize int64) ([]byte, error) {
+	rl := io.LimitReader(r, maxSize)
+	bz, err := ioutil.ReadAll(rl)
+	if err != nil {
+		return nil, err
+	}
+
+	return bz, nil
+}
 
 type Packet interface {
 	AssertIsPacket()
