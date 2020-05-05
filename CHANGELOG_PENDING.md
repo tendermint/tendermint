@@ -25,6 +25,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Blockchain Protocol
 
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power (@melekes)
+
 ### FEATURES:
 
 - [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
