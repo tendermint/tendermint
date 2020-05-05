@@ -12,8 +12,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -35,8 +33,9 @@ type NewRoundStep struct {
 	LastCommitRound       int32  `protobuf:"varint,5,opt,name=last_commit_round,json=lastCommitRound,proto3" json:"last_commit_round,omitempty"`
 }
 
-func (m *NewRoundStep) Reset()      { *m = NewRoundStep{} }
-func (*NewRoundStep) ProtoMessage() {}
+func (m *NewRoundStep) Reset()         { *m = NewRoundStep{} }
+func (m *NewRoundStep) String() string { return proto.CompactTextString(m) }
+func (*NewRoundStep) ProtoMessage()    {}
 func (*NewRoundStep) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{0}
 }
@@ -110,8 +109,9 @@ type NewValidBlock struct {
 	IsCommit         bool                `protobuf:"varint,5,opt,name=is_commit,json=isCommit,proto3" json:"is_commit,omitempty"`
 }
 
-func (m *NewValidBlock) Reset()      { *m = NewValidBlock{} }
-func (*NewValidBlock) ProtoMessage() {}
+func (m *NewValidBlock) Reset()         { *m = NewValidBlock{} }
+func (m *NewValidBlock) String() string { return proto.CompactTextString(m) }
+func (*NewValidBlock) ProtoMessage()    {}
 func (*NewValidBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{1}
 }
@@ -181,8 +181,9 @@ type Proposal struct {
 	Proposal types.Proposal `protobuf:"bytes,1,opt,name=proposal,proto3" json:"proposal"`
 }
 
-func (m *Proposal) Reset()      { *m = Proposal{} }
-func (*Proposal) ProtoMessage() {}
+func (m *Proposal) Reset()         { *m = Proposal{} }
+func (m *Proposal) String() string { return proto.CompactTextString(m) }
+func (*Proposal) ProtoMessage()    {}
 func (*Proposal) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{2}
 }
@@ -226,8 +227,9 @@ type ProposalPOL struct {
 	ProposalPol      bits.BitArray `protobuf:"bytes,3,opt,name=proposal_pol,json=proposalPol,proto3" json:"proposal_pol"`
 }
 
-func (m *ProposalPOL) Reset()      { *m = ProposalPOL{} }
-func (*ProposalPOL) ProtoMessage() {}
+func (m *ProposalPOL) Reset()         { *m = ProposalPOL{} }
+func (m *ProposalPOL) String() string { return proto.CompactTextString(m) }
+func (*ProposalPOL) ProtoMessage()    {}
 func (*ProposalPOL) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{3}
 }
@@ -285,8 +287,9 @@ type BlockPart struct {
 	Part   types.Part `protobuf:"bytes,3,opt,name=part,proto3" json:"part"`
 }
 
-func (m *BlockPart) Reset()      { *m = BlockPart{} }
-func (*BlockPart) ProtoMessage() {}
+func (m *BlockPart) Reset()         { *m = BlockPart{} }
+func (m *BlockPart) String() string { return proto.CompactTextString(m) }
+func (*BlockPart) ProtoMessage()    {}
 func (*BlockPart) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{4}
 }
@@ -342,8 +345,9 @@ type Vote struct {
 	Vote *types.Vote `protobuf:"bytes,1,opt,name=vote,proto3" json:"vote,omitempty"`
 }
 
-func (m *Vote) Reset()      { *m = Vote{} }
-func (*Vote) ProtoMessage() {}
+func (m *Vote) Reset()         { *m = Vote{} }
+func (m *Vote) String() string { return proto.CompactTextString(m) }
+func (*Vote) ProtoMessage()    {}
 func (*Vote) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{5}
 }
@@ -388,8 +392,9 @@ type HasVote struct {
 	Index  uint32              `protobuf:"varint,4,opt,name=index,proto3" json:"index,omitempty"`
 }
 
-func (m *HasVote) Reset()      { *m = HasVote{} }
-func (*HasVote) ProtoMessage() {}
+func (m *HasVote) Reset()         { *m = HasVote{} }
+func (m *HasVote) String() string { return proto.CompactTextString(m) }
+func (*HasVote) ProtoMessage()    {}
 func (*HasVote) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{6}
 }
@@ -455,8 +460,9 @@ type VoteSetMaj23 struct {
 	BlockID types.BlockID       `protobuf:"bytes,4,opt,name=block_id,json=blockId,proto3" json:"block_id"`
 }
 
-func (m *VoteSetMaj23) Reset()      { *m = VoteSetMaj23{} }
-func (*VoteSetMaj23) ProtoMessage() {}
+func (m *VoteSetMaj23) Reset()         { *m = VoteSetMaj23{} }
+func (m *VoteSetMaj23) String() string { return proto.CompactTextString(m) }
+func (*VoteSetMaj23) ProtoMessage()    {}
 func (*VoteSetMaj23) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{7}
 }
@@ -523,8 +529,9 @@ type VoteSetBits struct {
 	Votes   bits.BitArray       `protobuf:"bytes,5,opt,name=votes,proto3" json:"votes"`
 }
 
-func (m *VoteSetBits) Reset()      { *m = VoteSetBits{} }
-func (*VoteSetBits) ProtoMessage() {}
+func (m *VoteSetBits) Reset()         { *m = VoteSetBits{} }
+func (m *VoteSetBits) String() string { return proto.CompactTextString(m) }
+func (*VoteSetBits) ProtoMessage()    {}
 func (*VoteSetBits) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{8}
 }
@@ -604,8 +611,9 @@ type Message struct {
 	Sum isMessage_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *Message) Reset()      { *m = Message{} }
-func (*Message) ProtoMessage() {}
+func (m *Message) Reset()         { *m = Message{} }
+func (m *Message) String() string { return proto.CompactTextString(m) }
+func (*Message) ProtoMessage()    {}
 func (*Message) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9de64017f8b3fc88, []int{9}
 }
@@ -638,7 +646,6 @@ var xxx_messageInfo_Message proto.InternalMessageInfo
 
 type isMessage_Sum interface {
 	isMessage_Sum()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -782,801 +789,63 @@ func init() {
 func init() { proto.RegisterFile("proto/consensus/msgs.proto", fileDescriptor_9de64017f8b3fc88) }
 
 var fileDescriptor_9de64017f8b3fc88 = []byte{
-	// 894 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0xcb, 0x6f, 0x1b, 0x45,
-	0x18, 0xdf, 0x69, 0xec, 0xd8, 0xf9, 0x1c, 0x27, 0x65, 0xc4, 0xc3, 0x4a, 0xd1, 0x26, 0x5a, 0x28,
-	0x04, 0x84, 0xec, 0xca, 0x95, 0x78, 0xdc, 0xca, 0xf2, 0xd0, 0x56, 0xc4, 0xa9, 0xb5, 0xae, 0x2a,
-	0xc1, 0x65, 0xb5, 0xf6, 0x0e, 0xf6, 0x80, 0x77, 0x67, 0xd9, 0x99, 0x24, 0xe4, 0xc6, 0x05, 0x89,
-	0x23, 0x7f, 0x03, 0x27, 0x0e, 0x5c, 0xf9, 0x0f, 0x38, 0xf4, 0x98, 0x63, 0x4f, 0x15, 0xd9, 0x5c,
-	0x38, 0xf6, 0x0f, 0xe0, 0x80, 0xe6, 0x61, 0xef, 0xa6, 0xd5, 0xe6, 0x71, 0x41, 0xea, 0xc5, 0x9a,
-	0xf9, 0x1e, 0xbf, 0xf9, 0xe6, 0xf7, 0xcd, 0xf7, 0xf3, 0xc2, 0x56, 0x9a, 0x31, 0xc1, 0x7a, 0x13,
-	0x96, 0x70, 0x92, 0xf0, 0x03, 0xde, 0x8b, 0xf9, 0x94, 0x77, 0x95, 0x11, 0x6f, 0x09, 0x92, 0x44,
-	0x24, 0x8b, 0x69, 0x22, 0xb4, 0xa5, 0xbb, 0x0c, 0xdb, 0x7a, 0x47, 0xcc, 0x68, 0x16, 0x05, 0x69,
-	0x98, 0x89, 0xe3, 0x9e, 0xc6, 0x98, 0xb2, 0x29, 0x2b, 0x56, 0x3a, 0x63, 0xeb, 0x0d, 0x6d, 0x11,
-	0xc7, 0x29, 0xe1, 0xfa, 0xd7, 0x38, 0x6e, 0x69, 0xc7, 0x9c, 0x8e, 0x79, 0x6f, 0x4c, 0xc5, 0x39,
-	0xa7, 0xf3, 0x27, 0x82, 0xf5, 0x7d, 0x72, 0xe4, 0xb3, 0x83, 0x24, 0x1a, 0x09, 0x92, 0xe2, 0xd7,
-	0x61, 0x75, 0x46, 0xe8, 0x74, 0x26, 0x3a, 0x68, 0x07, 0xed, 0xae, 0xf8, 0x66, 0x87, 0x5f, 0x85,
-	0x7a, 0x26, 0x83, 0x3a, 0x37, 0x76, 0xd0, 0x6e, 0xdd, 0xd7, 0x1b, 0x8c, 0xa1, 0xc6, 0x05, 0x49,
-	0x3b, 0x2b, 0x3b, 0x68, 0xb7, 0xed, 0xab, 0x35, 0xfe, 0x08, 0x3a, 0x9c, 0x4c, 0x58, 0x12, 0xf1,
-	0x80, 0xd3, 0x64, 0x42, 0x02, 0x2e, 0xc2, 0x4c, 0x04, 0x82, 0xc6, 0xa4, 0x53, 0x53, 0x98, 0xaf,
-	0x19, 0xff, 0x48, 0xba, 0x47, 0xd2, 0xfb, 0x90, 0xc6, 0x04, 0xbf, 0x0f, 0xaf, 0xcc, 0x43, 0x2e,
-	0x82, 0x09, 0x8b, 0x63, 0x2a, 0x02, 0x7d, 0x5c, 0x5d, 0x1d, 0xb7, 0x29, 0x1d, 0x9f, 0x29, 0xbb,
-	0x2a, 0xd5, 0xf9, 0x17, 0x41, 0x7b, 0x9f, 0x1c, 0x3d, 0x0a, 0xe7, 0x34, 0x72, 0xe7, 0x6c, 0xf2,
-	0xfd, 0x35, 0x0b, 0xff, 0x1a, 0xf0, 0x58, 0xa6, 0x29, 0x5e, 0x79, 0x30, 0x23, 0x61, 0x44, 0x32,
-	0x75, 0x8d, 0x56, 0xff, 0x76, 0xf7, 0x85, 0x76, 0x68, 0xca, 0x86, 0x61, 0x26, 0x46, 0x44, 0x78,
-	0x2a, 0xd8, 0xad, 0x3d, 0x7e, 0xba, 0x6d, 0xf9, 0x37, 0x15, 0x8c, 0xf4, 0x70, 0x6d, 0xc7, 0x5f,
-	0x40, 0xab, 0x04, 0xad, 0xae, 0xdc, 0xea, 0xbf, 0xfd, 0x22, 0xa6, 0x6c, 0x48, 0x57, 0x36, 0xa4,
-	0xeb, 0x52, 0xf1, 0x69, 0x96, 0x85, 0xc7, 0x3e, 0x14, 0x60, 0xf8, 0x16, 0xac, 0x51, 0x6e, 0xb8,
-	0x50, 0x2c, 0x34, 0xfd, 0x26, 0xe5, 0x9a, 0x03, 0x67, 0x1f, 0x9a, 0xc3, 0x8c, 0xa5, 0x8c, 0x87,
-	0x73, 0xec, 0x42, 0x33, 0x35, 0x6b, 0x75, 0xf5, 0x56, 0x7f, 0xa7, 0xf2, 0x02, 0x26, 0xce, 0xd4,
-	0xbe, 0xcc, 0x73, 0x7e, 0x43, 0xd0, 0x5a, 0x38, 0x87, 0x0f, 0xf6, 0x2a, 0xc9, 0xfc, 0x00, 0xf0,
-	0x22, 0x27, 0x48, 0xd9, 0x3c, 0x28, 0x33, 0x7b, 0x73, 0xe1, 0x19, 0xb2, 0xb9, 0x6a, 0x12, 0x1e,
-	0xc0, 0x7a, 0x39, 0xda, 0xd0, 0x7b, 0x25, 0x2a, 0x4c, 0x85, 0xad, 0x12, 0xa6, 0xf3, 0x03, 0xac,
-	0xb9, 0x0b, 0x7e, 0xae, 0xd9, 0xee, 0x0f, 0xa1, 0x26, 0xbb, 0x61, 0x2a, 0x78, 0xf3, 0xa2, 0x06,
-	0x9b, 0x93, 0x55, 0xbc, 0xf3, 0x31, 0xd4, 0x1e, 0x31, 0x41, 0xf0, 0x1d, 0xa8, 0x1d, 0x32, 0x41,
-	0x0c, 0xbf, 0x95, 0xf9, 0x32, 0xd6, 0x57, 0x91, 0xce, 0x2f, 0x08, 0x1a, 0x5e, 0xc8, 0x55, 0xf6,
-	0xf5, 0x6a, 0xfd, 0x04, 0x6a, 0x12, 0x4d, 0xd5, 0xba, 0x51, 0xfd, 0x18, 0x47, 0x74, 0x9a, 0x90,
-	0x68, 0xc0, 0xa7, 0x0f, 0x8f, 0x53, 0xe2, 0xab, 0x14, 0x09, 0x48, 0x93, 0x88, 0xfc, 0xa8, 0x1e,
-	0x5d, 0xdb, 0xd7, 0x1b, 0xe7, 0x2f, 0x04, 0xeb, 0xb2, 0x8e, 0x11, 0x11, 0x83, 0xf0, 0xbb, 0xfe,
-	0xdd, 0xff, 0xaf, 0x9e, 0xaf, 0xa0, 0xa9, 0x47, 0x81, 0x46, 0x66, 0x0e, 0xb6, 0xab, 0xd2, 0x55,
-	0x67, 0xef, 0x7f, 0xee, 0x6e, 0x4a, 0xf6, 0xf3, 0xa7, 0xdb, 0x0d, 0x63, 0xf0, 0x1b, 0x0a, 0xe1,
-	0x7e, 0xe4, 0xfc, 0x7c, 0x03, 0x5a, 0xe6, 0x1a, 0x2e, 0x15, 0xfc, 0xe5, 0xbc, 0x05, 0xbe, 0x07,
-	0x75, 0xf9, 0x3e, 0xb8, 0x1a, 0xe9, 0xeb, 0x0d, 0x83, 0x4e, 0x74, 0xfe, 0xa8, 0x43, 0x63, 0x40,
-	0x38, 0x0f, 0xa7, 0x04, 0x0f, 0x61, 0x23, 0x21, 0x47, 0x7a, 0x0c, 0x03, 0xa5, 0xc4, 0xfa, 0x85,
-	0xee, 0x76, 0xab, 0xff, 0x51, 0xba, 0x65, 0xbd, 0xf7, 0x2c, 0x7f, 0x3d, 0x29, 0xeb, 0xff, 0x08,
-	0x36, 0x25, 0xe2, 0xa1, 0x14, 0xd6, 0x40, 0x15, 0xad, 0x78, 0x6c, 0xf5, 0xdf, 0xbb, 0x04, 0xb2,
-	0x90, 0x62, 0xcf, 0xf2, 0xdb, 0xc9, 0x39, 0x6d, 0x2e, 0x4b, 0x54, 0xa5, 0x08, 0x14, 0x68, 0x0b,
-	0x25, 0xf2, 0x4a, 0x12, 0x85, 0xf7, 0x9e, 0x13, 0x13, 0xdd, 0x89, 0x77, 0xaf, 0x82, 0x33, 0x7c,
-	0xb0, 0xe7, 0x9d, 0xd7, 0x12, 0xfc, 0x25, 0x40, 0x21, 0xd2, 0xa6, 0x17, 0xb7, 0x2f, 0xc2, 0x5a,
-	0x2a, 0x8f, 0x67, 0xf9, 0x6b, 0x4b, 0x99, 0x96, 0xc2, 0xa2, 0x84, 0x61, 0xb5, 0x4a, 0x78, 0x0b,
-	0x04, 0xf9, 0x76, 0x3d, 0x4b, 0xcb, 0x03, 0xbe, 0x07, 0xcd, 0x59, 0xc8, 0x03, 0x95, 0xdb, 0x50,
-	0xb9, 0x6f, 0x5d, 0x94, 0x6b, 0x94, 0xc4, 0xb3, 0xfc, 0xc6, 0xcc, 0x88, 0xca, 0x10, 0x36, 0x64,
-	0x76, 0xc0, 0x89, 0x08, 0x62, 0x39, 0xd6, 0x9d, 0xe6, 0xe5, 0xad, 0x2f, 0xcb, 0x80, 0x6c, 0xfd,
-	0x61, 0x59, 0x16, 0x06, 0xd0, 0x5e, 0x22, 0xca, 0xf7, 0xd7, 0x59, 0xbb, 0x9c, 0xe2, 0xd2, 0x40,
-	0x4a, 0x8a, 0x0f, 0x8b, 0xad, 0x5b, 0x87, 0x15, 0x7e, 0x10, 0xbb, 0xdf, 0x9e, 0x9c, 0xda, 0xd6,
-	0x93, 0x53, 0xdb, 0x7a, 0x76, 0x6a, 0xa3, 0x9f, 0x72, 0x1b, 0xfd, 0x9e, 0xdb, 0xe8, 0x71, 0x6e,
-	0xa3, 0x93, 0xdc, 0x46, 0x7f, 0xe7, 0x36, 0xfa, 0x27, 0xb7, 0xad, 0x67, 0xb9, 0x8d, 0x7e, 0x3d,
-	0xb3, 0xad, 0x93, 0x33, 0xdb, 0x7a, 0x72, 0x66, 0x5b, 0xdf, 0xdc, 0x99, 0x52, 0x31, 0x3b, 0x18,
-	0x77, 0x27, 0x2c, 0xee, 0x15, 0xc7, 0x97, 0x97, 0xcf, 0x7d, 0x4e, 0x8d, 0x57, 0x95, 0xe1, 0xee,
-	0x7f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x84, 0x38, 0x0c, 0x31, 0x68, 0x09, 0x00, 0x00,
+	// 863 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0xcb, 0x6e, 0xdb, 0x46,
+	0x14, 0x25, 0x63, 0xc9, 0x92, 0x2f, 0x2d, 0x3b, 0x1d, 0xf4, 0x21, 0x38, 0x85, 0x6c, 0xb0, 0x4d,
+	0xab, 0x16, 0x05, 0x15, 0x28, 0x40, 0x1f, 0xbb, 0x94, 0x7d, 0x80, 0x69, 0x2d, 0x47, 0xa0, 0x82,
+	0x00, 0xed, 0x86, 0xa0, 0xc4, 0x01, 0x35, 0xad, 0xc8, 0x61, 0x39, 0x23, 0xb9, 0xfa, 0x80, 0x02,
+	0x5d, 0xf6, 0x1b, 0xba, 0xee, 0xb6, 0x7f, 0xd0, 0x45, 0x96, 0x59, 0x76, 0x15, 0x14, 0xf2, 0x6f,
+	0x74, 0x51, 0xcc, 0x43, 0x22, 0x9d, 0x80, 0xb6, 0xb5, 0x29, 0x90, 0x8d, 0x30, 0x73, 0x1f, 0x67,
+	0xee, 0x9c, 0x3b, 0xf7, 0x88, 0x70, 0x94, 0xe5, 0x94, 0xd3, 0xde, 0x84, 0xa6, 0x0c, 0xa7, 0x6c,
+	0xce, 0x7a, 0x09, 0x8b, 0x99, 0x23, 0x8d, 0xe8, 0x88, 0xe3, 0x34, 0xc2, 0x79, 0x42, 0x52, 0xae,
+	0x2c, 0xce, 0x26, 0xec, 0xe8, 0x3d, 0x3e, 0x25, 0x79, 0x14, 0x64, 0x61, 0xce, 0x97, 0x3d, 0x85,
+	0x11, 0xd3, 0x98, 0x16, 0x2b, 0x95, 0x71, 0xf4, 0x96, 0xb2, 0xf0, 0x65, 0x86, 0x99, 0xfa, 0xd5,
+	0x8e, 0x3b, 0xca, 0x31, 0x23, 0x63, 0xd6, 0x1b, 0x13, 0x7e, 0xc9, 0x69, 0xff, 0x69, 0xc2, 0xfe,
+	0x19, 0x3e, 0xf7, 0xe9, 0x3c, 0x8d, 0x46, 0x1c, 0x67, 0xe8, 0x4d, 0xd8, 0x9d, 0x62, 0x12, 0x4f,
+	0x79, 0xdb, 0x3c, 0x31, 0xbb, 0x3b, 0xbe, 0xde, 0xa1, 0xd7, 0xa1, 0x9e, 0x8b, 0xa0, 0xf6, 0xad,
+	0x13, 0xb3, 0x5b, 0xf7, 0xd5, 0x06, 0x21, 0xa8, 0x31, 0x8e, 0xb3, 0xf6, 0xce, 0x89, 0xd9, 0x6d,
+	0xf9, 0x72, 0x8d, 0x3e, 0x81, 0x36, 0xc3, 0x13, 0x9a, 0x46, 0x2c, 0x60, 0x24, 0x9d, 0xe0, 0x80,
+	0xf1, 0x30, 0xe7, 0x01, 0x27, 0x09, 0x6e, 0xd7, 0x24, 0xe6, 0x1b, 0xda, 0x3f, 0x12, 0xee, 0x91,
+	0xf0, 0x3e, 0x26, 0x09, 0x46, 0x1f, 0xc2, 0x6b, 0xb3, 0x90, 0xf1, 0x60, 0x42, 0x93, 0x84, 0xf0,
+	0x40, 0x1d, 0x57, 0x97, 0xc7, 0x1d, 0x0a, 0xc7, 0x17, 0xd2, 0x2e, 0x4b, 0xb5, 0xff, 0x35, 0xa1,
+	0x75, 0x86, 0xcf, 0x9f, 0x84, 0x33, 0x12, 0xb9, 0x33, 0x3a, 0xf9, 0x71, 0xcb, 0xc2, 0xbf, 0x03,
+	0x34, 0x16, 0x69, 0x92, 0x57, 0x16, 0x4c, 0x71, 0x18, 0xe1, 0x5c, 0x5e, 0xc3, 0xea, 0xdf, 0x75,
+	0x5e, 0x6a, 0x87, 0xa2, 0x6c, 0x18, 0xe6, 0x7c, 0x84, 0xb9, 0x27, 0x83, 0xdd, 0xda, 0xd3, 0xe7,
+	0xc7, 0x86, 0x7f, 0x5b, 0xc2, 0x08, 0x0f, 0x53, 0x76, 0xf4, 0x15, 0x58, 0x25, 0x68, 0x79, 0x65,
+	0xab, 0xff, 0xee, 0xcb, 0x98, 0xa2, 0x21, 0x8e, 0x68, 0x88, 0xe3, 0x12, 0xfe, 0x79, 0x9e, 0x87,
+	0x4b, 0x1f, 0x0a, 0x30, 0x74, 0x07, 0xf6, 0x08, 0xd3, 0x5c, 0x48, 0x16, 0x9a, 0x7e, 0x93, 0x30,
+	0xc5, 0x81, 0x7d, 0x06, 0xcd, 0x61, 0x4e, 0x33, 0xca, 0xc2, 0x19, 0x72, 0xa1, 0x99, 0xe9, 0xb5,
+	0xbc, 0xba, 0xd5, 0x3f, 0xa9, 0xbc, 0x80, 0x8e, 0xd3, 0xb5, 0x6f, 0xf2, 0xec, 0xdf, 0x4d, 0xb0,
+	0xd6, 0xce, 0xe1, 0xa3, 0xd3, 0x4a, 0x32, 0x3f, 0x02, 0xb4, 0xce, 0x09, 0x32, 0x3a, 0x0b, 0xca,
+	0xcc, 0xde, 0x5e, 0x7b, 0x86, 0x74, 0x26, 0x9b, 0x84, 0x06, 0xb0, 0x5f, 0x8e, 0xd6, 0xf4, 0xde,
+	0x88, 0x0a, 0x5d, 0xa1, 0x55, 0xc2, 0xb4, 0x7f, 0x82, 0x3d, 0x77, 0xcd, 0xcf, 0x96, 0xed, 0xfe,
+	0x18, 0x6a, 0xa2, 0x1b, 0xba, 0x82, 0xb7, 0xaf, 0x6a, 0xb0, 0x3e, 0x59, 0xc6, 0xdb, 0x9f, 0x42,
+	0xed, 0x09, 0xe5, 0x18, 0xdd, 0x83, 0xda, 0x82, 0x72, 0xac, 0xf9, 0xad, 0xcc, 0x17, 0xb1, 0xbe,
+	0x8c, 0xb4, 0x7f, 0x35, 0xa1, 0xe1, 0x85, 0x4c, 0x66, 0x6f, 0x57, 0xeb, 0x67, 0x50, 0x13, 0x68,
+	0xb2, 0xd6, 0x83, 0xea, 0xc7, 0x38, 0x22, 0x71, 0x8a, 0xa3, 0x01, 0x8b, 0x1f, 0x2f, 0x33, 0xec,
+	0xcb, 0x14, 0x01, 0x48, 0xd2, 0x08, 0xff, 0x2c, 0x1f, 0x5d, 0xcb, 0x57, 0x1b, 0xfb, 0x2f, 0x13,
+	0xf6, 0x45, 0x1d, 0x23, 0xcc, 0x07, 0xe1, 0x0f, 0xfd, 0xfb, 0xff, 0x5f, 0x3d, 0xdf, 0x42, 0x53,
+	0x8d, 0x02, 0x89, 0xf4, 0x1c, 0x1c, 0x57, 0xa5, 0xcb, 0xce, 0x3e, 0xfc, 0xd2, 0x3d, 0x14, 0xec,
+	0xaf, 0x9e, 0x1f, 0x37, 0xb4, 0xc1, 0x6f, 0x48, 0x84, 0x87, 0x91, 0xfd, 0xcb, 0x2d, 0xb0, 0xf4,
+	0x35, 0x5c, 0xc2, 0xd9, 0xab, 0x79, 0x0b, 0xf4, 0x00, 0xea, 0xe2, 0x7d, 0x30, 0x39, 0xd2, 0xdb,
+	0x0d, 0x83, 0x4a, 0xb4, 0xff, 0xa8, 0x43, 0x63, 0x80, 0x19, 0x0b, 0x63, 0x8c, 0x86, 0x70, 0x90,
+	0xe2, 0x73, 0x35, 0x86, 0x81, 0x54, 0x62, 0xf5, 0x42, 0xbb, 0x4e, 0xf5, 0x3f, 0x8a, 0x53, 0xd6,
+	0x7b, 0xcf, 0xf0, 0xf7, 0xd3, 0xb2, 0xfe, 0x8f, 0xe0, 0x50, 0x20, 0x2e, 0x84, 0xb0, 0x06, 0xb2,
+	0x68, 0xc9, 0xa3, 0xd5, 0xff, 0xe0, 0x1a, 0xc8, 0x42, 0x8a, 0x3d, 0xc3, 0x6f, 0xa5, 0x97, 0xb4,
+	0xb9, 0x2c, 0x51, 0x95, 0x22, 0x50, 0xa0, 0xad, 0x95, 0xc8, 0x2b, 0x49, 0x14, 0x3a, 0x7d, 0x41,
+	0x4c, 0x54, 0x27, 0xde, 0xbf, 0x09, 0xce, 0xf0, 0xd1, 0xa9, 0x77, 0x59, 0x4b, 0xd0, 0xd7, 0x00,
+	0x85, 0x48, 0xeb, 0x5e, 0xdc, 0xbd, 0x0a, 0x6b, 0xa3, 0x3c, 0x9e, 0xe1, 0xef, 0x6d, 0x64, 0x5a,
+	0x08, 0x8b, 0x14, 0x86, 0xdd, 0x2a, 0xe1, 0x2d, 0x10, 0xc4, 0xdb, 0xf5, 0x0c, 0x25, 0x0f, 0xe8,
+	0x01, 0x34, 0xa7, 0x21, 0x0b, 0x64, 0x6e, 0x43, 0xe6, 0xbe, 0x73, 0x55, 0xae, 0x56, 0x12, 0xcf,
+	0xf0, 0x1b, 0x53, 0x2d, 0x2a, 0x43, 0x38, 0x10, 0xd9, 0x01, 0xc3, 0x3c, 0x48, 0xc4, 0x58, 0xb7,
+	0x9b, 0xd7, 0xb7, 0xbe, 0x2c, 0x03, 0xa2, 0xf5, 0x8b, 0xb2, 0x2c, 0x0c, 0xa0, 0xb5, 0x41, 0x14,
+	0xef, 0xaf, 0xbd, 0x77, 0x3d, 0xc5, 0xa5, 0x81, 0x14, 0x14, 0x2f, 0x8a, 0xad, 0x5b, 0x87, 0x1d,
+	0x36, 0x4f, 0xdc, 0x6f, 0x9e, 0xae, 0x3a, 0xe6, 0xb3, 0x55, 0xc7, 0xfc, 0x67, 0xd5, 0x31, 0x7f,
+	0xbb, 0xe8, 0x18, 0xcf, 0x2e, 0x3a, 0xc6, 0xdf, 0x17, 0x1d, 0xe3, 0xfb, 0x7b, 0x31, 0xe1, 0xd3,
+	0xf9, 0xd8, 0x99, 0xd0, 0xa4, 0x57, 0x1c, 0x51, 0x5e, 0xbe, 0xf0, 0xc9, 0x34, 0xde, 0x95, 0x86,
+	0xfb, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0x77, 0x46, 0xa2, 0xe6, 0x4c, 0x09, 0x00, 0x00,
 }
 
-func (this *NewRoundStep) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*NewRoundStep)
-	if !ok {
-		that2, ok := that.(NewRoundStep)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if this.Step != that1.Step {
-		return false
-	}
-	if this.SecondsSinceStartTime != that1.SecondsSinceStartTime {
-		return false
-	}
-	if this.LastCommitRound != that1.LastCommitRound {
-		return false
-	}
-	return true
-}
-func (this *NewValidBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*NewValidBlock)
-	if !ok {
-		that2, ok := that.(NewValidBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if !this.BlockPartsHeader.Equal(&that1.BlockPartsHeader) {
-		return false
-	}
-	if !this.BlockParts.Equal(that1.BlockParts) {
-		return false
-	}
-	if this.IsCommit != that1.IsCommit {
-		return false
-	}
-	return true
-}
-func (this *Proposal) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Proposal)
-	if !ok {
-		that2, ok := that.(Proposal)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Proposal.Equal(&that1.Proposal) {
-		return false
-	}
-	return true
-}
-func (this *ProposalPOL) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ProposalPOL)
-	if !ok {
-		that2, ok := that.(ProposalPOL)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.ProposalPolRound != that1.ProposalPolRound {
-		return false
-	}
-	if !this.ProposalPol.Equal(&that1.ProposalPol) {
-		return false
-	}
-	return true
-}
-func (this *BlockPart) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*BlockPart)
-	if !ok {
-		that2, ok := that.(BlockPart)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if !this.Part.Equal(&that1.Part) {
-		return false
-	}
-	return true
-}
-func (this *Vote) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Vote)
-	if !ok {
-		that2, ok := that.(Vote)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Vote.Equal(that1.Vote) {
-		return false
-	}
-	return true
-}
-func (this *HasVote) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*HasVote)
-	if !ok {
-		that2, ok := that.(HasVote)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if this.Index != that1.Index {
-		return false
-	}
-	return true
-}
-func (this *VoteSetMaj23) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*VoteSetMaj23)
-	if !ok {
-		that2, ok := that.(VoteSetMaj23)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !this.BlockID.Equal(&that1.BlockID) {
-		return false
-	}
-	return true
-}
-func (this *VoteSetBits) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*VoteSetBits)
-	if !ok {
-		that2, ok := that.(VoteSetBits)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !this.BlockID.Equal(&that1.BlockID) {
-		return false
-	}
-	if !this.Votes.Equal(&that1.Votes) {
-		return false
-	}
-	return true
-}
-func (this *Message) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message)
-	if !ok {
-		that2, ok := that.(Message)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Sum == nil {
-		if this.Sum != nil {
-			return false
-		}
-	} else if this.Sum == nil {
-		return false
-	} else if !this.Sum.Equal(that1.Sum) {
-		return false
-	}
-	return true
-}
-func (this *Message_NewRoundStep) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_NewRoundStep)
-	if !ok {
-		that2, ok := that.(Message_NewRoundStep)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.NewRoundStep.Equal(that1.NewRoundStep) {
-		return false
-	}
-	return true
-}
-func (this *Message_NewValidBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_NewValidBlock)
-	if !ok {
-		that2, ok := that.(Message_NewValidBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.NewValidBlock.Equal(that1.NewValidBlock) {
-		return false
-	}
-	return true
-}
-func (this *Message_Proposal) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_Proposal)
-	if !ok {
-		that2, ok := that.(Message_Proposal)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Proposal.Equal(that1.Proposal) {
-		return false
-	}
-	return true
-}
-func (this *Message_ProposalPol) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_ProposalPol)
-	if !ok {
-		that2, ok := that.(Message_ProposalPol)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ProposalPol.Equal(that1.ProposalPol) {
-		return false
-	}
-	return true
-}
-func (this *Message_BlockPart) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_BlockPart)
-	if !ok {
-		that2, ok := that.(Message_BlockPart)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.BlockPart.Equal(that1.BlockPart) {
-		return false
-	}
-	return true
-}
-func (this *Message_Vote) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_Vote)
-	if !ok {
-		that2, ok := that.(Message_Vote)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Vote.Equal(that1.Vote) {
-		return false
-	}
-	return true
-}
-func (this *Message_HasVote) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_HasVote)
-	if !ok {
-		that2, ok := that.(Message_HasVote)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.HasVote.Equal(that1.HasVote) {
-		return false
-	}
-	return true
-}
-func (this *Message_VoteSetMaj23) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_VoteSetMaj23)
-	if !ok {
-		that2, ok := that.(Message_VoteSetMaj23)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.VoteSetMaj23.Equal(that1.VoteSetMaj23) {
-		return false
-	}
-	return true
-}
-func (this *Message_VoteSetBits) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Message_VoteSetBits)
-	if !ok {
-		that2, ok := that.(Message_VoteSetBits)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.VoteSetBits.Equal(that1.VoteSetBits) {
-		return false
-	}
-	return true
-}
-func (this *NewRoundStep) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&consensus.NewRoundStep{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "Step: "+fmt.Sprintf("%#v", this.Step)+",\n")
-	s = append(s, "SecondsSinceStartTime: "+fmt.Sprintf("%#v", this.SecondsSinceStartTime)+",\n")
-	s = append(s, "LastCommitRound: "+fmt.Sprintf("%#v", this.LastCommitRound)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *NewValidBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&consensus.NewValidBlock{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "BlockPartsHeader: "+strings.Replace(this.BlockPartsHeader.GoString(), `&`, ``, 1)+",\n")
-	if this.BlockParts != nil {
-		s = append(s, "BlockParts: "+fmt.Sprintf("%#v", this.BlockParts)+",\n")
-	}
-	s = append(s, "IsCommit: "+fmt.Sprintf("%#v", this.IsCommit)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Proposal) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&consensus.Proposal{")
-	s = append(s, "Proposal: "+strings.Replace(this.Proposal.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ProposalPOL) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&consensus.ProposalPOL{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "ProposalPolRound: "+fmt.Sprintf("%#v", this.ProposalPolRound)+",\n")
-	s = append(s, "ProposalPol: "+strings.Replace(this.ProposalPol.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *BlockPart) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&consensus.BlockPart{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "Part: "+strings.Replace(this.Part.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Vote) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&consensus.Vote{")
-	if this.Vote != nil {
-		s = append(s, "Vote: "+fmt.Sprintf("%#v", this.Vote)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *HasVote) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&consensus.HasVote{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *VoteSetMaj23) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&consensus.VoteSetMaj23{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "BlockID: "+strings.Replace(this.BlockID.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *VoteSetBits) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&consensus.VoteSetBits{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "BlockID: "+strings.Replace(this.BlockID.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Votes: "+strings.Replace(this.Votes.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Message) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 13)
-	s = append(s, "&consensus.Message{")
-	if this.Sum != nil {
-		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Message_NewRoundStep) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_NewRoundStep{` +
-		`NewRoundStep:` + fmt.Sprintf("%#v", this.NewRoundStep) + `}`}, ", ")
-	return s
-}
-func (this *Message_NewValidBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_NewValidBlock{` +
-		`NewValidBlock:` + fmt.Sprintf("%#v", this.NewValidBlock) + `}`}, ", ")
-	return s
-}
-func (this *Message_Proposal) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_Proposal{` +
-		`Proposal:` + fmt.Sprintf("%#v", this.Proposal) + `}`}, ", ")
-	return s
-}
-func (this *Message_ProposalPol) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_ProposalPol{` +
-		`ProposalPol:` + fmt.Sprintf("%#v", this.ProposalPol) + `}`}, ", ")
-	return s
-}
-func (this *Message_BlockPart) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_BlockPart{` +
-		`BlockPart:` + fmt.Sprintf("%#v", this.BlockPart) + `}`}, ", ")
-	return s
-}
-func (this *Message_Vote) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_Vote{` +
-		`Vote:` + fmt.Sprintf("%#v", this.Vote) + `}`}, ", ")
-	return s
-}
-func (this *Message_HasVote) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_HasVote{` +
-		`HasVote:` + fmt.Sprintf("%#v", this.HasVote) + `}`}, ", ")
-	return s
-}
-func (this *Message_VoteSetMaj23) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_VoteSetMaj23{` +
-		`VoteSetMaj23:` + fmt.Sprintf("%#v", this.VoteSetMaj23) + `}`}, ", ")
-	return s
-}
-func (this *Message_VoteSetBits) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&consensus.Message_VoteSetBits{` +
-		`VoteSetBits:` + fmt.Sprintf("%#v", this.VoteSetBits) + `}`}, ", ")
-	return s
-}
-func valueToGoStringMsgs(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *NewRoundStep) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -2520,226 +1789,6 @@ func sovMsgs(x uint64) (n int) {
 }
 func sozMsgs(x uint64) (n int) {
 	return sovMsgs(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *NewRoundStep) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&NewRoundStep{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Step:` + fmt.Sprintf("%v", this.Step) + `,`,
-		`SecondsSinceStartTime:` + fmt.Sprintf("%v", this.SecondsSinceStartTime) + `,`,
-		`LastCommitRound:` + fmt.Sprintf("%v", this.LastCommitRound) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *NewValidBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&NewValidBlock{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`BlockPartsHeader:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.BlockPartsHeader), "PartSetHeader", "types.PartSetHeader", 1), `&`, ``, 1) + `,`,
-		`BlockParts:` + strings.Replace(fmt.Sprintf("%v", this.BlockParts), "BitArray", "bits.BitArray", 1) + `,`,
-		`IsCommit:` + fmt.Sprintf("%v", this.IsCommit) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Proposal) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Proposal{`,
-		`Proposal:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Proposal), "Proposal", "types.Proposal", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ProposalPOL) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ProposalPOL{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`ProposalPolRound:` + fmt.Sprintf("%v", this.ProposalPolRound) + `,`,
-		`ProposalPol:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ProposalPol), "BitArray", "bits.BitArray", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *BlockPart) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&BlockPart{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Part:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Part), "Part", "types.Part", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Vote) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Vote{`,
-		`Vote:` + strings.Replace(fmt.Sprintf("%v", this.Vote), "Vote", "types.Vote", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *HasVote) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&HasVote{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *VoteSetMaj23) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VoteSetMaj23{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`BlockID:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.BlockID), "BlockID", "types.BlockID", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *VoteSetBits) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VoteSetBits{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`BlockID:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.BlockID), "BlockID", "types.BlockID", 1), `&`, ``, 1) + `,`,
-		`Votes:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Votes), "BitArray", "bits.BitArray", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message{`,
-		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_NewRoundStep) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_NewRoundStep{`,
-		`NewRoundStep:` + strings.Replace(fmt.Sprintf("%v", this.NewRoundStep), "NewRoundStep", "NewRoundStep", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_NewValidBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_NewValidBlock{`,
-		`NewValidBlock:` + strings.Replace(fmt.Sprintf("%v", this.NewValidBlock), "NewValidBlock", "NewValidBlock", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_Proposal) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_Proposal{`,
-		`Proposal:` + strings.Replace(fmt.Sprintf("%v", this.Proposal), "Proposal", "Proposal", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_ProposalPol) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_ProposalPol{`,
-		`ProposalPol:` + strings.Replace(fmt.Sprintf("%v", this.ProposalPol), "ProposalPOL", "ProposalPOL", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_BlockPart) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_BlockPart{`,
-		`BlockPart:` + strings.Replace(fmt.Sprintf("%v", this.BlockPart), "BlockPart", "BlockPart", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_Vote) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_Vote{`,
-		`Vote:` + strings.Replace(fmt.Sprintf("%v", this.Vote), "Vote", "Vote", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_HasVote) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_HasVote{`,
-		`HasVote:` + strings.Replace(fmt.Sprintf("%v", this.HasVote), "HasVote", "HasVote", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_VoteSetMaj23) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_VoteSetMaj23{`,
-		`VoteSetMaj23:` + strings.Replace(fmt.Sprintf("%v", this.VoteSetMaj23), "VoteSetMaj23", "VoteSetMaj23", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Message_VoteSetBits) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Message_VoteSetBits{`,
-		`VoteSetBits:` + strings.Replace(fmt.Sprintf("%v", this.VoteSetBits), "VoteSetBits", "VoteSetBits", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringMsgs(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *NewRoundStep) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
