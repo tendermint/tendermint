@@ -559,3 +559,4 @@ func (ev emptyEvidencePool) AddEvidence(types.Evidence) error       { return nil
 func (ev emptyEvidencePool) Update(*types.Block, sm.State)          {}
 func (ev emptyEvidencePool) IsCommitted(types.Evidence) bool        { return false }
 func (ev emptyEvidencePool) IsPending(types.Evidence) bool          { return true }
+func (ev emptyEvidencePool) AddPOLC(types.ProofOfLockChange) error  { return nil }

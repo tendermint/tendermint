@@ -1253,12 +1253,16 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
-	// Save POL prevotes in evidence db in case of future justification
+	// Save POLC prevotes in evidence db in case of future justification
 	cs.savePOLC(round)
 	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 }
 
 func (cs *State) savePOLC(round int) {
+	// polc must be for rounds greater than 0
+	if round == 0 {
+		return
+	}
 	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
 		cs.Logger.Error("Error on retrieval of pubkey", "err", err)
@@ -1272,7 +1276,9 @@ func (cs *State) savePOLC(round int) {
 	err = cs.evpool.AddPOLC(polc)
 	if err != nil {
 		cs.Logger.Error("Error on saving POLC", "err", err)
+		return
 	}
+	cs.Logger.Debug("Saved POLC to evidence pool", "round", round, "height", polc.Height())
 }
 
 // Enter: any +2/3 precommits for next round.
