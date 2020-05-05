@@ -231,6 +231,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	block := types.MakeBlock(height, []types.Tx{}, lastCommit, []types.Evidence{})
 	// update state (partially)
 	state.LastBlockHeight = height
+	pool.state.LastBlockHeight = height
 
 	// update should prune the polc
 	pool.Update(block, state)

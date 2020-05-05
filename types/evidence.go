@@ -917,6 +917,9 @@ func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
+// ProofOfLockChange (POLC) proves that a node followed the consensus protocol and voted for a precommit in two
+// different rounds because the node received a majority of votes for a different block in the latter round. In cases of
+// amnesia evidence, a suspected node will need ProofOfLockChange to prove that the node did not break protocol.
 type ProofOfLockChange struct {
 	Votes  []Vote        `json:"votes"`
 	PubKey crypto.PubKey `json:"pubkey"`
@@ -925,6 +928,8 @@ type ProofOfLockChange struct {
 var _ Evidence = &ProofOfLockChange{}
 var _ Evidence = ProofOfLockChange{}
 
+// MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
+// that the node has itself not yet voted for in order to process the vote set into a proof of lock change
 func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (ProofOfLockChange, error) {
 	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	return polc, polc.ValidateBasic()
@@ -974,6 +979,10 @@ func (e ProofOfLockChange) Bytes() []byte {
 
 func (e ProofOfLockChange) Hash() []byte {
 	return tmhash.Sum(cdcEncode(e))
+}
+
+func (e ProofOfLockChange) BlockID() BlockID {
+	return e.Votes[0].BlockID
 }
 
 // a proof of lock change has nothing to verify by itself but must be used to verify a vote in amnesia evidence
@@ -1045,7 +1054,7 @@ func (e ProofOfLockChange) ValidateBasic() error {
 }
 
 func (e ProofOfLockChange) String() string {
-	return fmt.Sprintf("ProofOfLockChange for %X at height %d and round %d", e.Address(), e.Height(),
+	return fmt.Sprintf("ProofOfLockChange {Address: %X, Height: %d, Round: %d", e.Address(), e.Height(),
 		e.Votes[0].Round)
 }
 

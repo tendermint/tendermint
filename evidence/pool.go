@@ -123,16 +123,16 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
-	// update the state
-	evpool.mtx.Lock()
-	evpool.state = state
-	evpool.updateValToLastHeight(block.Height, state)
-	evpool.mtx.Unlock()
-
 	// as it's not vital to remove expired POLCs, we only prune periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.pruneExpiredPOLC()
 	}
+
+	// update the state
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
+	evpool.state = state
+	evpool.updateValToLastHeight(block.Height, state)
 }
 
 // AddPOLC adds a proof of lock change to the evidence database
