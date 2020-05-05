@@ -1365,7 +1365,47 @@ func TestVerifyCommitTrusting(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+}
 
+func TestVerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
+	var (
+		blockID               = makeBlockIDRandom()
+		voteSet, valSet, vals = randVoteSet(1, 1, PrecommitType, 1, MaxTotalVotingPower)
+		commit, err           = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+	)
+	require.NoError(t, err)
+
+	err = valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+		tmmath.Fraction{Numerator: 25, Denominator: 55})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "int64 overflow")
+	}
+}
+
+func TestSafeMul(t *testing.T) {
+	testCases := []struct {
+		a        int64
+		b        int64
+		c        int64
+		overflow bool
+	}{
+		0: {0, 0, 0, false},
+		1: {1, 0, 0, false},
+		2: {2, 3, 6, false},
+		3: {2, -3, -6, false},
+		4: {-2, -3, 6, false},
+		5: {-2, 3, -6, false},
+		6: {math.MaxInt64, 1, math.MaxInt64, false},
+		7: {math.MaxInt64 / 2, 2, math.MaxInt64 - 1, false},
+		8: {math.MaxInt64 / 2, 3, -1, true},
+		9: {math.MaxInt64, 2, -1, true},
+	}
+
+	for i, tc := range testCases {
+		c, overflow := safeMul(tc.a, tc.b)
+		assert.Equal(t, tc.c, c, "#%d", i)
+		assert.Equal(t, tc.overflow, overflow, "#%d", i)
+	}
 }
 
 //---------------------
