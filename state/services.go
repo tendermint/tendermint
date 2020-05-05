@@ -35,13 +35,22 @@ type BlockStore interface {
 //-----------------------------------------------------------------------------
 // evidence pool
 
+//go:generate mockery -case underscore -name EvidencePool
+
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
 // Get/Set/Commit
 type EvidencePool interface {
 	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
-	// IsCommitted indicates if this evidence was already marked committed in another block.
 	IsCommitted(types.Evidence) bool
 	IsPending(types.Evidence) bool
 }
+
+type MockEvidencePool struct{}
+
+func (me MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (me MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
+func (me MockEvidencePool) Update(*types.Block, State)             {}
+func (me MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (me MockEvidencePool) IsPending(types.Evidence) bool          { return false }

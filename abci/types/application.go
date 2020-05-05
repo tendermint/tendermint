@@ -1,4 +1,4 @@
-package types // nolint: goimports
+package types
 
 import (
 	context "golang.org/x/net/context"
