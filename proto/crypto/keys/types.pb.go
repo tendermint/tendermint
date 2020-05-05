@@ -4,14 +4,11 @@
 package keys
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -31,8 +28,9 @@ type PublicKey struct {
 	Sum isPublicKey_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *PublicKey) Reset()      { *m = PublicKey{} }
-func (*PublicKey) ProtoMessage() {}
+func (m *PublicKey) Reset()         { *m = PublicKey{} }
+func (m *PublicKey) String() string { return proto.CompactTextString(m) }
+func (*PublicKey) ProtoMessage()    {}
 func (*PublicKey) Descriptor() ([]byte, []int) {
 	return fileDescriptor_943d79b57ec0188f, []int{0}
 }
@@ -65,7 +63,6 @@ var xxx_messageInfo_PublicKey proto.InternalMessageInfo
 
 type isPublicKey_Sum interface {
 	isPublicKey_Sum()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -104,8 +101,9 @@ type PrivateKey struct {
 	Sum isPrivateKey_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *PrivateKey) Reset()      { *m = PrivateKey{} }
-func (*PrivateKey) ProtoMessage() {}
+func (m *PrivateKey) Reset()         { *m = PrivateKey{} }
+func (m *PrivateKey) String() string { return proto.CompactTextString(m) }
+func (*PrivateKey) ProtoMessage()    {}
 func (*PrivateKey) Descriptor() ([]byte, []int) {
 	return fileDescriptor_943d79b57ec0188f, []int{1}
 }
@@ -138,7 +136,6 @@ var xxx_messageInfo_PrivateKey proto.InternalMessageInfo
 
 type isPrivateKey_Sum interface {
 	isPrivateKey_Sum()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -178,7 +175,7 @@ func init() {
 func init() { proto.RegisterFile("proto/crypto/keys/types.proto", fileDescriptor_943d79b57ec0188f) }
 
 var fileDescriptor_943d79b57ec0188f = []byte{
-	// 209 bytes of a gzipped FileDescriptorProto
+	// 179 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2d, 0x28, 0xca, 0x2f,
 	0xc9, 0xd7, 0x4f, 0x2e, 0xaa, 0x2c, 0x28, 0xc9, 0xd7, 0xcf, 0x4e, 0xad, 0x2c, 0xd6, 0x2f, 0xa9,
 	0x2c, 0x48, 0x2d, 0xd6, 0x03, 0x8b, 0x0b, 0xc9, 0x94, 0xa4, 0xe6, 0xa5, 0xa4, 0x16, 0xe5, 0x66,
@@ -186,171 +183,13 @@ var fileDescriptor_943d79b57ec0188f = []byte{
 	0x93, 0x72, 0x32, 0x93, 0xbd, 0x53, 0x2b, 0x85, 0xa4, 0xb8, 0xd8, 0x53, 0x53, 0x8c, 0x4c, 0x4d,
 	0x0d, 0x2d, 0x25, 0x18, 0x15, 0x18, 0x35, 0x78, 0x3c, 0x18, 0x82, 0x60, 0x02, 0x4e, 0xac, 0x5c,
 	0xcc, 0xc5, 0xa5, 0xb9, 0x4a, 0xfa, 0x5c, 0x5c, 0x01, 0x45, 0x99, 0x65, 0x89, 0x25, 0xa9, 0xc4,
-	0x69, 0x70, 0xca, 0xb8, 0xf0, 0x50, 0x8e, 0xe1, 0xc6, 0x43, 0x39, 0x86, 0x0f, 0x0f, 0xe5, 0x18,
-	0x1b, 0x1e, 0xc9, 0x31, 0xae, 0x78, 0x24, 0xc7, 0x78, 0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72,
-	0x8c, 0x0f, 0x1e, 0xc9, 0x31, 0xbe, 0x78, 0x24, 0xc7, 0xf0, 0xe1, 0x91, 0x1c, 0xe3, 0x84, 0xc7,
-	0x72, 0x0c, 0x17, 0x1e, 0xcb, 0x31, 0xdc, 0x78, 0x2c, 0xc7, 0x10, 0x65, 0x94, 0x9e, 0x59, 0x92,
-	0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x8f, 0x70, 0x3f, 0x32, 0x13, 0xc3, 0xd3, 0x49, 0x6c,
-	0x60, 0x21, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x44, 0x57, 0xdc, 0xbc, 0x10, 0x01, 0x00,
-	0x00,
+	0x69, 0x70, 0xf2, 0x39, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18,
+	0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0xa3, 0xf4,
+	0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0x7d, 0x84, 0x1b, 0x91, 0x99, 0x18, 0x1e,
+	0x4b, 0x62, 0x03, 0x0b, 0x19, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0x26, 0x55, 0xdd, 0xd2, 0xf4,
+	0x00, 0x00, 0x00,
 }
 
-func (this *PublicKey) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PublicKey)
-	if !ok {
-		that2, ok := that.(PublicKey)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Sum == nil {
-		if this.Sum != nil {
-			return false
-		}
-	} else if this.Sum == nil {
-		return false
-	} else if !this.Sum.Equal(that1.Sum) {
-		return false
-	}
-	return true
-}
-func (this *PublicKey_Ed25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PublicKey_Ed25519)
-	if !ok {
-		that2, ok := that.(PublicKey_Ed25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	return true
-}
-func (this *PrivateKey) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivateKey)
-	if !ok {
-		that2, ok := that.(PrivateKey)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Sum == nil {
-		if this.Sum != nil {
-			return false
-		}
-	} else if this.Sum == nil {
-		return false
-	} else if !this.Sum.Equal(that1.Sum) {
-		return false
-	}
-	return true
-}
-func (this *PrivateKey_Ed25519) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PrivateKey_Ed25519)
-	if !ok {
-		that2, ok := that.(PrivateKey_Ed25519)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	return true
-}
-func (this *PublicKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&keys.PublicKey{")
-	if this.Sum != nil {
-		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PublicKey_Ed25519) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&keys.PublicKey_Ed25519{` +
-		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
-	return s
-}
-func (this *PrivateKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&keys.PrivateKey{")
-	if this.Sum != nil {
-		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PrivateKey_Ed25519) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&keys.PrivateKey_Ed25519{` +
-		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
-	return s
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *PublicKey) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -512,54 +351,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *PublicKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PublicKey{`,
-		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PublicKey_Ed25519) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PublicKey_Ed25519{`,
-		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PrivateKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PrivateKey{`,
-		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PrivateKey_Ed25519) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PrivateKey_Ed25519{`,
-		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *PublicKey) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

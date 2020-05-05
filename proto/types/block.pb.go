@@ -10,8 +10,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -32,8 +30,9 @@ type Block struct {
 	LastCommit *Commit      `protobuf:"bytes,4,opt,name=last_commit,json=lastCommit,proto3" json:"last_commit,omitempty"`
 }
 
-func (m *Block) Reset()      { *m = Block{} }
-func (*Block) ProtoMessage() {}
+func (m *Block) Reset()         { *m = Block{} }
+func (m *Block) String() string { return proto.CompactTextString(m) }
+func (*Block) ProtoMessage()    {}
 func (*Block) Descriptor() ([]byte, []int) {
 	return fileDescriptor_3aa007336dea920d, []int{0}
 }
@@ -99,7 +98,7 @@ func init() {
 func init() { proto.RegisterFile("proto/types/block.proto", fileDescriptor_3aa007336dea920d) }
 
 var fileDescriptor_3aa007336dea920d = []byte{
-	// 303 bytes of a gzipped FileDescriptorProto
+	// 273 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0x28, 0xca, 0x2f,
 	0xc9, 0xd7, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x4f, 0xca, 0xc9, 0x4f, 0xce, 0xd6, 0x03, 0x8b,
 	0x08, 0x89, 0x95, 0xa4, 0xe6, 0xa5, 0xa4, 0x16, 0xe5, 0x66, 0xe6, 0x95, 0x40, 0x44, 0xf4, 0xc0,
@@ -113,70 +112,13 @@ var fileDescriptor_3aa007336dea920d = []byte{
 	0x1b, 0x17, 0x07, 0xcc, 0x45, 0x12, 0xcc, 0x60, 0xbd, 0x2a, 0xb8, 0xf4, 0xba, 0x42, 0xd5, 0x21,
 	0x99, 0x01, 0xd7, 0x2b, 0x64, 0xcf, 0xc5, 0x9d, 0x93, 0x58, 0x5c, 0x12, 0x9f, 0x9c, 0x9f, 0x9b,
 	0x9b, 0x59, 0x22, 0xc1, 0x82, 0xdf, 0x0b, 0xce, 0x60, 0x55, 0x41, 0x5c, 0x20, 0x2d, 0x10, 0xb6,
-	0x53, 0xd2, 0x85, 0x87, 0x72, 0x0c, 0x37, 0x1e, 0xca, 0x31, 0x7c, 0x78, 0x28, 0xc7, 0xd8, 0xf0,
-	0x48, 0x8e, 0x71, 0xc5, 0x23, 0x39, 0xc6, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c, 0x92, 0x63, 0x7c,
-	0xf0, 0x48, 0x8e, 0xf1, 0xc5, 0x23, 0x39, 0x86, 0x0f, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63,
-	0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0x9d, 0xf4, 0xcc, 0x92, 0x8c, 0xd2,
-	0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0x7d, 0x84, 0x5d, 0xc8, 0x4c, 0xa4, 0xb0, 0x4f, 0x62, 0x03, 0x73,
-	0x8c, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0xf3, 0x25, 0xe9, 0xab, 0x03, 0x02, 0x00, 0x00,
+	0x93, 0xdb, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e, 0x78, 0x24, 0xc7, 0x38, 0xe1,
+	0xb1, 0x1c, 0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb, 0x31, 0x44, 0xe9, 0xa4, 0x67, 0x96,
+	0x64, 0x94, 0x26, 0xe9, 0x25, 0xe7, 0xe7, 0xea, 0x23, 0xcc, 0x43, 0x66, 0x22, 0x85, 0x6f, 0x12,
+	0x1b, 0x98, 0x63, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0x5f, 0x42, 0x07, 0x4a, 0xe7, 0x01, 0x00,
+	0x00,
 }
 
-func (this *Block) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Block)
-	if !ok {
-		that2, ok := that.(Block)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Header.Equal(&that1.Header) {
-		return false
-	}
-	if !this.Data.Equal(&that1.Data) {
-		return false
-	}
-	if !this.Evidence.Equal(&that1.Evidence) {
-		return false
-	}
-	if !this.LastCommit.Equal(that1.LastCommit) {
-		return false
-	}
-	return true
-}
-func (this *Block) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.Block{")
-	s = append(s, "Header: "+strings.Replace(this.Header.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Data: "+strings.Replace(this.Data.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Evidence: "+strings.Replace(this.Evidence.GoString(), `&`, ``, 1)+",\n")
-	if this.LastCommit != nil {
-		s = append(s, "LastCommit: "+fmt.Sprintf("%#v", this.LastCommit)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringBlock(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *Block) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -277,27 +219,6 @@ func sovBlock(x uint64) (n int) {
 }
 func sozBlock(x uint64) (n int) {
 	return sovBlock(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *Block) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Block{`,
-		`Header:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Header), "Header", "Header", 1), `&`, ``, 1) + `,`,
-		`Data:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Data), "Data", "Data", 1), `&`, ``, 1) + `,`,
-		`Evidence:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Evidence), "EvidenceData", "EvidenceData", 1), `&`, ``, 1) + `,`,
-		`LastCommit:` + strings.Replace(fmt.Sprintf("%v", this.LastCommit), "Commit", "Commit", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringBlock(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *Block) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

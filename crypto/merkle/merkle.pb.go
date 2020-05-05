@@ -4,15 +4,12 @@
 package merkle
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -35,8 +32,9 @@ type ProofOp struct {
 	Data []byte `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
-func (m *ProofOp) Reset()      { *m = ProofOp{} }
-func (*ProofOp) ProtoMessage() {}
+func (m *ProofOp) Reset()         { *m = ProofOp{} }
+func (m *ProofOp) String() string { return proto.CompactTextString(m) }
+func (*ProofOp) ProtoMessage()    {}
 func (*ProofOp) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9c1c2162d560d38e, []int{0}
 }
@@ -93,8 +91,9 @@ type Proof struct {
 	Ops []ProofOp `protobuf:"bytes,1,rep,name=ops,proto3" json:"ops"`
 }
 
-func (m *Proof) Reset()      { *m = Proof{} }
-func (*Proof) ProtoMessage() {}
+func (m *Proof) Reset()         { *m = Proof{} }
+func (m *Proof) String() string { return proto.CompactTextString(m) }
+func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9c1c2162d560d38e, []int{1}
 }
@@ -140,7 +139,7 @@ func init() {
 func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_9c1c2162d560d38e) }
 
 var fileDescriptor_9c1c2162d560d38e = []byte{
-	// 263 bytes of a gzipped FileDescriptorProto
+	// 234 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0x85, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,
 	0xf9, 0x42, 0x12, 0x25, 0xa9, 0x79, 0x29, 0xa9, 0x45, 0xb9, 0x99, 0x79, 0x25, 0x7a, 0x10, 0x65,
@@ -151,110 +150,13 @@ var fileDescriptor_9c1c2162d560d38e = []byte{
 	0xa4, 0xc0, 0xa8, 0xc1, 0x13, 0x04, 0x62, 0x82, 0x54, 0xa5, 0x24, 0x96, 0x24, 0x4a, 0x30, 0x83,
 	0x85, 0xc0, 0x6c, 0x25, 0x27, 0x2e, 0x56, 0xb0, 0x21, 0x42, 0x96, 0x5c, 0xcc, 0xf9, 0x05, 0xc5,
 	0x12, 0x8c, 0x0a, 0xcc, 0x1a, 0xdc, 0x46, 0x8a, 0x7a, 0xb8, 0x5c, 0xa7, 0x07, 0xb5, 0xd2, 0x89,
-	0xe5, 0xc4, 0x3d, 0x79, 0x86, 0x20, 0x90, 0x1e, 0xa7, 0x94, 0x0b, 0x0f, 0xe5, 0x18, 0x6e, 0x3c,
-	0x94, 0x63, 0xf8, 0xf0, 0x50, 0x8e, 0xb1, 0xe1, 0x91, 0x1c, 0xe3, 0x8a, 0x47, 0x72, 0x8c, 0x27,
-	0x1e, 0xc9, 0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0, 0x91, 0x1c, 0xe3, 0x8b, 0x47, 0x72, 0x0c,
-	0x1f, 0x1e, 0xc9, 0x31, 0x4e, 0x78, 0x2c, 0xc7, 0x70, 0xe1, 0xb1, 0x1c, 0xc3, 0x8d, 0xc7, 0x72,
-	0x0c, 0x51, 0x7a, 0xe9, 0x99, 0x25, 0x19, 0xa5, 0x49, 0x7a, 0xc9, 0xf9, 0xb9, 0xfa, 0x08, 0xdb,
-	0x90, 0x99, 0x28, 0xa1, 0x97, 0xc4, 0x06, 0xf6, 0xb5, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x08,
-	0x79, 0x43, 0x12, 0x55, 0x01, 0x00, 0x00,
+	0xe5, 0xc4, 0x3d, 0x79, 0x86, 0x20, 0x90, 0x1e, 0x27, 0x8f, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c,
+	0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x71, 0xc2, 0x63, 0x39, 0x86, 0x0b, 0x8f, 0xe5, 0x18, 0x6e,
+	0x3c, 0x96, 0x63, 0x88, 0xd2, 0x4b, 0xcf, 0x2c, 0xc9, 0x28, 0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5,
+	0x47, 0x98, 0x88, 0xcc, 0x44, 0x09, 0xa1, 0x24, 0x36, 0xb0, 0xcf, 0x8c, 0x01, 0x01, 0x00, 0x00,
+	0xff, 0xff, 0x39, 0xc0, 0xa3, 0x13, 0x39, 0x01, 0x00, 0x00,
 }
 
-func (this *ProofOp) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ProofOp)
-	if !ok {
-		that2, ok := that.(ProofOp)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	return true
-}
-func (this *Proof) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Proof)
-	if !ok {
-		that2, ok := that.(Proof)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Ops) != len(that1.Ops) {
-		return false
-	}
-	for i := range this.Ops {
-		if !this.Ops[i].Equal(&that1.Ops[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ProofOp) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&merkle.ProofOp{")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Proof) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&merkle.Proof{")
-	if this.Ops != nil {
-		vs := make([]ProofOp, len(this.Ops))
-		for i := range vs {
-			vs[i] = this.Ops[i]
-		}
-		s = append(s, "Ops: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringMerkle(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *ProofOp) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -388,41 +290,6 @@ func sovMerkle(x uint64) (n int) {
 }
 func sozMerkle(x uint64) (n int) {
 	return sovMerkle(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *ProofOp) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ProofOp{`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Proof) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForOps := "[]ProofOp{"
-	for _, f := range this.Ops {
-		repeatedStringForOps += strings.Replace(strings.Replace(f.String(), "ProofOp", "ProofOp", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForOps += "}"
-	s := strings.Join([]string{`&Proof{`,
-		`Ops:` + repeatedStringForOps + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringMerkle(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *ProofOp) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

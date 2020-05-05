@@ -4,7 +4,6 @@
 package types
 
 import (
-	bytes "bytes"
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
@@ -20,9 +19,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strconv "strconv"
-	strings "strings"
 	time "time"
 )
 
@@ -42,8 +38,8 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type CheckTxType int32
 
 const (
-	CheckTxType_NEW     CheckTxType = 0
-	CheckTxType_RECHECK CheckTxType = 1
+	CheckTxType_CheckTxType_NEW     CheckTxType = 0
+	CheckTxType_CheckTxType_RECHECK CheckTxType = 1
 )
 
 var CheckTxType_name = map[int32]string{
@@ -54,6 +50,10 @@ var CheckTxType_name = map[int32]string{
 var CheckTxType_value = map[string]int32{
 	"NEW":     0,
 	"RECHECK": 1,
+}
+
+func (x CheckTxType) String() string {
+	return proto.EnumName(CheckTxType_name, int32(x))
 }
 
 func (CheckTxType) EnumDescriptor() ([]byte, []int) {
@@ -86,6 +86,10 @@ var ResponseOfferSnapshot_Result_value = map[string]int32{
 	"reject_sender": 4,
 }
 
+func (x ResponseOfferSnapshot_Result) String() string {
+	return proto.EnumName(ResponseOfferSnapshot_Result_name, int32(x))
+}
+
 func (ResponseOfferSnapshot_Result) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{30, 0}
 }
@@ -116,6 +120,10 @@ var ResponseApplySnapshotChunk_Result_value = map[string]int32{
 	"reject_snapshot": 4,
 }
 
+func (x ResponseApplySnapshotChunk_Result) String() string {
+	return proto.EnumName(ResponseApplySnapshotChunk_Result_name, int32(x))
+}
+
 func (ResponseApplySnapshotChunk_Result) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{32, 0}
 }
@@ -140,8 +148,9 @@ type Request struct {
 	Value isRequest_Value `protobuf_oneof:"value"`
 }
 
-func (m *Request) Reset()      { *m = Request{} }
-func (*Request) ProtoMessage() {}
+func (m *Request) Reset()         { *m = Request{} }
+func (m *Request) String() string { return proto.CompactTextString(m) }
+func (*Request) ProtoMessage()    {}
 func (*Request) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{0}
 }
@@ -174,7 +183,6 @@ var xxx_messageInfo_Request proto.InternalMessageInfo
 
 type isRequest_Value interface {
 	isRequest_Value()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -378,8 +386,9 @@ type RequestEcho struct {
 	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 }
 
-func (m *RequestEcho) Reset()      { *m = RequestEcho{} }
-func (*RequestEcho) ProtoMessage() {}
+func (m *RequestEcho) Reset()         { *m = RequestEcho{} }
+func (m *RequestEcho) String() string { return proto.CompactTextString(m) }
+func (*RequestEcho) ProtoMessage()    {}
 func (*RequestEcho) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{1}
 }
@@ -420,8 +429,9 @@ func (m *RequestEcho) GetMessage() string {
 type RequestFlush struct {
 }
 
-func (m *RequestFlush) Reset()      { *m = RequestFlush{} }
-func (*RequestFlush) ProtoMessage() {}
+func (m *RequestFlush) Reset()         { *m = RequestFlush{} }
+func (m *RequestFlush) String() string { return proto.CompactTextString(m) }
+func (*RequestFlush) ProtoMessage()    {}
 func (*RequestFlush) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{2}
 }
@@ -458,8 +468,9 @@ type RequestInfo struct {
 	P2PVersion   uint64 `protobuf:"varint,3,opt,name=p2p_version,json=p2pVersion,proto3" json:"p2p_version,omitempty"`
 }
 
-func (m *RequestInfo) Reset()      { *m = RequestInfo{} }
-func (*RequestInfo) ProtoMessage() {}
+func (m *RequestInfo) Reset()         { *m = RequestInfo{} }
+func (m *RequestInfo) String() string { return proto.CompactTextString(m) }
+func (*RequestInfo) ProtoMessage()    {}
 func (*RequestInfo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{3}
 }
@@ -517,8 +528,9 @@ type RequestSetOption struct {
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *RequestSetOption) Reset()      { *m = RequestSetOption{} }
-func (*RequestSetOption) ProtoMessage() {}
+func (m *RequestSetOption) Reset()         { *m = RequestSetOption{} }
+func (m *RequestSetOption) String() string { return proto.CompactTextString(m) }
+func (*RequestSetOption) ProtoMessage()    {}
 func (*RequestSetOption) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{4}
 }
@@ -571,8 +583,9 @@ type RequestInitChain struct {
 	AppStateBytes   []byte            `protobuf:"bytes,5,opt,name=app_state_bytes,json=appStateBytes,proto3" json:"app_state_bytes,omitempty"`
 }
 
-func (m *RequestInitChain) Reset()      { *m = RequestInitChain{} }
-func (*RequestInitChain) ProtoMessage() {}
+func (m *RequestInitChain) Reset()         { *m = RequestInitChain{} }
+func (m *RequestInitChain) String() string { return proto.CompactTextString(m) }
+func (*RequestInitChain) ProtoMessage()    {}
 func (*RequestInitChain) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{5}
 }
@@ -645,8 +658,9 @@ type RequestQuery struct {
 	Prove  bool   `protobuf:"varint,4,opt,name=prove,proto3" json:"prove,omitempty"`
 }
 
-func (m *RequestQuery) Reset()      { *m = RequestQuery{} }
-func (*RequestQuery) ProtoMessage() {}
+func (m *RequestQuery) Reset()         { *m = RequestQuery{} }
+func (m *RequestQuery) String() string { return proto.CompactTextString(m) }
+func (*RequestQuery) ProtoMessage()    {}
 func (*RequestQuery) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{6}
 }
@@ -712,8 +726,9 @@ type RequestBeginBlock struct {
 	ByzantineValidators []Evidence     `protobuf:"bytes,4,rep,name=byzantine_validators,json=byzantineValidators,proto3" json:"byzantine_validators"`
 }
 
-func (m *RequestBeginBlock) Reset()      { *m = RequestBeginBlock{} }
-func (*RequestBeginBlock) ProtoMessage() {}
+func (m *RequestBeginBlock) Reset()         { *m = RequestBeginBlock{} }
+func (m *RequestBeginBlock) String() string { return proto.CompactTextString(m) }
+func (*RequestBeginBlock) ProtoMessage()    {}
 func (*RequestBeginBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{7}
 }
@@ -777,8 +792,9 @@ type RequestCheckTx struct {
 	Type CheckTxType `protobuf:"varint,2,opt,name=type,proto3,enum=tendermint.abci.types.CheckTxType" json:"type,omitempty"`
 }
 
-func (m *RequestCheckTx) Reset()      { *m = RequestCheckTx{} }
-func (*RequestCheckTx) ProtoMessage() {}
+func (m *RequestCheckTx) Reset()         { *m = RequestCheckTx{} }
+func (m *RequestCheckTx) String() string { return proto.CompactTextString(m) }
+func (*RequestCheckTx) ProtoMessage()    {}
 func (*RequestCheckTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{8}
 }
@@ -820,15 +836,16 @@ func (m *RequestCheckTx) GetType() CheckTxType {
 	if m != nil {
 		return m.Type
 	}
-	return CheckTxType_NEW
+	return CheckTxType_CheckTxType_NEW
 }
 
 type RequestDeliverTx struct {
 	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 }
 
-func (m *RequestDeliverTx) Reset()      { *m = RequestDeliverTx{} }
-func (*RequestDeliverTx) ProtoMessage() {}
+func (m *RequestDeliverTx) Reset()         { *m = RequestDeliverTx{} }
+func (m *RequestDeliverTx) String() string { return proto.CompactTextString(m) }
+func (*RequestDeliverTx) ProtoMessage()    {}
 func (*RequestDeliverTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{9}
 }
@@ -870,8 +887,9 @@ type RequestEndBlock struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *RequestEndBlock) Reset()      { *m = RequestEndBlock{} }
-func (*RequestEndBlock) ProtoMessage() {}
+func (m *RequestEndBlock) Reset()         { *m = RequestEndBlock{} }
+func (m *RequestEndBlock) String() string { return proto.CompactTextString(m) }
+func (*RequestEndBlock) ProtoMessage()    {}
 func (*RequestEndBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{10}
 }
@@ -912,8 +930,9 @@ func (m *RequestEndBlock) GetHeight() int64 {
 type RequestCommit struct {
 }
 
-func (m *RequestCommit) Reset()      { *m = RequestCommit{} }
-func (*RequestCommit) ProtoMessage() {}
+func (m *RequestCommit) Reset()         { *m = RequestCommit{} }
+func (m *RequestCommit) String() string { return proto.CompactTextString(m) }
+func (*RequestCommit) ProtoMessage()    {}
 func (*RequestCommit) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{11}
 }
@@ -948,8 +967,9 @@ var xxx_messageInfo_RequestCommit proto.InternalMessageInfo
 type RequestListSnapshots struct {
 }
 
-func (m *RequestListSnapshots) Reset()      { *m = RequestListSnapshots{} }
-func (*RequestListSnapshots) ProtoMessage() {}
+func (m *RequestListSnapshots) Reset()         { *m = RequestListSnapshots{} }
+func (m *RequestListSnapshots) String() string { return proto.CompactTextString(m) }
+func (*RequestListSnapshots) ProtoMessage()    {}
 func (*RequestListSnapshots) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{12}
 }
@@ -986,8 +1006,9 @@ type RequestOfferSnapshot struct {
 	AppHash  []byte    `protobuf:"bytes,2,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
 }
 
-func (m *RequestOfferSnapshot) Reset()      { *m = RequestOfferSnapshot{} }
-func (*RequestOfferSnapshot) ProtoMessage() {}
+func (m *RequestOfferSnapshot) Reset()         { *m = RequestOfferSnapshot{} }
+func (m *RequestOfferSnapshot) String() string { return proto.CompactTextString(m) }
+func (*RequestOfferSnapshot) ProtoMessage()    {}
 func (*RequestOfferSnapshot) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{13}
 }
@@ -1039,8 +1060,9 @@ type RequestLoadSnapshotChunk struct {
 	Chunk  uint32 `protobuf:"varint,3,opt,name=chunk,proto3" json:"chunk,omitempty"`
 }
 
-func (m *RequestLoadSnapshotChunk) Reset()      { *m = RequestLoadSnapshotChunk{} }
-func (*RequestLoadSnapshotChunk) ProtoMessage() {}
+func (m *RequestLoadSnapshotChunk) Reset()         { *m = RequestLoadSnapshotChunk{} }
+func (m *RequestLoadSnapshotChunk) String() string { return proto.CompactTextString(m) }
+func (*RequestLoadSnapshotChunk) ProtoMessage()    {}
 func (*RequestLoadSnapshotChunk) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{14}
 }
@@ -1099,8 +1121,9 @@ type RequestApplySnapshotChunk struct {
 	Sender string `protobuf:"bytes,3,opt,name=sender,proto3" json:"sender,omitempty"`
 }
 
-func (m *RequestApplySnapshotChunk) Reset()      { *m = RequestApplySnapshotChunk{} }
-func (*RequestApplySnapshotChunk) ProtoMessage() {}
+func (m *RequestApplySnapshotChunk) Reset()         { *m = RequestApplySnapshotChunk{} }
+func (m *RequestApplySnapshotChunk) String() string { return proto.CompactTextString(m) }
+func (*RequestApplySnapshotChunk) ProtoMessage()    {}
 func (*RequestApplySnapshotChunk) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{15}
 }
@@ -1173,8 +1196,9 @@ type Response struct {
 	Value isResponse_Value `protobuf_oneof:"value"`
 }
 
-func (m *Response) Reset()      { *m = Response{} }
-func (*Response) ProtoMessage() {}
+func (m *Response) Reset()         { *m = Response{} }
+func (m *Response) String() string { return proto.CompactTextString(m) }
+func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{16}
 }
@@ -1207,7 +1231,6 @@ var xxx_messageInfo_Response proto.InternalMessageInfo
 
 type isResponse_Value interface {
 	isResponse_Value()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -1424,8 +1447,9 @@ type ResponseException struct {
 	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *ResponseException) Reset()      { *m = ResponseException{} }
-func (*ResponseException) ProtoMessage() {}
+func (m *ResponseException) Reset()         { *m = ResponseException{} }
+func (m *ResponseException) String() string { return proto.CompactTextString(m) }
+func (*ResponseException) ProtoMessage()    {}
 func (*ResponseException) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{17}
 }
@@ -1467,8 +1491,9 @@ type ResponseEcho struct {
 	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 }
 
-func (m *ResponseEcho) Reset()      { *m = ResponseEcho{} }
-func (*ResponseEcho) ProtoMessage() {}
+func (m *ResponseEcho) Reset()         { *m = ResponseEcho{} }
+func (m *ResponseEcho) String() string { return proto.CompactTextString(m) }
+func (*ResponseEcho) ProtoMessage()    {}
 func (*ResponseEcho) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{18}
 }
@@ -1509,8 +1534,9 @@ func (m *ResponseEcho) GetMessage() string {
 type ResponseFlush struct {
 }
 
-func (m *ResponseFlush) Reset()      { *m = ResponseFlush{} }
-func (*ResponseFlush) ProtoMessage() {}
+func (m *ResponseFlush) Reset()         { *m = ResponseFlush{} }
+func (m *ResponseFlush) String() string { return proto.CompactTextString(m) }
+func (*ResponseFlush) ProtoMessage()    {}
 func (*ResponseFlush) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{19}
 }
@@ -1549,8 +1575,9 @@ type ResponseInfo struct {
 	LastBlockAppHash []byte `protobuf:"bytes,5,opt,name=last_block_app_hash,json=lastBlockAppHash,proto3" json:"last_block_app_hash,omitempty"`
 }
 
-func (m *ResponseInfo) Reset()      { *m = ResponseInfo{} }
-func (*ResponseInfo) ProtoMessage() {}
+func (m *ResponseInfo) Reset()         { *m = ResponseInfo{} }
+func (m *ResponseInfo) String() string { return proto.CompactTextString(m) }
+func (*ResponseInfo) ProtoMessage()    {}
 func (*ResponseInfo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{20}
 }
@@ -1624,8 +1651,9 @@ type ResponseSetOption struct {
 	Info string `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
 }
 
-func (m *ResponseSetOption) Reset()      { *m = ResponseSetOption{} }
-func (*ResponseSetOption) ProtoMessage() {}
+func (m *ResponseSetOption) Reset()         { *m = ResponseSetOption{} }
+func (m *ResponseSetOption) String() string { return proto.CompactTextString(m) }
+func (*ResponseSetOption) ProtoMessage()    {}
 func (*ResponseSetOption) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{21}
 }
@@ -1682,8 +1710,9 @@ type ResponseInitChain struct {
 	Validators      []ValidatorUpdate `protobuf:"bytes,2,rep,name=validators,proto3" json:"validators"`
 }
 
-func (m *ResponseInitChain) Reset()      { *m = ResponseInitChain{} }
-func (*ResponseInitChain) ProtoMessage() {}
+func (m *ResponseInitChain) Reset()         { *m = ResponseInitChain{} }
+func (m *ResponseInitChain) String() string { return proto.CompactTextString(m) }
+func (*ResponseInitChain) ProtoMessage()    {}
 func (*ResponseInitChain) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{22}
 }
@@ -1741,8 +1770,9 @@ type ResponseQuery struct {
 	Codespace string        `protobuf:"bytes,10,opt,name=codespace,proto3" json:"codespace,omitempty"`
 }
 
-func (m *ResponseQuery) Reset()      { *m = ResponseQuery{} }
-func (*ResponseQuery) ProtoMessage() {}
+func (m *ResponseQuery) Reset()         { *m = ResponseQuery{} }
+func (m *ResponseQuery) String() string { return proto.CompactTextString(m) }
+func (*ResponseQuery) ProtoMessage()    {}
 func (*ResponseQuery) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{23}
 }
@@ -1840,8 +1870,9 @@ type ResponseBeginBlock struct {
 	Events []Event `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
 }
 
-func (m *ResponseBeginBlock) Reset()      { *m = ResponseBeginBlock{} }
-func (*ResponseBeginBlock) ProtoMessage() {}
+func (m *ResponseBeginBlock) Reset()         { *m = ResponseBeginBlock{} }
+func (m *ResponseBeginBlock) String() string { return proto.CompactTextString(m) }
+func (*ResponseBeginBlock) ProtoMessage()    {}
 func (*ResponseBeginBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{24}
 }
@@ -1890,8 +1921,9 @@ type ResponseCheckTx struct {
 	Codespace string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
 }
 
-func (m *ResponseCheckTx) Reset()      { *m = ResponseCheckTx{} }
-func (*ResponseCheckTx) ProtoMessage() {}
+func (m *ResponseCheckTx) Reset()         { *m = ResponseCheckTx{} }
+func (m *ResponseCheckTx) String() string { return proto.CompactTextString(m) }
+func (*ResponseCheckTx) ProtoMessage()    {}
 func (*ResponseCheckTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{25}
 }
@@ -1989,8 +2021,9 @@ type ResponseDeliverTx struct {
 	Codespace string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
 }
 
-func (m *ResponseDeliverTx) Reset()      { *m = ResponseDeliverTx{} }
-func (*ResponseDeliverTx) ProtoMessage() {}
+func (m *ResponseDeliverTx) Reset()         { *m = ResponseDeliverTx{} }
+func (m *ResponseDeliverTx) String() string { return proto.CompactTextString(m) }
+func (*ResponseDeliverTx) ProtoMessage()    {}
 func (*ResponseDeliverTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{26}
 }
@@ -2083,8 +2116,9 @@ type ResponseEndBlock struct {
 	Events                []Event           `protobuf:"bytes,3,rep,name=events,proto3" json:"events,omitempty"`
 }
 
-func (m *ResponseEndBlock) Reset()      { *m = ResponseEndBlock{} }
-func (*ResponseEndBlock) ProtoMessage() {}
+func (m *ResponseEndBlock) Reset()         { *m = ResponseEndBlock{} }
+func (m *ResponseEndBlock) String() string { return proto.CompactTextString(m) }
+func (*ResponseEndBlock) ProtoMessage()    {}
 func (*ResponseEndBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{27}
 }
@@ -2142,8 +2176,9 @@ type ResponseCommit struct {
 	RetainHeight int64  `protobuf:"varint,3,opt,name=retain_height,json=retainHeight,proto3" json:"retain_height,omitempty"`
 }
 
-func (m *ResponseCommit) Reset()      { *m = ResponseCommit{} }
-func (*ResponseCommit) ProtoMessage() {}
+func (m *ResponseCommit) Reset()         { *m = ResponseCommit{} }
+func (m *ResponseCommit) String() string { return proto.CompactTextString(m) }
+func (*ResponseCommit) ProtoMessage()    {}
 func (*ResponseCommit) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{28}
 }
@@ -2192,8 +2227,9 @@ type ResponseListSnapshots struct {
 	Snapshots []*Snapshot `protobuf:"bytes,1,rep,name=snapshots,proto3" json:"snapshots,omitempty"`
 }
 
-func (m *ResponseListSnapshots) Reset()      { *m = ResponseListSnapshots{} }
-func (*ResponseListSnapshots) ProtoMessage() {}
+func (m *ResponseListSnapshots) Reset()         { *m = ResponseListSnapshots{} }
+func (m *ResponseListSnapshots) String() string { return proto.CompactTextString(m) }
+func (*ResponseListSnapshots) ProtoMessage()    {}
 func (*ResponseListSnapshots) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{29}
 }
@@ -2235,8 +2271,9 @@ type ResponseOfferSnapshot struct {
 	Result ResponseOfferSnapshot_Result `protobuf:"varint,1,opt,name=result,proto3,enum=tendermint.abci.types.ResponseOfferSnapshot_Result" json:"result,omitempty"`
 }
 
-func (m *ResponseOfferSnapshot) Reset()      { *m = ResponseOfferSnapshot{} }
-func (*ResponseOfferSnapshot) ProtoMessage() {}
+func (m *ResponseOfferSnapshot) Reset()         { *m = ResponseOfferSnapshot{} }
+func (m *ResponseOfferSnapshot) String() string { return proto.CompactTextString(m) }
+func (*ResponseOfferSnapshot) ProtoMessage()    {}
 func (*ResponseOfferSnapshot) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{30}
 }
@@ -2278,8 +2315,9 @@ type ResponseLoadSnapshotChunk struct {
 	Chunk []byte `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
 }
 
-func (m *ResponseLoadSnapshotChunk) Reset()      { *m = ResponseLoadSnapshotChunk{} }
-func (*ResponseLoadSnapshotChunk) ProtoMessage() {}
+func (m *ResponseLoadSnapshotChunk) Reset()         { *m = ResponseLoadSnapshotChunk{} }
+func (m *ResponseLoadSnapshotChunk) String() string { return proto.CompactTextString(m) }
+func (*ResponseLoadSnapshotChunk) ProtoMessage()    {}
 func (*ResponseLoadSnapshotChunk) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{31}
 }
@@ -2323,8 +2361,9 @@ type ResponseApplySnapshotChunk struct {
 	RejectSenders []string                          `protobuf:"bytes,3,rep,name=reject_senders,json=rejectSenders,proto3" json:"reject_senders,omitempty"`
 }
 
-func (m *ResponseApplySnapshotChunk) Reset()      { *m = ResponseApplySnapshotChunk{} }
-func (*ResponseApplySnapshotChunk) ProtoMessage() {}
+func (m *ResponseApplySnapshotChunk) Reset()         { *m = ResponseApplySnapshotChunk{} }
+func (m *ResponseApplySnapshotChunk) String() string { return proto.CompactTextString(m) }
+func (*ResponseApplySnapshotChunk) ProtoMessage()    {}
 func (*ResponseApplySnapshotChunk) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{32}
 }
@@ -2384,8 +2423,9 @@ type ConsensusParams struct {
 	Validator *types.ValidatorParams `protobuf:"bytes,3,opt,name=validator,proto3" json:"validator,omitempty"`
 }
 
-func (m *ConsensusParams) Reset()      { *m = ConsensusParams{} }
-func (*ConsensusParams) ProtoMessage() {}
+func (m *ConsensusParams) Reset()         { *m = ConsensusParams{} }
+func (m *ConsensusParams) String() string { return proto.CompactTextString(m) }
+func (*ConsensusParams) ProtoMessage()    {}
 func (*ConsensusParams) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{33}
 }
@@ -2445,8 +2485,9 @@ type BlockParams struct {
 	MaxGas int64 `protobuf:"varint,2,opt,name=max_gas,json=maxGas,proto3" json:"max_gas,omitempty"`
 }
 
-func (m *BlockParams) Reset()      { *m = BlockParams{} }
-func (*BlockParams) ProtoMessage() {}
+func (m *BlockParams) Reset()         { *m = BlockParams{} }
+func (m *BlockParams) String() string { return proto.CompactTextString(m) }
+func (*BlockParams) ProtoMessage()    {}
 func (*BlockParams) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{34}
 }
@@ -2496,8 +2537,9 @@ type LastCommitInfo struct {
 	Votes []VoteInfo `protobuf:"bytes,2,rep,name=votes,proto3" json:"votes"`
 }
 
-func (m *LastCommitInfo) Reset()      { *m = LastCommitInfo{} }
-func (*LastCommitInfo) ProtoMessage() {}
+func (m *LastCommitInfo) Reset()         { *m = LastCommitInfo{} }
+func (m *LastCommitInfo) String() string { return proto.CompactTextString(m) }
+func (*LastCommitInfo) ProtoMessage()    {}
 func (*LastCommitInfo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{35}
 }
@@ -2549,8 +2591,9 @@ type EventAttribute struct {
 	Index bool   `protobuf:"varint,3,opt,name=index,proto3" json:"index,omitempty"`
 }
 
-func (m *EventAttribute) Reset()      { *m = EventAttribute{} }
-func (*EventAttribute) ProtoMessage() {}
+func (m *EventAttribute) Reset()         { *m = EventAttribute{} }
+func (m *EventAttribute) String() string { return proto.CompactTextString(m) }
+func (*EventAttribute) ProtoMessage()    {}
 func (*EventAttribute) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{36}
 }
@@ -2607,8 +2650,9 @@ type Event struct {
 	Attributes []EventAttribute `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
 }
 
-func (m *Event) Reset()      { *m = Event{} }
-func (*Event) ProtoMessage() {}
+func (m *Event) Reset()         { *m = Event{} }
+func (m *Event) String() string { return proto.CompactTextString(m) }
+func (*Event) ProtoMessage()    {}
 func (*Event) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{37}
 }
@@ -2663,8 +2707,9 @@ type TxResult struct {
 	Result ResponseDeliverTx `protobuf:"bytes,4,opt,name=result,proto3" json:"result"`
 }
 
-func (m *TxResult) Reset()      { *m = TxResult{} }
-func (*TxResult) ProtoMessage() {}
+func (m *TxResult) Reset()         { *m = TxResult{} }
+func (m *TxResult) String() string { return proto.CompactTextString(m) }
+func (*TxResult) ProtoMessage()    {}
 func (*TxResult) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{38}
 }
@@ -2730,8 +2775,9 @@ type Validator struct {
 	Power int64 `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
 }
 
-func (m *Validator) Reset()      { *m = Validator{} }
-func (*Validator) ProtoMessage() {}
+func (m *Validator) Reset()         { *m = Validator{} }
+func (m *Validator) String() string { return proto.CompactTextString(m) }
+func (*Validator) ProtoMessage()    {}
 func (*Validator) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{39}
 }
@@ -2782,8 +2828,9 @@ type ValidatorUpdate struct {
 	Power  int64  `protobuf:"varint,2,opt,name=power,proto3" json:"power,omitempty"`
 }
 
-func (m *ValidatorUpdate) Reset()      { *m = ValidatorUpdate{} }
-func (*ValidatorUpdate) ProtoMessage() {}
+func (m *ValidatorUpdate) Reset()         { *m = ValidatorUpdate{} }
+func (m *ValidatorUpdate) String() string { return proto.CompactTextString(m) }
+func (*ValidatorUpdate) ProtoMessage()    {}
 func (*ValidatorUpdate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{40}
 }
@@ -2834,8 +2881,9 @@ type VoteInfo struct {
 	SignedLastBlock bool      `protobuf:"varint,2,opt,name=signed_last_block,json=signedLastBlock,proto3" json:"signed_last_block,omitempty"`
 }
 
-func (m *VoteInfo) Reset()      { *m = VoteInfo{} }
-func (*VoteInfo) ProtoMessage() {}
+func (m *VoteInfo) Reset()         { *m = VoteInfo{} }
+func (m *VoteInfo) String() string { return proto.CompactTextString(m) }
+func (*VoteInfo) ProtoMessage()    {}
 func (*VoteInfo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{41}
 }
@@ -2885,8 +2933,9 @@ type PubKey struct {
 	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 }
 
-func (m *PubKey) Reset()      { *m = PubKey{} }
-func (*PubKey) ProtoMessage() {}
+func (m *PubKey) Reset()         { *m = PubKey{} }
+func (m *PubKey) String() string { return proto.CompactTextString(m) }
+func (*PubKey) ProtoMessage()    {}
 func (*PubKey) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{42}
 }
@@ -2939,8 +2988,9 @@ type Evidence struct {
 	TotalVotingPower int64     `protobuf:"varint,5,opt,name=total_voting_power,json=totalVotingPower,proto3" json:"total_voting_power,omitempty"`
 }
 
-func (m *Evidence) Reset()      { *m = Evidence{} }
-func (*Evidence) ProtoMessage() {}
+func (m *Evidence) Reset()         { *m = Evidence{} }
+func (m *Evidence) String() string { return proto.CompactTextString(m) }
+func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{43}
 }
@@ -3014,8 +3064,9 @@ type Snapshot struct {
 	Metadata []byte `protobuf:"bytes,5,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
-func (m *Snapshot) Reset()      { *m = Snapshot{} }
-func (*Snapshot) ProtoMessage() {}
+func (m *Snapshot) Reset()         { *m = Snapshot{} }
+func (m *Snapshot) String() string { return proto.CompactTextString(m) }
+func (*Snapshot) ProtoMessage()    {}
 func (*Snapshot) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9f1eaa49c51fa1ac, []int{44}
 }
@@ -3184,3170 +3235,173 @@ func init() { proto.RegisterFile("abci/types/types.proto", fileDescriptor_9f1eaa
 func init() { golang_proto.RegisterFile("abci/types/types.proto", fileDescriptor_9f1eaa49c51fa1ac) }
 
 var fileDescriptor_9f1eaa49c51fa1ac = []byte{
-	// 2684 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5a, 0xc9, 0x73, 0x1b, 0xc7,
-	0xd5, 0xc7, 0x00, 0x20, 0x96, 0xc7, 0x05, 0x60, 0x53, 0x96, 0xe0, 0xf9, 0x64, 0x90, 0x35, 0xb2,
-	0x16, 0x2f, 0x1f, 0x69, 0xd3, 0x95, 0x94, 0x1d, 0x29, 0x49, 0x09, 0x34, 0x1d, 0xb0, 0xa4, 0xc8,
-	0xf2, 0x48, 0x94, 0xec, 0xa4, 0xca, 0x93, 0xc6, 0x4c, 0x13, 0x18, 0x0b, 0x98, 0x19, 0xcf, 0x34,
-	0x68, 0x22, 0x95, 0x83, 0x2b, 0x97, 0x24, 0x3e, 0xf9, 0x94, 0x9c, 0x7c, 0xca, 0x25, 0xc7, 0x1c,
-	0x52, 0x95, 0x5c, 0x52, 0x95, 0x4b, 0xaa, 0x7c, 0xf4, 0x29, 0xe5, 0x93, 0x13, 0x53, 0x39, 0xa4,
-	0x92, 0x8b, 0x0f, 0xf9, 0x03, 0x52, 0xbd, 0xcc, 0x06, 0x62, 0x19, 0x38, 0xba, 0xe5, 0x42, 0x4e,
-	0x77, 0xbf, 0xa5, 0xfb, 0x75, 0xf7, 0x7b, 0xbf, 0xf7, 0x1a, 0x70, 0x1e, 0x77, 0x4c, 0x7b, 0x87,
-	0x8e, 0x3c, 0x12, 0x88, 0xbf, 0xdb, 0x9e, 0xef, 0x52, 0x17, 0x3d, 0x45, 0x89, 0x63, 0x11, 0x7f,
-	0x60, 0x3b, 0x74, 0x9b, 0x91, 0x6c, 0xf3, 0x41, 0xf5, 0x0a, 0xed, 0xd9, 0xbe, 0x65, 0x78, 0xd8,
-	0xa7, 0xa3, 0x1d, 0x4e, 0xb9, 0xd3, 0x75, 0xbb, 0x6e, 0xfc, 0x25, 0xd8, 0x55, 0xd5, 0xf4, 0x47,
-	0x1e, 0x75, 0x77, 0x06, 0xc4, 0x7f, 0xd4, 0x27, 0xf2, 0x9f, 0x1c, 0xbb, 0x20, 0xa8, 0xcf, 0xe8,
-	0x54, 0x1b, 0xc9, 0x01, 0x0f, 0xfb, 0x78, 0x10, 0x8e, 0x6c, 0x76, 0x5d, 0xb7, 0xdb, 0x27, 0x42,
-	0x63, 0x67, 0x78, 0xb4, 0x43, 0xed, 0x01, 0x09, 0x28, 0x1e, 0x78, 0x82, 0x40, 0xfb, 0x57, 0x05,
-	0xca, 0x3a, 0x79, 0x7f, 0x48, 0x02, 0x8a, 0x5e, 0x85, 0x22, 0x31, 0x7b, 0x6e, 0x23, 0xbf, 0xa5,
-	0x5c, 0x5b, 0xde, 0xd5, 0xb6, 0x27, 0xae, 0x64, 0x5b, 0x52, 0xef, 0x9b, 0x3d, 0xb7, 0x9d, 0xd3,
-	0x39, 0x07, 0xba, 0x0e, 0x4b, 0x47, 0xfd, 0x61, 0xd0, 0x6b, 0x14, 0x38, 0xeb, 0xa5, 0xd9, 0xac,
-	0x6f, 0x30, 0xd2, 0x76, 0x4e, 0x17, 0x3c, 0x4c, 0xad, 0xed, 0x1c, 0xb9, 0x8d, 0x62, 0x16, 0xb5,
-	0x07, 0xce, 0x11, 0x57, 0xcb, 0x38, 0x50, 0x1b, 0x20, 0x20, 0xd4, 0x70, 0x3d, 0x6a, 0xbb, 0x4e,
-	0x63, 0x89, 0xf3, 0x5f, 0x9d, 0xcd, 0x7f, 0x8f, 0xd0, 0x37, 0x39, 0x79, 0x3b, 0xa7, 0x57, 0x83,
-	0xb0, 0xc1, 0x24, 0xd9, 0x8e, 0x4d, 0x0d, 0xb3, 0x87, 0x6d, 0xa7, 0x51, 0xca, 0x22, 0xe9, 0xc0,
-	0xb1, 0xe9, 0x1e, 0x23, 0x67, 0x92, 0xec, 0xb0, 0xc1, 0x4c, 0xf1, 0xfe, 0x90, 0xf8, 0xa3, 0x46,
-	0x39, 0x8b, 0x29, 0xde, 0x62, 0xa4, 0xcc, 0x14, 0x9c, 0x07, 0xdd, 0x82, 0xe5, 0x0e, 0xe9, 0xda,
-	0x8e, 0xd1, 0xe9, 0xbb, 0xe6, 0xa3, 0x46, 0x85, 0x8b, 0xb8, 0x36, 0x5b, 0x44, 0x8b, 0x31, 0xb4,
-	0x18, 0x7d, 0x3b, 0xa7, 0x43, 0x27, 0x6a, 0xa1, 0x16, 0x54, 0xcc, 0x1e, 0x31, 0x1f, 0x19, 0xf4,
-	0xa4, 0x51, 0xe5, 0x92, 0x2e, 0xcf, 0x96, 0xb4, 0xc7, 0xa8, 0xef, 0x9f, 0xb4, 0x73, 0x7a, 0xd9,
-	0x14, 0x9f, 0xcc, 0x2e, 0x16, 0xe9, 0xdb, 0xc7, 0xc4, 0x67, 0x52, 0x36, 0xb2, 0xd8, 0xe5, 0x75,
-	0x41, 0xcf, 0xe5, 0x54, 0xad, 0xb0, 0x81, 0xf6, 0xa1, 0x4a, 0x1c, 0x4b, 0x2e, 0x6c, 0x99, 0x0b,
-	0xba, 0x32, 0xe7, 0x84, 0x39, 0x56, 0xb8, 0xac, 0x0a, 0x91, 0xdf, 0xe8, 0x3b, 0x50, 0x32, 0xdd,
-	0xc1, 0xc0, 0xa6, 0x8d, 0x15, 0x2e, 0xe3, 0xd9, 0x39, 0x4b, 0xe2, 0xb4, 0xed, 0x9c, 0x2e, 0xb9,
-	0xd0, 0x7d, 0x58, 0xeb, 0xdb, 0x01, 0x35, 0x02, 0x07, 0x7b, 0x41, 0xcf, 0xa5, 0x41, 0x63, 0x95,
-	0xcb, 0x79, 0x61, 0xb6, 0x9c, 0xdb, 0x76, 0x40, 0xef, 0x85, 0x2c, 0xed, 0x9c, 0xbe, 0xda, 0x4f,
-	0x76, 0x30, 0xa9, 0xee, 0xd1, 0x11, 0xf1, 0x23, 0xb1, 0x8d, 0xb5, 0x2c, 0x52, 0xdf, 0x64, 0x3c,
-	0xa1, 0x14, 0x26, 0xd5, 0x4d, 0x76, 0x20, 0x0c, 0x1b, 0x7d, 0x17, 0x5b, 0x91, 0x50, 0xc3, 0xec,
-	0x0d, 0x9d, 0x47, 0x8d, 0x1a, 0x17, 0xbd, 0x33, 0x67, 0xc2, 0x2e, 0xb6, 0x42, 0x41, 0x7b, 0x8c,
-	0xad, 0x9d, 0xd3, 0xd7, 0xfb, 0xe3, 0x9d, 0xc8, 0x82, 0x73, 0xd8, 0xf3, 0xfa, 0xa3, 0x71, 0x1d,
-	0x75, 0xae, 0xe3, 0xa5, 0xd9, 0x3a, 0x6e, 0x32, 0xce, 0x71, 0x25, 0x08, 0x9f, 0xe9, 0x6d, 0x95,
-	0x61, 0xe9, 0x18, 0xf7, 0x87, 0x44, 0xbb, 0x0a, 0xcb, 0x09, 0xf7, 0x81, 0x1a, 0x50, 0x1e, 0x90,
-	0x20, 0xc0, 0x5d, 0xd2, 0x50, 0xb6, 0x94, 0x6b, 0x55, 0x3d, 0x6c, 0x6a, 0x6b, 0xb0, 0x92, 0x74,
-	0x16, 0xda, 0x20, 0x62, 0x64, 0x0e, 0x80, 0x31, 0x1e, 0x13, 0x3f, 0x60, 0xb7, 0x5e, 0x32, 0xca,
-	0x26, 0xba, 0x04, 0xab, 0xfc, 0x88, 0x19, 0xe1, 0x38, 0x73, 0x66, 0x45, 0x7d, 0x85, 0x77, 0x3e,
-	0x90, 0x44, 0x9b, 0xb0, 0xec, 0xed, 0x7a, 0x11, 0x49, 0x81, 0x93, 0x80, 0xb7, 0xeb, 0x49, 0x02,
-	0xed, 0x5b, 0x50, 0x1f, 0xf7, 0x17, 0xa8, 0x0e, 0x85, 0x47, 0x64, 0x24, 0xf5, 0xb1, 0x4f, 0x74,
-	0x4e, 0x2e, 0x8b, 0xeb, 0xa8, 0xea, 0x72, 0x8d, 0xbf, 0xcd, 0x47, 0xcc, 0x91, 0x8b, 0x60, 0x3e,
-	0x8e, 0x79, 0x5e, 0xce, 0xbd, 0xbc, 0xab, 0x6e, 0x0b, 0xb7, 0xbc, 0x1d, 0xba, 0xe5, 0xed, 0xfb,
-	0xa1, 0x5b, 0x6e, 0x55, 0x3e, 0xfd, 0x62, 0x33, 0xf7, 0xf1, 0x5f, 0x37, 0x15, 0x9d, 0x73, 0xa0,
-	0xa7, 0xd9, 0x2d, 0xc6, 0xb6, 0x63, 0xd8, 0x96, 0xd4, 0x53, 0xe6, 0xed, 0x03, 0x0b, 0xbd, 0x05,
-	0x75, 0xd3, 0x75, 0x02, 0xe2, 0x04, 0xc3, 0xc0, 0x10, 0x6e, 0x5f, 0x3a, 0xe0, 0x69, 0x37, 0x6b,
-	0x2f, 0x24, 0xbf, 0xcb, 0xa9, 0xf5, 0x9a, 0x99, 0xee, 0x40, 0xb7, 0x01, 0x8e, 0x71, 0xdf, 0xb6,
-	0x30, 0x75, 0xfd, 0xa0, 0x51, 0xdc, 0x2a, 0xcc, 0x10, 0xf6, 0x20, 0x24, 0x3c, 0xf4, 0x2c, 0x4c,
-	0x49, 0xab, 0xc8, 0x66, 0xae, 0x27, 0xf8, 0xd1, 0x15, 0xa8, 0x61, 0xcf, 0x33, 0x02, 0x8a, 0x29,
-	0x31, 0x3a, 0x23, 0x4a, 0x02, 0xee, 0xa4, 0x57, 0xf4, 0x55, 0xec, 0x79, 0xf7, 0x58, 0x6f, 0x8b,
-	0x75, 0x6a, 0x56, 0xb4, 0xdb, 0xdc, 0x1f, 0x22, 0x04, 0x45, 0x0b, 0x53, 0xcc, 0xad, 0xb5, 0xa2,
-	0xf3, 0x6f, 0xd6, 0xe7, 0x61, 0xda, 0x93, 0x36, 0xe0, 0xdf, 0xe8, 0x3c, 0x94, 0x7a, 0xc4, 0xee,
-	0xf6, 0x28, 0x5f, 0x76, 0x41, 0x97, 0x2d, 0xb6, 0x31, 0x9e, 0xef, 0x1e, 0x13, 0x1e, 0x52, 0x2a,
-	0xba, 0x68, 0x68, 0xbf, 0xcc, 0xc3, 0xfa, 0x19, 0x9f, 0xc9, 0xe4, 0xf6, 0x70, 0xd0, 0x0b, 0x75,
-	0xb1, 0x6f, 0x74, 0x83, 0xc9, 0xc5, 0x16, 0xf1, 0x65, 0x28, 0x6c, 0x26, 0x2d, 0xc0, 0xf7, 0x4c,
-	0x9a, 0xa0, 0xcd, 0xa9, 0xe4, 0xca, 0x25, 0x0f, 0x3a, 0x84, 0x7a, 0x1f, 0x07, 0xd4, 0x10, 0x1e,
-	0xc7, 0xe0, 0xb1, 0xad, 0x30, 0xd3, 0xff, 0xde, 0xc6, 0xa1, 0xa7, 0x62, 0xa7, 0x5b, 0x8a, 0x5b,
-	0xeb, 0xa7, 0x7a, 0xd1, 0xdb, 0x70, 0xae, 0x33, 0xfa, 0x31, 0x76, 0xa8, 0xed, 0x10, 0xe3, 0xcc,
-	0x26, 0x6d, 0x4e, 0x11, 0xbd, 0x7f, 0x6c, 0x5b, 0xc4, 0x31, 0xc3, 0xdd, 0xd9, 0x88, 0x44, 0x44,
-	0xbb, 0x17, 0x68, 0x6f, 0xc3, 0x5a, 0x3a, 0x02, 0xa0, 0x35, 0xc8, 0xd3, 0x13, 0x69, 0x92, 0x3c,
-	0x3d, 0x41, 0xdf, 0x84, 0x22, 0x13, 0xc7, 0xcd, 0xb1, 0x36, 0x35, 0x44, 0x4b, 0xee, 0xfb, 0x23,
-	0x8f, 0xe8, 0x9c, 0x5e, 0xd3, 0xa2, 0xab, 0x10, 0x45, 0x85, 0x71, 0xd9, 0xda, 0x73, 0x50, 0x1b,
-	0x73, 0xf8, 0x89, 0x7d, 0x55, 0x92, 0xfb, 0xaa, 0xd5, 0x60, 0x35, 0xe5, 0xd7, 0xb5, 0xf3, 0x70,
-	0x6e, 0x92, 0x83, 0xd6, 0x9c, 0xa8, 0x3f, 0xe5, 0x62, 0xd1, 0x75, 0xa8, 0x44, 0x1e, 0x5a, 0x5c,
-	0xc5, 0x69, 0x76, 0x0b, 0x59, 0xf4, 0x88, 0x81, 0xdd, 0x44, 0x76, 0x9a, 0xf9, 0x69, 0xc9, 0xf3,
-	0xe9, 0x97, 0xb1, 0xe7, 0xb5, 0x71, 0xd0, 0xd3, 0x7e, 0x04, 0x8d, 0x69, 0x7e, 0x77, 0x6c, 0x31,
-	0xc5, 0xe8, 0x90, 0x9e, 0x87, 0xd2, 0x91, 0xeb, 0x0f, 0x30, 0xe5, 0xc2, 0x56, 0x75, 0xd9, 0x62,
-	0x87, 0x57, 0xf8, 0xe0, 0x02, 0xef, 0x16, 0x0d, 0xcd, 0x80, 0xa7, 0xa7, 0x7a, 0x5d, 0xc6, 0x62,
-	0x3b, 0x16, 0x11, 0x56, 0x5d, 0xd5, 0x45, 0x23, 0x16, 0x24, 0x26, 0x2b, 0x1a, 0x4c, 0x6d, 0xc0,
-	0x57, 0xcc, 0xe5, 0x57, 0x75, 0xd9, 0xd2, 0xfe, 0x5c, 0x85, 0x8a, 0x4e, 0x02, 0x8f, 0x39, 0x04,
-	0xd4, 0x86, 0x2a, 0x39, 0x31, 0x89, 0xc0, 0x55, 0xca, 0x1c, 0x14, 0x22, 0x78, 0xf6, 0x43, 0x7a,
-	0x16, 0xf6, 0x23, 0x66, 0xf4, 0x5a, 0x0a, 0x53, 0x5e, 0x9a, 0x27, 0x24, 0x09, 0x2a, 0x6f, 0xa4,
-	0x41, 0xe5, 0xb3, 0x73, 0x78, 0xc7, 0x50, 0xe5, 0x6b, 0x29, 0x54, 0x39, 0x4f, 0x71, 0x0a, 0x56,
-	0x1e, 0x4c, 0x80, 0x95, 0xf3, 0x96, 0x3f, 0x05, 0x57, 0x1e, 0x4c, 0xc0, 0x95, 0xd7, 0xe6, 0xce,
-	0x65, 0x22, 0xb0, 0xbc, 0x91, 0x06, 0x96, 0xf3, 0xcc, 0x31, 0x86, 0x2c, 0x6f, 0x4f, 0x42, 0x96,
-	0xcf, 0xcd, 0x91, 0x31, 0x15, 0x5a, 0xee, 0x9d, 0x81, 0x96, 0x57, 0xe6, 0x88, 0x9a, 0x80, 0x2d,
-	0x0f, 0x52, 0xd8, 0x12, 0x32, 0xd9, 0x66, 0x0a, 0xb8, 0x7c, 0xe3, 0x2c, 0xb8, 0xbc, 0x3a, 0xef,
-	0xa8, 0x4d, 0x42, 0x97, 0xdf, 0x1d, 0x43, 0x97, 0x97, 0xe7, 0xad, 0x6a, 0x1c, 0x5e, 0x1e, 0x4e,
-	0x81, 0x97, 0x2f, 0xce, 0x11, 0x34, 0x07, 0x5f, 0x1e, 0x4e, 0xc1, 0x97, 0xf3, 0xc4, 0xce, 0x01,
-	0x98, 0x9d, 0x59, 0x00, 0xf3, 0xa5, 0x79, 0x53, 0xce, 0x86, 0x30, 0xc9, 0x4c, 0x84, 0xf9, 0xf2,
-	0x1c, 0x25, 0x8b, 0x43, 0xcc, 0xe7, 0x58, 0x90, 0x1f, 0x73, 0x49, 0xcc, 0x15, 0x12, 0xdf, 0x77,
-	0x7d, 0x89, 0xde, 0x44, 0x43, 0xbb, 0xc6, 0x60, 0x47, 0xec, 0x78, 0x66, 0xc0, 0x51, 0x1e, 0x78,
-	0x12, 0x6e, 0x46, 0xfb, 0x83, 0x12, 0xf3, 0xf2, 0xe8, 0x9c, 0x84, 0x2c, 0x55, 0x09, 0x59, 0x12,
-	0x28, 0x35, 0x9f, 0x46, 0xa9, 0x9b, 0xb0, 0xcc, 0x42, 0xc9, 0x18, 0x00, 0xc5, 0x5e, 0x08, 0x40,
-	0xd1, 0xf3, 0xb0, 0xce, 0x31, 0x84, 0xc0, 0xb2, 0x32, 0x7e, 0x14, 0x79, 0x30, 0xac, 0xb1, 0x01,
-	0x71, 0x74, 0x45, 0x20, 0xf9, 0x7f, 0xd8, 0x48, 0xd0, 0x46, 0x21, 0x4a, 0x20, 0xad, 0x7a, 0x44,
-	0x7d, 0x53, 0xc6, 0xaa, 0xef, 0xc7, 0x06, 0x8a, 0xc1, 0x2d, 0x82, 0xa2, 0xe9, 0x5a, 0x44, 0x06,
-	0x10, 0xfe, 0xcd, 0x00, 0x6f, 0xdf, 0xed, 0xca, 0x30, 0xc1, 0x3e, 0x19, 0x55, 0xe4, 0x53, 0xab,
-	0xc2, 0x59, 0x6a, 0xbf, 0x53, 0x62, 0x79, 0x31, 0xde, 0x9d, 0x04, 0x4d, 0x95, 0x27, 0x09, 0x4d,
-	0xf3, 0xff, 0x1d, 0x34, 0xd5, 0xfe, 0xad, 0xc4, 0x5b, 0x1a, 0x81, 0xce, 0xaf, 0x67, 0x82, 0x38,
-	0xfc, 0x2e, 0xf1, 0x0d, 0x92, 0xe1, 0x57, 0xe6, 0x0b, 0x25, 0xbe, 0x0d, 0xe9, 0x7c, 0xa1, 0x2c,
-	0x02, 0x32, 0x6f, 0xa0, 0x6f, 0x70, 0xb0, 0xea, 0x1e, 0x49, 0x9f, 0x9c, 0x02, 0x24, 0xa2, 0x18,
-	0xb4, 0x2d, 0xab, 0x40, 0x77, 0x19, 0x99, 0x2e, 0xa8, 0x13, 0xb0, 0xa2, 0x9a, 0xc2, 0xbe, 0x17,
-	0xa1, 0xca, 0xa6, 0x1e, 0x78, 0xd8, 0x24, 0xdc, 0xa9, 0x56, 0xf5, 0xb8, 0x43, 0xb3, 0x00, 0x9d,
-	0x75, 0xee, 0xe8, 0x0e, 0x94, 0xc8, 0x31, 0x71, 0x28, 0xdb, 0x23, 0x66, 0xd6, 0x8b, 0x53, 0xc1,
-	0x24, 0x71, 0x68, 0xab, 0xc1, 0x8c, 0xf9, 0xcf, 0x2f, 0x36, 0xeb, 0x82, 0xe7, 0x45, 0x77, 0x60,
-	0x53, 0x32, 0xf0, 0xe8, 0x48, 0x97, 0x52, 0xb4, 0x9f, 0xe5, 0x19, 0xa6, 0x4b, 0x39, 0xfe, 0x89,
-	0xe6, 0x0d, 0x2f, 0x4d, 0x3e, 0x81, 0xf3, 0xb3, 0x99, 0xfc, 0x19, 0x80, 0x2e, 0x0e, 0x8c, 0x0f,
-	0xb0, 0x43, 0x89, 0x25, 0xed, 0x5e, 0xed, 0xe2, 0xe0, 0x21, 0xef, 0x60, 0x50, 0x8d, 0x0d, 0x0f,
-	0x03, 0x62, 0xf1, 0x0d, 0x28, 0xe8, 0xe5, 0x2e, 0x0e, 0x0e, 0x03, 0x62, 0x25, 0xd6, 0x5a, 0x7e,
-	0x12, 0x6b, 0x4d, 0xdb, 0xbb, 0x32, 0x6e, 0xef, 0x5f, 0xe4, 0xe3, 0xdb, 0x11, 0x43, 0xe0, 0xff,
-	0x4d, 0x5b, 0x7c, 0xc2, 0x13, 0xe3, 0x74, 0xf4, 0x45, 0xef, 0xc0, 0x7a, 0x74, 0x2b, 0x8d, 0x21,
-	0xbf, 0xad, 0xe1, 0x29, 0x5c, 0xec, 0x72, 0xd7, 0x8f, 0xd3, 0xdd, 0x01, 0x7a, 0x17, 0x2e, 0x8c,
-	0xf9, 0xa0, 0x48, 0x41, 0x7e, 0x21, 0x57, 0xf4, 0x54, 0xda, 0x15, 0x85, 0xf2, 0x63, 0xeb, 0x15,
-	0x9e, 0xc8, 0xad, 0x39, 0x60, 0x69, 0x58, 0x12, 0x57, 0x4c, 0x3c, 0x13, 0x97, 0x60, 0xd5, 0x27,
-	0x14, 0xdb, 0x8e, 0x91, 0x4a, 0x7d, 0x57, 0x44, 0xa7, 0x08, 0x09, 0xda, 0x03, 0x78, 0x6a, 0x22,
-	0xb2, 0x40, 0xdf, 0x86, 0x6a, 0x0c, 0x4d, 0x94, 0x99, 0x99, 0x63, 0x94, 0x01, 0xc5, 0x1c, 0xda,
-	0x1f, 0x95, 0x58, 0x70, 0x3a, 0xb3, 0xba, 0x05, 0x25, 0x9f, 0x04, 0xc3, 0xbe, 0xc8, 0x72, 0xd6,
-	0x76, 0x5f, 0x59, 0x04, 0x99, 0xb0, 0xde, 0x61, 0x9f, 0xea, 0x52, 0x84, 0xf6, 0x10, 0x4a, 0xa2,
-	0x07, 0x01, 0x94, 0xb0, 0xc9, 0xa2, 0x78, 0x3d, 0x87, 0xaa, 0xb0, 0x84, 0x3b, 0xae, 0x4f, 0xeb,
-	0x0a, 0xeb, 0xf6, 0xc9, 0x7b, 0xc4, 0xa4, 0xf5, 0x3c, 0x5a, 0x67, 0x06, 0x61, 0xdf, 0x86, 0x48,
-	0xa0, 0xea, 0x85, 0x44, 0x97, 0x48, 0x6e, 0xea, 0x45, 0xb5, 0xf8, 0xf3, 0x5f, 0x37, 0x15, 0xed,
-	0x65, 0x96, 0x45, 0x4d, 0x81, 0x2f, 0x71, 0xbe, 0xa4, 0x24, 0xf2, 0x25, 0xed, 0x57, 0x79, 0x50,
-	0xa7, 0xa3, 0x11, 0x74, 0x77, 0x6c, 0xdd, 0xaf, 0x2e, 0x0c, 0x68, 0xc6, 0x16, 0x8f, 0x2e, 0xc3,
-	0x9a, 0x4f, 0x8e, 0x08, 0x35, 0x7b, 0x02, 0x29, 0x89, 0x58, 0xb7, 0xaa, 0xaf, 0xca, 0x5e, 0xce,
-	0x14, 0x08, 0xb2, 0xc4, 0x1a, 0xc5, 0x29, 0xac, 0xea, 0x72, 0xe5, 0xf7, 0x44, 0xa7, 0xf6, 0xce,
-	0x3c, 0x53, 0x56, 0x61, 0xc9, 0x27, 0xd4, 0x1f, 0xd5, 0xf3, 0x08, 0x31, 0x91, 0xd4, 0x8f, 0xa1,
-	0x5a, 0xbd, 0x80, 0x36, 0xa0, 0x16, 0xaa, 0x09, 0x3b, 0x43, 0x63, 0xfe, 0x45, 0x81, 0xda, 0xd8,
-	0x55, 0x41, 0xaf, 0xc2, 0x92, 0x00, 0xe1, 0xca, 0xcc, 0x62, 0x3e, 0xbf, 0xfb, 0xf2, 0x76, 0x09,
-	0x06, 0xd4, 0x82, 0x0a, 0x91, 0xb5, 0x8a, 0x49, 0xd7, 0x33, 0x59, 0x75, 0x09, 0x6b, 0x1a, 0x52,
-	0x40, 0xc4, 0x87, 0xf6, 0xa1, 0x1a, 0x79, 0x01, 0x99, 0x35, 0x5e, 0x9d, 0x26, 0x24, 0xf2, 0x22,
-	0x52, 0x4a, 0xcc, 0xa9, 0xed, 0xc1, 0x72, 0x62, 0x82, 0xe8, 0xff, 0xa0, 0x3a, 0xc0, 0x27, 0xb2,
-	0x7e, 0x25, 0x0a, 0x12, 0x95, 0x01, 0x3e, 0xe1, 0xa5, 0x2b, 0x74, 0x01, 0xca, 0x6c, 0xb0, 0x8b,
-	0x85, 0x53, 0x29, 0xe8, 0xa5, 0x01, 0x3e, 0xf9, 0x1e, 0x0e, 0x34, 0x13, 0xd6, 0xd2, 0x65, 0x1d,
-	0x76, 0xbe, 0x7c, 0x77, 0xe8, 0x58, 0x5c, 0xc6, 0x92, 0x2e, 0x1a, 0xe8, 0x3a, 0x2c, 0x1d, 0xbb,
-	0xc2, 0x27, 0xcd, 0xba, 0x8d, 0x0f, 0x5c, 0x4a, 0x12, 0xc5, 0x21, 0xc1, 0xa3, 0xdd, 0x81, 0x35,
-	0xee, 0x5d, 0x6e, 0x52, 0xea, 0xdb, 0x9d, 0x21, 0x25, 0xc9, 0x2a, 0xe5, 0xca, 0x84, 0x2a, 0x65,
-	0x84, 0x3a, 0x22, 0xcc, 0x52, 0x10, 0x25, 0x32, 0xde, 0xd0, 0x3e, 0x54, 0x60, 0x89, 0x0b, 0x64,
-	0xae, 0x87, 0x57, 0x7c, 0x24, 0x9e, 0x65, 0xdf, 0xc8, 0x04, 0xc0, 0xa1, 0xa2, 0x70, 0xbe, 0x97,
-	0x67, 0x39, 0xbd, 0x68, 0x5a, 0xad, 0x8b, 0xd2, 0xfb, 0x9d, 0x8b, 0x05, 0x24, 0x3c, 0x60, 0x42,
-	0xac, 0xf6, 0xb1, 0x02, 0x95, 0xfb, 0x27, 0xf2, 0xcc, 0x4e, 0x29, 0x04, 0xc5, 0xb3, 0xcf, 0x27,
-	0x0b, 0x1e, 0xa2, 0xb2, 0x54, 0x88, 0xaa, 0x56, 0x6f, 0x44, 0x77, 0xb3, 0xb8, 0x58, 0x72, 0x19,
-	0x16, 0xf4, 0xa4, 0x3b, 0xba, 0x0e, 0xd5, 0xe8, 0xb4, 0x30, 0x50, 0x8f, 0x2d, 0xcb, 0x27, 0x41,
-	0x20, 0x8d, 0x1c, 0x36, 0x79, 0xd5, 0xd1, 0xfd, 0x40, 0x16, 0x56, 0x0a, 0xba, 0x68, 0x68, 0x04,
-	0x6a, 0x63, 0x01, 0x0b, 0xdd, 0x80, 0xb2, 0x37, 0xec, 0x18, 0xe1, 0x3e, 0x2d, 0xef, 0x3e, 0x33,
-	0x65, 0x62, 0x77, 0x87, 0x9d, 0x5b, 0x64, 0x14, 0xce, 0xc6, 0xe3, 0xad, 0x58, 0x4d, 0x3e, 0xa9,
-	0xe6, 0x27, 0x50, 0x09, 0x8f, 0x08, 0x7a, 0x3d, 0x79, 0x0d, 0x84, 0x86, 0xad, 0x79, 0xb1, 0x54,
-	0x2a, 0x89, 0x19, 0x59, 0x0a, 0x12, 0xd8, 0x5d, 0x87, 0x58, 0x46, 0x9c, 0x5d, 0x70, 0x9d, 0x15,
-	0xbd, 0x26, 0x06, 0x6e, 0x87, 0xa9, 0x85, 0xf6, 0x12, 0x94, 0xc4, 0x5c, 0x27, 0x9e, 0x9b, 0x09,
-	0x61, 0x4c, 0xfb, 0xbb, 0x02, 0x95, 0xf0, 0x1e, 0x4f, 0x64, 0x4a, 0x2d, 0x22, 0xff, 0x75, 0x17,
-	0x31, 0xad, 0x42, 0x1c, 0xd6, 0xe3, 0x8b, 0x0b, 0xd7, 0xe3, 0x5f, 0x04, 0x44, 0x5d, 0x8a, 0xfb,
-	0xc6, 0xb1, 0x4b, 0x6d, 0xa7, 0x6b, 0x88, 0xbd, 0x10, 0xa8, 0xab, 0xce, 0x47, 0x1e, 0xf0, 0x81,
-	0xbb, 0x7c, 0x5b, 0x7e, 0xaa, 0x40, 0x25, 0x8a, 0x91, 0x8b, 0x56, 0x02, 0xcf, 0x43, 0x49, 0x46,
-	0x00, 0x51, 0x0a, 0x94, 0xad, 0xa8, 0x64, 0x5d, 0x4c, 0x94, 0xac, 0x55, 0xa8, 0x0c, 0x08, 0xc5,
-	0xdc, 0xce, 0x22, 0xf3, 0x8b, 0xda, 0xcf, 0xbf, 0x05, 0xcb, 0x89, 0xd2, 0x2c, 0xba, 0x08, 0x85,
-	0x3b, 0xfb, 0x0f, 0xeb, 0x39, 0x75, 0xe3, 0xa3, 0x4f, 0xb6, 0x6a, 0x89, 0x11, 0xe3, 0xce, 0xfe,
-	0x43, 0xf4, 0x2c, 0x94, 0xf5, 0xfd, 0xbd, 0xf6, 0xfe, 0xde, 0xad, 0xba, 0xa2, 0x5e, 0xf8, 0xe8,
-	0x93, 0xad, 0x8d, 0x24, 0x85, 0x1c, 0xda, 0xfd, 0xfd, 0x32, 0xd4, 0x6e, 0xb6, 0xf6, 0x0e, 0x58,
-	0x38, 0xb3, 0x4d, 0xcc, 0x73, 0xc8, 0x37, 0xa1, 0xc8, 0xd3, 0xe8, 0x0c, 0x0f, 0xc7, 0x6a, 0x96,
-	0x42, 0x20, 0xd2, 0x61, 0x89, 0x67, 0xdb, 0x28, 0xcb, 0x7b, 0xb2, 0x9a, 0xa9, 0x3e, 0xc8, 0x26,
-	0xc9, 0xef, 0x48, 0x86, 0x67, 0x66, 0x35, 0x4b, 0xd1, 0x10, 0xbd, 0x0b, 0xd5, 0x38, 0x8d, 0xce,
-	0xfa, 0xf8, 0xac, 0x66, 0x2e, 0x27, 0x32, 0xf9, 0x71, 0xe2, 0x90, 0xf5, 0xe9, 0x55, 0xcd, 0xec,
-	0xea, 0xd0, 0xdb, 0x50, 0x0e, 0x53, 0xb4, 0x6c, 0xcf, 0xc3, 0x6a, 0xc6, 0x52, 0x1f, 0xdb, 0x3e,
-	0x91, 0x59, 0x67, 0x79, 0x03, 0x57, 0x33, 0xd5, 0x33, 0xd1, 0x21, 0x94, 0x24, 0x36, 0xce, 0xf4,
-	0xf0, 0xab, 0x66, 0x2b, 0xe0, 0x31, 0x23, 0xc7, 0xb5, 0x8b, 0xac, 0xef, 0xfe, 0x6a, 0xe6, 0x42,
-	0x2e, 0xc2, 0x00, 0x89, 0x74, 0x3b, 0xf3, 0x83, 0xbe, 0x9a, 0xbd, 0x40, 0x8b, 0x7e, 0x08, 0x95,
-	0x28, 0xa9, 0xca, 0xf8, 0xb0, 0xae, 0x66, 0xad, 0x91, 0xa2, 0xf7, 0x60, 0x35, 0x9d, 0x47, 0x2c,
-	0xf2, 0x5c, 0xae, 0x2e, 0x54, 0xfc, 0x64, 0xba, 0xd2, 0xa9, 0xc5, 0x22, 0x8f, 0xe8, 0xea, 0x42,
-	0x15, 0x51, 0x74, 0x0c, 0xeb, 0x67, 0xf3, 0x80, 0x45, 0x5f, 0xd6, 0xd5, 0x85, 0x2b, 0xa5, 0x68,
-	0x04, 0x68, 0x42, 0x2e, 0xb1, 0xf0, 0x73, 0xbb, 0xba, 0x78, 0xf9, 0xb4, 0x45, 0x3e, 0xfb, 0xb2,
-	0x99, 0xfb, 0xfc, 0xcb, 0x66, 0xee, 0xab, 0x2f, 0x9b, 0xca, 0x87, 0xa7, 0x4d, 0xe5, 0x37, 0xa7,
-	0x4d, 0xe5, 0xd3, 0xd3, 0xa6, 0xf2, 0xd9, 0x69, 0x53, 0xf9, 0xdb, 0x69, 0x53, 0xf9, 0xc7, 0x69,
-	0x33, 0xf7, 0xd5, 0x69, 0x53, 0xf9, 0xf8, 0x71, 0x33, 0xf7, 0xa7, 0xc7, 0x4d, 0xe5, 0xb3, 0xc7,
-	0xcd, 0xdc, 0xe7, 0x8f, 0x9b, 0xb9, 0x1f, 0xbc, 0xd0, 0xb5, 0x69, 0x6f, 0xd8, 0xd9, 0x36, 0xdd,
-	0xc1, 0x4e, 0xac, 0x36, 0xf9, 0x19, 0xff, 0x24, 0xaa, 0x53, 0xe2, 0xa1, 0xf4, 0x95, 0xff, 0x04,
-	0x00, 0x00, 0xff, 0xff, 0x30, 0x06, 0xe4, 0xe0, 0x27, 0x25, 0x00, 0x00,
-}
-
-func (x CheckTxType) String() string {
-	s, ok := CheckTxType_name[int32(x)]
-	if ok {
-		return s
-	}
-	return strconv.Itoa(int(x))
-}
-func (x ResponseOfferSnapshot_Result) String() string {
-	s, ok := ResponseOfferSnapshot_Result_name[int32(x)]
-	if ok {
-		return s
-	}
-	return strconv.Itoa(int(x))
-}
-func (x ResponseApplySnapshotChunk_Result) String() string {
-	s, ok := ResponseApplySnapshotChunk_Result_name[int32(x)]
-	if ok {
-		return s
-	}
-	return strconv.Itoa(int(x))
-}
-func (this *Request) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request)
-	if !ok {
-		that2, ok := that.(Request)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Value == nil {
-		if this.Value != nil {
-			return false
-		}
-	} else if this.Value == nil {
-		return false
-	} else if !this.Value.Equal(that1.Value) {
-		return false
-	}
-	return true
-}
-func (this *Request_Echo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_Echo)
-	if !ok {
-		that2, ok := that.(Request_Echo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Echo.Equal(that1.Echo) {
-		return false
-	}
-	return true
-}
-func (this *Request_Flush) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_Flush)
-	if !ok {
-		that2, ok := that.(Request_Flush)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Flush.Equal(that1.Flush) {
-		return false
-	}
-	return true
-}
-func (this *Request_Info) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_Info)
-	if !ok {
-		that2, ok := that.(Request_Info)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Info.Equal(that1.Info) {
-		return false
-	}
-	return true
-}
-func (this *Request_SetOption) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_SetOption)
-	if !ok {
-		that2, ok := that.(Request_SetOption)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.SetOption.Equal(that1.SetOption) {
-		return false
-	}
-	return true
-}
-func (this *Request_InitChain) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_InitChain)
-	if !ok {
-		that2, ok := that.(Request_InitChain)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.InitChain.Equal(that1.InitChain) {
-		return false
-	}
-	return true
-}
-func (this *Request_Query) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_Query)
-	if !ok {
-		that2, ok := that.(Request_Query)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Query.Equal(that1.Query) {
-		return false
-	}
-	return true
-}
-func (this *Request_BeginBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_BeginBlock)
-	if !ok {
-		that2, ok := that.(Request_BeginBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.BeginBlock.Equal(that1.BeginBlock) {
-		return false
-	}
-	return true
-}
-func (this *Request_CheckTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_CheckTx)
-	if !ok {
-		that2, ok := that.(Request_CheckTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.CheckTx.Equal(that1.CheckTx) {
-		return false
-	}
-	return true
-}
-func (this *Request_DeliverTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_DeliverTx)
-	if !ok {
-		that2, ok := that.(Request_DeliverTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.DeliverTx.Equal(that1.DeliverTx) {
-		return false
-	}
-	return true
-}
-func (this *Request_EndBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_EndBlock)
-	if !ok {
-		that2, ok := that.(Request_EndBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.EndBlock.Equal(that1.EndBlock) {
-		return false
-	}
-	return true
-}
-func (this *Request_Commit) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_Commit)
-	if !ok {
-		that2, ok := that.(Request_Commit)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Commit.Equal(that1.Commit) {
-		return false
-	}
-	return true
-}
-func (this *Request_ListSnapshots) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_ListSnapshots)
-	if !ok {
-		that2, ok := that.(Request_ListSnapshots)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ListSnapshots.Equal(that1.ListSnapshots) {
-		return false
-	}
-	return true
-}
-func (this *Request_OfferSnapshot) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_OfferSnapshot)
-	if !ok {
-		that2, ok := that.(Request_OfferSnapshot)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.OfferSnapshot.Equal(that1.OfferSnapshot) {
-		return false
-	}
-	return true
-}
-func (this *Request_LoadSnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_LoadSnapshotChunk)
-	if !ok {
-		that2, ok := that.(Request_LoadSnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.LoadSnapshotChunk.Equal(that1.LoadSnapshotChunk) {
-		return false
-	}
-	return true
-}
-func (this *Request_ApplySnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Request_ApplySnapshotChunk)
-	if !ok {
-		that2, ok := that.(Request_ApplySnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ApplySnapshotChunk.Equal(that1.ApplySnapshotChunk) {
-		return false
-	}
-	return true
-}
-func (this *RequestEcho) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestEcho)
-	if !ok {
-		that2, ok := that.(RequestEcho)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Message != that1.Message {
-		return false
-	}
-	return true
-}
-func (this *RequestFlush) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestFlush)
-	if !ok {
-		that2, ok := that.(RequestFlush)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *RequestInfo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestInfo)
-	if !ok {
-		that2, ok := that.(RequestInfo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Version != that1.Version {
-		return false
-	}
-	if this.BlockVersion != that1.BlockVersion {
-		return false
-	}
-	if this.P2PVersion != that1.P2PVersion {
-		return false
-	}
-	return true
-}
-func (this *RequestSetOption) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestSetOption)
-	if !ok {
-		that2, ok := that.(RequestSetOption)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Key != that1.Key {
-		return false
-	}
-	if this.Value != that1.Value {
-		return false
-	}
-	return true
-}
-func (this *RequestInitChain) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestInitChain)
-	if !ok {
-		that2, ok := that.(RequestInitChain)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Time.Equal(that1.Time) {
-		return false
-	}
-	if this.ChainId != that1.ChainId {
-		return false
-	}
-	if !this.ConsensusParams.Equal(that1.ConsensusParams) {
-		return false
-	}
-	if len(this.Validators) != len(that1.Validators) {
-		return false
-	}
-	for i := range this.Validators {
-		if !this.Validators[i].Equal(&that1.Validators[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.AppStateBytes, that1.AppStateBytes) {
-		return false
-	}
-	return true
-}
-func (this *RequestQuery) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestQuery)
-	if !ok {
-		that2, ok := that.(RequestQuery)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if this.Path != that1.Path {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Prove != that1.Prove {
-		return false
-	}
-	return true
-}
-func (this *RequestBeginBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestBeginBlock)
-	if !ok {
-		that2, ok := that.(RequestBeginBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Hash, that1.Hash) {
-		return false
-	}
-	if !this.Header.Equal(&that1.Header) {
-		return false
-	}
-	if !this.LastCommitInfo.Equal(&that1.LastCommitInfo) {
-		return false
-	}
-	if len(this.ByzantineValidators) != len(that1.ByzantineValidators) {
-		return false
-	}
-	for i := range this.ByzantineValidators {
-		if !this.ByzantineValidators[i].Equal(&that1.ByzantineValidators[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *RequestCheckTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestCheckTx)
-	if !ok {
-		that2, ok := that.(RequestCheckTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Tx, that1.Tx) {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	return true
-}
-func (this *RequestDeliverTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestDeliverTx)
-	if !ok {
-		that2, ok := that.(RequestDeliverTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Tx, that1.Tx) {
-		return false
-	}
-	return true
-}
-func (this *RequestEndBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestEndBlock)
-	if !ok {
-		that2, ok := that.(RequestEndBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	return true
-}
-func (this *RequestCommit) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestCommit)
-	if !ok {
-		that2, ok := that.(RequestCommit)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *RequestListSnapshots) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestListSnapshots)
-	if !ok {
-		that2, ok := that.(RequestListSnapshots)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *RequestOfferSnapshot) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestOfferSnapshot)
-	if !ok {
-		that2, ok := that.(RequestOfferSnapshot)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Snapshot.Equal(that1.Snapshot) {
-		return false
-	}
-	if !bytes.Equal(this.AppHash, that1.AppHash) {
-		return false
-	}
-	return true
-}
-func (this *RequestLoadSnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestLoadSnapshotChunk)
-	if !ok {
-		that2, ok := that.(RequestLoadSnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Format != that1.Format {
-		return false
-	}
-	if this.Chunk != that1.Chunk {
-		return false
-	}
-	return true
-}
-func (this *RequestApplySnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestApplySnapshotChunk)
-	if !ok {
-		that2, ok := that.(RequestApplySnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Index != that1.Index {
-		return false
-	}
-	if !bytes.Equal(this.Chunk, that1.Chunk) {
-		return false
-	}
-	if this.Sender != that1.Sender {
-		return false
-	}
-	return true
-}
-func (this *Response) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response)
-	if !ok {
-		that2, ok := that.(Response)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Value == nil {
-		if this.Value != nil {
-			return false
-		}
-	} else if this.Value == nil {
-		return false
-	} else if !this.Value.Equal(that1.Value) {
-		return false
-	}
-	return true
-}
-func (this *Response_Exception) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Exception)
-	if !ok {
-		that2, ok := that.(Response_Exception)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Exception.Equal(that1.Exception) {
-		return false
-	}
-	return true
-}
-func (this *Response_Echo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Echo)
-	if !ok {
-		that2, ok := that.(Response_Echo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Echo.Equal(that1.Echo) {
-		return false
-	}
-	return true
-}
-func (this *Response_Flush) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Flush)
-	if !ok {
-		that2, ok := that.(Response_Flush)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Flush.Equal(that1.Flush) {
-		return false
-	}
-	return true
-}
-func (this *Response_Info) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Info)
-	if !ok {
-		that2, ok := that.(Response_Info)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Info.Equal(that1.Info) {
-		return false
-	}
-	return true
-}
-func (this *Response_SetOption) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_SetOption)
-	if !ok {
-		that2, ok := that.(Response_SetOption)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.SetOption.Equal(that1.SetOption) {
-		return false
-	}
-	return true
-}
-func (this *Response_InitChain) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_InitChain)
-	if !ok {
-		that2, ok := that.(Response_InitChain)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.InitChain.Equal(that1.InitChain) {
-		return false
-	}
-	return true
-}
-func (this *Response_Query) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Query)
-	if !ok {
-		that2, ok := that.(Response_Query)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Query.Equal(that1.Query) {
-		return false
-	}
-	return true
-}
-func (this *Response_BeginBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_BeginBlock)
-	if !ok {
-		that2, ok := that.(Response_BeginBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.BeginBlock.Equal(that1.BeginBlock) {
-		return false
-	}
-	return true
-}
-func (this *Response_CheckTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_CheckTx)
-	if !ok {
-		that2, ok := that.(Response_CheckTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.CheckTx.Equal(that1.CheckTx) {
-		return false
-	}
-	return true
-}
-func (this *Response_DeliverTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_DeliverTx)
-	if !ok {
-		that2, ok := that.(Response_DeliverTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.DeliverTx.Equal(that1.DeliverTx) {
-		return false
-	}
-	return true
-}
-func (this *Response_EndBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_EndBlock)
-	if !ok {
-		that2, ok := that.(Response_EndBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.EndBlock.Equal(that1.EndBlock) {
-		return false
-	}
-	return true
-}
-func (this *Response_Commit) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_Commit)
-	if !ok {
-		that2, ok := that.(Response_Commit)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Commit.Equal(that1.Commit) {
-		return false
-	}
-	return true
-}
-func (this *Response_ListSnapshots) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_ListSnapshots)
-	if !ok {
-		that2, ok := that.(Response_ListSnapshots)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ListSnapshots.Equal(that1.ListSnapshots) {
-		return false
-	}
-	return true
-}
-func (this *Response_OfferSnapshot) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_OfferSnapshot)
-	if !ok {
-		that2, ok := that.(Response_OfferSnapshot)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.OfferSnapshot.Equal(that1.OfferSnapshot) {
-		return false
-	}
-	return true
-}
-func (this *Response_LoadSnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_LoadSnapshotChunk)
-	if !ok {
-		that2, ok := that.(Response_LoadSnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.LoadSnapshotChunk.Equal(that1.LoadSnapshotChunk) {
-		return false
-	}
-	return true
-}
-func (this *Response_ApplySnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Response_ApplySnapshotChunk)
-	if !ok {
-		that2, ok := that.(Response_ApplySnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ApplySnapshotChunk.Equal(that1.ApplySnapshotChunk) {
-		return false
-	}
-	return true
-}
-func (this *ResponseException) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseException)
-	if !ok {
-		that2, ok := that.(ResponseException)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Error != that1.Error {
-		return false
-	}
-	return true
-}
-func (this *ResponseEcho) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseEcho)
-	if !ok {
-		that2, ok := that.(ResponseEcho)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Message != that1.Message {
-		return false
-	}
-	return true
-}
-func (this *ResponseFlush) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseFlush)
-	if !ok {
-		that2, ok := that.(ResponseFlush)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *ResponseInfo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseInfo)
-	if !ok {
-		that2, ok := that.(ResponseInfo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Data != that1.Data {
-		return false
-	}
-	if this.Version != that1.Version {
-		return false
-	}
-	if this.AppVersion != that1.AppVersion {
-		return false
-	}
-	if this.LastBlockHeight != that1.LastBlockHeight {
-		return false
-	}
-	if !bytes.Equal(this.LastBlockAppHash, that1.LastBlockAppHash) {
-		return false
-	}
-	return true
-}
-func (this *ResponseSetOption) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseSetOption)
-	if !ok {
-		that2, ok := that.(ResponseSetOption)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Code != that1.Code {
-		return false
-	}
-	if this.Log != that1.Log {
-		return false
-	}
-	if this.Info != that1.Info {
-		return false
-	}
-	return true
-}
-func (this *ResponseInitChain) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseInitChain)
-	if !ok {
-		that2, ok := that.(ResponseInitChain)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.ConsensusParams.Equal(that1.ConsensusParams) {
-		return false
-	}
-	if len(this.Validators) != len(that1.Validators) {
-		return false
-	}
-	for i := range this.Validators {
-		if !this.Validators[i].Equal(&that1.Validators[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ResponseQuery) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseQuery)
-	if !ok {
-		that2, ok := that.(ResponseQuery)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Code != that1.Code {
-		return false
-	}
-	if this.Log != that1.Log {
-		return false
-	}
-	if this.Info != that1.Info {
-		return false
-	}
-	if this.Index != that1.Index {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Value, that1.Value) {
-		return false
-	}
-	if !this.Proof.Equal(that1.Proof) {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Codespace != that1.Codespace {
-		return false
-	}
-	return true
-}
-func (this *ResponseBeginBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseBeginBlock)
-	if !ok {
-		that2, ok := that.(ResponseBeginBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Events) != len(that1.Events) {
-		return false
-	}
-	for i := range this.Events {
-		if !this.Events[i].Equal(&that1.Events[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ResponseCheckTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseCheckTx)
-	if !ok {
-		that2, ok := that.(ResponseCheckTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Code != that1.Code {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if this.Log != that1.Log {
-		return false
-	}
-	if this.Info != that1.Info {
-		return false
-	}
-	if this.GasWanted != that1.GasWanted {
-		return false
-	}
-	if this.GasUsed != that1.GasUsed {
-		return false
-	}
-	if len(this.Events) != len(that1.Events) {
-		return false
-	}
-	for i := range this.Events {
-		if !this.Events[i].Equal(&that1.Events[i]) {
-			return false
-		}
-	}
-	if this.Codespace != that1.Codespace {
-		return false
-	}
-	return true
-}
-func (this *ResponseDeliverTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseDeliverTx)
-	if !ok {
-		that2, ok := that.(ResponseDeliverTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Code != that1.Code {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if this.Log != that1.Log {
-		return false
-	}
-	if this.Info != that1.Info {
-		return false
-	}
-	if this.GasWanted != that1.GasWanted {
-		return false
-	}
-	if this.GasUsed != that1.GasUsed {
-		return false
-	}
-	if len(this.Events) != len(that1.Events) {
-		return false
-	}
-	for i := range this.Events {
-		if !this.Events[i].Equal(&that1.Events[i]) {
-			return false
-		}
-	}
-	if this.Codespace != that1.Codespace {
-		return false
-	}
-	return true
-}
-func (this *ResponseEndBlock) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseEndBlock)
-	if !ok {
-		that2, ok := that.(ResponseEndBlock)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.ValidatorUpdates) != len(that1.ValidatorUpdates) {
-		return false
-	}
-	for i := range this.ValidatorUpdates {
-		if !this.ValidatorUpdates[i].Equal(&that1.ValidatorUpdates[i]) {
-			return false
-		}
-	}
-	if !this.ConsensusParamUpdates.Equal(that1.ConsensusParamUpdates) {
-		return false
-	}
-	if len(this.Events) != len(that1.Events) {
-		return false
-	}
-	for i := range this.Events {
-		if !this.Events[i].Equal(&that1.Events[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ResponseCommit) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseCommit)
-	if !ok {
-		that2, ok := that.(ResponseCommit)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if this.RetainHeight != that1.RetainHeight {
-		return false
-	}
-	return true
-}
-func (this *ResponseListSnapshots) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseListSnapshots)
-	if !ok {
-		that2, ok := that.(ResponseListSnapshots)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Snapshots) != len(that1.Snapshots) {
-		return false
-	}
-	for i := range this.Snapshots {
-		if !this.Snapshots[i].Equal(that1.Snapshots[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ResponseOfferSnapshot) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseOfferSnapshot)
-	if !ok {
-		that2, ok := that.(ResponseOfferSnapshot)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Result != that1.Result {
-		return false
-	}
-	return true
-}
-func (this *ResponseLoadSnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseLoadSnapshotChunk)
-	if !ok {
-		that2, ok := that.(ResponseLoadSnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Chunk, that1.Chunk) {
-		return false
-	}
-	return true
-}
-func (this *ResponseApplySnapshotChunk) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseApplySnapshotChunk)
-	if !ok {
-		that2, ok := that.(ResponseApplySnapshotChunk)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Result != that1.Result {
-		return false
-	}
-	if len(this.RefetchChunks) != len(that1.RefetchChunks) {
-		return false
-	}
-	for i := range this.RefetchChunks {
-		if this.RefetchChunks[i] != that1.RefetchChunks[i] {
-			return false
-		}
-	}
-	if len(this.RejectSenders) != len(that1.RejectSenders) {
-		return false
-	}
-	for i := range this.RejectSenders {
-		if this.RejectSenders[i] != that1.RejectSenders[i] {
-			return false
-		}
-	}
-	return true
-}
-func (this *ConsensusParams) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ConsensusParams)
-	if !ok {
-		that2, ok := that.(ConsensusParams)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Block.Equal(that1.Block) {
-		return false
-	}
-	if !this.Evidence.Equal(that1.Evidence) {
-		return false
-	}
-	if !this.Validator.Equal(that1.Validator) {
-		return false
-	}
-	return true
-}
-func (this *BlockParams) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*BlockParams)
-	if !ok {
-		that2, ok := that.(BlockParams)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.MaxBytes != that1.MaxBytes {
-		return false
-	}
-	if this.MaxGas != that1.MaxGas {
-		return false
-	}
-	return true
-}
-func (this *LastCommitInfo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*LastCommitInfo)
-	if !ok {
-		that2, ok := that.(LastCommitInfo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Round != that1.Round {
-		return false
-	}
-	if len(this.Votes) != len(that1.Votes) {
-		return false
-	}
-	for i := range this.Votes {
-		if !this.Votes[i].Equal(&that1.Votes[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *EventAttribute) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*EventAttribute)
-	if !ok {
-		that2, ok := that.(EventAttribute)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Value, that1.Value) {
-		return false
-	}
-	if this.Index != that1.Index {
-		return false
-	}
-	return true
-}
-func (this *Event) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Event)
-	if !ok {
-		that2, ok := that.(Event)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if len(this.Attributes) != len(that1.Attributes) {
-		return false
-	}
-	for i := range this.Attributes {
-		if !this.Attributes[i].Equal(&that1.Attributes[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *TxResult) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*TxResult)
-	if !ok {
-		that2, ok := that.(TxResult)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Index != that1.Index {
-		return false
-	}
-	if !bytes.Equal(this.Tx, that1.Tx) {
-		return false
-	}
-	if !this.Result.Equal(&that1.Result) {
-		return false
-	}
-	return true
-}
-func (this *Validator) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Validator)
-	if !ok {
-		that2, ok := that.(Validator)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Address, that1.Address) {
-		return false
-	}
-	if this.Power != that1.Power {
-		return false
-	}
-	return true
-}
-func (this *ValidatorUpdate) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ValidatorUpdate)
-	if !ok {
-		that2, ok := that.(ValidatorUpdate)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.PubKey.Equal(&that1.PubKey) {
-		return false
-	}
-	if this.Power != that1.Power {
-		return false
-	}
-	return true
-}
-func (this *VoteInfo) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*VoteInfo)
-	if !ok {
-		that2, ok := that.(VoteInfo)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Validator.Equal(&that1.Validator) {
-		return false
-	}
-	if this.SignedLastBlock != that1.SignedLastBlock {
-		return false
-	}
-	return true
-}
-func (this *PubKey) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PubKey)
-	if !ok {
-		that2, ok := that.(PubKey)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	return true
-}
-func (this *Evidence) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Evidence)
-	if !ok {
-		that2, ok := that.(Evidence)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !this.Validator.Equal(&that1.Validator) {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if !this.Time.Equal(that1.Time) {
-		return false
-	}
-	if this.TotalVotingPower != that1.TotalVotingPower {
-		return false
-	}
-	return true
-}
-func (this *Snapshot) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Snapshot)
-	if !ok {
-		that2, ok := that.(Snapshot)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Height != that1.Height {
-		return false
-	}
-	if this.Format != that1.Format {
-		return false
-	}
-	if this.Chunks != that1.Chunks {
-		return false
-	}
-	if !bytes.Equal(this.Hash, that1.Hash) {
-		return false
-	}
-	if !bytes.Equal(this.Metadata, that1.Metadata) {
-		return false
-	}
-	return true
-}
-func (this *Request) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 19)
-	s = append(s, "&types.Request{")
-	if this.Value != nil {
-		s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Request_Echo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_Echo{` +
-		`Echo:` + fmt.Sprintf("%#v", this.Echo) + `}`}, ", ")
-	return s
-}
-func (this *Request_Flush) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_Flush{` +
-		`Flush:` + fmt.Sprintf("%#v", this.Flush) + `}`}, ", ")
-	return s
-}
-func (this *Request_Info) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_Info{` +
-		`Info:` + fmt.Sprintf("%#v", this.Info) + `}`}, ", ")
-	return s
-}
-func (this *Request_SetOption) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_SetOption{` +
-		`SetOption:` + fmt.Sprintf("%#v", this.SetOption) + `}`}, ", ")
-	return s
-}
-func (this *Request_InitChain) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_InitChain{` +
-		`InitChain:` + fmt.Sprintf("%#v", this.InitChain) + `}`}, ", ")
-	return s
-}
-func (this *Request_Query) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_Query{` +
-		`Query:` + fmt.Sprintf("%#v", this.Query) + `}`}, ", ")
-	return s
-}
-func (this *Request_BeginBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_BeginBlock{` +
-		`BeginBlock:` + fmt.Sprintf("%#v", this.BeginBlock) + `}`}, ", ")
-	return s
-}
-func (this *Request_CheckTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_CheckTx{` +
-		`CheckTx:` + fmt.Sprintf("%#v", this.CheckTx) + `}`}, ", ")
-	return s
-}
-func (this *Request_DeliverTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_DeliverTx{` +
-		`DeliverTx:` + fmt.Sprintf("%#v", this.DeliverTx) + `}`}, ", ")
-	return s
-}
-func (this *Request_EndBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_EndBlock{` +
-		`EndBlock:` + fmt.Sprintf("%#v", this.EndBlock) + `}`}, ", ")
-	return s
-}
-func (this *Request_Commit) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_Commit{` +
-		`Commit:` + fmt.Sprintf("%#v", this.Commit) + `}`}, ", ")
-	return s
-}
-func (this *Request_ListSnapshots) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_ListSnapshots{` +
-		`ListSnapshots:` + fmt.Sprintf("%#v", this.ListSnapshots) + `}`}, ", ")
-	return s
-}
-func (this *Request_OfferSnapshot) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_OfferSnapshot{` +
-		`OfferSnapshot:` + fmt.Sprintf("%#v", this.OfferSnapshot) + `}`}, ", ")
-	return s
-}
-func (this *Request_LoadSnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_LoadSnapshotChunk{` +
-		`LoadSnapshotChunk:` + fmt.Sprintf("%#v", this.LoadSnapshotChunk) + `}`}, ", ")
-	return s
-}
-func (this *Request_ApplySnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Request_ApplySnapshotChunk{` +
-		`ApplySnapshotChunk:` + fmt.Sprintf("%#v", this.ApplySnapshotChunk) + `}`}, ", ")
-	return s
-}
-func (this *RequestEcho) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.RequestEcho{")
-	s = append(s, "Message: "+fmt.Sprintf("%#v", this.Message)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestFlush) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&types.RequestFlush{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestInfo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.RequestInfo{")
-	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
-	s = append(s, "BlockVersion: "+fmt.Sprintf("%#v", this.BlockVersion)+",\n")
-	s = append(s, "P2PVersion: "+fmt.Sprintf("%#v", this.P2PVersion)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestSetOption) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.RequestSetOption{")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestInitChain) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&types.RequestInitChain{")
-	s = append(s, "Time: "+fmt.Sprintf("%#v", this.Time)+",\n")
-	s = append(s, "ChainId: "+fmt.Sprintf("%#v", this.ChainId)+",\n")
-	if this.ConsensusParams != nil {
-		s = append(s, "ConsensusParams: "+fmt.Sprintf("%#v", this.ConsensusParams)+",\n")
-	}
-	if this.Validators != nil {
-		vs := make([]ValidatorUpdate, len(this.Validators))
-		for i := range vs {
-			vs[i] = this.Validators[i]
-		}
-		s = append(s, "Validators: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "AppStateBytes: "+fmt.Sprintf("%#v", this.AppStateBytes)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestQuery) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.RequestQuery{")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "Path: "+fmt.Sprintf("%#v", this.Path)+",\n")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Prove: "+fmt.Sprintf("%#v", this.Prove)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestBeginBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.RequestBeginBlock{")
-	s = append(s, "Hash: "+fmt.Sprintf("%#v", this.Hash)+",\n")
-	s = append(s, "Header: "+strings.Replace(this.Header.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "LastCommitInfo: "+strings.Replace(this.LastCommitInfo.GoString(), `&`, ``, 1)+",\n")
-	if this.ByzantineValidators != nil {
-		vs := make([]Evidence, len(this.ByzantineValidators))
-		for i := range vs {
-			vs[i] = this.ByzantineValidators[i]
-		}
-		s = append(s, "ByzantineValidators: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestCheckTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.RequestCheckTx{")
-	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestDeliverTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.RequestDeliverTx{")
-	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestEndBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.RequestEndBlock{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestCommit) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&types.RequestCommit{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestListSnapshots) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&types.RequestListSnapshots{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestOfferSnapshot) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.RequestOfferSnapshot{")
-	if this.Snapshot != nil {
-		s = append(s, "Snapshot: "+fmt.Sprintf("%#v", this.Snapshot)+",\n")
-	}
-	s = append(s, "AppHash: "+fmt.Sprintf("%#v", this.AppHash)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestLoadSnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.RequestLoadSnapshotChunk{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Format: "+fmt.Sprintf("%#v", this.Format)+",\n")
-	s = append(s, "Chunk: "+fmt.Sprintf("%#v", this.Chunk)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestApplySnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.RequestApplySnapshotChunk{")
-	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
-	s = append(s, "Chunk: "+fmt.Sprintf("%#v", this.Chunk)+",\n")
-	s = append(s, "Sender: "+fmt.Sprintf("%#v", this.Sender)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Response) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 20)
-	s = append(s, "&types.Response{")
-	if this.Value != nil {
-		s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Response_Exception) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Exception{` +
-		`Exception:` + fmt.Sprintf("%#v", this.Exception) + `}`}, ", ")
-	return s
-}
-func (this *Response_Echo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Echo{` +
-		`Echo:` + fmt.Sprintf("%#v", this.Echo) + `}`}, ", ")
-	return s
-}
-func (this *Response_Flush) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Flush{` +
-		`Flush:` + fmt.Sprintf("%#v", this.Flush) + `}`}, ", ")
-	return s
-}
-func (this *Response_Info) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Info{` +
-		`Info:` + fmt.Sprintf("%#v", this.Info) + `}`}, ", ")
-	return s
-}
-func (this *Response_SetOption) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_SetOption{` +
-		`SetOption:` + fmt.Sprintf("%#v", this.SetOption) + `}`}, ", ")
-	return s
-}
-func (this *Response_InitChain) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_InitChain{` +
-		`InitChain:` + fmt.Sprintf("%#v", this.InitChain) + `}`}, ", ")
-	return s
-}
-func (this *Response_Query) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Query{` +
-		`Query:` + fmt.Sprintf("%#v", this.Query) + `}`}, ", ")
-	return s
-}
-func (this *Response_BeginBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_BeginBlock{` +
-		`BeginBlock:` + fmt.Sprintf("%#v", this.BeginBlock) + `}`}, ", ")
-	return s
-}
-func (this *Response_CheckTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_CheckTx{` +
-		`CheckTx:` + fmt.Sprintf("%#v", this.CheckTx) + `}`}, ", ")
-	return s
-}
-func (this *Response_DeliverTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_DeliverTx{` +
-		`DeliverTx:` + fmt.Sprintf("%#v", this.DeliverTx) + `}`}, ", ")
-	return s
-}
-func (this *Response_EndBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_EndBlock{` +
-		`EndBlock:` + fmt.Sprintf("%#v", this.EndBlock) + `}`}, ", ")
-	return s
-}
-func (this *Response_Commit) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_Commit{` +
-		`Commit:` + fmt.Sprintf("%#v", this.Commit) + `}`}, ", ")
-	return s
-}
-func (this *Response_ListSnapshots) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_ListSnapshots{` +
-		`ListSnapshots:` + fmt.Sprintf("%#v", this.ListSnapshots) + `}`}, ", ")
-	return s
-}
-func (this *Response_OfferSnapshot) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_OfferSnapshot{` +
-		`OfferSnapshot:` + fmt.Sprintf("%#v", this.OfferSnapshot) + `}`}, ", ")
-	return s
-}
-func (this *Response_LoadSnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_LoadSnapshotChunk{` +
-		`LoadSnapshotChunk:` + fmt.Sprintf("%#v", this.LoadSnapshotChunk) + `}`}, ", ")
-	return s
-}
-func (this *Response_ApplySnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&types.Response_ApplySnapshotChunk{` +
-		`ApplySnapshotChunk:` + fmt.Sprintf("%#v", this.ApplySnapshotChunk) + `}`}, ", ")
-	return s
-}
-func (this *ResponseException) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseException{")
-	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseEcho) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseEcho{")
-	s = append(s, "Message: "+fmt.Sprintf("%#v", this.Message)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseFlush) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&types.ResponseFlush{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseInfo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&types.ResponseInfo{")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
-	s = append(s, "AppVersion: "+fmt.Sprintf("%#v", this.AppVersion)+",\n")
-	s = append(s, "LastBlockHeight: "+fmt.Sprintf("%#v", this.LastBlockHeight)+",\n")
-	s = append(s, "LastBlockAppHash: "+fmt.Sprintf("%#v", this.LastBlockAppHash)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseSetOption) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.ResponseSetOption{")
-	s = append(s, "Code: "+fmt.Sprintf("%#v", this.Code)+",\n")
-	s = append(s, "Log: "+fmt.Sprintf("%#v", this.Log)+",\n")
-	s = append(s, "Info: "+fmt.Sprintf("%#v", this.Info)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseInitChain) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.ResponseInitChain{")
-	if this.ConsensusParams != nil {
-		s = append(s, "ConsensusParams: "+fmt.Sprintf("%#v", this.ConsensusParams)+",\n")
-	}
-	if this.Validators != nil {
-		vs := make([]ValidatorUpdate, len(this.Validators))
-		for i := range vs {
-			vs[i] = this.Validators[i]
-		}
-		s = append(s, "Validators: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseQuery) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 13)
-	s = append(s, "&types.ResponseQuery{")
-	s = append(s, "Code: "+fmt.Sprintf("%#v", this.Code)+",\n")
-	s = append(s, "Log: "+fmt.Sprintf("%#v", this.Log)+",\n")
-	s = append(s, "Info: "+fmt.Sprintf("%#v", this.Info)+",\n")
-	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	if this.Proof != nil {
-		s = append(s, "Proof: "+fmt.Sprintf("%#v", this.Proof)+",\n")
-	}
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Codespace: "+fmt.Sprintf("%#v", this.Codespace)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseBeginBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseBeginBlock{")
-	if this.Events != nil {
-		vs := make([]Event, len(this.Events))
-		for i := range vs {
-			vs[i] = this.Events[i]
-		}
-		s = append(s, "Events: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseCheckTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 12)
-	s = append(s, "&types.ResponseCheckTx{")
-	s = append(s, "Code: "+fmt.Sprintf("%#v", this.Code)+",\n")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "Log: "+fmt.Sprintf("%#v", this.Log)+",\n")
-	s = append(s, "Info: "+fmt.Sprintf("%#v", this.Info)+",\n")
-	s = append(s, "GasWanted: "+fmt.Sprintf("%#v", this.GasWanted)+",\n")
-	s = append(s, "GasUsed: "+fmt.Sprintf("%#v", this.GasUsed)+",\n")
-	if this.Events != nil {
-		vs := make([]Event, len(this.Events))
-		for i := range vs {
-			vs[i] = this.Events[i]
-		}
-		s = append(s, "Events: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "Codespace: "+fmt.Sprintf("%#v", this.Codespace)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseDeliverTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 12)
-	s = append(s, "&types.ResponseDeliverTx{")
-	s = append(s, "Code: "+fmt.Sprintf("%#v", this.Code)+",\n")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "Log: "+fmt.Sprintf("%#v", this.Log)+",\n")
-	s = append(s, "Info: "+fmt.Sprintf("%#v", this.Info)+",\n")
-	s = append(s, "GasWanted: "+fmt.Sprintf("%#v", this.GasWanted)+",\n")
-	s = append(s, "GasUsed: "+fmt.Sprintf("%#v", this.GasUsed)+",\n")
-	if this.Events != nil {
-		vs := make([]Event, len(this.Events))
-		for i := range vs {
-			vs[i] = this.Events[i]
-		}
-		s = append(s, "Events: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "Codespace: "+fmt.Sprintf("%#v", this.Codespace)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseEndBlock) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.ResponseEndBlock{")
-	if this.ValidatorUpdates != nil {
-		vs := make([]ValidatorUpdate, len(this.ValidatorUpdates))
-		for i := range vs {
-			vs[i] = this.ValidatorUpdates[i]
-		}
-		s = append(s, "ValidatorUpdates: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	if this.ConsensusParamUpdates != nil {
-		s = append(s, "ConsensusParamUpdates: "+fmt.Sprintf("%#v", this.ConsensusParamUpdates)+",\n")
-	}
-	if this.Events != nil {
-		vs := make([]Event, len(this.Events))
-		for i := range vs {
-			vs[i] = this.Events[i]
-		}
-		s = append(s, "Events: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseCommit) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.ResponseCommit{")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "RetainHeight: "+fmt.Sprintf("%#v", this.RetainHeight)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseListSnapshots) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseListSnapshots{")
-	if this.Snapshots != nil {
-		s = append(s, "Snapshots: "+fmt.Sprintf("%#v", this.Snapshots)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseOfferSnapshot) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseOfferSnapshot{")
-	s = append(s, "Result: "+fmt.Sprintf("%#v", this.Result)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseLoadSnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&types.ResponseLoadSnapshotChunk{")
-	s = append(s, "Chunk: "+fmt.Sprintf("%#v", this.Chunk)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseApplySnapshotChunk) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.ResponseApplySnapshotChunk{")
-	s = append(s, "Result: "+fmt.Sprintf("%#v", this.Result)+",\n")
-	s = append(s, "RefetchChunks: "+fmt.Sprintf("%#v", this.RefetchChunks)+",\n")
-	s = append(s, "RejectSenders: "+fmt.Sprintf("%#v", this.RejectSenders)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ConsensusParams) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.ConsensusParams{")
-	if this.Block != nil {
-		s = append(s, "Block: "+fmt.Sprintf("%#v", this.Block)+",\n")
-	}
-	if this.Evidence != nil {
-		s = append(s, "Evidence: "+fmt.Sprintf("%#v", this.Evidence)+",\n")
-	}
-	if this.Validator != nil {
-		s = append(s, "Validator: "+fmt.Sprintf("%#v", this.Validator)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *BlockParams) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.BlockParams{")
-	s = append(s, "MaxBytes: "+fmt.Sprintf("%#v", this.MaxBytes)+",\n")
-	s = append(s, "MaxGas: "+fmt.Sprintf("%#v", this.MaxGas)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *LastCommitInfo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.LastCommitInfo{")
-	s = append(s, "Round: "+fmt.Sprintf("%#v", this.Round)+",\n")
-	if this.Votes != nil {
-		vs := make([]VoteInfo, len(this.Votes))
-		for i := range vs {
-			vs[i] = this.Votes[i]
-		}
-		s = append(s, "Votes: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *EventAttribute) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&types.EventAttribute{")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Event) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.Event{")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	if this.Attributes != nil {
-		vs := make([]EventAttribute, len(this.Attributes))
-		for i := range vs {
-			vs[i] = this.Attributes[i]
-		}
-		s = append(s, "Attributes: "+fmt.Sprintf("%#v", vs)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *TxResult) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&types.TxResult{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
-	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
-	s = append(s, "Result: "+strings.Replace(this.Result.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Validator) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.Validator{")
-	s = append(s, "Address: "+fmt.Sprintf("%#v", this.Address)+",\n")
-	s = append(s, "Power: "+fmt.Sprintf("%#v", this.Power)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ValidatorUpdate) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.ValidatorUpdate{")
-	s = append(s, "PubKey: "+strings.Replace(this.PubKey.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Power: "+fmt.Sprintf("%#v", this.Power)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *VoteInfo) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.VoteInfo{")
-	s = append(s, "Validator: "+strings.Replace(this.Validator.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "SignedLastBlock: "+fmt.Sprintf("%#v", this.SignedLastBlock)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PubKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&types.PubKey{")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Evidence) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&types.Evidence{")
-	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
-	s = append(s, "Validator: "+strings.Replace(this.Validator.GoString(), `&`, ``, 1)+",\n")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Time: "+fmt.Sprintf("%#v", this.Time)+",\n")
-	s = append(s, "TotalVotingPower: "+fmt.Sprintf("%#v", this.TotalVotingPower)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Snapshot) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 9)
-	s = append(s, "&types.Snapshot{")
-	s = append(s, "Height: "+fmt.Sprintf("%#v", this.Height)+",\n")
-	s = append(s, "Format: "+fmt.Sprintf("%#v", this.Format)+",\n")
-	s = append(s, "Chunks: "+fmt.Sprintf("%#v", this.Chunks)+",\n")
-	s = append(s, "Hash: "+fmt.Sprintf("%#v", this.Hash)+",\n")
-	s = append(s, "Metadata: "+fmt.Sprintf("%#v", this.Metadata)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+	// 2651 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5a, 0x49, 0x73, 0x1b, 0xc7,
+	0xf5, 0xc7, 0x00, 0x20, 0x96, 0xc7, 0x05, 0x60, 0x53, 0x96, 0xe0, 0xf9, 0xcb, 0x24, 0x6b, 0x64,
+	0x6d, 0xb6, 0xfe, 0xa4, 0x4c, 0x57, 0x52, 0x72, 0xa4, 0x24, 0x25, 0xd0, 0x54, 0xc0, 0x92, 0xa2,
+	0x65, 0x24, 0x4a, 0x72, 0x52, 0xe5, 0x49, 0x63, 0xa6, 0x09, 0x8c, 0x05, 0xcc, 0x8c, 0x67, 0x1a,
+	0x34, 0x91, 0xca, 0x21, 0x95, 0x4b, 0x12, 0x9f, 0x74, 0x4a, 0x4e, 0x3a, 0xe5, 0x0b, 0xe4, 0x90,
+	0xaa, 0xe4, 0x92, 0xaa, 0x5c, 0x52, 0xe5, 0xa3, 0x4f, 0xa9, 0x9c, 0x9c, 0x94, 0x94, 0x53, 0x72,
+	0xcd, 0x07, 0x48, 0xf5, 0x32, 0x1b, 0x88, 0x65, 0xe0, 0xe8, 0x96, 0x0b, 0x39, 0xdd, 0xfd, 0x96,
+	0xee, 0xd7, 0xdd, 0xef, 0xfd, 0xde, 0x6b, 0xc0, 0x69, 0xdc, 0x36, 0xed, 0x6d, 0x3a, 0xf4, 0x48,
+	0x20, 0xfe, 0x6e, 0x79, 0xbe, 0x4b, 0x5d, 0xf4, 0x06, 0x25, 0x8e, 0x45, 0xfc, 0xbe, 0xed, 0xd0,
+	0x2d, 0x46, 0xb2, 0xc5, 0x07, 0xd5, 0x0b, 0xb4, 0x6b, 0xfb, 0x96, 0xe1, 0x61, 0x9f, 0x0e, 0xb7,
+	0x39, 0xe5, 0x76, 0xc7, 0xed, 0xb8, 0xf1, 0x97, 0x60, 0x57, 0x55, 0xd3, 0x1f, 0x7a, 0xd4, 0xdd,
+	0xee, 0x13, 0xff, 0x59, 0x8f, 0xc8, 0x7f, 0x72, 0xec, 0x8c, 0xa0, 0x3e, 0xa1, 0x53, 0x6d, 0x24,
+	0x07, 0x3c, 0xec, 0xe3, 0x7e, 0x38, 0xb2, 0xd1, 0x71, 0xdd, 0x4e, 0x8f, 0x08, 0x8d, 0xed, 0xc1,
+	0xe1, 0x36, 0xb5, 0xfb, 0x24, 0xa0, 0xb8, 0xef, 0x09, 0x02, 0xed, 0x5f, 0x15, 0x28, 0xeb, 0xe4,
+	0xd3, 0x01, 0x09, 0x28, 0xba, 0x06, 0x45, 0x62, 0x76, 0xdd, 0x46, 0x7e, 0x53, 0xb9, 0xb4, 0xb8,
+	0xa3, 0x6d, 0x8d, 0x5d, 0xc9, 0x96, 0xa4, 0xde, 0x33, 0xbb, 0x6e, 0x2b, 0xa7, 0x73, 0x0e, 0x74,
+	0x1d, 0x16, 0x0e, 0x7b, 0x83, 0xa0, 0xdb, 0x28, 0x70, 0xd6, 0x73, 0xd3, 0x59, 0x6f, 0x31, 0xd2,
+	0x56, 0x4e, 0x17, 0x3c, 0x4c, 0xad, 0xed, 0x1c, 0xba, 0x8d, 0x62, 0x16, 0xb5, 0xfb, 0xce, 0x21,
+	0x57, 0xcb, 0x38, 0x50, 0x0b, 0x20, 0x20, 0xd4, 0x70, 0x3d, 0x6a, 0xbb, 0x4e, 0x63, 0x81, 0xf3,
+	0x5f, 0x9c, 0xce, 0xff, 0x90, 0xd0, 0x7b, 0x9c, 0xbc, 0x95, 0xd3, 0xab, 0x41, 0xd8, 0x60, 0x92,
+	0x6c, 0xc7, 0xa6, 0x86, 0xd9, 0xc5, 0xb6, 0xd3, 0x28, 0x65, 0x91, 0xb4, 0xef, 0xd8, 0x74, 0x97,
+	0x91, 0x33, 0x49, 0x76, 0xd8, 0x60, 0xa6, 0xf8, 0x74, 0x40, 0xfc, 0x61, 0xa3, 0x9c, 0xc5, 0x14,
+	0x0f, 0x18, 0x29, 0x33, 0x05, 0xe7, 0x41, 0xb7, 0x61, 0xb1, 0x4d, 0x3a, 0xb6, 0x63, 0xb4, 0x7b,
+	0xae, 0xf9, 0xac, 0x51, 0xe1, 0x22, 0x2e, 0x4d, 0x17, 0xd1, 0x64, 0x0c, 0x4d, 0x46, 0xdf, 0xca,
+	0xe9, 0xd0, 0x8e, 0x5a, 0xa8, 0x09, 0x15, 0xb3, 0x4b, 0xcc, 0x67, 0x06, 0x3d, 0x6e, 0x54, 0xb9,
+	0xa4, 0xf3, 0xd3, 0x25, 0xed, 0x32, 0xea, 0x47, 0xc7, 0xad, 0x9c, 0x5e, 0x36, 0xc5, 0x27, 0xb3,
+	0x8b, 0x45, 0x7a, 0xf6, 0x11, 0xf1, 0x99, 0x94, 0xb5, 0x2c, 0x76, 0xf9, 0x50, 0xd0, 0x73, 0x39,
+	0x55, 0x2b, 0x6c, 0xa0, 0x3d, 0xa8, 0x12, 0xc7, 0x92, 0x0b, 0x5b, 0xe4, 0x82, 0x2e, 0xcc, 0x38,
+	0x61, 0x8e, 0x15, 0x2e, 0xab, 0x42, 0xe4, 0x37, 0xfa, 0x0e, 0x94, 0x4c, 0xb7, 0xdf, 0xb7, 0x69,
+	0x63, 0x89, 0xcb, 0x78, 0x7b, 0xc6, 0x92, 0x38, 0x6d, 0x2b, 0xa7, 0x4b, 0x2e, 0xf4, 0x08, 0x56,
+	0x7a, 0x76, 0x40, 0x8d, 0xc0, 0xc1, 0x5e, 0xd0, 0x75, 0x69, 0xd0, 0x58, 0xe6, 0x72, 0xde, 0x9d,
+	0x2e, 0xe7, 0x8e, 0x1d, 0xd0, 0x87, 0x21, 0x4b, 0x2b, 0xa7, 0x2f, 0xf7, 0x92, 0x1d, 0x4c, 0xaa,
+	0x7b, 0x78, 0x48, 0xfc, 0x48, 0x6c, 0x63, 0x25, 0x8b, 0xd4, 0x7b, 0x8c, 0x27, 0x94, 0xc2, 0xa4,
+	0xba, 0xc9, 0x0e, 0x84, 0x61, 0xad, 0xe7, 0x62, 0x2b, 0x12, 0x6a, 0x98, 0xdd, 0x81, 0xf3, 0xac,
+	0x51, 0xe3, 0xa2, 0xb7, 0x67, 0x4c, 0xd8, 0xc5, 0x56, 0x28, 0x68, 0x97, 0xb1, 0xb5, 0x72, 0xfa,
+	0x6a, 0x6f, 0xb4, 0x13, 0x59, 0x70, 0x0a, 0x7b, 0x5e, 0x6f, 0x38, 0xaa, 0xa3, 0xce, 0x75, 0x5c,
+	0x9d, 0xae, 0xe3, 0x26, 0xe3, 0x1c, 0x55, 0x82, 0xf0, 0x89, 0xde, 0x66, 0x19, 0x16, 0x8e, 0x70,
+	0x6f, 0x40, 0xb4, 0x8b, 0xb0, 0x98, 0x70, 0x1f, 0xa8, 0x01, 0xe5, 0x3e, 0x09, 0x02, 0xdc, 0x21,
+	0x0d, 0x65, 0x53, 0xb9, 0x54, 0xd5, 0xc3, 0xa6, 0xb6, 0x02, 0x4b, 0x49, 0x67, 0xa1, 0xf5, 0x23,
+	0x46, 0xe6, 0x00, 0x18, 0xe3, 0x11, 0xf1, 0x03, 0x76, 0xeb, 0x25, 0xa3, 0x6c, 0xa2, 0x73, 0xb0,
+	0xcc, 0x8f, 0x98, 0x11, 0x8e, 0x33, 0x67, 0x56, 0xd4, 0x97, 0x78, 0xe7, 0x63, 0x49, 0xb4, 0x01,
+	0x8b, 0xde, 0x8e, 0x17, 0x91, 0x14, 0x38, 0x09, 0x78, 0x3b, 0x9e, 0x24, 0xd0, 0xbe, 0x05, 0xf5,
+	0x51, 0x7f, 0x81, 0xea, 0x50, 0x78, 0x46, 0x86, 0x52, 0x1f, 0xfb, 0x44, 0xa7, 0xe4, 0xb2, 0xb8,
+	0x8e, 0xaa, 0x2e, 0xd7, 0xf8, 0xdb, 0x7c, 0xc4, 0x1c, 0xb9, 0x08, 0xe6, 0xe3, 0x98, 0xe7, 0xe5,
+	0xdc, 0x8b, 0x3b, 0xea, 0x96, 0x70, 0xcb, 0x5b, 0xa1, 0x5b, 0xde, 0x7a, 0x14, 0xba, 0xe5, 0x66,
+	0xe5, 0x8b, 0xaf, 0x36, 0x72, 0xcf, 0xff, 0xb6, 0xa1, 0xe8, 0x9c, 0x03, 0xbd, 0xc9, 0x6e, 0x31,
+	0xb6, 0x1d, 0xc3, 0xb6, 0xa4, 0x9e, 0x32, 0x6f, 0xef, 0x5b, 0xe8, 0x01, 0xd4, 0x4d, 0xd7, 0x09,
+	0x88, 0x13, 0x0c, 0x02, 0x43, 0xb8, 0x7d, 0xe9, 0x80, 0x27, 0xdd, 0xac, 0xdd, 0x90, 0xfc, 0x3e,
+	0xa7, 0xd6, 0x6b, 0x66, 0xba, 0x03, 0xdd, 0x01, 0x38, 0xc2, 0x3d, 0xdb, 0xc2, 0xd4, 0xf5, 0x83,
+	0x46, 0x71, 0xb3, 0x30, 0x45, 0xd8, 0xe3, 0x90, 0xf0, 0xc0, 0xb3, 0x30, 0x25, 0xcd, 0x22, 0x9b,
+	0xb9, 0x9e, 0xe0, 0x47, 0x17, 0xa0, 0x86, 0x3d, 0xcf, 0x08, 0x28, 0xa6, 0xc4, 0x68, 0x0f, 0x29,
+	0x09, 0xb8, 0x93, 0x5e, 0xd2, 0x97, 0xb1, 0xe7, 0x3d, 0x64, 0xbd, 0x4d, 0xd6, 0xa9, 0x59, 0xd1,
+	0x6e, 0x73, 0x7f, 0x88, 0x10, 0x14, 0x2d, 0x4c, 0x31, 0xb7, 0xd6, 0x92, 0xce, 0xbf, 0x59, 0x9f,
+	0x87, 0x69, 0x57, 0xda, 0x80, 0x7f, 0xa3, 0xd3, 0x50, 0xea, 0x12, 0xbb, 0xd3, 0xa5, 0x7c, 0xd9,
+	0x05, 0x5d, 0xb6, 0xd8, 0xc6, 0x78, 0xbe, 0x7b, 0x44, 0x78, 0x48, 0xa9, 0xe8, 0xa2, 0xa1, 0xfd,
+	0x2a, 0x0f, 0xab, 0x27, 0x7c, 0x26, 0x93, 0xdb, 0xc5, 0x41, 0x37, 0xd4, 0xc5, 0xbe, 0xd1, 0x0d,
+	0x26, 0x17, 0x5b, 0xc4, 0x97, 0xa1, 0x70, 0x3d, 0x69, 0x01, 0xbe, 0x67, 0xd2, 0x04, 0x2d, 0x4e,
+	0x25, 0x57, 0x2e, 0x79, 0xd0, 0x01, 0xd4, 0x7b, 0x38, 0xa0, 0x86, 0xf0, 0x38, 0x06, 0x8f, 0x6d,
+	0x85, 0xa9, 0xfe, 0xf7, 0x0e, 0x0e, 0x3d, 0x15, 0x3b, 0xdd, 0x52, 0xdc, 0x4a, 0x2f, 0xd5, 0x8b,
+	0x9e, 0xc2, 0xa9, 0xf6, 0xf0, 0xc7, 0xd8, 0xa1, 0xb6, 0x43, 0x8c, 0x13, 0x9b, 0xb4, 0x31, 0x41,
+	0xf4, 0xde, 0x91, 0x6d, 0x11, 0xc7, 0x0c, 0x77, 0x67, 0x2d, 0x12, 0x11, 0xed, 0x5e, 0xa0, 0x3d,
+	0x85, 0x95, 0x74, 0x04, 0x40, 0x2b, 0x90, 0xa7, 0xc7, 0xd2, 0x24, 0x79, 0x7a, 0x8c, 0xbe, 0x09,
+	0x45, 0x26, 0x8e, 0x9b, 0x63, 0x65, 0x62, 0x88, 0x96, 0xdc, 0x8f, 0x86, 0x1e, 0xd1, 0x39, 0xbd,
+	0xa6, 0x45, 0x57, 0x21, 0x8a, 0x0a, 0xa3, 0xb2, 0xb5, 0xcb, 0x50, 0x1b, 0x71, 0xf8, 0x89, 0x7d,
+	0x55, 0x92, 0xfb, 0xaa, 0xd5, 0x60, 0x39, 0xe5, 0xd7, 0xb5, 0xd3, 0x70, 0x6a, 0x9c, 0x83, 0xd6,
+	0x9c, 0xa8, 0x3f, 0xe5, 0x62, 0xd1, 0x75, 0xa8, 0x44, 0x1e, 0x5a, 0x5c, 0xc5, 0x49, 0x76, 0x0b,
+	0x59, 0xf4, 0x88, 0x81, 0xdd, 0x44, 0x76, 0x9a, 0xf9, 0x69, 0xc9, 0xf3, 0xe9, 0x97, 0xb1, 0xe7,
+	0xb5, 0x70, 0xd0, 0xd5, 0x7e, 0x04, 0x8d, 0x49, 0x7e, 0x77, 0x64, 0x31, 0xc5, 0xe8, 0x90, 0x9e,
+	0x86, 0xd2, 0xa1, 0xeb, 0xf7, 0x31, 0xe5, 0xc2, 0x96, 0x75, 0xd9, 0x62, 0x87, 0x57, 0xf8, 0xe0,
+	0x02, 0xef, 0x16, 0x0d, 0xcd, 0x80, 0x37, 0x27, 0x7a, 0x5d, 0xc6, 0x62, 0x3b, 0x16, 0x11, 0x56,
+	0x5d, 0xd6, 0x45, 0x23, 0x16, 0x24, 0x26, 0x2b, 0x1a, 0x4c, 0x6d, 0xc0, 0x57, 0xcc, 0xe5, 0x57,
+	0x75, 0xd9, 0xd2, 0xfe, 0x5c, 0x85, 0x8a, 0x4e, 0x02, 0x8f, 0x39, 0x04, 0xd4, 0x82, 0x2a, 0x39,
+	0x36, 0x89, 0xc0, 0x55, 0xca, 0x0c, 0x14, 0x22, 0x78, 0xf6, 0x42, 0x7a, 0x16, 0xf6, 0x23, 0x66,
+	0xf4, 0x41, 0x0a, 0x53, 0x9e, 0x9b, 0x25, 0x24, 0x09, 0x2a, 0x6f, 0xa4, 0x41, 0xe5, 0xdb, 0x33,
+	0x78, 0x47, 0x50, 0xe5, 0x07, 0x29, 0x54, 0x39, 0x4b, 0x71, 0x0a, 0x56, 0xee, 0x8f, 0x81, 0x95,
+	0xb3, 0x96, 0x3f, 0x01, 0x57, 0xee, 0x8f, 0xc1, 0x95, 0x97, 0x66, 0xce, 0x65, 0x2c, 0xb0, 0xbc,
+	0x91, 0x06, 0x96, 0xb3, 0xcc, 0x31, 0x82, 0x2c, 0xef, 0x8c, 0x43, 0x96, 0x97, 0x67, 0xc8, 0x98,
+	0x08, 0x2d, 0x77, 0x4f, 0x40, 0xcb, 0x0b, 0x33, 0x44, 0x8d, 0xc1, 0x96, 0xfb, 0x29, 0x6c, 0x09,
+	0x99, 0x6c, 0x33, 0x01, 0x5c, 0xde, 0x3a, 0x09, 0x2e, 0x2f, 0xce, 0x3a, 0x6a, 0xe3, 0xd0, 0xe5,
+	0x77, 0x47, 0xd0, 0xe5, 0xf9, 0x59, 0xab, 0x1a, 0x85, 0x97, 0x07, 0x13, 0xe0, 0xe5, 0x95, 0x19,
+	0x82, 0x66, 0xe0, 0xcb, 0x83, 0x09, 0xf8, 0x72, 0x96, 0xd8, 0x19, 0x00, 0xb3, 0x3d, 0x0d, 0x60,
+	0x5e, 0x9d, 0x35, 0xe5, 0x6c, 0x08, 0x93, 0x4c, 0x45, 0x98, 0xef, 0xcd, 0x50, 0x32, 0x3f, 0xc4,
+	0xbc, 0xcc, 0x82, 0xfc, 0x88, 0x4b, 0x62, 0xae, 0x90, 0xf8, 0xbe, 0xeb, 0x4b, 0xf4, 0x26, 0x1a,
+	0xda, 0x25, 0x06, 0x3b, 0x62, 0xc7, 0x33, 0x05, 0x8e, 0xf2, 0xc0, 0x93, 0x70, 0x33, 0xda, 0x1f,
+	0x94, 0x98, 0x97, 0x47, 0xe7, 0x24, 0x64, 0xa9, 0x4a, 0xc8, 0x92, 0x40, 0xa9, 0xf9, 0x34, 0x4a,
+	0xdd, 0x80, 0x45, 0x16, 0x4a, 0x46, 0x00, 0x28, 0xf6, 0x42, 0x00, 0x8a, 0xde, 0x81, 0x55, 0x8e,
+	0x21, 0x04, 0x96, 0x95, 0xf1, 0xa3, 0xc8, 0x83, 0x61, 0x8d, 0x0d, 0x88, 0xa3, 0x2b, 0x02, 0xc9,
+	0xff, 0xc3, 0x5a, 0x82, 0x36, 0x0a, 0x51, 0x02, 0x69, 0xd5, 0x23, 0xea, 0x9b, 0x32, 0x56, 0x7d,
+	0x3f, 0x36, 0x50, 0x0c, 0x6e, 0x11, 0x14, 0x4d, 0xd7, 0x22, 0x32, 0x80, 0xf0, 0x6f, 0x06, 0x78,
+	0x7b, 0x6e, 0x47, 0x86, 0x09, 0xf6, 0xc9, 0xa8, 0x22, 0x9f, 0x5a, 0x15, 0xce, 0x52, 0xfb, 0x9d,
+	0x12, 0xcb, 0x8b, 0xf1, 0xee, 0x38, 0x68, 0xaa, 0xbc, 0x4e, 0x68, 0x9a, 0xff, 0xef, 0xa0, 0xa9,
+	0xf6, 0x6f, 0x25, 0xde, 0xd2, 0x08, 0x74, 0x7e, 0x3d, 0x13, 0xc4, 0xe1, 0x77, 0x81, 0x6f, 0x90,
+	0x0c, 0xbf, 0x32, 0x5f, 0x28, 0xf1, 0x6d, 0x48, 0xe7, 0x0b, 0x65, 0x11, 0x90, 0x79, 0x03, 0x7d,
+	0x83, 0x83, 0x55, 0xf7, 0x50, 0xfa, 0xe4, 0x14, 0x20, 0x11, 0xc5, 0xa0, 0x2d, 0x59, 0x05, 0xba,
+	0xcf, 0xc8, 0x74, 0x41, 0x9d, 0x80, 0x15, 0xd5, 0x14, 0xf6, 0x3d, 0x0b, 0x55, 0x36, 0xf5, 0xc0,
+	0xc3, 0x26, 0xe1, 0x4e, 0xb5, 0xaa, 0xc7, 0x1d, 0x9a, 0x05, 0xe8, 0xa4, 0x73, 0x47, 0x77, 0xa1,
+	0x44, 0x8e, 0x88, 0x43, 0xd9, 0x1e, 0x31, 0xb3, 0x9e, 0x9d, 0x08, 0x26, 0x89, 0x43, 0x9b, 0x0d,
+	0x66, 0xcc, 0x7f, 0x7e, 0xb5, 0x51, 0x17, 0x3c, 0x57, 0xdc, 0xbe, 0x4d, 0x49, 0xdf, 0xa3, 0x43,
+	0x5d, 0x4a, 0xd1, 0x7e, 0x9e, 0x67, 0x98, 0x2e, 0xe5, 0xf8, 0xc7, 0x9a, 0x37, 0xbc, 0x34, 0xf9,
+	0x04, 0xce, 0xcf, 0x66, 0xf2, 0xb7, 0x00, 0x3a, 0x38, 0x30, 0x3e, 0xc3, 0x0e, 0x25, 0x96, 0xb4,
+	0x7b, 0xb5, 0x83, 0x83, 0x27, 0xbc, 0x83, 0x41, 0x35, 0x36, 0x3c, 0x08, 0x88, 0xc5, 0x37, 0xa0,
+	0xa0, 0x97, 0x3b, 0x38, 0x38, 0x08, 0x88, 0x95, 0x58, 0x6b, 0xf9, 0x75, 0xac, 0x35, 0x6d, 0xef,
+	0xca, 0xa8, 0xbd, 0x7f, 0x99, 0x8f, 0x6f, 0x47, 0x0c, 0x81, 0xff, 0x37, 0x6d, 0xf1, 0x82, 0x27,
+	0xc6, 0xe9, 0xe8, 0x8b, 0x3e, 0x82, 0xd5, 0xe8, 0x56, 0x1a, 0x03, 0x7e, 0x5b, 0xc3, 0x53, 0x38,
+	0xdf, 0xe5, 0xae, 0x1f, 0xa5, 0xbb, 0x03, 0xf4, 0x31, 0x9c, 0x19, 0xf1, 0x41, 0x91, 0x82, 0xfc,
+	0x5c, 0xae, 0xe8, 0x8d, 0xb4, 0x2b, 0x0a, 0xe5, 0xc7, 0xd6, 0x2b, 0xbc, 0x96, 0x5b, 0xb3, 0xcf,
+	0xd2, 0xb0, 0x24, 0xae, 0x18, 0x7b, 0x26, 0xce, 0xc1, 0xb2, 0x4f, 0x28, 0xb6, 0x1d, 0x23, 0x95,
+	0xfa, 0x2e, 0x89, 0x4e, 0x11, 0x12, 0xb4, 0xc7, 0xf0, 0xc6, 0x58, 0x64, 0x81, 0xbe, 0x0d, 0xd5,
+	0x18, 0x9a, 0x28, 0x53, 0x33, 0xc7, 0x28, 0x03, 0x8a, 0x39, 0xb4, 0x3f, 0x2a, 0xb1, 0xe0, 0x74,
+	0x66, 0x75, 0x1b, 0x4a, 0x3e, 0x09, 0x06, 0x3d, 0x91, 0xe5, 0xac, 0xec, 0xbc, 0x3f, 0x0f, 0x32,
+	0x61, 0xbd, 0x83, 0x1e, 0xd5, 0xa5, 0x08, 0xed, 0x09, 0x94, 0x44, 0x0f, 0x02, 0x28, 0x61, 0x93,
+	0x45, 0xf1, 0x7a, 0x0e, 0x55, 0x61, 0x01, 0xb7, 0x5d, 0x9f, 0xd6, 0x15, 0xd6, 0xed, 0x93, 0x4f,
+	0x88, 0x49, 0xeb, 0x79, 0xb4, 0xca, 0x0c, 0xc2, 0xbe, 0x0d, 0x91, 0x40, 0xd5, 0x0b, 0x89, 0x2e,
+	0x91, 0xdc, 0xd4, 0x8b, 0x6a, 0xf1, 0x17, 0xbf, 0x59, 0x57, 0xb4, 0xf7, 0x58, 0x16, 0x35, 0x01,
+	0xbe, 0xc4, 0xf9, 0x92, 0x92, 0xc8, 0x97, 0xb4, 0x5f, 0xe7, 0x41, 0x9d, 0x8c, 0x46, 0xd0, 0xfd,
+	0x91, 0x75, 0x5f, 0x9b, 0x1b, 0xd0, 0x8c, 0x2c, 0x1e, 0x9d, 0x87, 0x15, 0x9f, 0x1c, 0x12, 0x6a,
+	0x76, 0x05, 0x52, 0x12, 0xb1, 0x6e, 0x59, 0x5f, 0x96, 0xbd, 0x9c, 0x29, 0x10, 0x64, 0x89, 0x35,
+	0x8a, 0x53, 0x58, 0xd5, 0xe5, 0xca, 0x1f, 0x8a, 0x4e, 0xed, 0xa3, 0x59, 0xa6, 0xac, 0xc2, 0x82,
+	0x4f, 0xa8, 0x3f, 0xac, 0xe7, 0x11, 0x62, 0x22, 0xa9, 0x1f, 0x43, 0xb5, 0x7a, 0x01, 0xad, 0x41,
+	0x2d, 0x54, 0x13, 0x76, 0x86, 0xc6, 0xfc, 0x8b, 0x02, 0xb5, 0x91, 0xab, 0x82, 0xae, 0xc1, 0x82,
+	0x00, 0xe1, 0xca, 0xd4, 0x62, 0x3e, 0xbf, 0xfb, 0xf2, 0x76, 0x09, 0x06, 0xd4, 0x84, 0x0a, 0x91,
+	0xb5, 0x8a, 0x71, 0xd7, 0x33, 0x59, 0x75, 0x09, 0x6b, 0x1a, 0x52, 0x40, 0xc4, 0x87, 0xf6, 0xa0,
+	0x1a, 0x79, 0x01, 0x99, 0x35, 0x5e, 0x9c, 0x24, 0x24, 0xf2, 0x22, 0x52, 0x4a, 0xcc, 0xa9, 0xed,
+	0xc2, 0x62, 0x62, 0x82, 0xe8, 0xff, 0xa0, 0xda, 0xc7, 0xc7, 0xb2, 0x7e, 0x25, 0x0a, 0x12, 0x95,
+	0x3e, 0x3e, 0xe6, 0xa5, 0x2b, 0x74, 0x06, 0xca, 0x6c, 0xb0, 0x83, 0x85, 0x53, 0x29, 0xe8, 0xa5,
+	0x3e, 0x3e, 0xfe, 0x1e, 0x0e, 0x34, 0x13, 0x56, 0xd2, 0x65, 0x1d, 0x76, 0xbe, 0x7c, 0x77, 0xe0,
+	0x58, 0x5c, 0xc6, 0x82, 0x2e, 0x1a, 0xe8, 0x3a, 0x2c, 0x1c, 0xb9, 0xc2, 0x27, 0x4d, 0xbb, 0x8d,
+	0x8f, 0x5d, 0x4a, 0x12, 0xc5, 0x21, 0xc1, 0xa3, 0xdd, 0x85, 0x15, 0xee, 0x5d, 0x6e, 0x52, 0xea,
+	0xdb, 0xed, 0x01, 0x25, 0xc9, 0x2a, 0xe5, 0xd2, 0x98, 0x2a, 0x65, 0x84, 0x3a, 0x22, 0xcc, 0x52,
+	0x10, 0x25, 0x32, 0xde, 0xd0, 0x7e, 0xaa, 0xc0, 0x02, 0x17, 0xc8, 0x5c, 0x0f, 0xaf, 0xf8, 0x48,
+	0x3c, 0xcb, 0xbe, 0x91, 0x09, 0x80, 0x43, 0x45, 0xe1, 0x7c, 0xcf, 0x4f, 0x73, 0x7a, 0xd1, 0xb4,
+	0x9a, 0x67, 0xa5, 0xf7, 0x3b, 0x15, 0x0b, 0x48, 0x78, 0xc0, 0x84, 0x58, 0xed, 0xb9, 0x02, 0x95,
+	0x47, 0xc7, 0xf2, 0xcc, 0x4e, 0x28, 0x04, 0xc5, 0xb3, 0xcf, 0x27, 0x0b, 0x1e, 0xa2, 0xb2, 0x54,
+	0x88, 0xaa, 0x56, 0xb7, 0xa2, 0xbb, 0x59, 0x9c, 0x2f, 0xb9, 0x0c, 0x0b, 0x7a, 0xd2, 0x1d, 0x5d,
+	0x87, 0x6a, 0x74, 0x5a, 0x18, 0xa8, 0xc7, 0x96, 0xe5, 0x93, 0x20, 0x90, 0x46, 0x0e, 0x9b, 0xbc,
+	0xea, 0xe8, 0x7e, 0x26, 0x0b, 0x2b, 0x05, 0x5d, 0x34, 0x34, 0x02, 0xb5, 0x91, 0x80, 0x85, 0x6e,
+	0x40, 0xd9, 0x1b, 0xb4, 0x8d, 0x70, 0x9f, 0x16, 0x77, 0xde, 0x9a, 0x30, 0xb1, 0xfb, 0x83, 0xf6,
+	0x6d, 0x32, 0x0c, 0x67, 0xe3, 0xf1, 0x56, 0xac, 0x26, 0x9f, 0x54, 0xf3, 0x13, 0xa8, 0x84, 0x47,
+	0x04, 0x7d, 0x98, 0xbc, 0x06, 0x42, 0xc3, 0xe6, 0xac, 0x58, 0x2a, 0x95, 0xc4, 0x8c, 0x2c, 0x05,
+	0x09, 0xec, 0x8e, 0x43, 0x2c, 0x23, 0xce, 0x2e, 0xb8, 0xce, 0x8a, 0x5e, 0x13, 0x03, 0x77, 0xc2,
+	0xd4, 0x42, 0xbb, 0x0a, 0x25, 0x31, 0xd7, 0xb1, 0xe7, 0x66, 0x4c, 0x18, 0xd3, 0xfe, 0xa1, 0x40,
+	0x25, 0xbc, 0xc7, 0x63, 0x99, 0x52, 0x8b, 0xc8, 0x7f, 0xdd, 0x45, 0x4c, 0xaa, 0x10, 0x87, 0xf5,
+	0xf8, 0xe2, 0xdc, 0xf5, 0xf8, 0x2b, 0x80, 0xa8, 0x4b, 0x71, 0xcf, 0x38, 0x72, 0xa9, 0xed, 0x74,
+	0x0c, 0xb1, 0x17, 0x02, 0x75, 0xd5, 0xf9, 0xc8, 0x63, 0x3e, 0x70, 0x9f, 0x6f, 0xcb, 0xcf, 0x14,
+	0xa8, 0x44, 0x31, 0x72, 0xde, 0x4a, 0xe0, 0x69, 0x28, 0xc9, 0x08, 0x20, 0x4a, 0x81, 0xb2, 0x15,
+	0x95, 0xac, 0x8b, 0x89, 0x92, 0xb5, 0x0a, 0x95, 0x3e, 0xa1, 0x98, 0xdb, 0x59, 0x64, 0x7e, 0x51,
+	0xfb, 0x9d, 0x07, 0xb0, 0x98, 0x28, 0xcd, 0xa2, 0xb3, 0x50, 0xb8, 0xbb, 0xf7, 0xa4, 0x9e, 0x53,
+	0xd7, 0x3e, 0x7f, 0xb1, 0x59, 0x4b, 0x8c, 0x18, 0x77, 0xf7, 0x9e, 0xa0, 0xb7, 0xa1, 0xac, 0xef,
+	0xed, 0xb6, 0xf6, 0x76, 0x6f, 0xd7, 0x15, 0xf5, 0xcc, 0xe7, 0x2f, 0x36, 0xd7, 0x92, 0x14, 0x72,
+	0x68, 0xe7, 0xf7, 0x8b, 0x50, 0xbb, 0xd9, 0xdc, 0xdd, 0x67, 0xe1, 0xcc, 0x36, 0x31, 0xcf, 0x21,
+	0xef, 0x41, 0x91, 0xa7, 0xd1, 0x19, 0x1e, 0x8e, 0xd5, 0x2c, 0x85, 0x40, 0xa4, 0xc3, 0x02, 0xcf,
+	0xb6, 0x51, 0x96, 0xf7, 0x64, 0x35, 0x53, 0x7d, 0x90, 0x4d, 0x92, 0xdf, 0x91, 0x0c, 0xcf, 0xcc,
+	0x6a, 0x96, 0xa2, 0x21, 0xfa, 0x18, 0xaa, 0x71, 0x1a, 0x9d, 0xf5, 0xf1, 0x59, 0xcd, 0x5c, 0x4e,
+	0x64, 0xf2, 0xe3, 0xc4, 0x21, 0xeb, 0xd3, 0xab, 0x9a, 0xd9, 0xd5, 0xa1, 0xa7, 0x50, 0x0e, 0x53,
+	0xb4, 0x6c, 0xcf, 0xc3, 0x6a, 0xc6, 0x52, 0x1f, 0xdb, 0x3e, 0x91, 0x59, 0x67, 0x79, 0x03, 0x57,
+	0x33, 0xd5, 0x33, 0xd1, 0x01, 0x94, 0x24, 0x36, 0xce, 0xf4, 0xf0, 0xab, 0x66, 0x2b, 0xe0, 0x31,
+	0x23, 0xc7, 0xb5, 0x8b, 0xac, 0xef, 0xfe, 0x6a, 0xe6, 0x42, 0x2e, 0xc2, 0x00, 0x89, 0x74, 0x3b,
+	0xf3, 0x83, 0xbe, 0x9a, 0xbd, 0x40, 0x8b, 0x7e, 0x08, 0x95, 0x28, 0xa9, 0xca, 0xf8, 0xb0, 0xae,
+	0x66, 0xad, 0x91, 0xa2, 0x4f, 0x60, 0x39, 0x9d, 0x47, 0xcc, 0xf3, 0x5c, 0xae, 0xce, 0x55, 0xfc,
+	0x64, 0xba, 0xd2, 0xa9, 0xc5, 0x3c, 0x8f, 0xe8, 0xea, 0x5c, 0x15, 0x51, 0x74, 0x04, 0xab, 0x27,
+	0xf3, 0x80, 0x79, 0x5f, 0xd6, 0xd5, 0xb9, 0x2b, 0xa5, 0x68, 0x08, 0x68, 0x4c, 0x2e, 0x31, 0xf7,
+	0x73, 0xbb, 0x3a, 0x7f, 0xf9, 0xb4, 0xb9, 0xff, 0xc5, 0xcb, 0x75, 0xe5, 0xcb, 0x97, 0xeb, 0xca,
+	0xdf, 0x5f, 0xae, 0x2b, 0xcf, 0x5f, 0xad, 0xe7, 0xfe, 0xf4, 0x6a, 0x5d, 0xf9, 0xf2, 0xd5, 0x7a,
+	0xee, 0xaf, 0xaf, 0xd6, 0x73, 0x3f, 0x78, 0xb7, 0x63, 0xd3, 0xee, 0xa0, 0xbd, 0x65, 0xba, 0xfd,
+	0xed, 0x58, 0x74, 0xf2, 0x33, 0xfe, 0xd9, 0x53, 0xbb, 0xc4, 0xc3, 0xe5, 0xfb, 0xff, 0x09, 0x00,
+	0x00, 0xff, 0xff, 0xc2, 0x71, 0x64, 0x20, 0x0b, 0x25, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -10756,900 +7810,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *Request) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request{`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_Echo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_Echo{`,
-		`Echo:` + strings.Replace(fmt.Sprintf("%v", this.Echo), "RequestEcho", "RequestEcho", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_Flush) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_Flush{`,
-		`Flush:` + strings.Replace(fmt.Sprintf("%v", this.Flush), "RequestFlush", "RequestFlush", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_Info) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_Info{`,
-		`Info:` + strings.Replace(fmt.Sprintf("%v", this.Info), "RequestInfo", "RequestInfo", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_SetOption) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_SetOption{`,
-		`SetOption:` + strings.Replace(fmt.Sprintf("%v", this.SetOption), "RequestSetOption", "RequestSetOption", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_InitChain) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_InitChain{`,
-		`InitChain:` + strings.Replace(fmt.Sprintf("%v", this.InitChain), "RequestInitChain", "RequestInitChain", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_Query) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_Query{`,
-		`Query:` + strings.Replace(fmt.Sprintf("%v", this.Query), "RequestQuery", "RequestQuery", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_BeginBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_BeginBlock{`,
-		`BeginBlock:` + strings.Replace(fmt.Sprintf("%v", this.BeginBlock), "RequestBeginBlock", "RequestBeginBlock", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_CheckTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_CheckTx{`,
-		`CheckTx:` + strings.Replace(fmt.Sprintf("%v", this.CheckTx), "RequestCheckTx", "RequestCheckTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_EndBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_EndBlock{`,
-		`EndBlock:` + strings.Replace(fmt.Sprintf("%v", this.EndBlock), "RequestEndBlock", "RequestEndBlock", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_Commit) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_Commit{`,
-		`Commit:` + strings.Replace(fmt.Sprintf("%v", this.Commit), "RequestCommit", "RequestCommit", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_ListSnapshots) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_ListSnapshots{`,
-		`ListSnapshots:` + strings.Replace(fmt.Sprintf("%v", this.ListSnapshots), "RequestListSnapshots", "RequestListSnapshots", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_OfferSnapshot) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_OfferSnapshot{`,
-		`OfferSnapshot:` + strings.Replace(fmt.Sprintf("%v", this.OfferSnapshot), "RequestOfferSnapshot", "RequestOfferSnapshot", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_LoadSnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_LoadSnapshotChunk{`,
-		`LoadSnapshotChunk:` + strings.Replace(fmt.Sprintf("%v", this.LoadSnapshotChunk), "RequestLoadSnapshotChunk", "RequestLoadSnapshotChunk", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_ApplySnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_ApplySnapshotChunk{`,
-		`ApplySnapshotChunk:` + strings.Replace(fmt.Sprintf("%v", this.ApplySnapshotChunk), "RequestApplySnapshotChunk", "RequestApplySnapshotChunk", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Request_DeliverTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Request_DeliverTx{`,
-		`DeliverTx:` + strings.Replace(fmt.Sprintf("%v", this.DeliverTx), "RequestDeliverTx", "RequestDeliverTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestEcho) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestEcho{`,
-		`Message:` + fmt.Sprintf("%v", this.Message) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestFlush) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestFlush{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestInfo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestInfo{`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`BlockVersion:` + fmt.Sprintf("%v", this.BlockVersion) + `,`,
-		`P2PVersion:` + fmt.Sprintf("%v", this.P2PVersion) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestSetOption) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestSetOption{`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestInitChain) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForValidators := "[]ValidatorUpdate{"
-	for _, f := range this.Validators {
-		repeatedStringForValidators += strings.Replace(strings.Replace(f.String(), "ValidatorUpdate", "ValidatorUpdate", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForValidators += "}"
-	s := strings.Join([]string{`&RequestInitChain{`,
-		`Time:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Time), "Timestamp", "timestamp.Timestamp", 1), `&`, ``, 1) + `,`,
-		`ChainId:` + fmt.Sprintf("%v", this.ChainId) + `,`,
-		`ConsensusParams:` + strings.Replace(this.ConsensusParams.String(), "ConsensusParams", "ConsensusParams", 1) + `,`,
-		`Validators:` + repeatedStringForValidators + `,`,
-		`AppStateBytes:` + fmt.Sprintf("%v", this.AppStateBytes) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestQuery) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestQuery{`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`Path:` + fmt.Sprintf("%v", this.Path) + `,`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Prove:` + fmt.Sprintf("%v", this.Prove) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestBeginBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForByzantineValidators := "[]Evidence{"
-	for _, f := range this.ByzantineValidators {
-		repeatedStringForByzantineValidators += strings.Replace(strings.Replace(f.String(), "Evidence", "Evidence", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForByzantineValidators += "}"
-	s := strings.Join([]string{`&RequestBeginBlock{`,
-		`Hash:` + fmt.Sprintf("%v", this.Hash) + `,`,
-		`Header:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Header), "Header", "types.Header", 1), `&`, ``, 1) + `,`,
-		`LastCommitInfo:` + strings.Replace(strings.Replace(this.LastCommitInfo.String(), "LastCommitInfo", "LastCommitInfo", 1), `&`, ``, 1) + `,`,
-		`ByzantineValidators:` + repeatedStringForByzantineValidators + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestCheckTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestCheckTx{`,
-		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestDeliverTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestDeliverTx{`,
-		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestEndBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestEndBlock{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestCommit) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestCommit{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestListSnapshots) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestListSnapshots{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestOfferSnapshot) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestOfferSnapshot{`,
-		`Snapshot:` + strings.Replace(this.Snapshot.String(), "Snapshot", "Snapshot", 1) + `,`,
-		`AppHash:` + fmt.Sprintf("%v", this.AppHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestLoadSnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestLoadSnapshotChunk{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Format:` + fmt.Sprintf("%v", this.Format) + `,`,
-		`Chunk:` + fmt.Sprintf("%v", this.Chunk) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestApplySnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestApplySnapshotChunk{`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Chunk:` + fmt.Sprintf("%v", this.Chunk) + `,`,
-		`Sender:` + fmt.Sprintf("%v", this.Sender) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response{`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Exception) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Exception{`,
-		`Exception:` + strings.Replace(fmt.Sprintf("%v", this.Exception), "ResponseException", "ResponseException", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Echo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Echo{`,
-		`Echo:` + strings.Replace(fmt.Sprintf("%v", this.Echo), "ResponseEcho", "ResponseEcho", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Flush) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Flush{`,
-		`Flush:` + strings.Replace(fmt.Sprintf("%v", this.Flush), "ResponseFlush", "ResponseFlush", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Info) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Info{`,
-		`Info:` + strings.Replace(fmt.Sprintf("%v", this.Info), "ResponseInfo", "ResponseInfo", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_SetOption) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_SetOption{`,
-		`SetOption:` + strings.Replace(fmt.Sprintf("%v", this.SetOption), "ResponseSetOption", "ResponseSetOption", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_InitChain) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_InitChain{`,
-		`InitChain:` + strings.Replace(fmt.Sprintf("%v", this.InitChain), "ResponseInitChain", "ResponseInitChain", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Query) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Query{`,
-		`Query:` + strings.Replace(fmt.Sprintf("%v", this.Query), "ResponseQuery", "ResponseQuery", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_BeginBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_BeginBlock{`,
-		`BeginBlock:` + strings.Replace(fmt.Sprintf("%v", this.BeginBlock), "ResponseBeginBlock", "ResponseBeginBlock", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_CheckTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_CheckTx{`,
-		`CheckTx:` + strings.Replace(fmt.Sprintf("%v", this.CheckTx), "ResponseCheckTx", "ResponseCheckTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_DeliverTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_DeliverTx{`,
-		`DeliverTx:` + strings.Replace(fmt.Sprintf("%v", this.DeliverTx), "ResponseDeliverTx", "ResponseDeliverTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_EndBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_EndBlock{`,
-		`EndBlock:` + strings.Replace(fmt.Sprintf("%v", this.EndBlock), "ResponseEndBlock", "ResponseEndBlock", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_Commit) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_Commit{`,
-		`Commit:` + strings.Replace(fmt.Sprintf("%v", this.Commit), "ResponseCommit", "ResponseCommit", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_ListSnapshots) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_ListSnapshots{`,
-		`ListSnapshots:` + strings.Replace(fmt.Sprintf("%v", this.ListSnapshots), "ResponseListSnapshots", "ResponseListSnapshots", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_OfferSnapshot) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_OfferSnapshot{`,
-		`OfferSnapshot:` + strings.Replace(fmt.Sprintf("%v", this.OfferSnapshot), "ResponseOfferSnapshot", "ResponseOfferSnapshot", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_LoadSnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_LoadSnapshotChunk{`,
-		`LoadSnapshotChunk:` + strings.Replace(fmt.Sprintf("%v", this.LoadSnapshotChunk), "ResponseLoadSnapshotChunk", "ResponseLoadSnapshotChunk", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Response_ApplySnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Response_ApplySnapshotChunk{`,
-		`ApplySnapshotChunk:` + strings.Replace(fmt.Sprintf("%v", this.ApplySnapshotChunk), "ResponseApplySnapshotChunk", "ResponseApplySnapshotChunk", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseException) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseException{`,
-		`Error:` + fmt.Sprintf("%v", this.Error) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseEcho) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseEcho{`,
-		`Message:` + fmt.Sprintf("%v", this.Message) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseFlush) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseFlush{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseInfo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseInfo{`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`AppVersion:` + fmt.Sprintf("%v", this.AppVersion) + `,`,
-		`LastBlockHeight:` + fmt.Sprintf("%v", this.LastBlockHeight) + `,`,
-		`LastBlockAppHash:` + fmt.Sprintf("%v", this.LastBlockAppHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseSetOption) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseSetOption{`,
-		`Code:` + fmt.Sprintf("%v", this.Code) + `,`,
-		`Log:` + fmt.Sprintf("%v", this.Log) + `,`,
-		`Info:` + fmt.Sprintf("%v", this.Info) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseInitChain) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForValidators := "[]ValidatorUpdate{"
-	for _, f := range this.Validators {
-		repeatedStringForValidators += strings.Replace(strings.Replace(f.String(), "ValidatorUpdate", "ValidatorUpdate", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForValidators += "}"
-	s := strings.Join([]string{`&ResponseInitChain{`,
-		`ConsensusParams:` + strings.Replace(this.ConsensusParams.String(), "ConsensusParams", "ConsensusParams", 1) + `,`,
-		`Validators:` + repeatedStringForValidators + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseQuery) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseQuery{`,
-		`Code:` + fmt.Sprintf("%v", this.Code) + `,`,
-		`Log:` + fmt.Sprintf("%v", this.Log) + `,`,
-		`Info:` + fmt.Sprintf("%v", this.Info) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`Proof:` + strings.Replace(fmt.Sprintf("%v", this.Proof), "Proof", "merkle.Proof", 1) + `,`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Codespace:` + fmt.Sprintf("%v", this.Codespace) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseBeginBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForEvents := "[]Event{"
-	for _, f := range this.Events {
-		repeatedStringForEvents += strings.Replace(strings.Replace(f.String(), "Event", "Event", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForEvents += "}"
-	s := strings.Join([]string{`&ResponseBeginBlock{`,
-		`Events:` + repeatedStringForEvents + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseCheckTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForEvents := "[]Event{"
-	for _, f := range this.Events {
-		repeatedStringForEvents += strings.Replace(strings.Replace(f.String(), "Event", "Event", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForEvents += "}"
-	s := strings.Join([]string{`&ResponseCheckTx{`,
-		`Code:` + fmt.Sprintf("%v", this.Code) + `,`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`Log:` + fmt.Sprintf("%v", this.Log) + `,`,
-		`Info:` + fmt.Sprintf("%v", this.Info) + `,`,
-		`GasWanted:` + fmt.Sprintf("%v", this.GasWanted) + `,`,
-		`GasUsed:` + fmt.Sprintf("%v", this.GasUsed) + `,`,
-		`Events:` + repeatedStringForEvents + `,`,
-		`Codespace:` + fmt.Sprintf("%v", this.Codespace) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseDeliverTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForEvents := "[]Event{"
-	for _, f := range this.Events {
-		repeatedStringForEvents += strings.Replace(strings.Replace(f.String(), "Event", "Event", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForEvents += "}"
-	s := strings.Join([]string{`&ResponseDeliverTx{`,
-		`Code:` + fmt.Sprintf("%v", this.Code) + `,`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`Log:` + fmt.Sprintf("%v", this.Log) + `,`,
-		`Info:` + fmt.Sprintf("%v", this.Info) + `,`,
-		`GasWanted:` + fmt.Sprintf("%v", this.GasWanted) + `,`,
-		`GasUsed:` + fmt.Sprintf("%v", this.GasUsed) + `,`,
-		`Events:` + repeatedStringForEvents + `,`,
-		`Codespace:` + fmt.Sprintf("%v", this.Codespace) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseEndBlock) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForValidatorUpdates := "[]ValidatorUpdate{"
-	for _, f := range this.ValidatorUpdates {
-		repeatedStringForValidatorUpdates += strings.Replace(strings.Replace(f.String(), "ValidatorUpdate", "ValidatorUpdate", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForValidatorUpdates += "}"
-	repeatedStringForEvents := "[]Event{"
-	for _, f := range this.Events {
-		repeatedStringForEvents += strings.Replace(strings.Replace(f.String(), "Event", "Event", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForEvents += "}"
-	s := strings.Join([]string{`&ResponseEndBlock{`,
-		`ValidatorUpdates:` + repeatedStringForValidatorUpdates + `,`,
-		`ConsensusParamUpdates:` + strings.Replace(this.ConsensusParamUpdates.String(), "ConsensusParams", "ConsensusParams", 1) + `,`,
-		`Events:` + repeatedStringForEvents + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseCommit) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseCommit{`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`RetainHeight:` + fmt.Sprintf("%v", this.RetainHeight) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseListSnapshots) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForSnapshots := "[]*Snapshot{"
-	for _, f := range this.Snapshots {
-		repeatedStringForSnapshots += strings.Replace(f.String(), "Snapshot", "Snapshot", 1) + ","
-	}
-	repeatedStringForSnapshots += "}"
-	s := strings.Join([]string{`&ResponseListSnapshots{`,
-		`Snapshots:` + repeatedStringForSnapshots + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseOfferSnapshot) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseOfferSnapshot{`,
-		`Result:` + fmt.Sprintf("%v", this.Result) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseLoadSnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseLoadSnapshotChunk{`,
-		`Chunk:` + fmt.Sprintf("%v", this.Chunk) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseApplySnapshotChunk) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseApplySnapshotChunk{`,
-		`Result:` + fmt.Sprintf("%v", this.Result) + `,`,
-		`RefetchChunks:` + fmt.Sprintf("%v", this.RefetchChunks) + `,`,
-		`RejectSenders:` + fmt.Sprintf("%v", this.RejectSenders) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ConsensusParams) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ConsensusParams{`,
-		`Block:` + strings.Replace(this.Block.String(), "BlockParams", "BlockParams", 1) + `,`,
-		`Evidence:` + strings.Replace(fmt.Sprintf("%v", this.Evidence), "EvidenceParams", "types.EvidenceParams", 1) + `,`,
-		`Validator:` + strings.Replace(fmt.Sprintf("%v", this.Validator), "ValidatorParams", "types.ValidatorParams", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *BlockParams) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&BlockParams{`,
-		`MaxBytes:` + fmt.Sprintf("%v", this.MaxBytes) + `,`,
-		`MaxGas:` + fmt.Sprintf("%v", this.MaxGas) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LastCommitInfo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForVotes := "[]VoteInfo{"
-	for _, f := range this.Votes {
-		repeatedStringForVotes += strings.Replace(strings.Replace(f.String(), "VoteInfo", "VoteInfo", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForVotes += "}"
-	s := strings.Join([]string{`&LastCommitInfo{`,
-		`Round:` + fmt.Sprintf("%v", this.Round) + `,`,
-		`Votes:` + repeatedStringForVotes + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *EventAttribute) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&EventAttribute{`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Event) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForAttributes := "[]EventAttribute{"
-	for _, f := range this.Attributes {
-		repeatedStringForAttributes += strings.Replace(strings.Replace(f.String(), "EventAttribute", "EventAttribute", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForAttributes += "}"
-	s := strings.Join([]string{`&Event{`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`Attributes:` + repeatedStringForAttributes + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *TxResult) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&TxResult{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
-		`Result:` + strings.Replace(strings.Replace(this.Result.String(), "ResponseDeliverTx", "ResponseDeliverTx", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Validator) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Validator{`,
-		`Address:` + fmt.Sprintf("%v", this.Address) + `,`,
-		`Power:` + fmt.Sprintf("%v", this.Power) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ValidatorUpdate) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ValidatorUpdate{`,
-		`PubKey:` + strings.Replace(strings.Replace(this.PubKey.String(), "PubKey", "PubKey", 1), `&`, ``, 1) + `,`,
-		`Power:` + fmt.Sprintf("%v", this.Power) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *VoteInfo) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VoteInfo{`,
-		`Validator:` + strings.Replace(strings.Replace(this.Validator.String(), "Validator", "Validator", 1), `&`, ``, 1) + `,`,
-		`SignedLastBlock:` + fmt.Sprintf("%v", this.SignedLastBlock) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PubKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PubKey{`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Evidence) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Evidence{`,
-		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
-		`Validator:` + strings.Replace(strings.Replace(this.Validator.String(), "Validator", "Validator", 1), `&`, ``, 1) + `,`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Time:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Time), "Timestamp", "timestamp.Timestamp", 1), `&`, ``, 1) + `,`,
-		`TotalVotingPower:` + fmt.Sprintf("%v", this.TotalVotingPower) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Snapshot) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Snapshot{`,
-		`Height:` + fmt.Sprintf("%v", this.Height) + `,`,
-		`Format:` + fmt.Sprintf("%v", this.Format) + `,`,
-		`Chunks:` + fmt.Sprintf("%v", this.Chunks) + `,`,
-		`Hash:` + fmt.Sprintf("%v", this.Hash) + `,`,
-		`Metadata:` + fmt.Sprintf("%v", this.Metadata) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *Request) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
