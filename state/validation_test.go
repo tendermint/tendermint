@@ -4,20 +4,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mempool/mock"
+	memmock "github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const validationTestsStopHeight int64 = 10
+
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
@@ -29,8 +32,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
-		evmock.NewDefaultEvidencePool(),
+		memmock.Mempool{},
+		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -99,8 +102,8 @@ func TestValidateBlockCommit(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
-		evmock.NewDefaultEvidencePool(),
+		memmock.Mempool{},
+		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -206,8 +209,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
-		evmock.NewDefaultEvidencePool(),
+		memmock.Mempool{},
+		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -260,9 +263,17 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(1, int(height))
+	state, stateDB, _ := makeState(2, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
 
-	evpool := evmock.NewDefaultEvidencePool()
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsCommitted", ev).Return(false)
+	evpool.On("IsCommitted", ev2).Return(true)
+
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
 		nil,
@@ -270,9 +281,7 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 		evpool)
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
-	addr, _ := state.Validators.GetByIndex(0)
-	evpool.CommitEvidence(evpool.AddMockEvidence(height, addr))
-	block.Evidence.Evidence = evpool.CommittedEvidenceList
+	block.Evidence.Evidence = []types.Evidence{ev, ev2}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
@@ -283,8 +292,16 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := makeState(2, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
 
-	evpool := evmock.NewDefaultEvidencePool()
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", ev).Return(false)
+	evpool.On("IsPending", ev2).Return(true)
+	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(false)
+
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
 		nil,
@@ -292,13 +309,8 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 		evpool)
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(0)
-	// add pending evidence
-	pendingEv := evpool.AddMockEvidence(height, addr)
-	// add evidence that hasn't seen before
-	ev := types.NewMockEvidence(height, time.Now(), addr2)
-	block.Evidence.Evidence = []types.Evidence{pendingEv, ev}
+	// add one evidence seen before and one evidence that hasn't
+	block.Evidence.Evidence = []types.Evidence{ev, ev2}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
