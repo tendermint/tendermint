@@ -474,7 +474,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mempoolStub{}, evPoolStub{})
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, emptyMempool{}, emptyEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

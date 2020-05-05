@@ -372,7 +372,7 @@ func newStateWithConfigAndBlockStore(
 		mempool.EnableTxsAvailable()
 	}
 
-	evpool := evPoolStub{}
+	evpool := emptyEvidencePool{}
 
 	// Make State
 	stateDB := blockDB

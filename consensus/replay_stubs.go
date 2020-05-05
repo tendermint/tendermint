@@ -11,19 +11,19 @@ import (
 
 //-----------------------------------------------------------------------------
 
-type mempoolStub struct{}
+type emptyMempool struct{}
 
-var _ mempl.Mempool = mempoolStub{}
+var _ mempl.Mempool = emptyMempool{}
 
-func (mempoolStub) Lock()     {}
-func (mempoolStub) Unlock()   {}
-func (mempoolStub) Size() int { return 0 }
-func (mempoolStub) CheckTx(_ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
+func (emptyMempool) Lock()     {}
+func (emptyMempool) Unlock()   {}
+func (emptyMempool) Size() int { return 0 }
+func (emptyMempool) CheckTx(_ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
 	return nil
 }
-func (mempoolStub) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
-func (mempoolStub) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
-func (mempoolStub) Update(
+func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
+func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
+func (emptyMempool) Update(
 	_ int64,
 	_ types.Txs,
 	_ []*abci.ResponseDeliverTx,
@@ -32,29 +32,29 @@ func (mempoolStub) Update(
 ) error {
 	return nil
 }
-func (mempoolStub) Flush()                        {}
-func (mempoolStub) FlushAppConn() error           { return nil }
-func (mempoolStub) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
-func (mempoolStub) EnableTxsAvailable()           {}
-func (mempoolStub) TxsBytes() int64               { return 0 }
+func (emptyMempool) Flush()                        {}
+func (emptyMempool) FlushAppConn() error           { return nil }
+func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
+func (emptyMempool) EnableTxsAvailable()           {}
+func (emptyMempool) TxsBytes() int64               { return 0 }
 
-func (mempoolStub) TxsFront() *clist.CElement    { return nil }
-func (mempoolStub) TxsWaitChan() <-chan struct{} { return nil }
+func (emptyMempool) TxsFront() *clist.CElement    { return nil }
+func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
 
-func (mempoolStub) InitWAL()  {}
-func (mempoolStub) CloseWAL() {}
+func (emptyMempool) InitWAL()  {}
+func (emptyMempool) CloseWAL() {}
 
 //-----------------------------------------------------------------------------
 
-type evPoolStub struct{}
+type emptyEvidencePool struct{}
 
-var _ sm.EvidencePool = evPoolStub{}
+var _ sm.EvidencePool = emptyEvidencePool{}
 
-func (evPoolStub) PendingEvidence(int64) []types.Evidence { return nil }
-func (evPoolStub) AddEvidence(types.Evidence) error       { return nil }
-func (evPoolStub) Update(*types.Block, sm.State)          {}
-func (evPoolStub) IsCommitted(types.Evidence) bool        { return false }
-func (evPoolStub) IsPending(types.Evidence) bool          { return false }
+func (emptyEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (emptyEvidencePool) AddEvidence(types.Evidence) error       { return nil }
+func (emptyEvidencePool) Update(*types.Block, sm.State)          {}
+func (emptyEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (emptyEvidencePool) IsPending(types.Evidence) bool          { return false }
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.

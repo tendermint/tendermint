@@ -294,8 +294,8 @@ const (
 )
 
 var (
-	mempool = mempoolStub{}
-	evpool  = evPoolStub{}
+	mempool = emptyMempool{}
+	evpool  = emptyEvidencePool{}
 
 	sim testSim
 )
