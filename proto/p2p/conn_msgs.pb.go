@@ -4,15 +4,12 @@
 package p2p
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -29,8 +26,9 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type PacketPing struct {
 }
 
-func (m *PacketPing) Reset()      { *m = PacketPing{} }
-func (*PacketPing) ProtoMessage() {}
+func (m *PacketPing) Reset()         { *m = PacketPing{} }
+func (m *PacketPing) String() string { return proto.CompactTextString(m) }
+func (*PacketPing) ProtoMessage()    {}
 func (*PacketPing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c680f0b24d73fe7, []int{0}
 }
@@ -64,8 +62,9 @@ var xxx_messageInfo_PacketPing proto.InternalMessageInfo
 type PacketPong struct {
 }
 
-func (m *PacketPong) Reset()      { *m = PacketPong{} }
-func (*PacketPong) ProtoMessage() {}
+func (m *PacketPong) Reset()         { *m = PacketPong{} }
+func (m *PacketPong) String() string { return proto.CompactTextString(m) }
+func (*PacketPong) ProtoMessage()    {}
 func (*PacketPong) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c680f0b24d73fe7, []int{1}
 }
@@ -102,8 +101,9 @@ type PacketMsg struct {
 	Data      []byte `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
-func (m *PacketMsg) Reset()      { *m = PacketMsg{} }
-func (*PacketMsg) ProtoMessage() {}
+func (m *PacketMsg) Reset()         { *m = PacketMsg{} }
+func (m *PacketMsg) String() string { return proto.CompactTextString(m) }
+func (*PacketMsg) ProtoMessage()    {}
 func (*PacketMsg) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c680f0b24d73fe7, []int{2}
 }
@@ -163,8 +163,9 @@ type Packet struct {
 	Sum isPacket_Sum `protobuf_oneof:"sum"`
 }
 
-func (m *Packet) Reset()      { *m = Packet{} }
-func (*Packet) ProtoMessage() {}
+func (m *Packet) Reset()         { *m = Packet{} }
+func (m *Packet) String() string { return proto.CompactTextString(m) }
+func (*Packet) ProtoMessage()    {}
 func (*Packet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c680f0b24d73fe7, []int{3}
 }
@@ -197,7 +198,6 @@ var xxx_messageInfo_Packet proto.InternalMessageInfo
 
 type isPacket_Sum interface {
 	isPacket_Sum()
-	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -263,279 +263,30 @@ func init() {
 func init() { proto.RegisterFile("proto/p2p/conn_msgs.proto", fileDescriptor_8c680f0b24d73fe7) }
 
 var fileDescriptor_8c680f0b24d73fe7 = []byte{
-	// 350 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x52, 0xb1, 0x4e, 0xeb, 0x30,
-	0x00, 0xb4, 0x5f, 0x5e, 0x8b, 0xe2, 0x96, 0xc5, 0x62, 0x68, 0x19, 0xdc, 0xaa, 0x03, 0xaa, 0x10,
-	0x4a, 0xa4, 0xf0, 0x03, 0xa8, 0x05, 0x44, 0x87, 0x8a, 0x2a, 0x23, 0x4b, 0x48, 0x93, 0xe0, 0x44,
-	0x10, 0xdb, 0x4a, 0xdc, 0x81, 0x8d, 0x4f, 0xe0, 0x33, 0xf8, 0x14, 0xc6, 0x8e, 0x95, 0x90, 0x2a,
-	0xea, 0x2e, 0x8c, 0xfd, 0x04, 0x54, 0xa7, 0xb4, 0x41, 0x42, 0xb0, 0xdd, 0x9d, 0xce, 0x77, 0x67,
-	0xcb, 0xa8, 0x29, 0x32, 0x2e, 0xb9, 0x2d, 0x1c, 0x61, 0x07, 0x9c, 0x31, 0x2f, 0xcd, 0x69, 0x6e,
-	0x69, 0x0d, 0x1f, 0xc8, 0x88, 0x85, 0x51, 0x96, 0x26, 0x4c, 0x16, 0x8a, 0x25, 0x1c, 0x71, 0x78,
-	0x24, 0xe3, 0x24, 0x0b, 0x3d, 0xe1, 0x67, 0xf2, 0xd1, 0x2e, 0x0e, 0x53, 0x4e, 0xf9, 0x0e, 0x15,
-	0xde, 0x4e, 0x1d, 0xa1, 0x91, 0x1f, 0xdc, 0x47, 0x72, 0x94, 0x30, 0x5a, 0x62, 0x9c, 0xd1, 0x4e,
-	0x8c, 0xcc, 0x82, 0x0d, 0x73, 0x8a, 0x4f, 0x10, 0x0a, 0x62, 0x9f, 0xb1, 0xe8, 0xc1, 0x4b, 0xc2,
-	0x06, 0x6c, 0xc3, 0x6e, 0xa5, 0xb7, 0xaf, 0xe6, 0x2d, 0xb3, 0x5f, 0xa8, 0x83, 0x73, 0xd7, 0xdc,
-	0x18, 0x06, 0x21, 0x6e, 0x22, 0x23, 0xe2, 0x77, 0x8d, 0x7f, 0xda, 0xb6, 0xa7, 0xe6, 0x2d, 0xe3,
-	0xe2, 0xfa, 0xd2, 0x5d, 0x6b, 0x18, 0xa3, 0xff, 0xa1, 0x2f, 0xfd, 0x86, 0xd1, 0x86, 0xdd, 0xba,
-	0xab, 0x71, 0xe7, 0x0d, 0xa2, 0x6a, 0x51, 0x85, 0xfb, 0xa8, 0x26, 0x34, 0xf2, 0x44, 0xc2, 0xa8,
-	0x2e, 0xaa, 0x39, 0x6d, 0xeb, 0xa7, 0x4b, 0x5a, 0xbb, 0xe5, 0x57, 0xc0, 0x45, 0x62, 0xcb, 0xca,
-	0x21, 0x9c, 0x51, 0x3d, 0xe3, 0xaf, 0x10, 0xfe, 0x2d, 0x84, 0x33, 0x8a, 0xcf, 0xd0, 0x86, 0xad,
-	0x5f, 0x5b, 0xcf, 0xad, 0x39, 0xad, 0xdf, 0x32, 0x86, 0xf9, 0x3a, 0xc2, 0x14, 0x5f, 0xa4, 0x57,
-	0x41, 0x46, 0x3e, 0x49, 0x7b, 0xb7, 0xd3, 0x05, 0x01, 0xb3, 0x05, 0x01, 0xab, 0x05, 0x81, 0x4f,
-	0x8a, 0xc0, 0x17, 0x45, 0xe0, 0xab, 0x22, 0x70, 0xaa, 0x08, 0x7c, 0x57, 0x04, 0x7e, 0x28, 0x02,
-	0x56, 0x8a, 0xc0, 0xe7, 0x25, 0x01, 0xd3, 0x25, 0x01, 0xb3, 0x25, 0x01, 0x37, 0xc7, 0x34, 0x91,
-	0xf1, 0x64, 0x6c, 0x05, 0x3c, 0xb5, 0x77, 0xa5, 0x65, 0xb8, 0xfd, 0x13, 0xe3, 0xaa, 0x86, 0xa7,
-	0x9f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x76, 0x08, 0x11, 0xb3, 0x27, 0x02, 0x00, 0x00,
+	// 324 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x91, 0x41, 0x4b, 0xfb, 0x30,
+	0x18, 0xc6, 0x9b, 0x7f, 0xff, 0x9b, 0xf4, 0xdd, 0xbc, 0x04, 0x0f, 0x9b, 0x87, 0x6c, 0xec, 0x20,
+	0x43, 0xa4, 0x85, 0xfa, 0x05, 0x64, 0x9b, 0xe2, 0x0e, 0xc3, 0xd1, 0xa3, 0x97, 0xd2, 0xb5, 0x35,
+	0x0d, 0xda, 0x24, 0xb4, 0xd9, 0xc1, 0x6f, 0xe1, 0xc7, 0xf2, 0xb8, 0xa3, 0x20, 0x0c, 0xe9, 0xbe,
+	0x88, 0x2c, 0x99, 0x5b, 0x05, 0xd1, 0xdb, 0xf3, 0x3c, 0xbc, 0xf9, 0xbd, 0x4f, 0x12, 0xe8, 0xca,
+	0x42, 0x28, 0xe1, 0x49, 0x5f, 0x7a, 0xb1, 0xe0, 0x3c, 0xcc, 0x4b, 0x5a, 0xba, 0x3a, 0xc3, 0x27,
+	0x2a, 0xe5, 0x49, 0x5a, 0xe4, 0x8c, 0x2b, 0x93, 0xb8, 0xd2, 0x97, 0xa7, 0x67, 0x2a, 0x63, 0x45,
+	0x12, 0xca, 0xa8, 0x50, 0xcf, 0x9e, 0x39, 0x4c, 0x05, 0x15, 0x07, 0x65, 0x66, 0x07, 0x6d, 0x80,
+	0x79, 0x14, 0x3f, 0xa6, 0x6a, 0xce, 0x38, 0xad, 0x39, 0xc1, 0xe9, 0x20, 0x03, 0xc7, 0xb8, 0x59,
+	0x49, 0xf1, 0x05, 0x40, 0x9c, 0x45, 0x9c, 0xa7, 0x4f, 0x21, 0x4b, 0x3a, 0xa8, 0x8f, 0x86, 0x8d,
+	0xd1, 0x71, 0xb5, 0xee, 0x39, 0x63, 0x93, 0x4e, 0x27, 0x81, 0xb3, 0x1b, 0x98, 0x26, 0xb8, 0x0b,
+	0x76, 0x2a, 0x1e, 0x3a, 0xff, 0xf4, 0xd8, 0x51, 0xb5, 0xee, 0xd9, 0xd7, 0x77, 0x37, 0xc1, 0x36,
+	0xc3, 0x18, 0xfe, 0x27, 0x91, 0x8a, 0x3a, 0x76, 0x1f, 0x0d, 0xdb, 0x81, 0xd6, 0x83, 0x77, 0x04,
+	0x4d, 0xb3, 0x0a, 0x8f, 0xa1, 0x25, 0xb5, 0x0a, 0x25, 0xe3, 0x54, 0x2f, 0x6a, 0xf9, 0x7d, 0xf7,
+	0xa7, 0x4b, 0xba, 0x87, 0xe6, 0xb7, 0x56, 0x00, 0x72, 0xef, 0xea, 0x10, 0xc1, 0xa9, 0xae, 0xf1,
+	0x17, 0x44, 0x7c, 0x83, 0x08, 0x4e, 0xf1, 0x15, 0xec, 0xdc, 0xf6, 0xb5, 0x75, 0xdd, 0x96, 0xdf,
+	0xfb, 0x8d, 0x31, 0x2b, 0xb7, 0x08, 0x47, 0x7e, 0x99, 0x51, 0x03, 0xec, 0x72, 0x99, 0x8f, 0x26,
+	0xaf, 0x15, 0x41, 0xab, 0x8a, 0xa0, 0x8f, 0x8a, 0xa0, 0x97, 0x0d, 0xb1, 0x56, 0x1b, 0x62, 0xbd,
+	0x6d, 0x88, 0x75, 0x7f, 0x4e, 0x99, 0xca, 0x96, 0x0b, 0x37, 0x16, 0xb9, 0x77, 0x00, 0xd7, 0xe5,
+	0xfe, 0xdf, 0x17, 0x4d, 0x2d, 0x2f, 0x3f, 0x03, 0x00, 0x00, 0xff, 0xff, 0xad, 0x8c, 0xf9, 0x97,
+	0x0b, 0x02, 0x00, 0x00,
 }
 
-func (this *PacketPing) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PacketPing)
-	if !ok {
-		that2, ok := that.(PacketPing)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *PacketPong) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PacketPong)
-	if !ok {
-		that2, ok := that.(PacketPong)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *PacketMsg) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*PacketMsg)
-	if !ok {
-		that2, ok := that.(PacketMsg)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.ChannelID != that1.ChannelID {
-		return false
-	}
-	if this.EOF != that1.EOF {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	return true
-}
-func (this *Packet) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Packet)
-	if !ok {
-		that2, ok := that.(Packet)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if that1.Sum == nil {
-		if this.Sum != nil {
-			return false
-		}
-	} else if this.Sum == nil {
-		return false
-	} else if !this.Sum.Equal(that1.Sum) {
-		return false
-	}
-	return true
-}
-func (this *Packet_PacketPing) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Packet_PacketPing)
-	if !ok {
-		that2, ok := that.(Packet_PacketPing)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.PacketPing.Equal(that1.PacketPing) {
-		return false
-	}
-	return true
-}
-func (this *Packet_PacketPong) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Packet_PacketPong)
-	if !ok {
-		that2, ok := that.(Packet_PacketPong)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.PacketPong.Equal(that1.PacketPong) {
-		return false
-	}
-	return true
-}
-func (this *Packet_PacketMsg) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Packet_PacketMsg)
-	if !ok {
-		that2, ok := that.(Packet_PacketMsg)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.PacketMsg.Equal(that1.PacketMsg) {
-		return false
-	}
-	return true
-}
-func (this *PacketPing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&p2p.PacketPing{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PacketPong) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&p2p.PacketPong{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PacketMsg) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&p2p.PacketMsg{")
-	s = append(s, "ChannelID: "+fmt.Sprintf("%#v", this.ChannelID)+",\n")
-	s = append(s, "EOF: "+fmt.Sprintf("%#v", this.EOF)+",\n")
-	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Packet) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&p2p.Packet{")
-	if this.Sum != nil {
-		s = append(s, "Sum: "+fmt.Sprintf("%#v", this.Sum)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Packet_PacketPing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&p2p.Packet_PacketPing{` +
-		`PacketPing:` + fmt.Sprintf("%#v", this.PacketPing) + `}`}, ", ")
-	return s
-}
-func (this *Packet_PacketPong) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&p2p.Packet_PacketPong{` +
-		`PacketPong:` + fmt.Sprintf("%#v", this.PacketPong) + `}`}, ", ")
-	return s
-}
-func (this *Packet_PacketMsg) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&p2p.Packet_PacketMsg{` +
-		`PacketMsg:` + fmt.Sprintf("%#v", this.PacketMsg) + `}`}, ", ")
-	return s
-}
-func valueToGoStringConnMsgs(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *PacketPing) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -819,84 +570,6 @@ func sovConnMsgs(x uint64) (n int) {
 }
 func sozConnMsgs(x uint64) (n int) {
 	return sovConnMsgs(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *PacketPing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PacketPing{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PacketPong) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PacketPong{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PacketMsg) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PacketMsg{`,
-		`ChannelID:` + fmt.Sprintf("%v", this.ChannelID) + `,`,
-		`EOF:` + fmt.Sprintf("%v", this.EOF) + `,`,
-		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Packet) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Packet{`,
-		`Sum:` + fmt.Sprintf("%v", this.Sum) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Packet_PacketPing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Packet_PacketPing{`,
-		`PacketPing:` + strings.Replace(fmt.Sprintf("%v", this.PacketPing), "PacketPing", "PacketPing", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Packet_PacketPong) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Packet_PacketPong{`,
-		`PacketPong:` + strings.Replace(fmt.Sprintf("%v", this.PacketPong), "PacketPong", "PacketPong", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Packet_PacketMsg) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Packet_PacketMsg{`,
-		`PacketMsg:` + strings.Replace(fmt.Sprintf("%v", this.PacketMsg), "PacketMsg", "PacketMsg", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringConnMsgs(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *PacketPing) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

@@ -18,10 +18,6 @@ option (gogoproto.marshaler_all)        = true;
 option (gogoproto.unmarshaler_all)      = true;
 option (gogoproto.sizer_all)            = true;
 option (gogoproto.goproto_registration) = true;
-// Generate tests
-option (gogoproto.populate_all) = true;
-option (gogoproto.equal_all)    = true;
-option (gogoproto.testgen_all)  = true;
 
 //----------------------------------------
 // Request types
@@ -87,8 +83,8 @@ message RequestBeginBlock {
 }
 
 enum CheckTxType {
-  NEW     = 0 [(gogoproto.enumvalue_customname) = "CheckTxType_NEW"];
-  RECHECK = 1 [(gogoproto.enumvalue_customname) = "CheckTxType_RECHECK"];
+  NEW     = 0;
+  RECHECK = 1;
 }
 
 message RequestCheckTx {
@@ -203,7 +199,7 @@ message ResponseQuery {
 
 message ResponseBeginBlock {
   repeated Event events = 1
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -214,7 +210,7 @@ message ResponseCheckTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -226,7 +222,7 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -234,7 +230,7 @@ message ResponseEndBlock {
   repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
-    [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
