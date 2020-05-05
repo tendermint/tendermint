@@ -174,7 +174,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := makeBlock(bs.Height()+1, state, new(types.Commit)) // need to mock the commit
+	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
@@ -186,10 +186,9 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	uncontiguousPartSet.AddPart(part2)
 
 	header1 := types.Header{
-		Height:          1,
-		ChainID:         "block_test",
-		Time:            tmtime.Now(),
-		ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+		Height:  1,
+		ChainID: "block_test",
+		Time:    tmtime.Now(),
 	}
 
 	// End of setup, test data
@@ -484,7 +483,7 @@ func TestPruneBlocks(t *testing.T) {
 
 func TestLoadBlockMeta(t *testing.T) {
 	bs, db := freshBlockStore()
-	height := int64(1)
+	height := int64(10)
 	loadMeta := func() (interface{}, error) {
 		meta := bs.LoadBlockMeta(height)
 		return meta, nil
