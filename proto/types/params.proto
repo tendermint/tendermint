@@ -27,8 +27,6 @@ message BlockParams {
 
 // EvidenceParams determine how we handle evidence of malfeasance.
 message EvidenceParams {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
   // Note: must be greater than 0
   int64                    max_age_num_blocks = 1;
   google.protobuf.Duration max_age_duration   = 2
@@ -38,9 +36,6 @@ message EvidenceParams {
 // ValidatorParams restrict the public key types validators can use.
 // NOTE: uses ABCI pubkey naming, not Amino names.
 message ValidatorParams {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   repeated string pub_key_types = 1;
 }
 

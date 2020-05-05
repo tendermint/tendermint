@@ -33,9 +33,6 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   uint32 total = 1;
   bytes  hash  = 2;
 }
@@ -48,9 +45,6 @@ message Parts {
 
 // BlockID
 message BlockID {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   bytes         hash         = 1;
   PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
 }
@@ -59,8 +53,6 @@ message BlockID {
 
 // Header defines the structure of a Tendermint block header.
 message Header {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
   // basic block info
   tendermint.proto.version.Consensus version  = 1 [(gogoproto.nullable) = false];
   string                             chain_id = 2 [(gogoproto.customname) = "ChainID"];
