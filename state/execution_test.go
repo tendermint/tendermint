@@ -12,7 +12,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/proxy"
@@ -39,7 +38,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, evmock.NewDefaultEvidencePool())
+		mock.Mempool{}, sm.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
@@ -335,7 +334,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
-		evmock.NewDefaultEvidencePool(),
+		sm.MockEvidencePool{},
 	)
 
 	eventBus := types.NewEventBus()
@@ -402,7 +401,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
-		evmock.NewDefaultEvidencePool(),
+		sm.MockEvidencePool{},
 	)
 
 	block := makeBlock(state, 1)

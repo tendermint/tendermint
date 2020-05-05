@@ -26,7 +26,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -374,7 +373,7 @@ func newStateWithConfigAndBlockStore(
 	}
 
 	// mock the evidence pool
-	evpool := evmock.NewDefaultEvidencePool()
+	evpool := emptyEvidencePool{}
 
 	// Make State
 	stateDB := blockDB
