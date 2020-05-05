@@ -26,6 +26,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Blockchain Protocol
 
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+
 ### FEATURES:
 
 - [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
@@ -43,7 +45,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - cleveldb: use cleveldb as db backend instead of goleveldb.
   - race: pass -race to go build and enable data race detection.
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
-- [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
 
 ### BUG FIXES:
 
