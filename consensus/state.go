@@ -1237,6 +1237,9 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
+		// If this is not the first round then we are changing the locked block
+		// so save POLC prevotes in evidence db in case of future justification
+		cs.savePOLC(round, blockID)
 		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
 		cs.signAddVote(types.PrecommitType, blockID.Hash, blockID.PartsHeader)
 		return
@@ -1253,12 +1256,13 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
-	// Save POLC prevotes in evidence db in case of future justification
-	cs.savePOLC(round)
+	// We're not precommitting to a new block just yet but we may precommit another block in the future
+	// so save POLC prevotes in evidence db in case of future justification
+	cs.savePOLC(round, blockID)
 	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 }
 
-func (cs *State) savePOLC(round int) {
+func (cs *State) savePOLC(round int, blockID types.BlockID) {
 	// polc must be for rounds greater than 0
 	if round == 0 {
 		return
@@ -1268,7 +1272,7 @@ func (cs *State) savePOLC(round int) {
 		cs.Logger.Error("Error on retrieval of pubkey", "err", err)
 		return
 	}
-	polc, err := types.MakePOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey)
+	polc, err := types.MakePOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey, blockID)
 	if err != nil {
 		cs.Logger.Error("Error on forming POLC", "err", err)
 		return

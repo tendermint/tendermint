@@ -925,17 +925,17 @@ type ProofOfLockChange struct {
 var _ Evidence = &ProofOfLockChange{}
 var _ Evidence = ProofOfLockChange{}
 
-func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) (ProofOfLockChange, error) {
-	polc := makePOLCFromVoteSet(voteSet, pubKey)
+func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (ProofOfLockChange, error) {
+	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	return polc, polc.ValidateBasic()
 }
 
-func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey) ProofOfLockChange {
+func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) ProofOfLockChange {
 	var votes []Vote
 	valSetSize := voteSet.Size()
 	for valIdx := 0; valIdx < valSetSize; valIdx++ {
 		vote := voteSet.GetByIndex(valIdx)
-		if vote != nil && vote.BlockID.IsComplete() {
+		if vote != nil && vote.BlockID.Equals(blockID) {
 			votes = append(votes, *vote)
 		}
 	}
