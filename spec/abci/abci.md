@@ -5,17 +5,22 @@
 The ABCI message types are defined in a [protobuf
 file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 
-ABCI methods are split across 3 separate ABCI _connections_:
+ABCI methods are split across four separate ABCI _connections_:
 
-- `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection`: `CheckTx`
-- `Info Connection`: `Info, SetOption, Query`
+- Consensus connection: `InitChain`, `BeginBlock`, `DeliverTx`, `EndBlock`, `Commit`
+- Mempool connection: `CheckTx`
+- Info connection: `Info`, `SetOption`, `Query`
+- Snapshot connection: `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, `ApplySnapshotChunk`
 
-The `Consensus Connection` is driven by a consensus protocol and is responsible
+The consensus connection is driven by a consensus protocol and is responsible
 for block execution.
-The `Mempool Connection` is for validating new transactions, before they're
+
+The mempool connection is for validating new transactions, before they're
 shared or included in a block.
-The `Info Connection` is for initialization and for queries from the user.
+
+The info connection is for initialization and for queries from the user.
+
+The snapshot connection is for serving and restoring [state sync snapshots](apps.md#state-sync).
 
 Additionally, there is a `Flush` method that is called on every connection,
 and an `Echo` method that is just for debugging.
@@ -150,6 +155,22 @@ where one `DeliverTx` is called for each transaction in the block.
 The result is an updated application state.
 Cryptographic commitments to the results of DeliverTx, EndBlock, and
 Commit are included in the header of the next block.
+
+## State Sync
+
+State sync allows new nodes to rapidly bootstrap by discovering, fetching, and applying
+state machine snapshots instead of replaying historical blocks. For more details, see the
+[state sync section](apps.md#state-sync).
+
+When a new node is discovering snapshots in the P2P network, existing nodes will call
+`ListSnapshots` on the application to retrieve any local state snapshots. The new node will
+offer these snapshots to its local application via `OfferSnapshot`.
+
+Once the application accepts a snapshot and begins restoring it, Tendermint will fetch snapshot
+chunks from existing nodes via `LoadSnapshotChunk` and apply them sequentially to the local
+application with `ApplySnapshotChunk`. When all chunks have been applied, the application
+`AppHash` is retrieved via an `Info` query and compared to the blockchain's `AppHash` verified
+via light client.
 
 ## Messages
 
@@ -388,6 +409,83 @@ Commit are included in the header of the next block.
     other purposes, e.g. auditing, replay of non-persisted heights, light client
     verification, and so on.
 
+### ListSnapshots
+
+- **Response**:
+  - `Snapshots ([]Snapshot)`: List of local state snapshots.
+- **Usage**:
+  - Used during state sync to discover available snapshots on peers.
+  - See `Snapshot` data type for details.
+
+### LoadSnapshotChunk
+
+- **Request**:
+  - `Height (uint64)`: The height of the snapshot the chunks belongs to.
+  - `Format (uint32)`: The application-specific format of the snapshot the chunk belongs to.
+  - `Chunk (uint32)`: The chunk index, starting from `0` for the initial chunk.
+- **Response**:
+  - `Chunk ([]byte)`: The binary chunk contents, in an arbitray format. Chunk messages cannot be
+    larger than 16 MB _including metadata_, so 10 MB is a good starting point.
+- **Usage**:
+  - Used during state sync to retrieve snapshot chunks from peers.
+
+### OfferSnapshot
+
+- **Request**:
+  - `Snapshot (Snapshot)`: The snapshot offered for restoration.
+  - `AppHash ([]byte)`: The light client-verified app hash for this height, from the blockchain.
+- **Response**:
+  - `Result (Result)`: The result of the snapshot offer.
+    - `accept`: Snapshot is accepted, start applying chunks.
+    - `abort`: Abort snapshot restoration, and don't try any other snapshots.
+    - `reject`: Reject this specific snapshot, try others.
+    - `reject_format`: Reject all snapshots with this `format`, try others.
+    - `reject_senders`: Reject all snapshots from all senders of this snapshot, try others.
+- **Usage**:
+  - `OfferSnapshot` is called when bootstrapping a node using state sync. The application may
+    accept or reject snapshots as appropriate. Upon accepting, Tendermint will retrieve and
+    apply snapshot chunks via `ApplySnapshotChunk`. The application may also choose to reject a
+    snapshot in the chunk response, in which case it should be prepared to accept further
+    `OfferSnapshot` calls.
+  - Only `AppHash` can be trusted, as it has been verified by the light client. Any other data
+    can be spoofed by adversaries, so applications should employ additional verification schemes
+    to avoid denial-of-service attacks. The verified `AppHash` is automatically checked against
+    the restored application at the end of snapshot restoration.
+  - For more information, see the `Snapshot` data type or the [state sync section](apps.md#state-sync).
+
+### ApplySnapshotChunk
+
+- **Request**:
+  - `Index (uint32)`: The chunk index, starting from `0`. Tendermint applies chunks sequentially.
+  - `Chunk ([]byte)`: The binary chunk contents, as returned by `LoadSnapshotChunk`.
+  - `Sender (string)`: The P2P ID of the node who sent this chunk.
+- **Response**:
+  - `Result (Result)`: The result of applying this chunk.
+    - `accept`: The chunk was accepted.
+    - `abort`: Abort snapshot restoration, and don't try any other snapshots.
+    - `retry`: Reapply this chunk, combine with `RefetchChunks` and `RejectSenders` as appropriate.
+    - `retry_snapshot`: Restart this snapshot from `OfferSnapshot`, reusing chunks unless 
+      instructed otherwise.
+    - `reject_snapshot`: Reject this snapshot, try a different one.
+  - `RefetchChunks ([]uint32)`: Refetch and reapply the given chunks, regardless of `Result`. Only  
+    the listed chunks will be refetched, and reapplied in sequential order.
+  - `RejectSenders ([]string)`: Reject the given P2P senders, regardless of `Result`. Any chunks 
+    already applied will not be refetched unless explicitly requested, but queued chunks from these senders will be discarded, and new chunks or other snapshots rejected.
+- **Usage**:
+  - The application can choose to refetch chunks and/or ban P2P peers as appropriate. Tendermint
+    will not do this unless instructed by the application.
+  - The application may want to verify each chunk, e.g. by attaching chunk hashes in
+    `Snapshot.Metadata` and/or incrementally verifying contents against `AppHash`.
+  - When all chunks have been accepted, Tendermint will make an ABCI `Info` call to verify that
+    `LastBlockAppHash` and `LastBlockHeight` matches the expected values, and record the
+    `AppVersion` in the node state. It then switches to fast sync or consensus and joins the 
+    network.
+  - If Tendermint is unable to retrieve the next chunk after some time (e.g. because no suitable
+    peers are available), it will reject the snapshot and try a different one via `OfferSnapshot`.
+    The application should be prepared to reset and accept it or abort as appropriate.
+
+### 
+
 ## Data Types
 
 ### Header
@@ -540,3 +638,22 @@ Commit are included in the header of the next block.
   - `Type (string)`: Type of Merkle proof and how it's encoded.
   - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
   - `Data ([]byte)`: Encoded Merkle proof for the key.
+
+### Snapshot
+
+- **Fields**:
+  - `Height (uint64)`: The height at which the snapshot was taken (after commit).
+  - `Format (uint32)`: An application-specific snapshot format, allowing applications to version 
+    their snapshot data format and make backwards-incompatible changes. Tendermint does not 
+    interpret this.
+  - `Chunks (uint32)`: The number of chunks in the snapshot. Must be at least 1 (even if empty).
+  - `Hash (bytes)`: An arbitrary snapshot hash. Must be equal only for identical snapshots across 
+    nodes. Tendermint does not interpret the hash, it only compares them.
+  - `Metadata (bytes)`: Arbitrary application metadata, for example chunk hashes or other 
+    verification data.
+
+- **Usage**:
+  - Used for state sync snapshots, see [separate section](apps.md#state-sync) for details.
+  - A snapshot is considered identical across nodes only if _all_ fields are equal (including 
+    `Metadata`). Chunks may be retrieved from all nodes that have the same snapshot.
+  - When sent across the network, a snapshot message can be at most 4 MB.

@@ -85,7 +85,7 @@ it is the standard way to encode integers in Protobuf. It is also generally shor
 As noted above, this prefixing does not apply for GRPC.
 
 An ABCI server must also be able to support multiple connections, as
-Tendermint uses three connections.
+Tendermint uses four connections.
 
 ### Async vs Sync
 
