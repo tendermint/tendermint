@@ -293,19 +293,37 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	var pkt PacketPong
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
+	bz, err := encodeMsg(&tmp2p.PacketPing{})
+	require.NoError(t, err)
+	_, err = server.Write(bz)
+	require.NoError(t, err)
+
+	var pkt tmp2p.PacketPong
+
+	bz, err = readAll(server, maxPingPongPacketSize)
+	require.NoError(t, err)
+	err = proto.Unmarshal(bz, &pkt)
+	require.NoError(t, err)
+
+	bz, err = encodeMsg(&tmp2p.PacketPing{})
+	require.NoError(t, err)
+	_, err = server.Write(bz)
+	require.NoError(t, err)
+
+	bz, err = readAll(server, maxPingPongPacketSize)
+	require.NoError(t, err)
+	err = proto.Unmarshal(bz, &pkt)
+	require.NoError(t, err)
+
+	bz, err = encodeMsg(&tmp2p.PacketPing{})
+	require.NoError(t, err)
+	_, err = server.Write(bz)
+	require.NoError(t, err)
+
+	bz, err = readAll(server, maxPingPongPacketSize)
+	require.NoError(t, err)
+	err = proto.Unmarshal(bz, &pkt)
+	require.NoError(t, err)
 
 	assert.True(t, mconn.IsRunning())
 }
@@ -335,22 +353,32 @@ func TestMConnectionPingPongs(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-		require.Nil(t, err)
+		var pkt tmp2p.PacketPing
+		bz, err := readAll(server, maxPingPongPacketSize)
+		require.NoError(t, err)
+		err = proto.Unmarshal(bz, &pkt)
+		require.NoError(t, err)
+
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-		require.Nil(t, err)
+		bz2, err := encodeMsg(&tmp2p.PacketPong{})
+		require.NoError(t, err)
+		_, err = server.Write(bz2)
+		require.NoError(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-		require.Nil(t, err)
+		bz, err = readAll(server, maxPingPongPacketSize)
+		require.NoError(t, err)
+		err = proto.Unmarshal(bz, &pkt)
+		require.NoError(t, err)
+
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-		require.Nil(t, err)
+		bz2, err = encodeMsg(&tmp2p.PacketPong{})
+		require.NoError(t, err)
+		_, err = server.Write(bz2)
+		require.NoError(t, err)
 	}()
 	<-serverGotPing
 
@@ -446,11 +474,12 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	client := mconnClient.conn
 
 	// send badly encoded msgPacket
-	bz := cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{})
-	bz[4] += 0x01 // Invalid prefix bytes.
+	bz, err := encodeMsg(&tmp2p.PacketMsg{})
+	require.NoError(t, err)
+	bz[1] += 0x01 // change the bytes
 
 	// Write it.
-	_, err := client.Write(bz)
+	_, err = client.Write(bz)
 	assert.Nil(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
@@ -489,28 +518,38 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	// send msg thats just right
 	var err error
 	var buf = new(bytes.Buffer)
-	var packet = PacketMsg{
+	var packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
+		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
-	assert.Nil(t, err)
+	bz, err := encodeMsg(&packet)
+	require.NoError(t, err)
+
+	_, err = buf.Write(bz)
+	require.NoError(t, err)
+
 	_, err = client.Write(buf.Bytes())
-	assert.Nil(t, err)
+	require.NoError(t, err)
+
 	assert.True(t, expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
 	buf = new(bytes.Buffer)
-	packet = PacketMsg{
+	packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
+		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
-	assert.Nil(t, err)
+	bz, err = encodeMsg(&packet)
+	require.NoError(t, err)
+
+	_, err = buf.Write(bz)
+	require.NoError(t, err)
+
 	_, err = client.Write(buf.Bytes())
-	assert.NotNil(t, err)
+	require.NoError(t, err)
+
 	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 

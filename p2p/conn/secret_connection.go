@@ -303,31 +303,36 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 			bytes := gogotypes.BytesValue{
 				Value: locEphPub[:],
 			}
-			bz, err := proto.Marshal(&bytes)
-			if err != nil {
+
+			bz, err1 := proto.Marshal(&bytes)
+			if err1 != nil {
 				return nil, true, err
 			}
-			_, err1 := conn.Write(bz)
+			_, err1 = conn.Write(bz)
 			if err1 != nil {
 				return nil, true, err1 // abort
 			}
+
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
 
 			var (
-				_remEphPub [32]byte
+				_remEphPub *[32]byte
 				bytes      gogotypes.BytesValue
 			)
-			bz, err := readAll(conn, int64(1024*1024))
-			if err != nil {
+
+			bz, err2 := readAll(conn, int64(1024*1024))
+			if err2 != nil {
 				return nil, true, err // abort
 			}
-			err2 := proto.Unmarshal(bz, &bytes)
+
+			err2 = proto.Unmarshal(bz, &bytes)
 			copy(_remEphPub[:], bytes.Value)
 			if err2 != nil {
 				return nil, true, err2 // abort
 			}
+
 			return _remEphPub, false, nil
 		},
 	)
@@ -451,7 +456,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 			}
 
 			_recvMsg := authSigMessage{
-				Key:    pk,
+				Key: pk,
 				Sig: pba.Sig,
 			}
 			return _recvMsg, false, nil
