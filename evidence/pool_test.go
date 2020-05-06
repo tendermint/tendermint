@@ -47,7 +47,7 @@ func TestEvidencePool(t *testing.T) {
 		assert.Contains(t, err.Error(), "is too old; min height is 32 and evidence can not be older than")
 	}
 	assert.False(t, pool.IsPending(badEvidence))
-	assert.True(t, pool.IsExpired(badEvidence))
+	assert.True(t, pool.IsEvidenceExpired(badEvidence))
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -236,7 +236,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	// update should prune the polc
 	pool.Update(block, state)
 
-	fmt.Println(pool.IsExpired(newPolc))
+	fmt.Println(pool.IsExpired(newPolc.Height(), newPolc.Time()))
 
 	emptyPolc, err = pool.RetrievePOLC(1, 1)
 	assert.Error(t, err)

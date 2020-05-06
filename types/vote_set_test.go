@@ -599,7 +599,7 @@ func TestMakeCommit(t *testing.T) {
 func buildVoteSet(
 	height int64,
 	round, nonVotes, nonNilVotes, nilVotes int,
-	voteType SignedMsgType) (*VoteSet, []PrivValidator) {
+	voteType SignedMsgType) (*VoteSet, []PrivValidator, BlockID) {
 	valSize := nonVotes + nilVotes + nonNilVotes
 	voteSet, _, privValidators := randVoteSet(height, round, voteType, valSize, 1)
 	blockID := makeBlockIDRandom()
@@ -624,5 +624,5 @@ func buildVoteSet(
 		vote := withValidator(voteProto, addr, i)
 		_, _ = signAddVote(privValidators[i], withBlockHash(vote, nil), voteSet)
 	}
-	return voteSet, privValidators
+	return voteSet, privValidators, blockID
 }

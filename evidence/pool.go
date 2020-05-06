@@ -123,6 +123,9 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
+	// remove expired evidence - this should be done at every height to ensure we don't send expired evidence to peers
+	evpool.removeExpiredPendingEvidence()
+
 	// as it's not vital to remove expired POLCs, we only prune periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.pruneExpiredPOLC()
@@ -238,8 +241,7 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Tim
 
 	// remove committed evidence from the clist
 	if len(blockEvidenceMap) != 0 {
-		evidenceParams := evpool.State().ConsensusParams.Evidence
-		evpool.removeEvidenceFromList(height, lastBlockTime, evidenceParams, blockEvidenceMap)
+		evpool.removeEvidenceFromList(blockEvidenceMap)
 	}
 }
 
@@ -354,6 +356,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 		return
 	}
 	defer iter.Close()
+	blockEvidenceMap := make(map[string]struct{})
 	for ; iter.Valid(); iter.Next() {
 		evBytes := iter.Value()
 		var ev types.Evidence
@@ -362,32 +365,24 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
 		}
-		if evpool.IsExpired(ev.Height(), ev.Time()) {
-			err = evpool.evidenceStore.Delete(iter.Key())
-			if err != nil {
-				evpool.logger.Error("Unable to delete expired POLC", "err", err)
+		if !evpool.IsExpired(ev.Height(), ev.Time()) {
+			if len(blockEvidenceMap) != 0 {
+				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
+			return
 		}
+		evpool.removePendingEvidence(ev)
+		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
 }
 
 func (evpool *Pool) removeEvidenceFromList(
-	height int64,
-	lastBlockTime time.Time,
-	params types.EvidenceParams,
 	blockEvidenceMap map[string]struct{}) {
 
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
-		var (
-			ev           = e.Value.(types.Evidence)
-			ageDuration  = lastBlockTime.Sub(ev.Time())
-			ageNumBlocks = height - ev.Height()
-		)
-
-		// Remove the evidence if it's already in a block or if it's now too old.
-		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			(ageDuration > params.MaxAgeDuration && ageNumBlocks > params.MaxAgeNumBlocks) {
-			// remove from clist
+		// Remove from clist
+		ev := e.Value.(types.Evidence)
+		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok {
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()
 		}
@@ -410,11 +405,12 @@ func (evpool *Pool) pruneExpiredPOLC() {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
 		}
-		if evpool.IsExpired(proof.Height(), proof.Time()) {
-			err = evpool.evidenceStore.Delete(iter.Key())
-			if err != nil {
-				evpool.logger.Error("Unable to delete expired POLC", "err", err)
-			}
+		if !evpool.IsExpired(proof.Height(), proof.Time()) {
+			return
+		}
+		err = evpool.evidenceStore.Delete(iter.Key())
+		if err != nil {
+			evpool.logger.Error("Unable to delete expired POLC", "err", err)
 		}
 	}
 }
