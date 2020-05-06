@@ -925,9 +925,6 @@ type ProofOfLockChange struct {
 	PubKey crypto.PubKey `json:"pubkey"`
 }
 
-var _ Evidence = &ProofOfLockChange{}
-var _ Evidence = ProofOfLockChange{}
-
 // MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
 // that the node has itself not yet voted for in order to process the vote set into a proof of lock change
 func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (ProofOfLockChange, error) {
@@ -973,14 +970,6 @@ func (e ProofOfLockChange) Address() []byte {
 	return e.PubKey.Address()
 }
 
-func (e ProofOfLockChange) Bytes() []byte {
-	return cdcEncode(e)
-}
-
-func (e ProofOfLockChange) Hash() []byte {
-	return tmhash.Sum(cdcEncode(e))
-}
-
 func (e ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
@@ -996,17 +985,9 @@ func (e ProofOfLockChange) Verify(chainID string, pubKey crypto.PubKey) error {
 	return nil
 }
 
-func (e ProofOfLockChange) Equal(ev Evidence) bool {
-	switch e2 := ev.(type) {
-	case ProofOfLockChange:
-		return bytes.Equal(e.Address(), e2.Address()) && (e.Votes[0].Height == e2.Votes[0].Height) &&
-			(e.Votes[0].Round == e2.Votes[0].Round)
-	case *ProofOfLockChange:
-		return bytes.Equal(e.Address(), e2.Address()) && (e.Votes[0].Height == e2.Votes[0].Height) &&
-			(e.Votes[0].Round == e2.Votes[0].Round)
-	default:
-		return false
-	}
+func (e ProofOfLockChange) Equal(e2 ProofOfLockChange) bool {
+	return bytes.Equal(e.Address(), e2.Address()) && e.Height() == e2.Height() &&
+		e.Round() == e2.Round()
 }
 
 func (e ProofOfLockChange) ValidateBasic() error {

@@ -68,7 +68,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
 	evList := pool.PendingEvidence(-1)
 	for _, ev := range evList {
-		if pool.IsExpired(ev) {
+		if pool.IsEvidenceExpired(ev) {
 			pool.removePendingEvidence(ev)
 			continue
 		}
@@ -249,11 +249,15 @@ func (evpool *Pool) Has(evidence types.Evidence) bool {
 }
 
 // IsExpired checks whether evidence is past the maximum age where it can be used
-func (evpool *Pool) IsExpired(evidence types.Evidence) bool {
+func (evpool *Pool) IsEvidenceExpired(evidence types.Evidence) bool {
+	return evpool.IsExpired(evidence.Height(), evidence.Time())
+}
+
+func (evpool *Pool) IsExpired(height int64, time time.Time) bool {
 	var (
 		params       = evpool.State().ConsensusParams.Evidence
-		ageDuration  = evpool.State().LastBlockTime.Sub(evidence.Time())
-		ageNumBlocks = evpool.State().LastBlockHeight - evidence.Height()
+		ageDuration  = evpool.State().LastBlockTime.Sub(time)
+		ageNumBlocks = evpool.State().LastBlockHeight - height
 	)
 	return ageNumBlocks > params.MaxAgeNumBlocks &&
 		ageDuration > params.MaxAgeDuration
@@ -281,7 +285,7 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 
 func (evpool *Pool) RetrievePOLC(height int64, round int) (types.ProofOfLockChange, error) {
 	var polc types.ProofOfLockChange
-	key := keyPOLCFomHeightAndRound(height, round)
+	key := keyPOLCFromHeightAndRound(height, round)
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
 		return polc, err
@@ -343,6 +347,30 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
+func (evpool *Pool) removeExpiredPendingEvidence() {
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
+	if err != nil {
+		evpool.logger.Error("Unable to iterate over pending evidence", "err", err)
+		return
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		evBytes := iter.Value()
+		var ev types.Evidence
+		err := cdc.UnmarshalBinaryBare(evBytes, &ev)
+		if err != nil {
+			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
+			continue
+		}
+		if evpool.IsExpired(ev.Height(), ev.Time()) {
+			err = evpool.evidenceStore.Delete(iter.Key())
+			if err != nil {
+				evpool.logger.Error("Unable to delete expired POLC", "err", err)
+			}
+		}
+	}
+}
+
 func (evpool *Pool) removeEvidenceFromList(
 	height int64,
 	lastBlockTime time.Time,
@@ -382,7 +410,7 @@ func (evpool *Pool) pruneExpiredPOLC() {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
 		}
-		if evpool.IsExpired(proof) {
+		if evpool.IsExpired(proof.Height(), proof.Time()) {
 			err = evpool.evidenceStore.Delete(iter.Key())
 			if err != nil {
 				evpool.logger.Error("Unable to delete expired POLC", "err", err)
@@ -485,10 +513,10 @@ func keyPending(evidence types.Evidence) []byte {
 }
 
 func keyPOLC(polc types.ProofOfLockChange) []byte {
-	return keyPOLCFomHeightAndRound(polc.Height(), polc.Round())
+	return keyPOLCFromHeightAndRound(polc.Height(), polc.Round())
 }
 
-func keyPOLCFomHeightAndRound(height int64, round int) []byte {
+func keyPOLCFromHeightAndRound(height int64, round int) []byte {
 	return append([]byte{baseKeyPOLC}, []byte(fmt.Sprintf("%s/%s", bE(height), bE(int64(round))))...)
 }
 
