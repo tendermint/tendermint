@@ -907,9 +907,7 @@ func (valz ValidatorsByVotingPower) Less(i, j int) bool {
 }
 
 func (valz ValidatorsByVotingPower) Swap(i, j int) {
-	it := valz[i]
-	valz[i] = valz[j]
-	valz[j] = it
+	valz[i], valz[j] = valz[j], valz[i]  
 }
 
 // ValidatorsByAddress implements sort.Interface for []*Validator based on
