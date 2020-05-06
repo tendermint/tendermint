@@ -35,6 +35,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [store] \#4778 Transition store module to protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
 
 - Apps
 
