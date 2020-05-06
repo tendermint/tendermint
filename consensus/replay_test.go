@@ -26,7 +26,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -295,7 +294,7 @@ const (
 )
 
 var (
-	mempool = mock.Mempool{}
+	mempool = emptyMempool{}
 	evpool  = emptyEvidencePool{}
 
 	sim testSim

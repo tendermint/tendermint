@@ -372,7 +372,6 @@ func newStateWithConfigAndBlockStore(
 		mempool.EnableTxsAvailable()
 	}
 
-	// mock the evidence pool
 	evpool := emptyEvidencePool{}
 
 	// Make State
