@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -141,9 +142,11 @@ func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	// We prefix the byte length, so that unmarshaling
-	// can easily happen via a reader.
-	bz, err := cdc.MarshalBinaryLengthPrefixed(b)
+	pbb, err := b.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(pbb)
 	if err != nil {
 		panic(err)
 	}
@@ -225,22 +228,33 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 
 // FromProto sets a protobuf Block to the given pointer.
 // It returns an error if the block is invalid.
-func (b *Block) FromProto(bp *tmproto.Block) error {
+func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	if bp == nil {
-		return errors.New("nil block")
+		return nil, errors.New("nil block")
 	}
 
-	b.Header.FromProto(&bp.Header)
-	b.Data.FromProto(bp.Data)
+	b := new(Block)
+	h, err := HeaderFromProto(&bp.Header)
+	if err != nil {
+		return nil, err
+	}
+	b.Header = h
+	data, err := DataFromProto(&bp.Data)
+	if err != nil {
+		return nil, err
+	}
+	b.Data = data
 	b.Evidence.FromProto(&bp.Evidence)
 
 	if bp.LastCommit != nil {
-		lc := new(Commit) // on init of block commit is nil
-		lc.FromProto(bp.LastCommit)
+		lc, err := CommitFromProto(bp.LastCommit)
+		if err != nil {
+			return nil, err
+		}
 		b.LastCommit = lc
 	}
 
-	return b.ValidateBasic()
+	return b, b.ValidateBasic()
 }
 
 //-----------------------------------------------------------
@@ -515,14 +529,15 @@ func (h *Header) ToProto() *tmproto.Header {
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
-func (h *Header) FromProto(ph *tmproto.Header) error {
+func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	var blockID BlockID
 	if ph == nil {
-		return nil
+		return Header{}, errors.New("nil Header")
 	}
 
+	h := new(Header)
 	if err := blockID.FromProto(&ph.LastBlockID); err != nil {
-		return err
+		return Header{}, err
 	}
 
 	h.Version = ph.Version
@@ -541,7 +556,7 @@ func (h *Header) FromProto(ph *tmproto.Header) error {
 	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
 
-	return h.ValidateBasic()
+	return *h, h.ValidateBasic()
 }
 
 //-------------------------------------
@@ -885,24 +900,28 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Height = commit.Height
 	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
-	c.Hash = commit.hash
+	if commit.hash != nil {
+		c.Hash = commit.hash
+	}
 	c.BitArray = commit.bitArray.ToProto()
 	return c
 }
 
 // FromProto sets a protobuf Commit to the given pointer.
 // It returns an error if the commit is invalid.
-func (commit *Commit) FromProto(cp *tmproto.Commit) error {
+func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	if cp == nil {
-		return errors.New("nil Commit")
+		return nil, errors.New("nil Commit")
 	}
+
 	var (
+		commit   = new(Commit)
 		blockID  BlockID
 		bitArray *tmbits.BitArray
 	)
 
 	if err := blockID.FromProto(&cp.BlockID); err != nil {
-		return err
+		return nil, err
 	}
 
 	bitArray.FromProto(cp.BitArray)
@@ -910,7 +929,7 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 	sigs := make([]CommitSig, len(cp.Signatures))
 	for i := range cp.Signatures {
 		if err := sigs[i].FromProto(cp.Signatures[i]); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	commit.Signatures = sigs
@@ -921,7 +940,7 @@ func (commit *Commit) FromProto(cp *tmproto.Commit) error {
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
-	return commit.ValidateBasic()
+	return commit, commit.ValidateBasic()
 }
 
 //-----------------------------------------------------------------------------
@@ -1010,23 +1029,20 @@ func SignedHeaderFromProto(shp *tmproto.SignedHeader) (*SignedHeader, error) {
 
 	sh := new(SignedHeader)
 
-	var (
-		h Header
-		c Commit
-	)
-
 	if shp.Header != nil {
-		if err := h.FromProto(shp.Header); err != nil {
+		h, err := HeaderFromProto(shp.Header)
+		if err != nil {
 			return nil, err
 		}
 		sh.Header = &h
 	}
 
 	if shp.Commit != nil {
-		if err := c.FromProto(shp.Commit); err != nil {
+		c, err := CommitFromProto(shp.Commit)
+		if err != nil {
 			return nil, err
 		}
-		sh.Commit = &c
+		sh.Commit = c
 	}
 
 	return sh, nil
@@ -1089,13 +1105,20 @@ func (data *Data) ToProto() tmproto.Data {
 		tp.Txs = txBzs
 	}
 
-	tp.Hash = data.hash
+	if data.hash != nil {
+		tp.Hash = data.hash
+	}
 
 	return *tp
 }
 
 // FromProto sets a protobuf Data to the given pointer.
-func (data *Data) FromProto(dp tmproto.Data) error {
+func DataFromProto(dp *tmproto.Data) (Data, error) {
+	if dp == nil {
+		return Data{}, errors.New("nil data")
+	}
+	data := new(Data)
+
 	if len(dp.Txs) > 0 {
 		txBzs := make(Txs, len(dp.Txs))
 		for i := range dp.Txs {
@@ -1105,8 +1128,10 @@ func (data *Data) FromProto(dp tmproto.Data) error {
 	} else {
 		data.Txs = Txs{}
 	}
+
 	data.hash = dp.Hash
-	return nil
+
+	return *data, nil
 }
 
 //-----------------------------------------------------------------------------

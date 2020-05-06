@@ -629,8 +629,8 @@ func TestBlockProtoBuf(t *testing.T) {
 		} else {
 			require.Error(t, err, tc.msg)
 		}
-		block := new(Block)
-		err = block.FromProto(pb)
+
+		block, err := BlockFromProto(pb)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
@@ -658,11 +658,10 @@ func TestDataProtoBuf(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		protoData := tc.data1.ToProto()
-		d := new(Data)
-		err := d.FromProto(protoData)
+		d, err := DataFromProto(&protoData)
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
-			require.EqualValues(t, tc.data1, d, tc.msg)
+			require.EqualValues(t, tc.data1, &d, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
@@ -720,8 +719,7 @@ func TestCommitProtoBuf(t *testing.T) {
 		tc := tc
 		protoCommit := tc.c1.ToProto()
 
-		c := new(Commit)
-		err := c.FromProto(protoCommit)
+		c, err := CommitFromProto(protoCommit)
 
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
@@ -829,11 +827,10 @@ func TestHeaderProto(t *testing.T) {
 		tt := tt
 		t.Run(tt.msg, func(t *testing.T) {
 			pb := tt.h1.ToProto()
-			h := new(Header)
-			err := h.FromProto(pb)
+			h, err := HeaderFromProto(pb)
 			if tt.expPass {
 				require.NoError(t, err, tt.msg)
-				require.Equal(t, tt.h1, h, tt.msg)
+				require.Equal(t, tt.h1, &h, tt.msg)
 			} else {
 				require.Error(t, err, tt.msg)
 			}
