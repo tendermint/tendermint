@@ -250,10 +250,8 @@ func (r *BlockchainReactor) startSync(state *state.State) error {
 	go r.scheduler.start()
 	go r.processor.start()
 	if state != nil {
-		// We have to wait for the processor and scheduler to start, otherwise they will
-		// ignore these messages. Ideally start() should spawn a goroutine internally,
-		// or somehow signal that it's ready.
-		time.Sleep(100 * time.Millisecond)
+		<-r.scheduler.ready()
+		<-r.processor.ready()
 		r.scheduler.send(bcResetState{state: *state})
 		r.processor.send(bcResetState{state: *state})
 	}
