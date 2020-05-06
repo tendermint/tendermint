@@ -195,7 +195,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Errorf("unable to make commit from proto "))
+		panic(fmt.Errorf("unable to make commit from proto: %w", err))
 	}
 	return commit
 }
