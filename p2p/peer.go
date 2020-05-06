@@ -12,6 +12,8 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+//go:generate mockery -case underscore -name Peer
+
 const metricsTickerDuration = 10 * time.Second
 
 // Peer is an interface representing a peer connected on a reactor.

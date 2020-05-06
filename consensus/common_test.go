@@ -372,8 +372,7 @@ func newStateWithConfigAndBlockStore(
 		mempool.EnableTxsAvailable()
 	}
 
-	// mock the evidence pool
-	evpool := sm.MockEvidencePool{}
+	evpool := emptyEvidencePool{}
 
 	// Make State
 	stateDB := blockDB

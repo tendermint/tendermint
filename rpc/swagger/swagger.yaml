@@ -669,7 +669,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators.
+        Get Validators. Validators are sorted by voting power.
       responses:
         200:
           description: Commit results.

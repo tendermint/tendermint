@@ -6,7 +6,8 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: golangci-lint
-        uses: reviewdog/action-golangci-lint@v1
+        uses: reviewdog/action-golangci-lint@master
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
+          golangci_lint_flags: "--timeout 30m"

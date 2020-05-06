@@ -173,8 +173,8 @@ func makeBlockIDRandom() BlockID {
 		blockHash   = make([]byte, tmhash.Size)
 		partSetHash = make([]byte, tmhash.Size)
 	)
-	rand.Read(blockHash)   //nolint: gosec
-	rand.Read(partSetHash) //nolint: gosec
+	rand.Read(blockHash)
+	rand.Read(partSetHash)
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 

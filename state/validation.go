@@ -131,20 +131,30 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 	// Validate all evidence.
 	for _, ev := range block.Evidence.Evidence {
+		if evidencePool != nil {
+			if evidencePool.IsCommitted(ev) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
+			}
+			if evidencePool.IsPending(ev) {
+				continue
+			}
+		}
 		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
-		}
-		if evidencePool != nil && evidencePool.IsCommitted(ev) {
-			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 		}
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize ||
-		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
+	if len(block.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ProposerAddress size %d, got %d",
+			crypto.AddressSize,
+			len(block.ProposerAddress),
+		)
+	}
+	if !state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
 			block.ProposerAddress,
 		)
 	}
