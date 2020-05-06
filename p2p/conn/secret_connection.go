@@ -150,7 +150,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sign the challenge bytes for authentication.
-	locSignature := signChallenge(&challenge, locPrivKey)
+	locSignature, err := signChallenge(&challenge, locPrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
@@ -377,13 +380,12 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 	return
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature []byte) {
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
 	signature, err := locPrivKey.Sign(challenge[:])
-	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return
+	return signature, nil
 }
 
 type authSigMessage struct {

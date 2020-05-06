@@ -23,11 +23,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -296,8 +294,8 @@ const (
 )
 
 var (
-	mempool = mock.Mempool{}
-	evpool  = evmock.NewDefaultEvidencePool()
+	mempool = emptyMempool{}
+	evpool  = emptyEvidencePool{}
 
 	sim testSim
 )
