@@ -51,7 +51,7 @@ type EvidencePool interface {
 type MockEvidencePool struct{}
 
 func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
-func (me MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
-func (me MockEvidencePool) Update(*types.Block, State)             {}
-func (me MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }
-func (me MockEvidencePool) IsPending(types.Evidence) bool          { return false }
+func (me MockEvidencePool) AddEvidence(types.Evidence) error        { return nil }
+func (me MockEvidencePool) Update(*types.Block, State)              {}
+func (me MockEvidencePool) IsCommitted(types.Evidence) bool         { return false }
+func (me MockEvidencePool) IsPending(types.Evidence) bool           { return false }
