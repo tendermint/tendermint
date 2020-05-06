@@ -344,7 +344,7 @@ type bcRemovePeer struct {
 	reason interface{}
 }
 
-// signals event loop and routines to begin scheduling block events, optionally resetting state
+// resets the scheduler and processor state, e.g. following a switch from state syncing
 type bcResetState struct {
 	priorityHigh
 	state state.State
