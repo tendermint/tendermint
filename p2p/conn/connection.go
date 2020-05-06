@@ -583,13 +583,16 @@ FOR_LOOP:
 		*/
 
 		// Read packet type
-		var (
-			packet tmp2p.Packet
-			err    error
-		)
+		var packet tmp2p.Packet
 
 		bz, err := readAll(c.bufConnReader, int64(c._maxPacketMsgSize))
+		if err != nil {
+			break FOR_LOOP
+		}
 		err = proto.Unmarshal(bz, &packet)
+		if err != nil {
+			break FOR_LOOP
+		}
 
 		c.recvMonitor.Update(len(bz))
 

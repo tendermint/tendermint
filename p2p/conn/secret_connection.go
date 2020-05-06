@@ -300,7 +300,6 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-
 			lc := *locEphPub
 			bytes := gogotypes.BytesValue{
 				Value: lc[:],
@@ -319,10 +318,7 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
-
-			var (
-				bytes gogotypes.BytesValue
-			)
+			var bytes gogotypes.BytesValue
 
 			bz, err2 := readAll(conn, int64(1024*1024))
 			if err2 != nil {

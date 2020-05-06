@@ -134,7 +134,7 @@ func TestMConnectionReceive(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn2.Stop()
 
-	msg := []byte("Cyclops")
+	msg, _ := encodeMsg(&tmp2p.PacketPong{})
 	assert.True(t, mconn2.Send(0x01, msg))
 
 	select {
@@ -228,23 +228,20 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	_, err = server.Write(bz)
 	require.NoError(t, err)
 
-	bz2, err := encodeMsg(&tmp2p.PacketPong{})
+	bz, err = encodeMsg(&tmp2p.PacketPong{})
 	require.NoError(t, err)
-	_, err = server.Write(bz2)
+	_, err = server.Write(bz)
 	require.NoError(t, err)
 
-	bz3, err := encodeMsg(&tmp2p.PacketPong{})
+	bz, err = encodeMsg(&tmp2p.PacketPong{})
 	require.NoError(t, err)
-	_, err = server.Write(bz3)
-	require.Nil(t, err)
+	_, err = server.Write(bz)
+	require.NoError(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
-		var (
-			packet tmp2p.Packet
-			err    error
-		)
+		var packet tmp2p.Packet
 
 		pz, err := readAll(server, maxPingPongPacketSize)
 		require.NoError(t, err)
@@ -360,9 +357,9 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 		serverGotPing <- struct{}{}
 		// respond with pong
-		bz2, err := encodeMsg(&tmp2p.PacketPong{})
+		bz, err = encodeMsg(&tmp2p.PacketPong{})
 		require.NoError(t, err)
-		_, err = server.Write(bz2)
+		_, err = server.Write(bz)
 		require.NoError(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
@@ -374,9 +371,9 @@ func TestMConnectionPingPongs(t *testing.T) {
 		require.NoError(t, err)
 
 		// respond with pong
-		bz2, err = encodeMsg(&tmp2p.PacketPong{})
+		bz, err = encodeMsg(&tmp2p.PacketPong{})
 		require.NoError(t, err)
-		_, err = server.Write(bz2)
+		_, err = server.Write(bz)
 		require.NoError(t, err)
 	}()
 	<-serverGotPing
