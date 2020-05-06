@@ -25,10 +25,10 @@ type paramsChangeTestCase struct {
 // always returns true if asked if any evidence was already committed.
 type mockEvPoolAlwaysCommitted struct{}
 
-func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
-func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)          {}
-func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+func (m mockEvPoolAlwaysCommitted) PendingEvidence(uint32) []types.Evidence { return nil }
+func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error        { return nil }
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)           {}
+func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool         { return true }
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
