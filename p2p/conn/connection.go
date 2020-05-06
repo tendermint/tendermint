@@ -15,7 +15,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
-	amino "github.com/tendermint/go-amino"
 
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
@@ -590,7 +589,8 @@ FOR_LOOP:
 		)
 
 		bz, err := readAll(c.bufConnReader, int64(c._maxPacketMsgSize))
-		proto.Unmarshal(bz, &packet)
+		err = proto.Unmarshal(bz, &packet)
+
 		c.recvMonitor.Update(len(bz))
 
 		if err != nil {
@@ -933,41 +933,11 @@ func encodeMsg(pb proto.Message) ([]byte, error) {
 
 func readAll(r io.Reader, maxSize int64) ([]byte, error) {
 	rl := io.LimitReader(r, maxSize)
+
 	bz, err := ioutil.ReadAll(rl)
 	if err != nil {
 		return nil, err
 	}
 
 	return bz, nil
-}
-
-type Packet interface {
-	AssertIsPacket()
-}
-
-func RegisterPacket(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Packet)(nil), nil)
-	cdc.RegisterConcrete(PacketPing{}, "tendermint/p2p/PacketPing", nil)
-	cdc.RegisterConcrete(PacketPong{}, "tendermint/p2p/PacketPong", nil)
-	cdc.RegisterConcrete(PacketMsg{}, "tendermint/p2p/PacketMsg", nil)
-}
-
-func (PacketPing) AssertIsPacket() {}
-func (PacketPong) AssertIsPacket() {}
-func (PacketMsg) AssertIsPacket()  {}
-
-type PacketPing struct {
-}
-
-type PacketPong struct {
-}
-
-type PacketMsg struct {
-	ChannelID byte
-	EOF       byte // 1 means message ends here.
-	Bytes     []byte
-}
-
-func (mp PacketMsg) String() string {
-	return fmt.Sprintf("PacketMsg{%X:%X T:%X}", mp.ChannelID, mp.Bytes, mp.EOF)
 }

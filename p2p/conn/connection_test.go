@@ -2,8 +2,6 @@ package conn
 
 import (
 	"bytes"
-	"io"
-	"io/ioutil"
 	"net"
 	"testing"
 	"time"
@@ -189,7 +187,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 		bz, err := readAll(server, maxPingPongPacketSize)
 		require.NoError(t, err)
-		proto.Unmarshal(bz, &pkt)
+		err = proto.Unmarshal(bz, &pkt)
 		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
@@ -228,11 +226,13 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	bz, err := encodeMsg(&tmp2p.PacketPong{})
 	require.NoError(t, err)
 	_, err = server.Write(bz)
-	require.Nil(t, err)
+	require.NoError(t, err)
+
 	bz2, err := encodeMsg(&tmp2p.PacketPong{})
 	require.NoError(t, err)
 	_, err = server.Write(bz2)
-	require.Nil(t, err)
+	require.NoError(t, err)
+
 	bz3, err := encodeMsg(&tmp2p.PacketPong{})
 	require.NoError(t, err)
 	_, err = server.Write(bz3)
@@ -246,8 +246,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 			err    error
 		)
 
-		rl := io.LimitReader(server, maxPingPongPacketSize)
-		pz, err := ioutil.ReadAll(rl)
+		pz, err := readAll(server, maxPingPongPacketSize)
 		require.NoError(t, err)
 
 		err = proto.Unmarshal(pz, &packet)
@@ -258,7 +257,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 		bz, err = encodeMsg(&tmp2p.PacketPong{})
 		require.NoError(t, err)
 		_, err = server.Write(bz)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	<-serverGotPing
 
