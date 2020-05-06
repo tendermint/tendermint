@@ -31,7 +31,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [script] \#4733 Transition Wal2json & json2Wal scripts to work with protobuf
   - [state] \#4679 `TxResult` is a protobuf type defined in `abci` types directory
   - [store] \#4778 Transition store module to protobuf encoding
-    - `BlockStateStoreJSON` is now `BlockStateStore` and is encoded as binary in the database
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [types] \#4382 `BlockIdFlag` and `SignedMsgType` has moved to a protobuf enum types
   - [types] \#4382 `PartSetHeader` has become a protobuf type, `Total` has been changed from a `int` to a `int32`
   - [types] \#4382 `BlockID` has become a protobuf type
