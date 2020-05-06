@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,38 +67,34 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }
 
-func TestLoadBlockStoreStateJSON(t *testing.T) {
-	db := db.NewMemDB()
-	bsj := &tmstore.BlockStoreStateJSON{Base: 100, Height: 1000}
-	SaveBlockStoreStateJSON(bsj, db)
+func TestLoadBlockStoreState(t *testing.T) {
 
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, *bsj, retrBSJ, "expected the retrieved DBs to match")
-}
+	type blockStoreTest struct {
+		testName string
+		bss      *tmstore.BlockStoreState
+		want     tmstore.BlockStoreState
+	}
 
-func TestLoadBlockStoreStateJSON_Empty(t *testing.T) {
-	db := db.NewMemDB()
+	testCases := []blockStoreTest{
+		{"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
+			tmstore.BlockStoreState{Base: 100, Height: 1000}},
+		{"empty", &tmstore.BlockStoreState{}, tmstore.BlockStoreState{}},
+		{"no base", &tmstore.BlockStoreState{Height: 1000}, tmstore.BlockStoreState{Base: 1, Height: 1000}},
+	}
 
-	bsj := &tmstore.BlockStoreStateJSON{}
-	SaveBlockStoreStateJSON(bsj, db)
-
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, tmstore.BlockStoreStateJSON{}, retrBSJ, "expected the retrieved DBs to match")
-}
-
-func TestLoadBlockStoreStateJSON_NoBase(t *testing.T) {
-	db := db.NewMemDB()
-
-	bsj := &tmstore.BlockStoreStateJSON{Height: 1000}
-	SaveBlockStoreStateJSON(bsj, db)
-
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, tmstore.BlockStoreStateJSON{Base: 1, Height: 1000}, retrBSJ, "expected the retrieved DBs to match")
+	for _, tc := range testCases {
+		db := db.NewMemDB()
+		SaveBlockStoreState(tc.bss, db)
+		retrBSJ := LoadBlockStoreState(db)
+		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
+	}
 }
 
 func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
-	err := db.Set(blockStoreKey, []byte(`{"base": "100", "height": "10000"}`))
+	bss := tmstore.BlockStoreState{Base: 100, Height: 10000}
+	bz, _ := proto.Marshal(&bss)
+	err := db.Set(blockStoreKey, bz)
 	require.NoError(t, err)
 	bs := NewBlockStore(db)
 	require.Equal(t, int64(100), bs.Base(), "failed to properly parse blockstore")
@@ -434,10 +431,10 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 301, bs.Size())
-	assert.EqualValues(t, BlockStoreStateJSON{
+	assert.EqualValues(t, tmstore.BlockStoreState{
 		Base:   1200,
 		Height: 1500,
-	}, LoadBlockStoreStateJSON(db))
+	}, LoadBlockStoreState(db))
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))

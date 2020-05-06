@@ -3,15 +3,12 @@ package store
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/libs/encode"
 	tmstore "github.com/tendermint/tendermint/proto/store"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
@@ -45,10 +42,10 @@ type BlockStore struct {
 // NewBlockStore returns a new BlockStore with the given DB,
 // initialized to the last height that was committed to the DB.
 func NewBlockStore(db dbm.DB) *BlockStore {
-	bsjson := LoadBlockStoreStateJSON(db)
+	bs := LoadBlockStoreState(db)
 	return &BlockStore{
-		base:   bsjson.Base,
-		height: bsjson.Height,
+		base:   bs.Base,
+		height: bs.Height,
 		db:     db,
 	}
 }
@@ -351,7 +348,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	bs.mtx.Unlock()
 
-	// Save new BlockStoreStateJSON descriptor
+	// Save new BlockStoreState descriptor
 	bs.saveState()
 
 	// Flush
@@ -369,12 +366,12 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 
 func (bs *BlockStore) saveState() {
 	bs.mtx.RLock()
-	bsJSON := tmstore.BlockStoreStateJSON{
+	bss := tmstore.BlockStoreState{
 		Base:   bs.base,
 		Height: bs.height,
 	}
 	bs.mtx.RUnlock()
-	SaveBlockStoreStateJSON(&bsJSON, bs.db)
+	SaveBlockStoreState(&bss, bs.db)
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
@@ -413,36 +410,32 @@ func calcBlockHashKey(hash []byte) []byte {
 
 var blockStoreKey = []byte("blockStore")
 
-// BlockStoreStateJSON is the block store state JSON structure.
-type BlockStoreStateJSON struct {
-	Base   int64 `json:"base"`
-	Height int64 `json:"height"`
-}
-
-// Save persists the blockStore state to the database as JSON.
-func SaveBlockStoreStateJSON(bsj *tmstore.BlockStoreStateJSON, db dbm.DB) {
-	bytes, err := encode.MarshalJSON(bsj)
+// SaveBlockStoreState persists the blockStore state to the database.
+func SaveBlockStoreState(bsj *tmstore.BlockStoreState, db dbm.DB) {
+	bytes, err := proto.Marshal(bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not marshal state bytes: %v", err))
 	}
 	db.SetSync(blockStoreKey, bytes)
 }
 
-// LoadBlockStoreStateJSON returns the BlockStoreStateJSON as loaded from disk.
-// If no BlockStoreStateJSON was previously persisted, it returns the zero value.
-func LoadBlockStoreStateJSON(db dbm.DB) tmstore.BlockStoreStateJSON {
+// LoadBlockStoreState returns the BlockStoreState as loaded from disk.
+// If no BlockStoreState was previously persisted, it returns the zero value.
+func LoadBlockStoreState(db dbm.DB) tmstore.BlockStoreState {
 	bytes, err := db.Get(blockStoreKey)
 	if err != nil {
 		panic(err)
 	}
+
 	if len(bytes) == 0 {
-		return tmstore.BlockStoreStateJSON{
+		return tmstore.BlockStoreState{
 			Base:   0,
 			Height: 0,
 		}
 	}
-	bsj := tmstore.BlockStoreStateJSON{}
-	if err := jsonpb.Unmarshal(strings.NewReader(string(bytes)), &bsj); err != nil {
+
+	var bsj tmstore.BlockStoreState
+	if err := proto.Unmarshal(bytes, &bsj); err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
 	}
 
@@ -453,7 +446,7 @@ func LoadBlockStoreStateJSON(db dbm.DB) tmstore.BlockStoreStateJSON {
 	return bsj
 }
 
-//mustEncode eproto encodes a proto.message and panics if fails
+//mustEncode proto encodes a proto.message and panics if fails
 func mustEncode(pb proto.Message) []byte {
 	bz, err := proto.Marshal(pb)
 	if err != nil {
