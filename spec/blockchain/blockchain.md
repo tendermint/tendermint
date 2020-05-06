@@ -343,7 +343,7 @@ block.ValidatorsHash == MerkleRoot(state.Validators)
 
 MerkleRoot of the current validator set that is committing the block.
 This can be used to validate the `LastCommit` included in the next block.
-Note the validators are sorted by their address before computing the MerkleRoot.
+Note the validators are sorted by their voting power before computing the MerkleRoot.
 
 ### NextValidatorsHash
 
@@ -354,7 +354,7 @@ block.NextValidatorsHash == MerkleRoot(state.NextValidators)
 MerkleRoot of the next validator set that will be the validator set that commits the next block.
 This is included so that the current validator set gets a chance to sign the
 next validator sets Merkle root.
-Note the validators are sorted by their address before computing the MerkleRoot.
+Note the validators are sorted by their voting power before computing the MerkleRoot.
 
 ### ConsensusHash
 

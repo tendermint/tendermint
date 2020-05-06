@@ -216,17 +216,17 @@ Commit are included in the header of the next block.
   - `Time (google.protobuf.Timestamp)`: Genesis time.
   - `ChainID (string)`: ID of the blockchain.
   - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
-  - `Validators ([]ValidatorUpdate)`: Initial genesis validators.
+  - `Validators ([]ValidatorUpdate)`: Initial genesis validators, sorted by voting power.
   - `AppStateBytes ([]byte)`: Serialized initial application state. Amino-encoded JSON bytes.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
-    consensus-critical parameters.
-  - `Validators ([]ValidatorUpdate)`: Initial validator set (if non empty).
+    consensus-critical parameters (optional).
+  - `Validators ([]ValidatorUpdate)`: Initial validator set (optional).
 - **Usage**:
   - Called once upon genesis.
   - If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
-  - If ResponseInitChain.Validators is not empty, the initial validator set will be the
-    ResponseInitChain.Validators (regardless of what is in RequestInitChain.Validators).
+  - If ResponseInitChain.Validators is not empty, it will be the initial
+    validator set (regardless of what is in RequestInitChain.Validators).
   - This allows the app to decide if it wants to accept the initial validator
     set proposed by tendermint (ie. in the genesis file), or if it wants to use
     a different one (perhaps computed based on some application specific
