@@ -110,7 +110,8 @@ func (state State) Equals(state2 State) bool {
 	return bytes.Equal(sbz, s2bz)
 }
 
-// Bytes serializes the State using go-amino.
+// Bytes serializes the State using protobuf.
+// It panics if either casting to protobuf or serialization fails.
 func (state State) Bytes() []byte {
 	sm, err := state.ToProto()
 	if err != nil {

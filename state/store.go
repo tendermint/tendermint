@@ -140,10 +140,6 @@ func BootstrapState(db dbm.DB, state State) error {
 
 //------------------------------------------------------------------------
 
-// ABCIResponses retains the responses
-// of the various ABCI calls during block processing.
-// It is persisted to disk for each height before calling Commit.
-
 // PruneStates deletes states between the given heights (including from, excluding to). It is not
 // guaranteed to delete all states, since the last checkpointed state and states being pointed to by
 // e.g. `LastHeightChanged` must remain. The state at to must also exist.
@@ -296,7 +292,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
 	// can't preallocate as values will be set to nil instead of empty
 	var dtxs []*abci.ResponseDeliverTx
-	//strip nil values, currently gogoproto panics on array of nil values....
+	//strip nil values, currently gogoproto panics on an array of nil values.
 	for _, tx := range abciResponses.DeliverTxs {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
