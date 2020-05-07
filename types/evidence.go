@@ -1022,14 +1022,25 @@ func (e ProofOfLockChange) ValidateBasic() error {
 			return fmt.Errorf("invalid vote type for vote#%d: %d instead of %d", idx, vote.Type, voteType)
 		}
 
-		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
-			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X",
-				vote.ValidatorAddress.Bytes())
+		if !vote.BlockID.Equals(e.BlockID()) {
+			return fmt.Errorf("vote must be for the same block id: %v instead of %v", e.BlockID(), vote.BlockID)
 		}
 
 		if vote.BlockID.IsZero() {
 			return fmt.Errorf("vote did not sign a block (%X)", vote.String())
 		}
+
+		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
+			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X all votes %v",
+				vote.ValidatorAddress.Bytes(), e.Votes)
+		}
+
+		for i := idx + 1; i < len(e.Votes); i++ {
+			if bytes.Equal(vote.ValidatorAddress.Bytes(), e.Votes[i].ValidatorAddress.Bytes()) {
+				return fmt.Errorf("duplicate votes: %v", vote)
+			}
+		}
+
 	}
 	return nil
 }
