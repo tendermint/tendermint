@@ -641,8 +641,16 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
-	if err := verifyCommitBasic(commit, height, blockID); err != nil {
+
+	if err := commit.ValidateBasic(); err != nil {
 		return err
+	}
+	if height != commit.Height {
+		return NewErrInvalidCommitHeight(height, commit.Height)
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
+			blockID, commit.BlockID)
 	}
 
 	talliedVotingPower := int64(0)
@@ -756,24 +764,15 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	return nil
 }
 
-// VerifyCommitTrusting verifies that trustLevel ([1/3, 1]) of the validator
-// set signed this commit.
+// VerifyCommitTrusting verifies that trustLevel of the validator set signed
+// this commit.
 //
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
-//
-// Panics if trustLevel is invalid.
-func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
-	height int64, commit *Commit, trustLevel tmmath.Fraction) error {
-
+func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, commit *Commit, trustLevel tmmath.Fraction) error {
 	// sanity check
-	if trustLevel.Numerator*3 < trustLevel.Denominator || // < 1/3
-		trustLevel.Numerator > trustLevel.Denominator { // > 1
-		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
-	}
-
-	if err := verifyCommitBasic(commit, height, blockID); err != nil {
-		return err
+	if trustLevel.Denominator == 0 {
+		return errors.New("trustLevel has zero Denominator")
 	}
 
 	var (
@@ -812,12 +811,12 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 			}
 
 			// Good!
-			if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
+			if commitSig.ForBlock() {
 				talliedVotingPower += val.VotingPower
 			}
 			// else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// signatures (~votes for nil) to measure validator availability.
+			// It's OK. We include stray signatures (~votes for nil) to measure
+			// validator availability.
 			// }
 
 			if talliedVotingPower > votingPowerNeeded {
@@ -827,20 +826,6 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	}
 
 	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
-}
-
-func verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
-	if err := commit.ValidateBasic(); err != nil {
-		return err
-	}
-	if height != commit.Height {
-		return NewErrInvalidCommitHeight(height, commit.Height)
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
-			blockID, commit.BlockID)
-	}
-	return nil
 }
 
 //-----------------
