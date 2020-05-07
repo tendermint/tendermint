@@ -422,19 +422,23 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
 	sort.Sort(ValidatorStubsByPower(newVss))
-	selfIndex := 0
-	for i, vs := range newVss {
-		vsPubKey, err := vs.GetPubKey()
-		require.NoError(t, err)
 
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
+	selfIndexFn := func() int {
+		for i, vs := range newVss {
+			vsPubKey, err := vs.GetPubKey()
+			require.NoError(t, err)
 
-		if vsPubKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
+			css0PubKey, err := css[0].privValidator.GetPubKey()
+			require.NoError(t, err)
+
+			if vsPubKey.Equals(css0PubKey) {
+				return i
+			}
 		}
+		return -1
 	}
+
+	selfIndex := selfIndexFn()
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
@@ -480,6 +484,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		}
 	}
 	sort.Sort(ValidatorStubsByPower(newVss))
+	selfIndex = selfIndexFn()
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
@@ -505,18 +510,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	copy(newVss, vss[:nVals+3])
 	sort.Sort(ValidatorStubsByPower(newVss))
 
-	for i, vs := range newVss {
-		vsKeyKey, err := vs.GetPubKey()
-		require.NoError(t, err)
-
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
-
-		if vsKeyKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
-		}
-	}
+	selfIndex = selfIndexFn()
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
