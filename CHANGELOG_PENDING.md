@@ -23,6 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
   - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
+  - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
 
 - Blockchain Protocol
 

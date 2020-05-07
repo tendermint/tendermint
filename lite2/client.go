@@ -954,8 +954,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			}
 
 			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
-					altH.Height, altH.Commit, c.trustLevel); err != nil {
+				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
 					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
 					witnessesToRemove = append(witnessesToRemove, i)
 					continue

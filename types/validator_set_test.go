@@ -1357,7 +1357,7 @@ func TestVerifyCommitTrusting(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err = tc.valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+		err = tc.valSet.VerifyCommitTrusting("test_chain_id", commit,
 			tmmath.Fraction{Numerator: 1, Denominator: 3})
 		if tc.err {
 			assert.Error(t, err)
@@ -1375,7 +1375,7 @@ func TestVerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+	err = valSet.VerifyCommitTrusting("test_chain_id", commit,
 		tmmath.Fraction{Numerator: 25, Denominator: 55})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "int64 overflow")
