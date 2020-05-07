@@ -423,22 +423,22 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	copy(newVss, vss[:nVals+1])
 	sort.Sort(ValidatorStubsByPower(newVss))
 
-	selfIndexFn := func() int {
+	valIndexFn := func(cssIdx int) int {
 		for i, vs := range newVss {
 			vsPubKey, err := vs.GetPubKey()
 			require.NoError(t, err)
 
-			css0PubKey, err := css[0].privValidator.GetPubKey()
+			cssPubKey, err := css[cssIdx].privValidator.GetPubKey()
 			require.NoError(t, err)
 
-			if vsPubKey.Equals(css0PubKey) {
+			if vsPubKey.Equals(cssPubKey) {
 				return i
 			}
 		}
-		return -1
+		panic(fmt.Sprintf("validator css[%d] not found in newVss", cssIdx))
 	}
 
-	selfIndex := selfIndexFn()
+	selfIndex := valIndexFn(0)
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
@@ -471,20 +471,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	height++
 	incrementHeight(vss...)
 	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
-	for i, vs := range newVss {
-		vsPubKey, err := vs.GetPubKey()
-		require.NoError(t, err)
-
-		css0PubKey, err := css[nVals].privValidator.GetPubKey()
-		require.NoError(t, err)
-
-		if vsPubKey.Equals(css0PubKey) {
-			newVss[i].VotingPower = 25
-			break
-		}
-	}
+	newVssIdx := valIndexFn(nVals)
+	newVss[newVssIdx].VotingPower = 25
 	sort.Sort(ValidatorStubsByPower(newVss))
-	selfIndex = selfIndexFn()
+	selfIndex = valIndexFn(0)
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
@@ -510,7 +500,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	copy(newVss, vss[:nVals+3])
 	sort.Sort(ValidatorStubsByPower(newVss))
 
-	selfIndex = selfIndexFn()
+	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
