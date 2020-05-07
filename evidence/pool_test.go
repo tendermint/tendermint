@@ -152,15 +152,19 @@ func TestAddEvidence(t *testing.T) {
 func TestEvidencePoolUpdate(t *testing.T) {
 	var (
 		valAddr      = []byte("validator_address")
-		height       = int64(1)
+		height       = int64(21)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		state        = sm.LoadState(stateDB)
 		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+	expiredEvidence := types.NewMockEvidence(1, evidenceTime, valAddr)
+	err = pool.AddEvidence(expiredEvidence)
 	require.NoError(t, err)
 
 	// create new block (no need to save it to blockStore)
@@ -176,6 +180,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	assert.True(t, pool.IsCommitted(evidence))
 	// b) Update updates valToLastHeight map
 	assert.Equal(t, height+1, pool.ValidatorLastHeight(valAddr))
+	// c) Expired ecvidence should be removed
+	assert.False(t, pool.IsPending(expiredEvidence))
 }
 
 func TestEvidencePoolNewPool(t *testing.T) {

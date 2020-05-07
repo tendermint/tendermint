@@ -347,6 +347,7 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	if err := evpool.evidenceStore.Delete(key); err != nil {
 		evpool.logger.Error("Unable to delete pending evidence", "err", err)
 	}
+	evpool.logger.Info("Deleted pending evidence", "evidence", evidence)
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
@@ -365,7 +366,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
 		}
-		if !evpool.IsExpired(ev.Height(), ev.Time()) {
+		if !evpool.IsExpired(ev.Height()-1, ev.Time()) {
 			if len(blockEvidenceMap) != 0 {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
@@ -405,13 +406,14 @@ func (evpool *Pool) pruneExpiredPOLC() {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
 		}
-		if !evpool.IsExpired(proof.Height(), proof.Time()) {
+		if !evpool.IsExpired(proof.Height()-1, proof.Time()) {
 			return
 		}
 		err = evpool.evidenceStore.Delete(iter.Key())
 		if err != nil {
 			evpool.logger.Error("Unable to delete expired POLC", "err", err)
 		}
+		evpool.logger.Info("Deleted expired POLC", "polc", proof)
 	}
 }
 
