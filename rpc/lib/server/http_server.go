@@ -153,7 +153,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			// should panic for whatever reason then the Go HTTP server will handle it and
 			// terminate the connection - panicing is the de-facto and only way to get the Go HTTP
 			// server to terminate the request and close the connection/stream:
-			// https://github.com/golang/go/issues/16542#issuecomment-236288246
+			// https://github.com/golang/go/issues/17790#issuecomment-258481416
 			if e := recover(); e != nil {
 				fmt.Fprintf(os.Stderr, "Panic during RPC panic recovery: %v\n%v\n", e, string(debug.Stack()))
 				w.WriteHeader(500)
