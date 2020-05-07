@@ -2,10 +2,14 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	protoversion "github.com/tendermint/tendermint/proto/version"
 	"github.com/tendermint/tendermint/types"
@@ -20,20 +24,11 @@ var (
 
 //-----------------------------------------------------------------------------
 
-// Version is for versioning the State.
-// It holds the Block and App version needed for making blocks,
-// and the software version to support upgrades to the format of
-// the State as stored on disk.
-type Version struct {
-	Consensus protoversion.Consensus
-	Software  string
-}
-
 // InitStateVersion sets the Consensus.Block and Software versions,
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var InitStateVersion = Version{
+var InitStateVersion = tmstate.Version{
 	Consensus: protoversion.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
@@ -51,7 +46,7 @@ var InitStateVersion = Version{
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-	Version Version
+	Version tmstate.Version
 
 	// immutable
 	ChainID string
@@ -86,6 +81,7 @@ type State struct {
 
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
+
 	return State{
 		Version: state.Version,
 		ChainID: state.ChainID,
@@ -116,12 +112,105 @@ func (state State) Equals(state2 State) bool {
 
 // Bytes serializes the State using go-amino.
 func (state State) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(state)
+	sm, err := state.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(sm)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
+}
+
+func (state *State) ToProto() (*tmstate.State, error) {
+	if state == nil {
+		return nil, errors.New("state is nil")
+	}
+
+	sm := new(tmstate.State)
+
+	sm.Version = state.Version
+	sm.ChainID = state.ChainID
+	sm.LastBlockHeight = state.LastBlockHeight
+	bip := state.LastBlockID.ToProto()
+	sm.LastBlockID = bip
+	sm.LastBlockTime = state.LastBlockTime
+	vals, err := state.Validators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	sm.Validators = vals
+
+	nVals, err := state.NextValidators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	sm.NextValidators = nVals
+
+	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
+		lVals, err := state.LastValidators.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		sm.LastValidators = lVals
+	}
+
+	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
+	sm.ConsensusParams = state.ConsensusParams
+	sm.LastHeightConsensusParamsChanged = state.LastHeightConsensusParamsChanged
+	sm.LastResultsHash = state.LastResultsHash
+	sm.AppHash = state.AppHash
+
+	return sm, nil
+}
+
+func StateFromProto(pb *tmstate.State) (*State, error) {
+	if pb == nil {
+		return nil, errors.New("nil State")
+	}
+
+	state := new(State)
+
+	state.Version = pb.Version
+	state.ChainID = pb.ChainID
+	state.LastBlockHeight = pb.LastBlockHeight
+	state.LastBlockTime = pb.LastBlockTime
+
+	vals, err := types.ValidatorSetFromProto(pb.Validators)
+	if err != nil {
+		return nil, err
+	}
+	state.Validators = vals
+
+	nVals, err := types.ValidatorSetFromProto(pb.NextValidators)
+	if err != nil {
+		return nil, err
+	}
+	state.NextValidators = nVals
+
+	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
+		lVals, err := types.ValidatorSetFromProto(pb.LastValidators)
+		if err != nil {
+			return nil, err
+		}
+		state.LastValidators = lVals
+	} else {
+		state.LastValidators = types.NewValidatorSet(nil)
+	}
+
+	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
+	state.ConsensusParams = pb.ConsensusParams
+	state.LastHeightConsensusParamsChanged = pb.LastHeightConsensusParamsChanged
+	state.LastResultsHash = pb.LastResultsHash
+	state.AppHash = pb.AppHash
+
+	return state, nil
 }
 
 //------------------------------------------------------------------------
