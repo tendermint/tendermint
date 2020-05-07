@@ -642,8 +642,13 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
 
-	if err := commit.ValidateBasic(); err != nil {
-		return err
+	// Validate Height and BlockID.
+	if height != commit.Height {
+		return NewErrInvalidCommitHeight(height, commit.Height)
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
+			blockID, commit.BlockID)
 	}
 	if height != commit.Height {
 		return NewErrInvalidCommitHeight(height, commit.Height)
@@ -670,12 +675,12 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 		// Good!
-		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
+		if commitSig.ForBlock() {
 			talliedVotingPower += val.VotingPower
 		}
 		// else {
-		// It's OK that the BlockID doesn't match.  We include stray
-		// signatures (~votes for nil) to measure validator availability.
+		// It's OK. We include stray signatures (~votes for nil) to measure
+		// validator availability.
 		// }
 
 		// return as soon as +2/3 of the signatures are verified

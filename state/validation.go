@@ -86,12 +86,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return errors.New("block at height 1 can't have LastCommit signatures")
 		}
 	} else {
-		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
-			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
-		}
-		err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
-		if err != nil {
+		// LastCommit.Signatures length is checked in VerifyCommit.
+		if err := state.LastValidators.VerifyCommit(
+			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
