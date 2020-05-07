@@ -1026,10 +1026,6 @@ func (e ProofOfLockChange) ValidateBasic() error {
 			return fmt.Errorf("vote must be for the same block id: %v instead of %v", e.BlockID(), vote.BlockID)
 		}
 
-		if vote.BlockID.IsZero() {
-			return fmt.Errorf("vote did not sign a block (%X)", vote.String())
-		}
-
 		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
 			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X all votes %v",
 				vote.ValidatorAddress.Bytes(), e.Votes)

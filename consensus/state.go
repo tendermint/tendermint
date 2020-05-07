@@ -1234,11 +1234,6 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
 			panic(fmt.Sprintf("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
 		}
-		// If this is not the first round and we have already locked onto something then we are
-		//changing the locked block so save POLC prevotes in evidence db in case of future justification
-		if cs.LockedRound != -1 {
-			cs.savePOLC(round, blockID)
-		}
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
@@ -1251,6 +1246,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
+	logger.Info("enterPrecommit: +2/3 prevotes for a block we don't have. Voting nil", "blockID", blockID)
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
@@ -1259,9 +1255,6 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
-	// We're not precommitting to a new block just yet but we may precommit another block in the future
-	// so save POLC prevotes in evidence db in case of future justification
-	cs.savePOLC(round, blockID)
 	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 }
 
@@ -1862,6 +1855,9 @@ func (cs *State) addVote(
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
+				// If this is not the first round and we have already locked onto something then we are
+				//changing the locked block so save POLC prevotes in evidence db in case of future justification
+				cs.savePOLC(vote.Round, blockID)
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
 

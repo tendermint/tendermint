@@ -725,7 +725,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	// everything done from perspective of cs1
 
 	/*
-		Round1 (cs1, A) // A A A A// A nil nil nil
+		Round0 (cs1, A) // A A A A// A nil nil nil
 	*/
 
 	// start round and wait for propose and prevote
@@ -769,7 +769,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	t.Log("### ONTO ROUND 1")
 
 	/*
-		Round2 (vs2, B) // A B B B // nil nil nil nil)
+		Round1 (vs2, B) // A B B B // nil nil nil nil)
 	*/
 
 	// now we're on a new round but v1 misses the proposal
@@ -812,7 +812,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	t.Log("### ONTO ROUND 2")
 
 	/*
-		Round2 (vs2, C) // C C C C // C nil nil nil)
+		Round2 (vs3, C) // C C C C // C nil nil nil)
 	*/
 
 	if err := cs1.SetProposalAndBlock(prop, propBlock, thirdPropBlockParts, "some peer"); err != nil {
