@@ -38,7 +38,7 @@ linters:
     # - whitespace
     # - wsl
     # - gocognit
-    # - nolintlint
+    - nolintlint
   disable:
     - errcheck
 

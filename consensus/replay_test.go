@@ -25,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -296,7 +295,7 @@ const (
 )
 
 var (
-	mempool = mock.Mempool{}
+	mempool = emptyMempool{}
 	evpool  = emptyEvidencePool{}
 
 	sim testSim
@@ -335,6 +334,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		vss[i] = newValidatorStub(css[i].privValidator, uint32(i))
 	}
 	height, round := css[0].Height, css[0].Round
+
 	// start the machine
 	startTestRound(css[0], height, round)
 	incrementHeight(vss...)
@@ -344,7 +344,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 2
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 2
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
@@ -370,7 +372,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 3
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 3
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
@@ -396,7 +400,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 4
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 4
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
@@ -416,20 +422,24 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
-	sort.Sort(ValidatorStubsByAddress(newVss))
-	selfIndex := 0
-	for i, vs := range newVss {
-		vsPubKey, err := vs.GetPubKey()
-		require.NoError(t, err)
+	sort.Sort(ValidatorStubsByPower(newVss))
 
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
+	valIndexFn := func(cssIdx int) int {
+		for i, vs := range newVss {
+			vsPubKey, err := vs.GetPubKey()
+			require.NoError(t, err)
 
-		if vsPubKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
+			cssPubKey, err := css[cssIdx].privValidator.GetPubKey()
+			require.NoError(t, err)
+
+			if vsPubKey.Equals(cssPubKey) {
+				return i
+			}
 		}
+		panic(fmt.Sprintf("validator css[%d] not found in newVss", cssIdx))
 	}
+
+	selfIndex := valIndexFn(0)
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
@@ -456,9 +466,16 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 5
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 5
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
+	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
+	newVssIdx := valIndexFn(nVals)
+	newVss[newVssIdx].VotingPower = 25
+	sort.Sort(ValidatorStubsByPower(newVss))
+	selfIndex = valIndexFn(0)
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
@@ -469,7 +486,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 6
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 6
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
@@ -480,19 +499,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
-	sort.Sort(ValidatorStubsByAddress(newVss))
-	for i, vs := range newVss {
-		vsKeyKey, err := vs.GetPubKey()
-		require.NoError(t, err)
+	sort.Sort(ValidatorStubsByPower(newVss))
 
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
-
-		if vsKeyKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
-		}
-	}
+	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
