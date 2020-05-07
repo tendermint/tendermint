@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 // NetAddress defines information about a peer on the network
@@ -134,6 +136,55 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	return &NetAddress{
 		IP:   ip,
 		Port: port,
+	}
+}
+
+// NetAddressFromProto converts a Protobuf NetAddress into a native struct.
+func NetAddressFromProto(pb tmp2p.NetAddress) (*NetAddress, error) {
+	ip := net.ParseIP(pb.IP)
+	if ip == nil {
+		return nil, fmt.Errorf("invalid IP address %v", pb.IP)
+	}
+	if pb.Port >= 1<<16 {
+		return nil, fmt.Errorf("invalid port number %v", pb.Port)
+	}
+	return &NetAddress{
+		ID:   ID(pb.ID),
+		IP:   ip,
+		Port: uint16(pb.Port),
+	}, nil
+}
+
+// NetAddressesFromProto converts a slice of Protobuf NetAddresses into a native slice.
+func NetAddressesFromProto(pbs []tmp2p.NetAddress) ([]*NetAddress, error) {
+	nas := make([]*NetAddress, 0, len(pbs))
+	for _, pb := range pbs {
+		na, err := NetAddressFromProto(pb)
+		if err != nil {
+			return nil, err
+		}
+		nas = append(nas, na)
+	}
+	return nas, nil
+}
+
+// NetAddressesToProto converts a slice of NetAddresses into a Protobuf slice.
+func NetAddressesToProto(nas []*NetAddress) []tmp2p.NetAddress {
+	pbs := make([]tmp2p.NetAddress, 0, len(nas))
+	for _, na := range nas {
+		if na != nil {
+			pbs = append(pbs, na.ToProto())
+		}
+	}
+	return pbs
+}
+
+// ToProto converts a NetAddress to Protobuf.
+func (na *NetAddress) ToProto() tmp2p.NetAddress {
+	return tmp2p.NetAddress{
+		ID:   string(na.ID),
+		IP:   na.IP.String(),
+		Port: uint32(na.Port),
 	}
 }
 
