@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -146,6 +147,20 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 
 		defer func() {
+			// Handle any panics in the panic handler below. Does not use the logger, since we want
+			// to avoid any further panics. However, we try to return a 500, since it otherwise
+			// defaults to 200 and there is no other way to terminate the connection. If that
+			// should panic for whatever reason then the Go HTTP server will handle it and
+			// terminate the connection - panicing is the de-facto and only way to get the Go HTTP
+			// server to terminate the request and close the connection/stream:
+			// https://github.com/golang/go/issues/17790#issuecomment-258481416
+			if e := recover(); e != nil {
+				fmt.Fprintf(os.Stderr, "Panic during RPC panic recovery: %v\n%v\n", e, string(debug.Stack()))
+				w.WriteHeader(500)
+			}
+		}()
+
+		defer func() {
 			// Send a 500 error if a panic happens during a handler.
 			// Without this, Chrome & Firefox were retrying aborted ajax requests,
 			// at least to my localhost.
@@ -155,7 +170,18 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 				if res, ok := e.(types.RPCResponse); ok {
 					WriteRPCResponseHTTP(rww, res)
 				} else {
-					// For the rest,
+					// Panics can contain anything, attempt to normalize it as an error.
+					var err error
+					switch e := e.(type) {
+					case error:
+						err = e
+					case string:
+						err = errors.New(e)
+					case fmt.Stringer:
+						err = errors.New(e.String())
+					default:
+					}
+
 					logger.Error(
 						"Panic in RPC HTTP handler", "err", e, "stack",
 						string(debug.Stack()),
@@ -163,7 +189,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					WriteRPCResponseHTTPError(
 						rww,
 						http.StatusInternalServerError,
-						types.RPCInternalError(types.JSONRPCIntID(-1), e.(error)),
+						types.RPCInternalError(types.JSONRPCIntID(-1), err),
 					)
 				}
 			}
