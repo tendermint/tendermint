@@ -178,13 +178,17 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			msg := <-sub.Out()
-			data := msg.Data().(EventDataTx)
-			assert.Equal(t, int64(1), data.Height)
-			assert.Equal(t, uint32(0), data.Index)
-			assert.Equal(t, tx, data.Tx)
-			assert.Equal(t, result, data.Result)
-			close(done)
+			select {
+			case msg := <-sub.Out():
+				data := msg.Data().(EventDataTx)
+				assert.Equal(t, int64(1), data.Height)
+				assert.Equal(t, uint32(0), data.Index)
+				assert.Equal(t, tx, data.Tx)
+				assert.Equal(t, result, data.Result)
+				close(done)
+			case <-time.After(1 * time.Second):
+				return
+			}
 		}()
 
 		err = eventBus.PublishEventTx(EventDataTx{TxResult{
