@@ -9,7 +9,7 @@ import "third_party/proto/gogoproto/gogo.proto";
 message PexRequest {}
 
 message PexAddrs {
-  NetAddress addrs = 1 [(gogoproto.nullable) = false];
+  repeated NetAddress addrs = 1 [(gogoproto.nullable) = false];
 }
 
 message Message {
