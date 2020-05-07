@@ -244,8 +244,8 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)
 
-	switch msg := msg.Sum.(type) {
-	case *tmp2p.Message_PexRequest:
+	switch msg := msg.(type) {
+	case *tmp2p.PexRequest:
 
 		// NOTE: this is a prime candidate for amplification attacks,
 		// so it's important we
@@ -282,9 +282,9 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 
-	case *tmp2p.Message_PexAddrs:
+	case *tmp2p.PexAddrs:
 		// If we asked for addresses, add them to the book
-		addrs, err := p2p.NetAddressesFromProto(msg.PexAddrs.Addrs)
+		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
 		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
@@ -786,8 +786,18 @@ func mustEncode(pb proto.Message) []byte {
 	return bz
 }
 
-func decodeMsg(bz []byte) (tmp2p.Message, error) {
-	pb := tmp2p.Message{}
-	err := proto.Unmarshal(bz, &pb)
-	return pb, err
+func decodeMsg(bz []byte) (proto.Message, error) {
+	pb := &tmp2p.Message{}
+	err := proto.Unmarshal(bz, pb)
+	if err != nil {
+		return nil, err
+	}
+	switch msg := pb.Sum.(type) {
+	case *tmp2p.Message_PexRequest:
+		return msg.PexRequest, nil
+	case *tmp2p.Message_PexAddrs:
+		return msg.PexAddrs, nil
+	default:
+		return nil, fmt.Errorf("unknown message %t", msg)
+	}
 }
