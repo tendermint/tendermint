@@ -72,6 +72,7 @@ type validatorStub struct {
 	Height int64
 	Round  int
 	types.PrivValidator
+	VotingPower int64
 }
 
 var testMinPower int64 = 10
@@ -80,6 +81,7 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
+		VotingPower:   testMinPower,
 	}
 }
 
@@ -140,13 +142,13 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
-type ValidatorStubsByAddress []*validatorStub
+type ValidatorStubsByPower []*validatorStub
 
-func (vss ValidatorStubsByAddress) Len() int {
+func (vss ValidatorStubsByPower) Len() int {
 	return len(vss)
 }
 
-func (vss ValidatorStubsByAddress) Less(i, j int) bool {
+func (vss ValidatorStubsByPower) Less(i, j int) bool {
 	vssi, err := vss[i].GetPubKey()
 	if err != nil {
 		panic(err)
@@ -155,10 +157,14 @@ func (vss ValidatorStubsByAddress) Less(i, j int) bool {
 	if err != nil {
 		panic(err)
 	}
-	return bytes.Compare(vssi.Address(), vssj.Address()) == -1
+
+	if vss[i].VotingPower == vss[j].VotingPower {
+		return bytes.Compare(vssi.Address(), vssj.Address()) == -1
+	}
+	return vss[i].VotingPower > vss[j].VotingPower
 }
 
-func (vss ValidatorStubsByAddress) Swap(i, j int) {
+func (vss ValidatorStubsByPower) Swap(i, j int) {
 	it := vss[i]
 	vss[i] = vss[j]
 	vss[i].Index = i
@@ -373,8 +379,7 @@ func newStateWithConfigAndBlockStore(
 		mempool.EnableTxsAvailable()
 	}
 
-	// mock the evidence pool
-	evpool := &emptyEvidencePool{}
+	evpool := emptyEvidencePool{}
 
 	// Make State
 	stateDB := blockDB

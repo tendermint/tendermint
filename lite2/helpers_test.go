@@ -78,7 +78,7 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 	}
 
 	// We need this list to keep the ordering.
-	vset := pkz.ToValidators(1, 0)
+	vset := pkz.ToValidators(1, 1)
 
 	blockID := types.BlockID{
 		Hash:        header.Hash(),
