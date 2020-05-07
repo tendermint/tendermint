@@ -530,13 +530,14 @@ func (h *Header) ToProto() *tmproto.Header {
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the header is invalid.
 func HeaderFromProto(ph *tmproto.Header) (Header, error) {
-	var blockID BlockID
 	if ph == nil {
 		return Header{}, errors.New("nil Header")
 	}
 
 	h := new(Header)
-	if err := blockID.FromProto(&ph.LastBlockID); err != nil {
+
+	bi, err := BlockIDFromProto(&ph.LastBlockID)
+	if err != nil {
 		return Header{}, err
 	}
 
@@ -545,7 +546,7 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.Height = ph.Height
 	h.Time = ph.Time
 	h.Height = ph.Height
-	h.LastBlockID = blockID
+	h.LastBlockID = *bi
 	h.ValidatorsHash = ph.ValidatorsHash
 	h.NextValidatorsHash = ph.NextValidatorsHash
 	h.ConsensusHash = ph.ConsensusHash
@@ -916,11 +917,11 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 
 	var (
 		commit   = new(Commit)
-		blockID  BlockID
 		bitArray *tmbits.BitArray
 	)
 
-	if err := blockID.FromProto(&cp.BlockID); err != nil {
+	bi, err := BlockIDFromProto(&cp.BlockID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -936,7 +937,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round
-	commit.BlockID = blockID
+	commit.BlockID = *bi
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -1284,16 +1285,16 @@ func (blockID *BlockID) ToProto() tmproto.BlockID {
 
 // FromProto sets a protobuf BlockID to the given pointer.
 // It returns an error if the block id is invalid.
-func (blockID *BlockID) FromProto(bID *tmproto.BlockID) error {
+func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	if bID == nil {
-		return errors.New("nil BlockID")
+		return nil, errors.New("nil BlockID")
 	}
-
+	blockID := new(BlockID)
 	var ph PartSetHeader
 	ph.FromProto(bID.PartsHeader)
 
 	blockID.PartsHeader = ph
 	blockID.Hash = bID.Hash
 
-	return blockID.ValidateBasic()
+	return blockID, blockID.ValidateBasic()
 }

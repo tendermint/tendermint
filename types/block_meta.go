@@ -46,12 +46,10 @@ func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
 		return nil, errors.New("blockmeta is empty")
 	}
 
-	var (
-		bm = new(BlockMeta)
-		bi BlockID
-	)
+	bm := new(BlockMeta)
 
-	if err := bi.FromProto(&pb.BlockID); err != nil {
+	bi, err := BlockIDFromProto(&pb.BlockID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -60,7 +58,7 @@ func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
 		return nil, err
 	}
 
-	bm.BlockID = bi
+	bm.BlockID = *bi
 	bm.BlockSize = int(pb.BlockSize)
 	bm.Header = h
 	bm.NumTxs = int(pb.NumTxs)

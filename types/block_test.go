@@ -773,8 +773,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoBlockID := tc.bid1.ToProto()
 
-		bi := new(BlockID)
-		err := bi.FromProto(&protoBlockID)
+		bi, err := BlockIDFromProto(&protoBlockID)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.bid1, bi, tc.msg)

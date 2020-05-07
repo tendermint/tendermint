@@ -138,8 +138,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.Version = state.Version
 	sm.ChainID = state.ChainID
 	sm.LastBlockHeight = state.LastBlockHeight
-	bip := state.LastBlockID.ToProto()
-	sm.LastBlockID = bip
+
+	sm.LastBlockID = state.LastBlockID.ToProto()
 	sm.LastBlockTime = state.LastBlockTime
 	vals, err := state.Validators.ToProto()
 	if err != nil {
@@ -179,6 +179,12 @@ func StateFromProto(pb *tmstate.State) (*State, error) {
 
 	state.Version = pb.Version
 	state.ChainID = pb.ChainID
+
+	bi, err := types.BlockIDFromProto(&pb.LastBlockID)
+	if err != nil {
+		return nil, err
+	}
+	state.LastBlockID = *bi
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 

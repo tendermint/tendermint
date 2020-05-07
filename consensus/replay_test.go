@@ -139,7 +139,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
+func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config, // error is here
 	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
@@ -150,7 +150,7 @@ LOOP:
 		t.Logf("====== LOOP %d\n", i)
 
 		// create consensus state from a clean slate
-		logger := log.NewNopLogger()
+		// logger := log.NewNopLogger()s
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
@@ -162,7 +162,7 @@ LOOP:
 			kvstore.NewApplication(),
 			blockDB,
 		)
-		cs.SetLogger(logger)
+		// cs.SetLogger(logger)
 
 		// start sending transactions
 		ctx, cancel := context.WithCancel(context.Background())
@@ -176,6 +176,7 @@ LOOP:
 		csWal, err := cs.OpenWAL(walFile)
 		require.NoError(t, err)
 		crashingWal.next = csWal
+
 		// reset the message counter
 		crashingWal.msgIndex = 1
 		cs.wal = crashingWal
