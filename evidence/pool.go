@@ -81,8 +81,10 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
 func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	var count int64
-	var evidence []types.Evidence
+	var (
+		count    int64
+		evidence []types.Evidence
+	)
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over evidence", "err", err)
@@ -250,11 +252,13 @@ func (evpool *Pool) Has(evidence types.Evidence) bool {
 	return evpool.IsPending(evidence) || evpool.IsCommitted(evidence)
 }
 
-// IsExpired checks whether evidence is past the maximum age where it can be used
+// IsEvidenceExpired checks whether evidence is past the maximum age where it can be used
 func (evpool *Pool) IsEvidenceExpired(evidence types.Evidence) bool {
 	return evpool.IsExpired(evidence.Height(), evidence.Time())
 }
 
+// IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
+// than set by the evidence consensus parameters
 func (evpool *Pool) IsExpired(height int64, time time.Time) bool {
 	var (
 		params       = evpool.State().ConsensusParams.Evidence
@@ -285,6 +289,7 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
+// RetrievePOLC attempts to find a polc at the given height and round, if not there it returns an error
 func (evpool *Pool) RetrievePOLC(height int64, round int) (types.ProofOfLockChange, error) {
 	var polc types.ProofOfLockChange
 	key := keyPOLCFromHeightAndRound(height, round)
@@ -412,6 +417,7 @@ func (evpool *Pool) pruneExpiredPOLC() {
 		err = evpool.evidenceStore.Delete(iter.Key())
 		if err != nil {
 			evpool.logger.Error("Unable to delete expired POLC", "err", err)
+			continue
 		}
 		evpool.logger.Info("Deleted expired POLC", "polc", proof)
 	}

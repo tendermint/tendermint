@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -242,11 +241,10 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	// update should prune the polc
 	pool.Update(block, state)
 
-	fmt.Println(pool.IsExpired(newPolc.Height(), newPolc.Time()))
-
 	emptyPolc, err = pool.RetrievePOLC(1, 1)
-	assert.Error(t, err)
-	assert.Equal(t, "unable to find polc at height 1 and round 1", err.Error())
+	if assert.Error(t, err) {
+		assert.Equal(t, "unable to find polc at height 1 and round 1", err.Error())
+	}
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }

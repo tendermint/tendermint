@@ -1847,7 +1847,7 @@ func (cs *State) addVote(
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
 				// If this is not the first round and we have already locked onto something then we are
-				//changing the locked block so save POLC prevotes in evidence db in case of future justification
+				// changing the locked block so save POLC prevotes in evidence db in case of future justification
 				cs.savePOLC(vote.Round, blockID)
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
