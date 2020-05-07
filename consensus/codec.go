@@ -235,8 +235,9 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Index:  msg.HasVote.Index,
 		}
 	case *tmcons.Message_VoteSetMaj23:
-		bi := new(types.BlockID)
-		if err := bi.FromProto(&msg.VoteSetMaj23.BlockID); err != nil {
+
+		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)
+		if err != nil {
 			return nil, fmt.Errorf("voteSetMaj23 msg to proto error: %w", err)
 		}
 		pb = &VoteSetMaj23Message{
@@ -246,8 +247,8 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			BlockID: *bi,
 		}
 	case *tmcons.Message_VoteSetBits:
-		bi := new(types.BlockID)
-		if err := bi.FromProto(&msg.VoteSetBits.BlockID); err != nil {
+		bi, err := types.BlockIDFromProto(&msg.VoteSetBits.BlockID)
+		if err != nil {
 			return nil, fmt.Errorf("voteSetBits msg to proto error: %w", err)
 		}
 		bits := new(bits.BitArray)

@@ -30,6 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json.
   - [script] \#4733 Transition Wal2json & json2Wal scripts to work with protobuf
   - [state] \#4679 `TxResult` is a protobuf type defined in `abci` types directory
+  - [state] \#4806 Transition state module to protobuf
   - [store] \#4778 Transition store module to protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [types] \#4382 `BlockIdFlag` and `SignedMsgType` has moved to a protobuf enum types

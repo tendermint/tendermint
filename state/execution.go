@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -253,11 +254,13 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-) (*ABCIResponses, error) {
+) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-	abciResponses := NewABCIResponses(block)
+	abciResponses := new(tmstate.ABCIResponses)
+	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
+	abciResponses.DeliverTxs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -388,7 +391,7 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -441,7 +444,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
+		LastResultsHash:                  ABCIResponsesResultsHash(*abciResponses),
 		AppHash:                          nil,
 	}, nil
 }
@@ -453,7 +456,7 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
