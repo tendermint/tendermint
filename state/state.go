@@ -128,6 +128,7 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
+//ToProto takes the local state type and returns the equivalent proto type
 func (state *State) ToProto() (*tmstate.State, error) {
 	if state == nil {
 		return nil, errors.New("state is nil")
@@ -170,7 +171,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	return sm, nil
 }
 
-func StateFromProto(pb *tmstate.State) (*State, error) {
+// StateFromProto takes a state proto message & returns the local state type
+func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	if pb == nil {
 		return nil, errors.New("nil State")
 	}
