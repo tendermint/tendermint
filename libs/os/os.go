@@ -46,7 +46,7 @@ func EnsureDir(dir string, mode os.FileMode) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err := os.MkdirAll(dir, mode)
 		if err != nil {
-			return fmt.Errorf("could not create directory %v. %v", dir, err)
+			return fmt.Errorf("could not create directory %v: %w", dir, err)
 		}
 	}
 	return nil
