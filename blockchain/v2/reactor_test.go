@@ -15,7 +15,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
 	cfg "github.com/tendermint/tendermint/config"
-	evmock "github.com/tendermint/tendermint/evidence/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/mempool/mock"
@@ -118,10 +117,11 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
+	return true
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
@@ -132,7 +132,6 @@ type testReactorParams struct {
 	genDoc      *types.GenesisDoc
 	privVals    []types.PrivValidator
 	startHeight int64
-	bufferSize  int
 	mockA       bool
 }
 
@@ -153,11 +152,11 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(errors.Wrap(err, "error start app"))
 		}
 		db := dbm.NewMemDB()
-		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, evmock.NewDefaultEvidencePool())
+		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize, true)
+	r := newReactor(state, store, reporter, appl, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -354,7 +353,6 @@ func TestReactorHelperMode(t *testing.T) {
 		genDoc:      genDoc,
 		privVals:    privVals,
 		startHeight: 20,
-		bufferSize:  100,
 		mockA:       true,
 	}
 
@@ -384,9 +382,9 @@ func TestReactorHelperMode(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
-			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
+			reactor.Start()
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
@@ -495,7 +493,7 @@ func newReactorStore(
 
 	db := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, evmock.NewDefaultEvidencePool())
+		mock.Mempool{}, sm.MockEvidencePool{})
 	sm.SaveState(db, state)
 
 	// add blocks in

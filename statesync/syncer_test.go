@@ -124,7 +124,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 			Hash:   []byte{1},
 		},
 		AppHash: []byte("app_hash_2"),
-	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject_format}, nil)
+	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   s.Height,
@@ -134,7 +134,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 			Metadata: s.Metadata,
 		},
 		AppHash: []byte("app_hash"),
-	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_accept}, nil)
+	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
 
 	chunkRequests := make(map[uint32]int)
 	chunkRequestsMtx := sync.Mutex{}
@@ -164,19 +164,19 @@ func TestSyncer_SyncAny(t *testing.T) {
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Run(func(args mock.Arguments) { time.Sleep(2 * time.Second) }).Return(
 		&abci.ResponseApplySnapshotChunk{
-			Result:        abci.ResponseApplySnapshotChunk_retry_snapshot,
+			Result:        abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT,
 			RefetchChunks: []uint32{1},
 		}, nil)
 
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 0, Chunk: []byte{1, 1, 0},
-	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 1, Chunk: []byte{1, 1, 1},
-	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+	}).Times(2).Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
-	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       9,
 		LastBlockHeight:  1,
@@ -209,14 +209,14 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 	assert.Equal(t, errNoSnapshots, err)
 }
 
-func TestSyncer_SyncAny_abort(t *testing.T) {
+func TestSyncer_SyncAny_ABORT(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	syncer.AddSnapshot(simplePeer("id"), s)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_abort}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
 	_, _, err := syncer.SyncAny(0)
 	assert.Equal(t, errAbort, err)
@@ -236,22 +236,22 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s22), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s12), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
 	_, _, err := syncer.SyncAny(0)
 	assert.Equal(t, errNoSnapshots, err)
 	connSnapshot.AssertExpectations(t)
 }
 
-func TestSyncer_SyncAny_reject_format(t *testing.T) {
+func TestSyncer_SyncAny_REJECT_FORMAT(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	// s22 is tried first, which reject s22 and s12, then s11 will abort.
@@ -264,11 +264,11 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s22), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject_format}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_abort}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
 	_, _, err := syncer.SyncAny(0)
 	assert.Equal(t, errAbort, err)
@@ -302,11 +302,11 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(sbc), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject_sender}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_SENDER}, nil)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(sa), AppHash: []byte("app_hash"),
-	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_reject}, nil)
+	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
 	_, _, err = syncer.SyncAny(0)
 	assert.Equal(t, errNoSnapshots, err)
@@ -337,11 +337,11 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		err       error
 		expectErr error
 	}{
-		"accept":         {abci.ResponseOfferSnapshot_accept, nil, nil},
-		"abort":          {abci.ResponseOfferSnapshot_abort, nil, errAbort},
-		"reject":         {abci.ResponseOfferSnapshot_reject, nil, errRejectSnapshot},
-		"reject_format":  {abci.ResponseOfferSnapshot_reject_format, nil, errRejectFormat},
-		"reject_sender":  {abci.ResponseOfferSnapshot_reject_sender, nil, errRejectSender},
+		"accept":         {abci.ResponseOfferSnapshot_ACCEPT, nil, nil},
+		"abort":          {abci.ResponseOfferSnapshot_ABORT, nil, errAbort},
+		"reject":         {abci.ResponseOfferSnapshot_REJECT, nil, errRejectSnapshot},
+		"reject_format":  {abci.ResponseOfferSnapshot_REJECT_FORMAT, nil, errRejectFormat},
+		"reject_sender":  {abci.ResponseOfferSnapshot_REJECT_SENDER, nil, errRejectSender},
 		"error":          {0, boom, boom},
 		"unknown result": {9, nil, unknownErr},
 	}
@@ -377,11 +377,11 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 		err       error
 		expectErr error
 	}{
-		"accept":          {abci.ResponseApplySnapshotChunk_accept, nil, nil},
-		"abort":           {abci.ResponseApplySnapshotChunk_abort, nil, errAbort},
-		"retry":           {abci.ResponseApplySnapshotChunk_retry, nil, nil},
-		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_retry_snapshot, nil, errRetrySnapshot},
-		"reject_snapshot": {abci.ResponseApplySnapshotChunk_reject_snapshot, nil, errRejectSnapshot},
+		"accept":          {abci.ResponseApplySnapshotChunk_ACCEPT, nil, nil},
+		"abort":           {abci.ResponseApplySnapshotChunk_ABORT, nil, errAbort},
+		"retry":           {abci.ResponseApplySnapshotChunk_RETRY, nil, nil},
+		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT, nil, errRetrySnapshot},
+		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT, nil, errRejectSnapshot},
 		"error":           {0, boom, boom},
 		"unknown result":  {9, nil, unknownErr},
 	}
@@ -402,11 +402,11 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 0, Chunk: body,
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: tc.result}, tc.err)
-			if tc.result == abci.ResponseApplySnapshotChunk_retry {
+			if tc.result == abci.ResponseApplySnapshotChunk_RETRY {
 				connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 					Index: 0, Chunk: body,
 				}).Once().Return(&abci.ResponseApplySnapshotChunk{
-					Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
 			err = syncer.applyChunks(chunks)
@@ -429,11 +429,11 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 	testcases := map[string]struct {
 		result abci.ResponseApplySnapshotChunk_Result
 	}{
-		"accept":          {abci.ResponseApplySnapshotChunk_accept},
-		"abort":           {abci.ResponseApplySnapshotChunk_abort},
-		"retry":           {abci.ResponseApplySnapshotChunk_retry},
-		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_retry_snapshot},
-		"reject_snapshot": {abci.ResponseApplySnapshotChunk_reject_snapshot},
+		"accept":          {abci.ResponseApplySnapshotChunk_ACCEPT},
+		"abort":           {abci.ResponseApplySnapshotChunk_ABORT},
+		"retry":           {abci.ResponseApplySnapshotChunk_RETRY},
+		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT},
+		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -459,10 +459,10 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			// The first two chunks are accepted, before the last one asks for 1 to be refetched
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 0, Chunk: []byte{0},
-			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 1, Chunk: []byte{1},
-			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 2, Chunk: []byte{2},
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{
@@ -492,11 +492,11 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 	testcases := map[string]struct {
 		result abci.ResponseApplySnapshotChunk_Result
 	}{
-		"accept":          {abci.ResponseApplySnapshotChunk_accept},
-		"abort":           {abci.ResponseApplySnapshotChunk_abort},
-		"retry":           {abci.ResponseApplySnapshotChunk_retry},
-		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_retry_snapshot},
-		"reject_snapshot": {abci.ResponseApplySnapshotChunk_reject_snapshot},
+		"accept":          {abci.ResponseApplySnapshotChunk_ACCEPT},
+		"abort":           {abci.ResponseApplySnapshotChunk_ABORT},
+		"retry":           {abci.ResponseApplySnapshotChunk_RETRY},
+		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT},
+		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -537,10 +537,10 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// The first two chunks are accepted, before the last one asks for b sender to be rejected
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 0, Chunk: []byte{0}, Sender: "a",
-			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 1, Chunk: []byte{1}, Sender: "b",
-			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 				Index: 2, Chunk: []byte{2}, Sender: "c",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{
@@ -549,10 +549,10 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			}, nil)
 
 			// On retry, the last chunk will be tried again, so we just accept it then.
-			if tc.result == abci.ResponseApplySnapshotChunk_retry {
+			if tc.result == abci.ResponseApplySnapshotChunk_RETRY {
 				connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 					Index: 2, Chunk: []byte{2}, Sender: "c",
-				}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_accept}, nil)
+				}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
 			// We don't really care about the result of applyChunks, since it has separate test.

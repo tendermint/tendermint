@@ -11,6 +11,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
+  - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
 
 - Apps
 
@@ -23,8 +24,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
   - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
   - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
+  - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
 
 - Blockchain Protocol
+
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
 
 ### FEATURES:
 
@@ -44,9 +48,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - race: pass -race to go build and enable data race detection.
 - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
+- [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
 
 ### BUG FIXES:
 
 - [blockchain/v2] [\#4761](https://github.com/tendermint/tendermint/pull/4761) Fix excessive CPU usage caused by spinning on closed channels (@erikgrinaker)
 - [blockchain/v2] Respect `fast_sync` option (@erikgrinaker)
 - [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
+- [rpc] \#4805 Attempt to handle panics during panic recovery (@erikgrinaker)
+- [types] [\#4764](https://github.com/tendermint/tendermint/pull/4764) Return an error if voting power overflows in `VerifyCommitTrusting` (@melekes)

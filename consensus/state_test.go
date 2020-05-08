@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/abci/example/counter"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -512,8 +513,11 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensurePrecommit(voteCh, height, round)
 }
 
-// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-func TestStateLockPOLRelock(t *testing.T) {
+// 4 vals in two rounds,
+// in round one: v1 precommits, other 3 only prevote so the block isn't committed
+// in round two: v1 prevotes the same block that the node is locked on
+// the others prevote a new block hence v1 changes lock and precommits the new block with the others
+func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
 	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -555,13 +559,17 @@ func TestStateLockPOLRelock(t *testing.T) {
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits from the rest
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	cs2 := newState(cs1.state, vs2, counter.NewApplication(true))
+	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with vs2")
+	}
 	propBlockParts := propBlock.MakePartSet(partSize)
 	propBlockHash := propBlock.Hash()
+	require.NotEqual(t, propBlockHash, theBlockHash)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -587,7 +595,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 	// but we should receive the proposal
 	ensureNewProposal(proposalCh, height, round)
 
-	// go to prevote, prevote for locked block (not proposal), move on
+	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
@@ -595,9 +603,10 @@ func TestStateLockPOLRelock(t *testing.T) {
 	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
-	// we should have unlocked and locked on the new block
+	// we should have unlocked and locked on the new block, sending a precommit for this new block
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
+	// more prevote creating a majority on the new block and this is then committed
 	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3)
 	ensureNewBlockHeader(newBlockCh, height, propBlockHash)
 
