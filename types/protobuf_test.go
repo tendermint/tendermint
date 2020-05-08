@@ -29,13 +29,9 @@ func TestABCIPubKey(t *testing.T) {
 
 func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 	abciPubKey, err := cryptoencoding.PubKeyToProto(pk)
-	if err != nil {
-		return err
-	}
+	assert.NoError(t, err)
 	pk2, err := cryptoencoding.PubKeyFromProto(abciPubKey)
-	if err != nil {
-		return err
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, pk, pk2)
 	return nil
 }
