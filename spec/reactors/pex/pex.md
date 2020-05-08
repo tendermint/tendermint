@@ -33,8 +33,8 @@ connections die, or we fail to dial, we will redial every 5s for a few minutes,
 then switch to an exponential backoff schedule, and after about a day of
 trying, stop dialing the peer. This behavior is when `persistent_peers_max_dial_period` is configured to zero.
 
-But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer 
-will not exceed `persistent_peers_max_dial_period` during exponential backoff. 
+But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer
+will not exceed `persistent_peers_max_dial_period` during exponential backoff.
 Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
 and we keep trying again regardless of `maxAttemptsToDial`
 
@@ -54,9 +54,33 @@ Peers are added to the address book from the PEX when they first connect to us o
 when we hear about them from other peers.
 
 The address book is arranged in sets of buckets, and distinguishes between
-vetted (old) and unvetted (new) peers. It keeps different sets of buckets for vetted and
-unvetted peers. Buckets provide randomization over peer selection. Peers are put
-in buckets according to their IP groups.
+vetted (old) and unvetted (new) peers. It keeps different sets of buckets for
+vetted and unvetted peers. Buckets provide randomization over peer selection.
+Peers are put in buckets according to their IP groups.
+
+IP group can be an IP block (e.g. `/16` for IPv4, `/32` for IPv6) or `local`
+for local addresses or `unroutable` for unroutable addresses. Each group has a
+  limited number of buckets to prevent DoS attacks coming from that group (e.g.
+  an attacker buying a `/16` block of IPs and launching a DoS attack).
+
+[highwayhash](https://arxiv.org/abs/1612.06257) is used as a hashing function
+when calculating a bucket.
+
+When placing a peer into a new bucket:
+
+```
+hash(key + sourcegroup + int64(hash(key + group + sourcegroup)) % bucket_per_group) % num_new_buckets
+```
+
+When placing a peer into an old bucket:
+
+```
+hash(key + group + int64(hash(key + addr)) % buckets_per_group) % num_old_buckets
+```
+
+where `key` - random 24 HEX string, `group` - IP group of the peer (e.g. `/16`),
+`sourcegroup` - IP group of the sender (peer who sent us this address) (e.g. `/16`),
+`addr` - string representation of the peer's address (e.g. `174.11.10.2:26656`).
 
 A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
 each instance of the peer can have a different IP:PORT.
