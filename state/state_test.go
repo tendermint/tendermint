@@ -11,15 +11,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/libs/kv"
 	"github.com/tendermint/tendermint/libs/rand"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
-	dbm "github.com/tendermint/tm-db"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -135,8 +135,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{
 					Data: []byte("Gotcha!"),
 					Events: []abci.Event{
-						{Type: "type1", Attributes: []kv.Pair{{Key: []byte("a"), Value: []byte("1")}}},
-						{Type: "type2", Attributes: []kv.Pair{{Key: []byte("build"), Value: []byte("stuff")}}},
+						{Type: "type1", Attributes: []abci.EventAttribute{{Key: []byte("a"), Value: []byte("1")}}},
+						{Type: "type2", Attributes: []abci.EventAttribute{{Key: []byte("build"), Value: []byte("stuff")}}},
 					},
 				},
 			},
@@ -326,7 +326,8 @@ func TestProposerFrequency(t *testing.T) {
 			votePower := int64(tmrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
-			pubKey := privVal.GetPubKey()
+			pubKey, err := privVal.GetPubKey()
+			require.NoError(t, err)
 			val := types.NewValidator(pubKey, votePower)
 			val.ProposerPriority = tmrand.Int64()
 			vals[j] = val

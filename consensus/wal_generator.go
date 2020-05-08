@@ -11,17 +11,17 @@ import (
 
 	"github.com/pkg/errors"
 
+	db "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
@@ -71,8 +71,8 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := mock.Mempool{}
-	evpool := sm.MockEvidencePool{}
+	mempool := emptyMempool{}
+	evpool := emptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)

@@ -32,4 +32,7 @@ type Provider interface {
 	// If there's no ValidatorSet for the given height, ErrValidatorSetNotFound
 	// error is returned.
 	ValidatorSet(height int64) (*types.ValidatorSet, error)
+
+	// ReportEvidence reports an evidence of misbehavior.
+	ReportEvidence(ev types.Evidence) error
 }

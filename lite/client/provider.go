@@ -1,5 +1,5 @@
 /*
-Package client defines a provider that uses a rpcclient
+Package client defines a provider that uses a rpchttp
 to get information, which is used to get new headers
 and validators directly from a Tendermint client.
 */
@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -40,7 +41,7 @@ func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
 func NewHTTPProvider(chainID, remote string) (lite.Provider, error) {
-	httpClient, err := rpcclient.NewHTTP(remote, "/websocket")
+	httpClient, err := rpchttp.New(remote, "/websocket")
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
 var killCmd = &cobra.Command{
@@ -44,7 +44,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc, err := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
 	if err != nil {
 		return errors.Wrap(err, "failed to create new http client")
 	}
@@ -124,7 +124,7 @@ func killProc(pid uint64, dir string) error {
 	go func() {
 		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
 		// a goroutine stacktrace.
-		p, err := os.FindProcess(os.Getpid())
+		p, err := os.FindProcess(int(pid))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
 		} else if err = p.Signal(syscall.SIGABRT); err != nil {

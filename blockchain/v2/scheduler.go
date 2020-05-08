@@ -111,20 +111,22 @@ type scPeer struct {
 	// updated to Removed when peer is removed
 	state peerState
 
+	base        int64 // updated when statusResponse is received
 	height      int64 // updated when statusResponse is received
 	lastTouched time.Time
 	lastRate    int64 // last receive rate in bytes
 }
 
 func (p scPeer) String() string {
-	return fmt.Sprintf("{state %v, height %d, lastTouched %v, lastRate %d, id %v}",
-		p.state, p.height, p.lastTouched, p.lastRate, p.peerID)
+	return fmt.Sprintf("{state %v, base %d, height %d, lastTouched %v, lastRate %d, id %v}",
+		p.state, p.base, p.height, p.lastTouched, p.lastRate, p.peerID)
 }
 
 func newScPeer(peerID p2p.ID) *scPeer {
 	return &scPeer{
 		peerID:      peerID,
 		state:       peerStateNew,
+		base:        -1,
 		height:      -1,
 		lastTouched: time.Time{},
 	}
@@ -193,13 +195,11 @@ func newScheduler(initHeight int64, startTime time.Time) *scheduler {
 	return &sc
 }
 
-func (sc *scheduler) addPeer(peerID p2p.ID) error {
-	if _, ok := sc.peers[peerID]; ok {
-		// In the future we should be able to add a previously removed peer
-		return fmt.Errorf("cannot add duplicate peer %s", peerID)
+func (sc *scheduler) ensurePeer(peerID p2p.ID) *scPeer {
+	if _, ok := sc.peers[peerID]; !ok {
+		sc.peers[peerID] = newScPeer(peerID)
 	}
-	sc.peers[peerID] = newScPeer(peerID)
-	return nil
+	return sc.peers[peerID]
 }
 
 func (sc *scheduler) touchPeer(peerID p2p.ID, time time.Time) error {
@@ -220,7 +220,7 @@ func (sc *scheduler) touchPeer(peerID p2p.ID, time time.Time) error {
 func (sc *scheduler) removePeer(peerID p2p.ID) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("couldn't find peer %s", peerID)
+		return nil
 	}
 
 	if peer.state == peerStateRemoved {
@@ -280,11 +280,8 @@ func (sc *scheduler) addNewBlocks() {
 	}
 }
 
-func (sc *scheduler) setPeerHeight(peerID p2p.ID, height int64) error {
-	peer, ok := sc.peers[peerID]
-	if !ok {
-		return fmt.Errorf("cannot find peer %s", peerID)
-	}
+func (sc *scheduler) setPeerRange(peerID p2p.ID, base int64, height int64) error {
+	peer := sc.ensurePeer(peerID)
 
 	if peer.state == peerStateRemoved {
 		return fmt.Errorf("cannot set peer height for a peer in peerStateRemoved")
@@ -295,6 +292,11 @@ func (sc *scheduler) setPeerHeight(peerID p2p.ID, height int64) error {
 		return fmt.Errorf("cannot move peer height lower. from %d to %d", peer.height, height)
 	}
 
+	if base > height {
+		return fmt.Errorf("cannot set peer base higher than its height")
+	}
+
+	peer.base = base
 	peer.height = height
 	peer.state = peerStateReady
 
@@ -312,13 +314,13 @@ func (sc *scheduler) getStateAtHeight(height int64) blockState {
 	}
 }
 
-func (sc *scheduler) getPeersAtHeightOrAbove(height int64) []p2p.ID {
+func (sc *scheduler) getPeersWithHeight(height int64) []p2p.ID {
 	peers := make([]p2p.ID, 0)
 	for _, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue
 		}
-		if peer.height >= height {
+		if peer.base <= height && peer.height >= height {
 			peers = append(peers, peer.peerID)
 		}
 	}
@@ -347,7 +349,7 @@ func (sc *scheduler) setStateAtHeight(height int64, state blockState) {
 func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("couldn't find peer %s", peerID)
+		return fmt.Errorf("received block from unknown peer %s", peerID)
 	}
 
 	if peer.state != peerStateReady {
@@ -393,6 +395,11 @@ func (sc *scheduler) markPending(peerID p2p.ID, height int64, time time.Time) er
 	if height > peer.height {
 		return fmt.Errorf("cannot request height %d from peer %s that is at height %d",
 			height, peerID, peer.height)
+	}
+
+	if height < peer.base {
+		return fmt.Errorf("cannot request height %d for peer %s with base %d",
+			height, peerID, peer.base)
 	}
 
 	sc.setStateAtHeight(height, blockStatePending)
@@ -463,7 +470,7 @@ func (sc *scheduler) pendingFrom(peerID p2p.ID) []int64 {
 }
 
 func (sc *scheduler) selectPeer(height int64) (p2p.ID, error) {
-	peers := sc.getPeersAtHeightOrAbove(height)
+	peers := sc.getPeersWithHeight(height)
 	if len(peers) == 0 {
 		return "", fmt.Errorf("cannot find peer for height %d", height)
 	}
@@ -535,8 +542,8 @@ func (sc *scheduler) handleNoBlockResponse(event bcNoBlockResponse) (Event, erro
 	_ = sc.removePeer(event.peerID)
 
 	return scPeerError{peerID: event.peerID,
-		reason: fmt.Errorf("peer %v with height %d claims no block for %d",
-			event.peerID, peer.height, event.height)}, nil
+		reason: fmt.Errorf("peer %v with base %d height %d claims no block for %d",
+			event.peerID, peer.base, peer.height, event.height)}, nil
 }
 
 func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
@@ -578,10 +585,7 @@ func (sc *scheduler) handleBlockProcessError(event pcBlockVerificationFailure) (
 }
 
 func (sc *scheduler) handleAddNewPeer(event bcAddNewPeer) (Event, error) {
-	err := sc.addPeer(event.peerID)
-	if err != nil {
-		return scSchedulerFail{reason: err}, nil
-	}
+	sc.ensurePeer(event.peerID)
 	return noOp, nil
 }
 
@@ -631,6 +635,14 @@ func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
 
 }
 
+func (sc *scheduler) handleResetState(event bcResetState) (Event, error) {
+	sc.initHeight = event.state.LastBlockHeight + 1
+	sc.height = event.state.LastBlockHeight + 1
+	sc.lastAdvance = time.Now()
+	sc.addNewBlocks()
+	return noOp, nil
+}
+
 func (sc *scheduler) handleTrySchedule(event rTrySchedule) (Event, error) {
 	if time.Since(sc.lastAdvance) > sc.syncTimeout {
 		return scFinishedEv{reason: "timeout, no advance"}, nil
@@ -653,7 +665,7 @@ func (sc *scheduler) handleTrySchedule(event rTrySchedule) (Event, error) {
 }
 
 func (sc *scheduler) handleStatusResponse(event bcStatusResponse) (Event, error) {
-	err := sc.setPeerHeight(event.peerID, event.height)
+	err := sc.setPeerRange(event.peerID, event.base, event.height)
 	if err != nil {
 		return scPeerError{peerID: event.peerID, reason: err}, nil
 	}
@@ -662,6 +674,9 @@ func (sc *scheduler) handleStatusResponse(event bcStatusResponse) (Event, error)
 
 func (sc *scheduler) handle(event Event) (Event, error) {
 	switch event := event.(type) {
+	case bcResetState:
+		nextEvent, err := sc.handleResetState(event)
+		return nextEvent, err
 	case bcStatusResponse:
 		nextEvent, err := sc.handleStatusResponse(event)
 		return nextEvent, err

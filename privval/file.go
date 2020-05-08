@@ -32,7 +32,7 @@ func voteToStep(vote *types.Vote) int8 {
 	case types.PrecommitType:
 		return stepPrecommit
 	default:
-		panic("Unknown vote type")
+		panic(fmt.Sprintf("Unknown vote type: %v", vote.Type))
 	}
 }
 
@@ -237,8 +237,8 @@ func (pv *FilePV) GetAddress() types.Address {
 
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() crypto.PubKey {
-	return pv.Key.PubKey
+func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
+	return pv.Key.PubKey, nil
 }
 
 // SignVote signs a canonical representation of the vote, along with the

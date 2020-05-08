@@ -22,14 +22,6 @@ type paramsChangeTestCase struct {
 	params types.ConsensusParams
 }
 
-// always returns true if asked if any evidence was already committed.
-type mockEvPoolAlwaysCommitted struct{}
-
-func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
-func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)          {}
-func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
-
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
@@ -66,7 +58,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, err := blockExec.ApplyBlock(state, blockID, block)
+	state, _, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -82,7 +74,7 @@ func makeValidCommit(
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(i)
-		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID)
+		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
 			return nil, err
 		}

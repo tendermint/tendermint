@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"strings"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -141,6 +142,26 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 // Update the validator set
 func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+}
+
+func (app *PersistentKVStoreApplication) ListSnapshots(
+	req types.RequestListSnapshots) types.ResponseListSnapshots {
+	return types.ResponseListSnapshots{}
+}
+
+func (app *PersistentKVStoreApplication) LoadSnapshotChunk(
+	req types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
+	return types.ResponseLoadSnapshotChunk{}
+}
+
+func (app *PersistentKVStoreApplication) OfferSnapshot(
+	req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_ABORT}
+}
+
+func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
+	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }
 
 //---------------------------------------------
