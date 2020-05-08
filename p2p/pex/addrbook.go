@@ -353,16 +353,28 @@ func (a *addrBook) MarkBad(addr *p2p.NetAddress, banTime time.Duration) {
 	}
 }
 
+// ReinstateBadPeers removes bad peers from ban list and places them into a new
+// bucket.
 func (a *addrBook) ReinstateBadPeers() {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	for _, ka := range a.badPeers {
-		if !ka.isBanned() {
-			bucket := a.calcNewBucket(ka.Addr, ka.Src)
-			a.addToNewBucket(ka, bucket)
-			delete(a.badPeers, ka.ID())
-			a.Logger.Info("Reinstated address", "addr", ka.Addr)
+		if ka.isBanned() {
+			continue
 		}
+
+		bucket, err := a.calcNewBucket(ka.Addr, ka.Src)
+		if err != nil {
+			a.Logger.Error("Failed to calculate new bucket (bad peer won't be reinstantiated)",
+				"addr", ka.Addr, "err", err)
+			continue
+		}
+
+		a.addToNewBucket(ka, bucket)
+		delete(a.badPeers, ka.ID())
+
+		a.Logger.Info("Reinstated address", "addr", ka.Addr)
 	}
 }
 
