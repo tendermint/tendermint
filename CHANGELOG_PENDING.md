@@ -23,6 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
   - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
+  - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
   - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
 
 - Blockchain Protocol
@@ -45,6 +46,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - nostrip: don't strip debugging symbols nor DWARF tables.
   - cleveldb: use cleveldb as db backend instead of goleveldb.
   - race: pass -race to go build and enable data race detection.
+- [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
 - [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
 
