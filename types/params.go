@@ -73,7 +73,7 @@ type EvidenceParams struct {
 
 	// This sets the maximum number of evidence that can be committed in a single block.
 	// and should fall comfortably under the max block bytes when we consider the size of
-	// each evidence (See MaxEvidenceBytes)
+	// each evidence (See MaxEvidenceBytes). The maximum number is MaxEvidencePerBlock.
 	// Default is 50
 	MaxNumEvidence uint32 `json:"max_num_evidence"`
 }
