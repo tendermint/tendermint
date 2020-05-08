@@ -106,6 +106,6 @@ func (pk PubKey) String() string {
 	return strings.Join(keys, ", ")
 }
 
-func (pubKey PubKey) Type() string {
+func (pk PubKey) Type() string {
 	return PubKeyAminoRoute
 }
