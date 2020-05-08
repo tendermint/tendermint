@@ -918,7 +918,6 @@ func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 	return (&net.IPNet{IP: na.IP, Mask: net.CIDRMask(bits, 128)}).String()
 }
 
-// hash function calculates hash and returns the resulting bytes.
 func (a *addrBook) hash(b []byte) ([]byte, error) {
 	hasher, err := highwayhash.New64(a.hashKey)
 	if err != nil {
