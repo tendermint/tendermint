@@ -116,6 +116,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
+
 		result, err := c.BroadcastEvidence(correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
 		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
