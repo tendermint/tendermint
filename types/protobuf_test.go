@@ -14,17 +14,13 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/proto/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
-	pkSecp := secp256k1.GenPrivKey().PubKey()
 	err := testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
 	assert.NoError(t, err)
-	err = testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
-	assert.Error(t, err)
 }
 
 func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
