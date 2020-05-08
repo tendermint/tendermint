@@ -168,5 +168,5 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0666)
+	return ioutil.WriteFile(cfile, []byte(data), 0600)
 }

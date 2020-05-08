@@ -113,13 +113,13 @@ func TestByzantine(t *testing.T) {
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*Reactor)
-		cr.SwitchToConsensus(cr.conS.GetState(), 0)
+		cr.SwitchToConsensus(cr.conS.GetState(), false)
 	}
 
 	// start the byzantine state machine
 	byzR := reactors[0].(*ByzantineReactor)
 	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s, 0)
+	byzR.reactor.SwitchToConsensus(s, false)
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].
@@ -219,7 +219,7 @@ func sendProposalAndParts(
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
+	peer.Send(DataChannel, MustEncode(msg))
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -229,7 +229,7 @@ func sendProposalAndParts(
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
+		peer.Send(DataChannel, MustEncode(msg))
 	}
 
 	// votes
@@ -238,8 +238,8 @@ func sendProposalAndParts(
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
-	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))
-	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{precommit}))
+	peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+	peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
 }
 
 //----------------------------------------
@@ -269,8 +269,8 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !br.reactor.fastSync {
+	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	if !br.reactor.waitSync {
 		br.reactor.sendNewRoundStepMessage(peer)
 	}
 }

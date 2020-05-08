@@ -3,27 +3,28 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
-
-	"github.com/tendermint/tendermint/libs/fail"
-	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/libs/service"
-	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	"github.com/tendermint/tendermint/libs/fail"
+	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 //-----------------------------------------------------------------------------
@@ -207,7 +208,7 @@ func StateMetrics(metrics *Metrics) StateOption {
 // String returns a string.
 func (cs *State) String() string {
 	// better not to access shared variables
-	return fmt.Sprintf("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+	return "ConsensusState"
 }
 
 // GetState returns a copy of the chain state.
@@ -1094,7 +1095,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		logger.Info("enterPrevote: Block was locked")
+		logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
 		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
@@ -1395,13 +1396,13 @@ func (cs *State) finalizeCommit(height int64) {
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
 	if !ok {
-		panic(fmt.Sprintf("Cannot finalizeCommit, commit does not have two thirds majority"))
+		panic("Cannot finalizeCommit, commit does not have two thirds majority")
 	}
 	if !blockParts.HasHeader(blockID.PartsHeader) {
-		panic(fmt.Sprintf("Expected ProposalBlockParts header to be commit header"))
+		panic("Expected ProposalBlockParts header to be commit header")
 	}
 	if !block.HashesTo(blockID.Hash) {
-		panic(fmt.Sprintf("Cannot finalizeCommit, ProposalBlock does not hash to commit hash"))
+		panic("Cannot finalizeCommit, ProposalBlock does not hash to commit hash")
 	}
 	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
 		panic(fmt.Sprintf("+2/3 committed an invalid block: %v", err))
@@ -1658,15 +1659,21 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		return added, err
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-		// Added and completed!
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(
-			cs.ProposalBlockParts.GetReader(),
-			&cs.ProposalBlock,
-			cs.state.ConsensusParams.Block.MaxBytes,
-		)
+		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
+		var pbb = new(tmproto.Block)
+		err = proto.Unmarshal(bz, pbb)
+		if err != nil {
+			return added, err
+		}
+		block, err := types.BlockFromProto(pbb)
+		if err != nil {
+			return added, err
+		}
+
+		cs.ProposalBlock = block
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())
@@ -1948,12 +1955,12 @@ func (cs *State) voteTime() time.Time {
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
 	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	timeIotaMs := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
+	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
 		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIotaMs)
+		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
 	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIotaMs)
+		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
 	}
 
 	if now.After(minVoteTime) {

@@ -153,7 +153,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Se
 			}
 
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if txi.indexAllEvents || tmstring.StringInSlice(compositeTag, txi.compositeKeysToIndex) {
+			if txi.indexAllEvents || tmstring.StringInSlice(compositeTag, txi.compositeKeysToIndex) || attr.GetIndex() {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
 		}

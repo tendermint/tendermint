@@ -41,7 +41,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
+	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, txs, commit, evList)
@@ -61,7 +61,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
+	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
 	testCases := []struct {
@@ -124,7 +124,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
+	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
@@ -141,7 +141,7 @@ func TestBlockHashesTo(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), 0, valSet.Validators[0].Address)
+	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
@@ -174,8 +174,8 @@ func makeBlockIDRandom() BlockID {
 		blockHash   = make([]byte, tmhash.Size)
 		partSetHash = make([]byte, tmhash.Size)
 	)
-	rand.Read(blockHash)   //nolint: gosec
-	rand.Read(partSetHash) //nolint: gosec
+	rand.Read(blockHash)
+	rand.Read(partSetHash)
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
@@ -596,6 +596,244 @@ func TestBlockIDValidateBasic(t *testing.T) {
 				PartsHeader: tc.blockIDPartsHeader,
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBlockProtoBuf(t *testing.T) {
+	h := tmrand.Int63()
+	c1 := randCommit(time.Now())
+	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+
+	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	evi := NewMockEvidence(b2.Height, time.Now(), tmrand.Bytes(32))
+	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
+	b2.EvidenceHash = b2.Evidence.Hash()
+
+	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
+	testCases := []struct {
+		msg      string
+		b1       *Block
+		expPass  bool
+		expPass2 bool
+	}{
+		{"nil block", nil, false, false},
+		{"b1", b1, true, true}, //nil BlockID errors
+		{"b2", b2, true, true},
+		{"b3", b3, true, true},
+	}
+	for _, tc := range testCases {
+		pb, err := tc.b1.ToProto()
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		block, err := BlockFromProto(pb)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
+			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestDataProtoBuf(t *testing.T) {
+	data := &Data{Txs: Txs{Tx([]byte{1}), Tx([]byte{2}), Tx([]byte{3})}}
+	_ = data.Hash()
+	data2 := &Data{Txs: Txs{}}
+	_ = data2.Hash()
+	testCases := []struct {
+		msg     string
+		data1   *Data
+		expPass bool
+	}{
+		{"success", data, true},
+		{"success data2", data2, true},
+	}
+	for _, tc := range testCases {
+		protoData := tc.data1.ToProto()
+		d, err := DataFromProto(&protoData)
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.data1, &d, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestEvidenceDataProtoBuf(t *testing.T) {
+	ev := NewDuplicateVoteEvidence(examplePrecommit(), examplePrevote())
+	data := &EvidenceData{Evidence: EvidenceList{ev}}
+	_ = data.Hash()
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceData
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", data, true, true},
+		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
+		{"fail nil Data", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		eviD := new(EvidenceData)
+		err = eviD.FromProto(protoData)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestCommitProtoBuf(t *testing.T) {
+	commit := randCommit(time.Now())
+
+	testCases := []struct {
+		msg     string
+		c1      *Commit
+		expPass bool
+	}{
+		{"success", commit, true},
+		// Empty value sets signatures to nil, signatures should not be nillable
+		{"empty commit", &Commit{Signatures: []CommitSig{}}, true},
+		{"fail Commit nil", nil, false},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		protoCommit := tc.c1.ToProto()
+
+		c, err := CommitFromProto(protoCommit)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.c1, c, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestSignedHeaderProtoBuf(t *testing.T) {
+	commit := randCommit(time.Now())
+	h := makeRandHeader()
+
+	sh := SignedHeader{Header: &h, Commit: commit}
+
+	testCases := []struct {
+		msg     string
+		sh1     *SignedHeader
+		expPass bool
+	}{
+		{"empty SignedHeader 2", &SignedHeader{}, true},
+		{"success", &sh, true},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoSignedHeader := tc.sh1.ToProto()
+
+		sh, err := SignedHeaderFromProto(protoSignedHeader)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.sh1, sh, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestBlockIDProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	testCases := []struct {
+		msg     string
+		bid1    *BlockID
+		expPass bool
+	}{
+		{"success", &blockID, true},
+		{"success empty", &BlockID{}, true},
+		{"failure BlockID nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoBlockID := tc.bid1.ToProto()
+
+		bi, err := BlockIDFromProto(&protoBlockID)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.bid1, bi, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bid1, bi, tc.msg)
+		}
+	}
+}
+
+func makeRandHeader() Header {
+	chainID := "test"
+	t := time.Now()
+	height := tmrand.Int63()
+	randBytes := tmrand.Bytes(tmhash.Size)
+	randAddress := tmrand.Bytes(crypto.AddressSize)
+	h := Header{
+		Version:            version.Consensus{Block: 1, App: 1},
+		ChainID:            chainID,
+		Height:             height,
+		Time:               t,
+		LastBlockID:        BlockID{},
+		LastCommitHash:     randBytes,
+		DataHash:           randBytes,
+		ValidatorsHash:     randBytes,
+		NextValidatorsHash: randBytes,
+		ConsensusHash:      randBytes,
+		AppHash:            randBytes,
+
+		LastResultsHash: randBytes,
+
+		EvidenceHash:    randBytes,
+		ProposerAddress: randAddress,
+	}
+
+	return h
+}
+
+func TestHeaderProto(t *testing.T) {
+	h1 := makeRandHeader()
+	tc := []struct {
+		msg     string
+		h1      *Header
+		expPass bool
+	}{
+		{"success", &h1, true},
+		{"failure empty Header", &Header{}, false},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.msg, func(t *testing.T) {
+			pb := tt.h1.ToProto()
+			h, err := HeaderFromProto(pb)
+			if tt.expPass {
+				require.NoError(t, err, tt.msg)
+				require.Equal(t, tt.h1, &h, tt.msg)
+			} else {
+				require.Error(t, err, tt.msg)
+			}
+
 		})
 	}
 }

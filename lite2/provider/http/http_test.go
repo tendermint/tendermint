@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -32,6 +34,7 @@ func TestNewProvider(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewApplication()
+	app.RetainBlocks = 5
 	node := rpctest.StartTendermint(app)
 
 	code := m.Run()
@@ -50,12 +53,16 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p, err := litehttp.New(chainID, rpcAddr)
+
+	c, err := rpchttp.New(rpcAddr, "/websocket")
+	require.Nil(t, err)
+
+	p := litehttp.NewWithClient(chainID, c)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(p.(rpcclient.StatusClient), 6, nil)
+	err = rpcclient.WaitForHeight(c, 6, nil)
 	require.Nil(t, err)
 
 	// let's get the highest block
@@ -68,8 +75,25 @@ func TestProvider(t *testing.T) {
 	assert.Nil(t, sh.ValidateBasic(chainID))
 
 	// historical queries now work :)
-	lower := sh.Height - 5
+	lower := sh.Height - 3
 	sh, err = p.SignedHeader(lower)
 	assert.Nil(t, err, "%+v", err)
 	assert.Equal(t, lower, sh.Height)
+
+	// fetching missing heights (both future and pruned) should return appropriate errors
+	_, err = p.SignedHeader(1000)
+	require.Error(t, err)
+	assert.Equal(t, provider.ErrSignedHeaderNotFound, err)
+
+	_, err = p.ValidatorSet(1000)
+	require.Error(t, err)
+	assert.Equal(t, provider.ErrValidatorSetNotFound, err)
+
+	_, err = p.SignedHeader(1)
+	require.Error(t, err)
+	assert.Equal(t, provider.ErrSignedHeaderNotFound, err)
+
+	_, err = p.ValidatorSet(1)
+	require.Error(t, err)
+	assert.Equal(t, provider.ErrValidatorSetNotFound, err)
 }

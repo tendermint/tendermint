@@ -14,10 +14,11 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
+	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/proxy"
@@ -117,13 +118,15 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
+	return true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) error {
+	return nil
 }
 
 type testReactorParams struct {
@@ -131,7 +134,6 @@ type testReactorParams struct {
 	genDoc      *types.GenesisDoc
 	privVals    []types.PrivValidator
 	startHeight int64
-	bufferSize  int
 	mockA       bool
 }
 
@@ -156,7 +158,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, appl, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -353,7 +355,6 @@ func TestReactorHelperMode(t *testing.T) {
 		genDoc:      genDoc,
 		privVals:    privVals,
 		startHeight: 20,
-		bufferSize:  100,
 		mockA:       true,
 	}
 
@@ -371,10 +372,10 @@ func TestReactorHelperMode(t *testing.T) {
 			name:   "status request",
 			params: params,
 			msgs: []testEvent{
-				{"P1", bcStatusRequestMessage{}},
-				{"P1", bcBlockRequestMessage{Height: 13}},
-				{"P1", bcBlockRequestMessage{Height: 20}},
-				{"P1", bcBlockRequestMessage{Height: 22}},
+				{"P1", bc.StatusRequestMessage{}},
+				{"P1", bc.BlockRequestMessage{Height: 13}},
+				{"P1", bc.BlockRequestMessage{Height: 20}},
+				{"P1", bc.BlockRequestMessage{Height: 22}},
 			},
 		},
 	}
@@ -383,25 +384,37 @@ func TestReactorHelperMode(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
-			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
+			reactor.Start()
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
 				switch ev := step.event.(type) {
-				case bcStatusRequestMessage:
+				case bc.StatusRequestMessage:
 					old := mockSwitch.numStatusResponse
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+					bm, err := bc.MsgToProto(&ev)
+					assert.NoError(t, err)
+					msg, err := bm.Marshal()
+					assert.NoError(t, err)
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
-				case bcBlockRequestMessage:
+				case bc.BlockRequestMessage:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						bm, err := bc.MsgToProto(&ev)
+						assert.NoError(t, err)
+						msg, err := bm.Marshal()
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						bm, err := bc.MsgToProto(&ev)
+						assert.NoError(t, err)
+						msg, err := bm.Marshal()
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
@@ -409,6 +422,22 @@ func TestReactorHelperMode(t *testing.T) {
 			reactor.Stop()
 		})
 	}
+}
+
+func TestReactorSetSwitchNil(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+
+	reactor := newTestReactor(testReactorParams{
+		logger:   log.TestingLogger(),
+		genDoc:   genDoc,
+		privVals: privVals,
+	})
+	reactor.SetSwitch(nil)
+
+	assert.Nil(t, reactor.Switch)
+	assert.Nil(t, reactor.io)
 }
 
 //----------------------------------------------

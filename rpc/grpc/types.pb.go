@@ -4,7 +4,6 @@
 package coregrpc
 
 import (
-	bytes "bytes"
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
@@ -17,8 +16,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -36,8 +33,9 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type RequestPing struct {
 }
 
-func (m *RequestPing) Reset()      { *m = RequestPing{} }
-func (*RequestPing) ProtoMessage() {}
+func (m *RequestPing) Reset()         { *m = RequestPing{} }
+func (m *RequestPing) String() string { return proto.CompactTextString(m) }
+func (*RequestPing) ProtoMessage()    {}
 func (*RequestPing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{0}
 }
@@ -72,8 +70,9 @@ type RequestBroadcastTx struct {
 	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 }
 
-func (m *RequestBroadcastTx) Reset()      { *m = RequestBroadcastTx{} }
-func (*RequestBroadcastTx) ProtoMessage() {}
+func (m *RequestBroadcastTx) Reset()         { *m = RequestBroadcastTx{} }
+func (m *RequestBroadcastTx) String() string { return proto.CompactTextString(m) }
+func (*RequestBroadcastTx) ProtoMessage()    {}
 func (*RequestBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{1}
 }
@@ -114,8 +113,9 @@ func (m *RequestBroadcastTx) GetTx() []byte {
 type ResponsePing struct {
 }
 
-func (m *ResponsePing) Reset()      { *m = ResponsePing{} }
-func (*ResponsePing) ProtoMessage() {}
+func (m *ResponsePing) Reset()         { *m = ResponsePing{} }
+func (m *ResponsePing) String() string { return proto.CompactTextString(m) }
+func (*ResponsePing) ProtoMessage()    {}
 func (*ResponsePing) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{2}
 }
@@ -151,8 +151,9 @@ type ResponseBroadcastTx struct {
 	DeliverTx *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx,proto3" json:"deliver_tx,omitempty"`
 }
 
-func (m *ResponseBroadcastTx) Reset()      { *m = ResponseBroadcastTx{} }
-func (*ResponseBroadcastTx) ProtoMessage() {}
+func (m *ResponseBroadcastTx) Reset()         { *m = ResponseBroadcastTx{} }
+func (m *ResponseBroadcastTx) String() string { return proto.CompactTextString(m) }
+func (*ResponseBroadcastTx) ProtoMessage()    {}
 func (*ResponseBroadcastTx) Descriptor() ([]byte, []int) {
 	return fileDescriptor_15f63baabf91876a, []int{3}
 }
@@ -212,176 +213,29 @@ func init() { proto.RegisterFile("rpc/grpc/types.proto", fileDescriptor_15f63baa
 func init() { golang_proto.RegisterFile("rpc/grpc/types.proto", fileDescriptor_15f63baabf91876a) }
 
 var fileDescriptor_15f63baabf91876a = []byte{
-	// 383 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0x3f, 0x6f, 0xda, 0x40,
-	0x18, 0xc6, 0x7d, 0xa8, 0xea, 0x9f, 0x83, 0x32, 0x98, 0xaa, 0xaa, 0x3c, 0xbc, 0xa2, 0xa8, 0xa2,
-	0x4c, 0x67, 0x89, 0x8e, 0x9d, 0xa0, 0x95, 0xaa, 0x2a, 0x0b, 0xb2, 0x98, 0xb2, 0x10, 0x73, 0x3e,
-	0x19, 0x2b, 0xc1, 0xe7, 0x9c, 0x8f, 0xc8, 0x6c, 0xf9, 0x08, 0xf9, 0x0a, 0xd9, 0xf2, 0x11, 0xb2,
-	0x44, 0xca, 0x98, 0x91, 0x91, 0x31, 0x3e, 0x2f, 0x19, 0x19, 0x33, 0x46, 0xb6, 0x71, 0xb8, 0x21,
-	0x21, 0x8b, 0xf5, 0xd8, 0x7a, 0x9e, 0x9f, 0x9f, 0xf7, 0xd5, 0x8b, 0xbf, 0x88, 0x88, 0xda, 0x7e,
-	0xfe, 0x90, 0xcb, 0x88, 0xc5, 0x24, 0x12, 0x5c, 0x72, 0xb3, 0x25, 0x59, 0xe8, 0x31, 0x31, 0x0f,
-	0x42, 0x49, 0x44, 0x44, 0x49, 0x6e, 0xb0, 0xba, 0x72, 0x16, 0x08, 0x6f, 0x12, 0xb9, 0x42, 0x2e,
-	0xed, 0xc2, 0x67, 0xfb, 0xdc, 0xe7, 0x3b, 0x55, 0x86, 0xad, 0xaf, 0xee, 0x94, 0x06, 0x25, 0x4e,
-	0x87, 0x76, 0x3e, 0xe3, 0xba, 0xc3, 0x4e, 0x17, 0x2c, 0x96, 0xa3, 0x20, 0xf4, 0x3b, 0x3f, 0xb0,
-	0xb9, 0x7d, 0x1d, 0x0a, 0xee, 0x7a, 0xd4, 0x8d, 0xe5, 0x38, 0x31, 0x9b, 0xb8, 0x26, 0x93, 0x6f,
-	0xa8, 0x8d, 0x7a, 0x0d, 0xa7, 0x26, 0x93, 0x4e, 0x13, 0x37, 0x1c, 0x16, 0x47, 0x3c, 0x8c, 0x59,
-	0x91, 0xba, 0x44, 0xb8, 0x55, 0x7d, 0xd0, 0x73, 0x03, 0xfc, 0x91, 0xce, 0x18, 0x3d, 0x9e, 0x6c,
-	0xd3, 0xf5, 0x7e, 0x97, 0x68, 0x43, 0xe4, 0x95, 0x48, 0x59, 0xa6, 0x4a, 0xff, 0xc9, 0xed, 0xe3,
-	0xc4, 0xf9, 0x40, 0x4b, 0x61, 0xfe, 0xc3, 0xd8, 0x63, 0x27, 0xc1, 0x19, 0x13, 0x39, 0xa4, 0x56,
-	0x40, 0x7a, 0x6f, 0x40, 0xfe, 0x96, 0x81, 0x71, 0xe2, 0x7c, 0xf2, 0x2a, 0xd9, 0xbf, 0x41, 0xb8,
-	0xf1, 0xdc, 0x6d, 0x30, 0xfa, 0x6f, 0x1e, 0xe0, 0x77, 0x79, 0x79, 0xb3, 0x4d, 0x5e, 0xd8, 0x2b,
-	0xd1, 0x96, 0x62, 0x7d, 0x7f, 0xc5, 0xb1, 0xdb, 0x80, 0x79, 0x84, 0xeb, 0xfa, 0xe0, 0x3f, 0xf7,
-	0x31, 0x35, 0xa3, 0xd5, 0xdb, 0x8b, 0xd6, 0x9c, 0x43, 0xb9, 0x4a, 0xc1, 0x58, 0xa7, 0x60, 0x6c,
-	0x52, 0x40, 0x8f, 0x29, 0xa0, 0x73, 0x05, 0xe8, 0x4a, 0x01, 0xba, 0x56, 0x80, 0xee, 0x14, 0xa0,
-	0x95, 0x02, 0x74, 0xaf, 0x00, 0x3d, 0x28, 0x30, 0x36, 0x0a, 0xd0, 0x45, 0x06, 0xc6, 0x6d, 0x06,
-	0x68, 0x95, 0x81, 0xb1, 0xce, 0xc0, 0x38, 0xec, 0xfb, 0x81, 0x9c, 0x2d, 0xa6, 0x84, 0xf2, 0xb9,
-	0xbd, 0xfb, 0xab, 0x2e, 0xab, 0xb3, 0xfb, 0x4d, 0xb9, 0x60, 0xb9, 0x98, 0xbe, 0x2f, 0xae, 0xe4,
-	0xd7, 0x53, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd7, 0x92, 0x74, 0x05, 0x92, 0x02, 0x00, 0x00,
-}
-
-func (this *RequestPing) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestPing)
-	if !ok {
-		that2, ok := that.(RequestPing)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *RequestBroadcastTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RequestBroadcastTx)
-	if !ok {
-		that2, ok := that.(RequestBroadcastTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Tx, that1.Tx) {
-		return false
-	}
-	return true
-}
-func (this *ResponsePing) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponsePing)
-	if !ok {
-		that2, ok := that.(ResponsePing)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *ResponseBroadcastTx) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ResponseBroadcastTx)
-	if !ok {
-		that2, ok := that.(ResponseBroadcastTx)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.CheckTx.Equal(that1.CheckTx) {
-		return false
-	}
-	if !this.DeliverTx.Equal(that1.DeliverTx) {
-		return false
-	}
-	return true
-}
-func (this *RequestPing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&coregrpc.RequestPing{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RequestBroadcastTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&coregrpc.RequestBroadcastTx{")
-	s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponsePing) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&coregrpc.ResponsePing{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ResponseBroadcastTx) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&coregrpc.ResponseBroadcastTx{")
-	if this.CheckTx != nil {
-		s = append(s, "CheckTx: "+fmt.Sprintf("%#v", this.CheckTx)+",\n")
-	}
-	if this.DeliverTx != nil {
-		s = append(s, "DeliverTx: "+fmt.Sprintf("%#v", this.DeliverTx)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+	// 344 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0xc1, 0x4a, 0xf3, 0x40,
+	0x14, 0x85, 0x3b, 0xe5, 0xe7, 0x57, 0x6f, 0x6b, 0x17, 0x53, 0x11, 0xc9, 0x62, 0xa8, 0x45, 0x6a,
+	0x57, 0x13, 0xa8, 0x4b, 0x57, 0xad, 0x82, 0x88, 0x9b, 0x12, 0xba, 0x72, 0x53, 0xd3, 0xc9, 0x90,
+	0x06, 0x6d, 0x66, 0x9c, 0x4c, 0x25, 0x7d, 0x0b, 0x5f, 0xc1, 0x07, 0x11, 0x5c, 0xba, 0xec, 0xd2,
+	0xa5, 0x34, 0x2f, 0x22, 0x93, 0x34, 0x76, 0x16, 0x5a, 0x37, 0xe1, 0x64, 0x38, 0xe7, 0xe3, 0xdc,
+	0xcb, 0x85, 0x03, 0x25, 0x99, 0x1b, 0x9a, 0x8f, 0x5e, 0x48, 0x9e, 0x50, 0xa9, 0x84, 0x16, 0xb8,
+	0xa9, 0x79, 0x1c, 0x70, 0x35, 0x8b, 0x62, 0x4d, 0x95, 0x64, 0xd4, 0x18, 0x9c, 0x8e, 0x9e, 0x46,
+	0x2a, 0x18, 0x4b, 0x5f, 0xe9, 0x85, 0x9b, 0xfb, 0xdc, 0x50, 0x84, 0x62, 0xa3, 0x8a, 0xb0, 0x73,
+	0xe8, 0x4f, 0x58, 0x54, 0xe0, 0x6c, 0x68, 0x7b, 0x1f, 0x6a, 0x1e, 0x7f, 0x9c, 0xf3, 0x44, 0x0f,
+	0xa3, 0x38, 0x6c, 0x9f, 0x00, 0x5e, 0xff, 0x0e, 0x94, 0xf0, 0x03, 0xe6, 0x27, 0x7a, 0x94, 0xe2,
+	0x06, 0x54, 0x75, 0x7a, 0x84, 0x5a, 0xa8, 0x5b, 0xf7, 0xaa, 0x3a, 0x6d, 0x37, 0xa0, 0xee, 0xf1,
+	0x44, 0x8a, 0x38, 0xe1, 0x79, 0xea, 0x05, 0x41, 0xb3, 0x7c, 0xb0, 0x73, 0x7d, 0xd8, 0x65, 0x53,
+	0xce, 0xee, 0xc7, 0xeb, 0x74, 0xad, 0xd7, 0xa1, 0xd6, 0x10, 0xa6, 0x12, 0x2d, 0xca, 0x94, 0xe9,
+	0x0b, 0x63, 0x1f, 0xa5, 0xde, 0x0e, 0x2b, 0x04, 0xbe, 0x02, 0x08, 0xf8, 0x43, 0xf4, 0xc4, 0x95,
+	0x81, 0x54, 0x73, 0x48, 0xf7, 0x0f, 0xc8, 0x65, 0x11, 0x18, 0xa5, 0xde, 0x5e, 0x50, 0xca, 0xde,
+	0x2b, 0x82, 0xfa, 0x77, 0xb7, 0xfe, 0xf0, 0x1a, 0xdf, 0xc0, 0x3f, 0x53, 0x1e, 0xb7, 0xe8, 0x0f,
+	0x7b, 0xa5, 0xd6, 0x52, 0x9c, 0xe3, 0x5f, 0x1c, 0x9b, 0x0d, 0xe0, 0x3b, 0xa8, 0xd9, 0x83, 0x9f,
+	0x6e, 0x63, 0x5a, 0x46, 0xa7, 0xbb, 0x15, 0x6d, 0x39, 0x07, 0xc3, 0xf7, 0x15, 0x41, 0xcb, 0x15,
+	0x41, 0x9f, 0x2b, 0x82, 0x9e, 0x33, 0x52, 0x79, 0xcb, 0x08, 0x5a, 0x66, 0xa4, 0xf2, 0x91, 0x91,
+	0xca, 0x6d, 0x2f, 0x8c, 0xf4, 0x74, 0x3e, 0xa1, 0x4c, 0xcc, 0xdc, 0x0d, 0xd1, 0x96, 0xe5, 0x49,
+	0x9d, 0x33, 0xa1, 0xb8, 0x11, 0x93, 0xff, 0xf9, 0x05, 0x9c, 0x7d, 0x05, 0x00, 0x00, 0xff, 0xff,
+	0x10, 0xd1, 0xbd, 0x13, 0x6e, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -634,117 +488,6 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func NewPopulatedRequestPing(r randyTypes, easy bool) *RequestPing {
-	this := &RequestPing{}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedRequestBroadcastTx(r randyTypes, easy bool) *RequestBroadcastTx {
-	this := &RequestBroadcastTx{}
-	v1 := r.Intn(100)
-	this.Tx = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Tx[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedResponsePing(r randyTypes, easy bool) *ResponsePing {
-	this := &ResponsePing{}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedResponseBroadcastTx(r randyTypes, easy bool) *ResponseBroadcastTx {
-	this := &ResponseBroadcastTx{}
-	if r.Intn(5) != 0 {
-		this.CheckTx = types.NewPopulatedResponseCheckTx(r, easy)
-	}
-	if r.Intn(5) != 0 {
-		this.DeliverTx = types.NewPopulatedResponseDeliverTx(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyTypes interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneTypes(r randyTypes) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringTypes(r randyTypes) string {
-	v2 := r.Intn(100)
-	tmps := make([]rune, v2)
-	for i := 0; i < v2; i++ {
-		tmps[i] = randUTF8RuneTypes(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedTypes(r randyTypes, maxFieldNumber int) (dAtA []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		dAtA = randFieldTypes(dAtA, r, fieldNumber, wire)
-	}
-	return dAtA
-}
-func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v3 := r.Int63()
-		if r.Intn(2) == 0 {
-			v3 *= -1
-		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v3))
-	case 1:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		ll := r.Intn(100)
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(ll))
-		for j := 0; j < ll; j++ {
-			dAtA = append(dAtA, byte(r.Intn(256)))
-		}
-	default:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return dAtA
-}
-func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	dAtA = append(dAtA, uint8(v))
-	return dAtA
-}
 func (m *RequestPing) Size() (n int) {
 	if m == nil {
 		return 0
@@ -798,53 +541,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *RequestPing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestPing{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RequestBroadcastTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RequestBroadcastTx{`,
-		`Tx:` + fmt.Sprintf("%v", this.Tx) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponsePing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponsePing{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ResponseBroadcastTx) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ResponseBroadcastTx{`,
-		`CheckTx:` + strings.Replace(fmt.Sprintf("%v", this.CheckTx), "ResponseCheckTx", "types.ResponseCheckTx", 1) + `,`,
-		`DeliverTx:` + strings.Replace(fmt.Sprintf("%v", this.DeliverTx), "ResponseDeliverTx", "types.ResponseDeliverTx", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *RequestPing) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

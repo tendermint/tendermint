@@ -1,0 +1,50 @@
+syntax = "proto3";
+package tendermint.proto.privval;
+
+option go_package = "github.com/tendermint/tendermint/proto/privval";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/crypto/keys/types.proto";
+import "proto/types/types.proto";
+
+message RemoteSignerError {
+  int32  code        = 1;
+  string description = 2;
+}
+
+// PubKeyRequest requests the consensus public key from the remote signer.
+message PubKeyRequest {}
+
+// PubKeyResponse is a response message containing the public key.
+message PubKeyResponse {
+  tendermint.proto.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError                      error   = 2;
+}
+
+// SignVoteRequest is a request to sign a vote
+message SignVoteRequest {
+  tendermint.proto.types.Vote vote = 1 [(gogoproto.nullable) = false];
+}
+
+// SignedVoteResponse is a response containing a signed vote or an error
+message SignVoteResponse {
+  tendermint.proto.types.Vote vote  = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError           error = 2;
+}
+
+// SignProposalRequest is a request to sign a proposal
+message SignProposalRequest {
+  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+}
+
+// SignedProposalResponse is response containing a signed proposal or an error
+message SignedProposalResponse {
+  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError               error    = 2;
+}
+
+// PingRequest is a request to confirm that the connection is alive.
+message PingRequest {}
+
+// PingResponse is a response to confirm that the connection is alive.
+message PingResponse {}

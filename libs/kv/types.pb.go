@@ -4,7 +4,6 @@
 package kv
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -12,8 +11,6 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	reflect "reflect"
-	strings "strings"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -33,8 +30,9 @@ type Pair struct {
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *Pair) Reset()      { *m = Pair{} }
-func (*Pair) ProtoMessage() {}
+func (m *Pair) Reset()         { *m = Pair{} }
+func (m *Pair) String() string { return proto.CompactTextString(m) }
+func (*Pair) ProtoMessage()    {}
 func (*Pair) Descriptor() ([]byte, []int) {
 	return fileDescriptor_31432671d164f444, []int{0}
 }
@@ -88,7 +86,7 @@ func init() { proto.RegisterFile("libs/kv/types.proto", fileDescriptor_31432671d
 func init() { golang_proto.RegisterFile("libs/kv/types.proto", fileDescriptor_31432671d164f444) }
 
 var fileDescriptor_31432671d164f444 = []byte{
-	// 221 bytes of a gzipped FileDescriptorProto
+	// 182 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0xce, 0xc9, 0x4c, 0x2a,
 	0xd6, 0xcf, 0x2e, 0xd3, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
 	0x12, 0x2a, 0x49, 0xcd, 0x4b, 0x49, 0x2d, 0xca, 0xcd, 0xcc, 0x2b, 0xd1, 0x03, 0xc9, 0xeb, 0x65,
@@ -96,61 +94,13 @@ var fileDescriptor_31432671d164f444 = []byte{
 	0x95, 0xe9, 0xa7, 0xe7, 0xa7, 0xe7, 0x23, 0x58, 0x10, 0xbd, 0x4a, 0x7a, 0x5c, 0x2c, 0x01, 0x89,
 	0x99, 0x45, 0x42, 0x02, 0x5c, 0xcc, 0xd9, 0xa9, 0x95, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0x3c, 0x41,
 	0x20, 0xa6, 0x90, 0x08, 0x17, 0x6b, 0x59, 0x62, 0x4e, 0x69, 0xaa, 0x04, 0x13, 0x58, 0x0c, 0xc2,
-	0x71, 0xca, 0xba, 0xf0, 0x50, 0x8e, 0xe1, 0xc6, 0x43, 0x39, 0x86, 0x0f, 0x0f, 0xe5, 0x18, 0x7f,
-	0x3c, 0x94, 0x63, 0x6c, 0x78, 0x24, 0xc7, 0xb8, 0xe2, 0x91, 0x1c, 0xe3, 0x8e, 0x47, 0x72, 0x8c,
-	0x27, 0x1e, 0xc9, 0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0, 0x91, 0x1c, 0xe3, 0x8b, 0x47, 0x72,
-	0x0c, 0x1f, 0x1e, 0xc9, 0x31, 0x4e, 0x78, 0x2c, 0xc7, 0x70, 0xe0, 0xb1, 0x1c, 0xe3, 0x85, 0xc7,
-	0x72, 0x0c, 0x37, 0x1e, 0xcb, 0x31, 0x44, 0x69, 0xa4, 0x67, 0x96, 0x64, 0x94, 0x26, 0xe9, 0x25,
-	0xe7, 0xe7, 0xea, 0x23, 0x1c, 0x8e, 0xcc, 0x84, 0xfa, 0x31, 0x89, 0x0d, 0xec, 0x44, 0x63, 0x40,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0xc3, 0xa1, 0xed, 0xeb, 0xf5, 0x00, 0x00, 0x00,
+	0x71, 0x72, 0x3b, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27,
+	0x3c, 0x96, 0x63, 0x38, 0xf0, 0x58, 0x8e, 0xf1, 0xc2, 0x63, 0x39, 0x86, 0x1b, 0x8f, 0xe5, 0x18,
+	0xa2, 0x34, 0xd2, 0x33, 0x4b, 0x32, 0x4a, 0x93, 0xf4, 0x92, 0xf3, 0x73, 0xf5, 0x11, 0x8e, 0x42,
+	0x66, 0x42, 0xdd, 0x9f, 0xc4, 0x06, 0xb6, 0xde, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x2e, 0x58,
+	0x77, 0xfc, 0xd1, 0x00, 0x00, 0x00,
 }
 
-func (this *Pair) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Pair)
-	if !ok {
-		that2, ok := that.(Pair)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Value, that1.Value) {
-		return false
-	}
-	return true
-}
-func (this *Pair) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&kv.Pair{")
-	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
-	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringTypes(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
 func (m *Pair) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -199,95 +149,6 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func NewPopulatedPair(r randyTypes, easy bool) *Pair {
-	this := &Pair{}
-	v1 := r.Intn(100)
-	this.Key = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Key[i] = byte(r.Intn(256))
-	}
-	v2 := r.Intn(100)
-	this.Value = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.Value[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyTypes interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneTypes(r randyTypes) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringTypes(r randyTypes) string {
-	v3 := r.Intn(100)
-	tmps := make([]rune, v3)
-	for i := 0; i < v3; i++ {
-		tmps[i] = randUTF8RuneTypes(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedTypes(r randyTypes, maxFieldNumber int) (dAtA []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		dAtA = randFieldTypes(dAtA, r, fieldNumber, wire)
-	}
-	return dAtA
-}
-func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		v4 := r.Int63()
-		if r.Intn(2) == 0 {
-			v4 *= -1
-		}
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v4))
-	case 1:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		ll := r.Intn(100)
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(ll))
-		for j := 0; j < ll; j++ {
-			dAtA = append(dAtA, byte(r.Intn(256)))
-		}
-	default:
-		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return dAtA
-}
-func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	dAtA = append(dAtA, uint8(v))
-	return dAtA
-}
 func (m *Pair) Size() (n int) {
 	if m == nil {
 		return 0
@@ -310,25 +171,6 @@ func sovTypes(x uint64) (n int) {
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *Pair) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Pair{`,
-		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
-		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTypes(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *Pair) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

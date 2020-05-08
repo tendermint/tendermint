@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 var (
@@ -127,12 +128,11 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.RequestAddrs(peer)
 
 	size := book.Size()
-	addrs := []*p2p.NetAddress{peer.SocketAddr()}
-	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
+	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
-	msg = cdc.MustMarshalBinaryBare(&pexRequestMessage{})
+	msg = mustEncode(&tmp2p.PexRequest{})
 	r.Receive(PexChannel, peer, msg) // should not panic.
 }
 
@@ -151,7 +151,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	require.True(t, book.HasAddress(peerAddr))
 
 	id := string(peer.ID())
-	msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
+	msg := mustEncode(&tmp2p.PexRequest{})
 
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
@@ -188,8 +188,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	addrs := []*p2p.NetAddress{peer.SocketAddr()}
-	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
+	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
@@ -378,9 +377,7 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
-	err = sw.Start()
-	require.NoError(t, err)
-	defer sw.Stop()
+	// No need to start sw since crawlPeers is called manually here.
 
 	peer := mock.NewPeer(nil)
 	addr := peer.SocketAddr()
@@ -389,9 +386,11 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, book.HasAddress(addr))
+
 	// imitate maxAttemptsToDial reached
 	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
 	pexR.crawlPeers([]*p2p.NetAddress{addr})
+
 	assert.False(t, book.HasAddress(addr))
 }
 
@@ -481,8 +480,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	pexR.RequestAddrs(peer)
 
 	size := book.Size()
-	addrs := []*p2p.NetAddress{peer.SocketAddr()}
-	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
+	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 

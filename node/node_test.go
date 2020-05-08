@@ -26,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -249,7 +250,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	types.RegisterMockEvidencesGlobal() // XXX!
 	// evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidencePool := evidence.NewPool(stateDB, evidenceDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
@@ -257,9 +260,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	minEvSize := 12
 	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
 	for i := 0; i < numEv; i++ {
-		ev := types.NewMockEvidence(1, time.Now(), 1, proposerAddr)
+		ev := types.NewMockEvidence(1, time.Now(), proposerAddr)
 		err := evidencePool.AddEvidence(ev)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// fill the mempool with more txs

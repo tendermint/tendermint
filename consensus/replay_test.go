@@ -9,14 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"sort"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -27,8 +26,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -177,6 +176,7 @@ LOOP:
 		csWal, err := cs.OpenWAL(walFile)
 		require.NoError(t, err)
 		crashingWal.next = csWal
+
 		// reset the message counter
 		crashingWal.msgIndex = 1
 		cs.wal = crashingWal
@@ -296,8 +296,8 @@ const (
 )
 
 var (
-	mempool = mock.Mempool{}
-	evpool  = sm.MockEvidencePool{}
+	mempool = emptyMempool{}
+	evpool  = emptyEvidencePool{}
 
 	sim testSim
 )
@@ -335,6 +335,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		vss[i] = newValidatorStub(css[i].privValidator, uint32(i))
 	}
 	height, round := css[0].Height, css[0].Round
+
 	// start the machine
 	startTestRound(css[0], height, round)
 	incrementHeight(vss...)
@@ -344,7 +345,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 2
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 2
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
@@ -371,7 +374,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 3
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 3
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
@@ -398,7 +403,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 4
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 4
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
@@ -420,20 +427,24 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
-	sort.Sort(ValidatorStubsByAddress(newVss))
-	selfIndex := 0
-	for i, vs := range newVss {
-		vsPubKey, err := vs.GetPubKey()
-		require.NoError(t, err)
+	sort.Sort(ValidatorStubsByPower(newVss))
 
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
+	valIndexFn := func(cssIdx int) int {
+		for i, vs := range newVss {
+			vsPubKey, err := vs.GetPubKey()
+			require.NoError(t, err)
 
-		if vsPubKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
+			cssPubKey, err := css[cssIdx].privValidator.GetPubKey()
+			require.NoError(t, err)
+
+			if vsPubKey.Equals(cssPubKey) {
+				return i
+			}
 		}
+		panic(fmt.Sprintf("validator css[%d] not found in newVss", cssIdx))
 	}
+
+	selfIndex := valIndexFn(0)
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
@@ -460,9 +471,16 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 5
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 5
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
+	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
+	newVssIdx := valIndexFn(nVals)
+	newVss[newVssIdx].VotingPower = 25
+	sort.Sort(ValidatorStubsByPower(newVss))
+	selfIndex = valIndexFn(0)
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
@@ -473,7 +491,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	//height 6
+	/////////////////////////////////////////////////////////////////////////////
+	// HEIGHT 6
+	/////////////////////////////////////////////////////////////////////////////
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
@@ -484,19 +504,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
-	sort.Sort(ValidatorStubsByAddress(newVss))
-	for i, vs := range newVss {
-		vsKeyKey, err := vs.GetPubKey()
-		require.NoError(t, err)
+	sort.Sort(ValidatorStubsByPower(newVss))
 
-		css0PubKey, err := css[0].privValidator.GetPubKey()
-		require.NoError(t, err)
-
-		if vsKeyKey.Equals(css0PubKey) {
-			selfIndex = i
-			break
-		}
-	}
+	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -572,13 +582,13 @@ func TestMockProxyApp(t *testing.T) {
 	txIndex := 0
 
 	assert.NotPanics(t, func() {
-		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
+		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
 		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
 		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
-		loadedAbciRes := new(sm.ABCIResponses)
+		loadedAbciRes := new(tmstate.ABCIResponses)
 
 		// this also happens sm.LoadABCIResponses
 		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
@@ -586,7 +596,7 @@ func TestMockProxyApp(t *testing.T) {
 
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
-		abciRes := new(sm.ABCIResponses)
+		abciRes := new(tmstate.ABCIResponses)
 		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -1010,11 +1020,20 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var block = new(types.Block)
-				_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
+				var pbb = new(tmproto.Block)
+				bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
 				if err != nil {
 					panic(err)
 				}
+				err = proto.Unmarshal(bz, pbb)
+				if err != nil {
+					panic(err)
+				}
+				block, err := types.BlockFromProto(pbb)
+				if err != nil {
+					panic(err)
+				}
+
 				if block.Height != height+1 {
 					panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 				}
@@ -1041,8 +1060,16 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	var block = new(types.Block)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
+	bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+	if err != nil {
+		panic(err)
+	}
+	var pbb = new(tmproto.Block)
+	err = proto.Unmarshal(bz, pbb)
+	if err != nil {
+		panic(err)
+	}
+	block, err := types.BlockFromProto(pbb)
 	if err != nil {
 		panic(err)
 	}

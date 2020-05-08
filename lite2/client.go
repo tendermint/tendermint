@@ -2,12 +2,11 @@ package lite
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -954,18 +953,15 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			}
 
 			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
-					altH.Height, altH.Commit, c.trustLevel); err != nil {
+				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
 					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
 					witnessesToRemove = append(witnessesToRemove, i)
 					continue
 				}
 
-				// TODO: send the diverged headers to primary && all witnesses
+				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: altH})
 
-				return fmt.Errorf(
-					"header hash %X does not match one %X from the witness %v",
-					h.Hash(), altH.Hash(), witness)
+				return ErrConflictingHeaders{H1: h, Primary: c.primary, H2: altH, Witness: witness}
 			}
 
 			headerMatched = true
@@ -1100,6 +1096,25 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 	}
 
 	return c.validatorSetFromPrimary(height)
+}
+
+// sendConflictingHeadersEvidence sends evidence to all witnesses and primary
+// on best effort basis.
+//
+// Evidence needs to be submitted to all full nodes since there's no way to
+// determine which full node is correct (honest).
+func (c *Client) sendConflictingHeadersEvidence(ev types.ConflictingHeadersEvidence) {
+	err := c.primary.ReportEvidence(ev)
+	if err != nil {
+		c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)
+	}
+
+	for _, w := range c.witnesses {
+		err := w.ReportEvidence(ev)
+		if err != nil {
+			c.logger.Error("Failed to report evidence to witness", "ev", ev, "witness", w)
+		}
+	}
 }
 
 // exponential backoff (with jitter)

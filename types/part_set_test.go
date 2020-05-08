@@ -134,3 +134,62 @@ func TestPartValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestParSetHeaderProtoBuf(t *testing.T) {
+	testCases := []struct {
+		msg     string
+		ps1     *PartSetHeader
+		ps2     *PartSetHeader
+		expPass bool
+	}{
+		{"success empty", &PartSetHeader{}, &PartSetHeader{}, true},
+		{"success nil", nil, nil, true},
+		{"success",
+			&PartSetHeader{Total: 1, Hash: []byte("hash")}, &PartSetHeader{Total: 2, Hash: []byte("other_hash")}, true},
+		{"fail PartSetHeader 2 nil", &PartSetHeader{}, nil, false},
+	}
+
+	for _, tc := range testCases {
+		protoBlockID := tc.ps1.ToProto()
+		tc.ps2.FromProto(protoBlockID)
+		if tc.expPass {
+			require.Equal(t, tc.ps1, tc.ps2, tc.msg)
+		} else {
+			require.NotEqual(t, tc.ps1, tc.ps2, tc.msg)
+		}
+	}
+}
+
+func TestPartProtoBuf(t *testing.T) {
+
+	proof := merkle.SimpleProof{
+		Total:    1,
+		Index:    1,
+		LeafHash: tmrand.Bytes(32),
+	}
+	testCases := []struct {
+		msg     string
+		ps1     *Part
+		expPass bool
+	}{
+		{"failure empty", &Part{}, false},
+		{"failure nil", nil, false},
+		{"success",
+			&Part{Index: 1, Bytes: tmrand.Bytes(32), Proof: proof}, true},
+	}
+
+	for _, tc := range testCases {
+		proto, err := tc.ps1.ToProto()
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+		}
+
+		p, err := PartFromProto(proto)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.ps1, p, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}

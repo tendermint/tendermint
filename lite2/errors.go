@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -39,10 +40,26 @@ func (e ErrInvalidHeader) Error() string {
 	return fmt.Sprintf("invalid header: %v", e.Reason)
 }
 
+// ErrConflictingHeaders is thrown when two conflicting headers are discovered.
+type ErrConflictingHeaders struct {
+	H1      *types.SignedHeader
+	Primary provider.Provider
+
+	H2      *types.SignedHeader
+	Witness provider.Provider
+}
+
+func (e ErrConflictingHeaders) Error() string {
+	return fmt.Sprintf(
+		"header hash %X from primary %v does not match one %X from witness %v",
+		e.H1.Hash(), e.Primary,
+		e.H2.Hash(), e.Witness)
+}
+
 // errNoWitnesses means that there are not enough witnesses connected to
 // continue running the light client.
 type errNoWitnesses struct{}
 
 func (e errNoWitnesses) Error() string {
-	return fmt.Sprint("no witnesses connected. please reset light client")
+	return "no witnesses connected. please reset light client"
 }

@@ -11,8 +11,6 @@ package rpc
 
 //	"github.com/tendermint/tendermint/abci/example/kvstore"
 //	"github.com/tendermint/tendermint/crypto/merkle"
-//	"github.com/tendermint/tendermint/lite"
-//	certclient "github.com/tendermint/tendermint/lite/client"
 //	nm "github.com/tendermint/tendermint/node"
 //	"github.com/tendermint/tendermint/rpc/client"
 //	rpctest "github.com/tendermint/tendermint/rpc/test"

@@ -14,17 +14,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gogo/protobuf/jsonpb"
 	amino "github.com/tendermint/go-amino"
 
 	cs "github.com/tendermint/tendermint/consensus"
+	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
 var cdc = amino.NewCodec()
 
 func init() {
-	cs.RegisterMessages(cdc)
-	cs.RegisterWALMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }
 
@@ -64,13 +64,21 @@ func main() {
 			continue
 		}
 
-		var msg cs.TimedWALMessage
-		err = cdc.UnmarshalJSON(msgJSON, &msg)
-		if err != nil {
+		var tWalMsg tmcons.TimedWALMessage
+		if err := jsonpb.Unmarshal(strings.NewReader(string(msgJSON)), &tWalMsg); err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}
 
-		err = dec.Encode(&msg)
+		wal, err := cs.WALFromProto(tWalMsg.Msg)
+		if err != nil {
+			panic("error on transforming WAL message from proto")
+		}
+		walMsg := cs.TimedWALMessage{
+			Time: tWalMsg.Time,
+			Msg:  wal,
+		}
+
+		err = dec.Encode(&walMsg)
 		if err != nil {
 			panic(fmt.Errorf("failed to encode msg: %v", err))
 		}

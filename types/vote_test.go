@@ -245,13 +245,15 @@ func TestMaxVoteBytes(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/PRECOMMIT_TYPE(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected :=
+		`Vote{56789:6AF1F4111082 12345/02/2(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/PREVOTE_TYPE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	expected =
+		`Vote{56789:6AF1F4111082 12345/02/1(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
@@ -284,5 +286,34 @@ func TestVoteValidateBasic(t *testing.T) {
 			tc.malleateVote(vote)
 			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
+	}
+}
+
+func TestVoteProtobuf(t *testing.T) {
+	privVal := NewMockPV()
+	vote := examplePrecommit()
+	err := privVal.SignVote("test_chain_id", vote)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		msg     string
+		v1      *Vote
+		expPass bool
+	}{
+		{"success", vote, true},
+		{"fail vote validate basic", &Vote{}, false},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoProposal := tc.v1.ToProto()
+
+		v := new(Vote)
+		err := v.FromProto(protoProposal)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.msg)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }
