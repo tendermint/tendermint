@@ -26,7 +26,7 @@ func checkValid(t *testing.T, itr Iterator, expected bool) {
 }
 
 func checkNext(t *testing.T, itr Iterator, expected bool) {
-	itr.Next() // nolint:errcheck
+	itr.Next()
 	// assert.NoError(t, err) TODO: look at fixing this
 	valid := itr.Valid()
 	require.Equal(t, expected, valid)
@@ -120,7 +120,7 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 	for i := 0; i < b.N; i++ {
 		// Write something
 		{
-			idx := rand.Int63n(numItems) // nolint:gosec testing file, so accepting weak random number generator
+			idx := rand.Int63n(numItems)
 			internal[idx]++
 			val := internal[idx]
 			idxBytes := int642Bytes(idx)
@@ -135,7 +135,7 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 
 		// Read something
 		{
-			idx := rand.Int63n(numItems) // nolint:gosec testing file, so accepting weak random number generator
+			idx := rand.Int63n(numItems)
 			valExp := internal[idx]
 			idxBytes := int642Bytes(idx)
 			valBytes, err := db.Get(idxBytes)
