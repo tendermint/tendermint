@@ -11,27 +11,28 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 )
 
-func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
+func TestReactor_Receive_ChunkRequest(t *testing.T) {
 	testcases := map[string]struct {
-		request        *chunkRequestMessage
+		request        *ssproto.ChunkRequest
 		chunk          []byte
-		expectResponse *chunkResponseMessage
+		expectResponse *ssproto.ChunkResponse
 	}{
 		"chunk is returned": {
-			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
+			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{1, 2, 3},
-			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}}},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}}},
 		"empty chunk is returned, as nil": {
-			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
+			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{},
-			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: nil}},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil}},
 		"nil (missing) chunk is returned as missing": {
-			&chunkRequestMessage{Height: 1, Format: 1, Index: 1},
+			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			nil,
-			&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true},
 		},
 	}
 
@@ -49,22 +50,22 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 			// Mock peer to store response, if found
 			peer := &p2pmocks.Peer{}
 			peer.On("ID").Return(p2p.ID("id"))
-			var response *chunkResponseMessage
+			var response *ssproto.ChunkResponse
 			if tc.expectResponse != nil {
 				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
-					response = msg.(*chunkResponseMessage)
+					response = msg.(*ssproto.ChunkResponse)
 				}).Return(true)
 			}
 
-			// Start a reactor and send a chunkRequestMessage, then wait for and check response
+			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
 			r := NewReactor(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			defer r.Stop()
 
-			r.Receive(ChunkChannel, peer, cdc.MustMarshalBinaryBare(tc.request))
+			r.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponse, response)
 
@@ -74,12 +75,12 @@ func TestReactor_Receive_ChunkRequestMessage(t *testing.T) {
 	}
 }
 
-func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
+func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 	testcases := map[string]struct {
 		snapshots       []*abci.Snapshot
-		expectResponses []*snapshotsResponseMessage
+		expectResponses []*ssproto.SnapshotsResponse
 	}{
-		"no snapshots": {nil, []*snapshotsResponseMessage{}},
+		"no snapshots": {nil, []*ssproto.SnapshotsResponse{}},
 		">10 unordered snapshots": {
 			[]*abci.Snapshot{
 				{Height: 1, Format: 2, Chunks: 7, Hash: []byte{1, 2}, Metadata: []byte{1}},
@@ -95,7 +96,7 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 				{Height: 2, Format: 3, Chunks: 7, Hash: []byte{2, 3}, Metadata: []byte{11}},
 				{Height: 3, Format: 3, Chunks: 7, Hash: []byte{3, 3}, Metadata: []byte{12}},
 			},
-			[]*snapshotsResponseMessage{
+			[]*ssproto.SnapshotsResponse{
 				{Height: 3, Format: 4, Chunks: 7, Hash: []byte{3, 4}, Metadata: []byte{9}},
 				{Height: 3, Format: 3, Chunks: 7, Hash: []byte{3, 3}, Metadata: []byte{12}},
 				{Height: 3, Format: 2, Chunks: 7, Hash: []byte{3, 2}, Metadata: []byte{3}},
@@ -120,14 +121,14 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 			}, nil)
 
 			// Mock peer to catch responses and store them in a slice
-			responses := []*snapshotsResponseMessage{}
+			responses := []*ssproto.SnapshotsResponse{}
 			peer := &p2pmocks.Peer{}
 			if len(tc.expectResponses) > 0 {
 				peer.On("ID").Return(p2p.ID("id"))
 				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
-					responses = append(responses, msg.(*snapshotsResponseMessage))
+					responses = append(responses, msg.(*ssproto.SnapshotsResponse))
 				}).Return(true)
 			}
 
@@ -137,7 +138,7 @@ func TestReactor_Receive_SnapshotRequestMessage(t *testing.T) {
 			require.NoError(t, err)
 			defer r.Stop()
 
-			r.Receive(SnapshotChannel, peer, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponses, responses)
 
