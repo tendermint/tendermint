@@ -392,7 +392,7 @@ func (pv *FilePV) saveSigned(height int64, round int32, step int8,
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastVote, newVote types.CanonicalVote
+	var lastVote, newVote tmproto.CanonicalVote
 	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
@@ -415,7 +415,7 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastProposal, newProposal types.CanonicalProposal
+	var lastProposal, newProposal tmproto.CanonicalProposal
 	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
