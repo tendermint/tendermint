@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -88,7 +89,10 @@ func (e Executor) Execute() error {
 	err := e.Command.Execute()
 	if err != nil {
 		if viper.GetBool(TraceFlag) {
-			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
+			const size = 64 << 10
+			buf := make([]byte, size)
+			buf = buf[:runtime.Stack(buf, false)]
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n%s\n", err, buf)
 		} else {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
