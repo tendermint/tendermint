@@ -22,22 +22,24 @@ func TestConsensusParamsValidation(t *testing.T) {
 		valid  bool
 	}{
 		// test block params
-		0: {makeParams(1, 0, 10, 1, valEd25519), true},
-		1: {makeParams(0, 0, 10, 1, valEd25519), false},
-		2: {makeParams(47*1024*1024, 0, 10, 1, valEd25519), true},
-		3: {makeParams(10, 0, 10, 1, valEd25519), true},
-		4: {makeParams(100*1024*1024, 0, 10, 1, valEd25519), true},
-		5: {makeParams(101*1024*1024, 0, 10, 1, valEd25519), false},
-		6: {makeParams(1024*1024*1024, 0, 10, 1, valEd25519), false},
-		7: {makeParams(1024*1024*1024, 0, 10, -1, valEd25519), false},
-		8: {makeParams(1, 0, -10, 1, valEd25519), false},
+		0: {makeParams(1, 0, 10, 1, 0, valEd25519), true},
+		1: {makeParams(0, 0, 10, 1, 0, valEd25519), false},
+		2: {makeParams(47*1024*1024, 0, 10, 1, 0, valEd25519), true},
+		3: {makeParams(10, 0, 10, 1, 0, valEd25519), true},
+		4: {makeParams(100*1024*1024, 0, 10, 1, 0, valEd25519), true},
+		5: {makeParams(101*1024*1024, 0, 10, 1, 0, valEd25519), false},
+		6: {makeParams(1024*1024*1024, 0, 10, 1, 0, valEd25519), false},
+		7: {makeParams(1024*1024*1024, 0, 10, -1, 0, valEd25519), false},
+		8: {makeParams(1, 0, -10, 1, 0, valEd25519), false},
 		// test evidence params
-		9:  {makeParams(1, 0, 10, 0, valEd25519), false},
-		10: {makeParams(1, 0, 10, -1, valEd25519), false},
+		9:  {makeParams(1, 0, 10, 0, 0, valEd25519), false},
+		10: {makeParams(1, 0, 10, 1, 1, valEd25519), false},
+		11: {makeParams(1000, 0, 10, 1, 1, valEd25519), true},
+		12: {makeParams(1, 0, 10, -1, 0, valEd25519), false},
 		// test no pubkey type provided
-		11: {makeParams(1, 0, 10, 1, []string{}), false},
+		13: {makeParams(1, 0, 10, 1, 0, []string{}), false},
 		// test invalid pubkey type provided
-		12: {makeParams(1, 0, 10, 1, []string{"potatoes make good pubkeys"}), false},
+		14: {makeParams(1, 0, 10, 1, 0, []string{"potatoes make good pubkeys"}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -52,6 +54,7 @@ func makeParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
+	maxEvidence uint32,
 	pubkeyTypes []string,
 ) ConsensusParams {
 	return ConsensusParams{
@@ -63,6 +66,7 @@ func makeParams(
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
+			MaxNum:          maxEvidence,
 		},
 		Validator: ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
@@ -72,14 +76,14 @@ func makeParams(
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(4, 2, 10, 3, valEd25519),
-		makeParams(1, 4, 10, 3, valEd25519),
-		makeParams(1, 2, 10, 4, valEd25519),
-		makeParams(2, 5, 10, 7, valEd25519),
-		makeParams(1, 7, 10, 6, valEd25519),
-		makeParams(9, 5, 10, 4, valEd25519),
-		makeParams(7, 8, 10, 9, valEd25519),
-		makeParams(4, 6, 10, 5, valEd25519),
+		makeParams(4, 2, 10, 3, 1, valEd25519),
+		makeParams(1, 4, 10, 3, 1, valEd25519),
+		makeParams(1, 2, 10, 4, 1, valEd25519),
+		makeParams(2, 5, 10, 7, 1, valEd25519),
+		makeParams(1, 7, 10, 6, 1, valEd25519),
+		makeParams(9, 5, 10, 4, 1, valEd25519),
+		makeParams(7, 8, 10, 9, 1, valEd25519),
+		makeParams(4, 6, 10, 5, 1, valEd25519),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -105,13 +109,13 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 10, 3, valEd25519),
+			makeParams(1, 2, 10, 3, 0, valEd25519),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 10, 3, valEd25519),
+			makeParams(1, 2, 10, 3, 0, valEd25519),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 10, 3, valEd25519),
+			makeParams(1, 2, 10, 3, 0, valEd25519),
 			&abci.ConsensusParams{
 				Block: &abci.BlockParams{
 					MaxBytes: 100,
@@ -120,12 +124,13 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				Evidence: &abci.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
+					MaxNumEvidence:  50,
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,
 				},
 			},
-			makeParams(100, 200, 10, 300, valSecp256k1),
+			makeParams(100, 200, 10, 300, 50, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {

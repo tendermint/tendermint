@@ -29,6 +29,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Blockchain Protocol
 
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+  - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
+    Add `max_num` to consensus evidence parameters (default: 50 items).
 
 ### FEATURES:
 
