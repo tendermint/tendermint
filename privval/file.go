@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -98,9 +100,9 @@ func (pvKey FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
 	return pb, nil
 }
 
-func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (*FilePVKey, error) {
+func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (FilePVKey, error) {
 	if pb == nil {
-		return nil, errors.New("nil FilePVKey")
+		return FilePVKey{}, errors.New("nil FilePVKey")
 	}
 
 	pv := new(FilePVKey)
@@ -109,17 +111,17 @@ func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (*FilePVKey, error) {
 
 	pubKey, err := cryptoenc.PubKeyFromProto(pb.PubKey)
 	if err != nil {
-		return nil, err
+		return FilePVKey{}, err
 	}
 	pv.PubKey = pubKey
 
 	privKey, err := cryptoenc.PrivKeyFromProto(pb.PrivKey)
 	if err != nil {
-		return nil, err
+		return FilePVKey{}, err
 	}
 	pv.PrivKey = privKey
 
-	return pv, nil
+	return *pv, nil
 }
 
 //-------------------------------------------------------------------------------
@@ -188,7 +190,7 @@ func (lss *FilePVLastSignState) Save() {
 		panic(fmt.Errorf("unable to create proto type: %w", err))
 	}
 
-	jsonBytes, err := encoding.MarshalJSONIndent(pb)
+	jsonBytes, err := encode.MarshalJSONIndent(pb)
 	if err != nil {
 		panic(err)
 	}
@@ -280,11 +282,11 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		tmos.Exit(err.Error())
 	}
 	pvK := tmprivval.FilePVKey{}
-	if err := jsonpb.Unmarshal(strings.NewReader(string(keyJSONBytes)), &pvKey); err != nil {
+	if err := jsonpb.Unmarshal(strings.NewReader(string(keyJSONBytes)), &pvK); err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
 
-	pvKey, err := FilePVKeyFromProto(pvk)
+	pvKey, err := FilePVKeyFromProto(&pvK)
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
@@ -294,24 +296,28 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
-	pvState := FilePVLastSignState{}
-	pvState := FilePVLastSignState{}
+	pvS := tmprivval.FilePVLastSignState{}
+
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
 			tmos.Exit(err.Error())
+			if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), &pvS); err != nil {
+				tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+			}
 		}
-		err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
-		if err != nil {
-			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
-		}
+	}
+
+	pvState, err := FilePVLastSignStateFromProto(pvS)
+	if err != nil {
+		tmos.Exit(fmt.Sprintf("Error transistioning PrivValidator from proto from : %v\n", err))
 	}
 
 	pvState.filePath = stateFilePath
 
 	return &FilePV{
 		Key:           pvKey,
-		LastSignState: pvState,
+		LastSignState: *pvState,
 	}
 }
 
@@ -491,10 +497,10 @@ func (pv *FilePV) saveSigned(height int64, round int32, step int8,
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote tmproto.CanonicalVote
-	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastVote); err != nil {
+	if err := proto.Unmarshal(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newVote); err != nil {
+	if err := proto.Unmarshal(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
@@ -504,8 +510,8 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	now := tmtime.Now()
 	lastVote.Timestamp = now
 	newVote.Timestamp = now
-	lastVoteBytes, _ := cdc.MarshalJSON(lastVote)
-	newVoteBytes, _ := cdc.MarshalJSON(newVote)
+	lastVoteBytes, _ := encode.MarshalJSON(&lastVote)
+	newVoteBytes, _ := encode.MarshalJSON(&newVote)
 
 	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }
@@ -514,10 +520,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal tmproto.CanonicalProposal
-	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastProposal); err != nil {
+	if err := proto.Unmarshal(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newProposal); err != nil {
+	if err := proto.Unmarshal(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
@@ -526,8 +532,8 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(lastProposal)
-	newProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(newProposal)
+	lastProposalBytes, _ := proto.Marshal(&lastProposal)
+	newProposalBytes, _ := proto.Marshal(&newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

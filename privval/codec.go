@@ -10,5 +10,4 @@ var cdc = amino.NewCodec()
 
 func init() {
 	cryptoamino.RegisterAmino(cdc)
-	RegisterRemoteSignerMsg(cdc)
 }

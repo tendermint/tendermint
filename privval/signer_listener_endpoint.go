@@ -6,8 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 )
 
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
@@ -83,7 +86,7 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMessage, error) {
+func (sl *SignerListenerEndpoint) SendRequest(request proto.Message) (proto.Message, error) {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
 
@@ -185,7 +188,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 		select {
 		case <-sl.pingTimer.C:
 			{
-				_, err := sl.SendRequest(&PingRequest{})
+				_, err := sl.SendRequest(&privvalproto.PingRequest{})
 				if err != nil {
 					sl.Logger.Error("SignerListener: Ping timeout")
 					sl.triggerReconnect()

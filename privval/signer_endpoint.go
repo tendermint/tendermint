@@ -2,10 +2,13 @@ package privval
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
@@ -80,7 +83,7 @@ func (se *signerEndpoint) DropConnection() {
 }
 
 // ReadMessage reads a message from the endpoint
-func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
+func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
@@ -97,7 +100,14 @@ func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 	}
 
 	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(se.conn, &msg, maxRemoteSignerMsgSize)
+	rl := io.LimitReader(se.conn, maxRemoteSignerMsgSize)
+	bz, err := ioutil.ReadAll(rl)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err = DecodeMsg(bz)
+
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrReadTimeout, err.Error())
@@ -112,7 +122,7 @@ func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 }
 
 // WriteMessage writes a message from the endpoint
-func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
+func (se *signerEndpoint) WriteMessage(msg proto.Message) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
@@ -126,8 +136,12 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 	if err != nil {
 		return
 	}
+	bz, err := EncodeMsg(msg)
+	if err != nil {
+		return err
+	}
 
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(se.conn, msg)
+	_, err = se.conn.Write(bz)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrWriteTimeout, err.Error())

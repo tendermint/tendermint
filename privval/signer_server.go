@@ -4,6 +4,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -11,8 +13,8 @@ import (
 // ValidationRequestHandlerFunc handles different remoteSigner requests
 type ValidationRequestHandlerFunc func(
 	privVal types.PrivValidator,
-	requestMessage SignerMessage,
-	chainID string) (SignerMessage, error)
+	requestMessage proto.Message,
+	chainID string) (proto.Message, error)
 
 type SignerServer struct {
 	service.BaseService
@@ -70,7 +72,7 @@ func (ss *SignerServer) servicePendingRequest() {
 		return
 	}
 
-	var res SignerMessage
+	var res proto.Message
 	{
 		// limit the scope of the lock
 		ss.handlerMtx.Lock()

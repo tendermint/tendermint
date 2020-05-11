@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"giithub.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -220,8 +221,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-func brokenHandler(privVal types.PrivValidator, request SignerMessage, chainID string) (SignerMessage, error) {
-	var res SignerMessage
+func brokenHandler(privVal types.PrivValidator, request proto.Message, chainID string) (proto.Message, error) {
+	var res proto.Message
 	var err error
 
 	switch r := request.(type) {

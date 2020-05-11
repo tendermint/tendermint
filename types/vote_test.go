@@ -307,8 +307,7 @@ func TestVoteProtobuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoProposal := tc.v1.ToProto()
 
-		v := new(Vote)
-		err := v.FromProto(protoProposal)
+		v, err := VoteFromProto(protoProposal)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.v1, v, tc.msg)

@@ -1,65 +1,64 @@
 package privval
 
 import (
-	amino "github.com/tendermint/go-amino"
+	"fmt"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
+	"github.com/gogo/protobuf/proto"
+
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 )
-
-// SignerMessage is sent between Signer Clients and Servers.
-type SignerMessage interface{}
-
-func RegisterRemoteSignerMsg(cdc *amino.Codec) {
-	cdc.RegisterInterface((*SignerMessage)(nil), nil)
-	cdc.RegisterConcrete(&PubKeyRequest{}, "tendermint/remotesigner/PubKeyRequest", nil)
-	cdc.RegisterConcrete(&PubKeyResponse{}, "tendermint/remotesigner/PubKeyResponse", nil)
-	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/remotesigner/SignVoteRequest", nil)
-	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/remotesigner/SignedVoteResponse", nil)
-	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/remotesigner/SignProposalRequest", nil)
-	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/remotesigner/SignedProposalResponse", nil)
-
-	cdc.RegisterConcrete(&PingRequest{}, "tendermint/remotesigner/PingRequest", nil)
-	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)
-}
 
 // TODO: Add ChainIDRequest
 
-// PubKeyRequest requests the consensus public key from the remote signer.
-type PubKeyRequest struct{}
+func EncodeMsg(pb proto.Message) ([]byte, error) {
+	msg := privvalproto.Message{}
 
-// PubKeyResponse is a response message containing the public key.
-type PubKeyResponse struct {
-	PubKey crypto.PubKey
-	Error  *RemoteSignerError
+	switch pb := pb.(type) {
+	case *privvalproto.PubKeyRequest:
+		msg.Sum = &privvalproto.Message_PubKeyRequest{PubKeyRequest: pb}
+	case *privvalproto.PubKeyResponse:
+		msg.Sum = &privvalproto.Message_PubKeyResponse{PubKeyResponse: pb}
+	case *privvalproto.SignVoteRequest:
+		msg.Sum = &privvalproto.Message_SignVoteRequest{SignVoteRequest: pb}
+	case *privvalproto.SignedVoteResponse:
+		msg.Sum = &privvalproto.Message_SignedVoteResponse{SignedVoteResponse: pb}
+	case *privvalproto.SignedProposalResponse:
+		msg.Sum = &privvalproto.Message_SignedProposalResponse{SignedProposalResponse: pb}
+	case *privvalproto.SignProposalRequest:
+		msg.Sum = &privvalproto.Message_SignProposalRequest{SignProposalRequest: pb}
+	case *privvalproto.PingRequest:
+		msg.Sum = &privvalproto.Message_PingRequest{}
+	case *privvalproto.PingResponse:
+		msg.Sum = &privvalproto.Message_PingResponse{}
+	default:
+		panic(fmt.Errorf("unknown message type %T", msg))
+	}
+
+	return proto.Marshal(&msg)
 }
 
-// SignVoteRequest is a request to sign a vote
-type SignVoteRequest struct {
-	Vote *types.Vote
-}
+func DecodeMsg(bz []byte) (proto.Message, error) {
+	msg := privvalproto.Message{}
+	proto.Unmarshal(bz, &msg)
 
-// SignedVoteResponse is a response containing a signed vote or an error
-type SignedVoteResponse struct {
-	Vote  *types.Vote
-	Error *RemoteSignerError
-}
-
-// SignProposalRequest is a request to sign a proposal
-type SignProposalRequest struct {
-	Proposal *types.Proposal
-}
-
-// SignedProposalResponse is response containing a signed proposal or an error
-type SignedProposalResponse struct {
-	Proposal *types.Proposal
-	Error    *RemoteSignerError
-}
-
-// PingRequest is a request to confirm that the connection is alive.
-type PingRequest struct {
-}
-
-// PingResponse is a response to confirm that the connection is alive.
-type PingResponse struct {
+	switch msg := msg.Sum.(type) {
+	case *privvalproto.Message_PubKeyRequest:
+		return msg.PubKeyRequest, nil
+	case *privvalproto.Message_PubKeyResponse:
+		return msg.PubKeyResponse, nil
+	case *privvalproto.Message_SignVoteRequest:
+		return msg.SignVoteRequest, nil
+	case *privvalproto.Message_SignedVoteResponse:
+		return msg.SignedVoteResponse, nil
+	case *privvalproto.Message_SignedProposalResponse:
+		return msg.SignedProposalResponse, nil
+	case *privvalproto.Message_SignProposalRequest:
+		return msg.SignProposalRequest, nil
+	case *privvalproto.Message_PingRequest:
+		return msg.PingRequest, nil
+	case *privvalproto.Message_PingResponse:
+		return msg.PingResponse, nil
+	default:
+		panic(fmt.Errorf("unknown message type %T", msg))
+	}
 }

@@ -159,14 +159,18 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
-		voteA := Vote{}
-		voteA.FromProto(evi.DuplicateVoteEvidence.GetVoteA())
-		voteB := Vote{}
-		voteB.FromProto(evi.DuplicateVoteEvidence.GetVoteB())
+		voteA, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteA())
+		if err != nil {
+			return nil, err
+		}
+		voteB, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteB())
+		if err != nil {
+			return nil, err
+		}
 
 		dve := DuplicateVoteEvidence{
-			VoteA: &voteA,
-			VoteB: &voteB,
+			VoteA: voteA,
+			VoteB: voteB,
 		}
 
 		return &dve, nil
