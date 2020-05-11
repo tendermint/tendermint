@@ -57,11 +57,11 @@ func (_m *EvidencePool) IsPending(_a0 types.Evidence) bool {
 }
 
 // PendingEvidence provides a mock function with given fields: _a0
-func (_m *EvidencePool) PendingEvidence(_a0 int64) []types.Evidence {
+func (_m *EvidencePool) PendingEvidence(_a0 uint32) []types.Evidence {
 	ret := _m.Called(_a0)
 
 	var r0 []types.Evidence
-	if rf, ok := ret.Get(0).(func(int64) []types.Evidence); ok {
+	if rf, ok := ret.Get(0).(func(uint32) []types.Evidence); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {

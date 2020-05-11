@@ -50,7 +50,7 @@ type emptyEvidencePool struct{}
 
 var _ sm.EvidencePool = emptyEvidencePool{}
 
-func (emptyEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (emptyEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
 func (emptyEvidencePool) AddEvidence(types.Evidence) error       { return nil }
 func (emptyEvidencePool) Update(*types.Block, sm.State)          {}
 func (emptyEvidencePool) IsCommitted(types.Evidence) bool        { return false }

@@ -80,31 +80,18 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
-func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	var (
-		count    int64
-		evidence []types.Evidence
-	)
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
+func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
+	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
 	if err != nil {
-		evpool.logger.Error("Unable to iterate over evidence", "err", err)
-		return nil
+		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		val := iter.Value()
-		if count == maxNum {
-			return evidence
-		}
-		count++
+	return evidence
+}
 
-		var ev types.Evidence
-		err := cdc.UnmarshalBinaryBare(val, &ev)
-		if err != nil {
-			evpool.logger.Error("Unable to unmarshal evidence", "err", err)
-			continue
-		}
-		evidence = append(evidence, ev)
+func (evpool *Pool) AllPendingEvidence() []types.Evidence {
+	evidence, err := evpool.listEvidence(baseKeyPending, -1)
+	if err != nil {
+		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
 	return evidence
 }
@@ -355,6 +342,35 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 		evpool.logger.Info("Deleted pending evidence", "evidence", evidence)
 	}
 }
+
+// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
+// If maxNum is -1, there's no cap on the size of returned evidence.
+func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
+	var count int64
+	var evidence []types.Evidence
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
+	if err != nil {
+		return nil, fmt.Errorf("database error: %v", err)
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		val := iter.Value()
+
+		if count == maxNum {
+			return evidence, nil
+		}
+		count++
+
+		var ev types.Evidence
+		err := cdc.UnmarshalBinaryBare(val, &ev)
+		if err != nil {
+			return nil, err
+		}
+		evidence = append(evidence, ev)
+	}
+	return evidence, nil
+}
+
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
