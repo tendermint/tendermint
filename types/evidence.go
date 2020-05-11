@@ -815,10 +815,7 @@ func (e PotentialAmnesiaEvidence) Height() int64 {
 }
 
 func (e PotentialAmnesiaEvidence) Time() time.Time {
-	if e.VoteA.Timestamp.Before(e.VoteB.Timestamp) {
-		return e.VoteA.Timestamp
-	}
-	return e.VoteB.Timestamp
+	return e.VoteA.Timestamp
 }
 
 func (e PotentialAmnesiaEvidence) Address() []byte {
@@ -873,10 +870,6 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 	if err := e.VoteB.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid VoteB: %v", err)
 	}
-	// Enforce Votes are lexicographically sorted on blockID
-	if strings.Compare(e.VoteA.BlockID.Key(), e.VoteB.BlockID.Key()) >= 0 {
-		return errors.New("amnesia votes in invalid order")
-	}
 
 	// H/S must be the same
 	if e.VoteA.Height != e.VoteB.Height ||
@@ -885,9 +878,16 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
 	}
 
-	// R must be different
-	if e.VoteA.Round == e.VoteB.Round {
-		return fmt.Errorf("expected votes from different rounds, got %d", e.VoteA.Round)
+	// R must be less for vote A than for vote B
+	if e.VoteA.Round >= e.VoteB.Round {
+		return fmt.Errorf("expected round from vote A to be less than round from vote B, but got %d >= %d",
+			e.VoteA.Round, e.VoteB.Round)
+	}
+
+	// Enforce that vote A came before vote B
+	if e.VoteA.Timestamp.After(e.VoteB.Timestamp) {
+		return fmt.Errorf("vote A should have a timestamp before vote B, but got %s > %s",
+			e.VoteA.Timestamp, e.VoteB.Timestamp)
 	}
 
 	// Address must be the same
@@ -1063,10 +1063,27 @@ var _ Evidence = AmnesiaEvidence{}
 
 func (e AmnesiaEvidence) ValidateBasic() error {
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
-		return err
+		return fmt.Errorf("invalid potential amnesia evidence: %w", err)
 	}
-	if err := e.polc.ValidateBasic(); err != nil {
-		return err
+	if !e.polc.Equal(ProofOfLockChange{}) {
+		if err := e.polc.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid proof of lock change: %w", err)
+		}
+
+		if !bytes.Equal(e.PotentialAmnesiaEvidence.Address(), e.polc.Address()) {
+			return fmt.Errorf("addresses do not match (%X - %X)", e.PotentialAmnesiaEvidence.Address(),
+				e.polc.Address())
+		}
+
+		if e.PotentialAmnesiaEvidence.Height() != e.polc.Height() {
+			return fmt.Errorf("heights do not match (%d - %d)", e.PotentialAmnesiaEvidence.Height(),
+				e.polc.Height())
+		}
+
+		if e.polc.Round() <= e.VoteA.Round || e.polc.Round() > e.VoteB.Round {
+			return fmt.Errorf("POLC must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
+		}
+
 	}
 	return nil
 }
