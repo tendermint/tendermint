@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -309,7 +308,7 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	result := new(ctypes.ResultConsensusState)
 	_, err := c.caller.Call("consensus_state", map[string]interface{}{}, result)
 	if err != nil {
-		return nil, fmt.Errorf("ConsensusState: %w", err)
+		return nil, err
 	}
 	return result, nil
 }
@@ -403,7 +402,7 @@ func (c *baseRPCClient) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 	_, err := c.caller.Call("tx", params, result)
 	if err != nil {
-		return nil, fmt.Errorf("Tx: %w", err)
+		return nil, err
 	}
 	return result, nil
 }

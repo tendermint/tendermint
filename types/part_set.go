@@ -80,7 +80,7 @@ func (psh PartSetHeader) ValidateBasic() error {
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
-		return fmt.Errorf("Wrong Hash: %w", err)
+		return fmt.Errorf("wrong Hash: %w", err)
 	}
 	return nil
 }

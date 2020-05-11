@@ -178,7 +178,7 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequest(http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, fmt.Errorf("Request failed: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	httpRequest.Header.Set("Content-Type", "text/json")
 	if c.username != "" || c.password != "" {
@@ -186,7 +186,7 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	}
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, fmt.Errorf("Post failed: %w", err)
+		return nil, fmt.Errorf("post failed: %w", err)
 	}
 	defer httpResponse.Body.Close() // nolint: errcheck
 

@@ -64,7 +64,7 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 
 	resp, err := c.client.PostForm(c.address+"/"+method, values)
 	if err != nil {
-		return nil, fmt.Errorf("PostForm failed: %w", err)
+		return nil, fmt.Errorf("post form failed: %w", err)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
