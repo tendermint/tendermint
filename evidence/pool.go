@@ -82,8 +82,16 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
-func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	evidence, err := evpool.listEvidence(baseKeyPending, maxNum)
+func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
+	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
+	if err != nil {
+		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
+	}
+	return evidence
+}
+
+func (evpool *Pool) AllPendingEvidence() []types.Evidence {
+	evidence, err := evpool.listEvidence(baseKeyPending, -1)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
@@ -300,7 +308,6 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 }
 
 // listEvidence lists up to maxNum pieces of evidence for the given prefix key.
-// It is wrapped by PriorityEvidence and PendingEvidence for convenience.
 // If maxNum is -1, there's no cap on the size of returned evidence.
 func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
 	var count int64
