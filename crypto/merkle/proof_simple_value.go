@@ -45,7 +45,7 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
 	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
-		return nil, errors.Wrap(err, "decoding ProofOp.Data into SimpleValueOp")
+		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
 	}
 	return NewSimpleValueOp(pop.Key, op.Proof), nil
 }

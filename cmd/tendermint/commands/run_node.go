@@ -138,12 +138,12 @@ func checkGenesisHash(config *cfg.Config) error {
 	// Calculate SHA-256 hash of the genesis file.
 	f, err := os.Open(config.GenesisFile())
 	if err != nil {
-		return errors.Wrap(err, "can't open genesis file")
+		return fmt.Errorf("can't open genesis file: %w", err)
 	}
 	defer f.Close()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return errors.Wrap(err, "error when hashing genesis file")
+		return fmt.Errorf("error when hashing genesis file: %w", err)
 	}
 	actualHash := h.Sum(nil)
 

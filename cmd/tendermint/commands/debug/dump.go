@@ -55,13 +55,13 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 
 	if _, err := os.Stat(outDir); os.IsNotExist(err) {
 		if err := os.Mkdir(outDir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "failed to create output directory")
+			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
 
 	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
 	if err != nil {
-		return errors.Wrap(err, "failed to create new http client")
+		return fmt.Errorf("failed to create new http client: %w", err)
 	}
 
 	home := viper.GetString(cli.HomeFlag)

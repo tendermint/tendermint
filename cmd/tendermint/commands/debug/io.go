@@ -3,14 +3,13 @@ package debug
 import (
 	"archive/zip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // zipDir zips all the contents found in src, including both files and
@@ -110,7 +109,7 @@ func copyFile(src, dest string) error {
 func writeStateJSONToFile(state interface{}, dir, filename string) error {
 	stateJSON, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
-		return errors.Wrap(err, "failed to encode state dump")
+		return fmt.Errorf("failed to encode state dump: %w", err)
 	}
 
 	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)

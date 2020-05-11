@@ -2,6 +2,7 @@ package merkle
 
 import (
 	"bytes"
+	fmt "fmt"
 
 	"github.com/pkg/errors"
 )
@@ -102,7 +103,7 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (ProofOperators, error) {
 	for _, pop := range proof.Ops {
 		operator, err := prt.Decode(pop)
 		if err != nil {
-			return nil, errors.Wrap(err, "decoding a proof operator")
+			return nil, fmt.Errorf("decoding a proof operator: %w", err)
 		}
 		poz = append(poz, operator)
 	}
@@ -122,7 +123,7 @@ func (prt *ProofRuntime) VerifyAbsence(proof *Proof, root []byte, keypath string
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
-		return errors.Wrap(err, "decoding proof")
+		return fmt.Errorf("decoding proof: %w", err)
 	}
 	return poz.Verify(root, keypath, args)
 }

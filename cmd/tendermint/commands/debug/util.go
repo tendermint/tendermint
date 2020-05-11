@@ -19,7 +19,7 @@ import (
 func dumpStatus(rpc *rpchttp.HTTP, dir, filename string) error {
 	status, err := rpc.Status()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node status")
+		return fmt.Errorf("failed to get node status: %w", err)
 	}
 
 	return writeStateJSONToFile(status, dir, filename)
@@ -30,7 +30,7 @@ func dumpStatus(rpc *rpchttp.HTTP, dir, filename string) error {
 func dumpNetInfo(rpc *rpchttp.HTTP, dir, filename string) error {
 	netInfo, err := rpc.NetInfo()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node network information")
+		return fmt.Errorf("failed to get node network information: %w", err)
 	}
 
 	return writeStateJSONToFile(netInfo, dir, filename)
@@ -41,7 +41,7 @@ func dumpNetInfo(rpc *rpchttp.HTTP, dir, filename string) error {
 func dumpConsensusState(rpc *rpchttp.HTTP, dir, filename string) error {
 	consDump, err := rpc.DumpConsensusState()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node consensus dump")
+		return fmt.Errorf("failed to get node consensus dump: %w", err)
 	}
 
 	return writeStateJSONToFile(consDump, dir, filename)

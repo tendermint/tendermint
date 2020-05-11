@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -340,7 +339,7 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(errors.Wrap(err, "error unmarshaling request")))
+				wsc.WriteRPCResponse(types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
 				continue
 			}
 
@@ -367,7 +366,7 @@ func (wsc *wsConnection) readRoutine() {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 				if err != nil {
 					wsc.WriteRPCResponse(
-						types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")),
+						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
 					continue
 				}

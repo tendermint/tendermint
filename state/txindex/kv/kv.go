@@ -186,18 +186,18 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*types.TxResu
 	// get a list of conditions (like "tx.height > 5")
 	conditions, err := q.Conditions()
 	if err != nil {
-		return nil, errors.Wrap(err, "error during parsing conditions from query")
+		return nil, fmt.Errorf("error during parsing conditions from query: %w", err)
 	}
 
 	// if there is a hash condition, return the result immediately
 	hash, ok, err := lookForHash(conditions)
 	if err != nil {
-		return nil, errors.Wrap(err, "error during searching for a hash in the query")
+		return nil, fmt.Errorf("error during searching for a hash in the query: %w", err)
 	} else if ok {
 		res, err := txi.Get(hash)
 		switch {
 		case err != nil:
-			return []*types.TxResult{}, errors.Wrap(err, "error while retrieving the result")
+			return []*types.TxResult{}, fmt.Errorf("error while retrieving the result: %w", err)
 		case res == nil:
 			return []*types.TxResult{}, nil
 		default:

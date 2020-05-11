@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -102,7 +103,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
-		return errors.Wrap(err, "new goleveldb")
+		return fmt.Errorf("new goleveldb: %w", err)
 	}
 
 	var c *lite.Client

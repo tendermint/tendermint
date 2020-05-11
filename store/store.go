@@ -91,7 +91,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
-		panic(errors.Wrap(err, "Error reading block"))
+		panic(fmt.Errorf("Error reading block: %w", err))
 	}
 	return block
 }
@@ -131,7 +131,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, part)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block part"))
+		panic(fmt.Errorf("Error reading block part: %w", err))
 	}
 	return part
 }
@@ -149,7 +149,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block meta"))
+		panic(fmt.Errorf("Error reading block meta: %w", err))
 	}
 	return blockMeta
 }
@@ -169,7 +169,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block commit"))
+		panic(fmt.Errorf("Error reading block commit: %w", err))
 	}
 	return commit
 }
@@ -188,7 +188,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block seen commit"))
+		panic(fmt.Errorf("Error reading block seen commit: %w", err))
 	}
 	return commit
 }

@@ -30,7 +30,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				w,
 				types.RPCInvalidRequestError(
 					nil,
-					errors.Wrap(err, "error reading request body"),
+					fmt.Errorf("error reading request body: %w", err),
 				),
 			)
 			return
@@ -55,7 +55,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				WriteRPCResponseHTTP(
 					w,
 					types.RPCParseError(
-						errors.Wrap(err, "error unmarshalling request"),
+						fmt.Errorf("error unmarshalling request: %w", err),
 					),
 				)
 				return
@@ -94,7 +94,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				if err != nil {
 					responses = append(
 						responses,
-						types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")),
+						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
 					continue
 				}

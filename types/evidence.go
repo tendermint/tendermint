@@ -511,7 +511,7 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 		alternativeHeader.ChainID,
 		alternativeHeader.Commit,
 		tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
-		return errors.Wrap(err, "alt header does not have 1/3+ of voting power of our validator set")
+		return fmt.Errorf("alt header does not have 1/3+ of voting power of our validator set: %w", err)
 	}
 
 	return nil

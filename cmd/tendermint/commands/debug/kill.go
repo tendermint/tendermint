@@ -46,7 +46,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 
 	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
 	if err != nil {
-		return errors.Wrap(err, "failed to create new http client")
+		return fmt.Errorf("failed to create new http client: %w", err)
 	}
 
 	home := viper.GetString(cli.HomeFlag)
@@ -58,7 +58,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	// relevant files and directories that will be compressed into a file.
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "tendermint_debug_tmp")
 	if err != nil {
-		return errors.Wrap(err, "failed to create temporary directory")
+		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 

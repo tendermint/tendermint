@@ -2,6 +2,7 @@ package lite
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -164,7 +165,7 @@ func verifyNewHeaderAndVals(
 	maxClockDrift time.Duration) error {
 
 	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
-		return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+		return fmt.Errorf("untrustedHeader.ValidateBasic failed: %w", err)
 	}
 
 	if untrustedHeader.Height <= trustedHeader.Height {

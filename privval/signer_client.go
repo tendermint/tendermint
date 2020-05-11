@@ -23,7 +23,7 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start listener endpoint")
+			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
 
@@ -72,7 +72,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil, errors.Wrap(err, "send")
+		return nil, fmt.Errorf("send: %w", err)
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)

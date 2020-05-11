@@ -2,6 +2,7 @@ package rpcserver
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -43,7 +44,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 				w,
 				types.RPCInvalidParamsError(
 					dummyID,
-					errors.Wrap(err, "error converting http params to arguments"),
+					fmt.Errorf("error converting http params to arguments: %w", err),
 				),
 			)
 			return

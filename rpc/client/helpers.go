@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -64,7 +65,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	// register for the next event of this type
 	eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp).String())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 	// make sure to unregister after the test is over
 	defer c.UnsubscribeAll(ctx, subscriber)

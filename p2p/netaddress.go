@@ -217,7 +217,7 @@ func (na *NetAddress) Routable() bool {
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() error {
 	if err := validateID(na.ID); err != nil {
-		return errors.Wrap(err, "invalid ID")
+		return fmt.Errorf("invalid ID: %w", err)
 	}
 
 	if na.IP == nil {

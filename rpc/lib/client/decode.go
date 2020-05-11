@@ -2,6 +2,7 @@ package rpcclient
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -21,7 +22,7 @@ func unmarshalResponseBytes(
 	// into the correct type.
 	response := &types.RPCResponse{}
 	if err := json.Unmarshal(responseBytes, response); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling")
+		return nil, fmt.Errorf("error unmarshalling: %w", err)
 	}
 
 	if response.Error != nil {
@@ -29,12 +30,12 @@ func unmarshalResponseBytes(
 	}
 
 	if err := validateAndVerifyID(response, expectedID); err != nil {
-		return nil, errors.Wrap(err, "wrong ID")
+		return nil, fmt.Errorf("wrong ID: %w", err)
 	}
 
 	// Unmarshal the RawMessage into the result.
 	if err := cdc.UnmarshalJSON(response.Result, result); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling result")
+		return nil, fmt.Errorf("error unmarshalling result: %w", err)
 	}
 
 	return result, nil
@@ -52,7 +53,7 @@ func unmarshalResponseBytesArray(
 	)
 
 	if err := json.Unmarshal(responseBytes, &responses); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling")
+		return nil, fmt.Errorf("error unmarshalling: %w", err)
 	}
 
 	// No response error checking here as there may be a mixture of successful
@@ -76,7 +77,7 @@ func unmarshalResponseBytesArray(
 		}
 	}
 	if err := validateResponseIDs(ids, expectedIDs); err != nil {
-		return nil, errors.Wrap(err, "wrong IDs")
+		return nil, fmt.Errorf("wrong IDs: %w", err)
 	}
 
 	for i := 0; i < len(responses); i++ {
