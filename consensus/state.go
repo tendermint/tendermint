@@ -66,6 +66,7 @@ type txNotifier interface {
 // interface to the evidence pool
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
+	AddPOLC(types.ProofOfLockChange) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -1244,7 +1245,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	// TODO: In the future save the POL prevotes for justification.
+	logger.Info("enterPrecommit: +2/3 prevotes for a block we don't have. Voting nil", "blockID", blockID)
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
@@ -1254,6 +1255,29 @@ func (cs *State) enterPrecommit(height int64, round int) {
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 	cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
+}
+
+func (cs *State) savePOLC(round int, blockID types.BlockID) {
+	// polc must be for rounds greater than 0
+	if round == 0 {
+		return
+	}
+	pubKey, err := cs.privValidator.GetPubKey()
+	if err != nil {
+		cs.Logger.Error("Error on retrieval of pubkey", "err", err)
+		return
+	}
+	polc, err := types.MakePOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey, blockID)
+	if err != nil {
+		cs.Logger.Error("Error on forming POLC", "err", err)
+		return
+	}
+	err = cs.evpool.AddPOLC(polc)
+	if err != nil {
+		cs.Logger.Error("Error on saving POLC", "err", err)
+		return
+	}
+	cs.Logger.Info("Saved POLC to evidence pool", "round", round, "height", polc.Height())
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1281,7 +1305,6 @@ func (cs *State) enterPrecommitWait(height int64, round int) {
 
 	// Wait for some more precommits; enterNewRound
 	cs.scheduleTimeout(cs.config.Precommit(round), height, round, cstypes.RoundStepPrecommitWait)
-
 }
 
 // Enter: +2/3 precommits for block
@@ -1831,6 +1854,9 @@ func (cs *State) addVote(
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
+				// If this is not the first round and we have already locked onto something then we are
+				// changing the locked block so save POLC prevotes in evidence db in case of future justification
+				cs.savePOLC(vote.Round, blockID)
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
 
