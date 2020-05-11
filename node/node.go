@@ -683,10 +683,6 @@ func NewNode(config *cfg.Config,
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
 	}
-	// Don't check fastSync == true, since the v2 reactor has a bug where it fast syncs regardless.
-	if stateSync && config.FastSync.Version == "v2" {
-		return nil, errors.New("state sync is not supported with blockchain v2 reactor")
-	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
@@ -879,7 +875,10 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	if n.config.Mempool.WalEnabled() {
-		n.mempool.InitWAL() // no need to have the mempool wal during tests
+		err = n.mempool.InitWAL()
+		if err != nil {
+			return fmt.Errorf("init mempool WAL: %w", err)
+		}
 	}
 
 	// Start the switch (the P2P server).
