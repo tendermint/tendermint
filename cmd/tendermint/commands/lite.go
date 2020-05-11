@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/go-amino"
@@ -136,7 +135,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	rpcClient, err := rpchttp.New(primaryAddr, "/websocket")
 	if err != nil {
-		return errors.Wrapf(err, "http client for %s", primaryAddr)
+		return fmt.Errorf("http client for %s: %w", primaryAddr, err)
 	}
 	p := lproxy.Proxy{
 		Addr:   listenAddr,

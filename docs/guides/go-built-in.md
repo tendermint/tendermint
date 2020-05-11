@@ -503,13 +503,13 @@ config := cfg.DefaultConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
-	return nil, errors.Wrap(err, "viper failed to read config file")
+	return nil, fmt.Errorf("viper failed to read config file: %w", err)
 }
 if err := viper.Unmarshal(config); err != nil {
-	return nil, errors.Wrap(err, "viper failed to unmarshal config")
+	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 }
 if err := config.ValidateBasic(); err != nil {
-	return nil, errors.Wrap(err, "config is invalid")
+	return nil, fmt.Errorf("config is invalid: %w", err)
 }
 ```
 
@@ -530,7 +530,7 @@ pv := privval.LoadFilePV(
 ```go
 nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to load node's key")
+	return nil, fmt.Errorf("failed to load node's key: %w", err)
 }
 ```
 
@@ -543,7 +543,7 @@ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 var err error
 logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to parse log level")
+	return nil, fmt.Errorf("failed to parse log level: %w", err)
 }
 ```
 

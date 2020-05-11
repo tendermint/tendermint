@@ -8,8 +8,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
 	cfg "github.com/tendermint/tendermint/config"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -70,13 +68,13 @@ func dumpProfile(dir, addr, profile string, debug int) error {
 
 	resp, err := http.Get(endpoint) // nolint: gosec
 	if err != nil {
-		return errors.Wrapf(err, "failed to query for %s profile", profile)
+		return fmt.Errorf("failed to query for %s profile: %w", profile, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read %s profile response body", profile)
+		return fmt.Errorf("failed to read %s profile response body: %w", profile, err)
 	}
 
 	return ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s.out", profile)), body, os.ModePerm)

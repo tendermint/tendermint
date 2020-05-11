@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -8,6 +9,6 @@ import (
 )
 
 func TestIsConnTimeoutForNonTimeoutErrors(t *testing.T) {
-	assert.False(t, IsConnTimeout(errors.Wrap(ErrDialRetryMax, "max retries exceeded")))
+	assert.False(t, IsConnTimeout(fmt.Errorf("max retries exceeded: %w", ErrDialRetryMax)))
 	assert.False(t, IsConnTimeout(errors.New("completely irrelevant error")))
 }

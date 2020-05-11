@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
@@ -112,7 +110,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	height, err := strconv.ParseInt(s, 10, 64)
 
 	if err != nil {
-		panic(errors.Wrapf(err, "failed to extract height from %s", s))
+		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
 	}
 	return bs.LoadBlock(height)
 }

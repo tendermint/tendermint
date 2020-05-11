@@ -774,7 +774,7 @@ func NewNode(config *cfg.Config,
 
 	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create addrbook")
+		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
 	// Optionally, start the pex reactor
@@ -890,7 +890,7 @@ func (n *Node) OnStart() error {
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return errors.Wrap(err, "could not dial peers from persistent_peers field")
+		return fmt.Errorf("could not dial peers from persistent_peers field: %w", err)
 	}
 
 	// Run state sync
@@ -1310,12 +1310,12 @@ func createAndStartPrivValidatorSocketClient(
 ) (types.PrivValidator, error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	pvsc, err := privval.NewSignerClient(pve)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	return pvsc, nil

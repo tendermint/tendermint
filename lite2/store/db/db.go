@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
@@ -287,7 +286,7 @@ func (s *dbs) Prune(size uint16) error {
 	s.size -= uint16(pruned)
 
 	if wErr := s.db.SetSync(sizeKey, marshalSize(s.size)); wErr != nil {
-		return errors.Wrap(wErr, "failed to persist size")
+		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
 	return nil

@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -100,9 +98,9 @@ func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(se.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrReadTimeout, err.Error())
+			err = fmt.Errorf("%v: %w", err, ErrReadTimeout)
 		} else {
-			err = errors.Wrap(ErrReadTimeout, "Empty error")
+			err = fmt.Errorf("empty error: %w", ErrReadTimeout)
 		}
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
@@ -117,7 +115,7 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return errors.Wrap(ErrNoConnection, "endpoint is not connected")
+		return fmt.Errorf("endpoint is not connected: %w", ErrNoConnection)
 	}
 
 	// Reset read deadline
@@ -130,9 +128,9 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(se.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrWriteTimeout, err.Error())
+			err = fmt.Errorf("%v: %w", err, ErrWriteTimeout)
 		} else {
-			err = errors.Wrap(ErrWriteTimeout, "Empty error")
+			err = fmt.Errorf("empty error: %w", ErrWriteTimeout)
 		}
 		se.dropConnection()
 	}

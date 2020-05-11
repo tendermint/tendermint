@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -234,13 +233,13 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	}
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, errors.Wrap(err, "Post failed")
+		return nil, fmt.Errorf("post failed: %w", err)
 	}
 	defer httpResponse.Body.Close() // nolint: errcheck
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response body")
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	// collect ids to check responses IDs in unmarshalResponseBytesArray
