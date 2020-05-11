@@ -1,7 +1,7 @@
 package merkle
 
 import (
-	fmt "fmt"
+	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"

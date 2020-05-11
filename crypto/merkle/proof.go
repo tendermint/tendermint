@@ -2,7 +2,7 @@ package merkle
 
 import (
 	"bytes"
-	fmt "fmt"
+	"fmt"
 
 	"github.com/pkg/errors"
 )
