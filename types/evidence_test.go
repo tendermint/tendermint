@@ -392,14 +392,14 @@ func TestProofOfLockChange(t *testing.T) {
 		height  int64 = 37
 	)
 	// 1: valid POLC - nothing should fail
-	voteSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
 	pubKey, err := privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 
 	assert.Equal(t, height, polc.Height())
 	assert.NoError(t, polc.ValidateBasic())
-	assert.NoError(t, polc.Verify(chainID, pubKey))
+	assert.True(t, polc.MajorityOfVotes(valSet))
 	assert.NotEmpty(t, polc.String())
 
 	// test validate basic on a set of bad cases
@@ -410,7 +410,7 @@ func TestProofOfLockChange(t *testing.T) {
 	polc2 := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badPOLCs = append(badPOLCs, polc2)
 	// 3: one vote was from a different round
-	voteSet, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, valSet, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
 	pubKey, err = privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)

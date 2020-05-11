@@ -972,15 +972,23 @@ func (e ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
 
-// a proof of lock change has nothing to verify by itself but must be used to verify a vote in amnesia evidence
-func (e ProofOfLockChange) Verify(chainID string, pubKey crypto.PubKey) error {
+// In order for a ProofOfLockChange to be valid, a validator must have received +2/3 majority of votes
+// MajorityOfVotes checks that there were sufficient votes in order to change locks
+func (e ProofOfLockChange) MajorityOfVotes(valSet *ValidatorSet) bool {
+	talliedVotingPower := int64(0)
+	votingPowerNeeded := valSet.TotalVotingPower() * 2 / 3
+	for _, validator := range valSet.Validators {
+		for _, vote := range e.Votes {
+			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
+				talliedVotingPower += validator.VotingPower
 
-	if !bytes.Equal(pubKey.Address(), e.Address()) {
-		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
-			e.Address(), pubKey, pubKey.Address())
+				if talliedVotingPower > votingPowerNeeded {
+					return true
+				}
+			}
+		}
 	}
-
-	return nil
+	return false
 }
 
 func (e ProofOfLockChange) Equal(e2 ProofOfLockChange) bool {
