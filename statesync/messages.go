@@ -38,7 +38,7 @@ func mustEncodeMsg(pb proto.Message) []byte {
 	return bz
 }
 
-// decodeMsg decodes a Protobuf message and validates it
+// decodeMsg decodes a Protobuf message.
 func decodeMsg(bz []byte) (proto.Message, error) {
 	pb := &ssproto.Message{}
 	err := proto.Unmarshal(bz, pb)
