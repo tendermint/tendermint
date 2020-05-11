@@ -33,6 +33,7 @@ message EvidenceParams {
   int64                    max_age_num_blocks = 1;
   google.protobuf.Duration max_age_duration   = 2
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  uint32                   max_num            = 3;
 }
 
 // ValidatorParams restrict the public key types validators can use.

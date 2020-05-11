@@ -146,6 +146,7 @@ type EvidenceParams struct {
 	// Note: must be greater than 0
 	MaxAgeNumBlocks      int64         `protobuf:"varint,1,opt,name=max_age_num_blocks,json=maxAgeNumBlocks,proto3" json:"max_age_num_blocks,omitempty"`
 	MaxAgeDuration       time.Duration `protobuf:"bytes,2,opt,name=max_age_duration,json=maxAgeDuration,proto3,stdduration" json:"max_age_duration"`
+	MaxNumEvidence       uint32        `protobuf:"varint,1,opt,name=max_num_evidence,json=maxNumEvidence,proto3" json:"max_num_evidence,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -185,6 +186,13 @@ func (m *EvidenceParams) GetMaxAgeNumBlocks() int64 {
 func (m *EvidenceParams) GetMaxAgeDuration() time.Duration {
 	if m != nil {
 		return m.MaxAgeDuration
+	}
+	return 0
+}
+
+func (m *EvidenceParams) GetMaxNumEvidence() uint32 {
+	if m != nil {
+		return m.MaxNumEvidence
 	}
 	return 0
 }
