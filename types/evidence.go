@@ -48,12 +48,12 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
 type ErrEvidenceOverflow struct {
-	MaxNum int64
-	GotNum int64
+	MaxNum int
+	GotNum int
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
 	return &ErrEvidenceOverflow{max, got}
 }
 
@@ -95,21 +95,6 @@ func RegisterEvidences(cdc *amino.Codec) {
 func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockEvidence{}, "tendermint/MockEvidence", nil)
 	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
-}
-
-const (
-	MaxEvidenceBytesDenominator = 10
-)
-
-// MaxEvidencePerBlock returns the maximum number of evidences
-// allowed in the block and their maximum total size (limitted to 1/10th
-// of the maximum block size).
-// TODO: change to a constant, or to a fraction of the validator set size.
-// See https://github.com/tendermint/tendermint/issues/2590
-func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
-	maxBytes := blockMaxBytes / MaxEvidenceBytesDenominator
-	maxNum := maxBytes / MaxEvidenceBytes
-	return maxNum, maxBytes
 }
 
 //-------------------------------------------

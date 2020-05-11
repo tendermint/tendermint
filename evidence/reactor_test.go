@@ -92,11 +92,11 @@ func _waitForEvidence(
 	reactors []*Reactor,
 ) {
 	evpool := reactors[reactorIdx].evpool
-	for len(evpool.PendingEvidence(-1)) != len(evs) {
+	for len(evpool.AllPendingEvidence()) != len(evs) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedEv := evpool.PendingEvidence(-1)
+	reapedEv := evpool.AllPendingEvidence()
 	// put the reaped evidence in a map so we can quickly check we got everything
 	evMap := make(map[string]types.Evidence)
 	for _, e := range reapedEv {
