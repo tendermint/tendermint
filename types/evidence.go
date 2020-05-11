@@ -1050,16 +1050,57 @@ func (e ProofOfLockChange) String() string {
 		e.Votes[0].Round)
 }
 
-type AmensiaEvidence struct {
+// AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
+// Tendermint consensus when a validator incorrectly sends prec
+type AmnesiaEvidence struct {
 	PotentialAmnesiaEvidence
 	polc ProofOfLockChange
 }
 
-var _ Evidence = &AmensiaEvidence{}
-var _ Evidence = AmensiaEvidence{}
+// Height, Time, Address and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
+var _ Evidence = &AmnesiaEvidence{}
+var _ Evidence = AmnesiaEvidence{}
 
-func (e AmensiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	return e.PotentialAmnesiaEvidence.Verify(chainID, pubKey)
+func (e AmnesiaEvidence) ValidateBasic() error {
+	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
+		return err
+	}
+	if err := e.polc.ValidateBasic(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ViolatedConsensus assess on the basis of the AmensiaEvidence whether the validator has violated the
+// Tendermint consensus. Evidence must be validated first (see ValidateBasic).
+// We are only interested in proving that the latter of the votes in terms of time was correctly done.
+func (e AmnesiaEvidence) ViolatedConsensus() bool {
+	// if empty, then no proof was provided to defend the validators actions
+	if e.polc.Equal(ProofOfLockChange{}) {
+		return true
+	}
+
+	var (
+		earlierVote *Vote
+		laterVote   *Vote
+	)
+	if e.PotentialAmnesiaEvidence.VoteA.Timestamp.Before(e.PotentialAmnesiaEvidence.VoteB.Timestamp) {
+		earlierVote, laterVote = e.PotentialAmnesiaEvidence.VoteA, e.PotentialAmnesiaEvidence.VoteB
+	} else {
+		earlierVote, laterVote = e.PotentialAmnesiaEvidence.VoteB, e.PotentialAmnesiaEvidence.VoteA
+	}
+
+	// the later vote should be of a higher round than the earlier vote
+	if laterVote.Round < earlierVote.Round {
+		return true
+	}
+
+	// the last vote in the proof should have arrived before the validator sent their precommit vote
+	if e.polc.Time().After(laterVote.Timestamp) {
+		return true
+	}
+
+	return false
 }
 
 //-----------------------------------------------------------------
