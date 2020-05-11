@@ -75,7 +75,7 @@ type EvidenceParams struct {
 	// and should fall comfortably under the max block bytes when we consider the size of
 	// each evidence (See MaxEvidenceBytes). The maximum number is MaxEvidencePerBlock.
 	// Default is 50
-	MaxNumEvidence uint32 `json:"max_num_evidence"`
+	MaxNum uint32 `json:"max_num"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -107,7 +107,7 @@ func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
-		MaxNumEvidence:  50,
+		MaxNum:          50,
 	}
 }
 
@@ -158,14 +158,14 @@ func (params *ConsensusParams) Validate() error {
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxNumEvidence > MaxEvidencePerBlock {
+	if params.Evidence.MaxNum > MaxEvidencePerBlock {
 		return errors.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
-			params.Evidence.MaxNumEvidence, MaxEvidencePerBlock)
+			params.Evidence.MaxNum, MaxEvidencePerBlock)
 	}
 
-	if int64(params.Evidence.MaxNumEvidence)*MaxEvidenceBytes > params.Block.MaxBytes {
+	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
 		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
-			int64(params.Evidence.MaxNumEvidence)*MaxEvidenceBytes, params.Block.MaxBytes)
+			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -224,7 +224,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.Evidence != nil {
 		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
 		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
-		res.Evidence.MaxNumEvidence = params2.Evidence.MaxNumEvidence
+		res.Evidence.MaxNum = params2.Evidence.MaxNumEvidence
 	}
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.

@@ -236,7 +236,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	maxBytes := 16384
 	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Evidence.MaxNumEvidence = uint32(maxEvidence)
+	state.ConsensusParams.Evidence.MaxNum = uint32(maxEvidence)
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool

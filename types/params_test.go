@@ -66,7 +66,7 @@ func makeParams(
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
-			MaxNumEvidence:  maxEvidence,
+			MaxNum:          maxEvidence,
 		},
 		Validator: ValidatorParams{
 			PubKeyTypes: pubkeyTypes,

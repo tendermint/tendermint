@@ -17,7 +17,7 @@ import (
 func TestTxFilter(t *testing.T) {
 	genDoc := randomGenesisDoc()
 	genDoc.ConsensusParams.Block.MaxBytes = 3000
-	genDoc.ConsensusParams.Evidence.MaxNumEvidence = 1
+	genDoc.ConsensusParams.Evidence.MaxNum = 1
 
 	// Max size of Txs is much smaller than size of block,
 	// since we need to account for commits and evidence.

@@ -216,7 +216,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
-		maxNumEvidence := state.ConsensusParams.Evidence.MaxNumEvidence
+		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
 		if height > 1 {
 			/*
 				A block with too much evidence fails
