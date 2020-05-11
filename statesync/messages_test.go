@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ssproto "github.com/tendermint/tendermint/proto/statesync"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func TestValidateMsg(t *testing.T) {
@@ -14,7 +15,8 @@ func TestValidateMsg(t *testing.T) {
 		msg   proto.Message
 		valid bool
 	}{
-		"nil": {nil, false},
+		"nil":       {nil, false},
+		"unrelated": {&tmproto.Block{}, false},
 
 		"ChunkRequest valid":    {&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1}, true},
 		"ChunkRequest 0 height": {&ssproto.ChunkRequest{Height: 0, Format: 1, Index: 1}, false},

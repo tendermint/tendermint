@@ -59,7 +59,7 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	}
 }
 
-// validateMsg validates a message
+// validateMsg validates a message.
 func validateMsg(pb proto.Message) error {
 	if pb == nil {
 		return errors.New("message cannot be nil")
@@ -90,6 +90,8 @@ func validateMsg(pb proto.Message) error {
 		if msg.Chunks == 0 {
 			return errors.New("snapshot has no chunks")
 		}
+	default:
+		return fmt.Errorf("unknown message type %T", msg)
 	}
 	return nil
 }
