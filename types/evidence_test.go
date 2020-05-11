@@ -410,7 +410,7 @@ func TestProofOfLockChange(t *testing.T) {
 	polc2 := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badPOLCs = append(badPOLCs, polc2)
 	// 3: one vote was from a different round
-	voteSet, valSet, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
 	pubKey, err = privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
