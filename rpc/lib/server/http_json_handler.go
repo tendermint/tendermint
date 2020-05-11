@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -78,7 +76,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			if len(r.URL.Path) > 1 {
 				responses = append(
 					responses,
-					types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)),
+					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
 				continue
 			}
@@ -162,7 +160,7 @@ func arrayParamsToArgs(
 ) ([]reflect.Value, error) {
 
 	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.Errorf("expected %v parameters (%v), got %v (%v)",
+		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
 	}
 
@@ -204,7 +202,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect
 	}
 
 	// Otherwise, bad format, we cannot parse
-	return nil, errors.Errorf("unknown type for JSON params: %v. Expected map or array", err)
+	return nil, fmt.Errorf("unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // writes a list of available rpc endpoints as an html page

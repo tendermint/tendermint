@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -166,7 +164,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := errors.Errorf("got a hex string arg, but expected '%s'",
+			err := fmt.Errorf("got a hex string arg, but expected '%s'",
 				rt.Kind().String())
 			return reflect.ValueOf(nil), false, err
 		}

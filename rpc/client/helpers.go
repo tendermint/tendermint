@@ -2,10 +2,9 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -17,7 +16,7 @@ type Waiter func(delta int64) (abort error)
 // but you can plug in another one
 func DefaultWaitStrategy(delta int64) (abort error) {
 	if delta > 10 {
-		return errors.Errorf("waiting for %d blocks... aborting", delta)
+		return fmt.Errorf("waiting for %d blocks... aborting", delta)
 	} else if delta > 0 {
 		// estimate of wait time....
 		// wait half a second for the next block (in progress)

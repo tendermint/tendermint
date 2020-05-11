@@ -331,6 +331,7 @@ Put the following code into the "main.go" file:
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -339,7 +340,6 @@ import (
 	"syscall"
 
 	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/tendermint/abci/types"

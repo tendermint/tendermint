@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -78,7 +76,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil, errors.Errorf("unexpected response type %T", response)
+		return nil, fmt.Errorf("unexpected response type %T", response)
 	}
 
 	if pubKeyResp.Error != nil {

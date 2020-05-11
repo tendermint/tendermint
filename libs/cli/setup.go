@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -151,7 +150,7 @@ func validateOutput(cmd *cobra.Command, args []string) error {
 	switch output {
 	case "text", "json":
 	default:
-		return errors.Errorf("unsupported output format: %s", output)
+		return fmt.Errorf("unsupported output format: %s", output)
 	}
 	return nil
 }

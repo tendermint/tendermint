@@ -6,14 +6,13 @@ package p2p
 
 import (
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // NetAddress defines information about a peer on the network

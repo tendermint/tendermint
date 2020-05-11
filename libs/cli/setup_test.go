@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -213,7 +212,7 @@ func TestSetupTrace(t *testing.T) {
 		trace := &cobra.Command{
 			Use: "trace",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return errors.Errorf("Trace flag = %t", viper.GetBool(TraceFlag))
+				return fmt.Errorf("Trace flag = %t", viper.GetBool(TraceFlag))
 			},
 		}
 		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..

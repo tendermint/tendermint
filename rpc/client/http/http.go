@@ -2,12 +2,11 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 

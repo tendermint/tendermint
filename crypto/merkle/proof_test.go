@@ -1,10 +1,10 @@
 package merkle
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	amino "github.com/tendermint/go-amino"
 )
@@ -54,7 +54,7 @@ func (dop DominoOp) Run(input [][]byte) (output [][]byte, err error) {
 		return nil, errors.New("expected input of length 1")
 	}
 	if string(input[0]) != dop.Input {
-		return nil, errors.Errorf("expected input %v, got %v",
+		return nil, fmt.Errorf("expected input %v, got %v",
 			dop.Input, string(input[0]))
 	}
 	return [][]byte{[]byte(dop.Output)}, nil

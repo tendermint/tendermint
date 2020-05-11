@@ -2,11 +2,10 @@ package rpctypes
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 
-	"fmt"
-
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	amino "github.com/tendermint/go-amino"
 )

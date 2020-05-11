@@ -1,12 +1,11 @@
 package pex
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/go-amino"
 

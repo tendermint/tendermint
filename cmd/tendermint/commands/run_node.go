@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -149,7 +148,7 @@ func checkGenesisHash(config *cfg.Config) error {
 
 	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
-		return errors.Errorf(
+		return fmt.Errorf(
 			"--genesis_hash=%X does not match %s hash: %X",
 			genesisHash, config.GenesisFile(), actualHash)
 	}

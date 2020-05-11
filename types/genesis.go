@@ -3,11 +3,10 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -70,7 +69,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return errors.New("genesis doc must include non-empty chain_id")
 	}
 	if len(genDoc.ChainID) > MaxChainIDLen {
-		return errors.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
+		return fmt.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
 	}
 
 	if genDoc.ConsensusParams == nil {
@@ -81,10 +80,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	for i, v := range genDoc.Validators {
 		if v.Power == 0 {
-			return errors.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
+			return fmt.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
 		}
 		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return errors.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
+			return fmt.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
 		}
 		if len(v.Address) == 0 {
 			genDoc.Validators[i].Address = v.PubKey.Address()

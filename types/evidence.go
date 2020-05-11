@@ -2,11 +2,10 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -485,7 +484,7 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 	// Max validator set size = 100 * 2 = 200 [fork?]
 	maxNumValidators := valSet.Size() * 2
 	if len(alternativeHeader.Commit.Signatures) > maxNumValidators {
-		return errors.Errorf("alt commit contains too many signatures: %d, expected no more than %d",
+		return fmt.Errorf("alt commit contains too many signatures: %d, expected no more than %d",
 			len(alternativeHeader.Commit.Signatures),
 			maxNumValidators)
 	}

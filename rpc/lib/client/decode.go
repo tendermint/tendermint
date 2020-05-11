@@ -2,9 +2,8 @@ package rpcclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -60,7 +59,7 @@ func unmarshalResponseBytesArray(
 	// and unsuccessful responses.
 
 	if len(results) != len(responses) {
-		return nil, errors.Errorf(
+		return nil, fmt.Errorf(
 			"expected %d result objects into which to inject responses, but got %d",
 			len(responses),
 			len(results),
@@ -73,7 +72,7 @@ func unmarshalResponseBytesArray(
 	for i, resp := range responses {
 		ids[i], ok = resp.ID.(types.JSONRPCIntID)
 		if !ok {
-			return nil, errors.Errorf("expected JSONRPCIntID, got %T", resp.ID)
+			return nil, fmt.Errorf("expected JSONRPCIntID, got %T", resp.ID)
 		}
 	}
 	if err := validateResponseIDs(ids, expectedIDs); err != nil {
@@ -99,7 +98,7 @@ func validateResponseIDs(ids, expectedIDs []types.JSONRPCIntID) error {
 		if m[id] {
 			delete(m, id)
 		} else {
-			return errors.Errorf("unsolicited ID #%d: %v", i, id)
+			return fmt.Errorf("unsolicited ID #%d: %v", i, id)
 		}
 	}
 
@@ -113,7 +112,7 @@ func validateAndVerifyID(res *types.RPCResponse, expectedID types.JSONRPCIntID) 
 		return err
 	}
 	if expectedID != res.ID.(types.JSONRPCIntID) { // validateResponseID ensured res.ID has the right type
-		return errors.Errorf("response ID (%d) does not match request ID (%d)", res.ID, expectedID)
+		return fmt.Errorf("response ID (%d) does not match request ID (%d)", res.ID, expectedID)
 	}
 	return nil
 }
@@ -124,7 +123,7 @@ func validateResponseID(id interface{}) error {
 	}
 	_, ok := id.(types.JSONRPCIntID)
 	if !ok {
-		return errors.Errorf("expected JSONRPCIntID, but got: %T", id)
+		return fmt.Errorf("expected JSONRPCIntID, but got: %T", id)
 	}
 	return nil
 }
