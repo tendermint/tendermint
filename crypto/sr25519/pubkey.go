@@ -67,3 +67,8 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	}
 	return false
 }
+
+func (pubKey PubKey) Type() string {
+	return "sr25519"
+
+}
