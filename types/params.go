@@ -19,6 +19,9 @@ const (
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
+
+	// Restrict the upper bound of the amount of evidence (uses uint16 for safe conversion)
+	MaxEvidencePerBlock = 65535
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
@@ -67,6 +70,12 @@ type EvidenceParams struct {
 	// mechanism for handling [Nothing-At-Stake
 	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
 	MaxAgeDuration time.Duration `json:"max_age_duration"`
+
+	// This sets the maximum number of evidence that can be committed in a single block.
+	// and should fall comfortably under the max block bytes when we consider the size of
+	// each evidence (See MaxEvidenceBytes). The maximum number is MaxEvidencePerBlock.
+	// Default is 50
+	MaxNum uint32 `json:"max_num"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -98,6 +107,7 @@ func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
+		MaxNum:          50,
 	}
 }
 
@@ -146,6 +156,16 @@ func (params *ConsensusParams) Validate() error {
 	if params.Evidence.MaxAgeDuration <= 0 {
 		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
+	}
+
+	if params.Evidence.MaxNum > MaxEvidencePerBlock {
+		return errors.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
+			params.Evidence.MaxNum, MaxEvidencePerBlock)
+	}
+
+	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
+		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
+			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -204,6 +224,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.Evidence != nil {
 		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
 		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
+		res.Evidence.MaxNum = params2.Evidence.MaxNumEvidence
 	}
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.
