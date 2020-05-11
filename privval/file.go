@@ -5,13 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/encode"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
+	tmprivval "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -55,7 +60,12 @@ func (pvKey FilePVKey) Save() {
 		panic("cannot save PrivValidator key: filePath not set")
 	}
 
-	jsonBytes, err := cdc.MarshalJSONIndent(pvKey, "", "  ")
+	pvk, err := pvKey.ToProto()
+	if err != nil {
+		panic(fmt.Errorf("unable to create proto type: %w", err))
+	}
+
+	jsonBytes, err := encode.MarshalJSONIndent(pvk)
 	if err != nil {
 		panic(err)
 	}
@@ -64,6 +74,52 @@ func (pvKey FilePVKey) Save() {
 		panic(err)
 	}
 
+}
+
+// ToProto transistions FilePVKey to the protobuf representation
+func (pvKey FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
+
+	pb := new(tmprivval.FilePVKey)
+	pb.Address = pvKey.Address
+	pb.FilePath = pvKey.filePath
+
+	pubKey, err := cryptoenc.PubKeyToProto(pvKey.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	pb.PubKey = pubKey
+
+	privKey, err := cryptoenc.PrivKeyToProto(pvKey.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	pb.PrivKey = privKey
+
+	return pb, nil
+}
+
+func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (*FilePVKey, error) {
+	if pb == nil {
+		return nil, errors.New("nil FilePVKey")
+	}
+
+	pv := new(FilePVKey)
+	pv.Address = pb.Address
+	pv.filePath = pb.FilePath
+
+	pubKey, err := cryptoenc.PubKeyFromProto(pb.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	pv.PubKey = pubKey
+
+	privKey, err := cryptoenc.PrivKeyFromProto(pb.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	pv.PrivKey = privKey
+
+	return pv, nil
 }
 
 //-------------------------------------------------------------------------------
@@ -126,14 +182,51 @@ func (lss *FilePVLastSignState) Save() {
 	if outFile == "" {
 		panic("cannot save FilePVLastSignState: filePath not set")
 	}
-	jsonBytes, err := cdc.MarshalJSONIndent(lss, "", "  ")
+
+	pb, err := lss.ToProto()
+	if err != nil {
+		panic(fmt.Errorf("unable to create proto type: %w", err))
+	}
+
+	jsonBytes, err := encoding.MarshalJSONIndent(pb)
 	if err != nil {
 		panic(err)
 	}
+
 	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error) {
+	if lss == nil {
+		return nil, errors.New("nil FilePVLastSignState")
+	}
+
+	pb := new(tmprivval.FilePVLastSignState)
+	pb.Height = lss.Height
+	pb.Round = lss.Round
+	pb.Step = lss.Round
+	pb.Signature = lss.Signature
+	pb.SignBytes = lss.SignBytes
+	pb.FilePath = lss.filePath
+
+	return pb, nil
+}
+
+func FilePVLastSignStateFromProto(pb tmprivval.FilePVLastSignState) (*FilePVLastSignState, error) {
+
+	pvl := new(FilePVLastSignState)
+
+	pvl.Height = pb.Height
+	pvl.Round = pb.Round
+	pvl.Step = int8(pb.Step) //todo:fix
+	pvl.Signature = pb.Signature
+	pvl.SignBytes = pb.SignBytes
+	pvl.filePath = pb.FilePath
+
+	return pvl, nil
 }
 
 //-------------------------------------------------------------------------------
@@ -186,10 +279,14 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	pvKey := FilePVKey{}
-	err = cdc.UnmarshalJSON(keyJSONBytes, &pvKey)
-	if err != nil {
+	pvK := tmprivval.FilePVKey{}
+	if err := jsonpb.Unmarshal(strings.NewReader(string(keyJSONBytes)), &pvKey); err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
+	}
+
+	pvKey, err := FilePVKeyFromProto(pvk)
+	if err != nil {
+		tmos.Exit(err.Error())
 	}
 
 	// overwrite pubkey and address for convenience
@@ -197,6 +294,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
+	pvState := FilePVLastSignState{}
 	pvState := FilePVLastSignState{}
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
