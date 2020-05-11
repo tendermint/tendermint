@@ -14,8 +14,6 @@ const (
 	snapshotMsgSize = int(4e6)
 	// chunkMsgSize is the maximum size of a chunkResponseMessage
 	chunkMsgSize = int(16e6)
-	// maxMsgSize is the maximum size of any message
-	maxMsgSize = chunkMsgSize
 )
 
 // mustEncodeMsg encodes a Protobuf message, panicing on error.
