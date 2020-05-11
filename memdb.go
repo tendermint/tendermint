@@ -43,6 +43,11 @@ func newPair(key, value []byte) *item {
 }
 
 // MemDB is an in-memory database backend using a B-tree for storage.
+//
+// For performance reasons, all given and returned keys and values are pointers to the in-memory
+// database, so modifying them will cause the stored values to be modified as well. All DB methods
+// already specify that keys and values should be considered read-only, but this is especially
+// important with MemDB.
 type MemDB struct {
 	mtx   sync.RWMutex
 	btree *btree.BTree

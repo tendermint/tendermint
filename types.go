@@ -1,60 +1,66 @@
 package db
 
-// DBs are goroutine safe.
+// DB is the main interface for all database backends. DBs are concurrency-safe. Callers must call
+// Close on the database when done.
+//
+// Keys and values can be empty, or nil which is interpreted as an empty byte slice. Keys and values
+// should be considered read-only, both when returned and when given, and must be copied before they
+// are modified.
 type DB interface {
-
-	// Get returns nil if key doesn't exist.
-	// A nil key is interpreted as an empty byteslice.
+	// Get fetches the value of the given key, or nil if it does not exist.
 	// CONTRACT: key, value readonly []byte
 	Get([]byte) ([]byte, error)
 
 	// Has checks if a key exists.
-	// A nil key is interpreted as an empty byteslice.
 	// CONTRACT: key, value readonly []byte
 	Has(key []byte) (bool, error)
 
-	// Set sets the key.
-	// A nil key is interpreted as an empty byteslice.
+	// Set sets the value for the given key, replacing it if it already exists.
 	// CONTRACT: key, value readonly []byte
 	Set([]byte, []byte) error
+
+	// SetSync sets the value for the given key, and flushes it to storage before returning.
 	SetSync([]byte, []byte) error
 
-	// Delete deletes the key.
-	// A nil key is interpreted as an empty byteslice.
+	// Delete deletes the key, or does nothing if the key does not exist.
 	// CONTRACT: key readonly []byte
 	Delete([]byte) error
+
+	// DeleteSync deletes the key, and flushes the delete to storage before returning.
 	DeleteSync([]byte) error
 
-	// Iterate over a domain of keys in ascending order. The caller must call Close when done.
-	// End is exclusive, and start must be less than end or the Iterator is invalid.
-	// A nil start is interpreted as an empty byteslice.
-	// If end is nil, iterates up to the last item (inclusive).
+	// Iterator returns an iterator over a domain of keys, in ascending order. The caller must call
+	// Close when done. End is exclusive, and start must be less than end. A nil start iterates
+	// from the first key, and a nil end iterates to the last key (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
 	Iterator(start, end []byte) (Iterator, error)
 
-	// Iterate over a domain of keys in descending order. The caller must call Close when done.
-	// End is exclusive, and start must be less than end or the Iterator is invalid.
-	// If start is nil, iterates up to the first/least item (inclusive).
-	// If end is nil, iterates from the last/greatest item (inclusive).
+	// ReverseIterator returns an iterator over a domain of keys, in descending order. The caller
+	// must call Close when done. End is exclusive, and start must be less than end. A nil end
+	// iterates from the last key (inclusive), and a nil start iterates to the first key (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
 	ReverseIterator(start, end []byte) (Iterator, error)
 
-	// Closes the connection.
+	// Close closes the database connection.
 	Close() error
 
-	// Creates a batch for atomic updates. The caller must call Batch.Close.
+	// NewBatch creates a batch for atomic updates. The caller must call Batch.Close.
 	NewBatch() Batch
 
-	// For debugging
+	// Print is used for debugging.
 	Print() error
 
 	// Stats returns a map of property values for all keys and the size of the cache.
 	Stats() map[string]string
 }
 
-// Batch Close must be called when the program no longer needs the object.
+// Batch represents a group of writes. They may or may not be written atomically depending on the
+// backend. Callers must call Close on the batch when done.
+//
+// As with DB, given keys and values should be considered read-only, and must not be modified after
+// passing them to the batch.
 type Batch interface {
 	SetDeleter
 
@@ -80,65 +86,46 @@ type SetDeleter interface {
 	Delete(key []byte)
 }
 
-/*
-	Usage:
-
-	var itr Iterator = ...
-	defer itr.Close()
-
-	for ; itr.Valid(); itr.Next() {
-		k, v := itr.Key(); itr.Value()
-		...
-	}
-*/
+// Iterator represents an iterator over a domain of keys. Callers must call Close when done.
+// No writes can happen to a domain while there exists an iterator over it, some backends may take
+// out database locks to ensure this will not happen.
+//
+// As with DB, keys and values should be considered read-only, and must be copied before they are
+// modified.
+//
+// Typical usage:
+//
+// var itr Iterator = ...
+// defer itr.Close()
+//
+// for ; itr.Valid(); itr.Next() {
+//   k, v := itr.Key(); itr.Value()
+//   ...
+// }
 type Iterator interface {
-
-	// The start & end (exclusive) limits to iterate over.
-	// If end < start, then the Iterator goes in reverse order.
-	//
-	// A domain of ([]byte{12, 13}, []byte{12, 14}) will iterate
-	// over anything with the prefix []byte{12, 13}.
-	//
-	// The smallest key is the empty byte array []byte{} - see BeginningKey().
-	// The largest key is the nil byte array []byte(nil) - see EndingKey().
+	// Domain returns the start (inclusive) and end (exclusive) limits of the iterator.
 	// CONTRACT: start, end readonly []byte
 	Domain() (start []byte, end []byte)
 
-	// Valid returns whether the current position is valid.
-	// Once invalid, an Iterator is forever invalid.
+	// Valid returns whether the current iterator is valid. Once invalid, the Iterator remains
+	// invalid forever.
 	Valid() bool
 
-	// Next moves the iterator to the next sequential key in the database, as
-	// defined by order of iteration.
+	// Next moves the iterator to the next key in the database, as defined by order of iteration.
 	// If Valid returns false, this method will panic.
 	Next()
 
-	// Key returns the key of the cursor.
-	// If Valid returns false, this method will panic.
+	// Key returns the key at the current position. Panics if the iterator is invalid.
 	// CONTRACT: key readonly []byte
 	Key() (key []byte)
 
-	// Value returns the value of the cursor.
-	// If Valid returns false, this method will panic.
+	// Value returns the value at the current position. Panics if the iterator is invalid.
 	// CONTRACT: value readonly []byte
 	Value() (value []byte)
 
+	// Error returns the last error encountered by the iterator, if any.
 	Error() error
 
-	// Close releases the Iterator.
+	// Close closes the iterator, relasing any allocated resources.
 	Close()
-}
-
-// For testing convenience.
-func bz(s string) []byte {
-	return []byte(s)
-}
-
-// We defensively turn nil keys or values into []byte{} for
-// most operations.
-func nonNilBytes(bz []byte) []byte {
-	if bz == nil {
-		return []byte{}
-	}
-	return bz
 }

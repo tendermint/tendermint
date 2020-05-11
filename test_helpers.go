@@ -6,6 +6,11 @@ const (
 	strChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" // 62 characters
 )
 
+// For testing convenience.
+func bz(s string) []byte {
+	return []byte(s)
+}
+
 // Str constructs a random alphanumeric string of given length.
 func randStr(length int) string {
 	chars := []byte{}

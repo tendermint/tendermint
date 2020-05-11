@@ -81,6 +81,10 @@ func testBackendGetSetDelete(t *testing.T, backend BackendType) {
 	value, err = db.Get(key)
 	require.NoError(t, err)
 	require.Nil(t, value)
+
+	// Delete missing key.
+	err = db.Delete([]byte{9})
+	require.NoError(t, err)
 }
 
 func TestBackendsGetSetDelete(t *testing.T) {
