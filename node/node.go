@@ -1310,18 +1310,18 @@ func createAndStartPrivValidatorSocketClient(
 ) (types.PrivValidator, error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	pvsc, err := privval.NewSignerClient(pve)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	// try to get a pubkey from private validate first time
-	pubKey := pvsc.GetPubKey()
-	if pubKey == nil {
-		return nil, errors.New("could not retrieve public key from private validator")
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
 	const (
