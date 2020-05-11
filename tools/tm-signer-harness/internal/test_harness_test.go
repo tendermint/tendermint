@@ -47,7 +47,8 @@ const (
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
-			"max_age_duration": "172800000000000"
+			"max_age_duration": "172800000000000",
+			"max_num_evidence": 50
 		},
 		"validator": {
 			"pub_key_types": [

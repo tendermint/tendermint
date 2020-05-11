@@ -159,7 +159,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -203,7 +203,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
@@ -218,6 +218,8 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	const minEvSize = 12
+
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -231,7 +233,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB := state(1, height)
 	maxBytes := 16384
+	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Evidence.MaxNum = uint32(maxEvidence)
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
@@ -257,10 +261,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	minEvSize := 12
-	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
-	for i := 0; i < numEv; i++ {
-		ev := types.NewMockEvidence(1, time.Now(), proposerAddr)
+	for i := 0; i < maxEvidence+1; i++ {
+		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}
