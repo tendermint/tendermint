@@ -125,8 +125,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// Limit the amount of evidence
 	numEvidence := len(block.Evidence.Evidence)
 	// MaxNumEvidence is capped at uint16, so conversion is always safe.
-	if numEvidence > int(state.ConsensusParams.Evidence.MaxNumEvidence) {
-		return types.NewErrEvidenceOverflow(int(state.ConsensusParams.Evidence.MaxNumEvidence), numEvidence)
+	if maxEvidence := int(state.ConsensusParams.Evidence.MaxNumEvidence); numEvidence > maxEvidence {
+		return types.NewErrEvidenceOverflow(maxEvidence, numEvidence)
 	}
 
 	// Validate all evidence.

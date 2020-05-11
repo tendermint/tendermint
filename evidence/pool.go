@@ -308,7 +308,7 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 }
 
 // listEvidence lists up to maxNum pieces of evidence for the given prefix key.
-// If maxNum is 0, there's no cap on the size of returned evidence.
+// If maxNum is -1, there's no cap on the size of returned evidence.
 func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
 	var count int64
 	var evidence []types.Evidence
