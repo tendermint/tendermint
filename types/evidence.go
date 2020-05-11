@@ -900,6 +900,143 @@ func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
+// ProofOfLockChange (POLC) proves that a node followed the consensus protocol and voted for a precommit in two
+// different rounds because the node received a majority of votes for a different block in the latter round. In cases of
+// amnesia evidence, a suspected node will need ProofOfLockChange to prove that the node did not break protocol.
+type ProofOfLockChange struct {
+	Votes  []Vote        `json:"votes"`
+	PubKey crypto.PubKey `json:"pubkey"`
+}
+
+// MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
+// that the node has itself not yet voted for in order to process the vote set into a proof of lock change
+func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (ProofOfLockChange, error) {
+	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	return polc, polc.ValidateBasic()
+}
+
+func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) ProofOfLockChange {
+	var votes []Vote
+	valSetSize := voteSet.Size()
+	for valIdx := 0; valIdx < valSetSize; valIdx++ {
+		vote := voteSet.GetByIndex(valIdx)
+		if vote != nil && vote.BlockID.Equals(blockID) {
+			votes = append(votes, *vote)
+		}
+	}
+	return ProofOfLockChange{
+		Votes:  votes,
+		PubKey: pubKey,
+	}
+}
+
+func (e ProofOfLockChange) Height() int64 {
+	return e.Votes[0].Height
+}
+
+// returns the time of the last vote
+func (e ProofOfLockChange) Time() time.Time {
+	latest := e.Votes[0].Timestamp
+	for _, vote := range e.Votes {
+		if vote.Timestamp.After(latest) {
+			latest = vote.Timestamp
+		}
+	}
+	return latest
+}
+
+func (e ProofOfLockChange) Round() int {
+	return e.Votes[0].Round
+}
+
+func (e ProofOfLockChange) Address() []byte {
+	return e.PubKey.Address()
+}
+
+func (e ProofOfLockChange) BlockID() BlockID {
+	return e.Votes[0].BlockID
+}
+
+// In order for a ProofOfLockChange to be valid, a validator must have received +2/3 majority of votes
+// MajorityOfVotes checks that there were sufficient votes in order to change locks
+func (e ProofOfLockChange) MajorityOfVotes(valSet *ValidatorSet) bool {
+	talliedVotingPower := int64(0)
+	votingPowerNeeded := valSet.TotalVotingPower() * 2 / 3
+	for _, validator := range valSet.Validators {
+		for _, vote := range e.Votes {
+			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
+				talliedVotingPower += validator.VotingPower
+
+				if talliedVotingPower > votingPowerNeeded {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (e ProofOfLockChange) Equal(e2 ProofOfLockChange) bool {
+	return bytes.Equal(e.Address(), e2.Address()) && e.Height() == e2.Height() &&
+		e.Round() == e2.Round()
+}
+
+func (e ProofOfLockChange) ValidateBasic() error {
+	if e.PubKey == nil {
+		return errors.New("missing public key")
+	}
+	// validate basic doesn't count the number of votes and their voting power, this is to be done by VerifyEvidence
+	if e.Votes == nil {
+		return errors.New("missing votes")
+	}
+	// height, round and vote type must be the same for all votes
+	height := e.Height()
+	round := e.Round()
+	if round == 0 {
+		return errors.New("can't have a polc for the first round")
+	}
+	voteType := e.Votes[0].Type
+	for idx, vote := range e.Votes {
+		if err := vote.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid vote#%d: %w", idx, err)
+		}
+
+		if vote.Height != height {
+			return fmt.Errorf("invalid height for vote#%d: %d instead of %d", idx, vote.Height, height)
+		}
+
+		if vote.Round != round {
+			return fmt.Errorf("invalid round for vote#%d: %d instead of %d", idx, vote.Round, round)
+		}
+
+		if vote.Type != voteType {
+			return fmt.Errorf("invalid vote type for vote#%d: %d instead of %d", idx, vote.Type, voteType)
+		}
+
+		if !vote.BlockID.Equals(e.BlockID()) {
+			return fmt.Errorf("vote must be for the same block id: %v instead of %v", e.BlockID(), vote.BlockID)
+		}
+
+		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
+			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X all votes %v",
+				vote.ValidatorAddress.Bytes(), e.Votes)
+		}
+
+		for i := idx + 1; i < len(e.Votes); i++ {
+			if bytes.Equal(vote.ValidatorAddress.Bytes(), e.Votes[i].ValidatorAddress.Bytes()) {
+				return fmt.Errorf("duplicate votes: %v", vote)
+			}
+		}
+
+	}
+	return nil
+}
+
+func (e ProofOfLockChange) String() string {
+	return fmt.Sprintf("ProofOfLockChange {Address: %X, Height: %d, Round: %d", e.Address(), e.Height(),
+		e.Votes[0].Round)
+}
+
 //-----------------------------------------------------------------
 
 // UNSTABLE
@@ -961,4 +1098,17 @@ func (e MockEvidence) Equal(ev Evidence) bool {
 func (e MockEvidence) ValidateBasic() error { return nil }
 func (e MockEvidence) String() string {
 	return fmt.Sprintf("Evidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
+}
+
+// mock polc - fails validate basic, not stable
+func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLockChange {
+	voteVal := NewMockPV()
+	pKey, _ := voteVal.GetPubKey()
+	vote := Vote{Type: PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
+		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
+	_ = voteVal.SignVote("mock-chain-id", &vote)
+	return ProofOfLockChange{
+		Votes:  []Vote{vote},
+		PubKey: pubKey,
+	}
 }

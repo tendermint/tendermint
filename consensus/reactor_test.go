@@ -235,6 +235,7 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	}
 	return false
 }
+func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
 
 //------------------------------------
 

@@ -386,6 +386,63 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NotEmpty(t, ev.String())
 }
 
+func TestProofOfLockChange(t *testing.T) {
+	const (
+		chainID       = "TestProofOfLockChange"
+		height  int64 = 37
+	)
+	// 1: valid POLC - nothing should fail
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	pubKey, err := privValidators[7].GetPubKey()
+	require.NoError(t, err)
+	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+
+	assert.Equal(t, height, polc.Height())
+	assert.NoError(t, polc.ValidateBasic())
+	assert.True(t, polc.MajorityOfVotes(valSet))
+	assert.NotEmpty(t, polc.String())
+
+	// test validate basic on a set of bad cases
+	var badPOLCs []ProofOfLockChange
+	// 2: node has already voted in next round
+	pubKey, err = privValidators[0].GetPubKey()
+	require.NoError(t, err)
+	polc2 := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badPOLCs = append(badPOLCs, polc2)
+	// 3: one vote was from a different round
+	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	pubKey, err = privValidators[7].GetPubKey()
+	require.NoError(t, err)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badVote := makeVote(t, privValidators[8], chainID, 8, height, 2, 2, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 4: one vote was from a different height
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height+1, 1, 2, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 5: one vote was from a different vote type
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 1, blockID)
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+	// 5: one of the votes was for a nil block
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 2, BlockID{})
+	polc.Votes = append(polc.Votes, *badVote)
+	badPOLCs = append(badPOLCs, polc)
+
+	for idx, polc := range badPOLCs {
+		err := polc.ValidateBasic()
+		assert.Error(t, err)
+		if err == nil {
+			t.Errorf("test no. %d failed", idx+2)
+		}
+	}
+
+}
+
 func makeHeaderRandom() *Header {
 	return &Header{
 		ChainID:            tmrand.Str(12),
