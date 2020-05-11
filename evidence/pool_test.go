@@ -96,7 +96,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// test evidence is proposed
-	proposedEvidence := pool.PendingEvidence(-1)
+	proposedEvidence := pool.AllPendingEvidence()
 	assert.Equal(t, proposedEvidence[0], evidence)
 
 	// evidence seen and committed:

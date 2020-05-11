@@ -216,16 +216,15 @@ func TestValidateBlockEvidence(t *testing.T) {
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
+		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
 		if height > 1 {
 			/*
 				A block with too much evidence fails
 			*/
-			maxBlockSize := state.ConsensusParams.Block.MaxBytes
-			maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 			require.True(t, maxNumEvidence > 2)
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
-			for i := int64(0); i <= maxNumEvidence; i++ {
+			for i := uint32(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
@@ -237,12 +236,10 @@ func TestValidateBlockEvidence(t *testing.T) {
 		/*
 			A good block with several pieces of good evidence passes
 		*/
-		maxBlockSize := state.ConsensusParams.Block.MaxBytes
-		maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := int64(0); i < maxNumEvidence; i++ {
+		for i := uint32(0); i < maxNumEvidence; i++ {
 			evidence = append(evidence, goodEvidence)
 		}
 
