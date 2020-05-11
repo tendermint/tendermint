@@ -159,12 +159,12 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	if params.Evidence.MaxNum > MaxEvidencePerBlock {
-		return errors.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
+		return fmt.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
 			params.Evidence.MaxNum, MaxEvidencePerBlock)
 	}
 
 	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
-		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
+		return fmt.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
 			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
 	}
 
