@@ -187,7 +187,7 @@ func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCR
 		var js []byte
 		js, err := cdc.MarshalJSON(res)
 		if err != nil {
-			return RPCInternalError(id, fmt.Errorf("Error marshalling response: %w", err))
+			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
 		}
 		rawMsg = json.RawMessage(js)
 	}

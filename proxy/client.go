@@ -54,7 +54,7 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to proxy: %w", err)
+		return nil, fmt.Errorf("failed to connect to proxy: %w", err)
 	}
 	return remoteApp, nil
 }

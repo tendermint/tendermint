@@ -225,7 +225,7 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 
 	httpRequest, err := http.NewRequest(http.MethodPost, c.address, bytes.NewBuffer(requestBytes))
 	if err != nil {
-		return nil, fmt.Errorf("Request failed: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	httpRequest.Header.Set("Content-Type", "text/json")
 	if c.username != "" || c.password != "" {
