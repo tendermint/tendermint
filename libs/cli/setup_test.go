@@ -200,10 +200,10 @@ func TestSetupTrace(t *testing.T) {
 		long     bool
 		expected string
 	}{
-		{nil, nil, false, "Trace flag = false"},
-		{[]string{"--trace"}, nil, true, "Trace flag = true"},
+		{nil, nil, false, "trace flag = false"},
+		{[]string{"--trace"}, nil, true, "trace flag = true"},
 		{[]string{"--no-such-flag"}, nil, false, "unknown flag: --no-such-flag"},
-		{nil, map[string]string{"DBG_TRACE": "true"}, true, "Trace flag = true"},
+		{nil, map[string]string{"DBG_TRACE": "true"}, true, "trace flag = true"},
 	}
 
 	for idx, tc := range cases {
