@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
@@ -90,13 +91,13 @@ func TestSyncer_SyncAny(t *testing.T) {
 	// Adding a couple of peers should trigger snapshot discovery messages
 	peerA := &p2pmocks.Peer{}
 	peerA.On("ID").Return(p2p.ID("a"))
-	peerA.On("Send", SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{})).Return(true)
+	peerA.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Return(true)
 	syncer.AddPeer(peerA)
 	peerA.AssertExpectations(t)
 
 	peerB := &p2pmocks.Peer{}
 	peerB.On("ID").Return(p2p.ID("b"))
-	peerB.On("Send", SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{})).Return(true)
+	peerB.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Return(true)
 	syncer.AddPeer(peerB)
 	peerB.AssertExpectations(t)
 
@@ -139,9 +140,9 @@ func TestSyncer_SyncAny(t *testing.T) {
 	chunkRequests := make(map[uint32]int)
 	chunkRequestsMtx := sync.Mutex{}
 	onChunkRequest := func(args mock.Arguments) {
-		msg := &chunkRequestMessage{}
-		err := cdc.UnmarshalBinaryBare(args[1].([]byte), &msg)
+		pb, err := decodeMsg(args[1].([]byte))
 		require.NoError(t, err)
+		msg := pb.(*ssproto.ChunkRequest)
 		require.EqualValues(t, 1, msg.Height)
 		require.EqualValues(t, 1, msg.Format)
 		require.LessOrEqual(t, msg.Index, uint32(len(chunks)))
