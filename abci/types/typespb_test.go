@@ -697,6 +697,230 @@ func TestRequestCommitMarshalTo(t *testing.T) {
 	}
 }
 
+func TestRequestListSnapshotsProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestRequestListSnapshotsMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestOfferSnapshotProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestRequestOfferSnapshotMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestLoadSnapshotChunkProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestRequestLoadSnapshotChunkMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestApplySnapshotChunkProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestApplySnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestRequestApplySnapshotChunkMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestApplySnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
 func TestResponseProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
@@ -1414,6 +1638,230 @@ func TestResponseCommitMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ResponseCommit{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseListSnapshotsProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestResponseListSnapshotsMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseOfferSnapshotProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestResponseOfferSnapshotMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseLoadSnapshotChunkProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestResponseLoadSnapshotChunkMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseApplySnapshotChunkProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseApplySnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestResponseApplySnapshotChunkMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseApplySnapshotChunk{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2321,6 +2769,62 @@ func TestEvidenceMarshalTo(t *testing.T) {
 	}
 }
 
+func TestSnapshotProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &Snapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestSnapshotMarshalTo(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, false)
+	size := p.Size()
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	_, err := p.MarshalTo(dAtA)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &Snapshot{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
 func TestRequestJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
@@ -2529,6 +3033,78 @@ func TestRequestCommitJSON(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RequestCommit{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestRequestListSnapshotsJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestListSnapshots{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestRequestOfferSnapshotJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestOfferSnapshot{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestRequestLoadSnapshotChunkJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestLoadSnapshotChunk{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestRequestApplySnapshotChunkJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &RequestApplySnapshotChunk{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -2763,6 +3339,78 @@ func TestResponseCommitJSON(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ResponseCommit{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestResponseListSnapshotsJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseListSnapshots{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestResponseOfferSnapshotJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseOfferSnapshot{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestResponseLoadSnapshotChunkJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseLoadSnapshotChunk{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestResponseApplySnapshotChunkJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &ResponseApplySnapshotChunk{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -3051,6 +3699,24 @@ func TestEvidenceJSON(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Evidence{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestSnapshotJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &Snapshot{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -3387,6 +4053,118 @@ func TestRequestCommitProtoCompactText(t *testing.T) {
 	p := NewPopulatedRequestCommit(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RequestCommit{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestListSnapshotsProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &RequestListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestListSnapshotsProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &RequestListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestOfferSnapshotProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &RequestOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestOfferSnapshotProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &RequestOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestLoadSnapshotChunkProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &RequestLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestLoadSnapshotChunkProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &RequestLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestApplySnapshotChunkProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &RequestApplySnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestRequestApplySnapshotChunkProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &RequestApplySnapshotChunk{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3751,6 +4529,118 @@ func TestResponseCommitProtoCompactText(t *testing.T) {
 	p := NewPopulatedResponseCommit(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &ResponseCommit{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseListSnapshotsProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &ResponseListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseListSnapshotsProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &ResponseListSnapshots{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseOfferSnapshotProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &ResponseOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseOfferSnapshotProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &ResponseOfferSnapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseLoadSnapshotChunkProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &ResponseLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseLoadSnapshotChunkProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &ResponseLoadSnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseApplySnapshotChunkProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &ResponseApplySnapshotChunk{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestResponseApplySnapshotChunkProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &ResponseApplySnapshotChunk{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -4207,6 +5097,34 @@ func TestEvidenceProtoCompactText(t *testing.T) {
 	}
 }
 
+func TestSnapshotProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &Snapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestSnapshotProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &Snapshot{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
 func TestRequestSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
@@ -4453,6 +5371,94 @@ func TestRequestCommitSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRequestCommit(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestRequestListSnapshotsSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestListSnapshots(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestRequestOfferSnapshotSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestOfferSnapshot(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestRequestLoadSnapshotChunkSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestLoadSnapshotChunk(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestRequestApplySnapshotChunkSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedRequestApplySnapshotChunk(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -4739,6 +5745,94 @@ func TestResponseCommitSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedResponseCommit(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestResponseListSnapshotsSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseListSnapshots(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestResponseOfferSnapshotSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseOfferSnapshot(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestResponseLoadSnapshotChunkSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseLoadSnapshotChunk(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestResponseApplySnapshotChunkSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedResponseApplySnapshotChunk(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -5091,6 +6185,28 @@ func TestEvidenceSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEvidence(popr, true)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	size := p.Size()
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
+	}
+	if size2 != size {
+		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
+	}
+	size3 := github_com_gogo_protobuf_proto.Size(p)
+	if size3 != size {
+		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
+	}
+}
+
+func TestSnapshotSize(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedSnapshot(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {

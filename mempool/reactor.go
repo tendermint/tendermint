@@ -137,10 +137,12 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       MempoolChannel,
-			Priority: 5,
+			ID:                  MempoolChannel,
+			Priority:            5,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -271,10 +273,6 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
-	if l := len(bz); l > maxMsgSize {
-		return msg, ErrTxTooLarge{maxMsgSize, l}
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }

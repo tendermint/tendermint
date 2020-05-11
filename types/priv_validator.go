@@ -18,9 +18,6 @@ type PrivValidator interface {
 	SignProposal(chainID string, proposal *Proposal) error
 }
 
-//----------------------------------------
-// Misc.
-
 type PrivValidatorsByAddress []PrivValidator
 
 func (pvs PrivValidatorsByAddress) Len() int {

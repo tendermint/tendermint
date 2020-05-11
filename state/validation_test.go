@@ -4,18 +4,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
+	memmock "github.com/tendermint/tendermint/mempool/mock"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const validationTestsStopHeight int64 = 10
+
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
@@ -27,7 +31,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
+		memmock.Mempool{},
 		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -97,7 +101,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
+		memmock.Mempool{},
 		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -204,7 +208,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		stateDB,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
-		mock.Mempool{},
+		memmock.Mempool{},
 		sm.MockEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -212,16 +216,15 @@ func TestValidateBlockEvidence(t *testing.T) {
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
+		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
 		if height > 1 {
 			/*
 				A block with too much evidence fails
 			*/
-			maxBlockSize := state.ConsensusParams.Block.MaxBytes
-			maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 			require.True(t, maxNumEvidence > 2)
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
-			for i := int64(0); i <= maxNumEvidence; i++ {
+			for i := uint32(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
@@ -233,12 +236,10 @@ func TestValidateBlockEvidence(t *testing.T) {
 		/*
 			A good block with several pieces of good evidence passes
 		*/
-		maxBlockSize := state.ConsensusParams.Block.MaxBytes
-		maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := int64(0); i < maxNumEvidence; i++ {
+		for i := uint32(0); i < maxNumEvidence; i++ {
 			evidence = append(evidence, goodEvidence)
 		}
 
@@ -258,17 +259,81 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(1, int(height))
+	state, stateDB, _ := makeState(2, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
 
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsCommitted", ev).Return(false)
+	evpool.On("IsCommitted", ev2).Return(true)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		evpool)
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
-	addr, _ := state.Validators.GetByIndex(0)
-	alreadyCommittedEvidence := types.NewMockEvidence(height, time.Now(), addr)
-	block.Evidence.Evidence = []types.Evidence{alreadyCommittedEvidence}
+	block.Evidence.Evidence = []types.Evidence{ev, ev2}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
 	require.Error(t, err)
 	require.IsType(t, err, &types.ErrEvidenceInvalid{})
 }
+
+func TestValidateAlreadyPendingEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, _ := makeState(2, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", ev).Return(false)
+	evpool.On("IsPending", ev2).Return(true)
+	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(false)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		evpool)
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	// add one evidence seen before and one evidence that hasn't
+	block.Evidence.Evidence = []types.Evidence{ev, ev2}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+
+	require.NoError(t, err)
+}
+
+// TODO: prevent committing duplicate votes
+//func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
+//	var height int64 = 1
+//	var evidence []types.Evidence
+//	state, stateDB, _ := makeState(1, int(height))
+//
+//	evpool := evmock.NewDefaultEvidencePool()
+//	blockExec := sm.NewBlockExecutor(
+//		stateDB, log.TestingLogger(),
+//		nil,
+//		nil,
+//		evpool)
+//	// A block with a couple pieces of evidence passes.
+//	block := makeBlock(state, height)
+//	addr, _ := state.Validators.GetByIndex(0)
+//	for i := 0; i < 2; i++ {
+//		evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
+//	}
+//	block.Evidence.Evidence = evidence
+//	block.EvidenceHash = block.Evidence.Hash()
+//	err := blockExec.ValidateBlock(state, block)
+//
+//	require.Error(t, err)
+//}

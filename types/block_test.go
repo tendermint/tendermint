@@ -173,8 +173,8 @@ func makeBlockIDRandom() BlockID {
 		blockHash   = make([]byte, tmhash.Size)
 		partSetHash = make([]byte, tmhash.Size)
 	)
-	rand.Read(blockHash)   //nolint: gosec
-	rand.Read(partSetHash) //nolint: gosec
+	rand.Read(blockHash)
+	rand.Read(partSetHash)
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
@@ -399,28 +399,30 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes  int64
-		valsCount int
-		panics    bool
-		result    int64
+		maxBytes    int64
+		maxEvidence uint32
+		valsCount   int
+		panics      bool
+		result      int64
 	}{
-		0: {-10, 1, true, 0},
-		1: {10, 1, true, 0},
-		2: {961, 1, true, 0},
-		3: {962, 1, false, 0},
-		4: {963, 1, false, 1},
+		0: {-10, 0, 1, true, 0},
+		1: {10, 0, 1, true, 0},
+		2: {865, 0, 1, true, 0},
+		3: {866, 0, 1, false, 0},
+		4: {1310, 1, 1, false, 0},
+		5: {1311, 1, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
 				"#%v", i)
 		}
 	}

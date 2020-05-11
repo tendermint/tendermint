@@ -13,7 +13,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -93,11 +92,11 @@ func _waitForEvidence(
 	reactors []*Reactor,
 ) {
 	evpool := reactors[reactorIdx].evpool
-	for len(evpool.PendingEvidence(-1)) != len(evs) {
+	for len(evpool.AllPendingEvidence()) != len(evs) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedEv := evpool.PendingEvidence(-1)
+	reapedEv := evpool.AllPendingEvidence()
 	// put the reaped evidence in a map so we can quickly check we got everything
 	evMap := make(map[string]types.Evidence)
 	for _, e := range reapedEv {
@@ -214,7 +213,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 		{"Good ListMessage", func(evList *ListMessage) {}, false},
 		{"Invalid ListMessage", func(evList *ListMessage) {
 			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{PubKey: secp256k1.GenPrivKey().PubKey()})
+				&types.DuplicateVoteEvidence{})
 		}, true},
 	}
 	for _, tc := range testCases {

@@ -42,7 +42,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [rpc] [\#4568](https://github.com/tendermint/tendermint/issues/4568) Fix panic when `Subscribe` is called, but HTTP client is not running. `Subscribe`, `Unsubscribe(All)` methods return an error now (@melekes).
-  
 
 ## v0.33.3
 
@@ -339,6 +338,12 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
 
+## v0.32.11
+
+### BUG FIXES:
+
+- [privval] [\#4275](https://github.com/tendermint/tendermint/issues/4275) Fix consensus failure when remote signer drops (@melekes)
+
 ## v0.32.10
 
 *April 6, 2020*
@@ -421,7 +426,7 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [rpc/lib] [\#4131](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
 - [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
 
 ## v0.32.8

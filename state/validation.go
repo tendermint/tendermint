@@ -86,12 +86,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return errors.New("block at height 1 can't have LastCommit signatures")
 		}
 	} else {
-		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
-			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
-		}
-		err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
-		if err != nil {
+		// LastCommit.Signatures length is checked in VerifyCommit.
+		if err := state.LastValidators.VerifyCommit(
+			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
@@ -123,29 +120,38 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Limit the amount of evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(state.ConsensusParams.Block.MaxBytes)
-	numEvidence := int64(len(block.Evidence.Evidence))
-	if numEvidence > maxNumEvidence {
-		return types.NewErrEvidenceOverflow(maxNumEvidence, numEvidence)
-
+	numEvidence := len(block.Evidence.Evidence)
+	// MaxNumEvidence is capped at uint16, so conversion is always safe.
+	if maxEvidence := int(state.ConsensusParams.Evidence.MaxNum); numEvidence > maxEvidence {
+		return types.NewErrEvidenceOverflow(maxEvidence, numEvidence)
 	}
 
 	// Validate all evidence.
 	for _, ev := range block.Evidence.Evidence {
+		if evidencePool != nil {
+			if evidencePool.IsCommitted(ev) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
+			}
+			if evidencePool.IsPending(ev) {
+				continue
+			}
+		}
 		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
-		}
-		if evidencePool != nil && evidencePool.IsCommitted(ev) {
-			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 		}
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize ||
-		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
+	if len(block.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ProposerAddress size %d, got %d",
+			crypto.AddressSize,
+			len(block.ProposerAddress),
+		)
+	}
+	if !state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
 			block.ProposerAddress,
 		)
 	}
