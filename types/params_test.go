@@ -124,7 +124,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				Evidence: &abci.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
-					MaxNumEvidence:  50,
+					MaxNum:          50,
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,
