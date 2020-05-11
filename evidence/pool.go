@@ -351,8 +351,9 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	key := keyPending(evidence)
 	if err := evpool.evidenceStore.Delete(key); err != nil {
 		evpool.logger.Error("Unable to delete pending evidence", "err", err)
+	} else {
+		evpool.logger.Info("Deleted pending evidence", "evidence", evidence)
 	}
-	evpool.logger.Info("Deleted pending evidence", "evidence", evidence)
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
