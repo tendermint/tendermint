@@ -1369,32 +1369,11 @@ components:
           type: string
           example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
       type: object
-    BlockId:
-      required:
-        - "hash"
-        - "parts"
-      properties:
-        hash:
-          type: string
-          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
-        parts:
-          required:
-            - "total"
-            - "hash"
-          properties:
-            total:
-              type: string
-              example: "1"
-            hash:
-              type: string
-              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-          type: object
-      type: object
     BlockMeta:
       type: object
       properties:
         block_id:
-          $ref: "#/components/schemas/BlockId"
+          $ref: "#/components/schemas/BlockID"
         block_size:
           type: number
           example: 1000000
@@ -2986,7 +2965,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialSeedsPost:
       type: object
       properties:
@@ -2994,7 +2974,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialResp:
       type: object
       properties:
