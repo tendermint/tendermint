@@ -25,16 +25,16 @@ type DB interface {
 	Delete([]byte) error
 	DeleteSync([]byte) error
 
-	// Iterate over a domain of keys in ascending order. End is exclusive.
-	// Start must be less than end, or the Iterator is invalid.
+	// Iterate over a domain of keys in ascending order. The caller must call Close when done.
+	// End is exclusive, and start must be less than end or the Iterator is invalid.
 	// A nil start is interpreted as an empty byteslice.
 	// If end is nil, iterates up to the last item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
 	Iterator(start, end []byte) (Iterator, error)
 
-	// Iterate over a domain of keys in descending order. End is exclusive.
-	// Start must be less than end, or the Iterator is invalid.
+	// Iterate over a domain of keys in descending order. The caller must call Close when done.
+	// End is exclusive, and start must be less than end or the Iterator is invalid.
 	// If start is nil, iterates up to the first/least item (inclusive).
 	// If end is nil, iterates from the last/greatest item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
