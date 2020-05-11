@@ -66,7 +66,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
-	evList := pool.PendingEvidence(-1)
+	evList := pool.AllPendingEvidence()
 	for _, ev := range evList {
 		if pool.IsEvidenceExpired(ev) {
 			pool.removePendingEvidence(ev)
@@ -370,7 +370,6 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 	}
 	return evidence, nil
 }
-
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
