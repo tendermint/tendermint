@@ -2,6 +2,7 @@
 
 ![Test](https://github.com/tendermint/tm-db/workflows/Test/badge.svg?branch=master)
 ![Lint](https://github.com/tendermint/tm-db/workflows/Lint/badge.svg?branch=master)
+[![](https://godoc.org/github.com/tendermint/tm-db?status.svg)](http://godoc.org/github.com/tendermint/tm-db)
 
 Common database interface for various database backends. Primarily meant for applications built on [Tendermint](https://github.com/tendermint/tendermint), such as the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk), but can be used independently of these as well.
 
