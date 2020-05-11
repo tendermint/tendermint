@@ -19,12 +19,12 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes        int64 = 436
-	ValidatorsHashField           = "ValidatorsHash"
-	NextValidatorsHashField       = "NextValidatorsHash"
-	ConsensusHashField            = "ConsensusHash"
-	AppHashField                  = "AppHash"
-	LastResultsHashField          = "LastResultsHash"
+	MaxEvidenceBytes        int64  = 436
+	ValidatorsHashField     string = "ValidatorsHash"
+	NextValidatorsHashField string = "NextValidatorsHash"
+	ConsensusHashField      string = "ConsensusHash"
+	AppHashField            string = "AppHash"
+	LastResultsHashField    string = "LastResultsHash"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.

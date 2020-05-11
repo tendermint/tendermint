@@ -21,6 +21,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -362,7 +363,9 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	val1PubKey, err := css[0].privValidator.GetPubKey()
 	require.NoError(t, err)
-	val1PubKeyABCI := types.TM2PB.PubKey(val1PubKey)
+
+	val1PubKeyABCI, err := cryptoencoding.PubKeyToProto(val1PubKey)
+	require.NoError(t, err)
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
 
@@ -442,8 +445,9 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding one validator")
 
 	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
-	require.NoError(t, err)
-	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
+	assert.NoError(t, err)
+	valPubKey1ABCI, err := cryptoencoding.PubKeyToProto(newValidatorPubKey1)
+	assert.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 
 	// wait till everyone makes block 2
@@ -471,7 +475,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
 	require.NoError(t, err)
-	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
+	updatePubKey1ABCI, err := cryptoencoding.PubKeyToProto(updateValidatorPubKey1)
+	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
@@ -492,12 +497,14 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
 	require.NoError(t, err)
-	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
+	newVal2ABCI, err := cryptoencoding.PubKeyToProto(newValidatorPubKey2)
+	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
 	require.NoError(t, err)
-	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
+	newVal3ABCI, err := cryptoencoding.PubKeyToProto(newValidatorPubKey3)
+	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
