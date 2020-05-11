@@ -1203,7 +1203,15 @@ func (cs *State) enterPrecommit(height int64, round int) {
 
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(blockID.Hash) == 0 {
-		logger.Info("enterPrecommit: +2/3 prevoted for nil.")
+		if cs.LockedBlock == nil {
+			logger.Info("enterPrecommit: +2/3 prevoted for nil.")
+		} else {
+			logger.Info("enterPrecommit: +2/3 prevoted for nil. Unlocking")
+			cs.LockedRound = -1
+			cs.LockedBlock = nil
+			cs.LockedBlockParts = nil
+			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+		}
 		cs.signAddVote(types.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
