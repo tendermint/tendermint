@@ -1038,7 +1038,7 @@ func (e ProofOfLockChange) String() string {
 }
 
 // AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
-// Tendermint consensus when a validator incorrectly sends prec
+// Tendermint consensus when a validator incorrectly sends a vote in a later round without correctly changing the lock
 type AmnesiaEvidence struct {
 	PotentialAmnesiaEvidence
 	polc ProofOfLockChange
@@ -1047,6 +1047,13 @@ type AmnesiaEvidence struct {
 // Height, Time, Address and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
 var _ Evidence = &AmnesiaEvidence{}
 var _ Evidence = AmnesiaEvidence{}
+
+func MakeAmnesiaEvidence(pe PotentialAmnesiaEvidence, proof ProofOfLockChange) AmnesiaEvidence {
+	return AmnesiaEvidence{
+		pe,
+		proof,
+	}
+}
 
 func (e AmnesiaEvidence) ValidateBasic() error {
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {

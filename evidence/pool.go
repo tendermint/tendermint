@@ -188,6 +188,23 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			header = &blockMeta.Header
 		}
 
+		// For potential amnesia evidence, if this node is indicted it shall search for a polc
+		// to form AmensiaEvidence
+		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
+			height := pe.Height()
+			for round := pe.VoteA.Round + 1; round <= pe.VoteB.Round; round++ {
+				polc, exists := evpool.RetrievePOLC(height, round)
+				if exists {
+					ae := types.MakeAmnesiaEvidence(*pe, polc)
+					err = evpool.AddEvidence(ae)
+					if err != nil {
+						evpool.logger.Error("Unable to add amnesia evidence to pool", "err", err)
+					}
+					break
+				}
+			}
+		}
+
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
@@ -276,19 +293,25 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
-// RetrievePOLC attempts to find a polc at the given height and round, if not there it returns an error
-func (evpool *Pool) RetrievePOLC(height int64, round int) (types.ProofOfLockChange, error) {
-	var polc types.ProofOfLockChange
+// RetrievePOLC attempts to find a polc at the given height and round, if not there than exist returns false, all
+// database errors are automatically logged
+func (evpool *Pool) RetrievePOLC(height int64, round int) (polc types.ProofOfLockChange, exists bool) {
+	exists = false
 	key := keyPOLCFromHeightAndRound(height, round)
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
-		return polc, err
+		evpool.logger.Error("Unable to retrieve polc", "err", err)
+		return
 	}
 	if polcBytes == nil {
-		return polc, fmt.Errorf("unable to find polc at height %d and round %d", height, round)
+		return
 	}
 	err = cdc.UnmarshalBinaryBare(polcBytes, &polc)
-	return polc, err
+	if err != nil {
+		evpool.logger.Error("Unable to unmarshal polc", "err", err)
+		return
+	}
+	return polc, true
 }
 
 // EvidenceFront goes to the first evidence in the clist
