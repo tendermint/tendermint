@@ -289,6 +289,15 @@ for it).
 
 Must have `MaxAgeNumBlocks > 0`.
 
+### EvidenceParams.MaxNum
+
+This is the maximum number of evidence that can be committed to a single block
+
+The product of this and the `MaxEvidenceBytes` must not exceed the size of 
+a block minus it's overhead ( ~ `MaxBytes`)
+
+The amount must be a positive number
+
 ### Updates
 
 The application may set the ConsensusParams during InitChain, and update them during

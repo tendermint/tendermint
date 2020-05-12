@@ -107,12 +107,13 @@ func (params ConsensusParams) Hash() []byte {
 type BlockParams struct {
 	MaxBytes        int64
 	MaxGas          int64
-  TimeIotaMs      int64
+	TimeIotaMs      int64
 }
 
 type EvidenceParams struct {
 	MaxAgeNumBlocks int64
 	MaxAgeDuration  time.Duration
+	MaxNum          uint32
 }
 
 type ValidatorParams struct {

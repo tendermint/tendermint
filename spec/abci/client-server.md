@@ -35,7 +35,6 @@ appropriately (ie. to `socket` or `grpc`).
 See examples, in various stages of maintenance, in
 [Go](https://github.com/tendermint/tendermint/tree/master/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
-[Python](https://github.com/tendermint/tendermint/tree/master/abci/example/python3/abci),
 [C++](https://github.com/mdyring/cpp-tmsp), and
 [Java](https://github.com/jTendermint/jabci).
 

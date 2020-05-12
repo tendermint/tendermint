@@ -617,6 +617,7 @@ via light client.
     - In Cosmos-SDK based blockchains, `MaxAgeDuration` is usually equal to the
       unbonding period. `MaxAgeNumBlocks` is calculated by dividing the unboding
       period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
+  - `MaxNum (uint32)`: The maximum number of evidence that can be committed to a single block
 
 ### ValidatorParams
 
