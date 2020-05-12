@@ -1102,7 +1102,7 @@ type testVSetCfg struct {
 	updatedVals  []testVal
 	addedVals    []testVal
 	expectedVals []testVal
-	wantErr      bool
+	expErr       error
 }
 
 func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
@@ -1160,14 +1160,18 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 
 }
 
-func applyChangesToValSet(t *testing.T, wantErr bool, valSet *ValidatorSet, valsLists ...[]testVal) {
+func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, valsLists ...[]testVal) {
 	changes := make([]testVal, 0)
 	for _, valsList := range valsLists {
 		changes = append(changes, valsList...)
 	}
 	valList := createNewValidatorList(changes)
 	err := valSet.UpdateWithChangeSet(valList)
-	assert.Equal(t, wantErr, err != nil, "got error %v", err)
+	if expErr != nil {
+		assert.Equal(t, expErr, err)
+	} else {
+		assert.NoError(t, err)
+	}
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
@@ -1232,7 +1236,7 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 	sort.Sort(validatorsByPriority(origValsPriSorted))
 
 	// apply the changes, get the updated validators, sort by priorities
-	applyChangesToValSet(t, false, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
+	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
 	updatedValsPriSorted := validatorListCopy(valSet.Validators)
 	sort.Sort(validatorsByPriority(updatedValsPriSorted))
 
@@ -1262,7 +1266,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
 			updatedVals:  []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
 			expectedVals: []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
-			wantErr:      false,
+			expErr:       nil,
 		},
 		{
 			// this test shows that it is important to apply the updates in the order of the change in power
@@ -1271,7 +1275,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
 			updatedVals:  []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
 			expectedVals: []testVal{{"v2", MaxTotalVotingPower / 2}, {"v1", MaxTotalVotingPower/2 - 1}},
-			wantErr:      false,
+			expErr:       nil,
 		},
 		{
 			name:         "3 no false overflow error messages for deletes",
@@ -1279,7 +1283,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			deletedVals:  []testVal{{"v1", 0}},
 			addedVals:    []testVal{{"v4", MaxTotalVotingPower - 2}},
 			expectedVals: []testVal{{"v4", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
-			wantErr:      false,
+			expErr:       nil,
 		},
 		{
 			name: "4 no false overflow error messages for adds, updates and deletes",
@@ -1292,7 +1296,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			addedVals: []testVal{{"v5", 3}},
 			expectedVals: []testVal{
 				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v5", 3}, {"v4", 2}},
-			wantErr: false,
+			expErr: nil,
 		},
 		{
 			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
@@ -1306,7 +1310,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			expectedVals: []testVal{
 				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
 				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
-			wantErr: true,
+			expErr: ErrTotalVotingPowerOverflow,
 		},
 	}
 
@@ -1317,7 +1321,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			verifyValidatorSet(t, valSet)
 
 			// execute update and verify returned error is as expected
-			applyChangesToValSet(t, tt.wantErr, valSet, tt.addedVals, tt.updatedVals, tt.deletedVals)
+			applyChangesToValSet(t, tt.expErr, valSet, tt.addedVals, tt.updatedVals, tt.deletedVals)
 
 			// verify updated validator set is as expected
 			assert.Equal(t, tt.expectedVals, toTestValList(valSet.Validators))
