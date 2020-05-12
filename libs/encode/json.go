@@ -25,7 +25,6 @@ func MarshalJSON(msg proto.Message) ([]byte, error) {
 func MarshalJSONIndent(msg proto.Message) ([]byte, error) {
 	jm := &jsonpb.Marshaler{EmitDefaults: false, OrigName: false, Indent: "  "}
 	buf := new(bytes.Buffer)
-
 	if err := jm.Marshal(buf, msg); err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
-	tmprivval "github.com/tendermint/tendermint/proto/privval"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -80,12 +80,12 @@ func (pvKey FilePVKey) Save() {
 }
 
 // ToProto transistions FilePVKey to the protobuf representation
-func (pvKey *FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
+func (pvKey *FilePVKey) ToProto() (*privvalproto.FilePVKey, error) {
 	if pvKey == nil {
 		return nil, errors.New("nil FilePVKey")
 	}
 
-	pb := new(tmprivval.FilePVKey)
+	pb := new(privvalproto.FilePVKey)
 	pb.Address = pvKey.Address
 	fmt.Println(pvKey.Address)
 	pb.FilePath = pvKey.filePath
@@ -105,7 +105,7 @@ func (pvKey *FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
 	return pb, nil
 }
 
-func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (FilePVKey, error) {
+func FilePVKeyFromProto(pb *privvalproto.FilePVKey) (FilePVKey, error) {
 	if pb == nil {
 		return FilePVKey{}, errors.New("nil FilePVKey")
 	}
@@ -199,19 +199,18 @@ func (lss *FilePVLastSignState) Save() {
 	if err != nil {
 		panic(err)
 	}
-
 	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error) {
+func (lss *FilePVLastSignState) ToProto() (*privvalproto.FilePVLastSignState, error) {
 	if lss == nil {
 		return nil, errors.New("nil FilePVLastSignState")
 	}
 
-	pb := new(tmprivval.FilePVLastSignState)
+	pb := new(privvalproto.FilePVLastSignState)
 
 	pb.Height = lss.Height
 	pb.Round = lss.Round
@@ -223,7 +222,7 @@ func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error
 	return pb, nil
 }
 
-func FilePVLastSignStateFromProto(pb *tmprivval.FilePVLastSignState) (*FilePVLastSignState, error) {
+func FilePVLastSignStateFromProto(pb *privvalproto.FilePVLastSignState) (*FilePVLastSignState, error) {
 	if pb == nil {
 		return nil, errors.New("nil FilePVLastSignState")
 	}
@@ -294,7 +293,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	pvK := tmprivval.FilePVKey{}
+	pvK := privvalproto.FilePVKey{}
 	if err := jsonpb.Unmarshal(strings.NewReader(string(keyJSONBytes)), &pvK); err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
@@ -309,19 +308,20 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
-	pvS := tmprivval.FilePVLastSignState{}
+	pvS := &privvalproto.FilePVLastSignState{}
 
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
 			tmos.Exit(err.Error())
-			if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), &pvS); err != nil {
+			if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), pvS); err != nil {
 				tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
 			}
 		}
+		fmt.Println(string(stateJSONBytes), pvS)
 	}
 
-	pvState, err := FilePVLastSignStateFromProto(&pvS)
+	pvState, err := FilePVLastSignStateFromProto(pvS)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error transistioning PrivValidator from proto from : %v\n", err))
 	}
