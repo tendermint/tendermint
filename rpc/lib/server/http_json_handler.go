@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -30,7 +28,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				w,
 				types.RPCInvalidRequestError(
 					nil,
-					errors.Wrap(err, "error reading request body"),
+					fmt.Errorf("error reading request body: %w", err),
 				),
 			)
 			return
@@ -55,7 +53,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				WriteRPCResponseHTTP(
 					w,
 					types.RPCParseError(
-						errors.Wrap(err, "error unmarshalling request"),
+						fmt.Errorf("error unmarshalling request: %w", err),
 					),
 				)
 				return
@@ -78,7 +76,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			if len(r.URL.Path) > 1 {
 				responses = append(
 					responses,
-					types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)),
+					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
 				continue
 			}
@@ -94,7 +92,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				if err != nil {
 					responses = append(
 						responses,
-						types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")),
+						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
 					continue
 				}
@@ -162,7 +160,7 @@ func arrayParamsToArgs(
 ) ([]reflect.Value, error) {
 
 	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.Errorf("expected %v parameters (%v), got %v (%v)",
+		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
 	}
 
@@ -204,7 +202,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect
 	}
 
 	// Otherwise, bad format, we cannot parse
-	return nil, errors.Errorf("unknown type for JSON params: %v. Expected map or array", err)
+	return nil, fmt.Errorf("unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // writes a list of available rpc endpoints as an html page

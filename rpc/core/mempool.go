@@ -2,10 +2,9 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -68,7 +67,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	q := types.EventQueryTxFor(tx)
 	deliverTxSub, err := eventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
-		err = errors.Wrap(err, "failed to subscribe to tx")
+		err = fmt.Errorf("failed to subscribe to tx: %w", err)
 		logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}

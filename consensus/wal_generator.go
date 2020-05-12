@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	db "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -46,13 +44,13 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	privValidator := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		return errors.Wrap(err, "failed to read genesis file")
+		return fmt.Errorf("failed to read genesis file: %w", err)
 	}
 	blockStoreDB := db.NewMemDB()
 	stateDB := blockStoreDB
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
-		return errors.Wrap(err, "failed to make genesis state")
+		return fmt.Errorf("failed to make genesis state: %w", err)
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
 	sm.SaveState(stateDB, state)
@@ -61,14 +59,14 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
-		return errors.Wrap(err, "failed to start proxy app connections")
+		return fmt.Errorf("failed to start proxy app connections: %w", err)
 	}
 	defer proxyApp.Stop()
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
-		return errors.Wrap(err, "failed to start event bus")
+		return fmt.Errorf("failed to start event bus: %w", err)
 	}
 	defer eventBus.Stop()
 	mempool := emptyMempool{}
@@ -91,7 +89,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	consensusState.wal = wal
 
 	if err := consensusState.Start(); err != nil {
-		return errors.Wrap(err, "failed to start consensus state")
+		return fmt.Errorf("failed to start consensus state: %w", err)
 	}
 
 	select {

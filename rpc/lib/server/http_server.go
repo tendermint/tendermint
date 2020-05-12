@@ -4,6 +4,7 @@ package rpcserver
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -241,7 +241,7 @@ func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
-		return nil, errors.Errorf(
+		return nil, fmt.Errorf(
 			"invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
 			addr,
 		)
@@ -249,7 +249,7 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	proto, addr := parts[0], parts[1]
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, errors.Errorf("failed to listen on %v: %v", addr, err)
+		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}
 	if config.MaxOpenConnections > 0 {
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)

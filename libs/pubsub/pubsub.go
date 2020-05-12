@@ -36,9 +36,9 @@ package pubsub
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -410,7 +410,7 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 
 		match, err := q.Matches(events)
 		if err != nil {
-			return errors.Wrapf(err, "failed to match against query %s", q.String())
+			return fmt.Errorf("failed to match against query %s: %w", q.String(), err)
 		}
 
 		if match {

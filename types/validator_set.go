@@ -2,13 +2,12 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -751,7 +750,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
-			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 		// Good!
 		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
@@ -805,14 +804,14 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, commit *Commit, t
 			// check for double vote of validator on the same commit
 			if firstIndex, ok := seenVals[valIdx]; ok {
 				secondIndex := idx
-				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
 			seenVals[valIdx] = idx
 
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, idx)
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
-				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
 			// Good!
@@ -838,8 +837,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, commit *Commit, t
 // IsErrNotEnoughVotingPowerSigned returns true if err is
 // ErrNotEnoughVotingPowerSigned.
 func IsErrNotEnoughVotingPowerSigned(err error) bool {
-	_, ok := errors.Cause(err).(ErrNotEnoughVotingPowerSigned)
-	return ok
+	return errors.As(err, &ErrNotEnoughVotingPowerSigned{})
 }
 
 // ErrNotEnoughVotingPowerSigned is returned when not enough validators signed

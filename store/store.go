@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
@@ -91,7 +89,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
-		panic(errors.Wrap(err, "Error reading block"))
+		panic(fmt.Sprintf("Error reading block: %v", err))
 	}
 	return block
 }
@@ -112,7 +110,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	height, err := strconv.ParseInt(s, 10, 64)
 
 	if err != nil {
-		panic(errors.Wrapf(err, "failed to extract height from %s", s))
+		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
 	}
 	return bs.LoadBlock(height)
 }
@@ -131,7 +129,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, part)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block part"))
+		panic(fmt.Sprintf("Error reading block part: %v", err))
 	}
 	return part
 }
@@ -149,7 +147,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block meta"))
+		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
 	return blockMeta
 }
@@ -169,7 +167,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block commit"))
+		panic(fmt.Sprintf("Error reading block commit: %v", err))
 	}
 	return commit
 }
@@ -188,7 +186,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block seen commit"))
+		panic(fmt.Sprintf("Error reading block seen commit: %v", err))
 	}
 	return commit
 }

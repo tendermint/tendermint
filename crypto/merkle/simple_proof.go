@@ -2,9 +2,8 @@ package merkle
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -58,11 +57,11 @@ func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
 		return errors.New("proof index cannot be negative")
 	}
 	if !bytes.Equal(sp.LeafHash, leafHash) {
-		return errors.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
+		return fmt.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}
 	computedHash := sp.ComputeRootHash()
 	if !bytes.Equal(computedHash, rootHash) {
-		return errors.Errorf("invalid root hash: wanted %X got %X", rootHash, computedHash)
+		return fmt.Errorf("invalid root hash: wanted %X got %X", rootHash, computedHash)
 	}
 	return nil
 }
@@ -103,14 +102,14 @@ func (sp *SimpleProof) ValidateBasic() error {
 		return errors.New("negative Index")
 	}
 	if len(sp.LeafHash) != tmhash.Size {
-		return errors.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
+		return fmt.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
 	}
 	if len(sp.Aunts) > MaxAunts {
-		return errors.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
+		return fmt.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
 	}
 	for i, auntHash := range sp.Aunts {
 		if len(auntHash) != tmhash.Size {
-			return errors.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
+			return fmt.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
 		}
 	}
 	return nil

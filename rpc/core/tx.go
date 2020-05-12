@@ -1,10 +1,9 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"sort"
-
-	"github.com/pkg/errors"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"

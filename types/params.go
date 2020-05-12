@@ -1,9 +1,9 @@
 package types
 
 import (
+	"errors"
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -130,41 +130,41 @@ func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 // allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
 	if params.Block.MaxBytes <= 0 {
-		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
+		return fmt.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
 	}
 	if params.Block.MaxBytes > MaxBlockSizeBytes {
-		return errors.Errorf("block.MaxBytes is too big. %d > %d",
+		return fmt.Errorf("block.MaxBytes is too big. %d > %d",
 			params.Block.MaxBytes, MaxBlockSizeBytes)
 	}
 
 	if params.Block.MaxGas < -1 {
-		return errors.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
+		return fmt.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
 	}
 
 	if params.Block.TimeIotaMs <= 0 {
-		return errors.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
+		return fmt.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
 			params.Block.TimeIotaMs)
 	}
 
 	if params.Evidence.MaxAgeNumBlocks <= 0 {
-		return errors.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+		return fmt.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
 			params.Evidence.MaxAgeNumBlocks)
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return errors.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
 	if params.Evidence.MaxNum > MaxEvidencePerBlock {
-		return errors.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
+		return fmt.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
 			params.Evidence.MaxNum, MaxEvidencePerBlock)
 	}
 
 	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
-		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
+		return fmt.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
 			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
 	}
 
@@ -176,7 +176,7 @@ func (params *ConsensusParams) Validate() error {
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
 		if _, ok := ABCIPubKeyTypesToAminoNames[keyType]; !ok {
-			return errors.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
+			return fmt.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}
 	}

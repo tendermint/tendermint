@@ -2,11 +2,10 @@ package rpcserver
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -43,7 +42,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 				w,
 				types.RPCInvalidParamsError(
 					dummyID,
-					errors.Wrap(err, "error converting http params to arguments"),
+					fmt.Errorf("error converting http params to arguments: %w", err),
 				),
 			)
 			return
@@ -165,7 +164,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := errors.Errorf("got a hex string arg, but expected '%s'",
+			err := fmt.Errorf("got a hex string arg, but expected '%s'",
 				rt.Kind().String())
 			return reflect.ValueOf(nil), false, err
 		}

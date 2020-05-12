@@ -2,8 +2,8 @@ package rpcclient
 
 import (
 	"encoding/json"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -21,7 +21,7 @@ func unmarshalResponseBytes(
 	// into the correct type.
 	response := &types.RPCResponse{}
 	if err := json.Unmarshal(responseBytes, response); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling")
+		return nil, fmt.Errorf("error unmarshalling: %w", err)
 	}
 
 	if response.Error != nil {
@@ -29,12 +29,12 @@ func unmarshalResponseBytes(
 	}
 
 	if err := validateAndVerifyID(response, expectedID); err != nil {
-		return nil, errors.Wrap(err, "wrong ID")
+		return nil, fmt.Errorf("wrong ID: %w", err)
 	}
 
 	// Unmarshal the RawMessage into the result.
 	if err := cdc.UnmarshalJSON(response.Result, result); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling result")
+		return nil, fmt.Errorf("error unmarshalling result: %w", err)
 	}
 
 	return result, nil
@@ -52,14 +52,14 @@ func unmarshalResponseBytesArray(
 	)
 
 	if err := json.Unmarshal(responseBytes, &responses); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling")
+		return nil, fmt.Errorf("error unmarshalling: %w", err)
 	}
 
 	// No response error checking here as there may be a mixture of successful
 	// and unsuccessful responses.
 
 	if len(results) != len(responses) {
-		return nil, errors.Errorf(
+		return nil, fmt.Errorf(
 			"expected %d result objects into which to inject responses, but got %d",
 			len(responses),
 			len(results),
@@ -72,16 +72,16 @@ func unmarshalResponseBytesArray(
 	for i, resp := range responses {
 		ids[i], ok = resp.ID.(types.JSONRPCIntID)
 		if !ok {
-			return nil, errors.Errorf("expected JSONRPCIntID, got %T", resp.ID)
+			return nil, fmt.Errorf("expected JSONRPCIntID, got %T", resp.ID)
 		}
 	}
 	if err := validateResponseIDs(ids, expectedIDs); err != nil {
-		return nil, errors.Wrap(err, "wrong IDs")
+		return nil, fmt.Errorf("wrong IDs: %w", err)
 	}
 
 	for i := 0; i < len(responses); i++ {
 		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
-			return nil, errors.Wrapf(err, "error unmarshalling #%d result", i)
+			return nil, fmt.Errorf("error unmarshalling #%d result: %w", i, err)
 		}
 	}
 
@@ -98,7 +98,7 @@ func validateResponseIDs(ids, expectedIDs []types.JSONRPCIntID) error {
 		if m[id] {
 			delete(m, id)
 		} else {
-			return errors.Errorf("unsolicited ID #%d: %v", i, id)
+			return fmt.Errorf("unsolicited ID #%d: %v", i, id)
 		}
 	}
 
@@ -112,7 +112,7 @@ func validateAndVerifyID(res *types.RPCResponse, expectedID types.JSONRPCIntID) 
 		return err
 	}
 	if expectedID != res.ID.(types.JSONRPCIntID) { // validateResponseID ensured res.ID has the right type
-		return errors.Errorf("response ID (%d) does not match request ID (%d)", res.ID, expectedID)
+		return fmt.Errorf("response ID (%d) does not match request ID (%d)", res.ID, expectedID)
 	}
 	return nil
 }
@@ -123,7 +123,7 @@ func validateResponseID(id interface{}) error {
 	}
 	_, ok := id.(types.JSONRPCIntID)
 	if !ok {
-		return errors.Errorf("expected JSONRPCIntID, but got: %T", id)
+		return fmt.Errorf("expected JSONRPCIntID, but got: %T", id)
 	}
 	return nil
 }

@@ -1,10 +1,9 @@
 package rpcclient
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -60,18 +59,18 @@ func NewURIClient(remote string) (*URIClient, error) {
 func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	values, err := argsToURLValues(c.cdc, params)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode params")
+		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
 
 	resp, err := c.client.PostForm(c.address+"/"+method, values)
 	if err != nil {
-		return nil, errors.Wrap(err, "PostForm failed")
+		return nil, fmt.Errorf("post form failed: %w", err)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
 	responseBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response body")
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	return unmarshalResponseBytes(c.cdc, responseBytes, URIClientRequestID, result)
