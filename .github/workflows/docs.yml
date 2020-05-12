@@ -22,7 +22,7 @@ jobs:
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Install Dredd
-        run: npm i -g dredd
+        run: npm version & sudo npm i -g dredd
       - name: Test RPC endpoints against swagger documentation
         run: docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
       #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
