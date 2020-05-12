@@ -130,31 +130,29 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
 	privB64 := base64.StdEncoding.EncodeToString(privBytes)
 
-	// ppk, _ := cryptoenc.PrivKeyToProto(privKey)
-	// pbk := tmkeys.PrivateKey{}
-	// pmk, _ := proto.Marshal(&ppk)
-	// p, _ := encode.MarshalJSON(&ppk)
-	// jsonpb.Unmarshal(strings.NewReader(string(p)), &pbk)
-	// fmt.Println(string(p), string(pmk))
-
-	//todo: how to handle this json??
 	serialized := fmt.Sprintf(`{
   "address": "%s",
-  "pub_key": {"ed25519":"%s"},
-  "priv_key": {"ed25519":"%s"}
+  "pubKey": {"ed25519":"%s"},
+  "privKey": {"ed25519":"%s"}
 }`, addr, pubB64, privB64)
 
 	val := privvalproto.FilePVKey{}
 	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
 	require.NoError(err, "%+v", err)
 
+	fpvk, err := FilePVKeyFromProto(&val)
+	require.NoError(err, "%+v", err)
+
 	// make sure the values match
-	assert.EqualValues(addr, val.Address)
-	assert.EqualValues(pubKey, val.PubKey)
-	assert.EqualValues(privKey, val.PrivKey)
+	assert.EqualValues(addr, fpvk.Address)
+	assert.EqualValues(pubKey, fpvk.PubKey)
+	assert.EqualValues(privKey, fpvk.PrivKey)
+
+	pb, err := fpvk.ToProto()
+	require.NoError(err, "%+v", err)
 
 	// export it and make sure it is the same
-	out, err := encode.MarshalJSON(&val)
+	out, err := encode.MarshalJSON(pb)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
@@ -328,7 +326,7 @@ func newProposal(height int64, round int32, blockID types.BlockID) *types.Propos
 	}
 }
 
-func TestFilePVKeyProtobut(t *testing.T) {
+func TestFilePVKeyProtobuf(t *testing.T) {
 	privKey := ed25519.GenPrivKey()
 
 	f1 := FilePVKey{
@@ -382,7 +380,7 @@ func TestFilePVKeyProtobut(t *testing.T) {
 	}
 }
 
-func TestFilePVLastSignStateProtobut(t *testing.T) {
+func TestFilePVLastSignStateProtobuf(t *testing.T) {
 	path := "stateFilePath "
 
 	f1 := FilePVLastSignState{

@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -31,8 +33,8 @@ func init() {
 func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
 	signBytes := testProposal.SignBytes(chainID)
-
-	expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeProposal(chainID, testProposal))
+	pb := CanonicalizeProposal(chainID, testProposal)
+	expected, err := proto.Marshal(&pb)
 	require.NoError(t, err)
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Proposal")
 }
@@ -52,7 +54,7 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	prop := NewProposal(
 		4, 2, 2,
-		BlockID{[]byte{1, 2, 3}, PartSetHeader{777, []byte("proper")}})
+		BlockID{[]byte(tmrand.Bytes(tmhash.Size)), PartSetHeader{777, []byte(tmrand.Bytes(tmhash.Size))}})
 	signBytes := prop.SignBytes("test_chain_id")
 
 	// sign it
@@ -64,16 +66,22 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
-	newProp := new(Proposal)
-	bs, err := cdc.MarshalBinaryLengthPrefixed(prop)
+	newProp := new(tmproto.Proposal)
+	pb := prop.ToProto()
+
+	bs, err := proto.Marshal(pb)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinaryLengthPrefixed(bs, &newProp)
+
+	err = proto.Unmarshal(bs, newProp)
+	require.NoError(t, err)
+
+	np, err := ProposalFromProto(newProp)
 	require.NoError(t, err)
 
 	// verify the transmitted proposal
-	newSignBytes := newProp.SignBytes("test_chain_id")
+	newSignBytes := np.SignBytes("test_chain_id")
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifyBytes(newSignBytes, newProp.Signature)
+	valid = pubKey.VerifyBytes(newSignBytes, np.Signature)
 	require.True(t, valid)
 }
 

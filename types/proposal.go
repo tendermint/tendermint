@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -90,7 +92,8 @@ func (p *Proposal) String() string {
 
 // SignBytes returns the Proposal bytes for signing
 func (p *Proposal) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeProposal(chainID, p))
+	pb := CanonicalizeProposal(chainID, p)
+	bz, err := proto.Marshal(&pb)
 	if err != nil {
 		panic(err)
 	}

@@ -41,7 +41,7 @@ func voteToStep(vote *types.Vote) int8 {
 	case tmproto.PrecommitType:
 		return stepPrecommit
 	default:
-		panic(fmt.Sprintf("Unknown vote type: %v", vote.Type))
+		panic(fmt.Sprintf("Unknown vote type: %T", vote.Type))
 	}
 }
 
@@ -87,6 +87,7 @@ func (pvKey *FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
 
 	pb := new(tmprivval.FilePVKey)
 	pb.Address = pvKey.Address
+	fmt.Println(pvKey.Address)
 	pb.FilePath = pvKey.filePath
 
 	pubKey, err := cryptoenc.PubKeyToProto(pvKey.PubKey)
@@ -110,7 +111,7 @@ func FilePVKeyFromProto(pb *tmprivval.FilePVKey) (FilePVKey, error) {
 	}
 
 	pv := new(FilePVKey)
-	pv.Address = pb.Address
+	pv.Address = tmbytes.HexBytes(pb.Address)
 	pv.filePath = pb.FilePath
 
 	pubKey, err := cryptoenc.PubKeyFromProto(pb.PubKey)
@@ -211,6 +212,7 @@ func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error
 	}
 
 	pb := new(tmprivval.FilePVLastSignState)
+
 	pb.Height = lss.Height
 	pb.Round = lss.Round
 	pb.Step = int32(lss.Step)
