@@ -2,13 +2,12 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -1738,7 +1737,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			pubKey, err := cs.privValidator.GetPubKey()
 			if err != nil {
-				return false, errors.Wrap(err, "can't get pubkey")
+				return false, fmt.Errorf("can't get pubkey: %w", err)
 			}
 
 			if bytes.Equal(vote.ValidatorAddress, pubKey.Address()) {
@@ -1945,7 +1944,7 @@ func (cs *State) signVote(
 
 	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 	addr := pubKey.Address()
 	valIdx, _ := cs.Validators.GetByAddress(addr)

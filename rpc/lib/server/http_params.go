@@ -2,11 +2,10 @@ package rpcserver
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -41,7 +40,7 @@ func GetParamInt64(r *http.Request, param string) (int64, error) {
 	s := GetParam(r, param)
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0, errors.Errorf(param, err.Error())
+		return 0, fmt.Errorf(param, err.Error())
 	}
 	return i, nil
 }
@@ -50,7 +49,7 @@ func GetParamInt32(r *http.Request, param string) (int32, error) {
 	s := GetParam(r, param)
 	i, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
-		return 0, errors.Errorf(param, err.Error())
+		return 0, fmt.Errorf(param, err.Error())
 	}
 	return int32(i), nil
 }
@@ -59,7 +58,7 @@ func GetParamUint64(r *http.Request, param string) (uint64, error) {
 	s := GetParam(r, param)
 	i, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
-		return 0, errors.Errorf(param, err.Error())
+		return 0, fmt.Errorf(param, err.Error())
 	}
 	return i, nil
 }
@@ -68,7 +67,7 @@ func GetParamUint(r *http.Request, param string) (uint, error) {
 	s := GetParam(r, param)
 	i, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
-		return 0, errors.Errorf(param, err.Error())
+		return 0, fmt.Errorf(param, err.Error())
 	}
 	return uint(i), nil
 }
@@ -76,7 +75,7 @@ func GetParamUint(r *http.Request, param string) (uint, error) {
 func GetParamRegexp(r *http.Request, param string, re *regexp.Regexp) (string, error) {
 	s := GetParam(r, param)
 	if !re.MatchString(s) {
-		return "", errors.Errorf(param, "did not match regular expression %v", re.String())
+		return "", fmt.Errorf(param, "did not match regular expression %v", re.String())
 	}
 	return s, nil
 }
@@ -85,7 +84,7 @@ func GetParamFloat64(r *http.Request, param string) (float64, error) {
 	s := GetParam(r, param)
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0, errors.Errorf(param, err.Error())
+		return 0, fmt.Errorf(param, err.Error())
 	}
 	return f, nil
 }

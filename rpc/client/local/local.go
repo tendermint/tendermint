@@ -2,9 +2,8 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -177,7 +176,7 @@ func (c *Local) Subscribe(
 	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
 	outCap := 1
@@ -192,7 +191,7 @@ func (c *Local) Subscribe(
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
@@ -256,7 +255,7 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse query")
+		return fmt.Errorf("failed to parse query: %w", err)
 	}
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }

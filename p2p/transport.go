@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -288,7 +287,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 				if r := recover(); r != nil {
 					err := ErrRejected{
 						conn:          c,
-						err:           errors.Errorf("recovered from panic: %v", r),
+						err:           fmt.Errorf("recovered from panic: %v", r),
 						isAuthFailure: true,
 					}
 					select {

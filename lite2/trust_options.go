@@ -1,9 +1,9 @@
 package lite
 
 import (
+	"errors"
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -44,7 +44,7 @@ func (opts TrustOptions) ValidateBasic() error {
 		return errors.New("negative or zero height")
 	}
 	if len(opts.Hash) != tmhash.Size {
-		return errors.Errorf("expected hash size to be %d bytes, got %d bytes",
+		return fmt.Errorf("expected hash size to be %d bytes, got %d bytes",
 			tmhash.Size,
 			len(opts.Hash),
 		)

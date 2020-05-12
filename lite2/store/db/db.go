@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
@@ -58,12 +57,12 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	shBz, err := s.cdc.MarshalBinaryLengthPrefixed(sh)
 	if err != nil {
-		return errors.Wrap(err, "marshalling header")
+		return fmt.Errorf("marshalling header: %w", err)
 	}
 
 	valSetBz, err := s.cdc.MarshalBinaryLengthPrefixed(valSet)
 	if err != nil {
-		return errors.Wrap(err, "marshalling validator set")
+		return fmt.Errorf("marshalling validator set: %w", err)
 	}
 
 	s.mtx.Lock()
@@ -287,7 +286,7 @@ func (s *dbs) Prune(size uint16) error {
 	s.size -= uint16(pruned)
 
 	if wErr := s.db.SetSync(sizeKey, marshalSize(s.size)); wErr != nil {
-		return errors.Wrap(wErr, "failed to persist size")
+		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
 	return nil

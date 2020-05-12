@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
@@ -315,7 +314,7 @@ func (c *WSClient) reconnect() error {
 		attempt++
 
 		if attempt > c.maxReconnectAttempts {
-			return errors.Wrap(err, "reached maximum reconnect attempts")
+			return fmt.Errorf("reached maximum reconnect attempts: %w", err)
 		}
 	}
 }

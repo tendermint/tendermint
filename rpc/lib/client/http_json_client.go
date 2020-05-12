@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -168,18 +167,18 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 
 	request, err := types.MapToRequest(c.cdc, id, method, params)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode params")
+		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
 
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal request")
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequest(http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, errors.Wrap(err, "Request failed")
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	httpRequest.Header.Set("Content-Type", "text/json")
 	if c.username != "" || c.password != "" {
@@ -187,13 +186,13 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	}
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, errors.Wrap(err, "Post failed")
+		return nil, fmt.Errorf("post failed: %w", err)
 	}
 	defer httpResponse.Body.Close() // nolint: errcheck
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response body")
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	return unmarshalResponseBytes(c.cdc, responseBytes, id, result)
@@ -221,12 +220,12 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	// serialize the array of requests into a single JSON object
 	requestBytes, err := json.Marshal(reqs)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal requests")
+		return nil, fmt.Errorf("failed to marshal requests: %w", err)
 	}
 
 	httpRequest, err := http.NewRequest(http.MethodPost, c.address, bytes.NewBuffer(requestBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "Request failed")
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	httpRequest.Header.Set("Content-Type", "text/json")
 	if c.username != "" || c.password != "" {
@@ -234,13 +233,13 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	}
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, errors.Wrap(err, "Post failed")
+		return nil, fmt.Errorf("post failed: %w", err)
 	}
 	defer httpResponse.Body.Close() // nolint: errcheck
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response body")
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	// collect ids to check responses IDs in unmarshalResponseBytesArray
