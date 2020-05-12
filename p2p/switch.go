@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/rand"
@@ -226,7 +224,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return errors.Wrapf(err, "failed to start %v", reactor)
+			return fmt.Errorf("failed to start %v: %w", reactor, err)
 		}
 	}
 
@@ -443,7 +441,7 @@ type privateAddr interface {
 }
 
 func isPrivateAddr(err error) bool {
-	te, ok := errors.Cause(err).(privateAddr)
+	te, ok := err.(privateAddr)
 	return ok && te.PrivateAddr()
 }
 
@@ -577,7 +575,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	for i, id := range ids {
 		err := validateID(ID(id))
 		if err != nil {
-			return errors.Wrapf(err, "wrong ID #%d", i)
+			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
 		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
 	}

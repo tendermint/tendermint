@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -32,7 +30,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
@@ -85,7 +83,7 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 	err = eventBus.Unsubscribe(context.Background(), addr, q)
 	if err != nil {

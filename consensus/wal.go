@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -97,7 +95,7 @@ var _ WAL = &BaseWAL{}
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
+		return nil, fmt.Errorf("failed to ensure WAL directory is in place: %w", err)
 	}
 
 	group, err := auto.OpenGroup(walFile, groupOptions...)

@@ -1,12 +1,12 @@
 package v0
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	dbm "github.com/tendermint/tm-db"
@@ -64,7 +64,7 @@ func newBlockchainReactor(
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(errors.Wrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	blockDB := dbm.NewMemDB()
@@ -73,7 +73,7 @@ func newBlockchainReactor(
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(errors.Wrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	// Make the BlockchainReactor itself.
@@ -114,7 +114,7 @@ func newBlockchainReactor(
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(errors.Wrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

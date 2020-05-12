@@ -1,12 +1,11 @@
 package consensus
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -1480,7 +1479,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockPartsHeader.Total)
 	}
 	if m.BlockParts.Size() > types.MaxBlockPartsCount {
-		return errors.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }
@@ -1529,7 +1528,7 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 		return errors.New("empty ProposalPOL bit array")
 	}
 	if m.ProposalPOL.Size() > types.MaxVotesCount {
-		return errors.Errorf("ProposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
+		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
 	}
 	return nil
 }

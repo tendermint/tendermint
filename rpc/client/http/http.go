@@ -2,12 +2,11 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -308,7 +307,7 @@ func (c *baseRPCClient) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	result := new(ctypes.ResultConsensusState)
 	_, err := c.caller.Call("consensus_state", map[string]interface{}{}, result)
 	if err != nil {
-		return nil, errors.Wrap(err, "ConsensusState")
+		return nil, err
 	}
 	return result, nil
 }
@@ -402,7 +401,7 @@ func (c *baseRPCClient) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 	_, err := c.caller.Call("tx", params, result)
 	if err != nil {
-		return nil, errors.Wrap(err, "Tx")
+		return nil, err
 	}
 	return result, nil
 }

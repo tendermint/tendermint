@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
 )
 
@@ -189,7 +187,7 @@ func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCR
 		var js []byte
 		js, err := cdc.MarshalJSON(res)
 		if err != nil {
-			return RPCInternalError(id, errors.Wrap(err, "Error marshalling response"))
+			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
 		}
 		rawMsg = json.RawMessage(js)
 	}

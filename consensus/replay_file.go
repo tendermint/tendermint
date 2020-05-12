@@ -3,13 +3,13 @@ package consensus
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -55,7 +55,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	ctx := context.Background()
 	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 	if err != nil {
-		return errors.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
+		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
 	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 

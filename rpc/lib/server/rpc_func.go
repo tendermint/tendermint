@@ -1,11 +1,10 @@
 package rpcserver
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -92,7 +91,7 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
 	if errV.Interface() != nil {
-		return nil, errors.Errorf("%v", errV.Interface())
+		return nil, fmt.Errorf("%v", errV.Interface())
 	}
 	rv := returns[0]
 	// the result is a registered interface,

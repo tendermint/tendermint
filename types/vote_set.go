@@ -6,8 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/libs/bits"
 )
 
@@ -160,33 +158,34 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 
 	// Ensure that validator index was set
 	if valIndex < 0 {
-		return false, errors.Wrap(ErrVoteInvalidValidatorIndex, "Index < 0")
+		return false, fmt.Errorf("index < 0: %w", ErrVoteInvalidValidatorIndex)
 	} else if len(valAddr) == 0 {
-		return false, errors.Wrap(ErrVoteInvalidValidatorAddress, "Empty address")
+		return false, fmt.Errorf("empty address: %w", ErrVoteInvalidValidatorAddress)
 	}
 
 	// Make sure the step matches.
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.signedMsgType) {
-		return false, errors.Wrapf(ErrVoteUnexpectedStep, "Expected %d/%d/%d, but got %d/%d/%d",
+		return false, fmt.Errorf("expected %d/%d/%d, but got %d/%d/%d: %w",
 			voteSet.height, voteSet.round, voteSet.signedMsgType,
-			vote.Height, vote.Round, vote.Type)
+			vote.Height, vote.Round, vote.Type, ErrVoteUnexpectedStep)
 	}
 
 	// Ensure that signer is a validator.
 	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, errors.Wrapf(ErrVoteInvalidValidatorIndex,
-			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
+		return false, fmt.Errorf(
+			"cannot find validator %d in valSet of size %d: %w",
+			valIndex, voteSet.valSet.Size(), ErrVoteInvalidValidatorIndex)
 	}
 
 	// Ensure that the signer has the right address.
 	if !bytes.Equal(valAddr, lookupAddr) {
-		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
+		return false, fmt.Errorf(
 			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\n"+
-				"Ensure the genesis file is correct across all validators.",
-			valAddr, lookupAddr, valIndex)
+				"Ensure the genesis file is correct across all validators: %w",
+			valAddr, lookupAddr, valIndex, ErrVoteInvalidValidatorAddress)
 	}
 
 	// If we already know of this vote, return false.
@@ -194,12 +193,12 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		if bytes.Equal(existing.Signature, vote.Signature) {
 			return false, nil // duplicate
 		}
-		return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
+		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
 	}
 
 	// Check signature.
 	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
+		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
 	}
 
 	// Add vote and get conflicting vote if any.

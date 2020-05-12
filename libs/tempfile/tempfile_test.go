@@ -4,7 +4,7 @@ package tempfile
 
 import (
 	"bytes"
-	fmt "fmt"
+	"fmt"
 	"io/ioutil"
 	"os"
 	testing "testing"

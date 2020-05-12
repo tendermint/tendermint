@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/kit/log/term"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
