@@ -1,0 +1,31 @@
+name: Documentation
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+jobs:
+  contract_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v1
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
+      - name: Set GOBIN
+        run: |
+          echo "::add-path::$(go env GOPATH)/bin"
+      - name: Install Dredd
+        run: npm i -g dredd
+      - name: Test RPC endpoints against swagger documentation
+        run: docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+      #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
+      - run: go get github.com/snikch/goodman/cmd/goodman
+      - name: Contract Tests
+        run: make contract-tests
