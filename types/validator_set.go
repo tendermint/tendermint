@@ -29,6 +29,11 @@ const (
 	PriorityWindowSizeFactor = 2
 )
 
+// ErrTotalVotingPowerOverflow is returned if the total voting power of the
+// resulting validator set exceeds MaxTotalVotingPower.
+var ErrTotalVotingPowerOverflow = fmt.Errorf("total voting power of resulting valset exceeds max %d",
+	MaxTotalVotingPower)
+
 // ValidatorSet represent a set of *Validator at a given height.
 //
 // The validators can be fetched by address or index.
@@ -405,6 +410,7 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
+
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
 		_, val := vals.GetByAddress(update.Address)
 		if val != nil {
@@ -422,10 +428,7 @@ func verifyUpdates(
 	for _, upd := range updatesCopy {
 		tvpAfterRemovals += delta(upd, vals)
 		if tvpAfterRemovals > MaxTotalVotingPower {
-			err = fmt.Errorf(
-				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				upd.Address, MaxTotalVotingPower)
-			return 0, err
+			return 0, ErrTotalVotingPowerOverflow
 		}
 	}
 	return tvpAfterRemovals + removedPower, nil
