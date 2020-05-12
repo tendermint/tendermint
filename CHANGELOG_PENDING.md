@@ -25,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
   - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
   - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
+  - [libs] \#4831 Remove `Bech32` pkg from Tendermint. This pkg now lives in the [cosmos-sdk](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
 
 - Blockchain Protocol
 
