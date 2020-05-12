@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -13,12 +14,12 @@ func (e EndpointTimeoutError) Temporary() bool { return true }
 
 // Socket errors.
 var (
-	ErrUnexpectedResponse = fmt.Errorf("received unexpected response")
-	ErrNoConnection       = fmt.Errorf("endpoint is not connected")
+	ErrUnexpectedResponse = errors.New("received unexpected response")
+	ErrNoConnection       = errors.New("endpoint is not connected")
 	ErrConnectionTimeout  = EndpointTimeoutError{}
 
-	ErrReadTimeout  = fmt.Errorf("endpoint read timed out")
-	ErrWriteTimeout = fmt.Errorf("endpoint write timed out")
+	ErrReadTimeout  = errors.New("endpoint read timed out")
+	ErrWriteTimeout = errors.New("endpoint write timed out")
 )
 
 // RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.

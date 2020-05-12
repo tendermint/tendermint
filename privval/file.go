@@ -16,6 +16,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/encode"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
 	tmprivval "github.com/tendermint/tendermint/proto/privval"
@@ -79,7 +80,10 @@ func (pvKey FilePVKey) Save() {
 }
 
 // ToProto transistions FilePVKey to the protobuf representation
-func (pvKey FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
+func (pvKey *FilePVKey) ToProto() (*tmprivval.FilePVKey, error) {
+	if pvKey == nil {
+		return nil, errors.New("nil FilePVKey")
+	}
 
 	pb := new(tmprivval.FilePVKey)
 	pb.Address = pvKey.Address
@@ -209,7 +213,7 @@ func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error
 	pb := new(tmprivval.FilePVLastSignState)
 	pb.Height = lss.Height
 	pb.Round = lss.Round
-	pb.Step = lss.Round
+	pb.Step = int32(lss.Step)
 	pb.Signature = lss.Signature
 	pb.SignBytes = lss.SignBytes
 	pb.FilePath = lss.filePath
@@ -217,13 +221,20 @@ func (lss *FilePVLastSignState) ToProto() (*tmprivval.FilePVLastSignState, error
 	return pb, nil
 }
 
-func FilePVLastSignStateFromProto(pb tmprivval.FilePVLastSignState) (*FilePVLastSignState, error) {
+func FilePVLastSignStateFromProto(pb *tmprivval.FilePVLastSignState) (*FilePVLastSignState, error) {
+	if pb == nil {
+		return nil, errors.New("nil FilePVLastSignState")
+	}
 
 	pvl := new(FilePVLastSignState)
 
 	pvl.Height = pb.Height
 	pvl.Round = pb.Round
-	pvl.Step = int8(pb.Step) //todo:fix
+	i8, err := tmmath.SafeConvertInt8(int64(pb.Step))
+	if err != nil {
+		return nil, fmt.Errorf("deny conversion due to possible int8 overflow: %w", err)
+	}
+	pvl.Step = i8
 	pvl.Signature = pb.Signature
 	pvl.SignBytes = pb.SignBytes
 	pvl.filePath = pb.FilePath
@@ -308,7 +319,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		}
 	}
 
-	pvState, err := FilePVLastSignStateFromProto(pvS)
+	pvState, err := FilePVLastSignStateFromProto(&pvS)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error transistioning PrivValidator from proto from : %v\n", err))
 	}

@@ -83,12 +83,12 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 		return nil, errors.Errorf("unexpected response type %T", response)
 	}
 
-	if pubKeyResp.Error != nil {
+	if pubKeyResp.Error != nil || pubKeyResp.PubKey == nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil, fmt.Errorf("remote error: %w", pubKeyResp.Error)
+		return nil, fmt.Errorf("remote error: %w", errors.New(pubKeyResp.Error.Description))
 	}
 
-	pk, err := cryptoenc.PubKeyFromProto(pubKeyResp.PubKey)
+	pk, err := cryptoenc.PubKeyFromProto(*pubKeyResp.PubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -113,9 +113,9 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	}
 
 	if resp.Error != nil {
-		return resp.Error
+		return fmt.Errorf("%s", resp.Error.Description)
 	}
-	v, err := types.VoteFromProto(&resp.Vote)
+	v, err := types.VoteFromProto(resp.Vote)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,8 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
-	response, err := sc.endpoint.SendRequest(&privvalproto.SignProposalRequest{Proposal: proposal})
+	pb := proposal.ToProto()
+	response, err := sc.endpoint.SendRequest(&privvalproto.SignProposalRequest{Proposal: *pb})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
 		return err
@@ -138,9 +139,9 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 		return ErrUnexpectedResponse
 	}
 	if resp.Error != nil {
-		return resp.Error
+		return fmt.Errorf("%s", resp.Error.Description)
 	}
-	p, err := types.ProposalFromProto(&resp.Proposal)
+	p, err := types.ProposalFromProto(resp.Proposal)
 	if err != nil {
 		return err
 	}

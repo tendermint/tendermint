@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"giithub.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -228,15 +229,15 @@ func brokenHandler(privVal types.PrivValidator, request proto.Message, chainID s
 	switch r := request.(type) {
 
 	// This is broken and will answer most requests with a pubkey response
-	case *PubKeyRequest:
-		res = &PubKeyResponse{nil, nil}
-	case *SignVoteRequest:
-		res = &PubKeyResponse{nil, nil}
-	case *SignProposalRequest:
-		res = &PubKeyResponse{nil, nil}
+	case *privvalproto.PubKeyRequest:
+		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
+	case *privvalproto.SignVoteRequest:
+		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
+	case *privvalproto.SignProposalRequest:
+		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
 
-	case *PingRequest:
-		err, res = nil, &PingResponse{}
+	case *privvalproto.PingRequest:
+		err, res = nil, &privvalproto.PingResponse{}
 
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)

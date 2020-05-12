@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -83,7 +85,8 @@ func (vote *Vote) CommitSig() CommitSig {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+	pb := CanonicalizeVote(chainID, vote)
+	bz, err := proto.Marshal(&pb)
 	if err != nil {
 		panic(err)
 	}

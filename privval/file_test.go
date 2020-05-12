@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/encode"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -98,9 +102,9 @@ func TestUnmarshalValidatorState(t *testing.T) {
 		"step": 1
 	}`
 
-	val := FilePVLastSignState{}
-	err := cdc.UnmarshalJSON([]byte(serialized), &val)
-	require.Nil(err, "%+v", err)
+	val := privvalproto.FilePVLastSignState{}
+	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
+	require.NoError(err, "%+v", err)
 
 	// make sure the values match
 	assert.EqualValues(val.Height, 1)
@@ -108,7 +112,8 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	assert.EqualValues(val.Step, 1)
 
 	// export it and make sure it is the same
-	out, err := cdc.MarshalJSON(val)
+
+	out, err := encode.MarshalJSON(&val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
@@ -120,26 +125,28 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
-	pubBytes := []byte(pubKey.(ed25519.PubKey))
-	privBytes := []byte(privKey)
+	pubBytes := pubKey.Bytes()
+	privBytes := privKey.Bytes()
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
 	privB64 := base64.StdEncoding.EncodeToString(privBytes)
 
+	// ppk, _ := cryptoenc.PrivKeyToProto(privKey)
+	// pbk := tmkeys.PrivateKey{}
+	// pmk, _ := proto.Marshal(&ppk)
+	// p, _ := encode.MarshalJSON(&ppk)
+	// jsonpb.Unmarshal(strings.NewReader(string(p)), &pbk)
+	// fmt.Println(string(p), string(pmk))
+
+	//todo: how to handle this json??
 	serialized := fmt.Sprintf(`{
   "address": "%s",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "%s"
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "%s"
-  }
+  "pub_key": {"ed25519":"%s"},
+  "priv_key": {"ed25519":"%s"}
 }`, addr, pubB64, privB64)
 
-	val := FilePVKey{}
-	err := cdc.UnmarshalJSON([]byte(serialized), &val)
-	require.Nil(err, "%+v", err)
+	val := privvalproto.FilePVKey{}
+	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
+	require.NoError(err, "%+v", err)
 
 	// make sure the values match
 	assert.EqualValues(addr, val.Address)
@@ -147,7 +154,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := cdc.MarshalJSON(val)
+	out, err := encode.MarshalJSON(&val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
@@ -318,5 +325,108 @@ func newProposal(height int64, round int32, blockID types.BlockID) *types.Propos
 		Round:     round,
 		BlockID:   blockID,
 		Timestamp: tmtime.Now(),
+	}
+}
+
+func TestFilePVKeyProtobut(t *testing.T) {
+	privKey := ed25519.GenPrivKey()
+
+	f1 := FilePVKey{
+		Address:  privKey.PubKey().Address(),
+		PubKey:   privKey.PubKey(),
+		PrivKey:  privKey,
+		filePath: "keyFilePath",
+	}
+	f2 := FilePVKey{
+		Address:  privKey.PubKey().Address(),
+		PubKey:   nil,
+		PrivKey:  privKey,
+		filePath: "keyFilePath",
+	}
+	f3 := FilePVKey{
+		Address:  privKey.PubKey().Address(),
+		PubKey:   privKey.PubKey(),
+		PrivKey:  nil,
+		filePath: "keyFilePath",
+	}
+
+	type cases struct {
+		testname string
+		fpk      *FilePVKey
+		expPass  bool
+		expPass2 bool
+	}
+
+	testCases := []cases{
+		{"success valid FilePVKey", &f1, true, true},
+		{"fail pubkey empty", &f2, false, false},
+		{"fail priv empty", &f3, false, false},
+		{"fail nil FilePVKey", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		pb, err := tc.fpk.ToProto()
+		if !tc.expPass {
+			require.Error(t, err)
+		}
+
+		fpvk, err := FilePVKeyFromProto(pb)
+		if tc.expPass {
+			require.Equal(t, tc.fpk, &fpvk, tc.testname)
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err)
+		}
+	}
+}
+
+func TestFilePVLastSignStateProtobut(t *testing.T) {
+	path := "stateFilePath "
+
+	f1 := FilePVLastSignState{
+		Step:     stepNone,
+		filePath: path,
+	}
+
+	f2 := FilePVLastSignState{
+		Height:    1,
+		Round:     2,
+		Step:      stepPropose,
+		Signature: []byte("sigs"),
+		SignBytes: []byte("signBytes"),
+
+		filePath: path,
+	}
+
+	type cases struct {
+		testname string
+		fpk      *FilePVLastSignState
+		expPass  bool
+		expPass2 bool
+	}
+
+	testCases := []cases{
+		{"success valid FilePVKey", &f1, true, true},
+		{"success valid FilePVKey", &f2, true, true},
+		{"fail nil FilePVKey", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		pb, err := tc.fpk.ToProto()
+		if !tc.expPass {
+			require.Error(t, err)
+		}
+
+		fpvss, err := FilePVLastSignStateFromProto(pb)
+		if tc.expPass {
+			require.Equal(t, tc.fpk, fpvss, tc.testname)
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }

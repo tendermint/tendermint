@@ -197,8 +197,7 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 			return nil, err
 		}
 
-		v := new(Vote)
-		err = v.FromProto(evi.LunaticValidatorEvidence.GetVote())
+		v, err := VoteFromProto(evi.LunaticValidatorEvidence.GetVote())
 		if err != nil {
 			return nil, err
 		}

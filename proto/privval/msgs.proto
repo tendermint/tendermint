@@ -17,7 +17,7 @@ message PubKeyRequest {}
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {
-  tendermint.proto.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  tendermint.proto.crypto.keys.PublicKey pub_key = 1;
   RemoteSignerError                      error   = 2;
 }
 
@@ -28,7 +28,7 @@ message SignVoteRequest {
 
 // SignedVoteResponse is a response containing a signed vote or an error
 message SignedVoteResponse {
-  tendermint.proto.types.Vote vote  = 1 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Vote vote  = 1;
   RemoteSignerError           error = 2;
 }
 
@@ -39,7 +39,7 @@ message SignProposalRequest {
 
 // SignedProposalResponse is response containing a signed proposal or an error
 message SignedProposalResponse {
-  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Proposal proposal = 1;
   RemoteSignerError               error    = 2;
 }
 

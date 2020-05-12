@@ -100,7 +100,7 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 // ToProto converts Proposal to protobuf
 func (p *Proposal) ToProto() *tmproto.Proposal {
 	if p == nil {
-		return nil
+		return &tmproto.Proposal{}
 	}
 	pb := new(tmproto.Proposal)
 
