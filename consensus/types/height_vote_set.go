@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -239,7 +240,7 @@ func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
 	defer hvs.mtx.Unlock()
 
 	allVotes := hvs.toAllRoundVotes()
-	return cdc.MarshalJSON(allVotes)
+	return json.Marshal(allVotes)
 }
 
 func (hvs *HeightVoteSet) toAllRoundVotes() []roundVotes {

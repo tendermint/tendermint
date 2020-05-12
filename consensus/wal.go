@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	// amino overhead + time.Time + max consensus msg size
+	// Protobuf overhead + time.Time + max consensus msg size
 	//
 	// q: where 24 bytes are coming from?
 	// a: cdc.MustMarshalBinaryBare(empty consensus part msg) = 14 bytes. +10
-	// bytes just in case amino will require more space in the future.
+	// bytes just in case Protobuf will require more space in the future.
 	maxMsgSizeBytes = maxMsgSize + 24
 
 	// how often the WAL should be sync'd during period sync'ing
@@ -277,7 +277,7 @@ func (wal *BaseWAL) SearchForEndHeight(
 
 // A WALEncoder writes custom-encoded WAL messages to an output stream.
 //
-// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-amino encoded)
+// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (Protobuf-encoded)
 type WALEncoder struct {
 	wr io.Writer
 }
@@ -288,7 +288,7 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 }
 
 // Encode writes the custom encoding of v to the stream. It returns an error if
-// the amino-encoded size of v is greater than 1MB. Any error encountered
+// the Protobuf-encoded size of v is greater than 1MB. Any error encountered
 // during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	pbMsg, err := WALToProto(v.Msg)

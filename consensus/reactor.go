@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -955,12 +956,11 @@ func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	return &prs
 }
 
-// ToJSON returns a json of PeerState, marshalled using go-amino.
+// ToJSON returns JSON for PeerState.
 func (ps *PeerState) ToJSON() ([]byte, error) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-
-	return cdc.MarshalJSON(ps)
+	return json.Marshal(ps)
 }
 
 // GetHeight returns an atomic snapshot of the PeerRoundState's height

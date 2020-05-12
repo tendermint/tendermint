@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -234,18 +235,18 @@ func (cs *State) GetRoundState() *cstypes.RoundState {
 	return &rs
 }
 
-// GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
+// GetRoundStateJSON returns JSON for RoundState.
 func (cs *State) GetRoundStateJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return cdc.MarshalJSON(cs.RoundState)
+	return json.Marshal(cs.RoundState)
 }
 
-// GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
+// GetRoundStateSimpleJSON returns JSON for RoundStateSimple.
 func (cs *State) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
+	return json.Marshal(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.
@@ -1910,7 +1911,7 @@ func (cs *State) addVote(
 		}
 
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type)) // go-amino should prevent this.
+		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type))
 	}
 
 	return added, err
