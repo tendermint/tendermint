@@ -13,8 +13,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -24,7 +22,7 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
-func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) http.HandlerFunc {
+func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -109,7 +107,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				responses = append(responses, types.RPCInternalError(request.ID, err))
 				continue
 			}
-			responses = append(responses, types.NewRPCSuccessResponse(cdc, request.ID, result))
+			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 		}
 		if len(responses) > 0 {
 			WriteRPCResponseArrayHTTP(w, responses)

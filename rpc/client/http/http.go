@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,8 +10,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -140,11 +139,8 @@ func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error
 	if err != nil {
 		return nil, err
 	}
-	cdc := rc.Codec()
-	ctypes.RegisterAmino(cdc)
-	rc.SetCodec(cdc)
 
-	wsEvents, err := newWSEvents(cdc, remote, wsEndpoint)
+	wsEvents, err := newWSEvents(remote, wsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +461,6 @@ var errNotRunning = errors.New("client is not running. Use .Start() method to st
 // WSEvents is a wrapper around WSClient, which implements EventsClient.
 type WSEvents struct {
 	service.BaseService
-	cdc      *amino.Codec
 	remote   string
 	endpoint string
 	ws       *rpcclientlib.WSClient
@@ -474,9 +469,8 @@ type WSEvents struct {
 	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
 }
 
-func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
+func newWSEvents(remote, endpoint string) (*WSEvents, error) {
 	w := &WSEvents{
-		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
@@ -491,7 +485,6 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.ws.SetCodec(w.cdc)
 	w.ws.SetLogger(w.Logger)
 
 	return w, nil
@@ -631,7 +624,7 @@ func (w *WSEvents) eventListener() {
 			}
 
 			result := new(ctypes.ResultEvent)
-			err := w.cdc.UnmarshalJSON(resp.Result, result)
+			err := json.Unmarshal(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue

@@ -2,14 +2,17 @@ package types
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -33,6 +36,42 @@ type GenesisValidator struct {
 	PubKey  crypto.PubKey `json:"pub_key"`
 	Power   int64         `json:"power"`
 	Name    string        `json:"name"`
+}
+
+func (gv *GenesisValidator) UnmarshalJSON(data []byte) error {
+	fmt.Printf("%v", string(data))
+	// FIXME Needs to unmarshal into PubKey
+	m := make(map[string]interface{})
+	err := json.Unmarshal(data, &m)
+	if err != nil {
+		return err
+	}
+	if m["address"] != nil {
+		gv.Address = []byte(m["address"].(string))
+	} else {
+		gv.Address = []byte{}
+	}
+	switch power := m["power"].(type) {
+	case string:
+		i, err := strconv.Atoi(power)
+		if err != nil {
+			return err
+		}
+		gv.Power = int64(i)
+	default:
+		panic(fmt.Sprintf("unknown power type %T: ", m["power"]))
+	}
+	if m["name"] != nil {
+		gv.Name = m["name"].(string)
+	}
+	if m["pub_key"] != nil {
+		b, err := base64.StdEncoding.DecodeString(m["pub_key"].(map[string]interface{})["value"].(string))
+		if err != nil {
+			return err
+		}
+		gv.PubKey = ed25519.PubKey(b)
+	}
+	return nil
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.

@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	amino "github.com/tendermint/go-amino"
 )
 
 type Tx []byte
@@ -25,14 +24,12 @@ func TestArgToJSON(t *testing.T) {
 	}{
 		{[]byte("1234"), "0x31323334"},
 		{Tx("654"), "0x363534"},
-		{Foo{7, "hello"}, `{"Bar":"7","Baz":"hello"}`},
+		{Foo{7, "hello"}, `{"Bar":7,"Baz":"hello"}`},
 	}
-
-	cdc := amino.NewCodec()
 
 	for i, tc := range cases {
 		args := map[string]interface{}{"data": tc.input}
-		err := argsToJSON(cdc, args)
+		err := argsToJSON(args)
 		require.Nil(err, "%d: %+v", i, err)
 		require.Equal(1, len(args), "%d", i)
 		data, ok := args["data"].(string)

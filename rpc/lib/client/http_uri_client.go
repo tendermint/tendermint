@@ -6,8 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
-
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -26,7 +24,6 @@ const (
 type URIClient struct {
 	address string
 	client  *http.Client
-	cdc     *amino.Codec
 }
 
 var _ HTTPClient = (*URIClient)(nil)
@@ -50,7 +47,6 @@ func NewURIClient(remote string) (*URIClient, error) {
 	uriClient := &URIClient{
 		address: parsedURL.GetTrimmedURL(),
 		client:  httpClient,
-		cdc:     amino.NewCodec(),
 	}
 
 	return uriClient, nil
@@ -58,7 +54,7 @@ func NewURIClient(remote string) (*URIClient, error) {
 
 // Call issues a POST form HTTP request.
 func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	values, err := argsToURLValues(c.cdc, params)
+	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode params")
 	}
@@ -74,8 +70,5 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
-	return unmarshalResponseBytes(c.cdc, responseBytes, URIClientRequestID, result)
+	return unmarshalResponseBytes(responseBytes, URIClientRequestID, result)
 }
-
-func (c *URIClient) Codec() *amino.Codec       { return c.cdc }
-func (c *URIClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }

@@ -12,8 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
-
-	amino "github.com/tendermint/go-amino"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -99,7 +97,7 @@ func (req RPCRequest) String() string {
 	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
 }
 
-func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
+func MapToRequest(id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
 	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
 		var (
@@ -129,7 +127,7 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 	return NewRPCRequest(id, method, payload), nil
 }
 
-func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
+func ArrayToRequest(id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
 	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
 		var (
@@ -209,12 +207,12 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCResponse {
+func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 	var rawMsg json.RawMessage
 
 	if res != nil {
 		var js []byte
-		js, err := cdc.MarshalJSON(res)
+		js, err := json.Marshal(res)
 		if err != nil {
 			return RPCInternalError(id, errors.Wrap(err, "Error marshalling response"))
 		}
@@ -279,8 +277,6 @@ type WSRPCConnection interface {
 	WriteRPCResponse(resp RPCResponse)
 	// TryWriteRPCResponse tries to write the resp onto connection (NON-BLOCKING).
 	TryWriteRPCResponse(resp RPCResponse) bool
-	// Codec returns an Amino codec used.
-	Codec() *amino.Codec
 	// Context returns the connection's context.
 	Context() context.Context
 }

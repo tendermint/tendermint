@@ -1,20 +1,19 @@
 package rpcclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
-
-	amino "github.com/tendermint/go-amino"
 )
 
-func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values, error) {
+func argsToURLValues(args map[string]interface{}) (url.Values, error) {
 	values := make(url.Values)
 	if len(args) == 0 {
 		return values, nil
 	}
 
-	err := argsToJSON(cdc, args)
+	err := argsToJSON(args)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +25,7 @@ func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values,
 	return values, nil
 }
 
-func argsToJSON(cdc *amino.Codec, args map[string]interface{}) error {
+func argsToJSON(args map[string]interface{}) error {
 	for k, v := range args {
 		rt := reflect.TypeOf(v)
 		isByteSlice := rt.Kind() == reflect.Slice && rt.Elem().Kind() == reflect.Uint8
@@ -36,7 +35,7 @@ func argsToJSON(cdc *amino.Codec, args map[string]interface{}) error {
 			continue
 		}
 
-		data, err := cdc.MarshalJSON(v)
+		data, err := json.Marshal(v)
 		if err != nil {
 			return err
 		}

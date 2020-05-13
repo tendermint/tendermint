@@ -81,6 +81,11 @@ type ValidatorInfo struct {
 	VotingPower int64          `json:"voting_power"`
 }
 
+func (vi *ValidatorInfo) UnmarshalJSON(data []byte) error {
+	// FIXME Needs to unmarshal into PubKey
+	return nil
+}
+
 // Node Status
 type ResultStatus struct {
 	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`

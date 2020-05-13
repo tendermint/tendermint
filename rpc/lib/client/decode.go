@@ -2,16 +2,14 @@ package rpcclient
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
-
-	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 func unmarshalResponseBytes(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedID types.JSONRPCIntID,
 	result interface{},
@@ -33,7 +31,8 @@ func unmarshalResponseBytes(
 	}
 
 	// Unmarshal the RawMessage into the result.
-	if err := cdc.UnmarshalJSON(response.Result, result); err != nil {
+	if err := json.Unmarshal(response.Result, result); err != nil {
+		fmt.Printf("%v", string(response.Result))
 		return nil, errors.Wrap(err, "error unmarshalling result")
 	}
 
@@ -41,7 +40,6 @@ func unmarshalResponseBytes(
 }
 
 func unmarshalResponseBytesArray(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedIDs []types.JSONRPCIntID,
 	results []interface{},
@@ -80,7 +78,7 @@ func unmarshalResponseBytesArray(
 	}
 
 	for i := 0; i < len(responses); i++ {
-		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
+		if err := json.Unmarshal(responses[i].Result, results[i]); err != nil {
 			return nil, errors.Wrapf(err, "error unmarshalling #%d result", i)
 		}
 	}
