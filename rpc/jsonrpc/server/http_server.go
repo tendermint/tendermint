@@ -145,7 +145,7 @@ func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap the ResponseWriter to remember the status
-		rww := &ResponseWriterWrapper{-1, w}
+		rww := &responseWriterWrapper{-1, w}
 		begin := time.Now()
 
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
@@ -215,18 +215,18 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 }
 
 // Remember the status for logging
-type ResponseWriterWrapper struct {
+type responseWriterWrapper struct {
 	Status int
 	http.ResponseWriter
 }
 
-func (w *ResponseWriterWrapper) WriteHeader(status int) {
+func (w *responseWriterWrapper) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
 }
 
 // implements http.Hijacker
-func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
