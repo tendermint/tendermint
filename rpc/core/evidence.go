@@ -10,7 +10,7 @@ import (
 // BroadcastEvidence broadcasts evidence of the misbehavior.
 // More: https://docs.tendermint.com/master/rpc/#/Info/broadcast_evidence
 func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-	err := evidencePool.AddEvidence(ev)
+	err := env.EvidencePool.AddEvidence(ev)
 	if _, ok := err.(evidence.ErrEvidenceAlreadyStored); err == nil || ok {
 		return &ctypes.ResultBroadcastEvidence{Hash: ev.Hash()}, nil
 	}
