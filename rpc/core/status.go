@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"encoding/hex"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -70,7 +71,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),
-			PubKey:      pubKey,
+			PubKey:      hex.EncodeToString(pubKey.Bytes()),
 			VotingPower: votingPower,
 		},
 	}

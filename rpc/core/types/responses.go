@@ -5,7 +5,6 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -77,13 +76,8 @@ type SyncInfo struct {
 // Info about the node's validator
 type ValidatorInfo struct {
 	Address     bytes.HexBytes `json:"address"`
-	PubKey      crypto.PubKey  `json:"pub_key"`
+	PubKey      string         `json:"pub_key"`
 	VotingPower int64          `json:"voting_power"`
-}
-
-func (vi *ValidatorInfo) UnmarshalJSON(data []byte) error {
-	// FIXME Needs to unmarshal into PubKey
-	return nil
 }
 
 // Node Status
