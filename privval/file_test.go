@@ -128,18 +128,18 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	pubBytes := pubKey.Bytes()
 	privBytes := privKey.Bytes()
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
+	addrB64 := base64.StdEncoding.EncodeToString(addr.Bytes())
 	privB64 := base64.StdEncoding.EncodeToString(privBytes)
 
 	serialized := fmt.Sprintf(`{
-  "address": "%s",
-  "pubKey": {"ed25519":"%s"},
-  "privKey": {"ed25519":"%s"}
-}`, addr, pubB64, privB64)
+	  "address": "%s",
+	  "pubKey": {"ed25519":"%s"},
+	  "privKey": {"ed25519":"%s"}
+	}`, addrB64, pubB64, privB64)
 
 	val := privvalproto.FilePVKey{}
 	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
 	require.NoError(err, "%+v", err)
-
 	fpvk, err := FilePVKeyFromProto(&val)
 	require.NoError(err, "%+v", err)
 

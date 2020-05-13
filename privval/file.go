@@ -87,7 +87,6 @@ func (pvKey *FilePVKey) ToProto() (*privvalproto.FilePVKey, error) {
 
 	pb := new(privvalproto.FilePVKey)
 	pb.Address = pvKey.Address
-	fmt.Println(pvKey.Address)
 	pb.FilePath = pvKey.filePath
 
 	pubKey, err := cryptoenc.PubKeyToProto(pvKey.PubKey)
@@ -308,20 +307,19 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
-	pvS := &privvalproto.FilePVLastSignState{}
+	pvS := privvalproto.FilePVLastSignState{}
 
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
 			tmos.Exit(err.Error())
-			if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), pvS); err != nil {
-				tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
-			}
 		}
-		fmt.Println(string(stateJSONBytes), pvS)
+		if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), &pvS); err != nil {
+			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+		}
 	}
 
-	pvState, err := FilePVLastSignStateFromProto(pvS)
+	pvState, err := FilePVLastSignStateFromProto(&pvS)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error transistioning PrivValidator from proto from : %v\n", err))
 	}
