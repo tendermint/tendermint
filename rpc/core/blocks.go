@@ -18,10 +18,10 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.
 	const limit int64 = 20
 	var err error
 	minHeight, maxHeight, err = filterMinMax(
-		env.BlockStore.Base(), 
+		env.BlockStore.Base(),
 		env.BlockStore.Height(),
-		minHeight, 
-		maxHeight, 
+		minHeight,
+		maxHeight,
 		limit)
 	if err != nil {
 		return nil, err
