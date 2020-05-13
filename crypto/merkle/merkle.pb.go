@@ -4,7 +4,6 @@
 package merkle
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -146,7 +145,7 @@ func init() {
 func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_9c1c2162d560d38e) }
 
 var fileDescriptor_9c1c2162d560d38e = []byte{
-	// 230 bytes of a gzipped FileDescriptorProto
+	// 221 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0x85, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,
 	0xf9, 0x42, 0x12, 0x25, 0xa9, 0x79, 0x29, 0xa9, 0x45, 0xb9, 0x99, 0x79, 0x25, 0x7a, 0x10, 0x65,
@@ -157,78 +156,12 @@ var fileDescriptor_9c1c2162d560d38e = []byte{
 	0xa4, 0xc0, 0xa8, 0xc1, 0x13, 0x04, 0x62, 0x82, 0x54, 0xa5, 0x24, 0x96, 0x24, 0x4a, 0x30, 0x83,
 	0x85, 0xc0, 0x6c, 0x25, 0x27, 0x2e, 0x56, 0xb0, 0x21, 0x42, 0x96, 0x5c, 0xcc, 0xf9, 0x05, 0xc5,
 	0x12, 0x8c, 0x0a, 0xcc, 0x1a, 0xdc, 0x46, 0x8a, 0x7a, 0xb8, 0x5c, 0xa7, 0x07, 0xb5, 0xd2, 0x89,
-	0xe5, 0xc4, 0x3d, 0x79, 0x86, 0x20, 0x90, 0x1e, 0x27, 0x97, 0x1f, 0x0f, 0xe5, 0x18, 0x57, 0x3c,
-	0x92, 0x63, 0x3c, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0xa3,
-	0xf4, 0xd2, 0x33, 0x4b, 0x32, 0x4a, 0x93, 0xf4, 0x92, 0xf3, 0x73, 0xf5, 0x11, 0xa6, 0x21, 0x33,
-	0x51, 0x42, 0x27, 0x89, 0x0d, 0xec, 0x2b, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc8, 0xcc,
-	0x2c, 0x91, 0x35, 0x01, 0x00, 0x00,
+	0xe5, 0xc4, 0x3d, 0x79, 0x86, 0x20, 0x90, 0x1e, 0x27, 0x9b, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c,
+	0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x31, 0x4a, 0x2f, 0x3d, 0xb3, 0x24, 0xa3, 0x34, 0x49, 0x2f,
+	0x39, 0x3f, 0x57, 0x1f, 0x61, 0x0a, 0x32, 0x13, 0x25, 0x54, 0x92, 0xd8, 0xc0, 0xbe, 0x31, 0x06,
+	0x04, 0x00, 0x00, 0xff, 0xff, 0xb6, 0x3d, 0x69, 0x56, 0x2d, 0x01, 0x00, 0x00,
 }
 
-func (this *ProofOp) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ProofOp)
-	if !ok {
-		that2, ok := that.(ProofOp)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
-	return true
-}
-func (this *Proof) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Proof)
-	if !ok {
-		that2, ok := that.(Proof)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Ops) != len(that1.Ops) {
-		return false
-	}
-	for i := range this.Ops {
-		if !this.Ops[i].Equal(&that1.Ops[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
-	return true
-}
 func (m *ProofOp) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -328,113 +261,6 @@ func encodeVarintMerkle(dAtA []byte, offset int, v uint64) int {
 	}
 	dAtA[offset] = uint8(v)
 	return base
-}
-func NewPopulatedProofOp(r randyMerkle, easy bool) *ProofOp {
-	this := &ProofOp{}
-	this.Type = string(randStringMerkle(r))
-	v1 := r.Intn(100)
-	this.Key = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Key[i] = byte(r.Intn(256))
-	}
-	v2 := r.Intn(100)
-	this.Data = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.Data[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedMerkle(r, 4)
-	}
-	return this
-}
-
-func NewPopulatedProof(r randyMerkle, easy bool) *Proof {
-	this := &Proof{}
-	if r.Intn(5) != 0 {
-		v3 := r.Intn(5)
-		this.Ops = make([]ProofOp, v3)
-		for i := 0; i < v3; i++ {
-			v4 := NewPopulatedProofOp(r, easy)
-			this.Ops[i] = *v4
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedMerkle(r, 2)
-	}
-	return this
-}
-
-type randyMerkle interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneMerkle(r randyMerkle) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringMerkle(r randyMerkle) string {
-	v5 := r.Intn(100)
-	tmps := make([]rune, v5)
-	for i := 0; i < v5; i++ {
-		tmps[i] = randUTF8RuneMerkle(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedMerkle(r randyMerkle, maxFieldNumber int) (dAtA []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		dAtA = randFieldMerkle(dAtA, r, fieldNumber, wire)
-	}
-	return dAtA
-}
-func randFieldMerkle(dAtA []byte, r randyMerkle, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		v6 := r.Int63()
-		if r.Intn(2) == 0 {
-			v6 *= -1
-		}
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(v6))
-	case 1:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		ll := r.Intn(100)
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(ll))
-		for j := 0; j < ll; j++ {
-			dAtA = append(dAtA, byte(r.Intn(256)))
-		}
-	default:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return dAtA
-}
-func encodeVarintPopulateMerkle(dAtA []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	dAtA = append(dAtA, uint8(v))
-	return dAtA
 }
 func (m *ProofOp) Size() (n int) {
 	if m == nil {
