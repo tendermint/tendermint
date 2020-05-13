@@ -1,4 +1,4 @@
-package rpc
+package jsonrpc
 
 import (
 	"bytes"
@@ -22,9 +22,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 
-	client "github.com/tendermint/tendermint/rpc/lib/client"
-	server "github.com/tendermint/tendermint/rpc/lib/server"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	client "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	server "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -130,7 +130,7 @@ func setup() {
 	if err != nil {
 		panic(err)
 	}
-	go server.StartHTTPServer(listener1, mux, tcpLogger, config)
+	go server.Serve(listener1, mux, tcpLogger, config)
 
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
@@ -142,13 +142,13 @@ func setup() {
 	if err != nil {
 		panic(err)
 	}
-	go server.StartHTTPServer(listener2, mux2, unixLogger, config)
+	go server.Serve(listener2, mux2, unixLogger, config)
 
 	// wait for servers to start
 	time.Sleep(time.Second * 2)
 }
 
-func echoViaHTTP(cl client.JSONRPCCaller, val string) (string, error) {
+func echoViaHTTP(cl client.Caller, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -159,7 +159,7 @@ func echoViaHTTP(cl client.JSONRPCCaller, val string) (string, error) {
 	return result.Value, nil
 }
 
-func echoIntViaHTTP(cl client.JSONRPCCaller, val int) (int, error) {
+func echoIntViaHTTP(cl client.Caller, val int) (int, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -170,7 +170,7 @@ func echoIntViaHTTP(cl client.JSONRPCCaller, val int) (int, error) {
 	return result.Value, nil
 }
 
-func echoBytesViaHTTP(cl client.JSONRPCCaller, bytes []byte) ([]byte, error) {
+func echoBytesViaHTTP(cl client.Caller, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -181,7 +181,7 @@ func echoBytesViaHTTP(cl client.JSONRPCCaller, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func echoDataBytesViaHTTP(cl client.JSONRPCCaller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
+func echoDataBytesViaHTTP(cl client.Caller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -275,17 +275,17 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 func TestServersAndClientsBasic(t *testing.T) {
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
-		cl1, err := client.NewURIClient(addr)
+		cl1, err := client.NewURI(addr)
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using URI client", addr)
 		testWithHTTPClient(t, cl1)
 
-		cl2, err := client.NewJSONRPCClient(addr)
+		cl2, err := client.New(addr)
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 		testWithHTTPClient(t, cl2)
 
-		cl3, err := client.NewWSClient(addr, websocketEndpoint)
+		cl3, err := client.NewWS(addr, websocketEndpoint)
 		require.Nil(t, err)
 		cl3.SetLogger(log.TestingLogger())
 		err = cl3.Start()
@@ -297,7 +297,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 }
 
 func TestHexStringArg(t *testing.T) {
-	cl, err := client.NewURIClient(tcpAddr)
+	cl, err := client.NewURI(tcpAddr)
 	require.Nil(t, err)
 	// should NOT be handled as hex
 	val := "0xabc"
@@ -307,7 +307,7 @@ func TestHexStringArg(t *testing.T) {
 }
 
 func TestQuotedStringArg(t *testing.T) {
-	cl, err := client.NewURIClient(tcpAddr)
+	cl, err := client.NewURI(tcpAddr)
 	require.Nil(t, err)
 	// should NOT be unquoted
 	val := "\"abc\""
@@ -317,7 +317,7 @@ func TestQuotedStringArg(t *testing.T) {
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
-	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()
@@ -343,7 +343,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 }
 
 func TestWSHandlesArrayParams(t *testing.T) {
-	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()
@@ -369,7 +369,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
-	cl, err := client.NewWSClient(tcpAddr, websocketEndpoint)
+	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()

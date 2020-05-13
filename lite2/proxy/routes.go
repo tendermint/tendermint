@@ -4,8 +4,8 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -11,8 +11,8 @@ import (
 	"github.com/tendermint/tendermint/rpc/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -54,7 +54,7 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	if err != nil {
 		return err
 	}
-	return rpcserver.StartHTTPServer(l, mux, logger, config)
+	return rpcserver.Serve(l, mux, logger, config)
 }
 
 // RPCRoutes just routes everything to the given client, as if it were
