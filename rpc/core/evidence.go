@@ -15,7 +15,7 @@ func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.Result
 		return nil, fmt.Errorf("evidence.ValidateBasic failed: %w", err)
 	}
 
-	if err := evidencePool.AddEvidence(ev); err != nil {
+	if err := env.EvidencePool.AddEvidence(ev); err != nil {
 		return nil, fmt.Errorf("failed to add evidence: %w", err)
 	}
 	return &ctypes.ResultBroadcastEvidence{Hash: ev.Hash()}, nil

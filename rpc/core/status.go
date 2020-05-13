@@ -22,8 +22,8 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		earliestAppHash       tmbytes.HexBytes
 		earliestBlockTimeNano int64
 	)
-	earliestBlockHeight := blockStore.Base()
-	earliestBlockMeta = blockStore.LoadBlockMeta(earliestBlockHeight)
+	earliestBlockHeight := env.BlockStore.Base()
+	earliestBlockMeta = env.BlockStore.LoadBlockMeta(earliestBlockHeight)
 	if earliestBlockMeta != nil {
 		earliestAppHash = earliestBlockMeta.Header.AppHash
 		earliestBlockHash = earliestBlockMeta.BlockID.Hash
@@ -31,10 +31,10 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 
 	var latestHeight int64
-	if consensusReactor.WaitSync() {
-		latestHeight = blockStore.Height()
+	if env.ConsensusReactor.WaitSync() {
+		latestHeight = env.BlockStore.Height()
 	} else {
-		latestHeight = consensusState.GetLastHeight()
+		latestHeight = env.ConsensusState.GetLastHeight()
 	}
 
 	var (
@@ -44,7 +44,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		latestBlockTimeNano int64
 	)
 	if latestHeight != 0 {
-		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
+		latestBlockMeta = env.BlockStore.LoadBlockMeta(latestHeight)
 		latestBlockHash = latestBlockMeta.BlockID.Hash
 		latestAppHash = latestBlockMeta.Header.AppHash
 		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
@@ -56,7 +56,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
+		NodeInfo: env.P2PTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:     latestBlockHash,
 			LatestAppHash:       latestAppHash,
@@ -66,11 +66,11 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			CatchingUp:          consensusReactor.WaitSync(),
+			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     pubKey.Address(),
-			PubKey:      pubKey,
+			Address:     env.PubKey.Address(),
+			PubKey:      env.PubKey,
 			VotingPower: votingPower,
 		},
 	}
@@ -79,10 +79,10 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
-	privValAddress := pubKey.Address()
+	privValAddress := env.PubKey.Address()
 
 	// If we're still at height h, search in the current validator set.
-	lastBlockHeight, vals := consensusState.GetValidators()
+	lastBlockHeight, vals := env.ConsensusState.GetValidators()
 	if lastBlockHeight == h {
 		for _, val := range vals {
 			if bytes.Equal(val.Address, privValAddress) {
@@ -93,7 +93,7 @@ func validatorAtHeight(h int64) *types.Validator {
 
 	// If we've moved to the next height, retrieve the validator set from DB.
 	if lastBlockHeight > h {
-		vals, err := sm.LoadValidators(stateDB, h)
+		vals, err := sm.LoadValidators(env.StateDB, h)
 		if err != nil {
 			return nil // should not happen
 		}

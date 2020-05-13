@@ -12,7 +12,7 @@ import (
 // NetInfo returns network info.
 // More: https://docs.tendermint.com/master/rpc/#/Info/net_info
 func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
-	peersList := p2pPeers.Peers().List()
+	peersList := env.P2PPeers.Peers().List()
 	peers := make([]ctypes.Peer, 0, len(peersList))
 	for _, peer := range peersList {
 		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
@@ -30,8 +30,8 @@ func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	// PRO: useful info
 	// CON: privacy
 	return &ctypes.ResultNetInfo{
-		Listening: p2pTransport.IsListening(),
-		Listeners: p2pTransport.Listeners(),
+		Listening: env.P2PTransport.IsListening(),
+		Listeners: env.P2PTransport.Listeners(),
 		NPeers:    len(peers),
 		Peers:     peers,
 	}, nil
@@ -42,8 +42,8 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, errors.New("no seeds provided")
 	}
-	logger.Info("DialSeeds", "seeds", seeds)
-	if err := p2pPeers.DialPeersAsync(seeds); err != nil {
+	env.Logger.Info("DialSeeds", "seeds", seeds)
+	if err := env.P2PPeers.DialPeersAsync(seeds); err != nil {
 		return &ctypes.ResultDialSeeds{}, err
 	}
 	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
@@ -55,13 +55,13 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
 	}
-	logger.Info("DialPeers", "peers", peers, "persistent", persistent)
+	env.Logger.Info("DialPeers", "peers", peers, "persistent", persistent)
 	if persistent {
-		if err := p2pPeers.AddPersistentPeers(peers); err != nil {
+		if err := env.P2PPeers.AddPersistentPeers(peers); err != nil {
 			return &ctypes.ResultDialPeers{}, err
 		}
 	}
-	if err := p2pPeers.DialPeersAsync(peers); err != nil {
+	if err := env.P2PPeers.DialPeersAsync(peers); err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
 	return &ctypes.ResultDialPeers{Log: "Dialing peers in progress. See /net_info for details"}, nil
@@ -70,5 +70,5 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 // Genesis returns genesis file.
 // More: https://docs.tendermint.com/master/rpc/#/Info/genesis
 func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
-	return &ctypes.ResultGenesis{Genesis: genDoc}, nil
+	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }

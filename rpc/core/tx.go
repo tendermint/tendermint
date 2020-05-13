@@ -19,11 +19,11 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
 func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
-	if _, ok := txIndexer.(*null.TxIndex); ok {
+	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
 		return nil, fmt.Errorf("transaction indexing is disabled")
 	}
 
-	r, err := txIndexer.Get(hash)
+	r, err := env.TxIndexer.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 
 	var proof types.TxProof
 	if prove {
-		block := blockStore.LoadBlock(height)
+		block := env.BlockStore.LoadBlock(height)
 		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 	}
 
@@ -57,7 +57,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
-	if _, ok := txIndexer.(*null.TxIndex); ok {
+	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
 		return nil, errors.New("transaction indexing is disabled")
 	}
 
@@ -66,7 +66,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 		return nil, err
 	}
 
-	results, err := txIndexer.Search(ctx.Context(), q)
+	results, err := env.TxIndexer.Search(ctx.Context(), q)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 
 		var proof types.TxProof
 		if prove {
-			block := blockStore.LoadBlock(r.Height)
+			block := env.BlockStore.LoadBlock(r.Height)
 			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}
 

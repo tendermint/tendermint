@@ -19,8 +19,8 @@ func TestUnsafeDialSeeds(t *testing.T) {
 	require.NoError(t, err)
 	defer sw.Stop()
 
-	logger = log.TestingLogger()
-	p2pPeers = sw
+	env.Logger = log.TestingLogger()
+	env.P2PPeers = sw
 
 	testCases := []struct {
 		seeds []string
@@ -49,8 +49,8 @@ func TestUnsafeDialPeers(t *testing.T) {
 	require.NoError(t, err)
 	defer sw.Stop()
 
-	logger = log.TestingLogger()
-	p2pPeers = sw
+	env.Logger = log.TestingLogger()
+	env.P2PPeers = sw
 
 	testCases := []struct {
 		peers []string
