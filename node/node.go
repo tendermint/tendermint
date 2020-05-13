@@ -953,32 +953,42 @@ func (n *Node) OnStop() {
 	}
 }
 
-// ConfigureRPC sets all variables in rpccore so they will serve
-// rpc calls from this node
-func (n *Node) ConfigureRPC() {
-	rpccore.SetStateDB(n.stateDB)
-	rpccore.SetBlockStore(n.blockStore)
-	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempool)
-	rpccore.SetEvidencePool(n.evidencePool)
-	rpccore.SetP2PPeers(n.sw)
-	rpccore.SetP2PTransport(n)
+// ConfigureRPC makes sure RPC has all the objects it needs to operate.
+func (n *Node) ConfigureRPC() error {
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("can't get pubkey: %w", err)
 	}
-	rpccore.SetPubKey(pubKey)
-	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetProxyAppQuery(n.proxyApp.Query())
-	rpccore.SetTxIndexer(n.txIndexer)
-	rpccore.SetConsensusReactor(n.consensusReactor)
-	rpccore.SetEventBus(n.eventBus)
-	rpccore.SetLogger(n.Logger.With("module", "rpc"))
-	rpccore.SetConfig(*n.config.RPC)
+	rpccore.SetEnvironment(&rpccore.Environment{
+		ProxyAppQuery: n.proxyApp.Query(),
+
+		StateDB:        n.stateDB,
+		BlockStore:     n.blockStore,
+		EvidencePool:   n.evidencePool,
+		ConsensusState: n.consensusState,
+		P2PPeers:       n.sw,
+		P2PTransport:   n,
+
+		PubKey:           pubKey,
+		GenDoc:           n.genesisDoc,
+		TxIndexer:        n.txIndexer,
+		ConsensusReactor: n.consensusReactor,
+		EventBus:         n.eventBus,
+		Mempool:          n.mempool,
+
+		Logger: n.Logger.With("module", "rpc"),
+
+		Config: *n.config.RPC,
+	})
+	return nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	n.ConfigureRPC()
+	err := n.ConfigureRPC()
+	if err != nil {
+		return nil, err
+	}
+
 	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)

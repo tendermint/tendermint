@@ -17,20 +17,25 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.
 	// maximum 20 block metas
 	const limit int64 = 20
 	var err error
-	minHeight, maxHeight, err = filterMinMax(blockStore.Base(), blockStore.Height(), minHeight, maxHeight, limit)
+	minHeight, maxHeight, err = filterMinMax(
+		env.BlockStore.Base(),
+		env.BlockStore.Height(),
+		minHeight,
+		maxHeight,
+		limit)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+	env.Logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {
-		blockMeta := blockStore.LoadBlockMeta(height)
+		blockMeta := env.BlockStore.LoadBlockMeta(height)
 		blockMetas = append(blockMetas, blockMeta)
 	}
 
 	return &ctypes.ResultBlockchainInfo{
-		LastHeight: blockStore.Height(),
+		LastHeight: env.BlockStore.Height(),
 		BlockMetas: blockMetas}, nil
 }
 
@@ -71,13 +76,13 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // If no height is provided, it will fetch the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
-	height, err := getHeight(blockStore.Base(), blockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
 
-	block := blockStore.LoadBlock(height)
-	blockMeta := blockStore.LoadBlockMeta(height)
+	block := env.BlockStore.LoadBlock(height)
+	blockMeta := env.BlockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
 	}
@@ -87,12 +92,12 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 // BlockByHash gets block by hash.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_by_hash
 func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
-	block := blockStore.LoadBlockByHash(hash)
+	block := env.BlockStore.LoadBlockByHash(hash)
 	if block == nil {
 		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
 	// If block is not nil, then blockMeta can't be nil.
-	blockMeta := blockStore.LoadBlockMeta(block.Height)
+	blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
@@ -100,12 +105,12 @@ func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error
 // If no height is provided, it will fetch the commit for the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/commit
 func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
-	height, err := getHeight(blockStore.Base(), blockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
 
-	blockMeta := blockStore.LoadBlockMeta(height)
+	blockMeta := env.BlockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil, nil
 	}
@@ -113,13 +118,13 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
-	if height == blockStore.Height() {
-		commit := blockStore.LoadSeenCommit(height)
+	if height == env.BlockStore.Height() {
+		commit := env.BlockStore.LoadSeenCommit(height)
 		return ctypes.NewResultCommit(&header, commit, false), nil
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
-	commit := blockStore.LoadBlockCommit(height)
+	commit := env.BlockStore.LoadBlockCommit(height)
 	return ctypes.NewResultCommit(&header, commit, true), nil
 }
 
@@ -131,12 +136,12 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // getBlock(h).Txs[5]
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
-	height, err := getHeight(blockStore.Base(), blockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := sm.LoadABCIResponses(stateDB, height)
+	results, err := sm.LoadABCIResponses(env.StateDB, height)
 	if err != nil {
 		return nil, err
 	}

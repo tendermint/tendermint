@@ -8,7 +8,6 @@ import (
 )
 
 func TestPaginationPage(t *testing.T) {
-
 	cases := []struct {
 		totalCount int
 		perPage    int
