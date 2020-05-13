@@ -28,6 +28,17 @@ const (
 	SubscribeTimeout = 5 * time.Second
 )
 
+var (
+	// set by Node
+	env *Environment
+)
+
+// SetEnvironment sets up the given Environment.
+// It will race if multiple Node call SetEnvironment.
+func SetEnvironment(e *Environment) {
+	env = e
+}
+
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
@@ -52,94 +63,34 @@ type peers interface {
 }
 
 //----------------------------------------------
-// These package level globals come with setters
-// that are expected to be called only once, on startup
-
-var (
+// Environment contains objects and interfaces used by the RPC. It is expected
+// to be setup once during startup.
+type Environment struct {
 	// external, thread safe interfaces
-	proxyAppQuery proxy.AppConnQuery
+	ProxyAppQuery proxy.AppConnQuery
 
 	// interfaces defined in types and above
-	stateDB        dbm.DB
-	blockStore     sm.BlockStore
-	evidencePool   sm.EvidencePool
-	consensusState Consensus
-	p2pPeers       peers
-	p2pTransport   transport
+	StateDB        dbm.DB
+	BlockStore     sm.BlockStore
+	EvidencePool   sm.EvidencePool
+	ConsensusState Consensus
+	P2PPeers       peers
+	P2PTransport   transport
 
 	// objects
-	pubKey           crypto.PubKey
-	genDoc           *types.GenesisDoc // cache the genesis structure
-	txIndexer        txindex.TxIndexer
-	consensusReactor *consensus.Reactor
-	eventBus         *types.EventBus // thread safe
-	mempool          mempl.Mempool
+	PubKey           crypto.PubKey
+	GenDoc           *types.GenesisDoc // cache the genesis structure
+	TxIndexer        txindex.TxIndexer
+	ConsensusReactor *consensus.Reactor
+	EventBus         *types.EventBus // thread safe
+	Mempool          mempl.Mempool
 
-	logger log.Logger
+	Logger log.Logger
 
-	config cfg.RPCConfig
-)
-
-func SetStateDB(db dbm.DB) {
-	stateDB = db
+	Config cfg.RPCConfig
 }
 
-func SetBlockStore(bs sm.BlockStore) {
-	blockStore = bs
-}
-
-func SetMempool(mem mempl.Mempool) {
-	mempool = mem
-}
-
-func SetEvidencePool(evpool sm.EvidencePool) {
-	evidencePool = evpool
-}
-
-func SetConsensusState(cs Consensus) {
-	consensusState = cs
-}
-
-func SetP2PPeers(p peers) {
-	p2pPeers = p
-}
-
-func SetP2PTransport(t transport) {
-	p2pTransport = t
-}
-
-func SetPubKey(pk crypto.PubKey) {
-	pubKey = pk
-}
-
-func SetGenesisDoc(doc *types.GenesisDoc) {
-	genDoc = doc
-}
-
-func SetProxyAppQuery(appConn proxy.AppConnQuery) {
-	proxyAppQuery = appConn
-}
-
-func SetTxIndexer(indexer txindex.TxIndexer) {
-	txIndexer = indexer
-}
-
-func SetConsensusReactor(conR *consensus.Reactor) {
-	consensusReactor = conR
-}
-
-func SetLogger(l log.Logger) {
-	logger = l
-}
-
-func SetEventBus(b *types.EventBus) {
-	eventBus = b
-}
-
-// SetConfig sets an RPCConfig.
-func SetConfig(c cfg.RPCConfig) {
-	config = c
-}
+//----------------------------------------------
 
 func validatePage(page, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
