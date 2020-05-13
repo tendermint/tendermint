@@ -475,7 +475,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
 	var err error
-	w.ws, err = jsonrpcclient.NewWS(w.remote, w.endpoint, rpcclientlib.OnReconnect(func() {
+	w.ws, err = jsonrpcclient.NewWS(w.remote, w.endpoint, jsonrpcclient.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
