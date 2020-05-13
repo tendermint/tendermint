@@ -73,7 +73,7 @@
 //   logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 //   listener, err := rpc.Listen("0.0.0.0:8080", rpcserver.Config{})
 //   if err != nil { panic(err) }
-//   go rpcserver.StartHTTPServer(listener, mux, logger)
+//   go rpcserver.Serve(listener, mux, logger)
 //
 // Note that unix sockets are supported as well (eg. `/path/to/socket` instead of `0.0.0.0:8008`)
 // Now see all available endpoints by sending a GET request to `0.0.0.0:8008`.
@@ -82,4 +82,4 @@
 // Examples
 //
 // - [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-package rpc
+package jsonrpc

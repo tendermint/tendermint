@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -30,10 +30,10 @@ type URIClient struct {
 
 var _ HTTPClient = (*URIClient)(nil)
 
-// NewURIClient returns a new client.
+// NewURI returns a new client.
 // An error is returned on invalid remote.
 // The function panics when remote is nil.
-func NewURIClient(remote string) (*URIClient, error) {
+func NewURI(remote string) (*URIClient, error) {
 	parsedURL, err := newParsedURL(remote)
 	if err != nil {
 		return nil, err

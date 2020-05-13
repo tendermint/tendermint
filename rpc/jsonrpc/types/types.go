@@ -1,4 +1,4 @@
-package rpctypes
+package types
 
 import (
 	"context"
