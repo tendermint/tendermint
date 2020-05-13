@@ -364,7 +364,7 @@ func (wsc *wsConnection) readRoutine() {
 			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
 			args := []reflect.Value{reflect.ValueOf(ctx)}
 			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					wsc.WriteRPCResponse(
 						types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")),

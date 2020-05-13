@@ -15,6 +15,7 @@ want to directly call a tendermint node in process, you can use the
 */
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -159,5 +160,9 @@ func (c Client) Validators(height *int64, page, perPage int) (*ctypes.ResultVali
 }
 
 func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-	return core.BroadcastEvidence(&rpctypes.Context{}, ev)
+	pbev, err := types.EvidenceToProto(ev)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode evidence: %w", err)
+	}
+	return core.BroadcastEvidence(&rpctypes.Context{}, *pbev)
 }

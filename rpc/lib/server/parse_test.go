@@ -137,7 +137,6 @@ func TestParseJSONArray(t *testing.T) {
 func TestParseJSONRPC(t *testing.T) {
 	demo := func(ctx *types.Context, height int, name string) {}
 	call := NewRPCFunc(demo, "height,name")
-	cdc := amino.NewCodec()
 
 	cases := []struct {
 		raw    string
@@ -158,7 +157,7 @@ func TestParseJSONRPC(t *testing.T) {
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
 		data := []byte(tc.raw)
-		vals, err := jsonParamsToArgs(call, cdc, data)
+		vals, err := jsonParamsToArgs(call, data)
 		if tc.fail {
 			assert.NotNil(t, err, i)
 		} else {

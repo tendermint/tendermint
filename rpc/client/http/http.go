@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -445,7 +446,11 @@ func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.Re
 
 func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	result := new(ctypes.ResultBroadcastEvidence)
-	_, err := c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": ev}, result)
+	pbev, err := types.EvidenceToProto(ev)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode evidence: %w", err)
+	}
+	_, err = c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": pbev}, result)
 	if err != nil {
 		return nil, err
 	}

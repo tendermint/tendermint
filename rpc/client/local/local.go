@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -167,7 +168,11 @@ func (c *Local) TxSearch(query string, prove bool, page, perPage int, orderBy st
 }
 
 func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-	return core.BroadcastEvidence(c.ctx, ev)
+	pbev, err := types.EvidenceToProto(ev)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode evidence: %w", err)
+	}
+	return core.BroadcastEvidence(c.ctx, *pbev)
 }
 
 func (c *Local) Subscribe(

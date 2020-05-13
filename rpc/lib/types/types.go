@@ -1,6 +1,7 @@
 package rpctypes
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
@@ -99,7 +102,19 @@ func (req RPCRequest) String() string {
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
 	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		var (
+			valueJSON []byte
+			err       error
+		)
+		switch v := value.(type) {
+		case proto.Message:
+			buf := new(bytes.Buffer)
+			jm := &jsonpb.Marshaler{}
+			err = jm.Marshal(buf, v)
+			valueJSON = buf.Bytes()
+		default:
+			valueJSON, err = json.Marshal(value)
+		}
 		if err != nil {
 			return RPCRequest{}, err
 		}
@@ -117,7 +132,19 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
 	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		var (
+			valueJSON []byte
+			err       error
+		)
+		switch v := value.(type) {
+		case proto.Message:
+			buf := new(bytes.Buffer)
+			jm := &jsonpb.Marshaler{}
+			err = jm.Marshal(buf, v)
+			valueJSON = buf.Bytes()
+		default:
+			valueJSON, err = json.Marshal(value)
+		}
 		if err != nil {
 			return RPCRequest{}, err
 		}
