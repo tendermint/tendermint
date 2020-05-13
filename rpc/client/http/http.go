@@ -61,7 +61,7 @@ Example:
 */
 type HTTP struct {
 	remote string
-	rpc    *rpcclientlib.JSONRPCClient
+	rpc    *rpcclientlib.Client
 
 	*baseRPCClient
 	*WSEvents
@@ -78,7 +78,7 @@ type HTTP struct {
 // batch, but ordering of transactions in the batch cannot be guaranteed in such
 // an example.
 type BatchHTTP struct {
-	rpcBatch *rpcclientlib.JSONRPCRequestBatch
+	rpcBatch *rpcclientlib.RequestBatch
 	*baseRPCClient
 }
 
@@ -96,7 +96,7 @@ type rpcClient interface {
 // baseRPCClient implements the basic RPC method logic without the actual
 // underlying RPC call functionality, which is provided by `caller`.
 type baseRPCClient struct {
-	caller rpcclientlib.JSONRPCCaller
+	caller rpcclientlib.Caller
 }
 
 var _ rpcClient = (*HTTP)(nil)

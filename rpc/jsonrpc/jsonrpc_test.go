@@ -148,7 +148,7 @@ func setup() {
 	time.Sleep(time.Second * 2)
 }
 
-func echoViaHTTP(cl client.JSONRPCCaller, val string) (string, error) {
+func echoViaHTTP(cl client.Caller, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -159,7 +159,7 @@ func echoViaHTTP(cl client.JSONRPCCaller, val string) (string, error) {
 	return result.Value, nil
 }
 
-func echoIntViaHTTP(cl client.JSONRPCCaller, val int) (int, error) {
+func echoIntViaHTTP(cl client.Caller, val int) (int, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -170,7 +170,7 @@ func echoIntViaHTTP(cl client.JSONRPCCaller, val int) (int, error) {
 	return result.Value, nil
 }
 
-func echoBytesViaHTTP(cl client.JSONRPCCaller, bytes []byte) ([]byte, error) {
+func echoBytesViaHTTP(cl client.Caller, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -181,7 +181,7 @@ func echoBytesViaHTTP(cl client.JSONRPCCaller, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func echoDataBytesViaHTTP(cl client.JSONRPCCaller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
+func echoDataBytesViaHTTP(cl client.Caller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}

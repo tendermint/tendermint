@@ -634,14 +634,14 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 	require.Equal(t, 0, batch.Count())
 }
 
-func TestSendingEmptyJSONRPCRequestBatch(t *testing.T) {
+func TestSendingEmptyRequestBatch(t *testing.T) {
 	c := getHTTPClient()
 	batch := c.NewBatch()
 	_, err := batch.Send()
 	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 }
 
-func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
+func TestClearingEmptyRequestBatch(t *testing.T) {
 	c := getHTTPClient()
 	batch := c.NewBatch()
 	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
