@@ -36,7 +36,7 @@ func (p *Proxy) ListenAndServe() error {
 	}
 	p.Listener = listener
 
-	return rpcserver.StartHTTPServer(
+	return rpcserver.Serve(
 		listener,
 		mux,
 		p.Logger,
@@ -54,7 +54,7 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 	}
 	p.Listener = listener
 
-	return rpcserver.StartHTTPAndTLSServer(
+	return rpcserver.ServeTLS(
 		listener,
 		mux,
 		certFile,

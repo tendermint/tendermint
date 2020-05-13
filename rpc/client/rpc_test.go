@@ -62,7 +62,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
-		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+		_, _ = rpcclient.NewWithHTTPClient("http://example.com", nil)
 	})
 }
 

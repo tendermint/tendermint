@@ -134,7 +134,7 @@ func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error
 		panic("nil http.Client provided")
 	}
 
-	rc, err := rpcclientlib.NewJSONRPCClientWithHTTPClient(remote, client)
+	rc, err := rpcclientlib.NewWithHTTPClient(remote, client)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
 	var err error
-	w.ws, err = rpcclientlib.NewWSClient(w.remote, w.endpoint, rpcclientlib.OnReconnect(func() {
+	w.ws, err = rpcclientlib.NewWS(w.remote, w.endpoint, rpcclientlib.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))

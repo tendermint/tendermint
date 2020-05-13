@@ -120,20 +120,20 @@ var _ HTTPClient = (*JSONRPCClient)(nil)
 var _ JSONRPCCaller = (*JSONRPCClient)(nil)
 var _ JSONRPCCaller = (*JSONRPCRequestBatch)(nil)
 
-// NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
+// New returns a JSONRPCClient pointed at the given address.
 // An error is returned on invalid remote. The function panics when remote is nil.
-func NewJSONRPCClient(remote string) (*JSONRPCClient, error) {
+func New(remote string) (*JSONRPCClient, error) {
 	httpClient, err := DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
-	return NewJSONRPCClientWithHTTPClient(remote, httpClient)
+	return NewWithHTTPClient(remote, httpClient)
 }
 
-// NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given
+// NewWithHTTPClient returns a JSONRPCClient pointed at the given
 // address using a custom http client. An error is returned on invalid remote.
 // The function panics when remote is nil.
-func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) (*JSONRPCClient, error) {
+func NewWithHTTPClient(remote string, client *http.Client) (*JSONRPCClient, error) {
 	if client == nil {
 		panic("nil http.Client provided")
 	}

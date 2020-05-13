@@ -41,5 +41,5 @@ func main() {
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	rpcserver.StartHTTPServer(listener, mux, logger, config)
+	rpcserver.Serve(listener, mux, logger, config)
 }

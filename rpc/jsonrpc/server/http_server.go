@@ -45,10 +45,12 @@ func DefaultConfig() *Config {
 	}
 }
 
-// StartHTTPServer takes a listener and starts an HTTP server with the given handler.
-// It wraps handler with RecoverAndLogHandler.
+// Serve creates a http.Server and calls Serve with the given listener. It
+// wraps handler with RecoverAndLogHandler and a handler, which limits the max
+// body size to config.MaxBodyBytes.
+//
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
+func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
@@ -61,10 +63,12 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 	return err
 }
 
-// StartHTTPAndTLSServer takes a listener and starts an HTTPS server with the given handler.
-// It wraps handler with RecoverAndLogHandler.
+// Serve creates a http.Server and calls ServeTLS with the given listener,
+// certFile and keyFile. It wraps handler with RecoverAndLogHandler and a
+// handler, which limits the max body size to config.MaxBodyBytes.
+//
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func StartHTTPAndTLSServer(
+func ServeTLS(
 	listener net.Listener,
 	handler http.Handler,
 	certFile, keyFile string,

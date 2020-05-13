@@ -55,7 +55,7 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	if err != nil {
 		return err
 	}
-	return rpcserver.StartHTTPServer(l, mux, logger, config)
+	return rpcserver.Serve(l, mux, logger, config)
 }
 
 // RPCRoutes just routes everything to the given client, as if it were

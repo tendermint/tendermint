@@ -37,7 +37,7 @@ var defaultOptions = Options{
 
 func waitForRPC() {
 	laddr := GetConfig().RPC.ListenAddress
-	client, err := rpcclient.NewJSONRPCClient(laddr)
+	client, err := rpcclient.New(laddr)
 	if err != nil {
 		panic(err)
 	}
