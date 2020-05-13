@@ -20,7 +20,7 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )

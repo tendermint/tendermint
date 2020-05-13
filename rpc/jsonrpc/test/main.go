@@ -9,8 +9,8 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{

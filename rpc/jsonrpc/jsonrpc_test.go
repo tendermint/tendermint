@@ -22,9 +22,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 
-	client "github.com/tendermint/tendermint/rpc/lib/client"
-	server "github.com/tendermint/tendermint/rpc/lib/server"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	client "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	server "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Client and Server should work over tcp or unix sockets

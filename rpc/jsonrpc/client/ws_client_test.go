@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var wsCallTimeout = 5 * time.Second

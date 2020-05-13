@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
 // Options helps with specifying some parameters for our RPC testing for greater

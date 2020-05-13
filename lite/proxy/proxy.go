@@ -12,8 +12,8 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
