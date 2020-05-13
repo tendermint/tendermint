@@ -22,6 +22,24 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
   - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
   - [node] [\#4832](https://github.com/tendermint/tendermint/pull/4832) `ConfigureRPC` returns an error (@melekes)
+  - [rpc] [\#4836](https://github.com/tendermint/tendermint/pull/4836) Overhaul `lib` folder (@melekes)
+    Move lib/ folder to jsonrpc/.
+    Rename:
+      rpc package -> jsonrpc package
+      rpcclient package -> client package
+      rpcserver package -> server package
+      JSONRPCClient to Client
+      JSONRPCRequestBatch to RequestBatch
+      JSONRPCCaller to Caller
+      StartHTTPServer to Serve
+      StartHTTPAndTLSServer to ServeTLS
+      NewURIClient to NewURI
+      NewJSONRPCClient to New
+      NewJSONRPCClientWithHTTPClient to NewWithHTTPClient
+      NewWSClient to NewWS
+    Unexpose ResponseWriterWrapper
+    Remove unused http_params.go
+
 
 
 - Blockchain Protocol

@@ -12,7 +12,7 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
 // A Proxy defines parameters for running an HTTP server proxy.
@@ -36,7 +36,7 @@ func (p *Proxy) ListenAndServe() error {
 	}
 	p.Listener = listener
 
-	return rpcserver.StartHTTPServer(
+	return rpcserver.Serve(
 		listener,
 		mux,
 		p.Logger,
@@ -54,7 +54,7 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 	}
 	p.Listener = listener
 
-	return rpcserver.StartHTTPAndTLSServer(
+	return rpcserver.ServeTLS(
 		listener,
 		mux,
 		certFile,

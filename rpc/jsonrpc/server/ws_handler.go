@@ -1,4 +1,4 @@
-package rpcserver
+package server
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 ///////////////////////////////////////////////////////////////////////////////

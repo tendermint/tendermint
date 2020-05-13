@@ -1,4 +1,4 @@
-package rpcserver
+package server
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func testMux() *http.ServeMux {
