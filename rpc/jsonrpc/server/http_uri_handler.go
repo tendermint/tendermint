@@ -1,21 +1,24 @@
-package rpcserver
+package server
 
 import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 // HTTP + URI handler
 ///////////////////////////////////////////////////////////////////////////////
+
+var reInt = regexp.MustCompile(`^-?[0-9]+$`)
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func(http.ResponseWriter, *http.Request) {
@@ -74,7 +77,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 
 		values[i] = reflect.Zero(argType) // set default for that type
 
-		arg := GetParam(r, name)
+		arg := getParam(r, name)
 		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
 		if arg == "" {
@@ -129,7 +132,7 @@ func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.
 
 // NOTE: rt.Kind() isn't a pointer.
 func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
-	isIntString := ReInt.Match([]byte(arg))
+	isIntString := reInt.Match([]byte(arg))
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
 
@@ -191,4 +194,12 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 	}
 
 	return reflect.ValueOf(nil), false, nil
+}
+
+func getParam(r *http.Request, param string) string {
+	s := r.URL.Query().Get(param)
+	if s == "" {
+		s = r.FormValue(param)
+	}
+	return s
 }

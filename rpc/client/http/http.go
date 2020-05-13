@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclientlib "github.com/tendermint/tendermint/rpc/lib/client"
+	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,7 +61,7 @@ Example:
 */
 type HTTP struct {
 	remote string
-	rpc    *rpcclientlib.JSONRPCClient
+	rpc    *jsonrpcclient.Client
 
 	*baseRPCClient
 	*WSEvents
@@ -78,7 +78,7 @@ type HTTP struct {
 // batch, but ordering of transactions in the batch cannot be guaranteed in such
 // an example.
 type BatchHTTP struct {
-	rpcBatch *rpcclientlib.JSONRPCRequestBatch
+	rpcBatch *jsonrpcclient.RequestBatch
 	*baseRPCClient
 }
 
@@ -96,7 +96,7 @@ type rpcClient interface {
 // baseRPCClient implements the basic RPC method logic without the actual
 // underlying RPC call functionality, which is provided by `caller`.
 type baseRPCClient struct {
-	caller rpcclientlib.JSONRPCCaller
+	caller jsonrpcclient.Caller
 }
 
 var _ rpcClient = (*HTTP)(nil)
@@ -110,7 +110,7 @@ var _ rpcClient = (*baseRPCClient)(nil)
 // the websocket path (which always seems to be "/websocket")
 // An error is returned on invalid remote. The function panics when remote is nil.
 func New(remote, wsEndpoint string) (*HTTP, error) {
-	httpClient, err := rpcclientlib.DefaultHTTPClient(remote)
+	httpClient, err := jsonrpcclient.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func New(remote, wsEndpoint string) (*HTTP, error) {
 
 // Create timeout enabled http client
 func NewWithTimeout(remote, wsEndpoint string, timeout uint) (*HTTP, error) {
-	httpClient, err := rpcclientlib.DefaultHTTPClient(remote)
+	httpClient, err := jsonrpcclient.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error
 		panic("nil http.Client provided")
 	}
 
-	rc, err := rpcclientlib.NewJSONRPCClientWithHTTPClient(remote, client)
+	rc, err := jsonrpcclient.NewWithHTTPClient(remote, client)
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ type WSEvents struct {
 	cdc      *amino.Codec
 	remote   string
 	endpoint string
-	ws       *rpcclientlib.WSClient
+	ws       *jsonrpcclient.WSClient
 
 	mtx           sync.RWMutex
 	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
@@ -475,7 +475,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
 	var err error
-	w.ws, err = rpcclientlib.NewWSClient(w.remote, w.endpoint, rpcclientlib.OnReconnect(func() {
+	w.ws, err = jsonrpcclient.NewWS(w.remote, w.endpoint, jsonrpcclient.OnReconnect(func() {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))

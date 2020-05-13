@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -87,21 +87,21 @@ type HTTPClient interface {
 	SetCodec(*amino.Codec)
 }
 
-// JSONRPCCaller implementers can facilitate calling the JSON-RPC endpoint.
-type JSONRPCCaller interface {
+// Caller implementers can facilitate calling the JSON-RPC endpoint.
+type Caller interface {
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
 }
 
 //-------------------------------------------------------------
 
-// JSONRPCClient is a JSON-RPC client, which sends POST HTTP requests to the
+// Client is a JSON-RPC client, which sends POST HTTP requests to the
 // remote server.
 //
 // Request values are amino encoded. Response is expected to be amino encoded.
 // New amino codec is used if no other codec was set using SetCodec.
 //
-// JSONRPCClient is safe for concurrent use by multiple goroutines.
-type JSONRPCClient struct {
+// Client is safe for concurrent use by multiple goroutines.
+type Client struct {
 	address  string
 	username string
 	password string
@@ -113,27 +113,27 @@ type JSONRPCClient struct {
 	nextReqID int
 }
 
-var _ HTTPClient = (*JSONRPCClient)(nil)
+var _ HTTPClient = (*Client)(nil)
 
-// Both JSONRPCClient and JSONRPCRequestBatch can facilitate calls to the JSON
+// Both Client and RequestBatch can facilitate calls to the JSON
 // RPC endpoint.
-var _ JSONRPCCaller = (*JSONRPCClient)(nil)
-var _ JSONRPCCaller = (*JSONRPCRequestBatch)(nil)
+var _ Caller = (*Client)(nil)
+var _ Caller = (*RequestBatch)(nil)
 
-// NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
+// New returns a Client pointed at the given address.
 // An error is returned on invalid remote. The function panics when remote is nil.
-func NewJSONRPCClient(remote string) (*JSONRPCClient, error) {
+func New(remote string) (*Client, error) {
 	httpClient, err := DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
-	return NewJSONRPCClientWithHTTPClient(remote, httpClient)
+	return NewWithHTTPClient(remote, httpClient)
 }
 
-// NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given
+// NewWithHTTPClient returns a Client pointed at the given
 // address using a custom http client. An error is returned on invalid remote.
 // The function panics when remote is nil.
-func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) (*JSONRPCClient, error) {
+func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 	if client == nil {
 		panic("nil http.Client provided")
 	}
@@ -149,7 +149,7 @@ func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) (*JSONRP
 	username := parsedURL.User.Username()
 	password, _ := parsedURL.User.Password()
 
-	rpcClient := &JSONRPCClient{
+	rpcClient := &Client{
 		address:  address,
 		username: username,
 		password: password,
@@ -162,7 +162,7 @@ func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) (*JSONRP
 
 // Call issues a POST HTTP request. Requests are JSON encoded. Content-Type:
 // text/json.
-func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *Client) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	id := c.nextRequestID()
 
 	request, err := types.MapToRequest(c.cdc, id, method, params)
@@ -198,18 +198,18 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	return unmarshalResponseBytes(c.cdc, responseBytes, id, result)
 }
 
-func (c *JSONRPCClient) Codec() *amino.Codec       { return c.cdc }
-func (c *JSONRPCClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
+func (c *Client) Codec() *amino.Codec       { return c.cdc }
+func (c *Client) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
 // NewRequestBatch starts a batch of requests for this client.
-func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
-	return &JSONRPCRequestBatch{
+func (c *Client) NewRequestBatch() *RequestBatch {
+	return &RequestBatch{
 		requests: make([]*jsonRPCBufferedRequest, 0),
 		client:   c,
 	}
 }
 
-func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
+func (c *Client) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
 	reqs := make([]types.RPCRequest, 0, len(requests))
 	results := make([]interface{}, 0, len(requests))
 	for _, req := range requests {
@@ -251,7 +251,7 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	return unmarshalResponseBytesArray(c.cdc, responseBytes, ids, results)
 }
 
-func (c *JSONRPCClient) nextRequestID() types.JSONRPCIntID {
+func (c *Client) nextRequestID() types.JSONRPCIntID {
 	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
@@ -268,37 +268,37 @@ type jsonRPCBufferedRequest struct {
 	result  interface{} // The result will be deserialized into this object.
 }
 
-// JSONRPCRequestBatch allows us to buffer multiple request/response structures
+// RequestBatch allows us to buffer multiple request/response structures
 // into a single batch request. Note that this batch acts like a FIFO queue, and
 // is thread-safe.
-type JSONRPCRequestBatch struct {
-	client *JSONRPCClient
+type RequestBatch struct {
+	client *Client
 
 	mtx      sync.Mutex
 	requests []*jsonRPCBufferedRequest
 }
 
 // Count returns the number of enqueued requests waiting to be sent.
-func (b *JSONRPCRequestBatch) Count() int {
+func (b *RequestBatch) Count() int {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	return len(b.requests)
 }
 
-func (b *JSONRPCRequestBatch) enqueue(req *jsonRPCBufferedRequest) {
+func (b *RequestBatch) enqueue(req *jsonRPCBufferedRequest) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	b.requests = append(b.requests, req)
 }
 
 // Clear empties out the request batch.
-func (b *JSONRPCRequestBatch) Clear() int {
+func (b *RequestBatch) Clear() int {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	return b.clear()
 }
 
-func (b *JSONRPCRequestBatch) clear() int {
+func (b *RequestBatch) clear() int {
 	count := len(b.requests)
 	b.requests = make([]*jsonRPCBufferedRequest, 0)
 	return count
@@ -307,7 +307,7 @@ func (b *JSONRPCRequestBatch) clear() int {
 // Send will attempt to send the current batch of enqueued requests, and then
 // will clear out the requests once done. On success, this returns the
 // deserialized list of results from each of the enqueued requests.
-func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
+func (b *RequestBatch) Send() ([]interface{}, error) {
 	b.mtx.Lock()
 	defer func() {
 		b.clear()
@@ -317,8 +317,8 @@ func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
 }
 
 // Call enqueues a request to call the given RPC method with the specified
-// parameters, in the same way that the `JSONRPCClient.Call` function would.
-func (b *JSONRPCRequestBatch) Call(
+// parameters, in the same way that the `Client.Call` function would.
+func (b *RequestBatch) Call(
 	method string,
 	params map[string]interface{},
 	result interface{},

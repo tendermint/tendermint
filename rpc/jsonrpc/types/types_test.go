@@ -1,4 +1,4 @@
-package rpctypes
+package types
 
 import (
 	"encoding/json"
