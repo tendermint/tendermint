@@ -19,7 +19,7 @@ import (
 	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
 // LiteCmd represents the base command when called without any subcommands

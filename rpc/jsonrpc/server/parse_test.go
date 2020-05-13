@@ -1,4 +1,4 @@
-package rpcserver
+package server
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestParseJSONMap(t *testing.T) {

@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -81,11 +81,11 @@ type WSClient struct { // nolint: maligned
 	PingPongLatencyTimer metrics.Timer
 }
 
-// NewWSClient returns a new client. See the commentary on the func(*WSClient)
+// NewWS returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
 // An error is returned on invalid remote. The function panics when remote is nil.
-func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
+func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
 	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		return nil, err
