@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func unmarshalResponseBytes(

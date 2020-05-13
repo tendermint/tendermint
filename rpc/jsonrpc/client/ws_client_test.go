@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var wsCallTimeout = 5 * time.Second
@@ -201,7 +201,7 @@ func TestNotBlockingOnStop(t *testing.T) {
 }
 
 func startClient(t *testing.T, addr string) *WSClient {
-	c, err := NewWSClient(addr, "/websocket")
+	c, err := NewWS(addr, "/websocket")
 	require.Nil(t, err)
 	err = c.Start()
 	require.Nil(t, err)

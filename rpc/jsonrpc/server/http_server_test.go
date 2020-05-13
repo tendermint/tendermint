@@ -1,4 +1,4 @@
-package rpcserver
+package server
 
 import (
 	"crypto/tls"
@@ -37,7 +37,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	l, err := Listen("tcp://127.0.0.1:0", config)
 	require.NoError(t, err)
 	defer l.Close()
-	go StartHTTPServer(l, mux, log.TestingLogger(), config)
+	go Serve(l, mux, log.TestingLogger(), config)
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -67,7 +67,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	}
 }
 
-func TestStartHTTPAndTLSServer(t *testing.T) {
+func TestServeTLS(t *testing.T) {
 	ln, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 	defer ln.Close()
@@ -77,7 +77,7 @@ func TestStartHTTPAndTLSServer(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 
-	go StartHTTPAndTLSServer(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+	go ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
