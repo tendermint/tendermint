@@ -82,4 +82,4 @@
 // Examples
 //
 // - [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-package rpc
+package jsonrpc

@@ -1,4 +1,4 @@
-package rpcclient
+package client
 
 import (
 	"encoding/json"

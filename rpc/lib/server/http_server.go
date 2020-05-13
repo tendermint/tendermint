@@ -1,5 +1,5 @@
 // Commons for HTTP handling
-package rpcserver
+package server
 
 import (
 	"bufio"
