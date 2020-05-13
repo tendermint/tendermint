@@ -1,5 +1,5 @@
 // Commons for HTTP handling
-package rpcserver
+package server
 
 import (
 	"bufio"
@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Config is a RPC server configuration.
@@ -45,10 +45,12 @@ func DefaultConfig() *Config {
 	}
 }
 
-// StartHTTPServer takes a listener and starts an HTTP server with the given handler.
-// It wraps handler with RecoverAndLogHandler.
+// Serve creates a http.Server and calls Serve with the given listener. It
+// wraps handler with RecoverAndLogHandler and a handler, which limits the max
+// body size to config.MaxBodyBytes.
+//
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
+func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
@@ -61,10 +63,12 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 	return err
 }
 
-// StartHTTPAndTLSServer takes a listener and starts an HTTPS server with the given handler.
-// It wraps handler with RecoverAndLogHandler.
+// Serve creates a http.Server and calls ServeTLS with the given listener,
+// certFile and keyFile. It wraps handler with RecoverAndLogHandler and a
+// handler, which limits the max body size to config.MaxBodyBytes.
+//
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func StartHTTPAndTLSServer(
+func ServeTLS(
 	listener net.Listener,
 	handler http.Handler,
 	certFile, keyFile string,
@@ -141,7 +145,7 @@ func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap the ResponseWriter to remember the status
-		rww := &ResponseWriterWrapper{-1, w}
+		rww := &responseWriterWrapper{-1, w}
 		begin := time.Now()
 
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
@@ -211,18 +215,18 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 }
 
 // Remember the status for logging
-type ResponseWriterWrapper struct {
+type responseWriterWrapper struct {
 	Status int
 	http.ResponseWriter
 }
 
-func (w *ResponseWriterWrapper) WriteHeader(status int) {
+func (w *responseWriterWrapper) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
 }
 
 // implements http.Hijacker
-func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
