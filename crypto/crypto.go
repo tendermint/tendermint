@@ -24,6 +24,8 @@ type PubKey interface {
 	Bytes() []byte
 	VerifyBytes(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
+	String() string
+	Type() string
 }
 
 type PrivKey interface {
@@ -31,6 +33,7 @@ type PrivKey interface {
 	Sign(msg []byte) ([]byte, error)
 	PubKey() PubKey
 	Equals(PrivKey) bool
+	Type() string
 }
 
 type Symmetric interface {

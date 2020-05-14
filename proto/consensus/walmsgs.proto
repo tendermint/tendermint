@@ -38,5 +38,5 @@ message WALMessage {
 // TimedWALMessage wraps WALMessage and adds Time for debugging purposes.
 message TimedWALMessage {
   google.protobuf.Timestamp time = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  WALMessage                Msg  = 2;
+  WALMessage                msg  = 2;
 }

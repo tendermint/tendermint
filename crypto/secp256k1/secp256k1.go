@@ -42,6 +42,10 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
+func (privKey PrivKey) Type() string {
+	return "secp256k1"
+}
+
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
 // It uses OS randomness to generate the private key.
 func GenPrivKey() PrivKey {
@@ -138,6 +142,10 @@ func (pubKey PubKey) Bytes() []byte {
 
 func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeySecp256k1{%X}", []byte(pubKey))
+}
+
+func (pubKey PubKey) Type() string {
+	return "secp256k1"
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {

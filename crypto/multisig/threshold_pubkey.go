@@ -1,6 +1,8 @@
 package multisig
 
 import (
+	"strings"
+
 	"github.com/tendermint/tendermint/crypto"
 )
 
@@ -93,4 +95,17 @@ func (pk PubKey) Equals(other crypto.PubKey) bool {
 		}
 	}
 	return true
+}
+
+func (pk PubKey) String() string {
+	keys := make([]string, len(pk.PubKeys))
+	for i := 0; i < len(pk.PubKeys); i++ {
+		keys[i] = pk.PubKeys[i].String()
+	}
+
+	return strings.Join(keys, ", ")
+}
+
+func (pk PubKey) Type() string {
+	return PubKeyAminoRoute
 }

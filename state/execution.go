@@ -7,9 +7,11 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -99,9 +101,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 
-	// Fetch a limited amount of valid evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBytes)
-	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
+	evidence := blockExec.evpool.PendingEvidence(state.ConsensusParams.Evidence.MaxNum)
 
 	// Fetch a limited amount of valid txs
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
@@ -253,11 +253,13 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-) (*ABCIResponses, error) {
+) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-	abciResponses := NewABCIResponses(block)
+	abciResponses := new(tmstate.ABCIResponses)
+	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
+	abciResponses.DeliverTxs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -374,10 +376,14 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
-		thisKeyType := valUpdate.PubKey.Type
-		if !types.IsValidPubkeyType(params, thisKeyType) {
+		pk, err := cryptoencoding.PubKeyFromProto(valUpdate.PubKey)
+		if err != nil {
+			return err
+		}
+
+		if !types.IsValidPubkeyType(params, pk.Type()) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, thisKeyType)
+				valUpdate, pk.Type())
 		}
 	}
 	return nil
@@ -388,7 +394,7 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -441,7 +447,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
+		LastResultsHash:                  ABCIResponsesResultsHash(*abciResponses),
 		AppHash:                          nil,
 	}, nil
 }
@@ -453,7 +459,7 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	eventBus.PublishEventNewBlock(types.EventDataNewBlock{

@@ -680,10 +680,6 @@ func NewNode(config *cfg.Config,
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
 	}
-	// Don't check fastSync == true, since the v2 reactor has a bug where it fast syncs regardless.
-	if stateSync && config.FastSync.Version == "v2" {
-		return nil, errors.New("state sync is not supported with blockchain v2 reactor")
-	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
@@ -876,7 +872,10 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	if n.config.Mempool.WalEnabled() {
-		n.mempool.InitWAL() // no need to have the mempool wal during tests
+		err = n.mempool.InitWAL()
+		if err != nil {
+			return fmt.Errorf("init mempool WAL: %w", err)
+		}
 	}
 
 	// Start the switch (the P2P server).
@@ -1306,15 +1305,27 @@ func createAndStartPrivValidatorSocketClient(
 ) (types.PrivValidator, error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	pvsc, err := privval.NewSignerClient(pve)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start private validator")
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	return pvsc, nil
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	const (
+		retries = 50 // 50 * 100ms = 5s total
+		timeout = 100 * time.Millisecond
+	)
+	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+
+	return pvscWithRetries, nil
 }
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a

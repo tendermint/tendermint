@@ -11,6 +11,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -114,7 +115,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
-	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+	peer.Send(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 }
 
 // RemovePeer removes a peer from the pool.
@@ -289,17 +290,17 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 		return fmt.Errorf("failed to offer snapshot: %w", err)
 	}
 	switch resp.Result {
-	case abci.ResponseOfferSnapshot_accept:
+	case abci.ResponseOfferSnapshot_ACCEPT:
 		s.logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
 			"format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
 		return nil
-	case abci.ResponseOfferSnapshot_abort:
+	case abci.ResponseOfferSnapshot_ABORT:
 		return errAbort
-	case abci.ResponseOfferSnapshot_reject:
+	case abci.ResponseOfferSnapshot_REJECT:
 		return errRejectSnapshot
-	case abci.ResponseOfferSnapshot_reject_format:
+	case abci.ResponseOfferSnapshot_REJECT_FORMAT:
 		return errRejectFormat
-	case abci.ResponseOfferSnapshot_reject_sender:
+	case abci.ResponseOfferSnapshot_REJECT_SENDER:
 		return errRejectSender
 	default:
 		return fmt.Errorf("invalid ResponseOfferSnapshot result %v", resp.Result)
@@ -348,14 +349,14 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 		}
 
 		switch resp.Result {
-		case abci.ResponseApplySnapshotChunk_accept:
-		case abci.ResponseApplySnapshotChunk_abort:
+		case abci.ResponseApplySnapshotChunk_ACCEPT:
+		case abci.ResponseApplySnapshotChunk_ABORT:
 			return errAbort
-		case abci.ResponseApplySnapshotChunk_retry:
+		case abci.ResponseApplySnapshotChunk_RETRY:
 			chunks.Retry(chunk.Index)
-		case abci.ResponseApplySnapshotChunk_retry_snapshot:
+		case abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT:
 			return errRetrySnapshot
-		case abci.ResponseApplySnapshotChunk_reject_snapshot:
+		case abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT:
 			return errRejectSnapshot
 		default:
 			return fmt.Errorf("unknown ResponseApplySnapshotChunk result %v", resp.Result)
@@ -410,7 +411,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
+	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
 		Height: snapshot.Height,
 		Format: snapshot.Format,
 		Index:  chunk,

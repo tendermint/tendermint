@@ -21,6 +21,13 @@ message MockEvidence {
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes evidence_address = 3;
 }
+message MockRandomEvidence {
+  int64                     evidence_height = 1;
+  google.protobuf.Timestamp evidence_time   = 2
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes evidence_address = 3;
+  bytes rand_bytes       = 4;
+}
 
 message ConflictingHeadersEvidence {
   SignedHeader h1 = 1;
@@ -39,6 +46,7 @@ message Evidence {
     ConflictingHeadersEvidence conflicting_headers_evidence = 2;
     LunaticValidatorEvidence   lunatic_validator_evidence   = 3;
     MockEvidence               mock_evidence                = 4;
+    MockRandomEvidence         mock_random_evidence         = 5;
   }
 }
 

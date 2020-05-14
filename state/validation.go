@@ -39,7 +39,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.Height,
 		)
 	}
-
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
@@ -87,12 +86,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return errors.New("block at height 1 can't have LastCommit signatures")
 		}
 	} else {
-		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
-			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
-		}
-		err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
-		if err != nil {
+		// LastCommit.Signatures length is checked in VerifyCommit.
+		if err := state.LastValidators.VerifyCommit(
+			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
@@ -105,7 +101,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				state.LastBlockTime,
 			)
 		}
-
 		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
 			return fmt.Errorf("invalid block time. Expected %v, got %v",
@@ -124,11 +119,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Limit the amount of evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(state.ConsensusParams.Block.MaxBytes)
-	numEvidence := int64(len(block.Evidence.Evidence))
-	if numEvidence > maxNumEvidence {
-		return types.NewErrEvidenceOverflow(maxNumEvidence, numEvidence)
-
+	numEvidence := len(block.Evidence.Evidence)
+	// MaxNumEvidence is capped at uint16, so conversion is always safe.
+	if maxEvidence := int(state.ConsensusParams.Evidence.MaxNum); numEvidence > maxEvidence {
+		return types.NewErrEvidenceOverflow(maxEvidence, numEvidence)
 	}
 
 	// Validate all evidence.
@@ -149,9 +143,14 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize ||
-		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
+	if len(block.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ProposerAddress size %d, got %d",
+			crypto.AddressSize,
+			len(block.ProposerAddress),
+		)
+	}
+	if !state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
 			block.ProposerAddress,
 		)
 	}
@@ -182,7 +181,6 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-
 	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err

@@ -400,28 +400,30 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes  int64
-		valsCount int
-		panics    bool
-		result    int64
+		maxBytes    int64
+		maxEvidence uint32
+		valsCount   int
+		panics      bool
+		result      int64
 	}{
-		0: {-10, 1, true, 0},
-		1: {10, 1, true, 0},
-		2: {943, 1, true, 0},
-		3: {944, 1, false, 0},
-		4: {945, 1, false, 1},
+		0: {-10, 0, 1, true, 0},
+		1: {10, 0, 1, true, 0},
+		2: {841, 0, 1, true, 0},
+		3: {850, 0, 1, false, 0},
+		4: {1286, 1, 1, false, 0},
+		5: {1287, 1, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
 				"#%v", i)
 		}
 	}
@@ -773,8 +775,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoBlockID := tc.bid1.ToProto()
 
-		bi := new(BlockID)
-		err := bi.FromProto(&protoBlockID)
+		bi, err := BlockIDFromProto(&protoBlockID)
 		if tc.expPass {
 			require.NoError(t, err)
 			require.Equal(t, tc.bid1, bi, tc.msg)

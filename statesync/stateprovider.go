@@ -14,6 +14,7 @@ import (
 	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	literpc "github.com/tendermint/tendermint/lite2/rpc"
 	litedb "github.com/tendermint/tendermint/lite2/store/db"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -36,14 +37,14 @@ type StateProvider interface {
 type lightClientStateProvider struct {
 	sync.Mutex // lite.Client is not concurrency-safe
 	lc         *lite.Client
-	version    sm.Version
+	version    tmstate.Version
 	providers  map[liteprovider.Provider]string
 }
 
 // NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
 func NewLightClientStateProvider(
 	chainID string,
-	version sm.Version,
+	version tmstate.Version,
 	servers []string,
 	trustOptions lite.TrustOptions,
 	logger log.Logger,

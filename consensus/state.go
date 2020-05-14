@@ -1095,7 +1095,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		logger.Info("enterPrevote: Block was locked")
+		logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
 		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}

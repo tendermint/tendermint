@@ -19,12 +19,12 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes        int64 = 436
-	ValidatorsHashField           = "ValidatorsHash"
-	NextValidatorsHashField       = "NextValidatorsHash"
-	ConsensusHashField            = "ConsensusHash"
-	AppHashField                  = "AppHash"
-	LastResultsHashField          = "LastResultsHash"
+	MaxEvidenceBytes        int64  = 436
+	ValidatorsHashField     string = "ValidatorsHash"
+	NextValidatorsHashField string = "NextValidatorsHash"
+	ConsensusHashField      string = "ConsensusHash"
+	AppHashField            string = "AppHash"
+	LastResultsHashField    string = "LastResultsHash"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -45,12 +45,12 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
 type ErrEvidenceOverflow struct {
-	MaxNum int64
-	GotNum int64
+	MaxNum int
+	GotNum int
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
 	return &ErrEvidenceOverflow{max, got}
 }
 
@@ -93,10 +93,6 @@ func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockEvidence{}, "tendermint/MockEvidence", nil)
 	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
 }
-
-const (
-	MaxEvidenceBytesDenominator = 10
-)
 
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	switch evi := evidence.(type) {
@@ -146,6 +142,18 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 					EvidenceHeight:  evi.Height(),
 					EvidenceTime:    evi.Time(),
 					EvidenceAddress: evi.Address(),
+				},
+			},
+		}
+		return tp, nil
+	case MockRandomEvidence:
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_MockRandomEvidence{
+				MockRandomEvidence: &tmproto.MockRandomEvidence{
+					EvidenceHeight:  evi.Height(),
+					EvidenceTime:    evi.Time(),
+					EvidenceAddress: evi.Address(),
+					RandBytes:       evi.randBytes,
 				},
 			},
 		}
@@ -213,20 +221,19 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 			EvidenceTime:    evi.MockEvidence.GetEvidenceTime(),
 		}
 		return me, nil
+	case *tmproto.Evidence_MockRandomEvidence:
+		mre := MockRandomEvidence{
+			MockEvidence: MockEvidence{
+				EvidenceHeight:  evi.MockRandomEvidence.GetEvidenceHeight(),
+				EvidenceAddress: evi.MockRandomEvidence.GetEvidenceAddress(),
+				EvidenceTime:    evi.MockRandomEvidence.GetEvidenceTime(),
+			},
+			randBytes: evi.MockRandomEvidence.RandBytes,
+		}
+		return mre, nil
 	default:
 		return nil, errors.New("evidence is not recognized")
 	}
-}
-
-// MaxEvidencePerBlock returns the maximum number of evidences
-// allowed in the block and their maximum total size (limitted to 1/10th
-// of the maximum block size).
-// TODO: change to a constant, or to a fraction of the validator set size.
-// See https://github.com/tendermint/tendermint/issues/2590
-func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
-	maxBytes := blockMaxBytes / MaxEvidenceBytesDenominator
-	maxNum := maxBytes / MaxEvidenceBytes
-	return maxNum, maxBytes
 }
 
 //-------------------------------------------
@@ -624,8 +631,6 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 	// trusted validator set.
 	if err := valSet.VerifyCommitTrusting(
 		alternativeHeader.ChainID,
-		alternativeHeader.Commit.BlockID,
-		alternativeHeader.Height,
 		alternativeHeader.Commit,
 		tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
 		return errors.Wrap(err, "alt header does not have 1/3+ of voting power of our validator set")

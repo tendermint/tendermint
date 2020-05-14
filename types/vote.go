@@ -195,16 +195,16 @@ func (vote *Vote) FromProto(pv *tmproto.Vote) error {
 	if pv == nil {
 		return errors.New("nil vote")
 	}
-	var blockID BlockID
 
-	if err := blockID.FromProto(&pv.BlockID); err != nil {
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
 		return err
 	}
 
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
-	vote.BlockID = blockID
+	vote.BlockID = *blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex

@@ -37,7 +37,7 @@ type Mempool interface {
 
 	// Update informs the mempool that the given txs were committed and can be discarded.
 	// NOTE: this should be called *after* block is committed by consensus.
-	// NOTE: unsafe; Lock/Unlock must be managed by caller
+	// NOTE: Lock/Unlock must be managed by caller
 	Update(
 		blockHeight int64,
 		blockTxs types.Txs,
@@ -48,6 +48,7 @@ type Mempool interface {
 
 	// FlushAppConn flushes the mempool connection to ensure async reqResCb calls are
 	// done. E.g. from CheckTx.
+	// NOTE: Lock/Unlock must be managed by caller
 	FlushAppConn() error
 
 	// Flush removes all transactions from the mempool and cache
@@ -68,8 +69,9 @@ type Mempool interface {
 	// TxsBytes returns the total size of all txs in the mempool.
 	TxsBytes() int64
 
-	// InitWAL creates a directory for the WAL file and opens a file itself.
-	InitWAL()
+	// InitWAL creates a directory for the WAL file and opens a file itself. If
+	// there is an error, it will be of type *PathError.
+	InitWAL() error
 
 	// CloseWAL closes and discards the underlying WAL file.
 	// Any further writes will not be relayed to disk.
