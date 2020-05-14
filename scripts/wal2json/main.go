@@ -12,19 +12,10 @@ import (
 	"io"
 	"os"
 
-	amino "github.com/tendermint/go-amino"
-
 	cs "github.com/tendermint/tendermint/consensus"
 	tmencode "github.com/tendermint/tendermint/libs/encode"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
-	"github.com/tendermint/tendermint/types"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	types.RegisterBlockAmino(cdc)
-}
 
 func main() {
 	if len(os.Args) < 2 {
