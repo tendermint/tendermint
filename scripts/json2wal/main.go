@@ -9,24 +9,18 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
-	amino "github.com/tendermint/go-amino"
 
 	cs "github.com/tendermint/tendermint/consensus"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
 	"github.com/tendermint/tendermint/types"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	types.RegisterBlockAmino(cdc)
-}
 
 func main() {
 	if len(os.Args) < 3 {
@@ -65,7 +59,7 @@ func main() {
 		}
 
 		var tWalMsg tmcons.TimedWALMessage
-		if err := jsonpb.Unmarshal(strings.NewReader(string(msgJSON)), &tWalMsg); err != nil {
+		if err := jsonpb.Unmarshal(bytes.NewReader(msgJSON), &tWalMsg); err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}
 
