@@ -59,6 +59,8 @@ func (sc *SignerClient) Ping() error {
 		return nil
 	}
 
+	fmt.Println(response.String())
+
 	_, ok := response.(*privvalproto.PingResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")

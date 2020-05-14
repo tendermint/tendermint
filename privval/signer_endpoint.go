@@ -2,16 +2,16 @@ package privval
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 	"sync"
 	"time"
 
+	protoio "github.com/gogo/protobuf/io"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 )
 
 const (
@@ -99,14 +99,10 @@ func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 		return
 	}
 
-	const maxRemoteSignerMsgSize = 1024 * 10
-	rl := io.LimitReader(se.conn, maxRemoteSignerMsgSize)
-	bz, err := ioutil.ReadAll(rl)
-	if err != nil {
-		return nil, err
-	}
+	protoReader := protoio.NewDelimitedReader(se.conn, 1024*10)
 
-	msg, err = DecodeMsg(bz)
+	var pmsg privvalproto.Message
+	err = protoReader.ReadMsg(&pmsg) //todo there seems to be nothing to read
 
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
@@ -118,6 +114,8 @@ func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}
+
+	msg = mustUnwrapMsg(pmsg)
 
 	return
 }
@@ -131,18 +129,15 @@ func (se *signerEndpoint) WriteMessage(msg proto.Message) (err error) {
 		return errors.Wrap(ErrNoConnection, "endpoint is not connected")
 	}
 
+	protoWriter := protoio.NewDelimitedWriter(se.conn)
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
 	err = se.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		return
 	}
-	bz, err := EncodeMsg(msg)
-	if err != nil {
-		return err
-	}
 
-	_, err = se.conn.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapMsg(msg))
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrWriteTimeout, err.Error())
