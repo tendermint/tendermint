@@ -76,6 +76,14 @@ type EvidenceParams struct {
 	// each evidence (See MaxEvidenceBytes). The maximum number is MaxEvidencePerBlock.
 	// Default is 50
 	MaxNum uint32 `json:"max_num"`
+
+	// This defines the amount of blocks that a node will wait for proof associated with
+	// a particular evidence before it can be proposed. This corresponds with AmensiaEvidence
+	// in which a node must prove a correct lock change within this amount of blocks.
+	//
+	// Must ne greater than zero and less than MaxAgeNumBlocks
+	// Default is set to half MaxAgeNumBlocks = 50000
+	ProofTrialPeriod int64 `json:"proof_trial_period"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -105,9 +113,10 @@ func DefaultBlockParams() BlockParams {
 // DefaultEvidenceParams returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
-		MaxAgeDuration:  48 * time.Hour,
-		MaxNum:          50,
+		MaxAgeNumBlocks:  100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:   48 * time.Hour,
+		MaxNum:           50,
+		ProofTrialPeriod: 50000, // half MaxAgeNumBlocks
 	}
 }
 
@@ -166,6 +175,16 @@ func (params *ConsensusParams) Validate() error {
 	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
 		return errors.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
 			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
+	}
+
+	if params.Evidence.ProofTrialPeriod <= 0 {
+		return errors.Errorf("evidenceParams.ProofTrialPeriod must be grater than 0 if provided, Got %v",
+			params.Evidence.ProofTrialPeriod)
+	}
+
+	if params.Evidence.ProofTrialPeriod >= params.Evidence.MaxAgeNumBlocks {
+		return errors.Errorf("evidenceParams.ProofTrialPeriod must be smaller than evidenceParams.MaxAgeNumBlocks,  %d > %d",
+			params.Evidence.ProofTrialPeriod, params.Evidence.MaxAgeDuration)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {

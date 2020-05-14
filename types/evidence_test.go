@@ -20,26 +20,6 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
-) *Vote {
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	v := &Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             SignedMsgType(step),
-		BlockID:          blockID,
-	}
-	err = val.SignVote(chainID, v)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
 func TestEvidence(t *testing.T) {
 	val := NewMockPV()
 	val2 := NewMockPV()
@@ -365,8 +345,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	)
 
 	ev := &PotentialAmnesiaEvidence{
-		VoteA: vote2,
-		VoteB: vote1,
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 
 	assert.Equal(t, height, ev.Height())
@@ -441,6 +421,80 @@ func TestProofOfLockChange(t *testing.T) {
 		}
 	}
 
+}
+
+func TestAmnesiaEvidence(t *testing.T) {
+	const (
+		chainID       = "TestPotentialAmnesiaEvidence"
+		height  int64 = 37
+	)
+
+	var (
+		voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+		val                                 = privValidators[7]
+		pubKey, _                           = val.GetPubKey()
+		blockID2                            = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		vote1                               = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
+		vote2                               = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID, time.Now().Add(time.Second))
+		polc                                = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	)
+	require.False(t, polc.IsAbsent())
+	t.Log(vote2.Timestamp)
+	//vote2.Timestamp = polc.Time().Add(time.Millisecond)
+
+	pe := PotentialAmnesiaEvidence{
+		VoteA: vote1,
+		VoteB: vote2,
+	}
+
+	emptyAmnesiaEvidence := MakeAmnesiaEvidence(pe, EmptyPOLC())
+
+	assert.NoError(t, emptyAmnesiaEvidence.ValidateBasic())
+	violated, reason := emptyAmnesiaEvidence.ViolatedConsensus()
+	if assert.True(t, violated) {
+		assert.Equal(t, reason, "no proof of lock was provided")
+	}
+	assert.NoError(t, emptyAmnesiaEvidence.Verify(chainID, pubKey))
+
+	completeAmnesiaEvidence := MakeAmnesiaEvidence(pe, polc)
+
+	assert.NoError(t, completeAmnesiaEvidence.ValidateBasic())
+	violated, reason = completeAmnesiaEvidence.ViolatedConsensus()
+	if !assert.False(t, violated) {
+		t.Log(reason)
+	}
+	assert.NoError(t, completeAmnesiaEvidence.Verify(chainID, pubKey))
+
+	assert.True(t, completeAmnesiaEvidence.Equal(emptyAmnesiaEvidence))
+	assert.NotEmpty(t, completeAmnesiaEvidence.Hash())
+	assert.NotEmpty(t, completeAmnesiaEvidence.Bytes())
+
+}
+
+func makeVoteWithTimestamp(
+	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID, time time.Time,
+) *Vote {
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	v := &Vote{
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIndex,
+		Height:           height,
+		Round:            round,
+		Type:             SignedMsgType(step),
+		BlockID:          blockID,
+		Timestamp:        time,
+	}
+	err = val.SignVote(chainID, v)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
+) *Vote {
+	return makeVoteWithTimestamp(t, val, chainID, valIndex, height, round, step, blockID, time.Now())
 }
 
 func makeHeaderRandom() *Header {

@@ -410,10 +410,26 @@ OUTER_LOOP:
 				} else {
 					// if H1.Round != H2.Round we need to run full detection procedure => not
 					// immediately slashable.
-					evList = append(evList, &PotentialAmnesiaEvidence{
-						VoteA: ev.H1.Commit.GetVote(i),
-						VoteB: ev.H2.Commit.GetVote(j),
-					})
+					firstVote := ev.H1.Commit.GetVote(i)
+					secondVote := ev.H2.Commit.GetVote(j)
+					var newEv PotentialAmnesiaEvidence
+					if firstVote.Timestamp.Before(secondVote.Timestamp) {
+						newEv = PotentialAmnesiaEvidence{
+							VoteA: firstVote,
+							VoteB: secondVote,
+						}
+					} else {
+						newEv = PotentialAmnesiaEvidence{
+							VoteA: secondVote,
+							VoteB: firstVote,
+						}
+					}
+					// has the validator incorrectly voted for a previous round
+					if newEv.VoteA.Round > newEv.VoteB.Round {
+						evList = append(evList, MakeAmnesiaEvidence(newEv, EmptyPOLC()))
+					} else {
+						evList = append(evList, newEv)
+					}
 				}
 
 				i++
@@ -779,9 +795,15 @@ func (e LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
 
 //-------------------------------------------
 
+// PotentialAmnesiaEvidence is constructed when a validator votes on two different blocks at different rounds
+// in the same height. PotentialAmnesiaEvidence can then evolve into AmensiaEvidence if the indicted validator
+// is incapable of providing the proof of lock change that validates voting twice in the allotted trial period.
+// Timestamp is used for each node to keep a track of how much time has passed.
 type PotentialAmnesiaEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
+
+	HeightStamp int64
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
@@ -829,9 +851,9 @@ func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
 	switch e2 := ev.(type) {
 	case PotentialAmnesiaEvidence:
-		return bytes.Equal(e.Hash(), e2.Hash())
+		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round && bytes.Equal(e.Address(), e2.Address())
 	case *PotentialAmnesiaEvidence:
-		return bytes.Equal(e.Hash(), e2.Hash())
+		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round && bytes.Equal(e.Address(), e2.Address())
 	default:
 		return false
 	}
@@ -927,6 +949,13 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 	return ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
+	}
+}
+
+func EmptyPOLC() ProofOfLockChange {
+	return ProofOfLockChange{
+		nil,
+		nil,
 	}
 }
 
@@ -1037,6 +1066,10 @@ func (e ProofOfLockChange) String() string {
 		e.Votes[0].Round)
 }
 
+func (e ProofOfLockChange) IsAbsent() bool {
+	return e.Votes == nil && e.PubKey == nil
+}
+
 // AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
 // Tendermint consensus when a validator incorrectly sends a vote in a later round without correctly changing the lock
 type AmnesiaEvidence struct {
@@ -1055,11 +1088,19 @@ func MakeAmnesiaEvidence(pe PotentialAmnesiaEvidence, proof ProofOfLockChange) A
 	}
 }
 
+func (e AmnesiaEvidence) Equal(ev Evidence) bool {
+	e2, ok := ev.(AmnesiaEvidence)
+	if !ok {
+		return false
+	}
+	return e.PotentialAmnesiaEvidence.Equal(e2.PotentialAmnesiaEvidence)
+}
+
 func (e AmnesiaEvidence) ValidateBasic() error {
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid potential amnesia evidence: %w", err)
 	}
-	if !e.polc.Equal(ProofOfLockChange{}) {
+	if !e.polc.IsAbsent() {
 		if err := e.polc.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid proof of lock change: %w", err)
 		}
@@ -1078,6 +1119,10 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 			return fmt.Errorf("POLC must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
 		}
 
+		if e.polc.Time().After(e.PotentialAmnesiaEvidence.VoteB.Timestamp) {
+			return fmt.Errorf("validator voted again before receiving a majority of votes for the new block: %v is after %v",
+				e.polc.Time(), e.PotentialAmnesiaEvidence.VoteB.Timestamp)
+		}
 	}
 	return nil
 }
@@ -1085,33 +1130,18 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 // ViolatedConsensus assess on the basis of the AmensiaEvidence whether the validator has violated the
 // Tendermint consensus. Evidence must be validated first (see ValidateBasic).
 // We are only interested in proving that the latter of the votes in terms of time was correctly done.
-func (e AmnesiaEvidence) ViolatedConsensus() bool {
+func (e AmnesiaEvidence) ViolatedConsensus() (bool, string) {
+	// a validator having voted cannot go back and vote on an earlier round
+	if e.PotentialAmnesiaEvidence.VoteA.Round > e.PotentialAmnesiaEvidence.VoteB.Round {
+		return true, "validator went back and voted on a previous round"
+	}
+
 	// if empty, then no proof was provided to defend the validators actions
-	if e.polc.Equal(ProofOfLockChange{}) {
-		return true
+	if e.polc.IsAbsent() {
+		return true, "no proof of lock was provided"
 	}
 
-	var (
-		earlierVote *Vote
-		laterVote   *Vote
-	)
-	if e.PotentialAmnesiaEvidence.VoteA.Timestamp.Before(e.PotentialAmnesiaEvidence.VoteB.Timestamp) {
-		earlierVote, laterVote = e.PotentialAmnesiaEvidence.VoteA, e.PotentialAmnesiaEvidence.VoteB
-	} else {
-		earlierVote, laterVote = e.PotentialAmnesiaEvidence.VoteB, e.PotentialAmnesiaEvidence.VoteA
-	}
-
-	// the later vote should be of a higher round than the earlier vote
-	if laterVote.Round < earlierVote.Round {
-		return true
-	}
-
-	// the last vote in the proof should have arrived before the validator sent their precommit vote
-	if e.polc.Time().After(laterVote.Timestamp) {
-		return true
-	}
-
-	return false
+	return false, ""
 }
 
 //-----------------------------------------------------------------

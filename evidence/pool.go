@@ -40,6 +40,8 @@ type Pool struct {
 	// currently is (ie. [MaxAgeNumBlocks, CurrentHeight])
 	// In simple words, it means it's still bonded -> therefore slashable.
 	valToLastHeight valToLastHeightMap
+
+	evidenceAwaitingProof []*types.PotentialAmnesiaEvidence
 }
 
 // Validator.Address -> Last height it was in validator set
@@ -120,6 +122,17 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 		evpool.pruneExpiredPOLC()
 	}
 
+	nextPE := evpool.evidenceAwaitingProof[0]
+	if block.Height >= (nextPE.HeightStamp + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod) {
+		err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*nextPE, types.EmptyPOLC()))
+		if err != nil {
+			evpool.logger.Error("Unable to add AmensiaEvidence", "err", err)
+		} else {
+			evpool.removePendingEvidence(nextPE)
+			evpool.evidenceAwaitingProof = evpool.evidenceAwaitingProof[1:]
+		}
+	}
+
 	// update the state
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
@@ -188,26 +201,32 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			header = &blockMeta.Header
 		}
 
-		// For potential amnesia evidence, if this node is indicted it shall search for a polc
-		// to form AmensiaEvidence
-		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
-			height := pe.Height()
-			for round := pe.VoteA.Round + 1; round <= pe.VoteB.Round; round++ {
-				polc, exists := evpool.RetrievePOLC(height, round)
-				if exists {
-					ae := types.MakeAmnesiaEvidence(*pe, polc)
-					err = evpool.AddEvidence(ae)
-					if err != nil {
-						evpool.logger.Error("Unable to add amnesia evidence to pool", "err", err)
-					}
-					break
-				}
-			}
-		}
-
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
+		}
+
+		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
+		// to form AmensiaEvidence
+		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
+			var (
+				height = pe.Height()
+				exists = false
+				polc   types.ProofOfLockChange
+			)
+			for round := pe.VoteA.Round + 1; round <= pe.VoteB.Round; round++ {
+				polc, exists = evpool.RetrievePOLC(height, round)
+				if exists {
+					// we should not need to verify it if both the polc and potential amnesia evidence have already
+					// been verified. We replace the potential amnesia evidence.
+					ev = types.MakeAmnesiaEvidence(*pe, polc)
+					break
+				}
+			}
+			// if we can't find a proof of lock change then we commence the trial period
+			if !exists {
+				evpool.startTrialPeriod(pe)
+			}
 		}
 
 		// 2) Save to store.
@@ -392,6 +411,11 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 		evidence = append(evidence, ev)
 	}
 	return evidence, nil
+}
+
+func (evpool *Pool) startTrialPeriod(pe *types.PotentialAmnesiaEvidence) {
+	pe.HeightStamp = evpool.State().LastBlockHeight
+	evpool.evidenceAwaitingProof = append(evpool.evidenceAwaitingProof, pe)
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
