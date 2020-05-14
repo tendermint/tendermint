@@ -10,7 +10,7 @@ import (
 
 // TODO: Add ChainIDRequest
 
-func EncodeMsg(pb proto.Message) ([]byte, error) {
+func mustWrapMsg(pb proto.Message) *privvalproto.Message {
 	msg := privvalproto.Message{}
 
 	switch pb := pb.(type) {
@@ -34,32 +34,28 @@ func EncodeMsg(pb proto.Message) ([]byte, error) {
 		panic(fmt.Errorf("unknown message type %T", msg))
 	}
 
-	return proto.Marshal(&msg)
+	return &msg
 }
 
-func DecodeMsg(bz []byte) (proto.Message, error) {
-	msg := privvalproto.Message{}
-	proto.Unmarshal(bz, &msg)
+func mustUnwrapMsg(msg privvalproto.Message) proto.Message {
 
 	switch msg := msg.Sum.(type) {
 	case *privvalproto.Message_PubKeyRequest:
-		return msg.PubKeyRequest, nil
+		return msg.PubKeyRequest
 	case *privvalproto.Message_PubKeyResponse:
-		return msg.PubKeyResponse, nil
+		return msg.PubKeyResponse
 	case *privvalproto.Message_SignVoteRequest:
-		return msg.SignVoteRequest, nil
+		return msg.SignVoteRequest
 	case *privvalproto.Message_SignedVoteResponse:
-		return msg.SignedVoteResponse, nil
+		return msg.SignedVoteResponse
 	case *privvalproto.Message_SignProposalRequest:
-		return msg.SignProposalRequest, nil
+		return msg.SignProposalRequest
 	case *privvalproto.Message_SignedProposalResponse:
-		return msg.SignedProposalResponse, nil
+		return msg.SignedProposalResponse
 	case *privvalproto.Message_PingRequest:
-		return msg.PingRequest, nil
+		return msg.PingRequest
 	case *privvalproto.Message_PingResponse:
-		return msg.PingResponse, nil
-	case nil:
-		return nil, nil
+		return msg.PingResponse
 	default:
 		panic(fmt.Errorf("unknown message type %T", msg))
 	}

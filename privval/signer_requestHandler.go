@@ -20,7 +20,9 @@ func DefaultValidationRequestHandler(
 		res proto.Message
 		err error
 	)
-	fmt.Println(req)
+
+	fmt.Println("here", req.String(), chainID)
+
 	switch r := req.(type) {
 	case *privvalproto.PubKeyRequest:
 		var pubKey crypto.PubKey
