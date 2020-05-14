@@ -219,8 +219,8 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Part:   parts,
 		}
 	case *tmcons.Message_Vote:
-		vote := new(types.Vote)
-		if err := vote.FromProto(msg.Vote.Vote); err != nil {
+		vote, err := types.VoteFromProto(msg.Vote.Vote)
+		if err != nil {
 			return nil, fmt.Errorf("vote msg to proto error: %w", err)
 		}
 

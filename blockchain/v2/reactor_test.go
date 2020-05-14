@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sort"
@@ -8,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	dbm "github.com/tendermint/tm-db"
 
@@ -151,7 +151,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		if err != nil {
-			panic(errors.Wrap(err, "error start app"))
+			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
 		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
@@ -494,7 +494,7 @@ func newReactorStore(
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(errors.Wrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	stateDB := dbm.NewMemDB()
@@ -502,7 +502,7 @@ func newReactorStore(
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(errors.Wrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
@@ -538,7 +538,7 @@ func newReactorStore(
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(errors.Wrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

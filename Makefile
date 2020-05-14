@@ -135,15 +135,15 @@ gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
 	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
 	certstrap sign "server" --CA "tendermint.com" --passphrase ""
-	mv out/server.crt rpc/lib/server/test.crt
-	mv out/server.key rpc/lib/server/test.key
+	mv out/server.crt rpc/jsonrpc/server/test.crt
+	mv out/server.key rpc/jsonrpc/server/test.key
 	rm -rf out
 .PHONY: gen_certs
 
 # deletes generated certificates
 clean_certs:
-	rm -f rpc/lib/server/test.crt
-	rm -f rpc/lib/server/test.key
+	rm -f rpc/jsonrpc/server/test.crt
+	rm -f rpc/jsonrpc/server/test.key
 .PHONY: clean_certs
 
 ###############################################################################

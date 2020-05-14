@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -16,7 +14,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey()
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get pubkey")
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
