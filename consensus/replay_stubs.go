@@ -42,8 +42,8 @@ func (emptyMempool) TxsBytes() int64               { return 0 }
 func (emptyMempool) TxsFront() *clist.CElement    { return nil }
 func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
 
-func (emptyMempool) InitWAL()  {}
-func (emptyMempool) CloseWAL() {}
+func (emptyMempool) InitWAL() error { return nil }
+func (emptyMempool) CloseWAL()      {}
 
 //-----------------------------------------------------------------------------
 
@@ -51,11 +51,11 @@ type emptyEvidencePool struct{}
 
 var _ sm.EvidencePool = emptyEvidencePool{}
 
-func (emptyEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
-func (emptyEvidencePool) AddEvidence(types.Evidence) error       { return nil }
-func (emptyEvidencePool) Update(*types.Block, sm.State)          {}
-func (emptyEvidencePool) IsCommitted(types.Evidence) bool        { return false }
-func (emptyEvidencePool) IsPending(types.Evidence) bool          { return false }
+func (emptyEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
+func (emptyEvidencePool) AddEvidence(types.Evidence) error        { return nil }
+func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
+func (emptyEvidencePool) IsCommitted(types.Evidence) bool         { return false }
+func (emptyEvidencePool) IsPending(types.Evidence) bool           { return false }
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
-	"github.com/tendermint/tendermint/types"
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
 )
 
 const (
@@ -14,116 +14,84 @@ const (
 	snapshotMsgSize = int(4e6)
 	// chunkMsgSize is the maximum size of a chunkResponseMessage
 	chunkMsgSize = int(16e6)
-	// maxMsgSize is the maximum size of any message
-	maxMsgSize = chunkMsgSize
 )
 
-var cdc = amino.NewCodec()
-
-func init() {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&snapshotsRequestMessage{}, "tendermint/SnapshotsRequestMessage", nil)
-	cdc.RegisterConcrete(&snapshotsResponseMessage{}, "tendermint/SnapshotsResponseMessage", nil)
-	cdc.RegisterConcrete(&chunkRequestMessage{}, "tendermint/ChunkRequestMessage", nil)
-	cdc.RegisterConcrete(&chunkResponseMessage{}, "tendermint/ChunkResponseMessage", nil)
-	types.RegisterBlockAmino(cdc)
+// mustEncodeMsg encodes a Protobuf message, panicing on error.
+func mustEncodeMsg(pb proto.Message) []byte {
+	msg := ssproto.Message{}
+	switch pb := pb.(type) {
+	case *ssproto.ChunkRequest:
+		msg.Sum = &ssproto.Message_ChunkRequest{ChunkRequest: pb}
+	case *ssproto.ChunkResponse:
+		msg.Sum = &ssproto.Message_ChunkResponse{ChunkResponse: pb}
+	case *ssproto.SnapshotsRequest:
+		msg.Sum = &ssproto.Message_SnapshotsRequest{SnapshotsRequest: pb}
+	case *ssproto.SnapshotsResponse:
+		msg.Sum = &ssproto.Message_SnapshotsResponse{SnapshotsResponse: pb}
+	default:
+		panic(fmt.Errorf("unknown message type %T", pb))
+	}
+	bz, err := proto.Marshal(&msg)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
+	}
+	return bz
 }
 
-// decodeMsg decodes a message.
-func decodeMsg(bz []byte) (Message, error) {
-	if len(bz) > maxMsgSize {
-		return nil, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
-	var msg Message
-	err := cdc.UnmarshalBinaryBare(bz, &msg)
+// decodeMsg decodes a Protobuf message.
+func decodeMsg(bz []byte) (proto.Message, error) {
+	pb := &ssproto.Message{}
+	err := proto.Unmarshal(bz, pb)
 	if err != nil {
 		return nil, err
 	}
-	return msg, nil
+	switch msg := pb.Sum.(type) {
+	case *ssproto.Message_ChunkRequest:
+		return msg.ChunkRequest, nil
+	case *ssproto.Message_ChunkResponse:
+		return msg.ChunkResponse, nil
+	case *ssproto.Message_SnapshotsRequest:
+		return msg.SnapshotsRequest, nil
+	case *ssproto.Message_SnapshotsResponse:
+		return msg.SnapshotsResponse, nil
+	default:
+		return nil, fmt.Errorf("unknown message type %T", msg)
+	}
 }
 
-// Message is a message sent and received by the reactor.
-type Message interface {
-	ValidateBasic() error
-}
-
-// snapshotsRequestMessage requests recent snapshots from a peer.
-type snapshotsRequestMessage struct{}
-
-// ValidateBasic implements Message.
-func (m *snapshotsRequestMessage) ValidateBasic() error {
-	if m == nil {
-		return errors.New("nil message")
+// validateMsg validates a message.
+func validateMsg(pb proto.Message) error {
+	if pb == nil {
+		return errors.New("message cannot be nil")
 	}
-	return nil
-}
-
-// SnapshotResponseMessage contains information about a single snapshot.
-type snapshotsResponseMessage struct {
-	Height   uint64
-	Format   uint32
-	Chunks   uint32
-	Hash     []byte
-	Metadata []byte
-}
-
-// ValidateBasic implements Message.
-func (m *snapshotsResponseMessage) ValidateBasic() error {
-	if m == nil {
-		return errors.New("nil message")
-	}
-	if m.Height == 0 {
-		return errors.New("height cannot be 0")
-	}
-	if len(m.Hash) == 0 {
-		return errors.New("snapshot has no hash")
-	}
-	if m.Chunks == 0 {
-		return errors.New("snapshot has no chunks")
-	}
-	return nil
-}
-
-// chunkRequestMessage requests a single chunk from a peer.
-type chunkRequestMessage struct {
-	Height uint64
-	Format uint32
-	Index  uint32
-}
-
-// ValidateBasic implements Message.
-func (m *chunkRequestMessage) ValidateBasic() error {
-	if m == nil {
-		return errors.New("nil message")
-	}
-	if m.Height == 0 {
-		return errors.New("height cannot be 0")
-	}
-	return nil
-}
-
-// chunkResponseMessage contains a single chunk from a peer.
-type chunkResponseMessage struct {
-	Height  uint64
-	Format  uint32
-	Index   uint32
-	Chunk   []byte
-	Missing bool
-}
-
-// ValidateBasic implements Message.
-func (m *chunkResponseMessage) ValidateBasic() error {
-	if m == nil {
-		return errors.New("nil message")
-	}
-	if m.Height == 0 {
-		return errors.New("height cannot be 0")
-	}
-	if m.Missing && len(m.Chunk) > 0 {
-		return errors.New("missing chunk cannot have contents")
-	}
-	if !m.Missing && m.Chunk == nil {
-		return errors.New("chunk cannot be nil")
+	switch msg := pb.(type) {
+	case *ssproto.ChunkRequest:
+		if msg.Height == 0 {
+			return errors.New("height cannot be 0")
+		}
+	case *ssproto.ChunkResponse:
+		if msg.Height == 0 {
+			return errors.New("height cannot be 0")
+		}
+		if msg.Missing && len(msg.Chunk) > 0 {
+			return errors.New("missing chunk cannot have contents")
+		}
+		if !msg.Missing && msg.Chunk == nil {
+			return errors.New("chunk cannot be nil")
+		}
+	case *ssproto.SnapshotsRequest:
+	case *ssproto.SnapshotsResponse:
+		if msg.Height == 0 {
+			return errors.New("height cannot be 0")
+		}
+		if len(msg.Hash) == 0 {
+			return errors.New("snapshot has no hash")
+		}
+		if msg.Chunks == 0 {
+			return errors.New("snapshot has no chunks")
+		}
+	default:
+		return fmt.Errorf("unknown message type %T", msg)
 	}
 	return nil
 }

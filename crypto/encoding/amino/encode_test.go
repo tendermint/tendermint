@@ -25,12 +25,12 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
 	bz, err := cdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
-	// if byterSrc, ok := src.(AminoMarshal); ok {
-	// 	// Make sure this is compatible with current (Bytes()) encoding.
-	// 	bza, err := byterSrc.AminoMarshal()
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, bza, bz, "Amino binary vs Bytes() mismatch")
-	// }
+	if byterSrc, ok := src.(AminoMarshal); ok {
+		// Make sure this is compatible with current (Bytes()) encoding.
+		bza, err := byterSrc.AminoMarshal()
+		assert.NoError(t, err)
+		assert.Equal(t, bza, bz, "Amino binary vs Bytes() mismatch")
+	}
 	// Make sure we have the expected length.
 	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
 
@@ -161,6 +161,7 @@ func (privkey testPriv) Bytes() []byte {
 }
 func (privkey testPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
 func (privkey testPriv) Equals(other crypto.PrivKey) bool { return true }
+func (privkey testPriv) Type() string                     { return "testPriv" }
 
 type testPub []byte
 
@@ -170,6 +171,8 @@ func (key testPub) Bytes() []byte {
 }
 func (key testPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
 func (key testPub) Equals(other crypto.PubKey) bool         { return true }
+func (key testPub) String() string                          { return "" }
+func (key testPub) Type() string                            { return "testPub" }
 
 var (
 	privAminoName = "registerTest/Priv"

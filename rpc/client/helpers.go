@@ -48,6 +48,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 			return err
 		}
 	}
+
 	return nil
 }
 

@@ -1,7 +1,6 @@
 package client_test
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"net/http"
@@ -13,11 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
@@ -562,49 +559,6 @@ func TestTxSearch(t *testing.T) {
 			}
 		}
 		require.Len(t, seen, txCount)
-	}
-}
-
-func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
-	config := rpctest.GetConfig()
-	chainID := config.ChainID()
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
-
-	ev, fakes := makeEvidences(t, pv, chainID)
-	t.Logf("evidence %v", ev)
-
-	for i, c := range GetClients() {
-		t.Logf("client %d", i)
-
-		result, err := c.BroadcastEvidence(ev)
-		require.Nil(t, err)
-		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
-
-		status, err := c.Status()
-		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
-		rawpub := []byte(ed25519pub)
-		result2, err := c.ABCIQuery("/val", rawpub)
-		require.Nil(t, err, "Error querying evidence, err %v", err)
-		qres := result2.Response
-		require.True(t, qres.IsOK(), "Response not OK")
-
-		var v abci.ValidatorUpdate
-		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
-		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
-
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
-
-		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
-				VoteA: fake.VoteA,
-				VoteB: fake.VoteB})
-			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
-		}
 	}
 }
 
