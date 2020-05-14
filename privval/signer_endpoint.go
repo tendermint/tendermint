@@ -114,6 +114,7 @@ func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 		} else {
 			err = errors.Wrap(ErrReadTimeout, "Empty error")
 		}
+
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}

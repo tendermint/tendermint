@@ -50,14 +50,16 @@ func DecodeMsg(bz []byte) (proto.Message, error) {
 		return msg.SignVoteRequest, nil
 	case *privvalproto.Message_SignedVoteResponse:
 		return msg.SignedVoteResponse, nil
-	case *privvalproto.Message_SignedProposalResponse:
-		return msg.SignedProposalResponse, nil
 	case *privvalproto.Message_SignProposalRequest:
 		return msg.SignProposalRequest, nil
+	case *privvalproto.Message_SignedProposalResponse:
+		return msg.SignedProposalResponse, nil
 	case *privvalproto.Message_PingRequest:
 		return msg.PingRequest, nil
 	case *privvalproto.Message_PingResponse:
 		return msg.PingResponse, nil
+	case nil:
+		return nil, nil
 	default:
 		panic(fmt.Errorf("unknown message type %T", msg))
 	}
