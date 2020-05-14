@@ -1,22 +1,21 @@
 package conn
 
 import (
-	"bytes"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/fortytw2/leaktest"
-	"github.com/gogo/protobuf/proto"
+	protoio "github.com/gogo/protobuf/io"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmp2p "github.com/tendermint/tendermint/proto/p2p"
+	"github.com/tendermint/tendermint/proto/types"
 )
 
-const maxPingPongPacketSize = 1024 // bytes
+const maxPingPongPacketSize = 2048 // bytes
 
 func createTestMConnection(conn net.Conn) *MConnection {
 	onReceive := func(chID byte, msgBytes []byte) {
@@ -134,7 +133,7 @@ func TestMConnectionReceive(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn2.Stop()
 
-	msg, _ := encodeMsg(&tmp2p.PacketPong{})
+	msg := []byte("Cyclops")
 	assert.True(t, mconn2.Send(0x01, msg))
 
 	select {
@@ -183,12 +182,9 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		var pkt tmp2p.PacketPing
-
-		bz, err := readAll(server, maxPingPongPacketSize)
+		var pkt tmp2p.Packet
+		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
 		require.NoError(t, err)
-		err = proto.Unmarshal(bz, &pkt)
-		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
 	<-serverGotPing
@@ -223,37 +219,27 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	defer mconn.Stop()
 
 	// sending 3 pongs in a row (abuse)
-	bz, err := encodeMsg(&tmp2p.PacketPong{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	protoWriter := protoio.NewDelimitedWriter(server)
+
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 	require.NoError(t, err)
 
-	bz, err = encodeMsg(&tmp2p.PacketPong{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 	require.NoError(t, err)
 
-	bz, err = encodeMsg(&tmp2p.PacketPong{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 	require.NoError(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
 		var packet tmp2p.Packet
-
-		pz, err := readAll(server, maxPingPongPacketSize)
+		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
 		require.NoError(t, err)
-
-		err = proto.Unmarshal(pz, &packet)
-		require.NoError(t, err)
-
 		serverGotPing <- struct{}{}
+
 		// respond with pong
-		bz, err = encodeMsg(&tmp2p.PacketPong{})
-		require.NoError(t, err)
-		_, err = server.Write(bz)
+		err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 		require.NoError(t, err)
 	}()
 	<-serverGotPing
@@ -289,36 +275,26 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
-	bz, err := encodeMsg(&tmp2p.PacketPing{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+	protoWriter := protoio.NewDelimitedWriter(server)
+	var pkt tmp2p.Packet
+
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	var pkt tmp2p.PacketPong
-
-	bz, err = readAll(server, maxPingPongPacketSize)
-	require.NoError(t, err)
-	err = proto.Unmarshal(bz, &pkt)
+	err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
-	bz, err = encodeMsg(&tmp2p.PacketPing{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	bz, err = readAll(server, maxPingPongPacketSize)
-	require.NoError(t, err)
-	err = proto.Unmarshal(bz, &pkt)
+	err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
-	bz, err = encodeMsg(&tmp2p.PacketPing{})
-	require.NoError(t, err)
-	_, err = server.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	bz, err = readAll(server, maxPingPongPacketSize)
-	require.NoError(t, err)
-	err = proto.Unmarshal(bz, &pkt)
+	err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
 	assert.True(t, mconn.IsRunning())
@@ -348,34 +324,31 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	serverGotPing := make(chan struct{})
 	go func() {
-		// read ping
+		protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+		protoWriter := protoio.NewDelimitedWriter(server)
 		var pkt tmp2p.PacketPing
-		bz, err := readAll(server, maxPingPongPacketSize)
-		require.NoError(t, err)
-		err = proto.Unmarshal(bz, &pkt)
-		require.NoError(t, err)
 
-		serverGotPing <- struct{}{}
-		// respond with pong
-		bz, err = encodeMsg(&tmp2p.PacketPong{})
+		// read ping
+		err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
-		_, err = server.Write(bz)
+		serverGotPing <- struct{}{}
+
+		// respond with pong
+		err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 		require.NoError(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		bz, err = readAll(server, maxPingPongPacketSize)
+		err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
-		err = proto.Unmarshal(bz, &pkt)
-		require.NoError(t, err)
+		serverGotPing <- struct{}{}
 
 		// respond with pong
-		bz, err = encodeMsg(&tmp2p.PacketPong{})
-		require.NoError(t, err)
-		_, err = server.Write(bz)
+		err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 		require.NoError(t, err)
 	}()
+	<-serverGotPing
 	<-serverGotPing
 
 	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
@@ -469,14 +442,9 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 
 	client := mconnClient.conn
 
-	// send badly encoded msgPacket
-	bz, err := encodeMsg(&tmp2p.PacketMsg{})
-	require.NoError(t, err)
-	bz[1] += 0x01 // change the bytes
-
 	// Write it.
-	_, err = client.Write(bz)
-	assert.Nil(t, err)
+	_, err := client.Write([]byte{1, 2, 3, 4, 5})
+	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
 
@@ -510,42 +478,28 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	}
 
 	client := mconnClient.conn
+	protoWriter := protoio.NewDelimitedWriter(client)
 
 	// send msg thats just right
-	var err error
-	var buf = new(bytes.Buffer)
 	var packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
 		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
-	bz, err := encodeMsg(&packet)
-	require.NoError(t, err)
 
-	_, err = buf.Write(bz)
+	err := protoWriter.WriteMsg(mustWrapPacket(&packet))
 	require.NoError(t, err)
-
-	_, err = client.Write(buf.Bytes())
-	require.NoError(t, err)
-
 	assert.True(t, expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
-	buf = new(bytes.Buffer)
 	packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
 		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
-	bz, err = encodeMsg(&packet)
-	require.NoError(t, err)
 
-	_, err = buf.Write(bz)
+	err = protoWriter.WriteMsg(mustWrapPacket(&packet))
 	require.NoError(t, err)
-
-	_, err = client.Write(buf.Bytes())
-	require.NoError(t, err)
-
 	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 
@@ -556,10 +510,8 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	err := amino.EncodeUvarint(mconnClient.conn, 4)
-	assert.Nil(t, err)
-	_, err = mconnClient.conn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
-	assert.Nil(t, err)
+	err := protoio.NewDelimitedWriter(mconnClient.conn).WriteMsg(&types.Header{ChainID: "x"})
+	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "unknown msg type")
 }
 

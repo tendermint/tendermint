@@ -334,38 +334,30 @@ func (pk privKeyWithNilPubKey) Type() string                    { return "privKe
 
 func TestNilPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = privKeyWithNilPubKey{ed25519.GenPrivKey()}
 
-	go func() {
-		_, err := MakeSecretConnection(barConn, barPrvKey)
-		assert.NoError(t, err)
-	}()
+	go MakeSecretConnection(fooConn, fooPrvKey)
 
-	assert.NotPanics(t, func() {
-		_, err := MakeSecretConnection(fooConn, fooPrvKey)
-		if assert.Error(t, err) {
-			assert.Equal(t, "expected ed25519 pubkey, got <nil>", err.Error())
-		}
-	})
+	_, err := MakeSecretConnection(barConn, barPrvKey)
+	require.Error(t, err)
+	assert.Equal(t, "toproto: key type <nil> is not supported", err.Error())
 }
 
 func TestNonEd25519Pubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = secp256k1.GenPrivKey()
 
-	go func() {
-		_, err := MakeSecretConnection(barConn, barPrvKey)
-		assert.NoError(t, err)
-	}()
+	go MakeSecretConnection(fooConn, fooPrvKey)
 
-	assert.NotPanics(t, func() {
-		_, err := MakeSecretConnection(fooConn, fooPrvKey)
-		if assert.Error(t, err) {
-			assert.Equal(t, "expected ed25519 pubkey, got secp256k1.PubKey", err.Error())
-		}
-	})
+	_, err := MakeSecretConnection(barConn, barPrvKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not supported")
 }
 
 // Creates the data for a test vector file.
@@ -476,3 +468,9 @@ func BenchmarkReadSecretConnection(b *testing.B) {
 	}
 	b.StopTimer()
 }
+
+type dummyConn struct{}
+
+func (c *dummyConn) Close() error                { return nil }
+func (c *dummyConn) Read(p []byte) (int, error)  { return 0, nil }
+func (c *dummyConn) Write(p []byte) (int, error) { return 0, nil }

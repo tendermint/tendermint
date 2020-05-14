@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	protoio "github.com/gogo/protobuf/io"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
@@ -308,12 +308,7 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 				Value: lc[:],
 			}
 
-			bz, err1 := proto.Marshal(&bytes)
-			if err1 != nil {
-				return nil, true, err
-			}
-
-			_, err1 = conn.Write(bz)
+			err1 := protoio.NewDelimitedWriter(conn).WriteMsg(&bytes)
 			if err1 != nil {
 				return nil, true, err1 // abort
 			}
@@ -323,19 +318,13 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 		func(_ int) (val interface{}, abort bool, err error) {
 			var bytes gogotypes.BytesValue
 
-			bz, err2 := readAll(conn, int64(1024*1024))
-			if err2 != nil {
-				return nil, true, err // abort
-			}
-
-			_remEphPub := make([]byte, 32)
-			err2 = proto.Unmarshal(bz, &bytes)
+			err2 := protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
 			if err2 != nil {
 				return nil, true, err2 // abort
 			}
 
-			copy(_remEphPub, bytes.Value)
-
+			var _remEphPub [32]byte
+			copy(_remEphPub[:], bytes.Value)
 			return _remEphPub, false, nil
 		},
 	)
@@ -423,17 +412,11 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-
 			pbpk, err1 := cryptoenc.PubKeyToProto(pubKey)
 			if err1 != nil {
-				return nil, true, err
+				return nil, true, err1
 			}
-			bz, err1 := proto.Marshal(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
-			if err1 != nil {
-				return nil, true, err1 // abort
-			}
-
-			_, err1 = sc.Write(bz)
+			err1 = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
 			if err1 != nil {
 				return nil, true, err1 // abort
 			}
@@ -445,19 +428,14 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 				pba tmp2p.AuthSigMessage
 			)
 
-			bz, err2 := readAll(sc, int64(1024*1024))
-			if err2 != nil {
-				return nil, true, err2 // abort
-			}
-
-			err2 = proto.Unmarshal(bz, &pba)
+			err2 := protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
 			if err2 != nil {
 				return nil, true, err2 // abort
 			}
 
 			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
-			if err != nil {
-				return nil, true, err // abort
+			if err2 != nil {
+				return nil, true, err2 // abort
 			}
 
 			_recvMsg := authSigMessage{

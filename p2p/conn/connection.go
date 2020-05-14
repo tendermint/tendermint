@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	protoio "github.com/gogo/protobuf/io"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
@@ -419,9 +420,11 @@ func (c *MConnection) CanSend(chID byte) bool {
 func (c *MConnection) sendRoutine() {
 	defer c._recover()
 
+	writeCounter := &writeCounter{}
+	protoWriter := protoio.NewDelimitedWriter(io.MultiWriter(c.bufConnWriter, writeCounter))
+
 FOR_LOOP:
 	for {
-		var _n int64
 		var err error
 	SELECTION:
 		select {
@@ -435,16 +438,13 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.C:
 			c.Logger.Debug("Send Ping")
-			bz, err := encodeMsg(&tmp2p.PacketPing{})
+			writeCounter.reset()
+			err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 			if err != nil {
-				c.Logger.Error("Failure to encode PacketPing")
+				c.Logger.Error("Failed to send PacketPing", "err", err)
 				break SELECTION
 			}
-			_, err = c.bufConnWriter.Write(bz)
-			if err != nil {
-				break SELECTION
-			}
-			c.sendMonitor.Update(int(_n))
+			c.sendMonitor.Update(int(writeCounter.bytes))
 			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
 				select {
@@ -462,16 +462,13 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			bz, err := encodeMsg(&tmp2p.PacketPong{})
+			writeCounter.reset()
+			err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
-				c.Logger.Error("Failure to encode PacketPong")
+				c.Logger.Error("Failed to send PacketPong", "err", err)
 				break SELECTION
 			}
-			_, err = c.bufConnWriter.Write(bz)
-			if err != nil {
-				break SELECTION
-			}
-			c.sendMonitor.Update(int(_n))
+			c.sendMonitor.Update(int(writeCounter.bytes))
 			c.flush()
 		case <-c.quitSendRoutine:
 			break FOR_LOOP
@@ -563,6 +560,9 @@ func (c *MConnection) sendPacketMsg() bool {
 func (c *MConnection) recvRoutine() {
 	defer c._recover()
 
+	readCounter := &writeCounter{} // used to count bytes read from Protobuf reader
+	protoReader := protoio.NewDelimitedReader(io.TeeReader(c.bufConnReader, readCounter), c._maxPacketMsgSize)
+
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
@@ -585,17 +585,8 @@ FOR_LOOP:
 		// Read packet type
 		var packet tmp2p.Packet
 
-		bz, err := readAll(c.bufConnReader, int64(c._maxPacketMsgSize))
-		if err != nil {
-			break FOR_LOOP
-		}
-		err = proto.Unmarshal(bz, &packet)
-		if err != nil {
-			break FOR_LOOP
-		}
-
-		c.recvMonitor.Update(len(bz))
-
+		readCounter.reset()
+		err := protoReader.ReadMsg(&packet)
 		if err != nil {
 			// stopServices was invoked and we are shutting down
 			// receiving is excpected to fail since we will close the connection
@@ -615,6 +606,7 @@ FOR_LOOP:
 			}
 			break FOR_LOOP
 		}
+		c.recvMonitor.Update(int(readCounter.bytes))
 
 		// Read more depending on packet type.
 		switch pkt := packet.Sum.(type) {
@@ -681,12 +673,11 @@ func (c *MConnection) stopPongTimer() {
 
 // maxPacketMsgSize returns a maximum size of PacketMsg
 func (c *MConnection) maxPacketMsgSize() int {
-	bz, err := encodeMsg(&tmp2p.PacketMsg{
+	bz, err := proto.Marshal(mustWrapPacket(&tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
 		Data:      make([]byte, c.config.MaxPacketMsgPayloadSize),
-	})
-
+	}))
 	if err != nil {
 		panic(err)
 	}
@@ -855,13 +846,11 @@ func (ch *Channel) nextPacketMsg() tmp2p.PacketMsg {
 // Writes next PacketMsg to w and updates c.recentlySent.
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
-	var packet = ch.nextPacketMsg()
-	bz, err := encodeMsg(&packet)
-	if err != nil {
-		return
-	}
-	i, err := w.Write(bz)
-	atomic.AddInt64(&ch.recentlySent, int64(i))
+	writeCounter := &writeCounter{}
+	protoWriter := protoio.NewDelimitedWriter(io.MultiWriter(w, writeCounter))
+	packet := ch.nextPacketMsg()
+	protoWriter.WriteMsg(mustWrapPacket(&packet))
+	atomic.AddInt64(&ch.recentlySent, int64(writeCounter.bytes))
 	return
 }
 
@@ -899,39 +888,36 @@ func (ch *Channel) updateStats() {
 //----------------------------------------
 // Packet
 
-// encodeMsg takes a proto.message creates a tmp2p.Packet and encodes it
-// returns []byte and error
-func encodeMsg(pb proto.Message) ([]byte, error) {
+// mustWrapPacket takes a packet kind (oneof) and wraps it in a tmp2p.Packet message.
+func mustWrapPacket(pb proto.Message) *tmp2p.Packet {
 	var msg tmp2p.Packet
 
 	switch pb := pb.(type) {
+	case *tmp2p.Packet: // already a packet
+		msg = *pb
 	case *tmp2p.PacketPing:
 		msg = tmp2p.Packet{
 			Sum: &tmp2p.Packet_PacketPing{
-				PacketPing: &tmp2p.PacketPing{},
+				PacketPing: pb,
 			},
 		}
 	case *tmp2p.PacketPong:
 		msg = tmp2p.Packet{
 			Sum: &tmp2p.Packet_PacketPong{
-				PacketPong: &tmp2p.PacketPong{},
+				PacketPong: pb,
 			},
 		}
 	case *tmp2p.PacketMsg:
 		msg = tmp2p.Packet{
 			Sum: &tmp2p.Packet_PacketMsg{
-				PacketMsg: &tmp2p.PacketMsg{
-					ChannelID: pb.ChannelID,
-					EOF:       pb.EOF,
-					Data:      pb.Data,
-				},
+				PacketMsg: pb,
 			},
 		}
 	default:
-		return nil, fmt.Errorf("msg not recoginized: %T", pb)
+		panic(fmt.Errorf("Unknown packet type %T", pb))
 	}
 
-	return proto.Marshal(&msg)
+	return &msg
 }
 
 func readAll(r io.Reader, maxSize int64) ([]byte, error) {
@@ -943,4 +929,18 @@ func readAll(r io.Reader, maxSize int64) ([]byte, error) {
 	}
 
 	return bz, nil
+}
+
+type writeCounter struct {
+	bytes int64
+}
+
+func (wc *writeCounter) reset() {
+	wc.bytes = 0
+}
+
+func (wc *writeCounter) Write(bz []byte) (int, error) {
+	n := len(bz)
+	wc.bytes += int64(n)
+	return n, nil
 }
