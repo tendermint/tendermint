@@ -130,24 +130,25 @@ func validateSkipCount(page, perPage int) int {
 	return skipCount
 }
 
-func getHeight(currentHeight int64, heightPtr *int64) (int64, error) {
+// latestHeight can be either latest committed or uncommitted (+1) height.
+func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
 			return 0, fmt.Errorf("height must be greater than 0, but got %d", height)
 		}
-		if height > currentHeight {
+		if height > latestHeight {
 			return 0, fmt.Errorf("height %d must be less than or equal to the current blockchain height %d",
-				height, currentHeight)
+				height, latestHeight)
 		}
-		currentBase := env.BlockStore.Base()
-		if height < currentBase {
+		base := env.BlockStore.Base()
+		if height < base {
 			return 0, fmt.Errorf("height %v is not available, blocks pruned at height %v",
-				height, currentBase)
+				height, base)
 		}
 		return height, nil
 	}
-	return currentHeight, nil
+	return latestHeight, nil
 }
 
 func latestUncommittedHeight() int64 {
