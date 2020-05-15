@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -17,41 +16,40 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
 func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	var (
-		earliestBlockMeta     *types.BlockMeta
 		earliestBlockHash     tmbytes.HexBytes
 		earliestAppHash       tmbytes.HexBytes
 		earliestBlockTimeNano int64
+
+		earliestBlockHeight = env.BlockStore.Base()
 	)
-	earliestBlockHeight := env.BlockStore.Base()
-	earliestBlockMeta = env.BlockStore.LoadBlockMeta(earliestBlockHeight)
-	if earliestBlockMeta != nil {
+
+	if earliestBlockMeta := env.BlockStore.LoadBlockMeta(earliestBlockHeight); earliestBlockMeta != nil {
 		earliestAppHash = earliestBlockMeta.Header.AppHash
 		earliestBlockHash = earliestBlockMeta.BlockID.Hash
 		earliestBlockTimeNano = earliestBlockMeta.Header.Time.UnixNano()
 	}
 
-	var latestHeight int64
-	if env.ConsensusReactor.WaitSync() {
-		latestHeight = env.BlockStore.Height()
-	} else {
-		latestHeight = env.ConsensusState.GetLastHeight()
-	}
-
 	var (
-		latestBlockMeta     *types.BlockMeta
 		latestBlockHash     tmbytes.HexBytes
 		latestAppHash       tmbytes.HexBytes
 		latestBlockTimeNano int64
+
+		latestHeight = env.BlockStore.Height()
 	)
+
 	if latestHeight != 0 {
-		latestBlockMeta = env.BlockStore.LoadBlockMeta(latestHeight)
-		latestBlockHash = latestBlockMeta.BlockID.Hash
-		latestAppHash = latestBlockMeta.Header.AppHash
-		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
+		latestBlockMeta := env.BlockStore.LoadBlockMeta(latestHeight)
+		if latestBlockMeta != nil {
+			latestBlockHash = latestBlockMeta.BlockID.Hash
+			latestAppHash = latestBlockMeta.Header.AppHash
+			latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
+		}
 	}
 
+	// Return the very last voting power, not the voting power of this validator
+	// during the last block.
 	var votingPower int64
-	if val := validatorAtHeight(latestHeight); val != nil {
+	if val := validatorAtHeight(latestUncommittedHeight()); val != nil {
 		votingPower = val.VotingPower
 	}
 
@@ -79,27 +77,11 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
+	vals, err := sm.LoadValidators(env.StateDB, h)
+	if err != nil {
+		return nil
+	}
 	privValAddress := env.PubKey.Address()
-
-	// If we're still at height h, search in the current validator set.
-	lastBlockHeight, vals := env.ConsensusState.GetValidators()
-	if lastBlockHeight == h {
-		for _, val := range vals {
-			if bytes.Equal(val.Address, privValAddress) {
-				return val
-			}
-		}
-	}
-
-	// If we've moved to the next height, retrieve the validator set from DB.
-	if lastBlockHeight > h {
-		vals, err := sm.LoadValidators(env.StateDB, h)
-		if err != nil {
-			return nil // should not happen
-		}
-		_, val := vals.GetByAddress(privValAddress)
-		return val
-	}
-
-	return nil
+	_, val := vals.GetByAddress(privValAddress)
+	return val
 }
