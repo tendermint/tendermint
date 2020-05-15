@@ -382,6 +382,18 @@ func TestProofOfLockChange(t *testing.T) {
 	assert.NoError(t, polc.ValidateVotes(valSet, chainID))
 	assert.NotEmpty(t, polc.String())
 
+	// tamper with one of the votes
+	polc.Votes[0].Timestamp = time.Now().Add(1 * time.Second)
+	err = polc.ValidateVotes(valSet, chainID)
+	t.Log(err)
+	assert.Error(t, err)
+
+	// remove a vote such that majority wasn't reached
+	polc.Votes = polc.Votes[1:]
+	err = polc.ValidateVotes(valSet, chainID)
+	t.Log(err)
+	assert.Error(t, err)
+
 	// test validate basic on a set of bad cases
 	var badPOLCs []ProofOfLockChange
 	// 2: node has already voted in next round
@@ -415,6 +427,7 @@ func TestProofOfLockChange(t *testing.T) {
 
 	for idx, polc := range badPOLCs {
 		err := polc.ValidateBasic()
+		t.Logf("case: %d: %v", idx+2, err)
 		assert.Error(t, err)
 		if err == nil {
 			t.Errorf("test no. %d failed", idx+2)

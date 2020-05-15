@@ -986,8 +986,8 @@ func (e ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
 
-// In order for a ProofOfLockChange to be valid, a validator must have received +2/3 majority of votes
-// MajorityOfVotes checks that there were sufficient votes in order to change locks
+// ValidVotes checks the polc against the validator set of that height. The function makes sure that the polc contains
+// a majority of votes and that each
 func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) error {
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := valSet.TotalVotingPower() * 2 / 3
@@ -997,7 +997,7 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
 				if !validator.PubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
-					return fmt.Errorf("cannot verify vote against signature: %v != %v", vote, vote.Signature)
+					return fmt.Errorf("cannot verify vote against signature: %v", vote.Signature)
 				}
 
 				talliedVotingPower += validator.VotingPower
@@ -1009,7 +1009,7 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 	}
 	if talliedVotingPower <= votingPowerNeeded {
 		return fmt.Errorf("not enough voting power to reach majority needed: %d, got %d",
-			votingPowerNeeded, talliedVotingPower)
+			votingPowerNeeded+1, talliedVotingPower)
 	}
 	return nil
 }
@@ -1057,7 +1057,7 @@ func (e ProofOfLockChange) ValidateBasic() error {
 
 		if bytes.Equal(vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes()) {
 			return fmt.Errorf("vote validator address cannot be the same as the public key address: %X all votes %v",
-				vote.ValidatorAddress.Bytes(), e.Votes)
+				vote.ValidatorAddress.Bytes(), e.PubKey.Address().Bytes())
 		}
 
 		for i := idx + 1; i < len(e.Votes); i++ {

@@ -303,6 +303,7 @@ message EvidenceParams {
   google.protobuf.Duration max_age_duration   = 2
     [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   uint32                   max_num            = 3;
+  int64                    proof_trial_period = 4;
 }
 
 // ValidatorParams contains limits on validators.

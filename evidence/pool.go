@@ -122,14 +122,16 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 		evpool.pruneExpiredPOLC()
 	}
 
-	nextPE := evpool.evidenceAwaitingProof[0]
-	if block.Height >= (nextPE.HeightStamp + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod) {
-		err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*nextPE, types.EmptyPOLC()))
-		if err != nil {
-			evpool.logger.Error("Unable to add AmensiaEvidence", "err", err)
-		} else {
-			evpool.removePendingEvidence(nextPE)
-			evpool.evidenceAwaitingProof = evpool.evidenceAwaitingProof[1:]
+	if len(evpool.evidenceAwaitingProof) > 0 {
+		nextPE := evpool.evidenceAwaitingProof[0]
+		if block.Height >= (nextPE.HeightStamp + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod) {
+			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*nextPE, types.EmptyPOLC()))
+			if err != nil {
+				evpool.logger.Error("Unable to add AmensiaEvidence", "err", err)
+			} else {
+				evpool.removePendingEvidence(nextPE)
+				evpool.evidenceAwaitingProof = evpool.evidenceAwaitingProof[1:]
+			}
 		}
 	}
 

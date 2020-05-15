@@ -223,13 +223,13 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	assert.NoError(t, err)
 
 	// should be able to retrieve polc
-	newPolc, err := pool.RetrievePOLC(1, 1)
-	assert.NoError(t, err)
+	newPolc, exists := pool.RetrievePOLC(1, 1)
+	assert.True(t, exists)
 	assert.True(t, polc.Equal(newPolc))
 
 	// should not be able to retrieve
-	emptyPolc, err := pool.RetrievePOLC(2, 1)
-	assert.Error(t, err)
+	emptyPolc, exists := pool.RetrievePOLC(2, 1)
+	assert.False(t, exists)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 	lastCommit := makeCommit(height-1, valAddr)
@@ -241,10 +241,8 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	// update should prune the polc
 	pool.Update(block, state)
 
-	emptyPolc, err = pool.RetrievePOLC(1, 1)
-	if assert.Error(t, err) {
-		assert.Equal(t, "unable to find polc at height 1 and round 1", err.Error())
-	}
+	emptyPolc, exists = pool.RetrievePOLC(1, 1)
+	assert.False(t, exists)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }
