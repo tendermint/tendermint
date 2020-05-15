@@ -13,7 +13,7 @@ import (
 )
 
 // This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
-var regexpMissingHeight = regexp.MustCompile(`height (must be less than or equal to|\d+ is not available)`)
+var regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
 // SignStatusClient combines a SignClient and StatusClient.
 type SignStatusClient interface {

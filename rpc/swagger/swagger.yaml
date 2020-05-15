@@ -712,6 +712,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
@@ -733,6 +735,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
