@@ -7,6 +7,10 @@ import (
 	"time"
 
 	protoio "github.com/gogo/protobuf/io"
+<<<<<<< HEAD
+=======
+	"github.com/gogo/protobuf/proto"
+>>>>>>> cdeb94e05b6910caac8063210bc94355144b4122
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
@@ -110,6 +114,8 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}
+
+	msg = mustUnwrapMsg(pmsg)
 
 	return
 }

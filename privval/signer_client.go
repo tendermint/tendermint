@@ -131,7 +131,6 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	pb := proposal.ToProto()
 
-	fmt.Println("here")
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignProposalRequest{Proposal: *pb}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)

@@ -98,7 +98,6 @@ func (sl *SignerListenerEndpoint) SendRequest(request *privvalproto.Message) (*p
 		return nil, err
 	}
 
-	fmt.Println("here")
 	res, err := sl.ReadMessage()
 	if err != nil {
 		return nil, err
