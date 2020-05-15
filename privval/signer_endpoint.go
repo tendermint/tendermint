@@ -87,7 +87,7 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return msg, fmt.Errorf("endpoint is not connected")
+		return msg, fmt.Errorf("endpoint is not connected: %w", ErrNoConnection)
 	}
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
@@ -99,7 +99,6 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 
 	protoReader := protoio.NewDelimitedReader(se.conn, 1024*10)
 	err = protoReader.ReadMsg(&msg)
-
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrReadTimeout, err.Error())

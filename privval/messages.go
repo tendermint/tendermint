@@ -38,27 +38,3 @@ func mustWrapMsg(pb proto.Message) *privvalproto.Message {
 
 	return &msg
 }
-
-func mustUnwrapMsg(msg privvalproto.Message) proto.Message {
-
-	switch msg := msg.Sum.(type) {
-	case *privvalproto.Message_PubKeyRequest:
-		return msg.PubKeyRequest
-	case *privvalproto.Message_PubKeyResponse:
-		return msg.PubKeyResponse
-	case *privvalproto.Message_SignVoteRequest:
-		return msg.SignVoteRequest
-	case *privvalproto.Message_SignedVoteResponse:
-		return msg.SignedVoteResponse
-	case *privvalproto.Message_SignProposalRequest:
-		return msg.SignProposalRequest
-	case *privvalproto.Message_SignedProposalResponse:
-		return msg.SignedProposalResponse
-	case *privvalproto.Message_PingRequest:
-		return msg.PingRequest
-	case *privvalproto.Message_PingResponse:
-		return msg.PingResponse
-	default:
-		panic(fmt.Errorf("unknown message type %T", msg))
-	}
-}

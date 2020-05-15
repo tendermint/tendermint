@@ -59,9 +59,8 @@ func (sc *SignerClient) Ping() error {
 		return nil
 	}
 
-	pb := mustUnwrapMsg(*response)
-	_, ok := pb.(*privvalproto.PingResponse)
-	if !ok {
+	pb := response.GetPingResponse()
+	if pb == nil {
 		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")
 		return err
 	}
@@ -78,9 +77,8 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 		return nil, errors.Wrap(err, "send")
 	}
 
-	pb := mustUnwrapMsg(*response)
-	pubKeyResp, ok := pb.(*privvalproto.PubKeyResponse)
-	if !ok {
+	pubKeyResp := response.GetPubKeyResponse()
+	if pubKeyResp == nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
 		return nil, errors.Errorf("unexpected response type %T", response)
 	}
@@ -108,9 +106,8 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	pb := mustUnwrapMsg(*response)
-	resp, ok := pb.(*privvalproto.SignedVoteResponse)
-	if !ok {
+	resp := response.GetSignedVoteResponse()
+	if resp == nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != SignedVoteResponse")
 		return ErrUnexpectedResponse
 	}
@@ -138,9 +135,8 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 		return err
 	}
 
-	pbmsg := mustUnwrapMsg(*response)
-	resp, ok := pbmsg.(*privvalproto.SignedProposalResponse)
-	if !ok {
+	resp := response.GetSignedProposalResponse()
+	if resp == nil {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", "response != SignedProposalResponse")
 		return ErrUnexpectedResponse
 	}
