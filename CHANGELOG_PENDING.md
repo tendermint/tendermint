@@ -72,6 +72,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
 - [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
+- [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 
 ### BUG FIXES:
 

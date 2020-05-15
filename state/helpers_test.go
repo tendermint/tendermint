@@ -146,6 +146,7 @@ func makeConsensusParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
+	maxNumEvidence uint32,
 ) types.ConsensusParams {
 	return types.ConsensusParams{
 		Block: types.BlockParams{
@@ -156,6 +157,7 @@ func makeConsensusParams(
 		Evidence: types.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
+			MaxNum:          maxNumEvidence,
 		},
 	}
 }

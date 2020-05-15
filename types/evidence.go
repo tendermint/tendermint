@@ -1060,6 +1060,8 @@ func (e MockRandomEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
 }
 
+func (e MockRandomEvidence) Equal(ev Evidence) bool { return false }
+
 // UNSTABLE
 type MockEvidence struct {
 	EvidenceHeight  int64
@@ -1090,9 +1092,8 @@ func (e MockEvidence) Bytes() []byte {
 }
 func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockEvidence)
-	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
+	return e.EvidenceHeight == ev.Height() &&
+		bytes.Equal(e.EvidenceAddress, ev.Address())
 }
 func (e MockEvidence) ValidateBasic() error { return nil }
 func (e MockEvidence) String() string {

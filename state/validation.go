@@ -127,7 +127,13 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate all evidence.
-	for _, ev := range block.Evidence.Evidence {
+	for idx, ev := range block.Evidence.Evidence {
+		// check that no evidence has been submitted more than once
+		for i := idx + 1; i < len(block.Evidence.Evidence); i++ {
+			if ev.Equal(block.Evidence.Evidence[i]) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was submitted twice"))
+			}
+		}
 		if evidencePool != nil {
 			if evidencePool.IsCommitted(ev) {
 				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))

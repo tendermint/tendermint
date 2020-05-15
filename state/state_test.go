@@ -986,7 +986,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeConsensusParams(1, 2, 3, 4)
+	initParams := makeConsensusParams(1, 2, 3, 4, 5)
 	const maxAge int64 = 66
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -1002,15 +1002,16 @@ func TestApplyUpdates(t *testing.T) {
 					MaxGas:   55,
 				},
 			},
-			makeConsensusParams(44, 55, 3, 4)},
+			makeConsensusParams(44, 55, 3, 4, 5)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAgeNumBlocks: maxAge,
 					MaxAgeDuration:  time.Duration(maxAge),
+					MaxNum:          10,
 				},
 			},
-			makeConsensusParams(1, 2, 3, maxAge)},
+			makeConsensusParams(1, 2, 3, maxAge, 10)},
 	}
 
 	for i, tc := range cases {

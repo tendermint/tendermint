@@ -47,7 +47,7 @@ Here are some relevant facts about TCP:
 3. The syn/ack process also means that there's a high overhead for small, frequent messages 
 4. Sockets are represented by file descriptors.
 
-![tcp-window](tcp-window.png)
+![](../imgs/tcp-window.png)
 
 In order to have performant TCP connections under the conditions  created in Tendermint, we've created the `mconnection`, or the multiplexing connection. It is our own protocol built on top of TCP. It lets us reuse TCP connections to minimize overhead, and it keeps the window size high by sending auxiliary messages when necessary.
 
