@@ -55,6 +55,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/server] [\#4719](https://github.com/tendermint/tendermint/pull/4719) Print panic & stack trace to STDERR if logger is not set (@melekes)
 - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
 - [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
+- [rpc/core] [\#4844](https://github.com/tendermint/tendermint/pull/4844) Do not lock consensus state in `/validators`, `/consensus_params` and `/status` (@melekes)
 
 ### BUG FIXES:
 
