@@ -368,7 +368,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 
 func TestProofOfLockChange(t *testing.T) {
 	const (
-		chainID       = "TestProofOfLockChange"
+		chainID       = "test_chain_id"
 		height  int64 = 37
 	)
 	// 1: valid POLC - nothing should fail
@@ -379,7 +379,7 @@ func TestProofOfLockChange(t *testing.T) {
 
 	assert.Equal(t, height, polc.Height())
 	assert.NoError(t, polc.ValidateBasic())
-	assert.True(t, polc.MajorityOfVotes(valSet))
+	assert.NoError(t, polc.ValidateVotes(valSet, chainID))
 	assert.NotEmpty(t, polc.String())
 
 	// test validate basic on a set of bad cases
@@ -425,22 +425,21 @@ func TestProofOfLockChange(t *testing.T) {
 
 func TestAmnesiaEvidence(t *testing.T) {
 	const (
-		chainID       = "TestPotentialAmnesiaEvidence"
+		chainID       = "test_chain_id"
 		height  int64 = 37
 	)
 
 	var (
-		voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
-		val                                 = privValidators[7]
-		pubKey, _                           = val.GetPubKey()
-		blockID2                            = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-		vote1                               = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
-		vote2                               = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID, time.Now().Add(time.Second))
-		polc                                = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+		voteSet, valSet, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+		val                                      = privValidators[7]
+		pubKey, _                                = val.GetPubKey()
+		blockID2                                 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		vote1                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
+		vote2                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID, time.Now().Add(time.Second))
+		vote3                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
+		polc                                     = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	)
 	require.False(t, polc.IsAbsent())
-	t.Log(vote2.Timestamp)
-	//vote2.Timestamp = polc.Time().Add(time.Millisecond)
 
 	pe := PotentialAmnesiaEvidence{
 		VoteA: vote1,
@@ -464,10 +463,50 @@ func TestAmnesiaEvidence(t *testing.T) {
 		t.Log(reason)
 	}
 	assert.NoError(t, completeAmnesiaEvidence.Verify(chainID, pubKey))
+	assert.NoError(t, completeAmnesiaEvidence.polc.ValidateVotes(valSet, chainID))
 
 	assert.True(t, completeAmnesiaEvidence.Equal(emptyAmnesiaEvidence))
 	assert.NotEmpty(t, completeAmnesiaEvidence.Hash())
 	assert.NotEmpty(t, completeAmnesiaEvidence.Bytes())
+
+	pe2 := PotentialAmnesiaEvidence{
+		VoteA: vote3,
+		VoteB: vote2,
+	}
+
+	// validator has incorrectly voted for a previous round after voting for a later round
+	ae := MakeAmnesiaEvidence(pe2, EmptyPOLC())
+	assert.Error(t, ae.ValidateBasic())
+	violated, reason = ae.ViolatedConsensus()
+	if assert.True(t, violated) {
+		assert.Equal(t, reason, "validator went back and voted on a previous round")
+	}
+
+	var badAE []AmnesiaEvidence
+	// 1) Polc is at an incorrect height
+	voteSet, _, privValidators = buildVoteSetForBlock(height+1, 1, 2, 7, 0, PrecommitType, blockID)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 2) Polc is of a later round
+	voteSet, _, privValidators = buildVoteSetForBlock(height, 2, 2, 7, 0, PrecommitType, blockID)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 3) Polc has a different public key
+	voteSet, _, privValidators = buildVoteSetForBlock(height, 1, 2, 7, 0, PrecommitType, blockID)
+	pubKey2, _ := privValidators[7].GetPubKey()
+	polc = makePOLCFromVoteSet(voteSet, pubKey2, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 4) Polc has a different block ID
+	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+
+	for idx, ae := range badAE {
+		t.Log(ae.ValidateBasic())
+		if !assert.Error(t, ae.ValidateBasic()) {
+			t.Errorf("test no. %d failed", idx+1)
+		}
+	}
 
 }
 
