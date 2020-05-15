@@ -1,53 +1,33 @@
 package types
 
 import (
+	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/libs/bytes"
 )
 
-//-----------------------------------------------------------------------------
-
-// ABCIResult is the deterministic component of a ResponseDeliverTx.
-// TODO: add tags and other fields
-// https://github.com/tendermint/tendermint/issues/1007
-type ABCIResult struct {
-	Code uint32         `json:"code"`
-	Data bytes.HexBytes `json:"data"`
-}
-
-// Bytes returns the amino encoded ABCIResult
-func (a ABCIResult) Bytes() []byte {
-	return cdcEncode(a)
-}
-
-// ABCIResults wraps the deliver tx results to return a proof
-type ABCIResults []ABCIResult
+// ABCIResults wraps the deliver tx results to return a proof.
+type ABCIResults []*abci.ResponseDeliverTx
 
 // NewResults creates ABCIResults from the list of ResponseDeliverTx.
 func NewResults(responses []*abci.ResponseDeliverTx) ABCIResults {
 	res := make(ABCIResults, len(responses))
 	for i, d := range responses {
-		res[i] = NewResultFromResponse(d)
+		res[i] = deterministicResponseDeliverTx(d)
 	}
 	return res
 }
 
-// NewResultFromResponse creates ABCIResult from ResponseDeliverTx.
-func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
-	return ABCIResult{
-		Code: response.Code,
-		Data: response.Data,
+// deterministicResponseDeliverTx strips non-deterministic fields from
+// ResponseDeliverTx and returns another ResponseDeliverTx.
+func deterministicResponseDeliverTx(response *abci.ResponseDeliverTx) *abci.ResponseDeliverTx {
+	return &abci.ResponseDeliverTx{
+		Code:      response.Code,
+		Data:      response.Data,
+		GasWanted: response.GasWanted,
+		GasUsed:   response.GasUsed,
+		Events:    response.Events,
 	}
-}
-
-// Bytes serializes the ABCIResponse using amino
-func (a ABCIResults) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(a)
-	if err != nil {
-		panic(err)
-	}
-	return bz
 }
 
 // Hash returns a merkle hash of all results
@@ -67,7 +47,11 @@ func (a ABCIResults) toByteSlices() [][]byte {
 	l := len(a)
 	bzs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		bzs[i] = a[i].Bytes()
+		bz, err := a[i].Marshal()
+		if err != nil {
+			panic(err)
+		}
+		bzs[i] = bz
 	}
 	return bzs
 }
