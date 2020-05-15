@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -96,8 +98,25 @@ func TestSignerGetPubKey(t *testing.T) {
 func TestSignerProposal(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Proposal{Timestamp: ts}
-		have := &types.Proposal{Timestamp: ts}
+		hash := tmrand.Bytes(tmhash.Size)
+		have := &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+			Signature: []byte("signature"),
+		}
+		want := &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+			Signature: []byte("signature"),
+		}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -112,8 +131,29 @@ func TestSignerProposal(t *testing.T) {
 func TestSignerVote(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		hash := tmrand.Bytes(tmhash.Size)
+		valAddr := tmrand.Bytes(crypto.AddressSize)
+		want := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
+
+		have := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -128,8 +168,29 @@ func TestSignerVote(t *testing.T) {
 func TestSignerVoteResetDeadline(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		hash := tmrand.Bytes(tmhash.Size)
+		valAddr := tmrand.Bytes(crypto.AddressSize)
+		want := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
+
+		have := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -154,8 +215,29 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 func TestSignerVoteKeepAlive(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		hash := tmrand.Bytes(tmhash.Size)
+		valAddr := tmrand.Bytes(crypto.AddressSize)
+		want := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
+
+		have := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -186,7 +268,17 @@ func TestSignerSignProposalErrors(t *testing.T) {
 		defer tc.signerClient.Close()
 
 		ts := time.Now()
-		proposal := &types.Proposal{Timestamp: ts}
+		hash := tmrand.Bytes(tmhash.Size)
+		proposal := &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+			Signature: []byte("signature"),
+		}
+
 		err := tc.signerClient.SignProposal(tc.chainID, proposal)
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
@@ -201,7 +293,18 @@ func TestSignerSignProposalErrors(t *testing.T) {
 func TestSignerSignVoteErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		vote := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		hash := tmrand.Bytes(tmhash.Size)
+		valAddr := tmrand.Bytes(crypto.AddressSize)
+		vote := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signature"),
+		}
 
 		// Replace signer service privval with one that always fails
 		tc.signerServer.privVal = types.NewErroringMockPV()
@@ -226,7 +329,6 @@ func brokenHandler(privVal types.PrivValidator, request privvalproto.Message, ch
 	var err error
 
 	switch r := request.Sum.(type) {
-
 	// This is broken and will answer most requests with a pubkey response
 	case *privvalproto.Message_PubKeyRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
@@ -234,7 +336,6 @@ func brokenHandler(privVal types.PrivValidator, request privvalproto.Message, ch
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
 	case *privvalproto.Message_SignProposalRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
-
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
 

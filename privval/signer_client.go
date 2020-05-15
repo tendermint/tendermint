@@ -116,8 +116,9 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	}
 
 	if resp.Error != nil {
-		return fmt.Errorf("%s", resp.Error.Description)
+		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
+
 	v, err := types.VoteFromProto(resp.Vote)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 		return ErrUnexpectedResponse
 	}
 	if resp.Error != nil {
-		return fmt.Errorf("%s", resp.Error.Description)
+		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
 	p, err := types.ProposalFromProto(resp.Proposal)
