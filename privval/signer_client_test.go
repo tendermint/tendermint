@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -222,22 +221,22 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-func brokenHandler(privVal types.PrivValidator, request proto.Message, chainID string) (proto.Message, error) {
-	var res proto.Message
+func brokenHandler(privVal types.PrivValidator, request privvalproto.Message, chainID string) (*privvalproto.Message, error) {
+	var res *privvalproto.Message
 	var err error
 
-	switch r := request.(type) {
+	switch r := request.Sum.(type) {
 
 	// This is broken and will answer most requests with a pubkey response
-	case *privvalproto.PubKeyRequest:
-		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
-	case *privvalproto.SignVoteRequest:
-		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
-	case *privvalproto.SignProposalRequest:
-		res = &privvalproto.PubKeyResponse{PubKey: nil, Error: nil}
+	case *privvalproto.Message_PubKeyRequest:
+		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
+	case *privvalproto.Message_SignVoteRequest:
+		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
+	case *privvalproto.Message_SignProposalRequest:
+		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
 
-	case *privvalproto.PingRequest:
-		err, res = nil, &privvalproto.PingResponse{}
+	case *privvalproto.Message_PingRequest:
+		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
 
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)

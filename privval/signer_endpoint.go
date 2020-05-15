@@ -7,7 +7,6 @@ import (
 	"time"
 
 	protoio "github.com/gogo/protobuf/io"
-	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
@@ -83,14 +82,13 @@ func (se *signerEndpoint) DropConnection() {
 }
 
 // ReadMessage reads a message from the endpoint
-func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
+func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return nil, fmt.Errorf("endpoint is not connected")
+		return msg, fmt.Errorf("endpoint is not connected")
 	}
-
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
 
@@ -100,9 +98,7 @@ func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 	}
 
 	protoReader := protoio.NewDelimitedReader(se.conn, 1024*10)
-
-	var pmsg privvalproto.Message
-	err = protoReader.ReadMsg(&pmsg) //todo there seems to be nothing to read
+	err = protoReader.ReadMsg(&msg)
 
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
@@ -115,13 +111,11 @@ func (se *signerEndpoint) ReadMessage() (msg proto.Message, err error) {
 		se.dropConnection()
 	}
 
-	msg = mustUnwrapMsg(pmsg)
-
 	return
 }
 
 // WriteMessage writes a message from the endpoint
-func (se *signerEndpoint) WriteMessage(msg proto.Message) (err error) {
+func (se *signerEndpoint) WriteMessage(msg *privvalproto.Message) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
@@ -137,7 +131,7 @@ func (se *signerEndpoint) WriteMessage(msg proto.Message) (err error) {
 		return
 	}
 
-	err = protoWriter.WriteMsg(mustWrapMsg(msg))
+	err = protoWriter.WriteMsg(msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrWriteTimeout, err.Error())

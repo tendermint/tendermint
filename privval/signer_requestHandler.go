@@ -3,8 +3,6 @@ package privval
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
@@ -13,18 +11,16 @@ import (
 
 func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
-	req proto.Message,
+	req privvalproto.Message,
 	chainID string,
-) (proto.Message, error) {
+) (*privvalproto.Message, error) {
 	var (
-		res proto.Message
+		res *privvalproto.Message
 		err error
 	)
 
-	fmt.Println("here", req.String(), chainID)
-
-	switch r := req.(type) {
-	case *privvalproto.PubKeyRequest:
+	switch r := req.Sum.(type) {
+	case *privvalproto.Message_PubKeyRequest:
 		var pubKey crypto.PubKey
 		pubKey, err = privVal.GetPubKey()
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
@@ -33,41 +29,41 @@ func DefaultValidationRequestHandler(
 		}
 
 		if err != nil {
-			res = &privvalproto.PubKeyResponse{PubKey: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}}
+			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
-			res = &privvalproto.PubKeyResponse{PubKey: &pk, Error: nil}
+			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: &pk, Error: nil})
 		}
 
-	case *privvalproto.SignVoteRequest:
-		v, err := types.VoteFromProto(r.Vote)
+	case *privvalproto.Message_SignVoteRequest:
+		v, err := types.VoteFromProto(r.SignVoteRequest.Vote)
 		if err != nil {
 			return nil, err
 		}
 
 		err = privVal.SignVote(chainID, v)
 		if err != nil {
-			res = &privvalproto.SignedVoteResponse{Vote: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}}
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			vpb := v.ToProto()
-			res = &privvalproto.SignedVoteResponse{Vote: vpb, Error: nil}
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: vpb, Error: nil})
 		}
 
-	case *privvalproto.SignProposalRequest:
-		p, err := types.ProposalFromProto(&r.Proposal)
+	case *privvalproto.Message_SignProposalRequest:
+		p, err := types.ProposalFromProto(&r.SignProposalRequest.Proposal)
 		if err != nil {
 			return nil, err
 		}
 
 		err = privVal.SignProposal(chainID, p)
 		if err != nil {
-			res = &privvalproto.SignedProposalResponse{Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}}
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			ppb := p.ToProto()
-			res = &privvalproto.SignedProposalResponse{Proposal: ppb, Error: nil}
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: ppb, Error: nil})
 		}
 
-	case *privvalproto.PingRequest:
-		err, res = nil, &privvalproto.PingResponse{}
+	case *privvalproto.Message_PingRequest:
+		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
 
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)

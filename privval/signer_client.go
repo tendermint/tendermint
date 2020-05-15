@@ -52,16 +52,15 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 
 // Ping sends a ping request to the remote signer
 func (sc *SignerClient) Ping() error {
-	response, err := sc.endpoint.SendRequest(&privvalproto.PingRequest{})
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
 
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
 		return nil
 	}
 
-	fmt.Println(response.String())
-
-	_, ok := response.(*privvalproto.PingResponse)
+	pb := mustUnwrapMsg(*response)
+	_, ok := pb.(*privvalproto.PingResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")
 		return err
@@ -73,19 +72,20 @@ func (sc *SignerClient) Ping() error {
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	response, err := sc.endpoint.SendRequest(&privvalproto.PubKeyRequest{})
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
 		return nil, errors.Wrap(err, "send")
 	}
 
-	pubKeyResp, ok := response.(*privvalproto.PubKeyResponse)
+	pb := mustUnwrapMsg(*response)
+	pubKeyResp, ok := pb.(*privvalproto.PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
 		return nil, errors.Errorf("unexpected response type %T", response)
 	}
 
-	if pubKeyResp.Error != nil || pubKeyResp.PubKey == nil {
+	if pubKeyResp.Error != nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
 		return nil, fmt.Errorf("remote error: %w", errors.New(pubKeyResp.Error.Description))
 	}
@@ -102,13 +102,14 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	pbv := vote.ToProto()
 
-	response, err := sc.endpoint.SendRequest(&privvalproto.SignVoteRequest{Vote: pbv})
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: pbv}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignVote", "err", err)
 		return err
 	}
 
-	resp, ok := response.(*privvalproto.SignedVoteResponse)
+	pb := mustUnwrapMsg(*response)
+	resp, ok := pb.(*privvalproto.SignedVoteResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != SignedVoteResponse")
 		return ErrUnexpectedResponse
@@ -129,13 +130,16 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	pb := proposal.ToProto()
-	response, err := sc.endpoint.SendRequest(&privvalproto.SignProposalRequest{Proposal: *pb})
+
+	fmt.Println("here")
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignProposalRequest{Proposal: *pb}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
 		return err
 	}
 
-	resp, ok := response.(*privvalproto.SignedProposalResponse)
+	pbmsg := mustUnwrapMsg(*response)
+	resp, ok := pbmsg.(*privvalproto.SignedProposalResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", "response != SignedProposalResponse")
 		return ErrUnexpectedResponse
@@ -143,10 +147,12 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 	if resp.Error != nil {
 		return fmt.Errorf("%s", resp.Error.Description)
 	}
+
 	p, err := types.ProposalFromProto(resp.Proposal)
 	if err != nil {
 		return err
 	}
+
 	*proposal = *p
 
 	return nil

@@ -14,6 +14,8 @@ func mustWrapMsg(pb proto.Message) *privvalproto.Message {
 	msg := privvalproto.Message{}
 
 	switch pb := pb.(type) {
+	case *privvalproto.Message:
+		msg = *pb
 	case *privvalproto.PubKeyRequest:
 		msg.Sum = &privvalproto.Message_PubKeyRequest{PubKeyRequest: pb}
 	case *privvalproto.PubKeyResponse:
