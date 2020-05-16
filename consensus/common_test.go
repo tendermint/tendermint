@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -49,9 +48,11 @@ const (
 type cleanupFunc func()
 
 // genesis, chain_id, priv_val
-var config *cfg.Config // NOTE: must be reset for each _test.go file
-var consensusReplayConfig *cfg.Config
-var ensureTimeout = time.Millisecond * 100
+var (
+	config                *cfg.Config // NOTE: must be reset for each _test.go file
+	consensusReplayConfig *cfg.Config
+	ensureTimeout         = time.Millisecond * 100
+)
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := tmos.EnsureDir(dir, mode); err != nil {
@@ -91,7 +92,7 @@ func (vs *validatorStub) signVote(
 
 	pubKey, err := vs.PrivValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
 	vote := &types.Vote{
@@ -301,7 +302,6 @@ func validatePrecommit(
 				lockedBlockHash))
 		}
 	}
-
 }
 
 func validatePrevoteAndPrecommit(

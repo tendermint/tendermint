@@ -6,14 +6,13 @@ package p2p
 
 import (
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
@@ -268,7 +267,7 @@ func (na *NetAddress) Routable() bool {
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() error {
 	if err := validateID(na.ID); err != nil {
-		return errors.Wrap(err, "invalid ID")
+		return fmt.Errorf("invalid ID: %w", err)
 	}
 
 	if na.IP == nil {

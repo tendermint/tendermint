@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
@@ -25,7 +23,7 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start listener endpoint")
+			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
 
@@ -74,13 +72,13 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil, errors.Wrap(err, "send")
+		return nil, fmt.Errorf("send: %w", err)
 	}
 
 	pubKeyResp := response.GetPubKeyResponse()
 	if pubKeyResp == nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil, errors.Errorf("unexpected response type %T", response)
+		return nil, fmt.Errorf("unexpected response type %T", response)
 	}
 
 	if pubKeyResp.Error != nil {

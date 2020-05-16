@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -100,7 +101,7 @@ func (bm *BlockMeta) ValidateBasic() error {
 		return err
 	}
 	if !bytes.Equal(bm.BlockID.Hash, bm.Header.Hash()) {
-		return errors.Errorf("expected BlockID#Hash and Header#Hash to be the same, got %X != %X",
+		return fmt.Errorf("expected BlockID#Hash and Header#Hash to be the same, got %X != %X",
 			bm.BlockID.Hash, bm.Header.Hash())
 	}
 	return nil

@@ -149,6 +149,7 @@ func makeConsensusParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
+	maxNumEvidence uint32,
 ) tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
 		Block: tmproto.BlockParams{
@@ -159,6 +160,7 @@ func makeConsensusParams(
 		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
+			MaxNum:          maxNumEvidence,
 		},
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	protoio "github.com/gogo/protobuf/io"
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/service"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
@@ -101,9 +100,9 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 	err = protoReader.ReadMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrReadTimeout, err.Error())
+			err = fmt.Errorf("%v: %w", err, ErrReadTimeout)
 		} else {
-			err = errors.Wrap(ErrReadTimeout, "Empty error")
+			err = fmt.Errorf("empty error: %w", ErrReadTimeout)
 		}
 
 		se.Logger.Debug("Dropping [read]", "obj", se)
@@ -119,7 +118,7 @@ func (se *signerEndpoint) WriteMessage(msg privvalproto.Message) (err error) {
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return errors.Wrap(ErrNoConnection, "endpoint is not connected")
+		return fmt.Errorf("endpoint is not connected: %w", ErrNoConnection)
 	}
 
 	protoWriter := protoio.NewDelimitedWriter(se.conn)
@@ -134,9 +133,9 @@ func (se *signerEndpoint) WriteMessage(msg privvalproto.Message) (err error) {
 	err = protoWriter.WriteMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrWriteTimeout, err.Error())
+			err = fmt.Errorf("%v: %w", err, ErrWriteTimeout)
 		} else {
-			err = errors.Wrap(ErrWriteTimeout, "Empty error")
+			err = fmt.Errorf("empty error: %w", ErrWriteTimeout)
 		}
 		se.dropConnection()
 	}

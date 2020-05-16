@@ -596,3 +596,34 @@ func TestMakeCommit(t *testing.T) {
 		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
 }
+
+func buildVoteSet(
+	height int64,
+	round int32, nonVotes, nonNilVotes, nilVotes int,
+	voteType tmproto.SignedMsgType) (*VoteSet, *ValidatorSet, []PrivValidator, BlockID) {
+	valSize := nonVotes + nilVotes + nonNilVotes
+	voteSet, valSet, privValidators := randVoteSet(height, round, voteType, valSize, 1)
+	blockID := makeBlockIDRandom()
+	voteProto := &Vote{
+		ValidatorAddress: nil,
+		ValidatorIndex:   0,
+		Height:           height,
+		Round:            round,
+		Type:             voteType,
+		Timestamp:        tmtime.Now(),
+		BlockID:          blockID,
+	}
+	for i := 0; i < nonNilVotes; i++ {
+		pubKey, _ := privValidators[i].GetPubKey()
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, uint32(i))
+		_, _ = signAddVote(privValidators[i], vote, voteSet)
+	}
+	for i := nonNilVotes; i < nonNilVotes+nilVotes; i++ {
+		pubKey, _ := privValidators[i].GetPubKey()
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, uint32(i))
+		_, _ = signAddVote(privValidators[i], withBlockHash(vote, nil), voteSet)
+	}
+	return voteSet, valSet, privValidators, blockID
+}

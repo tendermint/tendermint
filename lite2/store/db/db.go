@@ -58,7 +58,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	pbvs, err := valSet.ToProto()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshalling header: %w", err)
 	}
 
 	valSetBz, err := proto.Marshal(pbvs)

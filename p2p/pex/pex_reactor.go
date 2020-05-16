@@ -1,12 +1,12 @@
 package pex
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -575,7 +575,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return errors.Wrapf(err, "dialing failed (attempts: %d)", attempts+1)
+		return fmt.Errorf("dialing failed (attempts: %d): %w", attempts+1, err)
 	}
 
 	// cleanup any history
@@ -610,7 +610,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 		case p2p.ErrNetAddressLookup:
 			r.Logger.Error("Connecting to seed failed", "err", e)
 		default:
-			return 0, nil, errors.Wrap(e, "seed node configuration has error")
+			return 0, nil, fmt.Errorf("seed node configuration has error: %w", e)
 		}
 	}
 	return numOnline, netAddrs, nil

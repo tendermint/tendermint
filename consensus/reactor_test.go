@@ -237,6 +237,7 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	}
 	return false
 }
+func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
 
 //------------------------------------
 
@@ -934,7 +935,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: Wrong Hash"},
+		}, "wrong BlockID: wrong PartsHeader: wrong Hash"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -411,7 +409,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to convert value %v from event attribute to time.Time", value)
+			return false, fmt.Errorf("failed to convert value %v from event attribute to time.Time: %w", value, err)
 		}
 
 		switch op {
@@ -436,7 +434,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 		// try our best to convert value from tags to float64
 		v, err := strconv.ParseFloat(filteredValue, 64)
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to convert value %v from event attribute to float64", filteredValue)
+			return false, fmt.Errorf("failed to convert value %v from event attribute to float64: %w", filteredValue, err)
 		}
 
 		switch op {
@@ -462,7 +460,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 		if strings.ContainsAny(filteredValue, ".") {
 			v1, err := strconv.ParseFloat(filteredValue, 64)
 			if err != nil {
-				return false, errors.Wrapf(err, "failed to convert value %v from event attribute to float64", filteredValue)
+				return false, fmt.Errorf("failed to convert value %v from event attribute to float64: %w", filteredValue, err)
 			}
 
 			v = int64(v1)
@@ -471,7 +469,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 			// try our best to convert value from tags to int64
 			v, err = strconv.ParseInt(filteredValue, 10, 64)
 			if err != nil {
-				return false, errors.Wrapf(err, "failed to convert value %v from event attribute to int64", filteredValue)
+				return false, fmt.Errorf("failed to convert value %v from event attribute to int64: %w", filteredValue, err)
 			}
 		}
 

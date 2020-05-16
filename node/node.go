@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -38,7 +38,7 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
@@ -524,14 +524,14 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 	if config.P2P.ExternalAddress != "" {
 		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
 		if err != nil {
-			return nil, errors.Wrap(err, "p2p.external_address is incorrect")
+			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
 		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
 		if err != nil {
-			return nil, errors.Wrap(err, "p2p.laddr is incorrect")
+			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
@@ -663,13 +663,13 @@ func NewNode(config *cfg.Config,
 		// FIXME: we should start services inside OnStart
 		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
 		if err != nil {
-			return nil, errors.Wrap(err, "error with private validator socket client")
+			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
 	}
 
 	pubKey, err := privValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
 	// Determine whether we should do state and/or fast sync.
@@ -721,7 +721,7 @@ func NewNode(config *cfg.Config,
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
 	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create blockchain reactor")
+		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
@@ -761,17 +761,17 @@ func NewNode(config *cfg.Config,
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
+		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
 	}
 
 	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add peer ids from unconditional_peer_ids field")
+		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
 	}
 
 	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create addrbook")
+		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
 	// Optionally, start the pex reactor
@@ -887,7 +887,7 @@ func (n *Node) OnStart() error {
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return errors.Wrap(err, "could not dial peers from persistent_peers field")
+		return fmt.Errorf("could not dial peers from persistent_peers field: %w", err)
 	}
 
 	// Run state sync
@@ -950,32 +950,42 @@ func (n *Node) OnStop() {
 	}
 }
 
-// ConfigureRPC sets all variables in rpccore so they will serve
-// rpc calls from this node
-func (n *Node) ConfigureRPC() {
-	rpccore.SetStateDB(n.stateDB)
-	rpccore.SetBlockStore(n.blockStore)
-	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempool)
-	rpccore.SetEvidencePool(n.evidencePool)
-	rpccore.SetP2PPeers(n.sw)
-	rpccore.SetP2PTransport(n)
+// ConfigureRPC makes sure RPC has all the objects it needs to operate.
+func (n *Node) ConfigureRPC() error {
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("can't get pubkey: %w", err)
 	}
-	rpccore.SetPubKey(pubKey)
-	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetProxyAppQuery(n.proxyApp.Query())
-	rpccore.SetTxIndexer(n.txIndexer)
-	rpccore.SetConsensusReactor(n.consensusReactor)
-	rpccore.SetEventBus(n.eventBus)
-	rpccore.SetLogger(n.Logger.With("module", "rpc"))
-	rpccore.SetConfig(*n.config.RPC)
+	rpccore.SetEnvironment(&rpccore.Environment{
+		ProxyAppQuery: n.proxyApp.Query(),
+
+		StateDB:        n.stateDB,
+		BlockStore:     n.blockStore,
+		EvidencePool:   n.evidencePool,
+		ConsensusState: n.consensusState,
+		P2PPeers:       n.sw,
+		P2PTransport:   n,
+
+		PubKey:           pubKey,
+		GenDoc:           n.genesisDoc,
+		TxIndexer:        n.txIndexer,
+		ConsensusReactor: n.consensusReactor,
+		EventBus:         n.eventBus,
+		Mempool:          n.mempool,
+
+		Logger: n.Logger.With("module", "rpc"),
+
+		Config: *n.config.RPC,
+	})
+	return nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	n.ConfigureRPC()
+	err := n.ConfigureRPC()
+	if err != nil {
+		return nil, err
+	}
+
 	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
@@ -1031,7 +1041,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rootHandler = corsMiddleware.Handler(mux)
 		}
 		if n.config.RPC.IsTLSEnabled() {
-			go rpcserver.StartHTTPAndTLSServer(
+			go rpcserver.ServeTLS(
 				listener,
 				rootHandler,
 				n.config.RPC.CertFile(),
@@ -1040,7 +1050,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				config,
 			)
 		} else {
-			go rpcserver.StartHTTPServer(
+			go rpcserver.Serve(
 				listener,
 				rootHandler,
 				rpcLogger,

@@ -1,9 +1,8 @@
 package proxy
 
 import (
+	"fmt"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
@@ -55,7 +54,7 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to connect to proxy")
+		return nil, fmt.Errorf("failed to connect to proxy: %w", err)
 	}
 	return remoteApp, nil
 }

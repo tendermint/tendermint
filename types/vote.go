@@ -205,6 +205,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	}
 
 	vote := new(Vote)
+
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
