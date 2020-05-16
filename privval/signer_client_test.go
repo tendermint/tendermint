@@ -106,7 +106,6 @@ func TestSignerProposal(t *testing.T) {
 			POLRound:  2,
 			BlockID:   types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
-			Signature: []byte("signature"),
 		}
 		want := &types.Proposal{
 			Type:      tmproto.ProposalType,
@@ -115,7 +114,6 @@ func TestSignerProposal(t *testing.T) {
 			POLRound:  2,
 			BlockID:   types.BlockID{Hash: hash, PartsHeader: types.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
-			Signature: []byte("signature"),
 		}
 
 		defer tc.signerServer.Stop()
@@ -141,7 +139,6 @@ func TestSignerVote(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		have := &types.Vote{
@@ -152,7 +149,6 @@ func TestSignerVote(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		defer tc.signerServer.Stop()
@@ -178,7 +174,6 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		have := &types.Vote{
@@ -189,7 +184,6 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		defer tc.signerServer.Stop()
@@ -225,7 +219,6 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		have := &types.Vote{
@@ -236,7 +229,6 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-			Signature:        []byte("signature"),
 		}
 
 		defer tc.signerServer.Stop()
