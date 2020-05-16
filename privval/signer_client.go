@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
