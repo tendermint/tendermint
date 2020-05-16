@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,8 +23,8 @@ func TestNodeInfoValidate(t *testing.T) {
 	dupChannels = append(dupChannels, testCh)
 
 	nonASCII := "¢§µ"
-	emptyTab := fmt.Sprintf("\t")
-	emptySpace := fmt.Sprintf("  ")
+	emptyTab := "\t"
+	emptySpace := "  "
 
 	testCases := []struct {
 		testName         string

@@ -8,7 +8,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -88,7 +87,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	}
 }
 
-func makeStatusFunc(c client.StatusClient) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+func makeStatusFunc(c rpcclient.StatusClient) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status()
 	}
