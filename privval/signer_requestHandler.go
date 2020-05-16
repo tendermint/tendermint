@@ -29,7 +29,8 @@ func DefaultValidationRequestHandler(
 		}
 
 		if err != nil {
-			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+			res = mustWrapMsg(&privvalproto.PubKeyResponse{
+				PubKey: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: &pk, Error: nil})
 		}
@@ -42,7 +43,8 @@ func DefaultValidationRequestHandler(
 
 		err = privVal.SignVote(chainID, v)
 		if err != nil {
-			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
+				Vote: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			vpb := v.ToProto()
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: vpb, Error: nil})
@@ -56,7 +58,8 @@ func DefaultValidationRequestHandler(
 
 		err = privVal.SignProposal(chainID, p)
 		if err != nil {
-			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
+				Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			ppb := p.ToProto()
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: ppb, Error: nil})

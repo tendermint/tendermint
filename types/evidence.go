@@ -1211,11 +1211,11 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 	plc := new(ProofOfLockChange)
 	vpb := make([]Vote, len(pb.Votes))
 	for i, v := range pb.Votes {
-		v, err := VoteFromProto(&v)
+		vi, err := VoteFromProto(&v)
 		if err != nil {
 			return nil, err
 		}
-		vpb[i] = *v
+		vpb[i] = *vi
 	}
 
 	pk, err := cryptoenc.PubKeyFromProto(pb.PubKey)

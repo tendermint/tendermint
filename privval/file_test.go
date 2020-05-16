@@ -103,7 +103,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	}`
 
 	val := privvalproto.FilePVLastSignState{}
-	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
+	err := jsonpb.Unmarshal(strings.NewReader(serialized), &val)
 	require.NoError(err, "%+v", err)
 
 	// make sure the values match
@@ -305,13 +305,14 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx uint32, height int64, round int32, typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx uint32, height int64,
+	round int32, typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            round,
-		Type:             tmproto.SignedMsgType(typ),
+		Type:             typ,
 		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}
@@ -371,7 +372,7 @@ func TestFilePVKeyProtobuf(t *testing.T) {
 		}
 
 		fpvk, err := FilePVKeyFromProto(pb)
-		if tc.expPass {
+		if tc.expPass2 {
 			require.Equal(t, tc.fpk, &fpvk, tc.testname)
 			require.NoError(t, err)
 		} else {
@@ -420,7 +421,7 @@ func TestFilePVLastSignStateProtobuf(t *testing.T) {
 		}
 
 		fpvss, err := FilePVLastSignStateFromProto(pb)
-		if tc.expPass {
+		if tc.expPass2 {
 			require.Equal(t, tc.fpk, fpvss, tc.testname)
 			require.NoError(t, err)
 		} else {

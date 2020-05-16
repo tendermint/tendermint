@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
-	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -57,7 +56,7 @@ func TestProvider(t *testing.T) {
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	require.Nil(t, err)
 
-	p := litehttp.NewWithClient(chainID, c)
+	p := http.NewWithClient(chainID, c)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 
