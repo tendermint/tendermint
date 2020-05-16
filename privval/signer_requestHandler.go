@@ -22,12 +22,9 @@ func DefaultValidationRequestHandler(
 	switch r := req.Sum.(type) {
 	case *privvalproto.Message_PubKeyRequest:
 		var pubKey crypto.PubKey
+
 		pubKey, err = privVal.GetPubKey()
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
-		if err != nil {
-			return res, err
-		}
-
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{
 				PubKey: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
