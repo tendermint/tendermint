@@ -324,8 +324,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-func brokenHandler(privVal types.PrivValidator, request 
-	privvalproto.Message, chainID string) (privvalproto.Message, error) {
+func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
+	chainID string) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 
@@ -339,7 +339,6 @@ func brokenHandler(privVal types.PrivValidator, request
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: nil, Error: nil})
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
-
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
