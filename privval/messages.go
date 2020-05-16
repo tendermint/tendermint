@@ -10,7 +10,7 @@ import (
 
 // TODO: Add ChainIDRequest
 
-func mustWrapMsg(pb proto.Message) *privvalproto.Message {
+func mustWrapMsg(pb proto.Message) privvalproto.Message {
 	msg := privvalproto.Message{}
 
 	switch pb := pb.(type) {
@@ -36,5 +36,5 @@ func mustWrapMsg(pb proto.Message) *privvalproto.Message {
 		panic(fmt.Errorf("unknown message type %T", msg))
 	}
 
-	return &msg
+	return msg
 }

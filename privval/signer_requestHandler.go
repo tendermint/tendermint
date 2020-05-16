@@ -13,9 +13,9 @@ func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
 	req privvalproto.Message,
 	chainID string,
-) (*privvalproto.Message, error) {
+) (privvalproto.Message, error) {
 	var (
-		res *privvalproto.Message
+		res privvalproto.Message
 		err error
 	)
 
@@ -25,7 +25,7 @@ func DefaultValidationRequestHandler(
 		pubKey, err = privVal.GetPubKey()
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
 		if err != nil {
@@ -37,7 +37,7 @@ func DefaultValidationRequestHandler(
 	case *privvalproto.Message_SignVoteRequest:
 		v, err := types.VoteFromProto(r.SignVoteRequest.Vote)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
 		err = privVal.SignVote(chainID, v)
@@ -51,7 +51,7 @@ func DefaultValidationRequestHandler(
 	case *privvalproto.Message_SignProposalRequest:
 		p, err := types.ProposalFromProto(&r.SignProposalRequest.Proposal)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
 		err = privVal.SignProposal(chainID, p)
@@ -61,7 +61,6 @@ func DefaultValidationRequestHandler(
 			ppb := p.ToProto()
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: ppb, Error: nil})
 		}
-
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
 

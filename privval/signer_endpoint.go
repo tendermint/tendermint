@@ -114,7 +114,7 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 }
 
 // WriteMessage writes a message from the endpoint
-func (se *signerEndpoint) WriteMessage(msg *privvalproto.Message) (err error) {
+func (se *signerEndpoint) WriteMessage(msg privvalproto.Message) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
@@ -123,6 +123,7 @@ func (se *signerEndpoint) WriteMessage(msg *privvalproto.Message) (err error) {
 	}
 
 	protoWriter := protoio.NewDelimitedWriter(se.conn)
+
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
 	err = se.conn.SetWriteDeadline(deadline)
@@ -130,7 +131,7 @@ func (se *signerEndpoint) WriteMessage(msg *privvalproto.Message) (err error) {
 		return
 	}
 
-	err = protoWriter.WriteMsg(msg)
+	err = protoWriter.WriteMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = errors.Wrap(ErrWriteTimeout, err.Error())

@@ -13,7 +13,7 @@ import (
 type ValidationRequestHandlerFunc func(
 	privVal types.PrivValidator,
 	requestMessage privvalproto.Message,
-	chainID string) (*privvalproto.Message, error)
+	chainID string) (privvalproto.Message, error)
 
 type SignerServer struct {
 	service.BaseService
@@ -71,7 +71,7 @@ func (ss *SignerServer) servicePendingRequest() {
 		return
 	}
 
-	var res *privvalproto.Message
+	var res privvalproto.Message
 	{
 		// limit the scope of the lock
 		ss.handlerMtx.Lock()
@@ -83,11 +83,9 @@ func (ss *SignerServer) servicePendingRequest() {
 		}
 	}
 
-	if res != nil {
-		err = ss.endpoint.WriteMessage(res)
-		if err != nil {
-			ss.Logger.Error("SignerServer: writeMessage", "err", err)
-		}
+	err = ss.endpoint.WriteMessage(res)
+	if err != nil {
+		ss.Logger.Error("SignerServer: writeMessage", "err", err)
 	}
 }
 

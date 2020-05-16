@@ -84,7 +84,7 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request *privvalproto.Message) (*privvalproto.Message, error) {
+func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*privvalproto.Message, error) {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
 
