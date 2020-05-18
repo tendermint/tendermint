@@ -4,16 +4,19 @@
 
 ### Breaking Changes
 
-- Batch `Set()`, `Delete()`, and `Close()` may now error (@erikgrinaker)
+- [\#98](https://github.com/tendermint/tm-db/pull/98) `NewDB` now returns an error instead of panicing (@erikgrinaker)
 
-- `Iterator.Close()` may now error (@erikgrinaker)
+- [\#96](https://github.com/tendermint/tm-db/pull/96) `Batch.Set()`, `Delete()`, and `Close()` may now error (@erikgrinaker)
 
-- Many iterator panics are now exposed via `Error()` instead (@erikgrinaker)
+- [\#97](https://github.com/tendermint/tm-db/pull/97) `Iterator.Close()` may now error (@erikgrinaker)
 
-- `RemoteDB` iterators are now correctly primed with the first item when created, without calling
-  `Next()` (@erikgrinaker)
+- [\#97](https://github.com/tendermint/tm-db/pull/97) Many iterator panics are now exposed via `Error()` instead (@erikgrinaker)
 
-- The `SetDeleter` interface has been removed (@erikgrinaker)
+- [\#96](https://github.com/tendermint/tm-db/pull/96) The `SetDeleter` interface has been removed (@erikgrinaker)
+
+### Bug Fixes
+
+- [\#97](https://github.com/tendermint/tm-db/pull/97) `RemoteDB` iterators are now correctly primed with the first item when created, without calling `Next()` (@erikgrinaker)
 
 ## 0.5.1
 

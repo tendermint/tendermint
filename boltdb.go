@@ -3,11 +3,11 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 

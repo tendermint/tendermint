@@ -37,7 +37,8 @@ func testBackendGetSetDelete(t *testing.T, backend BackendType) {
 	// Default
 	dirname, err := ioutil.TempDir("", fmt.Sprintf("test_backend_%s_", backend))
 	require.Nil(t, err)
-	db := NewDB("testdb", backend, dirname)
+	db, err := NewDB("testdb", backend, dirname)
+	require.NoError(t, err)
 	defer cleanupDBDir(dirname, "testdb")
 
 	// A nonexistent key should return nil, even if the key is empty
@@ -212,7 +213,8 @@ func TestBackendsNilKeys(t *testing.T) {
 
 func TestGoLevelDBBackend(t *testing.T) {
 	name := fmt.Sprintf("test_%x", randStr(12))
-	db := NewDB(name, GoLevelDBBackend, "")
+	db, err := NewDB(name, GoLevelDBBackend, "")
+	require.NoError(t, err)
 	defer cleanupDBDir("", name)
 
 	_, ok := db.(*GoLevelDB)
@@ -231,7 +233,8 @@ func TestDBIterator(t *testing.T) {
 func testDBIterator(t *testing.T, backend BackendType) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, backend, dir)
+	db, err := NewDB(name, backend, dir)
+	require.NoError(t, err)
 	defer cleanupDBDir(dir, name)
 
 	for i := 0; i < 10; i++ {
@@ -366,10 +369,11 @@ func testDBIterator(t *testing.T, backend BackendType) {
 func testDBIteratorBlankKey(t *testing.T, backend BackendType) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, backend, dir)
+	db, err := NewDB(name, backend, dir)
+	require.NoError(t, err)
 	defer cleanupDBDir(dir, name)
 
-	err := db.Set([]byte(""), []byte{0})
+	err = db.Set([]byte(""), []byte{0})
 	require.NoError(t, err)
 	err = db.Set([]byte("a"), []byte{1})
 	require.NoError(t, err)
@@ -444,7 +448,8 @@ func TestDBBatch(t *testing.T) {
 func testDBBatch(t *testing.T, backend BackendType) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, backend, dir)
+	db, err := NewDB(name, backend, dir)
+	require.NoError(t, err)
 	defer cleanupDBDir(dir, name)
 
 	// create a new batch, and some items - they should not be visible until we write
@@ -454,7 +459,7 @@ func testDBBatch(t *testing.T, backend BackendType) {
 	require.NoError(t, batch.Set([]byte("c"), []byte{3}))
 	assertKeyValues(t, db, map[string][]byte{})
 
-	err := batch.Write()
+	err = batch.Write()
 	require.NoError(t, err)
 	assertKeyValues(t, db, map[string][]byte{"a": {1}, "b": {2}, "c": {3}})
 

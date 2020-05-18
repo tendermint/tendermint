@@ -8,12 +8,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRocksDBBackend(t *testing.T) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, RocksDBBackend, dir)
+	db, err := NewDB(name, RocksDBBackend, dir)
+	require.NoError(t, err)
 	defer cleanupDBDir(dir, name)
 
 	_, ok := db.(*RocksDB)
@@ -23,7 +25,8 @@ func TestRocksDBBackend(t *testing.T) {
 func TestRocksDBStats(t *testing.T) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, RocksDBBackend, dir)
+	db, err := NewDB(name, RocksDBBackend, dir)
+	require.NoError(t, err)
 	defer cleanupDBDir(dir, name)
 
 	assert.NotEmpty(t, db.Stats())

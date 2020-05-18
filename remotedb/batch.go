@@ -1,7 +1,8 @@
 package remotedb
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	db "github.com/tendermint/tm-db"
 	protodb "github.com/tendermint/tm-db/remotedb/proto"
@@ -56,7 +57,7 @@ func (b *batch) Write() error {
 	}
 	_, err := b.db.dc.BatchWrite(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {
-		return errors.Errorf("remoteDB.BatchWrite: %v", err)
+		return fmt.Errorf("remoteDB.BatchWrite: %w", err)
 	}
 	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
 	b.Close()
@@ -70,7 +71,7 @@ func (b *batch) WriteSync() error {
 	}
 	_, err := b.db.dc.BatchWriteSync(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {
-		return errors.Errorf("RemoteDB.BatchWriteSync: %v", err)
+		return fmt.Errorf("RemoteDB.BatchWriteSync: %w", err)
 	}
 	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
 	return b.Close()

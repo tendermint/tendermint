@@ -1,6 +1,6 @@
 package db
 
-import "github.com/pkg/errors"
+import "fmt"
 
 // memDBBatch operations
 type opType int
@@ -65,7 +65,7 @@ func (b *memDBBatch) Write() error {
 		case opTypeDelete:
 			b.db.delete(op.key)
 		default:
-			return errors.Errorf("unknown operation type %v (%v)", op.opType, op)
+			return fmt.Errorf("unknown operation type %v (%v)", op.opType, op)
 		}
 	}
 

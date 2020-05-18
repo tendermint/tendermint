@@ -2,9 +2,8 @@ package remotedb
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	db "github.com/tendermint/tm-db"
 	"github.com/tendermint/tm-db/remotedb/grpcdb"
@@ -47,28 +46,28 @@ func (rd *RemoteDB) Close() error {
 
 func (rd *RemoteDB) Delete(key []byte) error {
 	if _, err := rd.dc.Delete(rd.ctx, &protodb.Entity{Key: key}); err != nil {
-		return errors.Errorf("remoteDB.Delete: %v", err)
+		return fmt.Errorf("remoteDB.Delete: %w", err)
 	}
 	return nil
 }
 
 func (rd *RemoteDB) DeleteSync(key []byte) error {
 	if _, err := rd.dc.DeleteSync(rd.ctx, &protodb.Entity{Key: key}); err != nil {
-		return errors.Errorf("remoteDB.DeleteSync: %v", err)
+		return fmt.Errorf("remoteDB.DeleteSync: %w", err)
 	}
 	return nil
 }
 
 func (rd *RemoteDB) Set(key, value []byte) error {
 	if _, err := rd.dc.Set(rd.ctx, &protodb.Entity{Key: key, Value: value}); err != nil {
-		return errors.Errorf("remoteDB.Set: %v", err)
+		return fmt.Errorf("remoteDB.Set: %w", err)
 	}
 	return nil
 }
 
 func (rd *RemoteDB) SetSync(key, value []byte) error {
 	if _, err := rd.dc.SetSync(rd.ctx, &protodb.Entity{Key: key, Value: value}); err != nil {
-		return errors.Errorf("remoteDB.SetSync: %v", err)
+		return fmt.Errorf("remoteDB.SetSync: %w", err)
 	}
 	return nil
 }
@@ -76,7 +75,7 @@ func (rd *RemoteDB) SetSync(key, value []byte) error {
 func (rd *RemoteDB) Get(key []byte) ([]byte, error) {
 	res, err := rd.dc.Get(rd.ctx, &protodb.Entity{Key: key})
 	if err != nil {
-		return nil, errors.Errorf("remoteDB.Get error: %v", err)
+		return nil, fmt.Errorf("remoteDB.Get error: %w", err)
 	}
 	return res.Value, nil
 }
@@ -109,10 +108,7 @@ func (rd *RemoteDB) Print() error {
 
 func (rd *RemoteDB) Stats() map[string]string {
 	stats, err := rd.dc.Stats(rd.ctx, &protodb.Nothing{})
-	if err != nil {
-		panic(fmt.Sprintf("RemoteDB.Stats error: %v", err))
-	}
-	if stats == nil {
+	if err != nil || stats == nil {
 		return nil
 	}
 	return stats.Data

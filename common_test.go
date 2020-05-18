@@ -68,8 +68,10 @@ func checkValuePanics(t *testing.T, itr Iterator) {
 
 func newTempDB(t *testing.T, backend BackendType) (db DB, dbDir string) {
 	dirname, err := ioutil.TempDir("", "db_common_test")
-	require.Nil(t, err)
-	return NewDB("testdb", backend, dirname), dirname
+	require.NoError(t, err)
+	db, err = NewDB("testdb", backend, dirname)
+	require.NoError(t, err)
+	return db, dirname
 }
 
 func benchmarkRangeScans(b *testing.B, db DB, dbSize int64) {
