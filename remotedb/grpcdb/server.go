@@ -214,9 +214,15 @@ func (s *server) batchWrite(c context.Context, b *protodb.Batch, sync bool) (*pr
 	for _, op := range b.Ops {
 		switch op.Type {
 		case protodb.Operation_SET:
-			bat.Set(op.Entity.Key, op.Entity.Value)
+			err := bat.Set(op.Entity.Key, op.Entity.Value)
+			if err != nil {
+				return nil, err
+			}
 		case protodb.Operation_DELETE:
-			bat.Delete(op.Entity.Key)
+			err := bat.Delete(op.Entity.Key)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	if sync {

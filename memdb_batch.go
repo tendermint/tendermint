@@ -32,27 +32,29 @@ func newMemDBBatch(db *MemDB) *memDBBatch {
 	}
 }
 
-func (b *memDBBatch) assertOpen() {
-	if b.ops == nil {
-		panic("batch has been written or closed")
-	}
-}
-
 // Set implements Batch.
-func (b *memDBBatch) Set(key, value []byte) {
-	b.assertOpen()
+func (b *memDBBatch) Set(key, value []byte) error {
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	b.ops = append(b.ops, operation{opTypeSet, key, value})
+	return nil
 }
 
 // Delete implements Batch.
-func (b *memDBBatch) Delete(key []byte) {
-	b.assertOpen()
+func (b *memDBBatch) Delete(key []byte) error {
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	b.ops = append(b.ops, operation{opTypeDelete, key, nil})
+	return nil
 }
 
 // Write implements Batch.
 func (b *memDBBatch) Write() error {
-	b.assertOpen()
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	b.db.mtx.Lock()
 	defer b.db.mtx.Unlock()
 
@@ -68,8 +70,7 @@ func (b *memDBBatch) Write() error {
 	}
 
 	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
-	b.Close()
-	return nil
+	return b.Close()
 }
 
 // WriteSync implements Batch.
@@ -78,6 +79,7 @@ func (b *memDBBatch) WriteSync() error {
 }
 
 // Close implements Batch.
-func (b *memDBBatch) Close() {
+func (b *memDBBatch) Close() error {
 	b.ops = nil
+	return nil
 }

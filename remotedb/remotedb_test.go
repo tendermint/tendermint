@@ -19,9 +19,9 @@ func TestRemoteDB(t *testing.T) {
 	srv, err := grpcdb.NewServer(cert, key)
 	require.Nil(t, err)
 	defer srv.Stop()
-	go func() { //nolint:staticcheck
+	go func() {
 		if err := srv.Serve(ln); err != nil {
-			t.Fatalf("BindServer: %v", err)
+			panic(err)
 		}
 	}()
 
@@ -29,12 +29,7 @@ func TestRemoteDB(t *testing.T) {
 	require.Nil(t, err, "expecting a successful client creation")
 	dbName := "test-remote-db"
 	require.Nil(t, client.InitRemote(&remotedb.Init{Name: dbName, Type: "goleveldb"}))
-	defer func() {
-		err := os.RemoveAll(dbName + ".db")
-		if err != nil {
-			panic(err)
-		}
-	}()
+	defer os.RemoveAll(dbName + ".db")
 
 	k1 := []byte("key-1")
 	v1, err := client.Get(k1)
@@ -114,8 +109,10 @@ func TestRemoteDB(t *testing.T) {
 	v4 := []byte("value-4")
 	v5 := []byte("value-5")
 	bat := client.NewBatch()
-	bat.Set(k3, v3)
-	bat.Set(k4, v4)
+	err = bat.Set(k3, v3)
+	require.NoError(t, err)
+	err = bat.Set(k4, v4)
+	require.NoError(t, err)
 
 	rv3, err := client.Get(k3)
 	require.NoError(t, err)
@@ -137,8 +134,10 @@ func TestRemoteDB(t *testing.T) {
 
 	// Batch tests - deletion
 	bat = client.NewBatch()
-	bat.Delete(k4)
-	bat.Delete(k3)
+	err = bat.Delete(k4)
+	require.NoError(t, err)
+	err = bat.Delete(k3)
+	require.NoError(t, err)
 	err = bat.WriteSync()
 	require.NoError(t, err)
 
@@ -152,9 +151,12 @@ func TestRemoteDB(t *testing.T) {
 
 	// Batch tests - set and delete
 	bat = client.NewBatch()
-	bat.Set(k4, v4)
-	bat.Set(k5, v5)
-	bat.Delete(k4)
+	err = bat.Set(k4, v4)
+	require.NoError(t, err)
+	err = bat.Set(k5, v5)
+	require.NoError(t, err)
+	err = bat.Delete(k4)
+	require.NoError(t, err)
 	err = bat.WriteSync()
 	require.NoError(t, err)
 

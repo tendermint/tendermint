@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Batch `Set()`, `Delete()`, and `Close()` may now error (@erikgrinaker)
+
+- The `SetDeleter` interface has been removed (@erikgrinaker)
+
 ## 0.5.1
 
 **2020-03-30**

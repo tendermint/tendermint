@@ -7,6 +7,8 @@ import (
 	protodb "github.com/tendermint/tm-db/remotedb/proto"
 )
 
+var errBatchClosed = errors.New("batch has been written or closed")
+
 type batch struct {
 	db  *RemoteDB
 	ops []*protodb.Operation
@@ -21,35 +23,37 @@ func newBatch(rdb *RemoteDB) *batch {
 	}
 }
 
-func (b *batch) assertOpen() {
-	if b.ops == nil {
-		panic("batch has been written or closed")
-	}
-}
-
 // Set implements Batch.
-func (b *batch) Set(key, value []byte) {
-	b.assertOpen()
+func (b *batch) Set(key, value []byte) error {
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	op := &protodb.Operation{
 		Entity: &protodb.Entity{Key: key, Value: value},
 		Type:   protodb.Operation_SET,
 	}
 	b.ops = append(b.ops, op)
+	return nil
 }
 
 // Delete implements Batch.
-func (b *batch) Delete(key []byte) {
-	b.assertOpen()
+func (b *batch) Delete(key []byte) error {
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	op := &protodb.Operation{
 		Entity: &protodb.Entity{Key: key},
 		Type:   protodb.Operation_DELETE,
 	}
 	b.ops = append(b.ops, op)
+	return nil
 }
 
 // Write implements Batch.
 func (b *batch) Write() error {
-	b.assertOpen()
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	_, err := b.db.dc.BatchWrite(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {
 		return errors.Errorf("remoteDB.BatchWrite: %v", err)
@@ -61,17 +65,19 @@ func (b *batch) Write() error {
 
 // WriteSync implements Batch.
 func (b *batch) WriteSync() error {
-	b.assertOpen()
+	if b.ops == nil {
+		return errBatchClosed
+	}
 	_, err := b.db.dc.BatchWriteSync(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {
 		return errors.Errorf("RemoteDB.BatchWriteSync: %v", err)
 	}
 	// Make sure batch cannot be used afterwards. Callers should still call Close(), for errors.
-	b.Close()
-	return nil
+	return b.Close()
 }
 
 // Close implements Batch.
-func (b *batch) Close() {
+func (b *batch) Close() error {
 	b.ops = nil
+	return nil
 }

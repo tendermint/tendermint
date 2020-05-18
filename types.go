@@ -1,5 +1,12 @@
 package db
 
+import "errors"
+
+var (
+	// errBatchClosed is returned when a closed or written batch is used.
+	errBatchClosed = errors.New("batch has been written or closed")
+)
+
 // DB is the main interface for all database backends. DBs are concurrency-safe. Callers must call
 // Close on the database when done.
 //
@@ -62,28 +69,24 @@ type DB interface {
 // As with DB, given keys and values should be considered read-only, and must not be modified after
 // passing them to the batch.
 type Batch interface {
-	SetDeleter
-
-	// Write writes the batch, possibly without flushing to disk. Only Close() can be called after,
-	// other methods will panic.
-	Write() error
-
-	// WriteSync writes the batch and flushes it to disk. Only Close() can be called after, other
-	// methods will panic.
-	WriteSync() error
-
-	// Close closes the batch. It is idempotent, but any other calls afterwards will panic.
-	Close()
-}
-
-type SetDeleter interface {
 	// Set sets a key/value pair.
 	// CONTRACT: key, value readonly []byte
-	Set(key, value []byte)
+	Set(key, value []byte) error
 
 	// Delete deletes a key/value pair.
 	// CONTRACT: key readonly []byte
-	Delete(key []byte)
+	Delete(key []byte) error
+
+	// Write writes the batch, possibly without flushing to disk. Only Close() can be called after,
+	// other methods will error.
+	Write() error
+
+	// WriteSync writes the batch and flushes it to disk. Only Close() can be called after, other
+	// methods will error.
+	WriteSync() error
+
+	// Close closes the batch. It is idempotent, but calls to other methods afterwards will error.
+	Close() error
 }
 
 // Iterator represents an iterator over a domain of keys. Callers must call Close when done.
