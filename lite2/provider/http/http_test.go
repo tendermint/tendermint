@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/lite2/provider"
-	"github.com/tendermint/tendermint/lite2/provider/http"
+	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -18,15 +18,15 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
-	c, err := http.New("chain-test", "192.168.0.1:26657")
+	c, err := litehttp.New("chain-test", "192.168.0.1:26657")
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://192.168.0.1:26657}")
 
-	c, err = http.New("chain-test", "http://153.200.0.1:26657")
+	c, err = litehttp.New("chain-test", "http://153.200.0.1:26657")
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1:26657}")
 
-	c, err = http.New("chain-test", "153.200.0.1")
+	c, err = litehttp.New("chain-test", "153.200.0.1")
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
@@ -56,7 +56,7 @@ func TestProvider(t *testing.T) {
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	require.Nil(t, err)
 
-	p := http.NewWithClient(chainID, c)
+	p := litehttp.NewWithClient(chainID, c)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 

@@ -76,7 +76,7 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // If no height is provided, it will fetch the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
-	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error
 // If no height is provided, it will fetch the commit for the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/commit
 func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
-	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // getBlock(h).Txs[5]
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
-	height, err := getHeight(env.BlockStore.Base(), env.BlockStore.Height(), heightPtr)
+	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -154,23 +154,4 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
 		ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
 	}, nil
-}
-
-func getHeight(currentBase int64, currentHeight int64, heightPtr *int64) (int64, error) {
-	if heightPtr != nil {
-		height := *heightPtr
-		if height <= 0 {
-			return 0, fmt.Errorf("height must be greater than 0, but got %d", height)
-		}
-		if height > currentHeight {
-			return 0, fmt.Errorf("height %d must be less than or equal to the current blockchain height %d",
-				height, currentHeight)
-		}
-		if height < currentBase {
-			return 0, fmt.Errorf("height %v is not available, blocks pruned at height %v",
-				height, currentBase)
-		}
-		return height, nil
-	}
-	return currentHeight, nil
 }
