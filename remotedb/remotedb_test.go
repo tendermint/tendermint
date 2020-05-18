@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tm-db/remotedb"
@@ -46,8 +47,7 @@ func TestRemoteDB(t *testing.T) {
 	// Simple iteration
 	itr, err := client.Iterator(nil, nil)
 	require.NoError(t, err)
-
-	itr.Next()
+	assert.True(t, itr.Valid())
 
 	key1 := itr.Key()
 	value := itr.Value()
@@ -72,10 +72,7 @@ func TestRemoteDB(t *testing.T) {
 	itr, err = client.Iterator(nil, nil)
 	require.NoError(t, err)
 
-	itr.Next()
-
 	key1 = itr.Key()
-
 	value = itr.Value()
 
 	require.Equal(t, key1, []byte("key-1"))

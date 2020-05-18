@@ -95,6 +95,11 @@ func (itr *boltDBIterator) Valid() bool {
 		return false
 	}
 
+	if itr.Error() != nil {
+		itr.isInvalid = true
+		return false
+	}
+
 	// iterated to the end of the cursor
 	if itr.currentKey == nil {
 		itr.isInvalid = true
@@ -165,15 +170,12 @@ func (itr *boltDBIterator) Error() error {
 }
 
 // Close implements Iterator.
-func (itr *boltDBIterator) Close() {
-	err := itr.tx.Rollback()
-	if err != nil {
-		panic(err)
-	}
+func (itr *boltDBIterator) Close() error {
+	return itr.tx.Rollback()
 }
 
 func (itr *boltDBIterator) assertIsValid() {
 	if !itr.Valid() {
-		panic("boltdb-iterator is invalid")
+		panic("iterator is invalid")
 	}
 }

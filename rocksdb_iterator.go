@@ -49,20 +49,23 @@ func newRocksDBIterator(source *gorocksdb.Iterator, start, end []byte, isReverse
 }
 
 // Domain implements Iterator.
-func (itr rocksDBIterator) Domain() ([]byte, []byte) {
+func (itr *rocksDBIterator) Domain() ([]byte, []byte) {
 	return itr.start, itr.end
 }
 
 // Valid implements Iterator.
-func (itr rocksDBIterator) Valid() bool {
+func (itr *rocksDBIterator) Valid() bool {
 
 	// Once invalid, forever invalid.
 	if itr.isInvalid {
 		return false
 	}
 
-	// Panic on DB error.  No way to recover.
-	itr.assertNoError()
+	// If source has error, invalid.
+	if err := itr.source.Err(); err != nil {
+		itr.isInvalid = true
+		return false
+	}
 
 	// If source is invalid, invalid.
 	if !itr.source.Valid() {
@@ -91,22 +94,19 @@ func (itr rocksDBIterator) Valid() bool {
 }
 
 // Key implements Iterator.
-func (itr rocksDBIterator) Key() []byte {
-	itr.assertNoError()
+func (itr *rocksDBIterator) Key() []byte {
 	itr.assertIsValid()
 	return moveSliceToBytes(itr.source.Key())
 }
 
 // Value implements Iterator.
-func (itr rocksDBIterator) Value() []byte {
-	itr.assertNoError()
+func (itr *rocksDBIterator) Value() []byte {
 	itr.assertIsValid()
 	return moveSliceToBytes(itr.source.Value())
 }
 
 // Next implements Iterator.
 func (itr rocksDBIterator) Next() {
-	itr.assertNoError()
 	itr.assertIsValid()
 	if itr.isReverse {
 		itr.source.Prev()
@@ -116,24 +116,19 @@ func (itr rocksDBIterator) Next() {
 }
 
 // Error implements Iterator.
-func (itr rocksDBIterator) Error() error {
+func (itr *rocksDBIterator) Error() error {
 	return itr.source.Err()
 }
 
 // Close implements Iterator.
-func (itr rocksDBIterator) Close() {
+func (itr *rocksDBIterator) Close() error {
 	itr.source.Close()
+	return nil
 }
 
-func (itr rocksDBIterator) assertNoError() {
-	if err := itr.source.Err(); err != nil {
-		panic(err)
-	}
-}
-
-func (itr rocksDBIterator) assertIsValid() {
+func (itr *rocksDBIterator) assertIsValid() {
 	if !itr.Valid() {
-		panic("rocksDBIterator is invalid")
+		panic("iterator is invalid")
 	}
 }
 

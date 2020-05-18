@@ -93,11 +93,12 @@ func newMemDBIterator(db *MemDB, start []byte, end []byte, reverse bool) *memDBI
 }
 
 // Close implements Iterator.
-func (i *memDBIterator) Close() {
+func (i *memDBIterator) Close() error {
 	i.cancel()
 	for range i.ch { // drain channel
 	}
 	i.item = nil
+	return nil
 }
 
 // Domain implements Iterator.
@@ -112,12 +113,11 @@ func (i *memDBIterator) Valid() bool {
 
 // Next implements Iterator.
 func (i *memDBIterator) Next() {
+	i.assertIsValid()
 	item, ok := <-i.ch
 	switch {
 	case ok:
 		i.item = item
-	case i.item == nil:
-		panic("called Next() on invalid iterator")
 	default:
 		i.item = nil
 	}
@@ -130,16 +130,18 @@ func (i *memDBIterator) Error() error {
 
 // Key implements Iterator.
 func (i *memDBIterator) Key() []byte {
-	if i.item == nil {
-		panic("called Key() on invalid iterator")
-	}
+	i.assertIsValid()
 	return i.item.key
 }
 
 // Value implements Iterator.
 func (i *memDBIterator) Value() []byte {
-	if i.item == nil {
-		panic("called Value() on invalid iterator")
-	}
+	i.assertIsValid()
 	return i.item.value
+}
+
+func (i *memDBIterator) assertIsValid() {
+	if !i.Valid() {
+		panic("iterator is invalid")
+	}
 }

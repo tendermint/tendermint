@@ -93,6 +93,9 @@ type Batch interface {
 // No writes can happen to a domain while there exists an iterator over it, some backends may take
 // out database locks to ensure this will not happen.
 //
+// Callers must make sure the iterator is valid before calling any methods on it, otherwise
+// these methods will panic. This is in part caused by most backend databases using this convention.
+//
 // As with DB, keys and values should be considered read-only, and must be copied before they are
 // modified.
 //
@@ -103,6 +106,9 @@ type Batch interface {
 //
 // for ; itr.Valid(); itr.Next() {
 //   k, v := itr.Key(); itr.Value()
+//   ...
+// }
+// if err := itr.Error(); err != nil {
 //   ...
 // }
 type Iterator interface {
@@ -130,5 +136,5 @@ type Iterator interface {
 	Error() error
 
 	// Close closes the iterator, relasing any allocated resources.
-	Close()
+	Close() error
 }

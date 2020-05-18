@@ -6,6 +6,13 @@
 
 - Batch `Set()`, `Delete()`, and `Close()` may now error (@erikgrinaker)
 
+- `Iterator.Close()` may now error (@erikgrinaker)
+
+- Many iterator panics are now exposed via `Error()` instead (@erikgrinaker)
+
+- `RemoteDB` iterators are now correctly primed with the first item when created, without calling
+  `Next()` (@erikgrinaker)
+
 - The `SetDeleter` interface has been removed (@erikgrinaker)
 
 ## 0.5.1
