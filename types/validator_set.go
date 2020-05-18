@@ -2,13 +2,12 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -29,6 +28,11 @@ const (
 	// priorities.
 	PriorityWindowSizeFactor = 2
 )
+
+// ErrTotalVotingPowerOverflow is returned if the total voting power of the
+// resulting validator set exceeds MaxTotalVotingPower.
+var ErrTotalVotingPowerOverflow = fmt.Errorf("total voting power of resulting valset exceeds max %d",
+	MaxTotalVotingPower)
 
 // ValidatorSet represent a set of *Validator at a given height.
 //
@@ -406,6 +410,7 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
+
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
 		_, val := vals.GetByAddress(update.Address)
 		if val != nil {
@@ -423,10 +428,7 @@ func verifyUpdates(
 	for _, upd := range updatesCopy {
 		tvpAfterRemovals += delta(upd, vals)
 		if tvpAfterRemovals > MaxTotalVotingPower {
-			err = fmt.Errorf(
-				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				upd.Address, MaxTotalVotingPower)
-			return 0, err
+			return 0, ErrTotalVotingPowerOverflow
 		}
 	}
 	return tvpAfterRemovals + removedPower, nil
@@ -751,7 +753,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
-			return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 		// Good!
 		if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
@@ -805,14 +807,14 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, commit *Commit, t
 			// check for double vote of validator on the same commit
 			if firstIndex, ok := seenVals[valIdx]; ok {
 				secondIndex := idx
-				return errors.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
 			seenVals[valIdx] = idx
 
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, idx)
 			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
-				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
 			// Good!
@@ -838,8 +840,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, commit *Commit, t
 // IsErrNotEnoughVotingPowerSigned returns true if err is
 // ErrNotEnoughVotingPowerSigned.
 func IsErrNotEnoughVotingPowerSigned(err error) bool {
-	_, ok := errors.Cause(err).(ErrNotEnoughVotingPowerSigned)
-	return ok
+	return errors.As(err, &ErrNotEnoughVotingPowerSigned{})
 }
 
 // ErrNotEnoughVotingPowerSigned is returned when not enough validators signed

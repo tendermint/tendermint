@@ -20,7 +20,7 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -62,7 +62,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
-		_, _ = rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+		_, _ = rpcclient.NewWithHTTPClient("http://example.com", nil)
 	})
 }
 
@@ -520,14 +520,14 @@ func TestTxSearch(t *testing.T) {
 		require.Len(t, result.Txs, 0)
 
 		// check sorting
-		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "asc")
+		result, err = c.TxSearch("tx.height >= 1", false, 1, 30, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
 
-		result, err = c.TxSearch(fmt.Sprintf("tx.height >= 1"), false, 1, 30, "desc")
+		result, err = c.TxSearch("tx.height >= 1", false, 1, 30, "desc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
@@ -634,14 +634,14 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 	require.Equal(t, 0, batch.Count())
 }
 
-func TestSendingEmptyJSONRPCRequestBatch(t *testing.T) {
+func TestSendingEmptyRequestBatch(t *testing.T) {
 	c := getHTTPClient()
 	batch := c.NewBatch()
 	_, err := batch.Send()
 	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 }
 
-func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
+func TestClearingEmptyRequestBatch(t *testing.T) {
 	c := getHTTPClient()
 	batch := c.NewBatch()
 	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")

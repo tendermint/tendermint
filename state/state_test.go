@@ -17,7 +17,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/libs/rand"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -346,7 +345,7 @@ func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	for i := 0; i < size; i++ {
 		totalVotePower += powers[i]
 		val := types.NewValidator(ed25519.GenPrivKey().PubKey(), powers[i])
-		val.ProposerPriority = rand.Int64()
+		val.ProposerPriority = tmrand.Int64()
 		vals[i] = val
 	}
 	valSet := types.NewValidatorSet(vals)
@@ -986,7 +985,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeConsensusParams(1, 2, 3, 4)
+	initParams := makeConsensusParams(1, 2, 3, 4, 5)
 	const maxAge int64 = 66
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -1002,15 +1001,16 @@ func TestApplyUpdates(t *testing.T) {
 					MaxGas:   55,
 				},
 			},
-			makeConsensusParams(44, 55, 3, 4)},
+			makeConsensusParams(44, 55, 3, 4, 5)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAgeNumBlocks: maxAge,
 					MaxAgeDuration:  time.Duration(maxAge),
+					MaxNum:          10,
 				},
 			},
-			makeConsensusParams(1, 2, 3, maxAge)},
+			makeConsensusParams(1, 2, 3, maxAge, 10)},
 	}
 
 	for i, tc := range cases {

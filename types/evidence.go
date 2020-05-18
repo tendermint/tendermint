@@ -2,11 +2,10 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -501,7 +500,7 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 	// Max validator set size = 100 * 2 = 200 [fork?]
 	maxNumValidators := valSet.Size() * 2
 	if len(alternativeHeader.Commit.Signatures) > maxNumValidators {
-		return errors.Errorf("alt commit contains too many signatures: %d, expected no more than %d",
+		return fmt.Errorf("alt commit contains too many signatures: %d, expected no more than %d",
 			len(alternativeHeader.Commit.Signatures),
 			maxNumValidators)
 	}
@@ -512,7 +511,7 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 		alternativeHeader.ChainID,
 		alternativeHeader.Commit,
 		tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
-		return errors.Wrap(err, "alt header does not have 1/3+ of voting power of our validator set")
+		return fmt.Errorf("alt header does not have 1/3+ of voting power of our validator set: %w", err)
 	}
 
 	return nil
@@ -1182,6 +1181,8 @@ func (e MockRandomEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
 }
 
+func (e MockRandomEvidence) Equal(ev Evidence) bool { return false }
+
 // UNSTABLE
 type MockEvidence struct {
 	EvidenceHeight  int64
@@ -1212,9 +1213,8 @@ func (e MockEvidence) Bytes() []byte {
 }
 func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockEvidence)
-	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
+	return e.EvidenceHeight == ev.Height() &&
+		bytes.Equal(e.EvidenceAddress, ev.Address())
 }
 func (e MockEvidence) ValidateBasic() error { return nil }
 func (e MockEvidence) String() string {

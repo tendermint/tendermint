@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -92,7 +91,7 @@ func (vs *validatorStub) signVote(
 
 	pubKey, err := vs.PrivValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
 	vote := &types.Vote{

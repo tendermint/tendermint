@@ -1,9 +1,8 @@
 package types
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 func MakeCommit(blockID BlockID, height int64, round int,
@@ -13,7 +12,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey()
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get pubkey")
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
@@ -52,7 +51,7 @@ func MakeVote(
 ) (*Vote, error) {
 	pubKey, err := privVal.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 	addr := pubKey.Address()
 	idx, _ := valSet.GetByAddress(addr)

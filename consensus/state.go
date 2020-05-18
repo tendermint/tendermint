@@ -2,13 +2,12 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -206,7 +205,7 @@ func StateMetrics(metrics *Metrics) StateOption {
 // String returns a string.
 func (cs *State) String() string {
 	// better not to access shared variables
-	return fmt.Sprintf("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+	return "ConsensusState"
 }
 
 // GetState returns a copy of the chain state.
@@ -1416,16 +1415,16 @@ func (cs *State) finalizeCommit(height int64) {
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
 	if !ok {
-		panic(fmt.Sprintf("Cannot finalizeCommit, commit does not have two thirds majority"))
+		panic("Cannot finalizeCommit, commit does not have two thirds majority")
 	}
 	if !blockParts.HasHeader(blockID.PartsHeader) {
-		panic(fmt.Sprintf("Expected ProposalBlockParts header to be commit header"))
+		panic("Expected ProposalBlockParts header to be commit header")
 	}
 	if !block.HashesTo(blockID.Hash) {
-		panic(fmt.Sprintf("Cannot finalizeCommit, ProposalBlock does not hash to commit hash"))
+		panic("Cannot finalizeCommit, ProposalBlock does not hash to commit hash")
 	}
 	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
-		panic(fmt.Sprintf("+2/3 committed an invalid block: %v", err))
+		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
 	}
 
 	cs.Logger.Info("Finalizing commit of block with N txs",
@@ -1738,7 +1737,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			pubKey, err := cs.privValidator.GetPubKey()
 			if err != nil {
-				return false, errors.Wrap(err, "can't get pubkey")
+				return false, fmt.Errorf("can't get pubkey: %w", err)
 			}
 
 			if bytes.Equal(vote.ValidatorAddress, pubKey.Address()) {
@@ -1945,7 +1944,7 @@ func (cs *State) signVote(
 
 	pubKey, err := cs.privValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pubkey")
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 	addr := pubKey.Address()
 	valIdx, _ := cs.Validators.GetByAddress(addr)
@@ -1969,12 +1968,12 @@ func (cs *State) voteTime() time.Time {
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
 	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	timeIotaMs := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
+	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
 		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIotaMs)
+		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
 	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIotaMs)
+		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
 	}
 
 	if now.After(minVoteTime) {

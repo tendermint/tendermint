@@ -5,9 +5,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
-
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/types"
@@ -91,7 +88,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
-		panic(errors.Wrap(err, "Error reading block"))
+		panic(fmt.Sprintf("Error reading block: %v", err))
 	}
 	return block
 }
@@ -112,7 +109,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	height, err := strconv.ParseInt(s, 10, 64)
 
 	if err != nil {
-		panic(errors.Wrapf(err, "failed to extract height from %s", s))
+		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
 	}
 	return bs.LoadBlock(height)
 }
@@ -131,7 +128,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, part)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block part"))
+		panic(fmt.Sprintf("Error reading block part: %v", err))
 	}
 	return part
 }
@@ -149,7 +146,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block meta"))
+		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
 	return blockMeta
 }
@@ -169,7 +166,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block commit"))
+		panic(fmt.Sprintf("Error reading block commit: %v", err))
 	}
 	return commit
 }
@@ -188,7 +185,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	}
 	err = cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(errors.Wrap(err, "Error reading block seen commit"))
+		panic(fmt.Sprintf("Error reading block seen commit: %v", err))
 	}
 	return commit
 }
@@ -213,7 +210,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
-	flush := func(batch db.Batch, base int64) error {
+	flush := func(batch dbm.Batch, base int64) error {
 		// We can't trust batches to be atomic, so update base first to make sure noone
 		// tries to access missing blocks.
 		bs.mtx.Lock()
@@ -279,7 +276,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
 	}
 	if !blockParts.IsComplete() {
-		panic(fmt.Sprintf("BlockStore can only save complete block part sets"))
+		panic("BlockStore can only save complete block part sets")
 	}
 
 	// Save block meta
