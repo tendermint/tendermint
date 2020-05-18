@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	tmstore "github.com/tendermint/tendermint/proto/store"
@@ -244,7 +243,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
-	flush := func(batch db.Batch, base int64) error {
+	flush := func(batch dbm.Batch, base int64) error {
 		// We can't trust batches to be atomic, so update base first to make sure noone
 		// tries to access missing blocks.
 		bs.mtx.Lock()
