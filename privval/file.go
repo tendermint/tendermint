@@ -34,7 +34,7 @@ const (
 )
 
 // A vote is either stepPrevote or stepPrecommit.
-func voteToStep(vote *types.Vote) int8 {
+func voteToStep(vote *tmproto.Vote) int8 {
 	switch vote.Type {
 	case tmproto.PrevoteType:
 		return stepPrevote
@@ -359,7 +359,7 @@ func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
+func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
 	if err := pv.signVote(chainID, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
@@ -368,7 +368,7 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
+func (pv *FilePV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("error signing proposal: %v", err)
 	}
@@ -409,7 +409,7 @@ func (pv *FilePV) String() string {
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
+func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
 	lss := pv.LastSignState
@@ -419,7 +419,7 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	signBytes := vote.SignBytes(chainID)
+	signBytes := types.VoteSignBytes(chainID, vote)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
@@ -451,7 +451,7 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
-func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
+func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
@@ -461,7 +461,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 		return err
 	}
 
-	signBytes := proposal.SignBytes(chainID)
+	signBytes := types.ProposalSignBytes(chainID, proposal)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.

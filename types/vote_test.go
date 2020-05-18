@@ -49,8 +49,9 @@ func exampleVote(t byte) *Vote {
 
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
-	signBytes := vote.SignBytes("test_chain_id")
-	pb := CanonicalizeVote("test_chain_id", vote)
+	v := vote.ToProto()
+	signBytes := VoteSignBytes("test_chain_id", v)
+	pb := CanonicalizeVote("test_chain_id", v)
 
 	expected, err := proto.Marshal(&pb)
 	require.NoError(t, err)
@@ -97,14 +98,15 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 	}
 	for i, tc := range tests {
-		got := tc.vote.SignBytes(tc.chainID)
+		v := tc.vote.ToProto()
+		got := VoteSignBytes(tc.chainID, v)
 		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
 }
 
 func TestVoteProposalNotEq(t *testing.T) {
-	cv := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
-	p := CanonicalizeProposal("", &Proposal{Height: 1, Round: 1})
+	cv := CanonicalizeVote("", &tmproto.Vote{Height: 1, Round: 1})
+	p := CanonicalizeProposal("", &tmproto.Proposal{Height: 1, Round: 1})
 	vb, err := proto.Marshal(&cv)
 	require.NoError(t, err)
 	pb, err := proto.Marshal(&p)
@@ -118,30 +120,28 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
-	signBytes := vote.SignBytes("test_chain_id")
+	v := vote.ToProto()
+	signBytes := VoteSignBytes("test_chain_id", v)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", vote)
+	err = privVal.SignVote("test_chain_id", v)
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubkey.VerifyBytes(vote.SignBytes("test_chain_id"), vote.Signature)
+	valid := pubkey.VerifyBytes(VoteSignBytes("test_chain_id", v), v.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
 	precommit := new(tmproto.Vote)
-	vpb := vote.ToProto()
-	bs, err := proto.Marshal(vpb)
+	bs, err := proto.Marshal(v)
 	require.NoError(t, err)
 	err = proto.Unmarshal(bs, precommit)
 	require.NoError(t, err)
 
-	v, err := VoteFromProto(precommit)
-	require.NoError(t, err)
 	// verify the transmitted vote
-	newSignBytes := v.SignBytes("test_chain_id")
+	newSignBytes := VoteSignBytes("test_chain_id", precommit)
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubkey.VerifyBytes(newSignBytes, v.Signature)
+	valid = pubkey.VerifyBytes(newSignBytes, precommit.Signature)
 	require.True(t, valid)
 }
 
@@ -206,12 +206,12 @@ func TestMaxVoteBytes(t *testing.T) {
 		},
 	}
 
+	v := vote.ToProto()
 	privVal := NewMockPV()
-	err := privVal.SignVote("test_chain_id", vote)
+	err := privVal.SignVote("test_chain_id", v)
 	require.NoError(t, err)
 
-	pb := vote.ToProto()
-	bz, err := proto.Marshal(pb)
+	bz, err := proto.Marshal(v)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxVoteBytes, len(bz))
@@ -248,13 +248,15 @@ func TestVoteValidateBasic(t *testing.T) {
 			v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
 		}, true},
 		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
+		{"Nil Signature", func(v *Vote) { v.Signature = nil }, true},
 		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
-			err := privVal.SignVote("test_chain_id", vote)
+			v := vote.ToProto()
+			err := privVal.SignVote("test_chain_id", v)
 			require.NoError(t, err)
 			tc.malleateVote(vote)
 			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -265,7 +267,8 @@ func TestVoteValidateBasic(t *testing.T) {
 func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPV()
 	vote := examplePrecommit()
-	err := privVal.SignVote("test_chain_id", vote)
+	v := vote.ToProto()
+	err := privVal.SignVote("test_chain_id", v)
 	require.NoError(t, err)
 
 	testCases := []struct {

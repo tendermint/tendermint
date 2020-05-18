@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -96,10 +97,9 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
-	pbv := vote.ToProto()
+func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: pbv}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignVote", "err", err)
 		return err
@@ -115,20 +115,15 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
-	v, err := types.VoteFromProto(resp.Vote)
-	if err != nil {
-		return err
-	}
-	*vote = *v
+	*vote = *resp.Vote
 
 	return nil
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
-	pb := proposal.ToProto()
+func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignProposalRequest{Proposal: *pb}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignProposalRequest{Proposal: *proposal}))
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
 		return err
@@ -143,12 +138,7 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
-	p, err := types.ProposalFromProto(resp.Proposal)
-	if err != nil {
-		return err
-	}
-
-	*proposal = *p
+	*proposal = *resp.Proposal
 
 	return nil
 }

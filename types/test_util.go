@@ -36,10 +36,12 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 }
 
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	err = privVal.SignVote(voteSet.ChainID(), vote)
+	v := vote.ToProto()
+	err = privVal.SignVote(voteSet.ChainID(), v)
 	if err != nil {
 		return false, err
 	}
+	vote.Signature = v.Signature
 	return voteSet.AddVote(vote)
 }
 
@@ -69,9 +71,14 @@ func MakeVote(
 		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
-	if err := privVal.SignVote(chainID, vote); err != nil {
+	v := vote.ToProto()
+
+	if err := privVal.SignVote(chainID, v); err != nil {
 		return nil, err
 	}
+
+	vote.Signature = v.Signature
+
 	return vote, nil
 }
 
