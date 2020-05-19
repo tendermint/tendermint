@@ -18,6 +18,7 @@ const (
 	baseKeyCommitted = byte(0x00)
 	baseKeyPending   = byte(0x01)
 	baseKeyPOLC      = byte(0x02)
+	baseKeyAwaiting  = byte(0x03)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -41,7 +42,7 @@ type Pool struct {
 	// In simple words, it means it's still bonded -> therefore slashable.
 	valToLastHeight valToLastHeightMap
 
-	evidenceAwaitingProof []*types.PotentialAmnesiaEvidence
+	nextEvidenceTrialEndedHeight int64
 }
 
 // Validator.Address -> Last height it was in validator set
@@ -58,22 +59,19 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 	}
 
 	pool := &Pool{
-		stateDB:         stateDB,
-		blockStore:      blockStore,
-		state:           state,
-		logger:          log.NewNopLogger(),
-		evidenceStore:   evidenceDB,
-		evidenceList:    clist.New(),
-		valToLastHeight: valToLastHeight,
+		stateDB:                      stateDB,
+		blockStore:                   blockStore,
+		state:                        state,
+		logger:                       log.NewNopLogger(),
+		evidenceStore:                evidenceDB,
+		evidenceList:                 clist.New(),
+		valToLastHeight:              valToLastHeight,
+		nextEvidenceTrialEndedHeight: -1,
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
 	evList := pool.AllPendingEvidence()
 	for _, ev := range evList {
-		if pool.IsEvidenceExpired(ev) {
-			pool.removePendingEvidence(ev)
-			continue
-		}
 		pool.evidenceList.PushBack(ev)
 	}
 
@@ -83,6 +81,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 // If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
 func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
+	evpool.removeExpiredPendingEvidence()
 	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
@@ -91,6 +90,7 @@ func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 }
 
 func (evpool *Pool) AllPendingEvidence() []types.Evidence {
+	evpool.removeExpiredPendingEvidence()
 	evidence, err := evpool.listEvidence(baseKeyPending, -1)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
@@ -103,36 +103,24 @@ func (evpool *Pool) AllPendingEvidence() []types.Evidence {
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
-		panic(
-			fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d",
-				state.LastBlockHeight,
-				block.Height,
-			),
+		panic(fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d",
+			state.LastBlockHeight,
+			block.Height,
+		),
 		)
 	}
 
 	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Height, block.Time, block.Evidence.Evidence)
 
-	// remove expired evidence - this should be done at every height to ensure we don't send expired evidence to peers
-	evpool.removeExpiredPendingEvidence()
-
-	// as it's not vital to remove expired POLCs, we only prune periodically
+	// prune pending, committed and potential evidence and polc's periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.pruneExpiredPOLC()
+		evpool.removeExpiredPendingEvidence()
 	}
 
-	if len(evpool.evidenceAwaitingProof) > 0 {
-		nextPE := evpool.evidenceAwaitingProof[0]
-		if block.Height >= (nextPE.HeightStamp + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod) {
-			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*nextPE, types.EmptyPOLC()))
-			if err != nil {
-				evpool.logger.Error("Unable to add AmensiaEvidence", "err", err)
-			} else {
-				evpool.removePendingEvidence(nextPE)
-				evpool.evidenceAwaitingProof = evpool.evidenceAwaitingProof[1:]
-			}
-		}
+	if evpool.nextEvidenceTrialEndedHeight > 0 && block.Height < evpool.nextEvidenceTrialEndedHeight {
+		evpool.upgradePotentialAmnesiaEvidence()
 	}
 
 	// update the state
@@ -221,14 +209,39 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				if exists {
 					// we should not need to verify it if both the polc and potential amnesia evidence have already
 					// been verified. We replace the potential amnesia evidence.
-					ev = types.MakeAmnesiaEvidence(*pe, polc)
+					err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*pe, polc))
+					if err != nil {
+						return err
+					}
 					break
 				}
 			}
-			// if we can't find a proof of lock change then we commence the trial period
-			if !exists {
-				evpool.startTrialPeriod(pe)
+			pe.HeightStamp = evpool.State().LastBlockHeight
+			// check if amnesia evidence can be made now
+			if pe.Primed(-1, pe.HeightStamp) {
+				err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*pe, types.EmptyPOLC()))
+				if err != nil {
+					return err
+				}
+				break
 			}
+
+			// if we can't find a proof of lock change and we know that the trial period will finish before the
+			// evidence has expired, then we commence the trial period by saving it in the awaiting bucket
+			if !exists && evpool.State().LastBlockHeight+evpool.State().ConsensusParams.Evidence.ProofTrialPeriod <
+				pe.Height()+evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks {
+				evBytes := cdc.MustMarshalBinaryBare(ev)
+				key := keyAwaiting(ev)
+				err := evpool.evidenceStore.Set(key, evBytes)
+				if err != nil {
+					return err
+				}
+				// keep track of when the next pe has finished the trial period
+				if evpool.nextEvidenceTrialEndedHeight == -1 {
+					evpool.nextEvidenceTrialEndedHeight = ev.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
+				}
+			}
+			continue
 		}
 
 		// 2) Save to store.
@@ -398,13 +411,12 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		val := iter.Value()
-
 		if count == maxNum {
 			return evidence, nil
 		}
 		count++
 
+		val := iter.Value()
 		var ev types.Evidence
 		err := cdc.UnmarshalBinaryBare(val, &ev)
 		if err != nil {
@@ -413,11 +425,6 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 		evidence = append(evidence, ev)
 	}
 	return evidence, nil
-}
-
-func (evpool *Pool) startTrialPeriod(pe *types.PotentialAmnesiaEvidence) {
-	pe.HeightStamp = evpool.State().LastBlockHeight
-	evpool.evidenceAwaitingProof = append(evpool.evidenceAwaitingProof, pe)
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() {
@@ -486,6 +493,43 @@ func (evpool *Pool) pruneExpiredPOLC() {
 		}
 		evpool.logger.Info("Deleted expired POLC", "polc", proof)
 	}
+}
+
+func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPOLC})
+	if err != nil {
+		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
+		return -1
+	}
+	defer iter.Close()
+	// 1) Iterate through all potential amnesiae evidence in order of height
+	for ; iter.Valid(); iter.Next() {
+		paeBytes := iter.Value()
+		// 2) Retrieve the evidence
+		var pae types.PotentialAmnesiaEvidence
+		err := cdc.UnmarshalBinaryBare(paeBytes, &pae)
+		if err != nil {
+			evpool.logger.Error("Unable to unmarshal potential amnesia evidence", "err", err)
+			continue
+		}
+		trialPeriod := evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
+		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
+		if pae.Primed(trialPeriod, evpool.State().LastBlockHeight) {
+			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pae, types.EmptyPOLC()))
+			if err != nil {
+				evpool.logger.Error("Unable to add amnesia evidence", "err", err)
+			}
+			err = evpool.evidenceStore.Delete(iter.Key())
+			if err != nil {
+				evpool.logger.Error("Unable to delete potential amnesia evidence", "err", err)
+				continue
+			}
+		} else {
+			// once we reach a piece of evidence that isn't ready send back the height with which it will be ready
+			return pae.HeightStamp + trialPeriod
+		}
+	}
+	return -1
 }
 
 func evMapKey(ev types.Evidence) string {
@@ -579,6 +623,10 @@ func keyCommitted(evidence types.Evidence) []byte {
 
 func keyPending(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
+}
+
+func keyAwaiting(evidence types.Evidence) []byte {
+	return append([]byte{baseKeyAwaiting}, keySuffix(evidence)...)
 }
 
 func keyPOLC(polc types.ProofOfLockChange) []byte {
