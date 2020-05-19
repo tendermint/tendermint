@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmmath "github.com/tendermint/tendermint/libs/math"
-
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -80,6 +80,152 @@ type Evidence interface {
 type CompositeEvidence interface {
 	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
 	Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence
+}
+
+func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
+	switch evi := evidence.(type) {
+	case *DuplicateVoteEvidence:
+		voteB := evi.VoteB.ToProto()
+		voteA := evi.VoteA.ToProto()
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
+				DuplicateVoteEvidence: &tmproto.DuplicateVoteEvidence{
+					VoteA: voteA,
+					VoteB: voteB,
+				},
+			},
+		}
+		return tp, nil
+	case ConflictingHeadersEvidence:
+		pbh1 := evi.H1.ToProto()
+		pbh2 := evi.H2.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
+				ConflictingHeadersEvidence: &tmproto.ConflictingHeadersEvidence{
+					H1: pbh1,
+					H2: pbh2,
+				},
+			},
+		}
+		return tp, nil
+	case *LunaticValidatorEvidence:
+		h := evi.Header.ToProto()
+		v := evi.Vote.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
+				LunaticValidatorEvidence: &tmproto.LunaticValidatorEvidence{
+					Header:             h,
+					Vote:               v,
+					InvalidHeaderField: evi.InvalidHeaderField,
+				},
+			},
+		}
+		return tp, nil
+	case MockEvidence:
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_MockEvidence{
+				MockEvidence: &tmproto.MockEvidence{
+					EvidenceHeight:  evi.Height(),
+					EvidenceTime:    evi.Time(),
+					EvidenceAddress: evi.Address(),
+				},
+			},
+		}
+		return tp, nil
+	case MockRandomEvidence:
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_MockRandomEvidence{
+				MockRandomEvidence: &tmproto.MockRandomEvidence{
+					EvidenceHeight:  evi.Height(),
+					EvidenceTime:    evi.Time(),
+					EvidenceAddress: evi.Address(),
+					RandBytes:       evi.randBytes,
+				},
+			},
+		}
+		return tp, nil
+	default:
+		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
+	}
+}
+
+func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
+
+	switch evi := evidence.Sum.(type) {
+	case *tmproto.Evidence_DuplicateVoteEvidence:
+		voteA, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteA())
+		if err != nil {
+			return nil, err
+		}
+
+		voteB, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteB())
+		if err != nil {
+			return nil, err
+		}
+
+		dve := DuplicateVoteEvidence{
+			VoteA: voteA,
+			VoteB: voteB,
+		}
+
+		return &dve, nil
+	case *tmproto.Evidence_ConflictingHeadersEvidence:
+
+		h1, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H1)
+		if err != nil {
+			return nil, fmt.Errorf("from proto err: %w", err)
+		}
+		h2, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H2)
+		if err != nil {
+			return nil, fmt.Errorf("from proto err: %w", err)
+		}
+
+		tp := ConflictingHeadersEvidence{
+			H1: h1,
+			H2: h2,
+		}
+		return tp, nil
+	case *tmproto.Evidence_LunaticValidatorEvidence:
+
+		h, err := HeaderFromProto(evi.LunaticValidatorEvidence.GetHeader())
+		if err != nil {
+			return nil, err
+		}
+
+		v, err := VoteFromProto(evi.LunaticValidatorEvidence.GetVote())
+		if err != nil {
+			return nil, err
+		}
+
+		tp := LunaticValidatorEvidence{
+			Header:             &h,
+			Vote:               v,
+			InvalidHeaderField: evi.LunaticValidatorEvidence.InvalidHeaderField,
+		}
+
+		return &tp, nil
+	case *tmproto.Evidence_MockEvidence:
+		me := MockEvidence{
+			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
+			EvidenceAddress: evi.MockEvidence.GetEvidenceAddress(),
+			EvidenceTime:    evi.MockEvidence.GetEvidenceTime(),
+		}
+		return me, nil
+	case *tmproto.Evidence_MockRandomEvidence:
+		mre := MockRandomEvidence{
+			MockEvidence: MockEvidence{
+				EvidenceHeight:  evi.MockRandomEvidence.GetEvidenceHeight(),
+				EvidenceAddress: evi.MockRandomEvidence.GetEvidenceAddress(),
+				EvidenceTime:    evi.MockRandomEvidence.GetEvidenceTime(),
+			},
+			randBytes: evi.MockRandomEvidence.RandBytes,
+		}
+		return mre, nil
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
