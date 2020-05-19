@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.32.12
+
+### BUG FIXES
+
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
+
 ## v0.32.11
 
 ### BUG FIXES:
