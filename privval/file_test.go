@@ -138,7 +138,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	}`, addrB64, pubB64, privB64)
 
 	val := privvalproto.FilePVKey{}
-	err := jsonpb.Unmarshal(strings.NewReader(string(serialized)), &val)
+	err := jsonpb.Unmarshal(strings.NewReader(serialized), &val)
 	require.NoError(err, "%+v", err)
 	fpvk, err := FilePVKeyFromProto(&val)
 	require.NoError(err, "%+v", err)

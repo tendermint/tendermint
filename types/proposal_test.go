@@ -58,7 +58,7 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	prop := NewProposal(
 		4, 2, 2,
-		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, []byte(tmrand.Bytes(tmhash.Size))}})
+		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
 	signBytes := ProposalSignBytes("test_chain_id", p)
 
