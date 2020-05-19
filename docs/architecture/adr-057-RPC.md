@@ -35,7 +35,7 @@ gRPC is a high performant RPC framework. It has been battle tested by a large nu
 - Can provide a REST API via [gRPC-gateway](https://github.com/grpc-ecosystem/grpc-gateway)
 - Can provide a GraphQL API via [Rejoiner](https://github.com/google/rejoiner)
 - HTTP/2-based protocol
-- Cacheing, rate limiting, Authentication
+- Wide array of tooling (Cacheing, rate limiting, Authentication)
 - Defined Schema (Protocol Buffers)
 - Bi-directional streaming
 - When Tendermint-rs begins RPC implementation they will be able to generate a compatible client.
