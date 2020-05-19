@@ -83,3 +83,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#4805 Attempt to handle panics during panic recovery (@erikgrinaker)
 - [types] [\#4764](https://github.com/tendermint/tendermint/pull/4764) Return an error if voting power overflows in `VerifyCommitTrusting` (@melekes)
 - [privval] [\#4812](https://github.com/tendermint/tendermint/pull/4812) Retry `GetPubKey/SignVote/SignProposal` a few times before returning an error (@melekes)
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
