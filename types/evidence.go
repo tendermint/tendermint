@@ -921,6 +921,18 @@ func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
+func (e PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool {
+	// voted in the past can be instantly punishable
+	if e.VoteA.Round > e.VoteB.Round {
+		return true
+	}
+	// has the trial period expired
+	if e.HeightStamp > 0 {
+		return e.HeightStamp+trialPeriod <= currentHeight
+	}
+	return false
+}
+
 // ProofOfLockChange (POLC) proves that a node followed the consensus protocol and voted for a precommit in two
 // different rounds because the node received a majority of votes for a different block in the latter round. In cases of
 // amnesia evidence, a suspected node will need ProofOfLockChange to prove that the node did not break protocol.
@@ -996,7 +1008,7 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
 				if !validator.PubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
-					return fmt.Errorf("cannot verify vote against signature: %v", vote.Signature)
+					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v", vote.ValidatorIndex, vote.Signature)
 				}
 
 				talliedVotingPower += validator.VotingPower
@@ -1070,6 +1082,9 @@ func (e ProofOfLockChange) ValidateBasic() error {
 }
 
 func (e ProofOfLockChange) String() string {
+	if e.IsAbsent() {
+		return fmt.Sprintf("Empty ProofOfLockChange")
+	}
 	return fmt.Sprintf("ProofOfLockChange {Address: %X, Height: %d, Round: %d", e.Address(), e.Height(),
 		e.Votes[0].Round)
 }
@@ -1082,7 +1097,7 @@ func (e ProofOfLockChange) IsAbsent() bool {
 // Tendermint consensus when a validator incorrectly sends a vote in a later round without correctly changing the lock
 type AmnesiaEvidence struct {
 	PotentialAmnesiaEvidence
-	polc ProofOfLockChange
+	Polc ProofOfLockChange
 }
 
 // Height, Time, Address and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
@@ -1108,33 +1123,33 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid potential amnesia evidence: %w", err)
 	}
-	if !e.polc.IsAbsent() {
-		if err := e.polc.ValidateBasic(); err != nil {
+	if !e.Polc.IsAbsent() {
+		if err := e.Polc.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid proof of lock change: %w", err)
 		}
 
-		if !bytes.Equal(e.PotentialAmnesiaEvidence.Address(), e.polc.Address()) {
+		if !bytes.Equal(e.PotentialAmnesiaEvidence.Address(), e.Polc.Address()) {
 			return fmt.Errorf("validator addresses do not match (%X - %X)", e.PotentialAmnesiaEvidence.Address(),
-				e.polc.Address())
+				e.Polc.Address())
 		}
 
-		if e.PotentialAmnesiaEvidence.Height() != e.polc.Height() {
+		if e.PotentialAmnesiaEvidence.Height() != e.Polc.Height() {
 			return fmt.Errorf("heights do not match (%d - %d)", e.PotentialAmnesiaEvidence.Height(),
-				e.polc.Height())
+				e.Polc.Height())
 		}
 
-		if e.polc.Round() <= e.VoteA.Round || e.polc.Round() > e.VoteB.Round {
-			return fmt.Errorf("POLC must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
+		if e.Polc.Round() <= e.VoteA.Round || e.Polc.Round() > e.VoteB.Round {
+			return fmt.Errorf("Polc must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
 		}
 
-		if !e.polc.BlockID().Equals(e.PotentialAmnesiaEvidence.VoteB.BlockID) && !e.polc.BlockID().IsZero() {
-			return fmt.Errorf("POLC must be either for a nil block or for the same block as the second vote: %v != %v",
-				e.polc.BlockID(), e.PotentialAmnesiaEvidence.VoteB.BlockID)
+		if !e.Polc.BlockID().Equals(e.PotentialAmnesiaEvidence.VoteB.BlockID) && !e.Polc.BlockID().IsZero() {
+			return fmt.Errorf("Polc must be either for a nil block or for the same block as the second vote: %v != %v",
+				e.Polc.BlockID(), e.PotentialAmnesiaEvidence.VoteB.BlockID)
 		}
 
-		if e.polc.Time().After(e.PotentialAmnesiaEvidence.VoteB.Timestamp) {
+		if e.Polc.Time().After(e.PotentialAmnesiaEvidence.VoteB.Timestamp) {
 			return fmt.Errorf("validator voted again before receiving a majority of votes for the new block: %v is after %v",
-				e.polc.Time(), e.PotentialAmnesiaEvidence.VoteB.Timestamp)
+				e.Polc.Time(), e.PotentialAmnesiaEvidence.VoteB.Timestamp)
 		}
 	}
 	return nil
@@ -1150,11 +1165,15 @@ func (e AmnesiaEvidence) ViolatedConsensus() (bool, string) {
 	}
 
 	// if empty, then no proof was provided to defend the validators actions
-	if e.polc.IsAbsent() {
+	if e.Polc.IsAbsent() {
 		return true, "no proof of lock was provided"
 	}
 
 	return false, ""
+}
+
+func (e AmnesiaEvidence) String() string {
+	return fmt.Sprintf("AmnesiaEvidence{ %v, polc: %v }", e.PotentialAmnesiaEvidence, e.Polc)
 }
 
 //-----------------------------------------------------------------

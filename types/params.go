@@ -178,12 +178,12 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	if params.Evidence.ProofTrialPeriod <= 0 {
-		return errors.Errorf("evidenceParams.ProofTrialPeriod must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidenceParams.ProofTrialPeriod must be grater than 0 if provided, Got %v",
 			params.Evidence.ProofTrialPeriod)
 	}
 
 	if params.Evidence.ProofTrialPeriod >= params.Evidence.MaxAgeNumBlocks {
-		return errors.Errorf("evidenceParams.ProofTrialPeriod must be smaller than evidenceParams.MaxAgeNumBlocks,  %d > %d",
+		return fmt.Errorf("evidenceParams.ProofTrialPeriod must be smaller than evidenceParams.MaxAgeNumBlocks,  %d > %d",
 			params.Evidence.ProofTrialPeriod, params.Evidence.MaxAgeDuration)
 	}
 
