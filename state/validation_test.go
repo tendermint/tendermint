@@ -495,12 +495,13 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 }
 
 func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
-	state, stateDB, vals := makeState(4, 3)
+	state, stateDB, vals := makeState(4, 4)
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
 	addr, val := state.Validators.GetByIndex(0)
 	h := &types.Header{
 		Version:            version.Consensus{Block: 1, App: 2},
 		ChainID:            chainID,
-		Height:             2,
+		Height:             3,
 		Time:               defaultTestTime,
 		LastBlockID:        blockId,
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
@@ -513,7 +514,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
-	vote := makeVote(2, 1, 0, addr, blockId)
+	vote := makeVote(3, 1, 0, addr, blockId)
 	err := vals[val.Address.String()].SignVote(chainID, vote)
 	require.NoError(t, err)
 	ev := types.PhantomValidatorEvidence{
@@ -524,8 +525,62 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	err = ev.ValidateBasic()
 	assert.NoError(t, err)
 	err = sm.VerifyEvidence(stateDB, state, ev, nil)
-	assert.Error(t, err)
-	t.Log(err)
+	if assert.Error(t, err) {
+		assert.Equal(t, "address 576585A00DD4D58318255611D8AAC60E8E77CB32 was a validator at height 3", err.Error())
+	}
+
+	privVal := types.NewMockPV()
+	pubKey, _ := privVal.GetPubKey()
+	vote2 := makeVote(3, 1, 0, pubKey.Address(), blockId)
+	err = privVal.SignVote(chainID, vote2)
+	require.NoError(t, err)
+	ev = types.PhantomValidatorEvidence{
+		Header:                      h,
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 1,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, "last time validator was in the set at height 1, min: 2", err.Error())
+	}
+
+	ev = types.PhantomValidatorEvidence{
+		Header:                      h,
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 2,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	errMsg := "phantom validator"
+	if assert.Error(t, err) {
+		assert.Equal(t, errMsg, err.Error()[:len(errMsg)])
+	}
+
+	vals2, err := sm.LoadValidators(stateDB, 2)
+	require.NoError(t, err)
+	vals2.Validators = append(vals2.Validators, types.NewValidator(pubKey, 1000))
+	valKey := []byte("validatorsKey:2")
+	valInfo := &sm.ValidatorsInfo{
+		LastHeightChanged: 2,
+		ValidatorSet:      vals2,
+	}
+
+	stateDB.Set(valKey, valInfo.Bytes())
+	ev = types.PhantomValidatorEvidence{
+		Header:                      h,
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 2,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	if !assert.NoError(t, err) {
+		t.Log(err)
+	}
+
 }
 
 func makeVote(height int64, round, index int, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
