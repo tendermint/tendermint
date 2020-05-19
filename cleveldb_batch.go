@@ -19,19 +19,28 @@ func newCLevelDBBatch(db *CLevelDB) *cLevelDBBatch {
 
 // Set implements Batch.
 func (b *cLevelDBBatch) Set(key, value []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}
-	b.batch.Put(nonNilBytes(key), nonNilBytes(value))
+	b.batch.Put(key, value)
 	return nil
 }
 
 // Delete implements Batch.
 func (b *cLevelDBBatch) Delete(key []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}
-	b.batch.Delete(nonNilBytes(key))
+	b.batch.Delete(key)
 	return nil
 }
 

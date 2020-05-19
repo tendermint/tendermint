@@ -21,6 +21,12 @@ func newGoLevelDBBatch(db *GoLevelDB) *goLevelDBBatch {
 
 // Set implements Batch.
 func (b *goLevelDBBatch) Set(key, value []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}
@@ -30,6 +36,9 @@ func (b *goLevelDBBatch) Set(key, value []byte) error {
 
 // Delete implements Batch.
 func (b *goLevelDBBatch) Delete(key []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}

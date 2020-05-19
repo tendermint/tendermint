@@ -65,7 +65,9 @@ func NewRocksDBWithOptions(name string, dir string, opts *gorocksdb.Options) (*R
 
 // Get implements DB.
 func (db *RocksDB) Get(key []byte) ([]byte, error) {
-	key = nonNilBytes(key)
+	if len(key) == 0 {
+		return nil, errKeyEmpty
+	}
 	res, err := db.db.Get(db.ro, key)
 	if err != nil {
 		return nil, err
@@ -84,8 +86,12 @@ func (db *RocksDB) Has(key []byte) (bool, error) {
 
 // Set implements DB.
 func (db *RocksDB) Set(key []byte, value []byte) error {
-	key = nonNilBytes(key)
-	value = nonNilBytes(value)
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	err := db.db.Put(db.wo, key, value)
 	if err != nil {
 		return err
@@ -95,8 +101,12 @@ func (db *RocksDB) Set(key []byte, value []byte) error {
 
 // SetSync implements DB.
 func (db *RocksDB) SetSync(key []byte, value []byte) error {
-	key = nonNilBytes(key)
-	value = nonNilBytes(value)
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	err := db.db.Put(db.woSync, key, value)
 	if err != nil {
 		return err
@@ -106,7 +116,9 @@ func (db *RocksDB) SetSync(key []byte, value []byte) error {
 
 // Delete implements DB.
 func (db *RocksDB) Delete(key []byte) error {
-	key = nonNilBytes(key)
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	err := db.db.Delete(db.wo, key)
 	if err != nil {
 		return err
@@ -116,7 +128,9 @@ func (db *RocksDB) Delete(key []byte) error {
 
 // DeleteSync implements DB.
 func (db *RocksDB) DeleteSync(key []byte) error {
-	key = nonNilBytes(key)
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	err := db.db.Delete(db.woSync, key)
 	if err != nil {
 		return nil
@@ -169,12 +183,18 @@ func (db *RocksDB) NewBatch() Batch {
 
 // Iterator implements DB.
 func (db *RocksDB) Iterator(start, end []byte) (Iterator, error) {
+	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
+		return nil, errKeyEmpty
+	}
 	itr := db.db.NewIterator(db.ro)
 	return newRocksDBIterator(itr, start, end, false), nil
 }
 
 // ReverseIterator implements DB.
 func (db *RocksDB) ReverseIterator(start, end []byte) (Iterator, error) {
+	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
+		return nil, errKeyEmpty
+	}
 	itr := db.db.NewIterator(db.ro)
 	return newRocksDBIterator(itr, start, end, true), nil
 }

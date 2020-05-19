@@ -12,8 +12,7 @@ import (
 )
 
 var (
-	bucket         = []byte("tm")
-	boltDBEmptyKey = []byte("nil")
+	bucket = []byte("tm")
 )
 
 func init() {
@@ -67,7 +66,9 @@ func NewBoltDBWithOpts(name string, dir string, opts *bbolt.Options) (DB, error)
 
 // Get implements DB.
 func (bdb *BoltDB) Get(key []byte) (value []byte, err error) {
-	key = nonEmptyKey(nonNilBytes(key))
+	if len(key) == 0 {
+		return nil, errKeyEmpty
+	}
 	err = bdb.db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
 		if v := b.Get(key); v != nil {
@@ -92,8 +93,12 @@ func (bdb *BoltDB) Has(key []byte) (bool, error) {
 
 // Set implements DB.
 func (bdb *BoltDB) Set(key, value []byte) error {
-	key = nonEmptyKey(nonNilBytes(key))
-	value = nonNilBytes(value)
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	err := bdb.db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
 		return b.Put(key, value)
@@ -111,7 +116,9 @@ func (bdb *BoltDB) SetSync(key, value []byte) error {
 
 // Delete implements DB.
 func (bdb *BoltDB) Delete(key []byte) error {
-	key = nonEmptyKey(nonNilBytes(key))
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	err := bdb.db.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Delete(key)
 	})
@@ -175,6 +182,9 @@ func (bdb *BoltDB) NewBatch() Batch {
 // WARNING: Any concurrent writes or reads will block until the iterator is
 // closed.
 func (bdb *BoltDB) Iterator(start, end []byte) (Iterator, error) {
+	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
+		return nil, errKeyEmpty
+	}
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		return nil, err
@@ -185,18 +195,12 @@ func (bdb *BoltDB) Iterator(start, end []byte) (Iterator, error) {
 // WARNING: Any concurrent writes or reads will block until the iterator is
 // closed.
 func (bdb *BoltDB) ReverseIterator(start, end []byte) (Iterator, error) {
+	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
+		return nil, errKeyEmpty
+	}
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		return nil, err
 	}
 	return newBoltDBIterator(tx, start, end, true), nil
-}
-
-// nonEmptyKey returns a []byte("nil") if key is empty.
-// WARNING: this may collude with "nil" user key!
-func nonEmptyKey(key []byte) []byte {
-	if len(key) == 0 {
-		return boltDBEmptyKey
-	}
-	return key
 }

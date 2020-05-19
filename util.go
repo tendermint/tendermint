@@ -5,15 +5,6 @@ import (
 	"os"
 )
 
-// We defensively turn nil keys or values into []byte{} for
-// most operations.
-func nonNilBytes(bz []byte) []byte {
-	if bz == nil {
-		return []byte{}
-	}
-	return bz
-}
-
 func cp(bz []byte) (ret []byte) {
 	ret = make([]byte, len(bz))
 	copy(ret, bz)

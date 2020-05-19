@@ -20,6 +20,12 @@ func newRocksDBBatch(db *RocksDB) *rocksDBBatch {
 
 // Set implements Batch.
 func (b *rocksDBBatch) Set(key, value []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}
@@ -29,6 +35,9 @@ func (b *rocksDBBatch) Set(key, value []byte) error {
 
 // Delete implements Batch.
 func (b *rocksDBBatch) Delete(key []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	if b.batch == nil {
 		return errBatchClosed
 	}

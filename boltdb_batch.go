@@ -21,6 +21,12 @@ func newBoltDBBatch(db *BoltDB) *boltDBBatch {
 
 // Set implements Batch.
 func (b *boltDBBatch) Set(key, value []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
+	if value == nil {
+		return errValueNil
+	}
 	if b.ops == nil {
 		return errBatchClosed
 	}
@@ -30,6 +36,9 @@ func (b *boltDBBatch) Set(key, value []byte) error {
 
 // Delete implements Batch.
 func (b *boltDBBatch) Delete(key []byte) error {
+	if len(key) == 0 {
+		return errKeyEmpty
+	}
 	if b.ops == nil {
 		return errBatchClosed
 	}
@@ -45,14 +54,13 @@ func (b *boltDBBatch) Write() error {
 	err := b.db.db.Batch(func(tx *bbolt.Tx) error {
 		bkt := tx.Bucket(bucket)
 		for _, op := range b.ops {
-			key := nonEmptyKey(nonNilBytes(op.key))
 			switch op.opType {
 			case opTypeSet:
-				if err := bkt.Put(key, op.value); err != nil {
+				if err := bkt.Put(op.key, op.value); err != nil {
 					return err
 				}
 			case opTypeDelete:
-				if err := bkt.Delete(key); err != nil {
+				if err := bkt.Delete(op.key); err != nil {
 					return err
 				}
 			}

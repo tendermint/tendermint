@@ -23,15 +23,6 @@ func IteratePrefix(db DB, prefix []byte) (Iterator, error) {
 	return itr, nil
 }
 
-/*
-TODO: Make test, maybe rename.
-// Like IteratePrefix but the iterator strips the prefix from the keys.
-func IteratePrefixStripped(db DB, prefix []byte) Iterator {
-	start, end := ...
-	return newPrefixIterator(prefix, start, end, IteratePrefix(db, prefix))
-}
-*/
-
 // Strips prefix while iterating from Iterator.
 type prefixDBIterator struct {
 	prefix []byte
@@ -53,14 +44,16 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) (*prefixDBIte
 		valid:  false,
 	}
 
-	if !source.Valid() {
-		return pitrInvalid, nil
+	// Empty keys are not allowed, so if a key exists in the database that exactly matches the
+	// prefix we need to skip it.
+	if source.Valid() && bytes.Equal(source.Key(), prefix) {
+		source.Next()
 	}
-	key := source.Key()
 
-	if !bytes.HasPrefix(key, prefix) {
+	if !source.Valid() || !bytes.HasPrefix(source.Key(), prefix) {
 		return pitrInvalid, nil
 	}
+
 	return &prefixDBIterator{
 		prefix: prefix,
 		start:  start,
@@ -98,6 +91,11 @@ func (itr *prefixDBIterator) Next() {
 
 	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
 		itr.valid = false
+
+	} else if bytes.Equal(itr.source.Key(), itr.prefix) {
+		// Empty keys are not allowed, so if a key exists in the database that exactly matches the
+		// prefix we need to skip it.
+		itr.Next()
 	}
 }
 

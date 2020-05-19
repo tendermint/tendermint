@@ -4,6 +4,8 @@
 
 ### Breaking Changes
 
+- [\#100](https://github.com/tendermint/tm-db/pull/100) Keys can no longer be `nil` or empty, and values can no longer be `nil` (@erikgrinaker)
+
 - [\#98](https://github.com/tendermint/tm-db/pull/98) `NewDB` now returns an error instead of panicing (@erikgrinaker)
 
 - [\#96](https://github.com/tendermint/tm-db/pull/96) `Batch.Set()`, `Delete()`, and `Close()` may now error (@erikgrinaker)
