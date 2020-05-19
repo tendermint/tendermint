@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bits"
-	tmbits "github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -874,7 +873,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 
 	var (
 		commit   = new(Commit)
-		bitArray *tmbits.BitArray
+		bitArray *bits.BitArray
 	)
 
 	bi, err := BlockIDFromProto(&cp.BlockID)
