@@ -48,16 +48,3 @@ message PingRequest {}
 
 // PingResponse is a response to confirm that the connection is alive.
 message PingResponse {}
-
-message Message {
-  oneof sum {
-    PubKeyRequest          pub_key_request          = 1;
-    PubKeyResponse         pub_key_response         = 2;
-    SignVoteRequest        sign_vote_request        = 3;
-    SignedVoteResponse     signed_vote_response     = 4;
-    SignProposalRequest    sign_proposal_request    = 5;
-    SignedProposalResponse signed_proposal_response = 6;
-    PingRequest            ping_request             = 7;
-    PingResponse           ping_response            = 8;
-  }
-}
