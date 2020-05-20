@@ -410,6 +410,9 @@ func (pv *FilePV) String() string {
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
+	if vote == nil {
+		return errors.New("nil vote")
+	}
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
 	lss := pv.LastSignState
@@ -452,6 +455,10 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error {
+	if proposal == nil {
+		return errors.New("nil proposal")
+	}
+
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
