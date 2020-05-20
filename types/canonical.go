@@ -15,33 +15,33 @@ const TimeFormat = time.RFC3339Nano
 //-----------------------------------
 // Canonicalize the structs
 
-func CanonicalizeBlockID(blockID BlockID) tmproto.CanonicalBlockID {
+func CanonicalizeBlockID(blockID tmproto.BlockID) tmproto.CanonicalBlockID {
 	return tmproto.CanonicalBlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: CanonicalizePartSetHeader(blockID.PartsHeader),
 	}
 }
 
-func CanonicalizePartSetHeader(psh PartSetHeader) tmproto.CanonicalPartSetHeader {
+func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
 	return tmproto.CanonicalPartSetHeader{
 		Hash:  psh.Hash,
 		Total: psh.Total,
 	}
 }
 
-func CanonicalizeProposal(chainID string, proposal *Proposal) tmproto.CanonicalProposal {
+func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
 	return tmproto.CanonicalProposal{
 		Type:      tmproto.ProposalType,
 		Height:    proposal.Height,
 		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
-		POLRound:  int64(proposal.POLRound),
+		POLRound:  int64(proposal.PolRound),
 		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
 		ChainID:   chainID,
 	}
 }
 
-func CanonicalizeVote(chainID string, vote *Vote) tmproto.CanonicalVote {
+func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
 		Height:    vote.Height,

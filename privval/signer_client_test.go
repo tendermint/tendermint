@@ -119,8 +119,8 @@ func TestSignerProposal(t *testing.T) {
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
 
-		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
-		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
@@ -154,8 +154,8 @@ func TestSignerVote(t *testing.T) {
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
@@ -191,8 +191,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 
 		time.Sleep(testTimeoutReadWrite2o3)
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have.ToProto()))
 		assert.Equal(t, want.Signature, have.Signature)
 
 		// TODO(jleni): Clarify what is actually being tested
@@ -200,8 +200,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		// This would exceed the deadline if it was not extended by the previous message
 		time.Sleep(testTimeoutReadWrite2o3)
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have.ToProto()))
 		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
@@ -243,8 +243,8 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		time.Sleep(testTimeoutReadWrite * 3)
 		tc.signerServer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
@@ -271,13 +271,13 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			Signature: []byte("signature"),
 		}
 
-		err := tc.signerClient.SignProposal(tc.chainID, proposal)
+		err := tc.signerClient.SignProposal(tc.chainID, proposal.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignProposal(tc.chainID, proposal)
+		err = tc.mockPV.SignProposal(tc.chainID, proposal.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignProposal(tc.chainID, proposal)
+		err = tc.signerClient.SignProposal(tc.chainID, proposal.ToProto())
 		require.Error(t, err)
 	}
 }
@@ -305,13 +305,13 @@ func TestSignerSignVoteErrors(t *testing.T) {
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
 
-		err := tc.signerClient.SignVote(tc.chainID, vote)
+		err := tc.signerClient.SignVote(tc.chainID, vote.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignVote(tc.chainID, vote)
+		err = tc.mockPV.SignVote(tc.chainID, vote.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignVote(tc.chainID, vote)
+		err = tc.signerClient.SignVote(tc.chainID, vote.ToProto())
 		require.Error(t, err)
 	}
 }
@@ -351,7 +351,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		ts := time.Now()
 		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
-		e := tc.signerClient.SignVote(tc.chainID, want)
+		e := tc.signerClient.SignVote(tc.chainID, want.ToProto())
 		assert.EqualError(t, e, "received unexpected response")
 	}
 }

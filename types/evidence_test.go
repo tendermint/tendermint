@@ -34,10 +34,14 @@ func makeVote(
 		Type:             tmproto.SignedMsgType(step),
 		BlockID:          blockID,
 	}
-	err = val.SignVote(chainID, v)
+	vpb := v.ToProto()
+	err = val.SignVote(chainID, vpb)
 	if err != nil {
 		panic(err)
 	}
+
+	v.Signature = vpb.Signature
+
 	return v
 }
 
@@ -54,8 +58,11 @@ func TestEvidence(t *testing.T) {
 
 	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID)
 	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID)
-	err := val2.SignVote(chainID, badVote)
+	bv := badVote.ToProto()
+	err := val2.SignVote(chainID, bv)
 	assert.NoError(t, err)
+
+	badVote.Signature = bv.Signature
 
 	cases := []voteData{
 		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2), true}, // different block ids

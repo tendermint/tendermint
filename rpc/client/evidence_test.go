@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -25,10 +26,16 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	chainID string) *types.DuplicateVoteEvidence {
 
 	var err error
-	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+	fmt.Println(vote, vote2)
+
+	v := vote.ToProto()
+	v2 := vote2.ToProto()
+
+	vote.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.Signature, err = val.Key.PrivKey.Sign(vote2.SignBytes(chainID))
+	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2)
@@ -197,8 +204,12 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Type:             tmproto.PrecommitType,
 			BlockID:          h2.Commit.BlockID,
 		}
-		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+		v := vote.ToProto()
+		signBytes, err := pv.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 		require.NoError(t, err)
+		vote.Signature = v.Signature
+
 		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h2.Time)
 
 		t.Logf("h1 AppHash: %X", h1.AppHash)

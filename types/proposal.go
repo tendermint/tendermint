@@ -70,9 +70,10 @@ func (p *Proposal) ValidateBasic() error {
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
-	// if len(p.Signature) == 0 {
-	// 	return errors.New("signature is missing")
-	// }
+	if len(p.Signature) == 0 {
+		return errors.New("signature is missing")
+	}
+
 	if len(p.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
@@ -90,8 +91,8 @@ func (p *Proposal) String() string {
 		CanonicalTime(p.Timestamp))
 }
 
-// SignBytes returns the Proposal bytes for signing
-func (p *Proposal) SignBytes(chainID string) []byte {
+// ProposalSignBytes returns the Proposal bytes for signing
+func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
 	bz, err := proto.Marshal(&pb)
 	if err != nil {

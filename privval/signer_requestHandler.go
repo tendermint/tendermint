@@ -36,33 +36,25 @@ func DefaultValidationRequestHandler(
 		}
 
 	case *privvalproto.Message_SignVoteRequest:
-		v, err := types.VoteFromProto(r.SignVoteRequest.Vote)
-		if err != nil {
-			return res, err
-		}
+		vote := r.SignVoteRequest.Vote
 
-		err = privVal.SignVote(chainID, v)
+		err = privVal.SignVote(chainID, vote)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
-			vpb := v.ToProto()
-			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: vpb, Error: nil})
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: vote, Error: nil})
 		}
 
 	case *privvalproto.Message_SignProposalRequest:
-		p, err := types.ProposalFromProto(&r.SignProposalRequest.Proposal)
-		if err != nil {
-			return res, err
-		}
+		proposal := r.SignProposalRequest.Proposal
 
-		err = privVal.SignProposal(chainID, p)
+		err = privVal.SignProposal(chainID, &proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
-			ppb := p.ToProto()
-			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: ppb, Error: nil})
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: &proposal, Error: nil})
 		}
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})

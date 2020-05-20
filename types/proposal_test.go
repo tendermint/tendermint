@@ -14,7 +14,10 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
-var testProposal *Proposal
+var (
+	testProposal *Proposal
+	pbp          *tmproto.Proposal
+)
 
 func init() {
 	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
@@ -28,12 +31,13 @@ func init() {
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
+	pbp = testProposal.ToProto()
 }
 
 func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
-	signBytes := testProposal.SignBytes(chainID)
-	pb := CanonicalizeProposal(chainID, testProposal)
+	signBytes := ProposalSignBytes(chainID, pbp)
+	pb := CanonicalizeProposal(chainID, pbp)
 	expected, err := proto.Marshal(&pb)
 	require.NoError(t, err)
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Proposal")
@@ -54,12 +58,14 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	prop := NewProposal(
 		4, 2, 2,
-		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, []byte(tmrand.Bytes(tmhash.Size))}})
-	signBytes := prop.SignBytes("test_chain_id")
+		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
+	p := prop.ToProto()
+	signBytes := ProposalSignBytes("test_chain_id", p)
 
 	// sign it
-	err = privVal.SignProposal("test_chain_id", prop)
+	err = privVal.SignProposal("test_chain_id", p)
 	require.NoError(t, err)
+	prop.Signature = p.Signature
 
 	// verify the same proposal
 	valid := pubKey.VerifyBytes(signBytes, prop.Signature)
@@ -79,7 +85,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted proposal
-	newSignBytes := np.SignBytes("test_chain_id")
+	newSignBytes := ProposalSignBytes("test_chain_id", pb)
 	require.Equal(t, string(signBytes), string(newSignBytes))
 	valid = pubKey.VerifyBytes(newSignBytes, np.Signature)
 	require.True(t, valid)
@@ -87,14 +93,14 @@ func TestProposalVerifySignature(t *testing.T) {
 
 func BenchmarkProposalWriteSignBytes(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		testProposal.SignBytes("test_chain_id")
+		ProposalSignBytes("test_chain_id", pbp)
 	}
 }
 
 func BenchmarkProposalSign(b *testing.B) {
 	privVal := NewMockPV()
 	for i := 0; i < b.N; i++ {
-		err := privVal.SignProposal("test_chain_id", testProposal)
+		err := privVal.SignProposal("test_chain_id", pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -103,13 +109,13 @@ func BenchmarkProposalSign(b *testing.B) {
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	privVal := NewMockPV()
-	err := privVal.SignProposal("test_chain_id", testProposal)
+	err := privVal.SignProposal("test_chain_id", pbp)
 	require.NoError(b, err)
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		pubKey.VerifyBytes(testProposal.SignBytes("test_chain_id"), testProposal.Signature)
+		pubKey.VerifyBytes(ProposalSignBytes("test_chain_id", pbp), testProposal.Signature)
 	}
 }
 
@@ -129,9 +135,9 @@ func TestProposalValidateBasic(t *testing.T) {
 		{"Invalid BlockId", func(p *Proposal) {
 			p.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
 		}, true},
-		// {"Invalid Signature", func(p *Proposal) {
-		// 	p.Signature = make([]byte, 0)
-		// }, true},
+		{"Invalid Signature", func(p *Proposal) {
+			p.Signature = make([]byte, 0)
+		}, true},
 		{"Too big Signature", func(p *Proposal) {
 			p.Signature = make([]byte, MaxSignatureSize+1)
 		}, true},
@@ -144,7 +150,9 @@ func TestProposalValidateBasic(t *testing.T) {
 			prop := NewProposal(
 				4, 2, 2,
 				blockID)
-			err := privVal.SignProposal("test_chain_id", prop)
+			p := prop.ToProto()
+			err := privVal.SignProposal("test_chain_id", p)
+			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)
 			assert.Equal(t, tc.expectErr, prop.ValidateBasic() != nil, "Validate Basic had an unexpected result")

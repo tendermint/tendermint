@@ -761,7 +761,8 @@ func (commit *Commit) GetVote(valIdx uint32) *Vote {
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
 func (commit *Commit) VoteSignBytes(chainID string, valIdx uint32) []byte {
-	return commit.GetVote(valIdx).SignBytes(chainID)
+	v := commit.GetVote(valIdx).ToProto()
+	return VoteSignBytes(chainID, v)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
