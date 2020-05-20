@@ -105,7 +105,7 @@ func (msg *bcReactorMessage) String() string {
 	case stateTimeoutEv:
 		dataStr = fmt.Sprintf("state=%v", msg.data.stateName)
 	default:
-		dataStr = fmt.Sprintf("cannot interpret message data")
+		dataStr = "cannot interpret message data"
 	}
 
 	return fmt.Sprintf("%v: %v", msg.event, dataStr)
