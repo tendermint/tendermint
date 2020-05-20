@@ -152,7 +152,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 }
 
 func latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.ConsensusReactor.WaitSync()
+	nodeIsSyncing := env.ConsensusReactor.FastSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()
 	}

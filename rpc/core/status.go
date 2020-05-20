@@ -64,7 +64,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			CatchingUp:          env.ConsensusReactor.WaitSync(),
+			CatchingUp:          env.ConsensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     env.PubKey.Address(),
