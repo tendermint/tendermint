@@ -26,6 +26,7 @@ var _ = time.Kitchen
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// MsgInfo are msgs from the reactor which may update the state
 type MsgInfo struct {
 	Msg                  Message  `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg"`
 	PeerID               string   `protobuf:"bytes,2,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
@@ -72,6 +73,7 @@ func (m *MsgInfo) GetPeerID() string {
 	return ""
 }
 
+// TimeoutInfo internally generated messages which may update the state
 type TimeoutInfo struct {
 	Duration             time.Duration `protobuf:"bytes,1,opt,name=duration,proto3,stdduration" json:"duration"`
 	Height               int64         `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
@@ -134,6 +136,8 @@ func (m *TimeoutInfo) GetStep() uint32 {
 	return 0
 }
 
+// EndHeightMessage marks the end of the given height inside WAL.
+// @internal used by scripts/wal2json util.
 type EndHeight struct {
 	Height               int64    `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
