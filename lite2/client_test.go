@@ -295,6 +295,30 @@ func TestClient_SkippingVerification(t *testing.T) {
 			}
 		})
 	}
+
+	// start from a large header to make sure that the pivot height doesn't select a height outside
+	// the appropriate range
+	veryLargeFullNode := mockp.New(GenMockNode(chainID, 100, 3, 1, bTime))
+	h1, err := veryLargeFullNode.SignedHeader(90)
+	require.NoError(t, err)
+	c, err := lite.NewClient(
+		chainID,
+		lite.TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 90,
+			Hash:   h1.Hash(),
+		},
+		veryLargeFullNode,
+		[]provider.Provider{veryLargeFullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		lite.SkippingVerification(lite.DefaultTrustLevel),
+	)
+	require.NoError(t, err)
+	h, err := c.Update(bTime.Add(100 * time.Minute))
+	assert.NoError(t, err)
+	h2, err := veryLargeFullNode.SignedHeader(100)
+	require.NoError(t, err)
+	assert.Equal(t, h, h2)
 }
 
 func TestClient_Cleanup(t *testing.T) {
