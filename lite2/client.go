@@ -728,8 +728,8 @@ func (c *Client) bisection(
 		case ErrNewValSetCantBeTrusted:
 			// do add another header to the end of the cache
 			if depth == len(headerCache)-1 {
-				pivotHeight := (headerCache[depth].sh.Height + trustedHeader.
-					Height) * bisectionNumerator / bisectionDenominator
+				pivotHeight := trustedHeader.Height + (headerCache[depth].sh.Height-trustedHeader.
+					Height)*bisectionNumerator/bisectionDenominator
 				interimHeader, interimVals, err := c.fetchHeaderAndValsAtHeight(pivotHeight)
 				if err != nil {
 					return err
