@@ -132,16 +132,6 @@ func (params *ConsensusParams) Validate() error {
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxNum > MaxEvidencePerBlock {
-		return fmt.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
-			params.Evidence.MaxNum, MaxEvidencePerBlock)
-	}
-
-	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
-		return fmt.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
-			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
-	}
-
 	if len(params.Validator.PubKeyTypes) == 0 {
 		return errors.New("len(Validator.PubKeyTypes) must be greater than 0")
 	}
