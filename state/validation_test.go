@@ -491,7 +491,39 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 }
 
 func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
-
+	state, stateDB, vals := makeState(4, 4)
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
+	addr, val := state.Validators.GetByIndex(0)
+	h := &types.Header{
+		Version:            version.Consensus{Block: 1, App: 2},
+		ChainID:            chainID,
+		Height:             3,
+		Time:               defaultTestTime,
+		LastBlockID:        blockId,
+		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
+		DataHash:           tmhash.Sum([]byte("data_hash")),
+		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
+		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
+		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
+		AppHash:            tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
+		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+	}
+	vote := makeVote(3, 1, 0, addr, blockId)
+	err := vals[val.Address.String()].SignVote(chainID, vote)
+	require.NoError(t, err)
+	ev := types.LunaticValidatorEvidence{
+		Header:             h,
+		Vote:               vote,
+		InvalidHeaderField: "ConsensusHash",
+	}
+	err = ev.ValidateBasic()
+	require.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, h)
+	if assert.Error(t, err) {
+		assert.Equal(t, "ConsensusHash matches committed hash", err.Error())
+	}
 }
 
 func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
@@ -523,7 +555,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 		LastHeightValidatorWasInSet: 1,
 	}
 	err = ev.ValidateBasic()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = sm.VerifyEvidence(stateDB, state, ev, nil)
 	if assert.Error(t, err) {
 		assert.Equal(t, "address 576585A00DD4D58318255611D8AAC60E8E77CB32 was a validator at height 3", err.Error())

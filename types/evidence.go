@@ -89,6 +89,7 @@ func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence", nil)
 	cdc.RegisterConcrete(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence", nil)
 	cdc.RegisterConcrete(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence", nil)
+	cdc.RegisterConcrete(&AmnesiaEvidence{}, "tendermint/AmnesiaEvidence", nil)
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {

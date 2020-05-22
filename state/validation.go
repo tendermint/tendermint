@@ -142,8 +142,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				continue
 			}
 		}
-		// if we don't already have amnesia evidence we need to add it to start our own timer
-		if ae, ok := ev.(types.AmnesiaEvidence); ok {
+		// if we don't already have amnesia evidence we need to add it to start our own timer unless
+		// a) a valid polc has already been attached
+		// b) the accused node voted back on an earlier round
+		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round < ae.PotentialAmnesiaEvidence.VoteB.Round {
 			if err := evidencePool.AddEvidence(ae); err != nil {
 				return types.NewErrEvidenceInvalid(ev, fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
 			}
@@ -197,6 +199,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 		)
 	}
 
+	// TODO: function should compare with the header the node received of the same height not the latest height because
+	// the validator hashes could potentially be different anyway and this could mean that nodes could falsely
+	// create evidence against an honest node
 	if ev, ok := evidence.(types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err
@@ -217,6 +222,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	// validator set at height evidence.Height, but was a validator before OR
 	// after.
 	if phve, ok := evidence.(types.PhantomValidatorEvidence); ok {
+		// TODO: function should compare header in PhantomValidatorEvidence to the header it has of the same height to
+		// confirm that it hasn't been forged
+
 		_, val = valset.GetByAddress(addr)
 		if val != nil {
 			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
