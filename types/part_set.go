@@ -92,7 +92,7 @@ func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
 	}
 
 	return tmproto.PartSetHeader{
-		Total: uint32(psh.Total),
+		Total: int64(psh.Total),
 		Hash:  psh.Hash,
 	}
 }

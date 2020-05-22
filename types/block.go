@@ -966,6 +966,7 @@ func (sh *SignedHeader) ToProto() *tmproto.SignedHeader {
 	if sh == nil {
 		return nil
 	}
+
 	psh := new(tmproto.SignedHeader)
 	if sh.Header != nil {
 		psh.Header = sh.Header.ToProto()

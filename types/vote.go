@@ -179,14 +179,15 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	if vote == nil {
 		return nil
 	}
+
 	return &tmproto.Vote{
 		Type:             tmproto.SignedMsgType(vote.Type),
 		Height:           vote.Height,
-		Round:            int32(vote.Round),
+		Round:            int64(vote.Round),
 		BlockID:          vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
-		ValidatorIndex:   uint32(vote.ValidatorIndex),
+		ValidatorIndex:   int64(vote.ValidatorIndex),
 		Signature:        vote.Signature,
 	}
 }
@@ -204,7 +205,6 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	}
 
 	vote := new(Vote)
-
 	vote.Type = SignedMsgType(pv.Type)
 	vote.Height = pv.Height
 	vote.Round = int(pv.Round)

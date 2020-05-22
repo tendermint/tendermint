@@ -22,6 +22,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// PublicKey defines the keys available for use with Tendermint Validators
 type PublicKey struct {
 	// Types that are valid to be assigned to Sum:
 	//	*PublicKey_Ed25519
@@ -88,6 +89,7 @@ func (*PublicKey) XXX_OneofWrappers() []interface{} {
 	}
 }
 
+// PrivateKey defines the keys available for use with Tendermint Validators
 // WARNING PrivateKey is used for internal purposes only
 type PrivateKey struct {
 	// Types that are valid to be assigned to Sum:
