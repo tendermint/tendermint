@@ -1412,6 +1412,48 @@ func TestSafeMul(t *testing.T) {
 	}
 }
 
+func TestValidatorSetProtoBuf(t *testing.T) {
+	valset, _ := RandValidatorSet(10, 100)
+	valset2, _ := RandValidatorSet(10, 100)
+	valset2.Validators[0] = &Validator{}
+
+	valset3, _ := RandValidatorSet(10, 100)
+	valset3.Proposer = nil
+
+	valset4, _ := RandValidatorSet(10, 100)
+	valset4.Proposer = &Validator{}
+
+	testCases := []struct {
+		msg      string
+		v1       *ValidatorSet
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", valset, true, true},
+		{"fail valSet2, pubkey empty", valset2, false, false},
+		{"fail nil Proposer", valset3, false, false},
+		{"fail empty Proposer", valset4, false, false},
+		{"fail empty valSet", &ValidatorSet{}, false, false},
+		{"false nil", nil, false, false},
+	}
+	for _, tc := range testCases {
+		protoValSet, err := tc.v1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		valSet, err := ValidatorSetFromProto(protoValSet)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.v1, valSet, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
 //---------------------
 // Sort validators by priority and address
 type validatorsByPriority []*Validator
