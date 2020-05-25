@@ -1,4 +1,7 @@
 name: Tests
+# Tests runs multiple different tests
+# This workflow runs on every push to master or a release branch and  every pull requests
+# All jobs will pass but not be run if no .go, .mod, .sum file has been changed
 on:
   pull_request:
   push:
@@ -45,7 +48,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
+          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
@@ -74,7 +77,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
+          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
@@ -107,7 +110,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
+          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
@@ -139,7 +142,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
+          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
@@ -164,7 +167,7 @@ jobs:
         if: "env.GIT_DIFF != ''"
       - name: test & coverage report creation
         run: |
-          go test ./... -mod=readonly -timeout 12m -race -coverprofile=coverage.txt -covermode=atomic
+          go test ./... -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
       - uses: codecov/codecov-action@v1
         with:
