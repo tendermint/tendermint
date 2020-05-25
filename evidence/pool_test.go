@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"github.com/tendermint/tendermint/libs/bytes"
 	"os"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -77,14 +77,13 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr       = []byte("validator_address")
-		height        = int64(1)
-		lastBlockTime = time.Now()
-		stateDB       = initializeValidatorState(valAddr, height)
-		evidenceDB    = dbm.NewMemDB()
-		blockStoreDB  = dbm.NewMemDB()
-		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
-		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		valAddr      = []byte("validator_address")
+		height       = int64(1)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -103,7 +102,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	assert.Equal(t, proposedEvidence[0], evidence)
 
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, lastBlockTime, proposedEvidence)
+	pool.MarkEvidenceAsCommitted(height, proposedEvidence)
 	assert.True(t, pool.IsCommitted(evidence))
 	assert.False(t, pool.IsPending(evidence))
 	assert.Equal(t, 0, pool.evidenceList.Len())
