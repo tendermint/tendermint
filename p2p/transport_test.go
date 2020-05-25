@@ -262,6 +262,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		errc         = make(chan error)
 		fastc        = make(chan struct{})
 		slowc        = make(chan struct{})
+		slowdonec    = make(chan struct{})
 	)
 
 	// Simulate slow Peer.
@@ -275,6 +276,9 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		close(slowc)
+		defer func() {
+			close(slowdonec)
+		}()
 
 		select {
 		case <-fastc:
@@ -282,6 +286,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		case <-time.After(50 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
 			errc <- fmt.Errorf("fast peer timed out")
+			return
 		}
 
 		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
@@ -297,7 +302,6 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			))
 		if err != nil {
 			errc <- err
-			return
 		}
 	}()
 
@@ -321,8 +325,9 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			return
 		}
 
-		close(errc)
 		close(fastc)
+		<-slowdonec
+		close(errc)
 	}()
 
 	if err := <-errc; err != nil {
