@@ -1,13 +1,17 @@
-name: Net
+name: Testnet
 on:
   pull_request:
+    paths:
+      - "**.go"
+      - "**.mod"
+      - "**.sum"
   push:
     branches:
       - master
       - release/**
 
 jobs:
-  short-lived-net:
+  test-net-short:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,3 +21,5 @@ jobs:
           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
           make localnet-start &
           ./scripts/localnet-blocks-test.sh 40 5 10 localhost
+
+# Decide if we want to run longer lived testnets
