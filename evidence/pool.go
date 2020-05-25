@@ -198,40 +198,42 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
 		// to form AmensiaEvidence
-		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
+		if pe, ok := ev.(types.PotentialAmnesiaEvidence); ok {
 			var (
 				height = pe.Height()
 				exists = false
 				polc   types.ProofOfLockChange
 			)
+			pe.HeightStamp = evpool.State().LastBlockHeight
+
+			// a) first try to find a corresponding polc
 			for round := pe.VoteA.Round + 1; round <= pe.VoteB.Round; round++ {
 				polc, exists = evpool.RetrievePOLC(height, round)
 				if exists {
 					// we should not need to verify it if both the polc and potential amnesia evidence have already
 					// been verified. We replace the potential amnesia evidence.
-					err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*pe, polc))
+					err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pe, polc))
 					if err != nil {
-						return err
+						evpool.logger.Error("Failed to create amnesia evidence from potential amnesia evidence", "err", err)
+						// revert back to processing potential amnesia evidence
+						exists = false
 					}
 					break
 				}
 			}
-			pe.HeightStamp = evpool.State().LastBlockHeight
-			// check if amnesia evidence can be made now
-			if pe.Primed(-1, pe.HeightStamp) {
-				err := evpool.AddEvidence(types.MakeAmnesiaEvidence(*pe, types.EmptyPOLC()))
+
+			// b) check if amnesia evidence can be made now or if we need to enact the trial period
+			if !exists && pe.Primed(1, pe.HeightStamp) {
+				err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pe, types.EmptyPOLC()))
 				if err != nil {
 					return err
 				}
-				break
-			}
-
-			// if we can't find a proof of lock change and we know that the trial period will finish before the
-			// evidence has expired, then we commence the trial period by saving it in the awaiting bucket
-			if !exists && evpool.State().LastBlockHeight+evpool.State().ConsensusParams.Evidence.ProofTrialPeriod <
+			} else if !exists && evpool.State().LastBlockHeight+evpool.State().ConsensusParams.Evidence.ProofTrialPeriod <
 				pe.Height()+evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks {
-				evBytes := cdc.MustMarshalBinaryBare(ev)
-				key := keyAwaiting(ev)
+				// if we can't find a proof of lock change and we know that the trial period will finish before the
+				// evidence has expired, then we commence the trial period by saving it in the awaiting bucket
+				evBytes := cdc.MustMarshalBinaryBare(pe)
+				key := keyAwaiting(pe)
 				err := evpool.evidenceStore.Set(key, evBytes)
 				if err != nil {
 					return err
@@ -241,6 +243,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 					evpool.nextEvidenceTrialEndedHeight = ev.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
 				}
 			}
+			// we don't need to do anymore processing so we can move on to the next piece of evidence
 			continue
 		}
 
@@ -496,7 +499,7 @@ func (evpool *Pool) pruneExpiredPOLC() {
 }
 
 func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPOLC})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyAwaiting})
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
 		return -1
@@ -506,16 +509,16 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 	for ; iter.Valid(); iter.Next() {
 		paeBytes := iter.Value()
 		// 2) Retrieve the evidence
-		var pae types.PotentialAmnesiaEvidence
-		err := cdc.UnmarshalBinaryBare(paeBytes, &pae)
+		var ev types.PotentialAmnesiaEvidence
+		err := cdc.UnmarshalBinaryBare(paeBytes, &ev)
 		if err != nil {
 			evpool.logger.Error("Unable to unmarshal potential amnesia evidence", "err", err)
 			continue
 		}
 		trialPeriod := evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
-		if pae.Primed(trialPeriod, evpool.State().LastBlockHeight) {
-			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pae, types.EmptyPOLC()))
+		if ev.Primed(trialPeriod, evpool.State().LastBlockHeight) {
+			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(ev, types.EmptyPOLC()))
 			if err != nil {
 				evpool.logger.Error("Unable to add amnesia evidence", "err", err)
 			}
@@ -526,7 +529,7 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 			}
 		} else {
 			// once we reach a piece of evidence that isn't ready send back the height with which it will be ready
-			return pae.HeightStamp + trialPeriod
+			return ev.HeightStamp + trialPeriod
 		}
 	}
 	return -1
