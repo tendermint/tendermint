@@ -255,6 +255,10 @@ func testDialer(dialAddr NetAddress, errc chan error) {
 }
 
 func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
+	if runtime.NumCPU() == 1 {
+		t.Skip("test might fail w/ only one CPU")
+	}
+
 	mt := testSetupMultiplexTransport(t)
 
 	var (
