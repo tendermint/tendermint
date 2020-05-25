@@ -222,7 +222,6 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	// validator set at height evidence.Height, but was a validator before OR
 	// after.
 	if phve, ok := evidence.(types.PhantomValidatorEvidence); ok {
-		// TODO: function should compare header in PhantomValidatorEvidence to the header it has of the same height to
 		// confirm that it hasn't been forged
 
 		_, val = valset.GetByAddress(addr)

@@ -476,7 +476,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 		t.Log(reason)
 	}
 	assert.NoError(t, completeAmnesiaEvidence.Verify(chainID, pubKey))
-	assert.NoError(t, completeAmnesiaEvidence.polc.ValidateVotes(valSet, chainID))
+	assert.NoError(t, completeAmnesiaEvidence.Polc.ValidateVotes(valSet, chainID))
 
 	assert.True(t, completeAmnesiaEvidence.Equal(emptyAmnesiaEvidence))
 	assert.NotEmpty(t, completeAmnesiaEvidence.Hash())
