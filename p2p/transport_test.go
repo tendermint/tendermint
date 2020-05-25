@@ -294,7 +294,6 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		case <-time.After(50 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
 			errc <- fmt.Errorf("fast peer timed out")
-			return
 		}
 
 		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
