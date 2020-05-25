@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -458,5 +457,115 @@ func makeHeaderRandom() *Header {
 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
 		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+	}
+}
+
+func TestEvidenceProto(t *testing.T) {
+	// -------- Votes --------
+	val := NewMockPV()
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+	v := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID)
+	v2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 2, 0x01, blockID2)
+
+	// -------- SignedHeaders --------
+	const height int64 = 37
+
+	var (
+		header1 = makeHeaderRandom()
+		header2 = makeHeaderRandom()
+	)
+
+	header1.Height = height
+	header1.LastBlockID = blockID
+	header1.ChainID = chainID
+
+	header2.Height = height
+	header2.LastBlockID = blockID
+	header2.ChainID = chainID
+
+	voteSet1, valSet, vals := randVoteSet(height, 1, PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, PrecommitType, valSet)
+
+	commit1, err := MakeCommit(BlockID{
+		Hash: header1.Hash(),
+		PartsHeader: PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	}, height, 1, voteSet1, vals, time.Now())
+	require.NoError(t, err)
+	commit2, err := MakeCommit(BlockID{
+		Hash: header2.Hash(),
+		PartsHeader: PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	}, height, 1, voteSet2, vals, time.Now())
+	require.NoError(t, err)
+
+	h1 := &SignedHeader{
+		Header: header1,
+		Commit: commit1,
+	}
+	h2 := &SignedHeader{
+		Header: header2,
+		Commit: commit2,
+	}
+
+	tests := []struct {
+		testName string
+		evidence Evidence
+		wantErr  bool
+		wantErr2 bool
+	}{
+		{"&DuplicateVoteEvidence empty fail", &DuplicateVoteEvidence{}, false, true},
+		{"&DuplicateVoteEvidence nil voteB", &DuplicateVoteEvidence{VoteA: v, VoteB: nil}, false, true},
+		{"&DuplicateVoteEvidence nil voteA", &DuplicateVoteEvidence{VoteA: nil, VoteB: v}, false, true},
+		{"&DuplicateVoteEvidence success", &DuplicateVoteEvidence{VoteA: v2, VoteB: v}, false, false},
+		{"&ConflictingHeadersEvidence empty fail", &ConflictingHeadersEvidence{}, false, true},
+		{"&ConflictingHeadersEvidence nil H2", &ConflictingHeadersEvidence{H1: h1, H2: nil}, false, true},
+		{"&ConflictingHeadersEvidence nil H1", &ConflictingHeadersEvidence{H1: nil, H2: h2}, false, true},
+		{"ConflictingHeadersEvidence empty fail", ConflictingHeadersEvidence{}, false, true},
+		{"ConflictingHeadersEvidence nil H2", ConflictingHeadersEvidence{H1: h1, H2: nil}, false, true},
+		{"ConflictingHeadersEvidence nil H1", ConflictingHeadersEvidence{H1: nil, H2: h2}, false, true},
+		{"ConflictingHeadersEvidence success", ConflictingHeadersEvidence{H1: h1, H2: h2}, false, false},
+		{"LunaticValidatorEvidence empty fail", LunaticValidatorEvidence{}, false, true},
+		{"LunaticValidatorEvidence only header fail", LunaticValidatorEvidence{Header: header1}, false, true},
+		{"LunaticValidatorEvidence only vote fail", LunaticValidatorEvidence{Vote: v}, false, true},
+		{"LunaticValidatorEvidence header & vote fail", LunaticValidatorEvidence{Header: header1, Vote: v}, false, true},
+		{"LunaticValidatorEvidence success", LunaticValidatorEvidence{Header: header1,
+			Vote: v, InvalidHeaderField: "ValidatorsHash"}, false, true},
+		{"&LunaticValidatorEvidence empty fail", &LunaticValidatorEvidence{}, false, true},
+		{"LunaticValidatorEvidence only header fail", &LunaticValidatorEvidence{Header: header1}, false, true},
+		{"LunaticValidatorEvidence only vote fail", &LunaticValidatorEvidence{Vote: v}, false, true},
+		{"LunaticValidatorEvidence header & vote fail", &LunaticValidatorEvidence{Header: header1, Vote: v}, false, true},
+		{"&LunaticValidatorEvidence empty fail", &LunaticValidatorEvidence{}, false, true},
+		{"PotentialAmnesiaEvidence empty fail", PotentialAmnesiaEvidence{}, false, true},
+		{"PotentialAmnesiaEvidence nil VoteB", PotentialAmnesiaEvidence{VoteA: v, VoteB: nil}, false, true},
+		{"PotentialAmnesiaEvidence nil VoteA", PotentialAmnesiaEvidence{VoteA: nil, VoteB: v2}, false, true},
+		{"&PotentialAmnesiaEvidence empty fail", &PotentialAmnesiaEvidence{}, false, true},
+		{"&PotentialAmnesiaEvidence nil VoteB", &PotentialAmnesiaEvidence{VoteA: v, VoteB: nil}, false, true},
+		{"&PotentialAmnesiaEvidence nil VoteA", &PotentialAmnesiaEvidence{VoteA: nil, VoteB: v2}, false, true},
+		{"&PotentialAmnesiaEvidence success", &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v}, false, false},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			pb, err := EvidenceToProto(tt.evidence)
+			if tt.wantErr {
+				assert.Error(t, err, tt.testName)
+				return
+			}
+			assert.NoError(t, err, tt.testName)
+
+			evi, err := EvidenceFromProto(pb)
+			if tt.wantErr2 {
+				assert.Error(t, err, tt.testName)
+				return
+			}
+			require.Equal(t, tt.evidence, evi, tt.testName)
+		})
 	}
 }

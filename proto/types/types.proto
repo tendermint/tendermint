@@ -6,6 +6,7 @@ option go_package = "github.com/tendermint/tendermint/proto/types";
 import "third_party/proto/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/libs/bits/types.proto";
+import "proto/crypto/merkle/types.proto";
 import "proto/version/version.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
@@ -32,18 +33,18 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
+  int64 total = 1;
+  bytes hash  = 2;
+}
 
-  uint32 total = 1;
-  bytes  hash  = 2;
+message Part {
+  uint32                                     index = 1;
+  bytes                                      bytes = 2;
+  tendermint.proto.crypto.merkle.SimpleProof proof = 3 [(gogoproto.nullable) = false];
 }
 
 // BlockID
 message BlockID {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   bytes         hash         = 1;
   PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
 }
@@ -52,8 +53,6 @@ message BlockID {
 
 // Header defines the structure of a Tendermint block header.
 message Header {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
   // basic block info
   tendermint.proto.version.Consensus version  = 1 [(gogoproto.nullable) = false];
   string                             chain_id = 2 [(gogoproto.customname) = "ChainID"];
@@ -94,14 +93,14 @@ message Data {
 message Vote {
   SignedMsgType type     = 1;
   int64         height   = 2;
-  int32         round    = 3;
+  int64         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes  validator_address = 6;
-  uint32 validator_index   = 7;
-  bytes  signature         = 8;
+  bytes validator_address = 6;
+  int64 validator_index   = 7;
+  bytes signature         = 8;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -137,4 +136,11 @@ message Proposal {
 message SignedHeader {
   Header header = 1;
   Commit commit = 2;
+}
+
+message BlockMeta {
+  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  int64   block_size = 2;
+  Header  header     = 3 [(gogoproto.nullable) = false];
+  int64   num_txs    = 4;
 }

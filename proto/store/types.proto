@@ -1,0 +1,9 @@
+syntax = "proto3";
+package tendermint.proto.store;
+
+option go_package = "github.com/tendermint/tendermint/proto/store";
+
+message BlockStoreState {
+  int64 base   = 1;
+  int64 height = 2;
+}
