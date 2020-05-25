@@ -45,7 +45,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-tm-${{ github.ref }}-binary
+          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-tm-binary
+          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-tm-binary
+          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
@@ -139,7 +139,7 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-tm-binary
+          key: ${{ runner.os }}-${{ github.ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
