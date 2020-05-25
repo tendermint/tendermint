@@ -12,9 +12,7 @@ message RemoteSignerError {
 }
 
 // PubKeyRequest requests the consensus public key from the remote signer.
-message PubKeyRequest {
-  string chain_id = 1;
-}
+message PubKeyRequest {}
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {

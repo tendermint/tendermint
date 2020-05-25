@@ -1,12 +1,15 @@
 package privval
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"time"
+
+	grpc "google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
@@ -15,54 +18,71 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
-	endpoint *SignerListenerEndpoint
+	ctx           context.Context
+	cancel        context.CancelFunc
+	privValidator privvalproto.PrivValidatorAPIClient
+	conn          *grpc.ClientConn
+	endpoint      string
+	withCert      string
+	options       []grpc.DialOption
+	logger        log.Logger
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
-	if !endpoint.IsRunning() {
-		if err := endpoint.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
-		}
+func NewSignerClient(ctx context.Context, endpoint string,
+	opts []grpc.DialOption, log log.Logger) (*SignerClient, error) {
+	if endpoint == "" {
+		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", endpoint)
 	}
 
-	return &SignerClient{endpoint: endpoint}, nil
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	//todo: add keepalive and retries
+
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	if err != nil {
+		log.Error("unable to connect to client.", "target", endpoint, "err", err)
+	}
+
+	sc := &SignerClient{
+		ctx:           ctx,
+		cancel:        cancel,
+		privValidator: privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
+		endpoint:      endpoint,
+		logger:        log,
+	}
+
+	return sc, nil
 }
 
 // Close closes the underlying connection
 func (sc *SignerClient) Close() error {
-	return sc.endpoint.Close()
-}
-
-// IsConnected indicates with the signer is connected to a remote signing service
-func (sc *SignerClient) IsConnected() bool {
-	return sc.endpoint.IsConnected()
-}
-
-// WaitForConnection waits maxWait for a connection or returns a timeout error
-func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
-	return sc.endpoint.WaitForConnection(maxWait)
+	sc.cancel()
+	sc.logger.Info("Stopping service")
+	if sc.conn != nil {
+		return sc.conn.Close()
+	}
+	return nil
 }
 
 //--------------------------------------------------------
 // Implement PrivValidator
 
 // Ping sends a ping request to the remote signer
+// todo: look at deprcating in favor of keepalive
+// make sure it is supported in other languages (rust)
 func (sc *SignerClient) Ping() error {
-	response, err := sc.endpoint.SendRequest(&privvalproto.PingRequest{})
-
+	_, err := sc.privValidator.Ping(sc.ctx, &privvalproto.PingRequest{})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
+		sc.logger.Error("SignerClient::Ping", "err", err)
 		return nil
-	}
-
-	pb := response.GetPingResponse()
-	if pb == nil {
-		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")
-		return err
 	}
 
 	return nil
@@ -70,25 +90,19 @@ func (sc *SignerClient) Ping() error {
 
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
-func (sc *SignerClient) PubKey() (crypto.PubKey, error) {
-	response, err := sc.endpoint.SendRequest(&privvalproto.PubKeyRequest{})
+func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
+	resp, err := sc.privValidator.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
+		sc.logger.Error("SignerClient::GetPubKey", "err", err)
 		return nil, fmt.Errorf("send: %w", err)
 	}
 
-	pubKeyResp := response.GetPubKeyResponse()
-	if pubKeyResp == nil {
-		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil, fmt.Errorf("unexpected response type %T", response)
+	if resp.Error != nil {
+		sc.logger.Error("failed to get private validator's public key", "err", resp.Error)
+		return nil, fmt.Errorf("remote error: %w", errors.New(resp.Error.Description))
 	}
 
-	if pubKeyResp.Error != nil {
-		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil, fmt.Errorf("remote error: %w", errors.New(pubKeyResp.Error.Description))
-	}
-
-	pk, err := cryptoenc.PubKeyFromProto(*pubKeyResp.PubKey)
+	pk, err := cryptoenc.PubKeyFromProto(*resp.PubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +112,10 @@ func (sc *SignerClient) PubKey() (crypto.PubKey, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-
-	response, err := sc.endpoint.SendRequest(&privvalproto.SignVoteRequest{Vote: vote})
+	resp, err := sc.privValidator.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: chainID, Vote: vote})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::SignVote", "err", err)
+		sc.logger.Error("SignerClient::SignVote", "err", err)
 		return err
-	}
-
-	resp := response.GetSignedVoteResponse()
-	if resp == nil {
-		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != SignedVoteResponse")
-		return ErrUnexpectedResponse
 	}
 
 	if resp.Error != nil {
@@ -122,18 +129,13 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
-
-	response, err := sc.endpoint.SendRequest(&privvalproto.SignProposalRequest{Proposal: proposal})
+	resp, err := sc.privValidator.SignProposal(
+		sc.ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
+		sc.logger.Error("SignerClient::SignProposal", "err", err)
 		return err
 	}
 
-	resp := response.GetSignedProposalResponse()
-	if resp == nil {
-		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", "response != SignedProposalResponse")
-		return ErrUnexpectedResponse
-	}
 	if resp.Error != nil {
 		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
