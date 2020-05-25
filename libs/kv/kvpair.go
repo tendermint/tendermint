@@ -29,6 +29,7 @@ func (kvs Pairs) Less(i, j int) bool {
 		return bytes.Compare(kvs[i].Value, kvs[j].Value) < 0
 	case 1:
 		return false
+
 	default:
 		panic("invalid comparison result")
 	}
