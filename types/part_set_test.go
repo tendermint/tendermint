@@ -141,23 +141,21 @@ func TestParSetHeaderProtoBuf(t *testing.T) {
 	testCases := []struct {
 		msg     string
 		ps1     *PartSetHeader
-		ps2     *PartSetHeader
 		expPass bool
 	}{
-		{"success empty", &PartSetHeader{}, &PartSetHeader{}, true},
-		{"success nil", nil, nil, true},
+		{"success empty", &PartSetHeader{}, true},
 		{"success",
-			&PartSetHeader{Total: 1, Hash: []byte("hash")}, &PartSetHeader{Total: 2, Hash: []byte("other_hash")}, true},
-		{"fail PartSetHeader 2 nil", &PartSetHeader{}, nil, false},
+			&PartSetHeader{Total: 1, Hash: []byte("hash")}, true},
 	}
 
 	for _, tc := range testCases {
 		protoBlockID := tc.ps1.ToProto()
-		tc.ps2.FromProto(protoBlockID)
+
+		psh, err := PartSetHeaderFromProto(&protoBlockID)
 		if tc.expPass {
-			require.Equal(t, tc.ps1, tc.ps2, tc.msg)
+			require.Equal(t, tc.ps1, psh, tc.msg)
 		} else {
-			require.NotEqual(t, tc.ps1, tc.ps2, tc.msg)
+			require.Error(t, err, tc.msg)
 		}
 	}
 }

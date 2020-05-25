@@ -1161,10 +1161,12 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 		return nil, errors.New("nil BlockID")
 	}
 	blockID := new(BlockID)
-	var ph PartSetHeader
-	ph.FromProto(bID.PartsHeader)
+	ph, err := PartSetHeaderFromProto(&bID.PartsHeader)
+	if err != nil {
+		return nil, err
+	}
 
-	blockID.PartsHeader = ph
+	blockID.PartsHeader = *ph
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()

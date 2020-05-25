@@ -89,10 +89,6 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 
 	switch evi := evidence.(type) {
 	case *DuplicateVoteEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
 		voteB := evi.VoteB.ToProto()
 		voteA := evi.VoteA.ToProto()
 		tp := &tmproto.Evidence{
@@ -105,12 +101,9 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		}
 		return tp, nil
 	case ConflictingHeadersEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
 		pbh1 := evi.H1.ToProto()
 		pbh2 := evi.H2.ToProto()
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
 				ConflictingHeadersEvidence: &tmproto.ConflictingHeadersEvidence{
@@ -119,14 +112,12 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				},
 			},
 		}
+
 		return tp, nil
 	case *ConflictingHeadersEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
 		pbh1 := evi.H1.ToProto()
 		pbh2 := evi.H2.ToProto()
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
 				ConflictingHeadersEvidence: &tmproto.ConflictingHeadersEvidence{
@@ -135,12 +126,23 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				},
 			},
 		}
+
 		return tp, nil
 	case *LunaticValidatorEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
+		h := evi.Header.ToProto()
+		v := evi.Vote.ToProto()
 
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
+				LunaticValidatorEvidence: &tmproto.LunaticValidatorEvidence{
+					Header:             h,
+					Vote:               v,
+					InvalidHeaderField: evi.InvalidHeaderField,
+				},
+			},
+		}
+		return tp, nil
+	case LunaticValidatorEvidence:
 		h := evi.Header.ToProto()
 		v := evi.Vote.ToProto()
 
@@ -155,12 +157,9 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		}
 		return tp, nil
 	case *PotentialAmnesiaEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
 		voteB := evi.VoteB.ToProto()
 		voteA := evi.VoteA.ToProto()
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
@@ -172,12 +171,9 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 
 		return tp, nil
 	case PotentialAmnesiaEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
 		voteB := evi.VoteB.ToProto()
 		voteA := evi.VoteA.ToProto()
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{

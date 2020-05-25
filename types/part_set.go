@@ -98,12 +98,15 @@ func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
 }
 
 // FromProto sets a protobuf PartSetHeader to the given pointer
-func (psh *PartSetHeader) FromProto(protoPartSetHeader tmproto.PartSetHeader) {
-	if psh == nil {
-		psh = &PartSetHeader{}
+func PartSetHeaderFromProto(ppsh *tmproto.PartSetHeader) (*PartSetHeader, error) {
+	if ppsh == nil {
+		return nil, errors.New("nil PartSetHeader")
 	}
-	psh.Total = int(protoPartSetHeader.Total)
-	psh.Hash = protoPartSetHeader.Hash
+	psh := new(PartSetHeader)
+	psh.Total = int(ppsh.Total)
+	psh.Hash = ppsh.Hash
+
+	return psh, psh.ValidateBasic()
 }
 
 //-------------------------------------
