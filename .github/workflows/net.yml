@@ -1,6 +1,6 @@
 name: Testnet
 # Testnet creates a 4 node test network with docker-compose
-# This workflow is run on every pull request and push to master and release/** branches
+# This workflow is run on every pull request, if a *{.go, .mod, .sum} file has been modified, and push to master and release/** branches
 on:
   pull_request:
     paths:
@@ -13,7 +13,7 @@ on:
       - release/**
 
 jobs:
-  test-net-short:
+  net-short:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
