@@ -58,10 +58,12 @@ vetted (old) and unvetted (new) peers. It keeps different sets of buckets for
 vetted and unvetted peers. Buckets provide randomization over peer selection.
 Peers are put in buckets according to their IP groups.
 
-IP group can be an IP block (e.g. `/16` for IPv4, `/32` for IPv6) or `local`
-for local addresses or `unroutable` for unroutable addresses. Each group has a
-  limited number of buckets to prevent DoS attacks coming from that group (e.g.
-  an attacker buying a `/16` block of IPs and launching a DoS attack).
+IP group can be a masked IP (e.g. `1.2.0.0` or `2602:100::`) or `local` for
+local addresses or `unroutable` for unroutable addresses. The mask which
+corresponds to the `/16` subnet is used for IPv4, `/32` subnet - for IPv6.
+Each group has a limited number of buckets to prevent DoS attacks coming from
+that group (e.g. an attacker buying a `/16` block of IPs and launching a DoS
+attack).
 
 [highwayhash](https://arxiv.org/abs/1612.06257) is used as a hashing function
 when calculating a bucket.
@@ -78,8 +80,8 @@ When placing a peer into an old bucket:
 hash(key + group + int64(hash(key + addr)) % buckets_per_group) % num_old_buckets
 ```
 
-where `key` - random 24 HEX string, `group` - IP group of the peer (e.g. `/16`),
-`sourcegroup` - IP group of the sender (peer who sent us this address) (e.g. `/16`),
+where `key` - random 24 HEX string, `group` - IP group of the peer (e.g. `1.2.0.0`),
+`sourcegroup` - IP group of the sender (peer who sent us this address) (e.g. `174.11.0.0`),
 `addr` - string representation of the peer's address (e.g. `174.11.10.2:26656`).
 
 A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
