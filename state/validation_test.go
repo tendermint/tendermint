@@ -2,15 +2,15 @@ package state_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/version"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/version"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -343,7 +343,7 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	assert.Error(t, err)
 }
 
-var blockId = types.BlockID{
+var blockID = types.BlockID{
 	Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 	PartsHeader: types.PartSetHeader{
 		Total: 1,
@@ -355,14 +355,13 @@ func TestValidateAmnesiaEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, vals := makeState(1, int(height))
 	addr, val := state.Validators.GetByIndex(0)
-	voteA := makeVote(height, 1, 0, addr, blockId)
+	voteA := makeVote(height, 1, 0, addr, blockID)
 	err := vals[val.Address.String()].SignVote(chainID, voteA)
 	require.NoError(t, err)
 	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
 	err = vals[val.Address.String()].SignVote(chainID, voteB)
 	require.NoError(t, err)
-	var ae types.Evidence
-	ae = types.AmnesiaEvidence{
+	ae := types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
 			VoteA: voteA,
 			VoteB: voteB,
@@ -435,10 +434,10 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	voteA := makeVote(height, 1, 0, addr, types.BlockID{})
 	err := vals[val.Address.String()].SignVote(chainID, voteA)
 	require.NoError(t, err)
-	voteB := makeVote(height, 2, 0, addr, blockId)
+	voteB := makeVote(height, 2, 0, addr, blockID)
 	err = vals[val.Address.String()].SignVote(chainID, voteB)
 	require.NoError(t, err)
-	voteC := makeVote(height, 2, 1, addr2, blockId)
+	voteC := makeVote(height, 2, 1, addr2, blockID)
 	err = vals[val2.Address.String()].SignVote(chainID, voteC)
 	require.NoError(t, err)
 	//var ae types.Evidence
@@ -454,14 +453,15 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	}
 	err = sm.VerifyEvidence(stateDB, state, badAe, nil)
 	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), "amnesia evidence contains invalid polc, err: not enough voting power to reach majority needed: 2667, got 1000")
+		assert.Equal(t, err.Error(), "amnesia evidence contains invalid polc, err: not enough voting power "+
+			"to reach majority needed: 2667, got 1000")
 	}
 	addr3, val3 := state.Validators.GetByIndex(2)
-	voteD := makeVote(height, 2, 2, addr3, blockId)
+	voteD := makeVote(height, 2, 2, addr3, blockID)
 	err = vals[val3.Address.String()].SignVote(chainID, voteD)
 	require.NoError(t, err)
 	addr4, val4 := state.Validators.GetByIndex(3)
-	voteE := makeVote(height, 2, 3, addr4, blockId)
+	voteE := makeVote(height, 2, 3, addr4, blockID)
 	err = vals[val4.Address.String()].SignVote(chainID, voteE)
 	require.NoError(t, err)
 
@@ -499,7 +499,7 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 		ChainID:            chainID,
 		Height:             3,
 		Time:               defaultTestTime,
-		LastBlockID:        blockId,
+		LastBlockID:        blockID,
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
@@ -510,7 +510,7 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
-	vote := makeVote(3, 1, 0, addr, blockId)
+	vote := makeVote(3, 1, 0, addr, blockID)
 	err := vals[val.Address.String()].SignVote(chainID, vote)
 	require.NoError(t, err)
 	ev := types.LunaticValidatorEvidence{
@@ -535,7 +535,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 		ChainID:            chainID,
 		Height:             3,
 		Time:               defaultTestTime,
-		LastBlockID:        blockId,
+		LastBlockID:        blockID,
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
@@ -546,7 +546,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
-	vote := makeVote(3, 1, 0, addr, blockId)
+	vote := makeVote(3, 1, 0, addr, blockID)
 	err := vals[val.Address.String()].SignVote(chainID, vote)
 	require.NoError(t, err)
 	ev := types.PhantomValidatorEvidence{
@@ -563,7 +563,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 
 	privVal := types.NewMockPV()
 	pubKey, _ := privVal.GetPubKey()
-	vote2 := makeVote(3, 1, 0, pubKey.Address(), blockId)
+	vote2 := makeVote(3, 1, 0, pubKey.Address(), blockID)
 	err = privVal.SignVote(chainID, vote2)
 	require.NoError(t, err)
 	ev = types.PhantomValidatorEvidence{

@@ -442,16 +442,19 @@ func TestAmnesiaEvidence(t *testing.T) {
 		height  int64 = 37
 	)
 
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+
 	var (
-		voteSet, valSet, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
-		val                                      = privValidators[7]
-		pubKey, _                                = val.GetPubKey()
-		blockID2                                 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-		vote1                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
-		vote2                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID, time.Now().Add(time.Second))
-		vote3                                    = makeVoteWithTimestamp(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
-		polc                                     = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+		val       = privValidators[7]
+		pubKey, _ = val.GetPubKey()
+		blockID2  = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		vote1     = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
+		vote2     = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID,
+			time.Now().Add(time.Second))
+		vote3 = makeVoteWithTimestamp(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
+		polc  = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	)
+
 	require.False(t, polc.IsAbsent())
 
 	pe := PotentialAmnesiaEvidence{
@@ -497,11 +500,11 @@ func TestAmnesiaEvidence(t *testing.T) {
 
 	var badAE []AmnesiaEvidence
 	// 1) Polc is at an incorrect height
-	voteSet, _, privValidators = buildVoteSetForBlock(height+1, 1, 2, 7, 0, PrecommitType, blockID)
+	voteSet, _, _ = buildVoteSetForBlock(height+1, 1, 2, 7, 0, PrecommitType, blockID)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 2) Polc is of a later round
-	voteSet, _, privValidators = buildVoteSetForBlock(height, 2, 2, 7, 0, PrecommitType, blockID)
+	voteSet, _, _ = buildVoteSetForBlock(height, 2, 2, 7, 0, PrecommitType, blockID)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 3) Polc has a different public key
@@ -510,7 +513,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 	polc = makePOLCFromVoteSet(voteSet, pubKey2, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 4) Polc has a different block ID
-	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+	voteSet, _, _, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 
@@ -524,8 +527,8 @@ func TestAmnesiaEvidence(t *testing.T) {
 }
 
 func makeVoteWithTimestamp(
-	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID, time time.Time,
-) *Vote {
+	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
+	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
 	v := &Vote{
@@ -544,8 +547,8 @@ func makeVoteWithTimestamp(
 	return v
 }
 
-func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
-) *Vote {
+func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int,
+	blockID BlockID) *Vote {
 	return makeVoteWithTimestamp(t, val, chainID, valIndex, height, round, step, blockID, time.Now())
 }
 

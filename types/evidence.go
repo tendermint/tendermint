@@ -851,9 +851,11 @@ func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
 	switch e2 := ev.(type) {
 	case PotentialAmnesiaEvidence:
-		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round && bytes.Equal(e.Address(), e2.Address())
+		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round &&
+			bytes.Equal(e.Address(), e2.Address())
 	case *PotentialAmnesiaEvidence:
-		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round && bytes.Equal(e.Address(), e2.Address())
+		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round &&
+			bytes.Equal(e.Address(), e2.Address())
 	default:
 		return false
 	}
@@ -1009,7 +1011,8 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
 				if !validator.PubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
-					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v", vote.ValidatorIndex, vote.Signature)
+					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v",
+						vote.ValidatorIndex, vote.Signature)
 				}
 
 				talliedVotingPower += validator.VotingPower
@@ -1084,7 +1087,7 @@ func (e ProofOfLockChange) ValidateBasic() error {
 
 func (e ProofOfLockChange) String() string {
 	if e.IsAbsent() {
-		return fmt.Sprintf("Empty ProofOfLockChange")
+		return "Empty ProofOfLockChange"
 	}
 	return fmt.Sprintf("ProofOfLockChange {Address: %X, Height: %d, Round: %d", e.Address(), e.Height(),
 		e.Votes[0].Round)
@@ -1140,11 +1143,11 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 		}
 
 		if e.Polc.Round() <= e.VoteA.Round || e.Polc.Round() > e.VoteB.Round {
-			return fmt.Errorf("Polc must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
+			return fmt.Errorf("polc must be between %d and %d (inclusive)", e.VoteA.Round+1, e.VoteB.Round)
 		}
 
 		if !e.Polc.BlockID().Equals(e.PotentialAmnesiaEvidence.VoteB.BlockID) && !e.Polc.BlockID().IsZero() {
-			return fmt.Errorf("Polc must be either for a nil block or for the same block as the second vote: %v != %v",
+			return fmt.Errorf("polc must be either for a nil block or for the same block as the second vote: %v != %v",
 				e.Polc.BlockID(), e.PotentialAmnesiaEvidence.VoteB.BlockID)
 		}
 

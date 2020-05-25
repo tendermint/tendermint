@@ -602,7 +602,8 @@ func buildVoteSet(
 	voteType SignedMsgType) (voteSet *VoteSet, valSet *ValidatorSet, privValidators []PrivValidator, blockID BlockID) {
 
 	blockID = makeBlockIDRandom()
-	voteSet, valSet, privValidators = buildVoteSetForBlock(height, round, nonVotes, nonNilVotes, nilVotes, voteType, blockID)
+	voteSet, valSet, privValidators = buildVoteSetForBlock(height, round, nonVotes, nonNilVotes, nilVotes, voteType,
+		blockID)
 	return
 }
 

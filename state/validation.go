@@ -145,9 +145,11 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		// if we don't already have amnesia evidence we need to add it to start our own timer unless
 		// a) a valid polc has already been attached
 		// b) the accused node voted back on an earlier round
-		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round < ae.PotentialAmnesiaEvidence.VoteB.Round {
+		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+			ae.PotentialAmnesiaEvidence.VoteB.Round {
 			if err := evidencePool.AddEvidence(ae); err != nil {
-				return types.NewErrEvidenceInvalid(ev, fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
+				return types.NewErrEvidenceInvalid(ev,
+					fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
 			}
 		}
 
