@@ -97,7 +97,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	MultiplexTransportFilterTimeout(5 * time.Millisecond)(mt)
 	MultiplexTransportConnFilters(
 		func(_ ConnSet, _ net.Conn, _ []net.IP) error {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			return nil
 		},
 	)(mt)
