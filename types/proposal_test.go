@@ -142,3 +142,31 @@ func TestProposalValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestProposalProtoBuf(t *testing.T) {
+	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
+	proposal.Signature = []byte("sig")
+	proposal2 := NewProposal(1, 2, 3, BlockID{})
+
+	testCases := []struct {
+		msg     string
+		p1      *Proposal
+		expPass bool
+	}{
+		{"success", proposal, true},
+		{"success", proposal2, false}, // blcokID cannot be empty
+		{"empty proposal failure validatebasic", &Proposal{}, false},
+		{"nil proposal", nil, false},
+	}
+	for _, tc := range testCases {
+		protoProposal := tc.p1.ToProto()
+
+		p, err := ProposalFromProto(protoProposal)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.p1, p, tc.msg)
+		} else {
+			require.Error(t, err)
+		}
+	}
+}

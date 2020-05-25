@@ -32,7 +32,7 @@ func TestPeerResetBlockResponseTimer(t *testing.T) {
 		lastErr         error      // last generated error
 		peerTestMtx     sync.Mutex // modifications of ^^ variables are also done from timer handler goroutine
 	)
-	params := &BpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 20 * time.Millisecond}
 
 	peer := NewBpPeer(
 		p2p.ID(tmrand.Str(12)), 0, 10,
@@ -55,12 +55,12 @@ func TestPeerResetBlockResponseTimer(t *testing.T) {
 
 	// reset with running timer
 	peer.resetBlockResponseTimer()
-	time.Sleep(time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	peer.resetBlockResponseTimer()
 	assert.NotNil(t, peer.blockResponseTimer)
 
 	// let the timer expire and ...
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// ... check timer is not running
 	checkByStoppingPeerTimer(t, peer, false)
 
@@ -181,7 +181,7 @@ func TestPeerAddBlock(t *testing.T) {
 
 func TestPeerOnErrFuncCalledDueToExpiration(t *testing.T) {
 
-	params := &BpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 10 * time.Millisecond}
 	var (
 		numErrFuncCalls int        // number of calls to the onErr function
 		lastErr         error      // last generated error
@@ -201,7 +201,7 @@ func TestPeerOnErrFuncCalledDueToExpiration(t *testing.T) {
 	peer.SetLogger(log.TestingLogger())
 
 	peer.RequestSent(1)
-	time.Sleep(4 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// timer should have expired by now, check that the on error function was called
 	peerTestMtx.Lock()
 	assert.Equal(t, 1, numErrFuncCalls)
