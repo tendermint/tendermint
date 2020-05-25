@@ -34,11 +34,18 @@ jobs:
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+          if: "env.GIT_DIFF != ''"
       # Cache bin
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-tm-${{ github.ref }}-binary
         if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
@@ -59,8 +66,15 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+          if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
@@ -85,8 +99,15 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+          if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
@@ -110,10 +131,43 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+          if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
         shell: bash
+        if: "env.GIT_DIFF != ''"
+
+  test-coverage-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v1
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
+      - name: build
+        run: |
+          make build
+        if: "env.GIT_DIFF != ''"
+      - name: test & coverage report creation
+        run: |
+          go test ./... -mod=readonly -timeout 12m -race -coverprofile=coverage.txt -covermode=atomic
+        if: "env.GIT_DIFF != ''"
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
         if: "env.GIT_DIFF != ''"
