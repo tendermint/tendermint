@@ -8,6 +8,7 @@ import (
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
+	keys "github.com/tendermint/tendermint/proto/crypto/keys"
 	math "math"
 	time "time"
 )
@@ -72,6 +73,52 @@ func (m *DuplicateVoteEvidence) GetVoteB() *Vote {
 	return nil
 }
 
+type PotentialAmnesiaEvidence struct {
+	VoteA                *Vote    `protobuf:"bytes,1,opt,name=vote_a,json=voteA,proto3" json:"vote_a,omitempty"`
+	VoteB                *Vote    `protobuf:"bytes,2,opt,name=vote_b,json=voteB,proto3" json:"vote_b,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *PotentialAmnesiaEvidence) Reset()         { *m = PotentialAmnesiaEvidence{} }
+func (m *PotentialAmnesiaEvidence) String() string { return proto.CompactTextString(m) }
+func (*PotentialAmnesiaEvidence) ProtoMessage()    {}
+func (*PotentialAmnesiaEvidence) Descriptor() ([]byte, []int) {
+	return fileDescriptor_86495eef24aeacc0, []int{1}
+}
+func (m *PotentialAmnesiaEvidence) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PotentialAmnesiaEvidence.Unmarshal(m, b)
+}
+func (m *PotentialAmnesiaEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PotentialAmnesiaEvidence.Marshal(b, m, deterministic)
+}
+func (m *PotentialAmnesiaEvidence) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PotentialAmnesiaEvidence.Merge(m, src)
+}
+func (m *PotentialAmnesiaEvidence) XXX_Size() int {
+	return xxx_messageInfo_PotentialAmnesiaEvidence.Size(m)
+}
+func (m *PotentialAmnesiaEvidence) XXX_DiscardUnknown() {
+	xxx_messageInfo_PotentialAmnesiaEvidence.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PotentialAmnesiaEvidence proto.InternalMessageInfo
+
+func (m *PotentialAmnesiaEvidence) GetVoteA() *Vote {
+	if m != nil {
+		return m.VoteA
+	}
+	return nil
+}
+
+func (m *PotentialAmnesiaEvidence) GetVoteB() *Vote {
+	if m != nil {
+		return m.VoteB
+	}
+	return nil
+}
+
 // MockEvidence is used for testing pruposes
 type MockEvidence struct {
 	EvidenceHeight       int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
@@ -86,7 +133,7 @@ func (m *MockEvidence) Reset()         { *m = MockEvidence{} }
 func (m *MockEvidence) String() string { return proto.CompactTextString(m) }
 func (*MockEvidence) ProtoMessage()    {}
 func (*MockEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_86495eef24aeacc0, []int{1}
+	return fileDescriptor_86495eef24aeacc0, []int{2}
 }
 func (m *MockEvidence) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MockEvidence.Unmarshal(m, b)
@@ -127,10 +174,176 @@ func (m *MockEvidence) GetEvidenceAddress() []byte {
 	return nil
 }
 
+type MockRandomEvidence struct {
+	EvidenceHeight       int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
+	EvidenceTime         time.Time `protobuf:"bytes,2,opt,name=evidence_time,json=evidenceTime,proto3,stdtime" json:"evidence_time"`
+	EvidenceAddress      []byte    `protobuf:"bytes,3,opt,name=evidence_address,json=evidenceAddress,proto3" json:"evidence_address,omitempty"`
+	RandBytes            []byte    `protobuf:"bytes,4,opt,name=rand_bytes,json=randBytes,proto3" json:"rand_bytes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
+}
+
+func (m *MockRandomEvidence) Reset()         { *m = MockRandomEvidence{} }
+func (m *MockRandomEvidence) String() string { return proto.CompactTextString(m) }
+func (*MockRandomEvidence) ProtoMessage()    {}
+func (*MockRandomEvidence) Descriptor() ([]byte, []int) {
+	return fileDescriptor_86495eef24aeacc0, []int{3}
+}
+func (m *MockRandomEvidence) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MockRandomEvidence.Unmarshal(m, b)
+}
+func (m *MockRandomEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MockRandomEvidence.Marshal(b, m, deterministic)
+}
+func (m *MockRandomEvidence) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MockRandomEvidence.Merge(m, src)
+}
+func (m *MockRandomEvidence) XXX_Size() int {
+	return xxx_messageInfo_MockRandomEvidence.Size(m)
+}
+func (m *MockRandomEvidence) XXX_DiscardUnknown() {
+	xxx_messageInfo_MockRandomEvidence.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MockRandomEvidence proto.InternalMessageInfo
+
+func (m *MockRandomEvidence) GetEvidenceHeight() int64 {
+	if m != nil {
+		return m.EvidenceHeight
+	}
+	return 0
+}
+
+func (m *MockRandomEvidence) GetEvidenceTime() time.Time {
+	if m != nil {
+		return m.EvidenceTime
+	}
+	return time.Time{}
+}
+
+func (m *MockRandomEvidence) GetEvidenceAddress() []byte {
+	if m != nil {
+		return m.EvidenceAddress
+	}
+	return nil
+}
+
+func (m *MockRandomEvidence) GetRandBytes() []byte {
+	if m != nil {
+		return m.RandBytes
+	}
+	return nil
+}
+
+type ConflictingHeadersEvidence struct {
+	H1                   *SignedHeader `protobuf:"bytes,1,opt,name=h1,proto3" json:"h1,omitempty"`
+	H2                   *SignedHeader `protobuf:"bytes,2,opt,name=h2,proto3" json:"h2,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
+}
+
+func (m *ConflictingHeadersEvidence) Reset()         { *m = ConflictingHeadersEvidence{} }
+func (m *ConflictingHeadersEvidence) String() string { return proto.CompactTextString(m) }
+func (*ConflictingHeadersEvidence) ProtoMessage()    {}
+func (*ConflictingHeadersEvidence) Descriptor() ([]byte, []int) {
+	return fileDescriptor_86495eef24aeacc0, []int{4}
+}
+func (m *ConflictingHeadersEvidence) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ConflictingHeadersEvidence.Unmarshal(m, b)
+}
+func (m *ConflictingHeadersEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ConflictingHeadersEvidence.Marshal(b, m, deterministic)
+}
+func (m *ConflictingHeadersEvidence) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConflictingHeadersEvidence.Merge(m, src)
+}
+func (m *ConflictingHeadersEvidence) XXX_Size() int {
+	return xxx_messageInfo_ConflictingHeadersEvidence.Size(m)
+}
+func (m *ConflictingHeadersEvidence) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConflictingHeadersEvidence.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ConflictingHeadersEvidence proto.InternalMessageInfo
+
+func (m *ConflictingHeadersEvidence) GetH1() *SignedHeader {
+	if m != nil {
+		return m.H1
+	}
+	return nil
+}
+
+func (m *ConflictingHeadersEvidence) GetH2() *SignedHeader {
+	if m != nil {
+		return m.H2
+	}
+	return nil
+}
+
+type LunaticValidatorEvidence struct {
+	Header               *Header  `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Vote                 *Vote    `protobuf:"bytes,2,opt,name=vote,proto3" json:"vote,omitempty"`
+	InvalidHeaderField   string   `protobuf:"bytes,3,opt,name=invalid_header_field,json=invalidHeaderField,proto3" json:"invalid_header_field,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LunaticValidatorEvidence) Reset()         { *m = LunaticValidatorEvidence{} }
+func (m *LunaticValidatorEvidence) String() string { return proto.CompactTextString(m) }
+func (*LunaticValidatorEvidence) ProtoMessage()    {}
+func (*LunaticValidatorEvidence) Descriptor() ([]byte, []int) {
+	return fileDescriptor_86495eef24aeacc0, []int{5}
+}
+func (m *LunaticValidatorEvidence) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LunaticValidatorEvidence.Unmarshal(m, b)
+}
+func (m *LunaticValidatorEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LunaticValidatorEvidence.Marshal(b, m, deterministic)
+}
+func (m *LunaticValidatorEvidence) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LunaticValidatorEvidence.Merge(m, src)
+}
+func (m *LunaticValidatorEvidence) XXX_Size() int {
+	return xxx_messageInfo_LunaticValidatorEvidence.Size(m)
+}
+func (m *LunaticValidatorEvidence) XXX_DiscardUnknown() {
+	xxx_messageInfo_LunaticValidatorEvidence.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LunaticValidatorEvidence proto.InternalMessageInfo
+
+func (m *LunaticValidatorEvidence) GetHeader() *Header {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
+func (m *LunaticValidatorEvidence) GetVote() *Vote {
+	if m != nil {
+		return m.Vote
+	}
+	return nil
+}
+
+func (m *LunaticValidatorEvidence) GetInvalidHeaderField() string {
+	if m != nil {
+		return m.InvalidHeaderField
+	}
+	return ""
+}
+
 type Evidence struct {
 	// Types that are valid to be assigned to Sum:
 	//	*Evidence_DuplicateVoteEvidence
+	//	*Evidence_ConflictingHeadersEvidence
+	//	*Evidence_LunaticValidatorEvidence
+	//	*Evidence_PotentialAmnesiaEvidence
 	//	*Evidence_MockEvidence
+	//	*Evidence_MockRandomEvidence
 	Sum                  isEvidence_Sum `protobuf_oneof:"sum"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
@@ -141,7 +354,7 @@ func (m *Evidence) Reset()         { *m = Evidence{} }
 func (m *Evidence) String() string { return proto.CompactTextString(m) }
 func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_86495eef24aeacc0, []int{2}
+	return fileDescriptor_86495eef24aeacc0, []int{6}
 }
 func (m *Evidence) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Evidence.Unmarshal(m, b)
@@ -168,12 +381,28 @@ type isEvidence_Sum interface {
 type Evidence_DuplicateVoteEvidence struct {
 	DuplicateVoteEvidence *DuplicateVoteEvidence `protobuf:"bytes,1,opt,name=duplicate_vote_evidence,json=duplicateVoteEvidence,proto3,oneof" json:"duplicate_vote_evidence,omitempty"`
 }
+type Evidence_ConflictingHeadersEvidence struct {
+	ConflictingHeadersEvidence *ConflictingHeadersEvidence `protobuf:"bytes,2,opt,name=conflicting_headers_evidence,json=conflictingHeadersEvidence,proto3,oneof" json:"conflicting_headers_evidence,omitempty"`
+}
+type Evidence_LunaticValidatorEvidence struct {
+	LunaticValidatorEvidence *LunaticValidatorEvidence `protobuf:"bytes,3,opt,name=lunatic_validator_evidence,json=lunaticValidatorEvidence,proto3,oneof" json:"lunatic_validator_evidence,omitempty"`
+}
+type Evidence_PotentialAmnesiaEvidence struct {
+	PotentialAmnesiaEvidence *PotentialAmnesiaEvidence `protobuf:"bytes,4,opt,name=potential_amnesia_evidence,json=potentialAmnesiaEvidence,proto3,oneof" json:"potential_amnesia_evidence,omitempty"`
+}
 type Evidence_MockEvidence struct {
-	MockEvidence *MockEvidence `protobuf:"bytes,2,opt,name=mock_evidence,json=mockEvidence,proto3,oneof" json:"mock_evidence,omitempty"`
+	MockEvidence *MockEvidence `protobuf:"bytes,5,opt,name=mock_evidence,json=mockEvidence,proto3,oneof" json:"mock_evidence,omitempty"`
+}
+type Evidence_MockRandomEvidence struct {
+	MockRandomEvidence *MockRandomEvidence `protobuf:"bytes,6,opt,name=mock_random_evidence,json=mockRandomEvidence,proto3,oneof" json:"mock_random_evidence,omitempty"`
 }
 
-func (*Evidence_DuplicateVoteEvidence) isEvidence_Sum() {}
-func (*Evidence_MockEvidence) isEvidence_Sum()          {}
+func (*Evidence_DuplicateVoteEvidence) isEvidence_Sum()      {}
+func (*Evidence_ConflictingHeadersEvidence) isEvidence_Sum() {}
+func (*Evidence_LunaticValidatorEvidence) isEvidence_Sum()   {}
+func (*Evidence_PotentialAmnesiaEvidence) isEvidence_Sum()   {}
+func (*Evidence_MockEvidence) isEvidence_Sum()               {}
+func (*Evidence_MockRandomEvidence) isEvidence_Sum()         {}
 
 func (m *Evidence) GetSum() isEvidence_Sum {
 	if m != nil {
@@ -189,9 +418,37 @@ func (m *Evidence) GetDuplicateVoteEvidence() *DuplicateVoteEvidence {
 	return nil
 }
 
+func (m *Evidence) GetConflictingHeadersEvidence() *ConflictingHeadersEvidence {
+	if x, ok := m.GetSum().(*Evidence_ConflictingHeadersEvidence); ok {
+		return x.ConflictingHeadersEvidence
+	}
+	return nil
+}
+
+func (m *Evidence) GetLunaticValidatorEvidence() *LunaticValidatorEvidence {
+	if x, ok := m.GetSum().(*Evidence_LunaticValidatorEvidence); ok {
+		return x.LunaticValidatorEvidence
+	}
+	return nil
+}
+
+func (m *Evidence) GetPotentialAmnesiaEvidence() *PotentialAmnesiaEvidence {
+	if x, ok := m.GetSum().(*Evidence_PotentialAmnesiaEvidence); ok {
+		return x.PotentialAmnesiaEvidence
+	}
+	return nil
+}
+
 func (m *Evidence) GetMockEvidence() *MockEvidence {
 	if x, ok := m.GetSum().(*Evidence_MockEvidence); ok {
 		return x.MockEvidence
+	}
+	return nil
+}
+
+func (m *Evidence) GetMockRandomEvidence() *MockRandomEvidence {
+	if x, ok := m.GetSum().(*Evidence_MockRandomEvidence); ok {
+		return x.MockRandomEvidence
 	}
 	return nil
 }
@@ -200,7 +457,11 @@ func (m *Evidence) GetMockEvidence() *MockEvidence {
 func (*Evidence) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*Evidence_DuplicateVoteEvidence)(nil),
+		(*Evidence_ConflictingHeadersEvidence)(nil),
+		(*Evidence_LunaticValidatorEvidence)(nil),
+		(*Evidence_PotentialAmnesiaEvidence)(nil),
 		(*Evidence_MockEvidence)(nil),
+		(*Evidence_MockRandomEvidence)(nil),
 	}
 }
 
@@ -217,7 +478,7 @@ func (m *EvidenceData) Reset()         { *m = EvidenceData{} }
 func (m *EvidenceData) String() string { return proto.CompactTextString(m) }
 func (*EvidenceData) ProtoMessage()    {}
 func (*EvidenceData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_86495eef24aeacc0, []int{3}
+	return fileDescriptor_86495eef24aeacc0, []int{7}
 }
 func (m *EvidenceData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EvidenceData.Unmarshal(m, b)
@@ -251,41 +512,114 @@ func (m *EvidenceData) GetHash() []byte {
 	return nil
 }
 
+type ProofOfLockChange struct {
+	Votes                []Vote         `protobuf:"bytes,1,rep,name=votes,proto3" json:"votes"`
+	PubKey               keys.PublicKey `protobuf:"bytes,2,opt,name=pub_key,json=pubKey,proto3" json:"pub_key"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *ProofOfLockChange) Reset()         { *m = ProofOfLockChange{} }
+func (m *ProofOfLockChange) String() string { return proto.CompactTextString(m) }
+func (*ProofOfLockChange) ProtoMessage()    {}
+func (*ProofOfLockChange) Descriptor() ([]byte, []int) {
+	return fileDescriptor_86495eef24aeacc0, []int{8}
+}
+func (m *ProofOfLockChange) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ProofOfLockChange.Unmarshal(m, b)
+}
+func (m *ProofOfLockChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ProofOfLockChange.Marshal(b, m, deterministic)
+}
+func (m *ProofOfLockChange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProofOfLockChange.Merge(m, src)
+}
+func (m *ProofOfLockChange) XXX_Size() int {
+	return xxx_messageInfo_ProofOfLockChange.Size(m)
+}
+func (m *ProofOfLockChange) XXX_DiscardUnknown() {
+	xxx_messageInfo_ProofOfLockChange.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ProofOfLockChange proto.InternalMessageInfo
+
+func (m *ProofOfLockChange) GetVotes() []Vote {
+	if m != nil {
+		return m.Votes
+	}
+	return nil
+}
+
+func (m *ProofOfLockChange) GetPubKey() keys.PublicKey {
+	if m != nil {
+		return m.PubKey
+	}
+	return keys.PublicKey{}
+}
+
 func init() {
 	proto.RegisterType((*DuplicateVoteEvidence)(nil), "tendermint.proto.types.DuplicateVoteEvidence")
+	proto.RegisterType((*PotentialAmnesiaEvidence)(nil), "tendermint.proto.types.PotentialAmnesiaEvidence")
 	proto.RegisterType((*MockEvidence)(nil), "tendermint.proto.types.MockEvidence")
+	proto.RegisterType((*MockRandomEvidence)(nil), "tendermint.proto.types.MockRandomEvidence")
+	proto.RegisterType((*ConflictingHeadersEvidence)(nil), "tendermint.proto.types.ConflictingHeadersEvidence")
+	proto.RegisterType((*LunaticValidatorEvidence)(nil), "tendermint.proto.types.LunaticValidatorEvidence")
 	proto.RegisterType((*Evidence)(nil), "tendermint.proto.types.Evidence")
 	proto.RegisterType((*EvidenceData)(nil), "tendermint.proto.types.EvidenceData")
+	proto.RegisterType((*ProofOfLockChange)(nil), "tendermint.proto.types.ProofOfLockChange")
 }
 
 func init() { proto.RegisterFile("proto/types/evidence.proto", fileDescriptor_86495eef24aeacc0) }
 
 var fileDescriptor_86495eef24aeacc0 = []byte{
-	// 404 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x52, 0xd1, 0x6a, 0xe2, 0x40,
-	0x14, 0x35, 0x1b, 0x15, 0x19, 0xe3, 0xee, 0x12, 0x70, 0x95, 0xb0, 0xa0, 0x84, 0x65, 0xd7, 0x85,
-	0xdd, 0x09, 0xe8, 0x17, 0x18, 0x2c, 0x58, 0x4a, 0x5f, 0x86, 0xd2, 0x87, 0xbe, 0x84, 0x49, 0x32,
-	0x26, 0x41, 0xe3, 0x84, 0x64, 0x22, 0xf8, 0xd8, 0x3f, 0xe8, 0x8f, 0xf4, 0x3b, 0xda, 0xaf, 0x68,
-	0x7f, 0xa5, 0x64, 0x26, 0x33, 0xe6, 0x41, 0xa1, 0x2f, 0x72, 0xe7, 0xce, 0x39, 0x67, 0xce, 0x39,
-	0x06, 0x58, 0x59, 0x4e, 0x19, 0x75, 0xd8, 0x31, 0x23, 0x85, 0x43, 0x0e, 0x49, 0x48, 0xf6, 0x01,
-	0x81, 0x7c, 0x69, 0xfe, 0x60, 0x64, 0x1f, 0x92, 0x3c, 0x4d, 0xf6, 0x4c, 0x6c, 0x20, 0x87, 0x59,
-	0xbf, 0x59, 0x9c, 0xe4, 0xa1, 0x97, 0xe1, 0x9c, 0x1d, 0x1d, 0xc1, 0x8f, 0x68, 0x44, 0x4f, 0x93,
-	0x40, 0x5b, 0xa3, 0xa6, 0x36, 0xff, 0xad, 0x2f, 0x26, 0x11, 0xa5, 0xd1, 0x8e, 0x08, 0xae, 0x5f,
-	0x6e, 0x1c, 0x96, 0xa4, 0xa4, 0x60, 0x38, 0xcd, 0x04, 0xc0, 0x7e, 0xd4, 0xc0, 0x70, 0x55, 0x66,
-	0xbb, 0x24, 0xc0, 0x8c, 0xdc, 0x53, 0x46, 0xae, 0x6a, 0x67, 0xe6, 0x02, 0x74, 0x0f, 0x94, 0x11,
-	0x0f, 0x8f, 0xb5, 0xa9, 0x36, 0xeb, 0xcf, 0x7f, 0xc2, 0xf3, 0x26, 0x61, 0xc5, 0x42, 0x9d, 0x0a,
-	0xbb, 0x54, 0x24, 0x7f, 0xfc, 0xe5, 0xb3, 0x24, 0xd7, 0x7e, 0xd6, 0x80, 0x71, 0x4b, 0x83, 0xad,
-	0x7a, 0xfa, 0x0f, 0xf8, 0x26, 0x0b, 0xf2, 0x62, 0x92, 0x44, 0x31, 0xe3, 0x1e, 0x74, 0xf4, 0x55,
-	0xae, 0xd7, 0x7c, 0x6b, 0x5e, 0x83, 0x81, 0x02, 0x56, 0xc9, 0xea, 0x57, 0x2d, 0x28, 0x62, 0x43,
-	0x19, 0x1b, 0xde, 0xc9, 0xd8, 0x6e, 0xef, 0xf5, 0x6d, 0xd2, 0x7a, 0x7a, 0x9f, 0x68, 0xc8, 0x90,
-	0xd4, 0xea, 0xd2, 0xfc, 0x0b, 0xbe, 0x2b, 0x29, 0x1c, 0x86, 0x39, 0x29, 0x8a, 0xb1, 0x3e, 0xd5,
-	0x66, 0x06, 0x52, 0x5e, 0x96, 0x62, 0x6d, 0xbf, 0x68, 0xa0, 0xa7, 0xbc, 0x46, 0x60, 0x14, 0xca,
-	0xfe, 0x3c, 0x9e, 0x5d, 0xc2, 0xeb, 0xde, 0xfe, 0x5f, 0xaa, 0xe0, 0x6c, 0xed, 0xeb, 0x16, 0x1a,
-	0x86, 0x67, 0xff, 0x8f, 0x1b, 0x30, 0x48, 0x69, 0xb0, 0x3d, 0xc9, 0x8b, 0xac, 0xbf, 0x2e, 0xc9,
-	0x37, 0x1b, 0x5d, 0xb7, 0x90, 0x91, 0x36, 0xce, 0x6e, 0x07, 0xe8, 0x45, 0x99, 0xda, 0x1b, 0x60,
-	0xc8, 0xd5, 0x0a, 0x33, 0x6c, 0xba, 0xa0, 0xd7, 0x70, 0xaf, 0xcf, 0xfa, 0xf3, 0xe9, 0x25, 0x79,
-	0x25, 0xd5, 0xae, 0x0a, 0x45, 0x8a, 0x67, 0x9a, 0xa0, 0x1d, 0xe3, 0x22, 0xe6, 0xf6, 0x0c, 0xc4,
-	0x67, 0x17, 0x3e, 0xfc, 0x8b, 0x12, 0x16, 0x97, 0x3e, 0x0c, 0x68, 0xea, 0x9c, 0x14, 0x9b, 0x63,
-	0xe3, 0x13, 0xf6, 0xbb, 0xfc, 0xb0, 0xf8, 0x08, 0x00, 0x00, 0xff, 0xff, 0x08, 0xfc, 0xe8, 0x04,
-	0x34, 0x03, 0x00, 0x00,
+	// 762 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x55, 0xcd, 0x6e, 0xd3, 0x4a,
+	0x14, 0x8e, 0x9b, 0x9f, 0xdb, 0x9e, 0xa6, 0xf7, 0xc7, 0x6a, 0x6f, 0x23, 0xab, 0xbd, 0xad, 0xac,
+	0xab, 0xdb, 0x5e, 0x04, 0x4e, 0x9b, 0x22, 0xc4, 0xb6, 0x69, 0xa9, 0x82, 0x5a, 0x44, 0x65, 0x50,
+	0x17, 0x2c, 0xb0, 0xc6, 0xf6, 0xc4, 0x1e, 0xc5, 0xf6, 0x58, 0xf6, 0x38, 0x52, 0x96, 0x08, 0x16,
+	0x2c, 0xd9, 0xf0, 0x18, 0x6c, 0x79, 0x06, 0xd6, 0x3c, 0x00, 0xbc, 0x0a, 0xf2, 0xcc, 0xd8, 0x4e,
+	0xd5, 0x3a, 0xea, 0x0e, 0xb1, 0x89, 0x26, 0x67, 0xce, 0x77, 0xbe, 0x6f, 0x7c, 0xce, 0x7c, 0x03,
+	0x5a, 0x9c, 0x50, 0x46, 0xfb, 0x6c, 0x16, 0xe3, 0xb4, 0x8f, 0xa7, 0xc4, 0xc5, 0x91, 0x83, 0x0d,
+	0x1e, 0x54, 0xff, 0x66, 0x38, 0x72, 0x71, 0x12, 0x92, 0x88, 0x89, 0x88, 0xc1, 0xd3, 0xb4, 0xff,
+	0x98, 0x4f, 0x12, 0xd7, 0x8a, 0x51, 0xc2, 0x66, 0x7d, 0x81, 0xf7, 0xa8, 0x47, 0xab, 0x95, 0xc8,
+	0xd6, 0x36, 0xe7, 0x6b, 0xf3, 0x5f, 0xb9, 0xb1, 0xe3, 0x51, 0xea, 0x05, 0x58, 0x60, 0xed, 0x6c,
+	0xdc, 0x67, 0x24, 0xc4, 0x29, 0x43, 0x61, 0x2c, 0x13, 0xb6, 0x05, 0xd2, 0x49, 0x66, 0x31, 0xa3,
+	0xfd, 0x09, 0x9e, 0x5d, 0xc3, 0xeb, 0x6f, 0x14, 0xd8, 0x38, 0xcd, 0xe2, 0x80, 0x38, 0x88, 0xe1,
+	0x2b, 0xca, 0xf0, 0x13, 0x29, 0x5c, 0x3d, 0x82, 0xce, 0x94, 0x32, 0x6c, 0xa1, 0x9e, 0xb2, 0xab,
+	0xec, 0xaf, 0x0e, 0xb6, 0x8c, 0xdb, 0xcf, 0x60, 0xe4, 0x28, 0xb3, 0x9d, 0xe7, 0x1e, 0x97, 0x20,
+	0xbb, 0xb7, 0x74, 0x57, 0xd0, 0x50, 0x7f, 0xa7, 0x40, 0xef, 0x92, 0x32, 0x1c, 0x31, 0x82, 0x82,
+	0xe3, 0x30, 0xc2, 0x29, 0x41, 0x3f, 0x41, 0xc6, 0x27, 0x05, 0xba, 0xcf, 0xa8, 0x33, 0x29, 0xa9,
+	0xf7, 0xe0, 0x8f, 0xa2, 0x8d, 0x96, 0x8f, 0x89, 0xe7, 0x33, 0xae, 0xa1, 0x69, 0xfe, 0x5e, 0x84,
+	0x47, 0x3c, 0xaa, 0x3e, 0x85, 0xb5, 0x32, 0x31, 0xff, 0xfe, 0x92, 0x55, 0x33, 0x44, 0x73, 0x8c,
+	0xa2, 0x39, 0xc6, 0xcb, 0xa2, 0x39, 0xc3, 0xe5, 0x2f, 0xdf, 0x76, 0x1a, 0x1f, 0xbe, 0xef, 0x28,
+	0x66, 0xb7, 0x80, 0xe6, 0x9b, 0xea, 0xff, 0xf0, 0x67, 0x59, 0x0a, 0xb9, 0x6e, 0x82, 0xd3, 0xb4,
+	0xd7, 0xdc, 0x55, 0xf6, 0xbb, 0x66, 0xa9, 0xe5, 0x58, 0x84, 0xf5, 0xaf, 0x0a, 0xa8, 0xb9, 0x5e,
+	0x13, 0x45, 0x2e, 0x0d, 0x7f, 0x11, 0xd5, 0xea, 0x36, 0x40, 0x82, 0x22, 0xd7, 0xb2, 0x67, 0x0c,
+	0xa7, 0xbd, 0x16, 0x4f, 0x5a, 0xc9, 0x23, 0xc3, 0x3c, 0xa0, 0xbf, 0x57, 0x40, 0x3b, 0xa1, 0xd1,
+	0x38, 0x20, 0x0e, 0x23, 0x91, 0x37, 0xc2, 0xc8, 0xc5, 0x49, 0x5a, 0x1e, 0xee, 0x21, 0x2c, 0xf9,
+	0x87, 0x72, 0x12, 0xfe, 0xad, 0x6b, 0xea, 0x0b, 0xe2, 0x45, 0xd8, 0x15, 0x50, 0x73, 0xc9, 0x3f,
+	0xe4, 0xa8, 0x81, 0x3c, 0xde, 0x5d, 0x51, 0x03, 0xfd, 0xb3, 0x02, 0xbd, 0x8b, 0x2c, 0x42, 0x8c,
+	0x38, 0x57, 0x28, 0x20, 0x2e, 0x62, 0x34, 0x29, 0x85, 0x3c, 0x82, 0x8e, 0xcf, 0x53, 0xa5, 0x98,
+	0x7f, 0xea, 0xca, 0xca, 0x82, 0x32, 0x5b, 0x3d, 0x80, 0x56, 0x3e, 0x6d, 0x77, 0x9a, 0x4b, 0x9e,
+	0xa9, 0x1e, 0xc0, 0x3a, 0x89, 0xa6, 0xb9, 0x00, 0x4b, 0xd4, 0xb0, 0xc6, 0x04, 0x07, 0x2e, 0xff,
+	0xbe, 0x2b, 0xa6, 0x2a, 0xf7, 0x04, 0xcd, 0x59, 0xbe, 0xa3, 0xbf, 0x6d, 0xc3, 0x72, 0x29, 0xd4,
+	0x83, 0x4d, 0xb7, 0xb8, 0xdf, 0x16, 0xbf, 0x14, 0x45, 0x47, 0xa4, 0xf2, 0x07, 0x75, 0x1a, 0x6e,
+	0xb5, 0x85, 0x51, 0xc3, 0xdc, 0x70, 0x6f, 0xf5, 0x8b, 0x29, 0x6c, 0x39, 0x55, 0xe3, 0xa4, 0xd6,
+	0xb4, 0x62, 0x13, 0x27, 0x1e, 0xd4, 0xb1, 0xd5, 0x37, 0x7d, 0xd4, 0x30, 0x35, 0xa7, 0x7e, 0x24,
+	0x62, 0xd0, 0x02, 0xd1, 0x25, 0x6b, 0x5a, 0xb4, 0xa9, 0x62, 0x6d, 0x72, 0xd6, 0x83, 0x3a, 0xd6,
+	0xba, 0xfe, 0x8e, 0x1a, 0x66, 0x2f, 0xa8, 0xeb, 0x7d, 0x0c, 0x5a, 0x5c, 0xd8, 0x95, 0x85, 0x84,
+	0x5f, 0x55, 0x8c, 0xad, 0xc5, 0x8c, 0x75, 0x46, 0x97, 0x33, 0xc6, 0x75, 0x26, 0x78, 0x0e, 0x6b,
+	0x21, 0x75, 0x26, 0x15, 0x49, 0x7b, 0xf1, 0x2c, 0xcf, 0xdb, 0xd8, 0xa8, 0x61, 0x76, 0xc3, 0x79,
+	0x5b, 0x7b, 0x0d, 0xeb, 0xbc, 0x58, 0xc2, 0x7d, 0xa3, 0xaa, 0xd9, 0xe1, 0x35, 0xef, 0x2d, 0xaa,
+	0x79, 0xdd, 0x6a, 0x46, 0x0d, 0x53, 0x0d, 0x6f, 0x44, 0x87, 0x6d, 0x68, 0xa6, 0x59, 0xa8, 0x8f,
+	0xa1, 0x5b, 0x84, 0x4e, 0x11, 0x43, 0xea, 0x10, 0x96, 0xe7, 0x26, 0xaf, 0xb9, 0xbf, 0x3a, 0xd8,
+	0xad, 0xa3, 0x2a, 0x4b, 0xb5, 0x72, 0xbf, 0x31, 0x4b, 0x9c, 0xaa, 0x42, 0xcb, 0x47, 0xa9, 0xcf,
+	0x67, 0xa9, 0x6b, 0xf2, 0xb5, 0xfe, 0x51, 0x81, 0xbf, 0x2e, 0x13, 0x4a, 0xc7, 0xcf, 0xc7, 0x17,
+	0xd4, 0x99, 0x9c, 0xf8, 0x28, 0xf2, 0xb0, 0xfa, 0x18, 0xb8, 0xab, 0xa7, 0x92, 0x6a, 0xe1, 0x45,
+	0x93, 0x34, 0x02, 0xa0, 0x9e, 0xc1, 0x6f, 0x71, 0x66, 0x5b, 0x13, 0x3c, 0x93, 0x23, 0xbb, 0x77,
+	0x13, 0x2b, 0x5e, 0x53, 0x23, 0x7f, 0x4d, 0x8d, 0xcb, 0xcc, 0x0e, 0x88, 0x73, 0x8e, 0x67, 0xb2,
+	0x4c, 0x27, 0xce, 0xec, 0xfc, 0x9f, 0xf1, 0xea, 0xbe, 0x47, 0x98, 0x9f, 0xd9, 0x86, 0x43, 0xc3,
+	0x7e, 0x55, 0x62, 0x7e, 0x39, 0xf7, 0xaa, 0xdb, 0x1d, 0xfe, 0xe7, 0xe8, 0x47, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0x4a, 0x3f, 0xf4, 0x74, 0x47, 0x08, 0x00, 0x00,
 }

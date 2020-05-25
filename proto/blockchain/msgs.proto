@@ -1,0 +1,44 @@
+syntax = "proto3";
+package tendermint.proto.blockchain;
+
+option go_package = "github.com/tendermint/tendermint/proto/blockchain";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/types/block.proto";
+
+// BlockRequest requests a block for a specific height
+message BlockRequest {
+  int64 height = 1;
+}
+
+// NoBlockResponse informs the node that the peer does not have block at the requested height
+message NoBlockResponse {
+  int64 height = 1;
+}
+
+// BlockResponse returns block to the requested
+message BlockResponse {
+  tendermint.proto.types.Block block = 1 [(gogoproto.nullable) = false];
+}
+
+// StatusRequest requests the status of a node (Height & Base)
+message StatusRequest {
+  int64 height = 1;
+  int64 base   = 2;
+}
+
+// StatusResponse is a peer response to infrom their status
+message StatusResponse {
+  int64 height = 1;
+  int64 base   = 2;
+}
+
+message Message {
+  oneof sum {
+    BlockRequest    block_request     = 1;
+    NoBlockResponse no_block_response = 2;
+    BlockResponse   block_response    = 3;
+    StatusRequest   status_request    = 4;
+    StatusResponse  status_response   = 5;
+  }
+}
