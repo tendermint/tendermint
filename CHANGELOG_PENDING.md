@@ -30,3 +30,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - race: pass -race to go build and enable data race detection.
 
 ### BUG FIXES:
+
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
