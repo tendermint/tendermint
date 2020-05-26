@@ -1,4 +1,3 @@
-
 name: Net
 # Net creates a 4 node test network with docker-compose
 # This workflow is run on every pull request, if a *{.go, .mod, .sum} file has been modified, and push to master and release/** branches
