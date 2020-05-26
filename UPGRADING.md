@@ -7,6 +7,10 @@ a newer version of Tendermint Core.
 
 <Overview>
 
+### Events
+
+- `KV.Pair` has been replaced with `abci.EventAttribute`. This allows applications to indicate if a msg should be indexed at runtime. Previously this was only possible if the node operator decided to index specific or all messages on startup of the node, now the application can indicate which msgs should be indexed.
+
 ## v0.33.4
 
 ### Go API

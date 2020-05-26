@@ -1,5 +1,5 @@
-name: Testnet
-# Testnet creates a 4 node test network with docker-compose
+name: Net
+# Net creates a 4 node test network with docker-compose
 # This workflow is run on every pull request, if a *{.go, .mod, .sum} file has been modified, and push to master and release/** branches
 on:
   pull_request:
@@ -23,5 +23,4 @@ jobs:
           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
           make localnet-start &
           ./scripts/localnet-blocks-test.sh 40 5 10 localhost
-
 # Decide if we want to run longer lived testnets
