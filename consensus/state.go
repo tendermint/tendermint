@@ -1554,7 +1554,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 		var (
 			commitSize = block.LastCommit.Size()
 			valSetLen  = len(cs.LastValidators.Validators)
-			address types.Address = types.Address{}
+			address types.Address
 		)
 		if commitSize != valSetLen {
 			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
