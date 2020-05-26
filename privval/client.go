@@ -19,43 +19,34 @@ import (
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
 	ctx           context.Context
-	cancel        context.CancelFunc
 	privValidator privvalproto.PrivValidatorAPIClient
 	conn          *grpc.ClientConn
-	endpoint      string
-	withCert      string
-	options       []grpc.DialOption
 	logger        log.Logger
+
+	// A cache for pubkeys, this helps in reducing the amount of requests for pubkey
+	pkCache map[int]crypto.PubKey
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(ctx context.Context, endpoint string,
+func NewSignerClient(listenAddr string,
 	opts []grpc.DialOption, log log.Logger) (*SignerClient, error) {
-	if endpoint == "" {
-		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", endpoint)
+	if listenAddr == "" {
+		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", listenAddr)
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := context.Background()
 
-	ctx, cancel := context.WithCancel(ctx)
-
-	//todo: add keepalive and retries
-
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, listenAddr, opts...)
 	if err != nil {
-		log.Error("unable to connect to client.", "target", endpoint, "err", err)
+		log.Error("unable to connect to client.", "target", listenAddr, "err", err)
 	}
 
 	sc := &SignerClient{
 		ctx:           ctx,
-		cancel:        cancel,
 		privValidator: privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
-		endpoint:      endpoint,
 		logger:        log,
 	}
 
@@ -64,16 +55,12 @@ func NewSignerClient(ctx context.Context, endpoint string,
 
 // Close closes the underlying connection
 func (sc *SignerClient) Close() error {
-	sc.cancel()
 	sc.logger.Info("Stopping service")
 	if sc.conn != nil {
 		return sc.conn.Close()
 	}
 	return nil
 }
-
-//--------------------------------------------------------
-// Implement PrivValidator
 
 // Ping sends a ping request to the remote signer
 // todo: look at deprcating in favor of keepalive
@@ -87,6 +74,9 @@ func (sc *SignerClient) Ping() error {
 
 	return nil
 }
+
+//--------------------------------------------------------
+// Implement PrivValidator
 
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key

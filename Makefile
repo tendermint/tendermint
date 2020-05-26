@@ -130,7 +130,7 @@ get_deps_bin_size:
 ###                                  Libs                                   ###
 ###############################################################################
 
-# generates certificates for TLS testing in remotedb and RPC server
+# generates certificates for TLS testing in Privval and RPC server
 gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
 	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""

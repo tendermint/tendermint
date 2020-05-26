@@ -39,7 +39,7 @@ var (
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
-	defaultNodeKeyName  = "node_key.json"
+	defaultNodeKeyName  = "node_key.json" // add path to client cert and key
 	defaultAddrBookName = "addrbook.json"
 
 	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
