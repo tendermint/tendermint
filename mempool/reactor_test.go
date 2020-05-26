@@ -37,7 +37,7 @@ func (ps peerState) GetHeight() int64 {
 // be received in the others.
 func TestReactorBroadcastTxMessage(t *testing.T) {
 	config := cfg.TestConfig()
-	const N = 4
+	const N = 2
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
