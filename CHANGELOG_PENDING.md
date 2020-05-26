@@ -21,7 +21,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Blockchain Protocol
 
->>>>>>> f31f4327b... privval: remove deprecated `OldFilePV`
 ### FEATURES:
 
 
