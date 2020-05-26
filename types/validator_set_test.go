@@ -1232,21 +1232,21 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 	// Run election up to nMaxElections times, sort validators by priorities
 	valSet.IncrementProposerPriority(tmrand.Int()%nMaxElections + 1)
-	origValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(origValsPriSorted))
 
 	// apply the changes, get the updated validators, sort by priorities
 	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
-	updatedValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(updatedValsPriSorted))
 
 	// basic checks
 	assert.Equal(t, cfg.expectedVals, toTestValList(valSet.Validators))
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:
-	//  - they should be at the beginning of valListNewPriority since it is sorted by priority
+	//  - they should be at the beginning of updatedValsPriSorted since it is
+	//  sorted by priority
 	if len(cfg.addedVals) > 0 {
+		updatedValsPriSorted := validatorListCopy(valSet.Validators)
+		sort.Sort(validatorsByPriority(updatedValsPriSorted))
+
 		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
 		sort.Sort(ValidatorsByVotingPower(addedValsPriSlice))
 		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))
