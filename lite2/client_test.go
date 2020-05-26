@@ -62,6 +62,52 @@ var (
 	largeFullNode = mockp.New(GenMockNode(chainID, 10, 3, 0, bTime))
 )
 
+func TestValidateTrustOptions(t *testing.T) {
+	testCases := []struct {
+		err bool
+		to  lite.TrustOptions
+	}{
+		{
+			false,
+			trustOptions,
+		},
+		{
+			true,
+			lite.TrustOptions{
+				Period: -1 * time.Hour,
+				Height: 1,
+				Hash:   h1.Hash(),
+			},
+		},
+		{
+			true,
+			lite.TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 0,
+				Hash:   h1.Hash(),
+			},
+		},
+		{
+			true,
+			lite.TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 1,
+				Hash:   []byte("incorrect hash"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		err := tc.to.ValidateBasic()
+		if tc.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+}
+
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
@@ -296,8 +342,11 @@ func TestClient_SkippingVerification(t *testing.T) {
 		})
 	}
 
-	// start from a large header to make sure that the pivot height doesn't select a height outside
-	// the appropriate range
+}
+
+// start from a large header to make sure that the pivot height doesn't select a height outside
+// the appropriate range
+func TestClientLargeBisectionVerification(t *testing.T) {
 	veryLargeFullNode := mockp.New(GenMockNode(chainID, 100, 3, 1, bTime))
 	h1, err := veryLargeFullNode.SignedHeader(90)
 	require.NoError(t, err)
@@ -319,6 +368,34 @@ func TestClient_SkippingVerification(t *testing.T) {
 	h2, err := veryLargeFullNode.SignedHeader(100)
 	require.NoError(t, err)
 	assert.Equal(t, h, h2)
+}
+
+func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
+	c, err := lite.NewClient(
+		chainID,
+		lite.TrustOptions{
+			Period: 4 * time.Hour,
+			Height: 1,
+			Hash:   h1.Hash(),
+		},
+		fullNode,
+		[]provider.Provider{fullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		lite.SkippingVerification(lite.DefaultTrustLevel),
+	)
+	require.NoError(t, err)
+
+	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+	require.NoError(t, err)
+
+	// confirm that the client already doesn't have the header
+	_, err = c.TrustedHeader(2)
+	require.Error(t, err)
+
+	// verify using bisection the header between the two trusted headers
+	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour))
+	assert.NoError(t, err)
+
 }
 
 func TestClient_Cleanup(t *testing.T) {
