@@ -206,43 +206,44 @@ func TestAppCalls(t *testing.T) {
 
 		// get an offset of height to avoid racing and guessing
 		s, err := c.Status()
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		// sh is start height or status height
 		sh := s.SyncInfo.LatestBlockHeight
 
 		// look for the future
-		h := sh + 2
+		h := sh + 20
 		_, err = c.Block(&h)
-		assert.NotNil(err) // no block yet
+		require.Error(err) // no block yet
 
 		// write something
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		require.True(bres.DeliverTx.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
-		if err := client.WaitForHeight(c, apph, nil); err != nil {
-			t.Error(err)
-		}
+		err = client.WaitForHeight(c, apph, nil)
+		require.NoError(err)
+
 		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: false})
+		require.NoError(err)
 		qres := _qres.Response
-		if assert.Nil(err) && assert.True(qres.IsOK()) {
+		if assert.True(qres.IsOK()) {
 			assert.Equal(k, qres.Key)
 			assert.EqualValues(v, qres.Value)
 		}
 
 		// make sure we can lookup the tx with proof
 		ptx, err := c.Tx(bres.Hash, true)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		assert.EqualValues(txh, ptx.Height)
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
 		block, err := c.Block(&apph)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		appHash := block.Block.Header.AppHash
 		assert.True(len(appHash) > 0)
 		assert.EqualValues(apph, block.Block.Header.Height)
@@ -258,7 +259,7 @@ func TestAppCalls(t *testing.T) {
 
 		// check blockchain info, now that we know there is info
 		info, err := c.BlockchainInfo(apph, apph)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		assert.True(info.LastHeight >= apph)
 		if assert.Equal(1, len(info.BlockMetas)) {
 			lastMeta := info.BlockMetas[0]
@@ -270,7 +271,7 @@ func TestAppCalls(t *testing.T) {
 
 		// and get the corresponding commit with the same apphash
 		commit, err := c.Commit(&apph)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		cappHash := commit.Header.AppHash
 		assert.Equal(appHash, cappHash)
 		assert.NotNil(commit.Commit)
@@ -278,13 +279,13 @@ func TestAppCalls(t *testing.T) {
 		// compare the commits (note Commit(2) has commit from Block(3))
 		h = apph - 1
 		commit2, err := c.Commit(&h)
-		require.Nil(err, "%d: %+v", i, err)
+		require.NoError(err)
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
 		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: true})
+		require.NoError(err)
 		pres := _pres.Response
-		assert.Nil(err)
 		assert.True(pres.IsOK())
 
 		// XXX Test proof
