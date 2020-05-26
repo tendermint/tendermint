@@ -1,4 +1,6 @@
-name: Proto check
+name: Protobuf
+# Protobuf runs buf (https://buf.build/) lint and check-breakage
+# This workflow is only run when a .proto file has been modified
 on:
   pull_request:
     paths:

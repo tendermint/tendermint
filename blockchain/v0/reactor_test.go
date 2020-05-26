@@ -220,17 +220,23 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}()
 
 	for {
-		if reactorPairs[3].reactor.pool.IsCaughtUp() {
+		time.Sleep(1 * time.Second)
+		caughtUp := true
+		for _, r := range reactorPairs {
+			if !r.reactor.pool.IsCaughtUp() {
+				caughtUp = false
+			}
+		}
+		if caughtUp {
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
 	//at this time, reactors[0-3] is the newest
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
-	//mark reactorPairs[3] is an invalid peer
+	// Mark reactorPairs[3] as an invalid peer. Fiddling with .store without a mutex is a data
+	// race, but can't be easily avoided.
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
 	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)

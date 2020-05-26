@@ -24,6 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// BlockRequest requests a block for a specific height
 type BlockRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
@@ -68,6 +69,7 @@ func (m *BlockRequest) GetHeight() int64 {
 	return 0
 }
 
+// NoBlockResponse informs the node that the peer does not have block at the requested height
 type NoBlockResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }
@@ -112,6 +114,7 @@ func (m *NoBlockResponse) GetHeight() int64 {
 	return 0
 }
 
+// BlockResponse returns block to the requested
 type BlockResponse struct {
 	Block types.Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block"`
 }
@@ -156,6 +159,7 @@ func (m *BlockResponse) GetBlock() types.Block {
 	return types.Block{}
 }
 
+// StatusRequest requests the status of a node (Height & Base)
 type StatusRequest struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Base   int64 `protobuf:"varint,2,opt,name=base,proto3" json:"base,omitempty"`
@@ -208,6 +212,7 @@ func (m *StatusRequest) GetBase() int64 {
 	return 0
 }
 
+// StatusResponse is a peer response to infrom their status
 type StatusResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Base   int64 `protobuf:"varint,2,opt,name=base,proto3" json:"base,omitempty"`

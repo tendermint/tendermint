@@ -396,7 +396,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 		if err != nil {
 			return nil, err
 		}
-		ev, err := types.EvidenceFromProto(evpb)
+		ev, err := types.EvidenceFromProto(&evpb)
 		if err != nil {
 			return nil, fmt.Errorf("error on evidence from proto: %w", err)
 		}
@@ -420,7 +420,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 		if err != nil {
 			panic(err)
 		}
-		ev, err := types.EvidenceFromProto(pb)
+		ev, err := types.EvidenceFromProto(&pb)
 		if err != nil {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
 			continue
