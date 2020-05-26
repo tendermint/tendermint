@@ -37,6 +37,10 @@ func (ps peerState) GetHeight() int64 {
 // be received in the others.
 func TestReactorBroadcastTxMessage(t *testing.T) {
 	config := cfg.TestConfig()
+	// if there were more than two reactors, the order of transactions cannot be
+	// asserted in waitForTxsOnReactors (due to transactions gossiping). If we
+	// replace Connect2Switches (full mesh) with a func, which connects first
+	// reactor to others and nothing else, this test should also pass.
 	const N = 2
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
