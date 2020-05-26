@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -293,7 +292,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		tmos.Exit(err.Error())
 	}
 	pvK := privvalproto.FilePVKey{}
-	if err := jsonpb.Unmarshal(strings.NewReader(string(keyJSONBytes)), &pvK); err != nil {
+	if err := jsonpb.Unmarshal(bytes.NewReader(keyJSONBytes), &pvK); err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
 
@@ -314,7 +313,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		if err != nil {
 			tmos.Exit(err.Error())
 		}
-		if err := jsonpb.Unmarshal(strings.NewReader(string(stateJSONBytes)), &pvS); err != nil {
+		if err := jsonpb.Unmarshal(bytes.NewReader(stateJSONBytes), &pvS); err != nil {
 			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
 		}
 	}

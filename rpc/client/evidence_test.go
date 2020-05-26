@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
@@ -26,8 +25,6 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	chainID string) *types.DuplicateVoteEvidence {
 
 	var err error
-
-	fmt.Println(vote, vote2)
 
 	v := vote.ToProto()
 	v2 := vote2.ToProto()

@@ -1314,7 +1314,9 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
 
 	v := vote.ToProto()
-	_ = voteVal.SignVote("mock-chain-id", v)
+	if err := voteVal.SignVote("mock-chain-id", v); err != nil {
+		panic(err)
+	}
 	vote.Signature = v.Signature
 
 	return ProofOfLockChange{
