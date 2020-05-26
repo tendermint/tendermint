@@ -633,6 +633,9 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		t.Fatal(err)
 	}
 
+	// give the listener some time to get ready
+	time.Sleep(20 * time.Millisecond)
+
 	return mt
 }
 
