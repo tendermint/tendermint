@@ -76,7 +76,7 @@ func TestProvider(t *testing.T) {
 	// historical queries now work :)
 	lower := sh.Height - 3
 	sh, err = p.SignedHeader(lower)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, lower, sh.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
