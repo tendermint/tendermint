@@ -25,6 +25,8 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// NewRoundStepMessage is sent for every step taken in the ConsensusState.
+// For every height/round/step transition
 type NewRoundStep struct {
 	Height                int64  `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round                 int32  `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -101,6 +103,9 @@ func (m *NewRoundStep) GetLastCommitRound() int32 {
 	return 0
 }
 
+// NewValidBlockMessage is sent when a validator observes a valid block B in some round r,
+//i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
+// In case the block is also committed, then IsCommit flag is set to true.
 type NewValidBlock struct {
 	Height           int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round            int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -177,6 +182,7 @@ func (m *NewValidBlock) GetIsCommit() bool {
 	return false
 }
 
+// ProposalMessage is sent when a new block is proposed.
 type Proposal struct {
 	Proposal types.Proposal `protobuf:"bytes,1,opt,name=proposal,proto3" json:"proposal"`
 }
@@ -221,6 +227,7 @@ func (m *Proposal) GetProposal() types.Proposal {
 	return types.Proposal{}
 }
 
+// ProposalPOLMessage is sent when a previous proposal is re-proposed.
 type ProposalPOL struct {
 	Height           int64         `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	ProposalPolRound int32         `protobuf:"varint,2,opt,name=proposal_pol_round,json=proposalPolRound,proto3" json:"proposal_pol_round,omitempty"`
@@ -281,6 +288,7 @@ func (m *ProposalPOL) GetProposalPol() bits.BitArray {
 	return bits.BitArray{}
 }
 
+// BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPart struct {
 	Height int64      `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round  int32      `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -341,6 +349,7 @@ func (m *BlockPart) GetPart() types.Part {
 	return types.Part{}
 }
 
+// VoteMessage is sent when voting for a proposal (or lack thereof).
 type Vote struct {
 	Vote *types.Vote `protobuf:"bytes,1,opt,name=vote,proto3" json:"vote,omitempty"`
 }
@@ -385,6 +394,7 @@ func (m *Vote) GetVote() *types.Vote {
 	return nil
 }
 
+// HasVoteMessage is sent to indicate that a particular vote has been received.
 type HasVote struct {
 	Height int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round  int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -453,6 +463,7 @@ func (m *HasVote) GetIndex() uint32 {
 	return 0
 }
 
+// VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23 struct {
 	Height  int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round   int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -521,6 +532,7 @@ func (m *VoteSetMaj23) GetBlockID() types.BlockID {
 	return types.BlockID{}
 }
 
+// VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
 type VoteSetBits struct {
 	Height  int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round   int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`

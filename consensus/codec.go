@@ -178,8 +178,10 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}
 	case *tmcons.Message_NewValidBlock:
-		pbPartsHeader := new(types.PartSetHeader)
-		pbPartsHeader.FromProto(msg.NewValidBlock.BlockPartsHeader)
+		pbPartsHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartsHeader)
+		if err != nil {
+			return nil, err
+		}
 
 		pbBits := new(bits.BitArray)
 		pbBits.FromProto(msg.NewValidBlock.BlockParts)

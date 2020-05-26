@@ -31,7 +31,7 @@ func MsgToProto(lm *ListMessage) (*ep.List, error) {
 func MsgFromProto(pl ep.List) (*ListMessage, error) {
 	evi := make([]types.Evidence, len(pl.Evidence))
 	for i := 0; i < len(pl.Evidence); i++ {
-		ev, err := types.EvidenceFromProto(pl.Evidence[i])
+		ev, err := types.EvidenceFromProto(&pl.Evidence[i])
 		if err != nil {
 			return nil, err
 		}

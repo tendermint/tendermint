@@ -1181,7 +1181,7 @@ func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, vals
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
-	const nMaxElections int32 = 5000
+	const nMaxElections = 5000
 
 	testCases := []testVSetCfg{
 		0: { // remove high power validator, keep old equal lower power validators
@@ -1235,24 +1235,24 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 	}
 }
 
-func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int32) {
+func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 	// Run election up to nMaxElections times, sort validators by priorities
-	valSet.IncrementProposerPriority(tmrand.Int31()%nMaxElections + 1)
-	origValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(origValsPriSorted))
+	valSet.IncrementProposerPriority(int32(tmrand.Int()%nMaxElections + 1))
 
 	// apply the changes, get the updated validators, sort by priorities
 	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
-	updatedValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(updatedValsPriSorted))
 
 	// basic checks
 	assert.Equal(t, cfg.expectedVals, toTestValList(valSet.Validators))
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:
-	//  - they should be at the beginning of valListNewPriority since it is sorted by priority
+	//  - they should be at the beginning of updatedValsPriSorted since it is
+	//  sorted by priority
 	if len(cfg.addedVals) > 0 {
+		updatedValsPriSorted := validatorListCopy(valSet.Validators)
+		sort.Sort(validatorsByPriority(updatedValsPriSorted))
+
 		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
 		sort.Sort(ValidatorsByVotingPower(addedValsPriSlice))
 		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))

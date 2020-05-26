@@ -829,7 +829,7 @@ func (commit *Commit) ValidateBasic() error {
 	}
 
 	// Check that commit.Height is greater than 1
-	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
+	// block 1 has commit of block 0
 	if commit.Height >= 1 {
 		if commit.BlockID.IsZero() {
 			return errors.New("commit cannot be for nil block")
@@ -844,6 +844,7 @@ func (commit *Commit) ValidateBasic() error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -852,6 +853,7 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	if commit == nil {
 		return nil
 	}
+
 	if commit.hash == nil {
 		bs := make([][]byte, len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
@@ -859,6 +861,7 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 		}
 		commit.hash = merkle.SimpleHashFromByteSlices(bs)
 	}
+
 	return commit.hash
 }
 
@@ -1011,6 +1014,7 @@ func (sh *SignedHeader) ToProto() *tmproto.SignedHeader {
 	if sh == nil {
 		return nil
 	}
+
 	psh := new(tmproto.SignedHeader)
 	if sh.Header != nil {
 		psh.Header = sh.Header.ToProto()
@@ -1206,7 +1210,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 
 	eviBzs := make(EvidenceList, len(eviData.Evidence))
 	for i := range eviData.Evidence {
-		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		evi, err := EvidenceFromProto(&eviData.Evidence[i])
 		if err != nil {
 			return err
 		}
@@ -1291,10 +1295,12 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 		return nil, errors.New("nil BlockID")
 	}
 	blockID := new(BlockID)
-	var ph PartSetHeader
-	ph.FromProto(bID.PartsHeader)
+	ph, err := PartSetHeaderFromProto(&bID.PartsHeader)
+	if err != nil {
+		return nil, err
+	}
 
-	blockID.PartsHeader = ph
+	blockID.PartsHeader = *ph
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()

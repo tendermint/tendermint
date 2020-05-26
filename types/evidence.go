@@ -80,21 +80,11 @@ type CompositeEvidence interface {
 	Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence
 }
 
-func RegisterEvidences(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Evidence)(nil), nil)
-	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
-	cdc.RegisterConcrete(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence", nil)
-	cdc.RegisterConcrete(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence", nil)
-	cdc.RegisterConcrete(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence", nil)
-	cdc.RegisterConcrete(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence", nil)
-}
-
-func RegisterMockEvidences(cdc *amino.Codec) {
-	cdc.RegisterConcrete(MockEvidence{}, "tendermint/MockEvidence", nil)
-	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
-}
-
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
+
 	switch evi := evidence.(type) {
 	case *DuplicateVoteEvidence:
 		voteB := evi.VoteB.ToProto()
@@ -120,6 +110,21 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				},
 			},
 		}
+
+		return tp, nil
+	case *ConflictingHeadersEvidence:
+		pbh1 := evi.H1.ToProto()
+		pbh2 := evi.H2.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
+				ConflictingHeadersEvidence: &tmproto.ConflictingHeadersEvidence{
+					H1: pbh1,
+					H2: pbh2,
+				},
+			},
+		}
+
 		return tp, nil
 	case *LunaticValidatorEvidence:
 		h := evi.Header.ToProto()
@@ -135,7 +140,53 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 			},
 		}
 		return tp, nil
+	case LunaticValidatorEvidence:
+		h := evi.Header.ToProto()
+		v := evi.Vote.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
+				LunaticValidatorEvidence: &tmproto.LunaticValidatorEvidence{
+					Header:             h,
+					Vote:               v,
+					InvalidHeaderField: evi.InvalidHeaderField,
+				},
+			},
+		}
+		return tp, nil
+	case *PotentialAmnesiaEvidence:
+		voteB := evi.VoteB.ToProto()
+		voteA := evi.VoteA.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
+				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
+					VoteA: voteA,
+					VoteB: voteB,
+				},
+			},
+		}
+
+		return tp, nil
+	case PotentialAmnesiaEvidence:
+		voteB := evi.VoteB.ToProto()
+		voteA := evi.VoteA.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
+				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
+					VoteA: voteA,
+					VoteB: voteB,
+				},
+			},
+		}
+
+		return tp, nil
 	case MockEvidence:
+		if err := evi.ValidateBasic(); err != nil {
+			return nil, err
+		}
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_MockEvidence{
 				MockEvidence: &tmproto.MockEvidence{
@@ -145,8 +196,13 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				},
 			},
 		}
+
 		return tp, nil
 	case MockRandomEvidence:
+		if err := evi.ValidateBasic(); err != nil {
+			return nil, err
+		}
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_MockRandomEvidence{
 				MockRandomEvidence: &tmproto.MockRandomEvidence{
@@ -163,28 +219,31 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	}
 }
 
-func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
+func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
 
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
-		voteA, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteA())
+
+		vA, err := VoteFromProto(evi.DuplicateVoteEvidence.VoteA)
 		if err != nil {
 			return nil, err
 		}
 
-		voteB, err := VoteFromProto(evi.DuplicateVoteEvidence.GetVoteB())
+		vB, err := VoteFromProto(evi.DuplicateVoteEvidence.VoteB)
 		if err != nil {
 			return nil, err
 		}
 
 		dve := DuplicateVoteEvidence{
-			VoteA: voteA,
-			VoteB: voteB,
+			VoteA: vA,
+			VoteB: vB,
 		}
 
-		return &dve, nil
+		return &dve, dve.ValidateBasic()
 	case *tmproto.Evidence_ConflictingHeadersEvidence:
-
 		h1, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H1)
 		if err != nil {
 			return nil, fmt.Errorf("from proto err: %w", err)
@@ -198,9 +257,9 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 			H1: h1,
 			H2: h2,
 		}
-		return tp, nil
-	case *tmproto.Evidence_LunaticValidatorEvidence:
 
+		return tp, tp.ValidateBasic()
+	case *tmproto.Evidence_LunaticValidatorEvidence:
 		h, err := HeaderFromProto(evi.LunaticValidatorEvidence.GetHeader())
 		if err != nil {
 			return nil, err
@@ -217,14 +276,30 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 			InvalidHeaderField: evi.LunaticValidatorEvidence.InvalidHeaderField,
 		}
 
-		return &tp, nil
+		return &tp, tp.ValidateBasic()
+	case *tmproto.Evidence_PotentialAmnesiaEvidence:
+		voteA, err := VoteFromProto(evi.PotentialAmnesiaEvidence.GetVoteA())
+		if err != nil {
+			return nil, err
+		}
+
+		voteB, err := VoteFromProto(evi.PotentialAmnesiaEvidence.GetVoteB())
+		if err != nil {
+			return nil, err
+		}
+		tp := PotentialAmnesiaEvidence{
+			VoteA: voteA,
+			VoteB: voteB,
+		}
+
+		return &tp, tp.ValidateBasic()
 	case *tmproto.Evidence_MockEvidence:
 		me := MockEvidence{
 			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
 			EvidenceAddress: evi.MockEvidence.GetEvidenceAddress(),
 			EvidenceTime:    evi.MockEvidence.GetEvidenceTime(),
 		}
-		return me, nil
+		return me, me.ValidateBasic()
 	case *tmproto.Evidence_MockRandomEvidence:
 		mre := MockRandomEvidence{
 			MockEvidence: MockEvidence{
@@ -234,10 +309,24 @@ func EvidenceFromProto(evidence tmproto.Evidence) (Evidence, error) {
 			},
 			randBytes: evi.MockRandomEvidence.RandBytes,
 		}
-		return mre, nil
+		return mre, mre.ValidateBasic()
 	default:
 		return nil, errors.New("evidence is not recognized")
 	}
+}
+
+func RegisterEvidences(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Evidence)(nil), nil)
+	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
+	cdc.RegisterConcrete(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence", nil)
+	cdc.RegisterConcrete(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence", nil)
+	cdc.RegisterConcrete(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence", nil)
+	cdc.RegisterConcrete(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence", nil)
+}
+
+func RegisterMockEvidences(cdc *amino.Codec) {
+	cdc.RegisterConcrete(MockEvidence{}, "tendermint/MockEvidence", nil)
+	cdc.RegisterConcrete(MockRandomEvidence{}, "tendermint/MockRandomEvidence", nil)
 }
 
 //-------------------------------------------
@@ -368,6 +457,7 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	// just check their hashes
 	dveHash := tmhash.Sum(cdcEncode(dve))
 	evHash := tmhash.Sum(cdcEncode(ev))
+	fmt.Println(dveHash, evHash)
 	return bytes.Equal(dveHash, evHash)
 }
 
