@@ -65,6 +65,8 @@ gRPC is a high performant RPC framework. It has been battle tested by a large nu
 - Needs a plugin to provide REST API
 - Migration will be disruptive and laborious
 
+There is an option of continuing with amino in the RPC layer. This is not preferable as it would mean keeping amino alive in the codebase. 
+
 ## Decision
 
 > This section explains all of the details of the proposed solution, including implementation details.
