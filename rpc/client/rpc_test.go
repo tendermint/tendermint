@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -331,14 +332,22 @@ func TestBroadcastTxCommit(t *testing.T) {
 func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
+	ch := make(chan *abci.Response, 1)
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
+	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	require.NoError(t, err)
 
-	for i, c := range GetClients() {
-		mc, ok := c.(client.MempoolClient)
-		require.True(t, ok, "%d", i)
+	// wait for tx to arrive in mempoool.
+	select {
+	case <-ch:
+	case <-time.After(5 * time.Second):
+		t.Error("Timed out waiting for CheckTx callback")
+	}
+
+	for _, c := range GetClients() {
+		mc := c.(client.MempoolClient)
 		res, err := mc.UnconfirmedTxs(1)
-		require.Nil(t, err, "%d: %+v", i, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, 1, res.Count)
 		assert.Equal(t, 1, res.Total)
@@ -352,10 +361,19 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
+	ch := make(chan *abci.Response, 1)
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
-	mempoolSize := mempool.Size()
+	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	require.NoError(t, err)
 
+	// wait for tx to arrive in mempoool.
+	select {
+	case <-ch:
+	case <-time.After(5 * time.Second):
+		t.Error("Timed out waiting for CheckTx callback")
+	}
+
+	mempoolSize := mempool.Size()
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
 		require.True(t, ok, "%d", i)
