@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -170,4 +171,48 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
+}
+
+// ToProto converts the handwritten type to proto generated type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) ToProto() *tmproto.Vote {
+	if vote == nil {
+		return nil
+	}
+
+	return &tmproto.Vote{
+		Type:             tmproto.SignedMsgType(vote.Type),
+		Height:           vote.Height,
+		Round:            int64(vote.Round),
+		BlockID:          vote.BlockID.ToProto(),
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   int64(vote.ValidatorIndex),
+		Signature:        vote.Signature,
+	}
+}
+
+//FromProto converts a proto generetad type to a handwritten type
+// return type, nil if everything converts safely, otherwise nil, error
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+	if pv == nil {
+		return nil, errors.New("nil vote")
+	}
+
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	vote := new(Vote)
+	vote.Type = SignedMsgType(pv.Type)
+	vote.Height = pv.Height
+	vote.Round = int(pv.Round)
+	vote.BlockID = *blockID
+	vote.Timestamp = pv.Timestamp
+	vote.ValidatorAddress = pv.ValidatorAddress
+	vote.ValidatorIndex = int(pv.ValidatorIndex)
+	vote.Signature = pv.Signature
+
+	return vote, vote.ValidateBasic()
 }
