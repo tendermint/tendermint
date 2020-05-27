@@ -1566,8 +1566,9 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 			if err != nil {
 				// Metrics won't be updated, but it's not critical.
 				cs.Logger.Error("Error on retrieval of pubkey", "err", err)
+			} else {
+				address = pubkey.Address()
 			}
-			address = pubkey.Address()
 		}
 
 		for i, val := range cs.LastValidators.Validators {
