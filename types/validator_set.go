@@ -79,6 +79,20 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	return vals
 }
 
+func (vals *ValidatorSet) ValidateBasic() error {
+	if vals.IsNilOrEmpty() {
+		return errors.New("validator set is nil or empty")
+	}
+
+	for _, val := range vals.Validators {
+		if err := val.ValidateBasic(); err != nil {
+			return fmt.Errorf("validator failed validate basic in set, error: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // IsNilOrEmpty returns true if validator set is nil or empty.
 func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
