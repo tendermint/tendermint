@@ -19,22 +19,22 @@ jobs:
       - name: Split pkgs into 4 files
         run: split -n l/4 --additional-suffix=.txt ./pkgs.txt
       # cache multiple
-      - uses: actions/cache@v1
+      - uses: actions/upload-artifact@v2
         with:
+          name: ${{ github.head_ref }}-aa
           path: ./xaa.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-aa
-      - uses: actions/cache@v1
-        with:
+      - uses: actions/upload-artifact@v2
+        with:          
+          key: ${{ github.head_ref }}-ab
           path: ./xab.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ab
-      - uses: actions/cache@v1
-        with:
+      - uses: actions/upload-artifact@v2
+        with:        
+          name: ${{ github.head_ref }}-ac
           path: ./xac.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ac
-      - uses: actions/cache@v1
-        with:
+      - uses: actions/upload-artifact@v2
+        with:        
+          name: ${{ github.head_ref }}-ad
           path: ./xad.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ad
 
   test-coverage-run-1:
     runs-on: ubuntu-latest
@@ -44,13 +44,12 @@ jobs:
       - name: build
         run: |
           make build
-      - uses: actions/cache@v1
+      - uses: actions/download-artifact@v2
         with:
-          path: ./xaa.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-aa
+          name: ${{ github.head_ref }}-aa
       - name: test & coverage report creation
         run: |
-          cat xaa.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          ls && cat xaa.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
@@ -64,10 +63,9 @@ jobs:
       - name: build
         run: |
           make build
-      - uses: actions/cache@v1
+      - uses: actions/download-artifact@v2
         with:
-          path: ./xab.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ab
+          name: ${{ github.head_ref }}-ab
       - name: test & coverage report creation
         run: |
           cat xab.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
@@ -84,10 +82,9 @@ jobs:
       - name: build
         run: |
           make build
-      - uses: actions/cache@v1
+      - uses: actions/download-artifact@v2
         with:
-          path: ./xac.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ac
+          name: ${{ github.head_ref }}-ac
       - name: test & coverage report creation
         run: |
           cat xac.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
@@ -104,10 +101,9 @@ jobs:
       - name: build
         run: |
           make build
-      - uses: actions/cache@v1
+      - uses: actions/download-artifact@v2
         with:
-          path: ./xad.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ad
+          name: ${{ github.head_ref }}-ad
       - name: test & coverage report creation
         run: |
           cat xad.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
