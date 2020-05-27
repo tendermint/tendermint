@@ -1212,10 +1212,6 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 		6: randTestVSetCfg(t, 100, 1000),
 
 		7: randTestVSetCfg(t, 1000, 1000),
-
-		8: randTestVSetCfg(t, 10000, 1000),
-
-		9: randTestVSetCfg(t, 1000, 10000),
 	}
 
 	for _, cfg := range testCases {
