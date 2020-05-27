@@ -706,11 +706,15 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	defer rp.Stop()
 	_, err = rp.Dial(sw.NetAddress())
 	require.NoError(t, err)
-	// wait till the switch adds rp to the peer set
-	time.Sleep(50 * time.Millisecond)
 
-	// stop peer asynchronously
-	go sw.StopPeerForError(sw.Peers().Get(rp.ID()), "test")
+	// wait till the switch adds rp to the peer set, then stop the peer asynchronously
+	for {
+		time.Sleep(20 * time.Millisecond)
+		if peer := sw.Peers().Get(rp.ID()); peer != nil {
+			go sw.StopPeerForError(peer, "test")
+			break
+		}
+	}
 
 	// simulate peer reconnecting to us
 	_, err = rp.Dial(sw.NetAddress())
