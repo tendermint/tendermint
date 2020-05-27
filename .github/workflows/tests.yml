@@ -1,4 +1,7 @@
 name: Tests
+# Tests runs different tests (test_abci_apps, test_abci_cli, test_apps)
+# This workflow runs on every push to master or release branch and  every pull requests
+# All jobs will pass without running if no *{.go, .mod, .sum} files have been modified
 on:
   pull_request:
   push:

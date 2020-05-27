@@ -64,6 +64,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/server] [\#4719](https://github.com/tendermint/tendermint/pull/4719) Print panic & stack trace to STDERR if logger is not set (@melekes)
 - [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement `Header#ValidateBasic` (@alexanderbez)
 - [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
+  - `abci.EventAttribute` replaces `KV.Pair`
 - [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Improved evidence db (@cmwaters)
 - [buildsystem] [\#4378](https://github.com/tendermint/tendermint/pull/4738) Replace build_c and install_c with TENDERMINT_BUILD_OPTIONS parsing. The following options are available:
   - nostrip: don't strip debugging symbols nor DWARF tables.
@@ -74,6 +75,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
 - [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 - [rpc/core] [\#4844](https://github.com/tendermint/tendermint/pull/4844) Do not lock consensus state in `/validators`, `/consensus_params` and `/status` (@melekes)
+- [evidence] [\#4892](https://github.com/tendermint/tendermint/pull/4892) Remove redundant header from phantom validator evidence @cmwaters
 
 ### BUG FIXES:
 

@@ -33,7 +33,7 @@ func TestNewProvider(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewApplication()
-	app.RetainBlocks = 5
+	app.RetainBlocks = 9
 	node := rpctest.StartTendermint(app)
 
 	code := m.Run()
@@ -57,18 +57,18 @@ func TestProvider(t *testing.T) {
 	require.Nil(t, err)
 
 	p := litehttp.NewWithClient(chainID, c)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(c, 6, nil)
-	require.Nil(t, err)
+	err = rpcclient.WaitForHeight(c, 10, nil)
+	require.NoError(t, err)
 
 	// let's get the highest block
 	sh, err := p.SignedHeader(0)
 
-	require.Nil(t, err, "%+v", err)
-	assert.True(t, sh.Height < 5000)
+	require.NoError(t, err)
+	assert.True(t, sh.Height < 1000)
 
 	// let's check this is valid somehow
 	assert.Nil(t, sh.ValidateBasic(chainID))
@@ -76,7 +76,7 @@ func TestProvider(t *testing.T) {
 	// historical queries now work :)
 	lower := sh.Height - 3
 	sh, err = p.SignedHeader(lower)
-	assert.Nil(t, err, "%+v", err)
+	require.NoError(t, err)
 	assert.Equal(t, lower, sh.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
