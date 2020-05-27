@@ -189,10 +189,16 @@ func TestValidateBlockCommit(t *testing.T) {
 			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 		}
-		err = badPrivVal.SignVote(chainID, goodVote)
+
+		g := goodVote.ToProto()
+		b := badVote.ToProto()
+
+		err = badPrivVal.SignVote(chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, badVote)
+		err = badPrivVal.SignVote(chainID, b)
 		require.NoError(t, err, "height %d", height)
+
+		goodVote.Signature, badVote.Signature = g.Signature, b.Signature
 
 		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})

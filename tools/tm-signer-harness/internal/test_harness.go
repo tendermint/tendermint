@@ -229,11 +229,13 @@ func (th *TestHarness) TestSignProposal() error {
 		},
 		Timestamp: time.Now(),
 	}
-	propBytes := prop.SignBytes(th.chainID)
-	if err := th.signerClient.SignProposal(th.chainID, prop); err != nil {
+	p := prop.ToProto()
+	propBytes := types.ProposalSignBytes(th.chainID, p)
+	if err := th.signerClient.SignProposal(th.chainID, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
+	prop.Signature = p.Signature
 	th.logger.Debug("Signed proposal", "prop", prop)
 	// first check that it's a basically valid proposal
 	if err := prop.ValidateBasic(); err != nil {
@@ -276,12 +278,14 @@ func (th *TestHarness) TestSignVote() error {
 			ValidatorAddress: tmhash.SumTruncated([]byte("addr")),
 			Timestamp:        time.Now(),
 		}
-		voteBytes := vote.SignBytes(th.chainID)
+		v := vote.ToProto()
+		voteBytes := types.VoteSignBytes(th.chainID, v)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, vote); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
+		vote.Signature = v.Signature
 		th.logger.Debug("Signed vote", "vote", vote)
 		// validate the contents of the vote
 		if err := vote.ValidateBasic(); err != nil {

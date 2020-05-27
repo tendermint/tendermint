@@ -160,9 +160,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	blockKey := vote.BlockID.Key()
 
 	// Ensure that validator index was set
-	if valIndex < 0 {
-		return false, fmt.Errorf("index < 0: %w", ErrVoteInvalidValidatorIndex)
-	} else if len(valAddr) == 0 {
+	if len(valAddr) == 0 {
 		return false, fmt.Errorf("empty address: %w", ErrVoteInvalidValidatorAddress)
 	}
 

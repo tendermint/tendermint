@@ -5,14 +5,15 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/libs/service"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	"github.com/tendermint/tendermint/types"
 )
 
 // ValidationRequestHandlerFunc handles different remoteSigner requests
 type ValidationRequestHandlerFunc func(
 	privVal types.PrivValidator,
-	requestMessage SignerMessage,
-	chainID string) (SignerMessage, error)
+	requestMessage privvalproto.Message,
+	chainID string) (privvalproto.Message, error)
 
 type SignerServer struct {
 	service.BaseService
@@ -70,7 +71,7 @@ func (ss *SignerServer) servicePendingRequest() {
 		return
 	}
 
-	var res SignerMessage
+	var res privvalproto.Message
 	{
 		// limit the scope of the lock
 		ss.handlerMtx.Lock()
@@ -82,11 +83,9 @@ func (ss *SignerServer) servicePendingRequest() {
 		}
 	}
 
-	if res != nil {
-		err = ss.endpoint.WriteMessage(res)
-		if err != nil {
-			ss.Logger.Error("SignerServer: writeMessage", "err", err)
-		}
+	err = ss.endpoint.WriteMessage(res)
+	if err != nil {
+		ss.Logger.Error("SignerServer: writeMessage", "err", err)
 	}
 }
 

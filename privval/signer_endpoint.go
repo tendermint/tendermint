@@ -6,7 +6,10 @@ import (
 	"sync"
 	"time"
 
+	protoio "github.com/gogo/protobuf/io"
+
 	"github.com/tendermint/tendermint/libs/service"
+	privvalproto "github.com/tendermint/tendermint/proto/privval"
 )
 
 const (
@@ -78,14 +81,13 @@ func (se *signerEndpoint) DropConnection() {
 }
 
 // ReadMessage reads a message from the endpoint
-func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
+func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return nil, fmt.Errorf("endpoint is not connected")
+		return msg, fmt.Errorf("endpoint is not connected: %w", ErrNoConnection)
 	}
-
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
 
@@ -93,15 +95,16 @@ func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 	if err != nil {
 		return
 	}
-
 	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(se.conn, &msg, maxRemoteSignerMsgSize)
+	protoReader := protoio.NewDelimitedReader(se.conn, maxRemoteSignerMsgSize)
+	err = protoReader.ReadMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = fmt.Errorf("%v: %w", err, ErrReadTimeout)
 		} else {
 			err = fmt.Errorf("empty error: %w", ErrReadTimeout)
 		}
+
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}
@@ -110,13 +113,15 @@ func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 }
 
 // WriteMessage writes a message from the endpoint
-func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
+func (se *signerEndpoint) WriteMessage(msg privvalproto.Message) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
 		return fmt.Errorf("endpoint is not connected: %w", ErrNoConnection)
 	}
+
+	protoWriter := protoio.NewDelimitedWriter(se.conn)
 
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
@@ -125,7 +130,7 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 		return
 	}
 
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(se.conn, msg)
+	err = protoWriter.WriteMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = fmt.Errorf("%v: %w", err, ErrWriteTimeout)
