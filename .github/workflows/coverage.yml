@@ -17,24 +17,26 @@ jobs:
       - name: Create a file with all the pkgs
         run: go list ./... > pkgs.txt
       - name: Split pkgs into 4 files
-        run: split -n l/4 --additional-suffix=.txt ./pkgs.txt 
+        run: |
+          split -n l/4 --additional-suffix=.txt ./pkgs.txt && ls | grep *.txt
+          split -n l/4 --additional-suffix=.txt ./pkgs.txt ${{ github.head_ref }} && && ls | grep marko/*
       # cache multiple
       - uses: actions/cache@v1
         with:
           path: ./${{ github.head_ref }}-aa.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-aa.txt
+          key: ${{ runner.os }}-${{ github.head_ref }}aa.txt
       - uses: actions/cache@v1
         with:
           path: ./${{ github.head_ref }}-ab.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ab.txt
+          key: ${{ runner.os }}-${{ github.head_ref }}ab.txt
       - uses: actions/cache@v1
         with:
           path: ./${{ github.head_ref }}-ac.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ac.txt
+          key: ${{ runner.os }}-${{ github.head_ref }}ac.txt
       - uses: actions/cache@v1
         with:
           path: ./${{ github.head_ref }}-ad.txt
-          key: ${{ runner.os }}-${{ github.head_ref }}-ad.txt
+          key: ${{ runner.os }}-${{ github.head_ref }}ad.txt
 
   test-coverage-run-1:
     runs-on: ubuntu-latest
@@ -98,6 +100,7 @@ jobs:
 
   test-coverage-run-4:
     runs-on: ubuntu-latest
+    needs: split-test-files
     steps:
       - uses: actions/checkout@v2
       - name: build
