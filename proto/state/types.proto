@@ -1,0 +1,74 @@
+syntax = "proto3";
+package tendermint.proto.state;
+
+option go_package = "github.com/tendermint/tendermint/proto/state";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "abci/types/types.proto";
+import "proto/types/types.proto";
+import "proto/types/validator.proto";
+import "proto/types/params.proto";
+import "proto/version/version.proto";
+import "google/protobuf/timestamp.proto";
+
+// ABCIResponses retains the responses
+// of the various ABCI calls during block processing.
+// It is persisted to disk for each height before calling Commit.
+message ABCIResponses {
+  repeated tendermint.abci.types.ResponseDeliverTx deliver_txs = 1;
+  tendermint.abci.types.ResponseEndBlock           end_block   = 2;
+  tendermint.abci.types.ResponseBeginBlock         begin_block = 3;
+}
+
+// ValidatorsInfo represents the latest validator set, or the last height it changed
+message ValidatorsInfo {
+  tendermint.proto.types.ValidatorSet validator_set       = 1;
+  int64                               last_height_changed = 2;
+}
+
+// ConsensusParamsInfo represents the latest consensus params, or the last height it changed
+message ConsensusParamsInfo {
+  tendermint.proto.types.ConsensusParams consensus_params    = 1 [(gogoproto.nullable) = false];
+  int64                                  last_height_changed = 2;
+}
+
+message Version {
+  tendermint.proto.version.Consensus consensus = 1 [(gogoproto.nullable) = false];
+  string                             software  = 2;
+}
+
+message State {
+  Version version = 1 [(gogoproto.nullable) = false];
+
+  // immutable
+  string chain_id = 2 [(gogoproto.customname) = "ChainID"];
+
+  // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+  int64                          last_block_height = 3;
+  tendermint.proto.types.BlockID last_block_id     = 4
+      [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  google.protobuf.Timestamp last_block_time = 5
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+
+  // LastValidators is used to validate block.LastCommit.
+  // Validators are persisted to the database separately every time they change,
+  // so we can query for historical validator sets.
+  // Note that if s.LastBlockHeight causes a valset change,
+  // we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
+  // Extra +1 due to nextValSet delay.
+  tendermint.proto.types.ValidatorSet next_validators                = 6;
+  tendermint.proto.types.ValidatorSet validators                     = 7;
+  tendermint.proto.types.ValidatorSet last_validators                = 8;
+  int64                               last_height_validators_changed = 9;
+
+  // Consensus parameters used for validating blocks.
+  // Changes returned by EndBlock and updated after Commit.
+  tendermint.proto.types.ConsensusParams consensus_params                     = 10 [(gogoproto.nullable) = false];
+  int64                                  last_height_consensus_params_changed = 11;
+
+  // Merkle root of the results from executing prev block
+  bytes last_results_hash = 12;
+
+  // the latest AppHash we've received from calling abci.Commit()
+  bytes app_hash = 13;
+}

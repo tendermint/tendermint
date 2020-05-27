@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -94,4 +95,47 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 		panic(err)
 	}
 	return bz
+}
+
+// ToProto converts Proposal to protobuf
+func (p *Proposal) ToProto() *tmproto.Proposal {
+	if p == nil {
+		return nil
+	}
+	pb := new(tmproto.Proposal)
+
+	pb.BlockID = p.BlockID.ToProto()
+	pb.Type = tmproto.SignedMsgType(p.Type)
+	pb.Height = p.Height
+	pb.Round = int32(p.Round)
+	pb.PolRound = int32(p.POLRound)
+	pb.Timestamp = p.Timestamp
+	pb.Signature = p.Signature
+
+	return pb
+}
+
+// FromProto sets a protobuf Proposal to the given pointer.
+// It returns an error if the proposal is invalid.
+func ProposalFromProto(pp *tmproto.Proposal) (*Proposal, error) {
+	if pp == nil {
+		return nil, errors.New("nil proposal")
+	}
+
+	p := new(Proposal)
+
+	blockID, err := BlockIDFromProto(&pp.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	p.BlockID = *blockID
+	p.Type = SignedMsgType(pp.Type)
+	p.Height = pp.Height
+	p.Round = int(pp.Round)
+	p.POLRound = int(pp.PolRound)
+	p.Timestamp = pp.Timestamp
+	p.Signature = pp.Signature
+
+	return p, p.ValidateBasic()
 }
