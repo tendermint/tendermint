@@ -15,9 +15,9 @@ jobs:
     steps: 
       - uses: actions/checkout@v2
       - name: Create a file with all the pkgs
-        run: go list ./... > pkgs.txt
+        run: go list ./... > pkgs.txt && ls && cat ./pkgs.txt
       - name: Split pkgs into 4 files
-        run: split -n l/4 --additional-suffix=.txt pkgs.txt ${{ github.head_ref }}-
+        run: split -n l/4 --additional-suffix=.txt ./pkgs.txt ${{ github.head_ref }}-
       # cache multiple
       - uses: actions/cache@v1
         with:
