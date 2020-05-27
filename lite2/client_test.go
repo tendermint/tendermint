@@ -591,13 +591,15 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
+		// load the first three headers into the trusted store
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
 		err := trustedStore.SaveSignedHeaderAndValidatorSet(h1, vals)
 		require.NoError(t, err)
 
-		//header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-		//	[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 		err = trustedStore.SaveSignedHeaderAndValidatorSet(h2, vals)
+		require.NoError(t, err)
+
+		err = trustedStore.SaveSignedHeaderAndValidatorSet(h3, vals)
 		require.NoError(t, err)
 
 		c, err := lite.NewClient(
@@ -631,6 +633,10 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		valSet, _, err = c.TrustedValidatorSet(2)
 		assert.Error(t, err)
 		assert.Nil(t, valSet)
+
+		h, err = c.TrustedHeader(3)
+		assert.Error(t, err)
+		assert.Nil(t, h)
 	}
 
 	// 2. options.Hash != trustedHeader.Hash
@@ -984,26 +990,42 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// header should still be verified
 	assert.EqualValues(t, 2, h.Height)
 
-	// no witnesses left to verify -> error
+	// remaining withness doesn't have header -> error
 	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
-	assert.Error(t, err)
+	if assert.Error(t, err) {
+		assert.Equal(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
+	}
 	assert.EqualValues(t, 0, len(c.Witnesses()))
+
+	// no witnesses left, will not be allowed to verify a header
+	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+	if assert.Error(t, err) {
+		assert.Equal(t, "no witnesses connected. please reset light client", err.Error())
+	}
 }
 
 func TestClientTrustedValidatorSet(t *testing.T) {
+	noValSetNode := mockp.New(
+		chainID,
+		headerSet,
+		map[int64]*types.ValidatorSet{},
+	)
+
 	c, err := lite.NewClient(
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		noValSetNode,
+		[]provider.Provider{fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		lite.Logger(log.TestingLogger()),
+		lite.MaxRetryAttempts(1),
 	)
-
 	require.NoError(t, err)
+	require.Equal(t, 2, len(c.Witnesses()))
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
 	require.NoError(t, err)
+	require.Equal(t, 1, len(c.Witnesses()))
 
 	valSet, height, err := c.TrustedValidatorSet(0)
 	assert.NoError(t, err)
@@ -1049,4 +1071,27 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 	ev := types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
 	assert.True(t, fullNode2.HasEvidence(ev))
 	assert.True(t, fullNode.HasEvidence(ev))
+}
+
+func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
+	c, err := lite.NewClient(
+		chainID,
+		trustOptions,
+		fullNode,
+		[]provider.Provider{fullNode},
+		dbs.New(dbm.NewMemDB(), chainID),
+		lite.Logger(log.TestingLogger()),
+		lite.PruningSize(1),
+	)
+	require.NoError(t, err)
+	_, err = c.TrustedHeader(1)
+	require.NoError(t, err)
+
+	h, err := c.Update(bTime.Add(2 * time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, int64(3), h.Height)
+
+	_, err = c.TrustedHeader(1)
+	assert.Error(t, err)
+
 }
