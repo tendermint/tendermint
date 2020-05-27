@@ -261,10 +261,10 @@ Minor releases are done differently from major releases: They are built off of l
 2. Run integration tests: `make test_integrations` 
 3. Prepare the release:
 	- Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-  - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-  - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump the appropriate versions in `version.go`
+	- Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+	- Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+	- Reset the `CHANGELOG_PENDING.md`
+	- Bump the appropriate versions in `version.go`
 5. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
