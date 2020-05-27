@@ -1,0 +1,53 @@
+name: Test Coverage
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+
+jobs: 
+  test-coverage-upload-1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          make build
+      - name: test & coverage report creation
+        run: |
+          cat pkgs_1.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+
+  test-coverage-upload-2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          make build
+      - name: test & coverage report creation
+        run: |
+          cat pkgs_2.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+
+  test-coverage-upload-3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          make build
+      - name: test & coverage report creation
+        run: |
+          cat pkgs_3.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
