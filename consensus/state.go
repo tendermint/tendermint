@@ -734,11 +734,9 @@ func (cs *State) handleMsg(mi msgInfo) {
 		return
 	}
 
-	if err != nil { // nolint:staticcheck
-		// Causes TestReactorValidatorSetChanges to timeout
-		// https://github.com/tendermint/tendermint/issues/3406
-		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-		// 	"peer", peerID, "err", err, "msg", msg)
+	if err != nil {
+		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
+			"peer", peerID, "err", err, "msg", msg)
 	}
 }
 
