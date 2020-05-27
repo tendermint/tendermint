@@ -47,7 +47,7 @@ func (v *Validator) ValidateBasic() error {
 	if len(v.Address) != crypto.AddressSize {
 		return fmt.Errorf("validator address is the wrong size: %v", v.Address)
 	}
-	
+
 	return nil
 }
 

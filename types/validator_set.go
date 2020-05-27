@@ -90,6 +90,10 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		}
 	}
 
+	if err := vals.Proposer.ValidateBasic(); err != nil {
+		return fmt.Errorf("proposer failed validate basic, error: %w", err)
+	}
+
 	return nil
 }
 
