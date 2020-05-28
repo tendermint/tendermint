@@ -84,9 +84,9 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		return errors.New("validator set is nil or empty")
 	}
 
-	for _, val := range vals.Validators {
+	for idx, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
-			return fmt.Errorf("invalid validator #%d: %w", i, err)
+			return fmt.Errorf("invalid validator #%d: %w", idx, err)
 		}
 	}
 
