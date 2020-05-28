@@ -56,6 +56,7 @@ func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
 func (emptyEvidencePool) IsCommitted(types.Evidence) bool         { return false }
 func (emptyEvidencePool) IsPending(types.Evidence) bool           { return false }
 func (emptyEvidencePool) AddPOLC(types.ProofOfLockChange) error   { return nil }
+func (emptyEvidencePool) GetHeaderAtHeight(int64) *types.Header   { return nil }
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.
