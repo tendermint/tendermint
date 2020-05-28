@@ -25,7 +25,7 @@ jobs:
           path: ./xaa.txt
       - uses: actions/upload-artifact@v2
         with:          
-          key: '${{ github.sha }}-ab'
+          name: '${{ github.sha }}-ab'
           path: ./xab.txt
       - uses: actions/upload-artifact@v2
         with:        
