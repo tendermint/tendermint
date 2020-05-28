@@ -15,6 +15,7 @@ on:
 jobs:
   net-short:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v2
       - name: 10 Blocks
