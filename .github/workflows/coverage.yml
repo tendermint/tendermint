@@ -49,7 +49,7 @@ jobs:
           name: '${{ github.sha }}-aa'
       - name: test & coverage report creation
         run: |
-          ls && cat xaa.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          cat xaa.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
