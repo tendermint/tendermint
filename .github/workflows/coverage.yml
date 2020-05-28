@@ -41,15 +41,12 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          make build
       - uses: actions/download-artifact@v2
         with:
           name: '${{ github.sha }}-aa'
       - name: test & coverage report creation
         run: |
-          cat xaa.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          cat xaa.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
@@ -60,15 +57,12 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          make build
       - uses: actions/download-artifact@v2
         with:
           name: '${{ github.sha }}-ab'
       - name: test & coverage report creation
         run: |
-          cat xab.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
@@ -79,15 +73,12 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          make build
       - uses: actions/download-artifact@v2
         with:
           name: '${{ github.sha }}-ac'
       - name: test & coverage report creation
         run: |
-          cat xac.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          cat xac.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
@@ -98,15 +89,12 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          make build
       - uses: actions/download-artifact@v2
         with:
           name: '${{ github.sha }}-ad'
       - name: test & coverage report creation
         run: |
-          cat xad.txt | xargs go test -mod=readonly -timeout 15m -race -coverprofile=coverage.txt -covermode=atomic
+          cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
       - uses: codecov/codecov-action@v1
         with:
           file: ./coverage.txt
