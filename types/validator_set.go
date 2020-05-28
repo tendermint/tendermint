@@ -86,7 +86,7 @@ func (vals *ValidatorSet) ValidateBasic() error {
 
 	for _, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
-			return fmt.Errorf("validator failed validate basic in set, error: %w", err)
+			return fmt.Errorf("invalid validator #%d: %w", i, err)
 		}
 	}
 
