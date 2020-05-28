@@ -110,7 +110,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 				Validators: []*Validator{badVal},
 			},
 			err: true,
-			msg: "validator failed validate basic in set, error: validator does not have a public key",
+			msg: "invalid validator #0: validator does not have a public key",
 		},
 		{
 			vals: ValidatorSet{
