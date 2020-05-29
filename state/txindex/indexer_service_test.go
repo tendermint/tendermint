@@ -1,3 +1,5 @@
+// +build unit
+
 package txindex_test
 
 import (

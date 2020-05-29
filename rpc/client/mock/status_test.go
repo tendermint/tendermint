@@ -1,3 +1,5 @@
+// +build unit
+
 package mock_test
 
 import (

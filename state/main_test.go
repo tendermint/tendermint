@@ -1,3 +1,5 @@
+// +build unit integration
+
 package state_test
 
 import (
