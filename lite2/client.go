@@ -1054,10 +1054,25 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		if err == nil {
 			// sanity check
 			if height > 0 && h.Height != height {
-				return nil, fmt.Errorf("expected %d height, got %d", height, h.Height)
+				c.logger.Error("Failed sanity check: incorrect height", "expected height", height, "received height", h.Height)
+				err := c.replacePrimaryProvider()
+				if err != nil {
+					return nil, err
+				}
+				return c.signedHeaderFromPrimary(height)
 			}
+			if err := h.ValidateBasic(c.chainID); err != nil {
+				c.logger.Error("Header failed validate basic", "err", err)
+				err := c.replacePrimaryProvider()
+				if err != nil {
+					return nil, err
+				}
+				return c.signedHeaderFromPrimary(height)
+			}
+			// valid header has been received
 			return h, nil
 		}
+
 		if err == provider.ErrSignedHeaderNotFound {
 			return nil, err
 		}
@@ -1065,7 +1080,6 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		time.Sleep(backoffTimeout(attempt))
 	}
 
-	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
 		return nil, err
