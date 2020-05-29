@@ -42,6 +42,11 @@ linters:
   disable:
     - errcheck
 
+run:
+  build-tags:
+  - unit
+  - integration
+
 issues:
   exclude-rules:
     - linters:
