@@ -1,4 +1,4 @@
-// +build libsecp256k1
+// +build libsecp256k1 unit
 
 package secp256k1
 

@@ -1,3 +1,5 @@
+// +build integration
+
 package abcicli_test
 
 import (

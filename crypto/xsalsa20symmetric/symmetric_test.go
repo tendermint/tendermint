@@ -1,3 +1,5 @@
+// +build unit
+
 package xsalsa20symmetric
 
 import (

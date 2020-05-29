@@ -1,3 +1,5 @@
+// +build unit
+
 package tmhash_test
 
 import (

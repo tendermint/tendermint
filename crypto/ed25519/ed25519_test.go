@@ -1,3 +1,5 @@
+// +build unit
+
 package ed25519_test
 
 import (

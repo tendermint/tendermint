@@ -1,3 +1,5 @@
+// +build unit
+
 package merkle
 
 // Copyright 2016 Google Inc. All Rights Reserved.

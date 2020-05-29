@@ -1,3 +1,5 @@
+// +build unit
+
 package sr25519_test
 
 import (

@@ -1,3 +1,5 @@
+// +build unit
+
 package xchacha20poly1305
 
 import (

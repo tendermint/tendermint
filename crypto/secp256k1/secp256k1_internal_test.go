@@ -1,3 +1,5 @@
+// +build unit
+
 package secp256k1
 
 import (
