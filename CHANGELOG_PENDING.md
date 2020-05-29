@@ -21,3 +21,4 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)

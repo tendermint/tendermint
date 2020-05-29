@@ -1463,7 +1463,13 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	var (
 		missingValidators      = 0
 		missingValidatorsPower int64
+		address                types.Address
 	)
+
+	if cs.privValidator != nil {
+		address = cs.privValidator.GetPubKey().Address()
+	}
+
 	for i, val := range cs.Validators.Validators {
 		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
@@ -1474,7 +1480,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			missingValidatorsPower += val.VotingPower
 		}
 
-		if cs.privValidator != nil && bytes.Equal(val.Address, cs.privValidator.GetPubKey().Address()) {
+		if bytes.Equal(val.Address, address) {
 			label := []string{
 				"validator_address", val.Address.String(),
 			}
