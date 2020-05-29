@@ -151,7 +151,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			}
 		}
 
-		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
+		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 	}
