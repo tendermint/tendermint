@@ -87,3 +87,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] [\#4764](https://github.com/tendermint/tendermint/pull/4764) Return an error if voting power overflows in `VerifyCommitTrusting` (@melekes)
 - [privval] [\#4812](https://github.com/tendermint/tendermint/pull/4812) Retry `GetPubKey/SignVote/SignProposal` a few times before returning an error (@melekes)
 - [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
+- [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
