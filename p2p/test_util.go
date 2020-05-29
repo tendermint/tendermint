@@ -5,6 +5,7 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -18,6 +19,67 @@ import (
 )
 
 const testCh = 0x01
+
+var (
+	cfg *config.P2PConfig
+)
+
+func init() {
+	cfg = config.DefaultP2PConfig()
+	cfg.PexReactor = true
+	cfg.AllowDuplicateIP = true
+}
+
+type PeerMessage struct {
+	PeerID  ID
+	Bytes   []byte
+	Counter int
+}
+
+type TestReactor struct {
+	BaseReactor
+
+	mtx          sync.Mutex
+	channels     []*conn.ChannelDescriptor
+	logMessages  bool
+	msgsCounter  int
+	msgsReceived map[byte][]PeerMessage
+}
+
+func NewTestReactor(channels []*conn.ChannelDescriptor, logMessages bool) *TestReactor {
+	tr := &TestReactor{
+		channels:     channels,
+		logMessages:  logMessages,
+		msgsReceived: make(map[byte][]PeerMessage),
+	}
+	tr.BaseReactor = *NewBaseReactor("TestReactor", tr)
+	tr.SetLogger(log.TestingLogger())
+	return tr
+}
+
+func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
+	return tr.channels
+}
+
+func (tr *TestReactor) AddPeer(peer Peer) {}
+
+func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {}
+
+func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
+	if tr.logMessages {
+		tr.mtx.Lock()
+		defer tr.mtx.Unlock()
+		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
+		tr.msgsCounter++
+	}
+}
+
+func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
+	return tr.msgsReceived[chID]
+}
 
 //------------------------------------------------
 

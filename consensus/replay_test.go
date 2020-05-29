@@ -35,21 +35,6 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-func TestMain(m *testing.M) {
-	config = ResetConfig("consensus_reactor_test")
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
-	code := m.Run()
-	os.RemoveAll(config.RootDir)
-	os.RemoveAll(consensusReplayConfig.RootDir)
-	os.RemoveAll(configStateTest.RootDir)
-	os.RemoveAll(configMempoolTest.RootDir)
-	os.RemoveAll(configByzantineTest.RootDir)
-	os.Exit(code)
-}
-
 // These tests ensure we can always recover from failure at any part of the consensus process.
 // There are two general failure scenarios: failure during consensus, and failure while applying the block.
 // Only the latter interacts with the app and store,
@@ -618,21 +603,6 @@ func TestMockProxyApp(t *testing.T) {
 	})
 	assert.True(t, validTxs == 1)
 	assert.True(t, invalidTxs == 0)
-}
-
-func tempWALWithData(data []byte) string {
-	walFile, err := ioutil.TempFile("", "wal")
-	if err != nil {
-		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
-	}
-	_, err = walFile.Write(data)
-	if err != nil {
-		panic(fmt.Sprintf("failed to write to temp WAL file: %v", err))
-	}
-	if err := walFile.Close(); err != nil {
-		panic(fmt.Sprintf("failed to close temp WAL file: %v", err))
-	}
-	return walFile.Name()
 }
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks.

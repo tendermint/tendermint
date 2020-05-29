@@ -1,4 +1,4 @@
-// +build integration
+// +build unit
 
 package pubsub_test
 

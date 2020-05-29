@@ -22,12 +22,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-var (
-	chainID      = "execution_chain"
-	testPartSize = 65536
-	nTxsPerBlock = 10
-)
-
 func TestApplyBlock(t *testing.T) {
 	app := kvstore.NewApplication()
 	app.RetainBlocks = 1

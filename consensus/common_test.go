@@ -55,14 +55,29 @@ var (
 	ensureTimeout         = time.Millisecond * 200
 )
 
-func ensureDir(dir string, mode os.FileMode) {
-	if err := tmos.EnsureDir(dir, mode); err != nil {
-		panic(err)
-	}
+func TestMain(m *testing.M) {
+	config = ResetConfig("consensus_reactor_test")
+	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	configStateTest := ResetConfig("consensus_state_test")
+	configMempoolTest := ResetConfig("consensus_mempool_test")
+	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	code := m.Run()
+	os.RemoveAll(config.RootDir)
+	os.RemoveAll(consensusReplayConfig.RootDir)
+	os.RemoveAll(configStateTest.RootDir)
+	os.RemoveAll(configMempoolTest.RootDir)
+	os.RemoveAll(configByzantineTest.RootDir)
+	os.Exit(code)
 }
 
 func ResetConfig(name string) *cfg.Config {
 	return cfg.ResetTestRoot(name)
+}
+
+func ensureDir(dir string, mode os.FileMode) {
+	if err := tmos.EnsureDir(dir, mode); err != nil {
+		panic(err)
+	}
 }
 
 //-------------------------------------------------------------------------------
@@ -841,4 +856,37 @@ func newPersistentKVStore() abci.Application {
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)
+}
+
+// subscribe subscribes test client to the given query and returns a channel with cap = 1.
+func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
+	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
+	if err != nil {
+		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
+	}
+	return sub.Out()
+}
+
+// subscribe subscribes test client to the given query and returns a channel with cap = 0.
+func subscribeUnBuffered(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
+	sub, err := eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, q)
+	if err != nil {
+		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
+	}
+	return sub.Out()
+}
+
+func tempWALWithData(data []byte) string {
+	walFile, err := ioutil.TempFile("", "wal")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
+	}
+	_, err = walFile.Write(data)
+	if err != nil {
+		panic(fmt.Sprintf("failed to write to temp WAL file: %v", err))
+	}
+	if err := walFile.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close temp WAL file: %v", err))
+	}
+	return walFile.Name()
 }

@@ -19,6 +19,12 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
+var (
+	chainID      = "execution_chain"
+	testPartSize = 65536
+	nTxsPerBlock = 10
+)
+
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams

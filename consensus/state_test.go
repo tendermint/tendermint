@@ -4,7 +4,6 @@ package consensus
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/types"
@@ -1798,22 +1796,4 @@ func TestStateOutputVoteStats(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 
-}
-
-// subscribe subscribes test client to the given query and returns a channel with cap = 1.
-func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
-	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
-	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
-	}
-	return sub.Out()
-}
-
-// subscribe subscribes test client to the given query and returns a channel with cap = 0.
-func subscribeUnBuffered(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
-	sub, err := eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, q)
-	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
-	}
-	return sub.Out()
 }
