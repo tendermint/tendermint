@@ -1,20 +1,11 @@
 module.exports = {
   theme: "cosmos",
   title: "Tendermint",
-  // locales: {
-  //   "/": {
-  //     lang: "en-US"
-  //   },
-  //   "/ru/": {
-  //     lang: "ru"
-  //   }
-  // },
   base: process.env.VUEPRESS_BASE,
   themeConfig: {
     docsRepo: "tendermint/tendermint",
     editLinks: true,
     docsDir: "docs",
-    logo: "/logo.svg",
     label: "core",
     gutter: {
       title: "Help & Support",
@@ -32,7 +23,8 @@ module.exports = {
       }
     },
     footer: {
-      questionsText: "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
+      questionsText:
+        "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
@@ -136,5 +128,5 @@ module.exports = {
         ga: "UA-51029217-11"
       }
     ]
-  ],
+  ]
 };
