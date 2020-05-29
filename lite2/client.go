@@ -1033,6 +1033,7 @@ func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
+	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	if len(c.witnesses) <= 1 {
 		return errNoWitnesses{}
 	}
@@ -1052,27 +1053,34 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 		h, err := c.primary.SignedHeader(height)
 		c.providerMutex.Unlock()
 		if err == nil {
+			if h == nil {
+				err := c.replacePrimaryProvider()
+				if err != nil {
+					return nil, fmt.Errorf("header is nil. Tried to replace primary but: %w", err)
+				}
+				return c.signedHeaderFromPrimary(height)
+			}
 			// sanity check
 			if height > 0 && h.Height != height {
 				c.logger.Error("Failed sanity check: incorrect height", "expected height", height, "received height", h.Height)
 				err := c.replacePrimaryProvider()
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("header height mismatch, expected %d, got %d. Tried to replace primary but: %w",
+						height, h.Height, err)
 				}
 				return c.signedHeaderFromPrimary(height)
 			}
 			if err := h.ValidateBasic(c.chainID); err != nil {
 				c.logger.Error("Header failed validate basic", "err", err)
-				err := c.replacePrimaryProvider()
-				if err != nil {
-					return nil, err
+				replaceErr := c.replacePrimaryProvider()
+				if replaceErr != nil {
+					return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err, replaceErr)
 				}
 				return c.signedHeaderFromPrimary(height)
 			}
 			// valid header has been received
 			return h, nil
 		}
-
 		if err == provider.ErrSignedHeaderNotFound {
 			return nil, err
 		}
@@ -1082,7 +1090,7 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 
 	err := c.replacePrimaryProvider()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("primary dropped out. Tried to replace but: %w", err)
 	}
 
 	return c.signedHeaderFromPrimary(height)
@@ -1096,17 +1104,35 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		c.providerMutex.Lock()
 		vals, err := c.primary.ValidatorSet(height)
 		c.providerMutex.Unlock()
-		if err == nil || err == provider.ErrValidatorSetNotFound {
+		if err == nil {
+			if vals == nil {
+				err := c.replacePrimaryProvider()
+				if err != nil {
+					return nil, fmt.Errorf("validator set is nil. Tried to replace primary but: %w", err)
+				}
+				return c.validatorSetFromPrimary(height)
+			}
+			if err = vals.ValidateBasic(); err != nil {
+				c.logger.Error("Validator Set failed Validate Basic", "err", err)
+				replaceErr := c.replacePrimaryProvider()
+				if replaceErr != nil {
+					return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err, replaceErr)
+				}
+				return c.validatorSetFromPrimary(height)
+			}
+			return vals, nil
+		}
+
+		if err == provider.ErrValidatorSetNotFound {
 			return vals, err
 		}
 		c.logger.Error("Failed to get validator set from primary", "attempt", attempt, "err", err)
 		time.Sleep(backoffTimeout(attempt))
 	}
 
-	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	err := c.replacePrimaryProvider()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("primary dropped out. Tried to replace but: %w", err)
 	}
 
 	return c.validatorSetFromPrimary(height)
