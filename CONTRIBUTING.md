@@ -5,7 +5,7 @@ contributing, it may be helpful to understand the goal of the project. The goal
 of Tendermint is to develop a BFT consensus engine robust enough to
 support permissionless value-carrying networks. While all contributions are
 welcome, contributors should bear this goal in mind in deciding if they should
-target the main tendermint project or a potential fork. When targeting the
+target the main Tendermint project or a potential fork. When targeting the
 main Tendermint project, the following process leads to the best chance of
 landing changes in master.
 
@@ -63,12 +63,12 @@ Instead, we use `git remote` to add the fork as a new remote for the original re
 
 For instance, to create a fork and work on a branch of it, I would:
 
-- Create the fork on github, using the fork button.
+- Create the fork on GitHub, using the fork button.
 - Go to the original repo checked out locally (i.e. `$GOPATH/src/github.com/tendermint/tendermint`)
 - `git remote rename origin upstream`
 - `git remote add origin git@github.com:ebuchman/basecoin.git`
 
-Now `origin` refers to my fork and `upstream` refers to the tendermint version.
+Now `origin` refers to my fork and `upstream` refers to the Tendermint version.
 So I can `git push -u origin master` to update my fork, and make pull requests to tendermint from there.
 Of course, replace `ebuchman` with your git handle.
 
@@ -178,38 +178,60 @@ The main development branch is master.
 
 Every release is maintained in a release branch named `vX.Y.Z`.
 
+Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to master. 
+
 Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
 ### Development Procedure
 
-- the latest state of development is on `master`
-- `master` must never fail `make test`
-- never --force onto `master` (except when reverting a broken commit, which should seldom happen)
-- create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
-- make changes and update the `CHANGELOG_PENDING.md` to record your change
-- before submitting a pull request, run `git rebase` on top of the latest `master`
+The latest state of development is on `master`, which must never fail `make test`. _Never_ force push `master`, unless fixing broken git history (which we rarely do anyways). 
 
-When you have submitted a pull request label the pull request with either `R:minor`, if the change can be accepted in a minor release, or `R:major`, if the change is meant for a major release.
+To begin contributing, create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`). 
 
-### Pull Merge Procedure
+Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
 
-- ensure pull branch is based on a recent `master`
-- run `make test` to ensure that all tests pass
-- [squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
-- the `unstable` branch may be used to aggregate pull merges before fixing tests
+Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.
+
+Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!) 
+
+#### Merging Pull Requests 
+
+It is also our convention that authors merge their own pull requests, when possible. External contributors may not have the necessary permissions to do this, in which case, a member of the core team will merge the pull request once it's been approved. 
+
+Before merging a pull request: 
+
+- Ensure pull branch is up-to-date with a recent `master` (GitHub won't let you merge without this!) 
+- Run `make test` to ensure that all tests pass
+- [Squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
+
+#### Pull Requests for Minor Releases 
+
+If your change should be included in a minor release, please also open a PR against the long-lived minor release candidate branch (e.g., `rc1/v0.33.5`) _immediately after your change has been merged to master_.
+
+You can do this by cherry-picking your commit off master:
+
+```
+$ git checkout rc1/v0.33.5
+$ git checkout -b {new branch name}
+$ git cherry-pick {commit SHA from master} 
+# may need to fix conflicts, and then use git add and git cherry-pick --continue
+$ git push origin {new branch name}
+```
+
+After this, you can open a PR. Please note in the PR body if there were merge conflicts so that reviewers can be sure to take a thorough look. 
 
 ### Git Commit Style
 
 We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
 
-\```
+```
 cmd/debug: execute p.Signal only when p is not nil
 
 [potentially longer description in the body]
 
 Fixes #nnnn
-\```
+```
 
 Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
@@ -233,44 +255,24 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Minor Release
 
-Minor releases are done differently from major releases. Minor release pull requests should be labeled with `R:minor` if they are to be included.
+Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master. 
 
-1. Checkout the last major release, `vX.X`.
-
-   - `git checkout vX.X`
-
-2. Create a release candidate branch off the most recent major release with your upcoming version specified, `rc1/vX.X.x`, and push the branch.
-
-   - `git checkout -b rc1/vX.X.x`
-   - `git push -u origin rc1/vX.X.x`
-
-3. Create a cherry-picking branch, and make a pull request into the release candidate.
-
-   - `git checkout -b cherry-picks/rc1/vX.X.x`
-
-     - This is for devs to approve the commits that are entering the release candidate.
-     - There may be merge conflicts.
-
-4. Begin cherry-picking.
-
-   - `git cherry-pick {PR commit from master you wish to cherry pick}`
-   - Fix conflicts
-   - `git cherry-pick --continue`
-   - `git push cherry-picks/rc1/vX.X.x`
-
-   > Once all commits are included and CI/tests have passed, then it is ready for a release.
-
-5. Create a release branch `release/vX.X.x` off the release candidate branch.
-
+1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X` 
+2. Run integration tests: `make test_integrations` 
+3. Prepare the release:
+	- Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+	- Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+	- Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+	- Reset the `CHANGELOG_PENDING.md`
+	- Bump the appropriate versions in `version.go`
+5. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
-     > Note this Branch is protected once pushed, you will need admin help to make any change merges into the branch.
-
-6. Merge Commit the release branch into the latest major release branch `vX.X`, this will start the release process.
-
-7. Create a Pull Request back to master with the CHANGELOG & version changes from the latest release.
+   - Note that all branches prefixed with `release` are protected once pushed. You will need admin help to make any changes to the branch.
+6. Open a pull request of the new minor release branch onto the latest major release branch `vX.X` and then rebase to merge. This will start the release process.
+7. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
-     > Note: Do not merge the release branch into master.
+   - Do not merge the release branch into master.
 
 #### Backport Release
 

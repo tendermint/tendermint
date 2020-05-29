@@ -19,9 +19,11 @@ type voteData struct {
 	valid bool
 }
 
+var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func makeVote(
 	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
-) *Vote {
+	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
 	v := &Vote{
@@ -30,6 +32,7 @@ func makeVote(
 		Height:           height,
 		Round:            round,
 		Type:             SignedMsgType(step),
+		Timestamp:        time,
 		BlockID:          blockID,
 	}
 	err = val.SignVote(chainID, v)
@@ -50,22 +53,25 @@ func TestEvidence(t *testing.T) {
 
 	const chainID = "mychain"
 
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID)
-	err := val2.SignVote(chainID, badVote)
-	assert.NoError(t, err)
+	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
+	err := val.SignVote(chainID, vote1)
+	require.NoError(t, err)
+	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
+	err = val2.SignVote(chainID, badVote)
+	require.NoError(t, err)
 
 	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 1, 10, 2, 1, blockID2), false},    // wrong val index
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID), false},    // wrong validator
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime), true}, // different block ids
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, defaultVoteTime), true},
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, defaultVoteTime), true},
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},     // wrong block id
+		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, defaultVoteTime), false}, // wrong chain id
+		{vote1, makeVote(t, val, chainID, 1, 10, 2, 1, blockID2, defaultVoteTime), false},    // wrong val index
+		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, defaultVoteTime), false},    // wrong height
+		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, defaultVoteTime), false},    // wrong round
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, defaultVoteTime), false},    // wrong step
+		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},    // wrong validator
+		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), false},
 		{vote1, badVote, false}, // signed by wrong key
 	}
 
@@ -104,10 +110,11 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	maxTime := time.Date(9999, 0, 0, 0, 0, 0, 0, time.UTC)
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		VoteA: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID),
-		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
+		VoteA: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID, maxTime),
+		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2, maxTime),
 	}
 
 	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
@@ -146,7 +153,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
 		require.NoError(t, err, tt.testName)
 
-		assert.LessOrEqual(t, MaxEvidenceBytes, int64(len(bz)), tt.testName)
+		assert.LessOrEqual(t, int64(len(bz)), MaxEvidenceBytes, tt.testName)
 	}
 
 }
@@ -157,8 +164,8 @@ func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
-		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID),
-		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2),
+		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
+		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime),
 	}
 }
 
@@ -181,7 +188,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, blockID2)
+			ev.VoteA = makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, blockID2, defaultVoteTime)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -192,8 +199,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2)
+			vote1 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID, defaultVoteTime)
+			vote2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2, defaultVoteTime)
 			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -217,7 +224,7 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 		header   = makeHeaderRandom()
 		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 		val      = NewMockPV()
-		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID)
+		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
 	)
 
 	header.Time = bTime
@@ -247,23 +254,19 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 
 func TestPhantomValidatorEvidence(t *testing.T) {
 	var (
-		blockID  = makeBlockIDRandom()
-		header   = makeHeaderRandom()
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		val      = NewMockPV()
-		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID)
+		blockID = makeBlockIDRandom()
+		header  = makeHeaderRandom()
+		val     = NewMockPV()
+		vote    = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
 	)
 
-	header.Time = bTime
-
 	ev := &PhantomValidatorEvidence{
-		Header:                      header,
 		Vote:                        vote,
 		LastHeightValidatorWasInSet: header.Height - 1,
 	}
 
 	assert.Equal(t, header.Height, ev.Height())
-	assert.Equal(t, bTime, ev.Time())
+	assert.Equal(t, defaultVoteTime, ev.Time())
 	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
@@ -359,8 +362,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 		val      = NewMockPV()
 		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID)
-		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2)
+		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID, defaultVoteTime)
+		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime)
 	)
 
 	ev := &PotentialAmnesiaEvidence{
@@ -413,22 +416,22 @@ func TestProofOfLockChange(t *testing.T) {
 	pubKey, err = privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
-	badVote := makeVote(t, privValidators[8], chainID, 8, height, 2, 2, blockID)
+	badVote := makeVote(t, privValidators[8], chainID, 8, height, 2, 2, blockID, defaultVoteTime)
 	polc.Votes = append(polc.Votes, *badVote)
 	badPOLCs = append(badPOLCs, polc)
 	// 4: one vote was from a different height
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
-	badVote = makeVote(t, privValidators[8], chainID, 8, height+1, 1, 2, blockID)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height+1, 1, 2, blockID, defaultVoteTime)
 	polc.Votes = append(polc.Votes, *badVote)
 	badPOLCs = append(badPOLCs, polc)
 	// 5: one vote was from a different vote type
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
-	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 1, blockID)
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 1, blockID, defaultVoteTime)
 	polc.Votes = append(polc.Votes, *badVote)
 	badPOLCs = append(badPOLCs, polc)
 	// 5: one of the votes was for a nil block
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
-	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 2, BlockID{})
+	badVote = makeVote(t, privValidators[8], chainID, 8, height, 1, 2, BlockID{}, defaultVoteTime)
 	polc.Votes = append(polc.Votes, *badVote)
 	badPOLCs = append(badPOLCs, polc)
 
@@ -466,8 +469,8 @@ func TestEvidenceProto(t *testing.T) {
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID)
-	v2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 2, 0x01, blockID2)
+	v := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+	v2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
 	// -------- SignedHeaders --------
 	const height int64 = 37
