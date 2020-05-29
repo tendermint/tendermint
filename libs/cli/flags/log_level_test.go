@@ -1,3 +1,5 @@
+// +build unit
+
 package flags_test
 
 import (

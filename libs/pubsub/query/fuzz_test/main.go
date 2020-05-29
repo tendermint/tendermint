@@ -1,3 +1,5 @@
+// +build unit
+
 package fuzz_test
 
 import (

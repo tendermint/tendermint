@@ -1,3 +1,5 @@
+// +build integration
+
 package pubsub_test
 
 import (

@@ -1,3 +1,5 @@
+// +build integration
+
 package p2p
 
 import (

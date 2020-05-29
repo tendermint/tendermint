@@ -1,3 +1,5 @@
+// +build unit
+
 package query_test
 
 import (

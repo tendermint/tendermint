@@ -1,3 +1,5 @@
+// +build unit
+
 package tempfile
 
 // Need access to internal variables, so can't use _test package

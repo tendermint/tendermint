@@ -1,3 +1,5 @@
+// +build unit
+
 //
 // Written by Maxim Khitrov (November 2012)
 //
