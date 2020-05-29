@@ -2,8 +2,8 @@
 
 Unit tests have build tag `unit`, and can be run with `make test` (i.e. go test -tags unit).
 Component integration tests have build tag `integration`, and can be run with
-`make test_integration`. All tests, including Docker-based full-system integration tests,
-can be run with `make test_all`.
+`make test_integration`. All tests, including Docker-based end-to-end tests, can be run with
+`make test_all`.
 
 Running `make all` will build a docker container with local version of tendermint and run the
 following tests in docker containers:
