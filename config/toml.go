@@ -72,7 +72,9 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
-##### main base config options #####
+###############################################################################
+###                       Main Base Config Options                          ###
+###############################################################################
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
@@ -128,6 +130,10 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # connections from an external PrivValidator process
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+# Path to client certificate file for secure private validator connection. 
+# If a remote validator address is provided but no certificate, the connection will be insecure
+priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
+
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
@@ -141,9 +147,14 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-##### advanced configuration options #####
+###############################################################################
+###                 Advanced Configuration Options                          ###
+###############################################################################
 
-##### rpc server configuration options #####
+##############################################
+###    RPC Server Configuration Options   ###
+##############################################
+
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -222,7 +233,10 @@ tls_cert_file = "{{ .RPC.TLSCertFile }}"
 # Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
-##### peer to peer configuration options #####
+##############################################
+###    Peer To Peer Configuration Options  ###
+##############################################
+
 [p2p]
 
 # Address to listen for incoming connections
@@ -293,7 +307,10 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
-##### mempool configuration options #####
+##############################################
+###    Mempool COnfiguration Options       ###
+##############################################
+
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
@@ -347,7 +364,9 @@ temp_dir = "{{ .StateSync.TempDir }}"
 #   2) "v2" - complete redesign of v0, optimized for testability & readability 
 version = "{{ .FastSync.Version }}"
 
-##### consensus configuration options #####
+##############################################
+###    Consensus Configuration Options     ###
+##############################################
 [consensus]
 
 wal_file = "{{ js .Consensus.WalPath }}"

@@ -18,8 +18,8 @@ func main() {
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
-		withCert         = flag.String("cert", "", "absolutepath to certificate")
-		withKey          = flag.String("key", "", "absolutepath to key")
+		withCert         = flag.String("cert", "", "absolutepath to server certificate")
+		withKey          = flag.String("key", "", "absolutepath to server key")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),

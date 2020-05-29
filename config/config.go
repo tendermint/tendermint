@@ -46,6 +46,8 @@ var (
 	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
 	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
+	// if a certificate is not provided the privval connection with a remote signer will be insecure
+	defaultPrivValClientCertificate = ""
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
@@ -201,6 +203,10 @@ type BaseConfig struct { //nolint: maligned
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
 
+	// Path to client certificate file for secure private validator connection.
+	// If a remote validator address is provided but no certificate, the connection will be insecure
+	PrivValidatorClientCertificate string `mapstructure:"priv_validator_client_certificate"`
+
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
 
@@ -218,20 +224,21 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:            defaultGenesisJSONPath,
-		PrivValidatorKey:   defaultPrivValKeyPath,
-		PrivValidatorState: defaultPrivValStatePath,
-		NodeKey:            defaultNodeKeyPath,
-		Moniker:            defaultMoniker,
-		ProxyApp:           "tcp://127.0.0.1:26658",
-		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
-		LogFormat:          LogFormatPlain,
-		ProfListenAddress:  "",
-		FastSyncMode:       true,
-		FilterPeers:        false,
-		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		Genesis:                        defaultGenesisJSONPath,
+		PrivValidatorKey:               defaultPrivValKeyPath,
+		PrivValidatorState:             defaultPrivValStatePath,
+		PrivValidatorClientCertificate: defaultPrivValClientCertificate,
+		NodeKey:                        defaultNodeKeyPath,
+		Moniker:                        defaultMoniker,
+		ProxyApp:                       "tcp://127.0.0.1:26658",
+		ABCI:                           "socket",
+		LogLevel:                       DefaultPackageLogLevels(),
+		LogFormat:                      LogFormatPlain,
+		ProfListenAddress:              "",
+		FastSyncMode:                   true,
+		FilterPeers:                    false,
+		DBBackend:                      "goleveldb",
+		DBPath:                         "data",
 	}
 }
 
