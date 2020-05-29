@@ -20,11 +20,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// for testing
-func assertMempool(txn txNotifier) mempl.Mempool {
-	return txn.(mempl.Mempool)
-}
-
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)

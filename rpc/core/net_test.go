@@ -21,6 +21,7 @@ func TestUnsafeDialSeeds(t *testing.T) {
 	require.NoError(t, err)
 	defer sw.Stop()
 
+	env = &Environment{}
 	env.Logger = log.TestingLogger()
 	env.P2PPeers = sw
 

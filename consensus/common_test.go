@@ -80,6 +80,10 @@ func ensureDir(dir string, mode os.FileMode) {
 	}
 }
 
+func assertMempool(txn txNotifier) mempl.Mempool {
+	return txn.(mempl.Mempool)
+}
+
 //-------------------------------------------------------------------------------
 // validator stub (a kvstore consensus peer we control)
 
