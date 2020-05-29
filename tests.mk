@@ -72,7 +72,7 @@ test_p2p_ipv6:
 	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
 .PHONY: test_p2p_ipv6
 
-test_integrations:
+test_all:
 	make build_docker_test_image
 	make tools
 	make install
@@ -85,10 +85,10 @@ test_integrations:
 	make test_p2p
 	# Disabled by default since it requires Docker daemon with IPv6 enabled
 	#make test_p2p_ipv6
-.PHONY: test_integrations
+.PHONY: test_all
 
 test_release:
-	@go test -tags release $(PACKAGES)
+	@go test -tags unit,integration,release $(PACKAGES)
 .PHONY: test_release
 
 test100:
@@ -97,18 +97,26 @@ test100:
 
 vagrant_test:
 	vagrant up
-	vagrant ssh -c 'make test_integrations'
+	vagrant ssh -c 'make test_all'
 .PHONY: vagrant_test
 
 ### go tests
-test:
-	@echo "--> Running go test"
-	@go test -p 1 $(PACKAGES)
+test: test_unit test_int
 .PHONY: test
 
+test_unit:
+	@echo "--> Running go test -tags unit"
+	@go test -tags unit $(PACKAGES)
+.PHONY: test_unit
+
+test_integration:
+	@echo "--> Running go test -tags integration"
+	@go test -p 1 -tags integration $(PACKAGES)
+.PHONY: test_int
+
 test_race:
-	@echo "--> Running go test --race"
-	@go test -p 1 -v -race $(PACKAGES)
+	@echo "--> Running go test -tags unit,integration -race"
+	@go test -p 1 -v -tags unit,integration -race $(PACKAGES)
 .PHONY: test_race
 
 # uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks

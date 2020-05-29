@@ -240,7 +240,7 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 #### Major Release
 
 1. start on `master`
-2. run integration tests (see `test_integrations` in Makefile)
+2. run integration tests (see `test_all` in Makefile)
 3. prepare release in a pull request against `master` (to be squash merged):
    - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
    - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
@@ -258,7 +258,7 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master. 
 
 1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X` 
-2. Run integration tests: `make test_integrations` 
+2. Run integration tests: `make test_all` 
 3. Prepare the release:
 	- Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
 	- Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
