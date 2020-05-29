@@ -1,4 +1,6 @@
-name: Proto check
+name: Protobuf
+# Protobuf runs buf (https://buf.build/) lint and check-breakage
+# This workflow is only run when a .proto file has been modified
 on:
   pull_request:
     paths:
@@ -6,12 +8,14 @@ on:
 jobs:
   proto-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@master
       - name: lint
         run: make proto-lint
   proto-breakage:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@master
       - name: check-breakage

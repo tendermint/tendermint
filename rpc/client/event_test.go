@@ -98,6 +98,9 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				defer c.Stop()
 			}
 
+			// wait for the client subscription to get set up
+			time.Sleep(100 * time.Millisecond)
+
 			// make the tx
 			_, _, tx := MakeTxKV()
 			evtTyp := types.EventTx

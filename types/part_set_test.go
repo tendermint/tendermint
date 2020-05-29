@@ -136,3 +136,26 @@ func TestPartValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestParSetHeaderProtoBuf(t *testing.T) {
+	testCases := []struct {
+		msg     string
+		ps1     *PartSetHeader
+		expPass bool
+	}{
+		{"success empty", &PartSetHeader{}, true},
+		{"success",
+			&PartSetHeader{Total: 1, Hash: []byte("hash")}, true},
+	}
+
+	for _, tc := range testCases {
+		protoBlockID := tc.ps1.ToProto()
+
+		psh, err := PartSetHeaderFromProto(&protoBlockID)
+		if tc.expPass {
+			require.Equal(t, tc.ps1, psh, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
