@@ -14,7 +14,6 @@ module.exports = {
     docsRepo: "tendermint/tendermint",
     editLinks: true,
     docsDir: "docs",
-    logo: "/logo.svg",
     label: "core",
     gutter: {
       title: "Help & Support",
