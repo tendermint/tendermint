@@ -6,18 +6,12 @@ option go_package = "github.com/tendermint/tendermint/proto/privval";
 import "proto/crypto/keys/types.proto";
 import "proto/types/types.proto";
 
-message RemoteSignerError {
-  int32  code        = 1;
-  string description = 2;
-}
-
 // PubKeyRequest requests the consensus public key from the remote signer.
 message PubKeyRequest {}
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {
   tendermint.proto.crypto.keys.PublicKey pub_key = 1;
-  RemoteSignerError                      error   = 2;
 }
 
 // SignVoteRequest is a request to sign a vote
@@ -28,8 +22,7 @@ message SignVoteRequest {
 
 // SignedVoteResponse is a response containing a signed vote or an error
 message SignedVoteResponse {
-  tendermint.proto.types.Vote vote  = 1;
-  RemoteSignerError           error = 2;
+  tendermint.proto.types.Vote vote = 1;
 }
 
 // SignProposalRequest is a request to sign a proposal
@@ -41,11 +34,4 @@ message SignProposalRequest {
 // SignedProposalResponse is response containing a signed proposal or an error
 message SignedProposalResponse {
   tendermint.proto.types.Proposal proposal = 1;
-  RemoteSignerError               error    = 2;
 }
-
-// PingRequest is a request to confirm that the connection is alive.
-message PingRequest {}
-
-// PingResponse is a response to confirm that the connection is alive.
-message PingResponse {}

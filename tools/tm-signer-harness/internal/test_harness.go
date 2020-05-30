@@ -17,6 +17,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"google.golang.org/grpc"
 )
 
 // Test harness error codes (which act as exit codes when the test harness fails).
@@ -102,12 +103,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 	logger.Info("Loaded genesis file", "chainID", st.ChainID)
 
-	spv, err := newTestHarnessListener(logger, cfg)
-	if err != nil {
-		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
-	}
-
-	signerClient, err := privval.NewSignerClient(spv)
+	signerClient, err := privval.NewSignerClient(cfg.BindAddr, []grpc.DialOption, logger)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}

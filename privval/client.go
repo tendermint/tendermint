@@ -2,10 +2,10 @@ package privval
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -22,26 +22,23 @@ type SignerClient struct {
 	privValidator privvalproto.PrivValidatorAPIClient
 	conn          *grpc.ClientConn
 	logger        log.Logger
-
-	// A cache for pubkeys, this helps in reducing the amount of requests for pubkey
-	pkCache map[int]crypto.PubKey
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(listenAddr string,
+func NewSignerClient(target string,
 	opts []grpc.DialOption, log log.Logger) (*SignerClient, error) {
-	if listenAddr == "" {
-		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", listenAddr)
+	if target == "" {
+		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", target)
 	}
 
 	ctx := context.Background()
 
-	conn, err := grpc.DialContext(ctx, listenAddr, opts...)
+	conn, err := grpc.DialContext(ctx, target, opts...)
 	if err != nil {
-		log.Error("unable to connect to client.", "target", listenAddr, "err", err)
+		log.Error("unable to connect to client.", "target", target, "err", err)
 	}
 
 	sc := &SignerClient{
@@ -62,19 +59,6 @@ func (sc *SignerClient) Close() error {
 	return nil
 }
 
-// Ping sends a ping request to the remote signer
-// todo: look at deprcating in favor of keepalive
-// make sure it is supported in other languages (rust)
-func (sc *SignerClient) Ping() error {
-	_, err := sc.privValidator.Ping(sc.ctx, &privvalproto.PingRequest{})
-	if err != nil {
-		sc.logger.Error("SignerClient::Ping", "err", err)
-		return nil
-	}
-
-	return nil
-}
-
 //--------------------------------------------------------
 // Implement PrivValidator
 
@@ -83,13 +67,9 @@ func (sc *SignerClient) Ping() error {
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	resp, err := sc.privValidator.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{})
 	if err != nil {
-		sc.logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil, fmt.Errorf("send: %w", err)
-	}
-
-	if resp.Error != nil {
-		sc.logger.Error("failed to get private validator's public key", "err", resp.Error)
-		return nil, fmt.Errorf("remote error: %w", errors.New(resp.Error.Description))
+		errStatus, _ := status.FromError(err)
+		sc.logger.Error("SignerClient::GetPubKey", "err", errStatus.Message())
+		return nil, fmt.Errorf("send GetPubKey request: %w", errStatus.Err())
 	}
 
 	pk, err := cryptoenc.PubKeyFromProto(*resp.PubKey)
@@ -104,12 +84,9 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 	resp, err := sc.privValidator.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: chainID, Vote: vote})
 	if err != nil {
-		sc.logger.Error("SignerClient::SignVote", "err", err)
-		return err
-	}
-
-	if resp.Error != nil {
-		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+		errStatus, _ := status.FromError(err)
+		sc.logger.Error("Client SignVote", "err", errStatus.Message())
+		return fmt.Errorf("send SignVote request: %w", errStatus.Err())
 	}
 
 	*vote = *resp.Vote
@@ -121,13 +98,11 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 	resp, err := sc.privValidator.SignProposal(
 		sc.ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
-	if err != nil {
-		sc.logger.Error("SignerClient::SignProposal", "err", err)
-		return err
-	}
 
-	if resp.Error != nil {
-		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+	if err != nil {
+		errStatus, _ := status.FromError(err)
+		sc.logger.Error("SignerClient::SignProposal", "err", errStatus.Message())
+		return fmt.Errorf("send SignProposal request: %w", errStatus.Err())
 	}
 
 	*proposal = *resp.Proposal

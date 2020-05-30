@@ -8,7 +8,6 @@ import "proto/privval/msgs.proto";
 // Service Definition
 
 service PrivValidatorAPI {
-  rpc Ping(tendermint.proto.privval.PingRequest) returns (tendermint.proto.privval.PingResponse);
   rpc GetPubKey(tendermint.proto.privval.PubKeyRequest) returns (tendermint.proto.privval.PubKeyResponse);
   rpc SignVote(tendermint.proto.privval.SignVoteRequest) returns (tendermint.proto.privval.SignedVoteResponse);
   rpc SignProposal(tendermint.proto.privval.SignProposalRequest) returns (tendermint.proto.privval.SignedProposalResponse);
