@@ -249,6 +249,10 @@ func TestAppCalls(t *testing.T) {
 		assert.True(len(appHash) > 0)
 		assert.EqualValues(apph, block.Block.Header.Height)
 
+		blockByHash, err := c.BlockByHash(block.BlockID.Hash)
+		require.NoError(err)
+		require.Equal(block, blockByHash)
+
 		// now check the results
 		blockResults, err := c.BlockResults(&txh)
 		require.Nil(err, "%d: %+v", i, err)
