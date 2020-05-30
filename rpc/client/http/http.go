@@ -367,6 +367,18 @@ func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return result, nil
 }
 
+func (c *baseRPCClient) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	result := new(ctypes.ResultBlock)
+	params := map[string]interface{}{
+		"hash": hash,
+	}
+	_, err := c.caller.Call("block_by_hash", params, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	result := new(ctypes.ResultBlockResults)
 	params := make(map[string]interface{})
