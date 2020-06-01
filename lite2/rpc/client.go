@@ -268,6 +268,40 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return res, nil
 }
 
+// BlockByHash calls rpcclient#BlockByHash and then verifies the result.
+func (c *Client) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	res, err := c.next.BlockByHash(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate res.
+	if err := res.BlockID.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if err := res.Block.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if bmH, bH := res.BlockID.Hash, res.Block.Hash(); !bytes.Equal(bmH, bH) {
+		return nil, fmt.Errorf("blockID %X does not match with block %X",
+			bmH, bH)
+	}
+
+	// Update the light client if we're behind.
+	h, err := c.updateLiteClientIfNeededTo(res.Block.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify block.
+	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
+		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
+			bH, tH)
+	}
+
+	return res, nil
+}
+
 func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	res, err := c.next.BlockResults(height)
 	if err != nil {
