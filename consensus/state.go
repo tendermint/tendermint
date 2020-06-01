@@ -294,12 +294,13 @@ func (cs *State) OnStart() error {
 		repairAttempted := false
 		for !repairAttempted {
 			err := cs.catchupReplay(cs.Height)
-			if err == nil {
+			switch {
+			case err == nil:
 				break
-			} else if !IsDataCorruptionError(err) {
+			case !IsDataCorruptionError(err):
 				cs.Logger.Error("Error on catchup replay. Proceeding to start State anyway", "err", err)
 				break
-			} else if repairAttempted {
+			case repairAttempted:
 				return err
 			}
 
