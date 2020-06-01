@@ -2,16 +2,16 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var (
@@ -31,10 +31,10 @@ func (part *Part) ValidateBasic() error {
 		return errors.New("negative Index")
 	}
 	if len(part.Bytes) > BlockPartSizeBytes {
-		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
+		return fmt.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
 	}
 	if err := part.Proof.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "wrong Proof")
+		return fmt.Errorf("wrong Proof: %w", err)
 	}
 	return nil
 }
@@ -80,9 +80,33 @@ func (psh PartSetHeader) ValidateBasic() error {
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
-		return errors.Wrap(err, "Wrong Hash")
+		return fmt.Errorf("wrong Hash: %w", err)
 	}
 	return nil
+}
+
+// ToProto converts BloPartSetHeaderckID to protobuf
+func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
+	if psh == nil {
+		return tmproto.PartSetHeader{}
+	}
+
+	return tmproto.PartSetHeader{
+		Total: int64(psh.Total),
+		Hash:  psh.Hash,
+	}
+}
+
+// FromProto sets a protobuf PartSetHeader to the given pointer
+func PartSetHeaderFromProto(ppsh *tmproto.PartSetHeader) (*PartSetHeader, error) {
+	if ppsh == nil {
+		return nil, errors.New("nil PartSetHeader")
+	}
+	psh := new(PartSetHeader)
+	psh.Total = int(ppsh.Total)
+	psh.Hash = ppsh.Hash
+
+	return psh, psh.ValidateBasic()
 }
 
 //-------------------------------------

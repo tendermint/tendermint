@@ -1,12 +1,12 @@
 package async
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -125,7 +125,7 @@ func TestParallelRecover(t *testing.T) {
 	// Verify task #0, #1, #2.
 	checkResult(t, taskResultSet, 0, 0, nil, nil)
 	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
-	checkResult(t, taskResultSet, 2, nil, nil, errors.Errorf("panic in task %v", 2).Error())
+	checkResult(t, taskResultSet, 2, nil, nil, fmt.Errorf("panic in task %v", 2).Error())
 }
 
 // Wait for result

@@ -2,12 +2,11 @@ package lite
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -729,8 +728,8 @@ func (c *Client) bisection(
 		case ErrNewValSetCantBeTrusted:
 			// do add another header to the end of the cache
 			if depth == len(headerCache)-1 {
-				pivotHeight := (headerCache[depth].sh.Height + trustedHeader.
-					Height) * bisectionNumerator / bisectionDenominator
+				pivotHeight := trustedHeader.Height + (headerCache[depth].sh.Height-trustedHeader.
+					Height)*bisectionNumerator/bisectionDenominator
 				interimHeader, interimVals, err := c.fetchHeaderAndValsAtHeight(pivotHeight)
 				if err != nil {
 					return err
@@ -954,8 +953,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			}
 
 			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit.BlockID,
-					altH.Height, altH.Commit, c.trustLevel); err != nil {
+				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
 					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
 					witnessesToRemove = append(witnessesToRemove, i)
 					continue

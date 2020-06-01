@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sort"
@@ -8,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	dbm "github.com/tendermint/tm-db"
 
@@ -117,10 +117,11 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
+	return true
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
@@ -131,7 +132,6 @@ type testReactorParams struct {
 	genDoc      *types.GenesisDoc
 	privVals    []types.PrivValidator
 	startHeight int64
-	bufferSize  int
 	mockA       bool
 }
 
@@ -149,14 +149,14 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		if err != nil {
-			panic(errors.Wrap(err, "error start app"))
+			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
 		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize, true)
+	r := newReactor(state, store, reporter, appl, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -353,7 +353,6 @@ func TestReactorHelperMode(t *testing.T) {
 		genDoc:      genDoc,
 		privVals:    privVals,
 		startHeight: 20,
-		bufferSize:  100,
 		mockA:       true,
 	}
 
@@ -383,9 +382,9 @@ func TestReactorHelperMode(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
-			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
+			reactor.Start()
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
@@ -481,7 +480,7 @@ func newReactorStore(
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(errors.Wrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	stateDB := dbm.NewMemDB()
@@ -489,7 +488,7 @@ func newReactorStore(
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(errors.Wrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
@@ -525,7 +524,7 @@ func newReactorStore(
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(errors.Wrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

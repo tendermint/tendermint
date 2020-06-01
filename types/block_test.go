@@ -399,28 +399,30 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes  int64
-		valsCount int
-		panics    bool
-		result    int64
+		maxBytes    int64
+		maxEvidence uint32
+		valsCount   int
+		panics      bool
+		result      int64
 	}{
-		0: {-10, 1, true, 0},
-		1: {10, 1, true, 0},
-		2: {961, 1, true, 0},
-		3: {962, 1, false, 0},
-		4: {963, 1, false, 1},
+		0: {-10, 0, 1, true, 0},
+		1: {10, 0, 1, true, 0},
+		2: {865, 0, 1, true, 0},
+		3: {866, 0, 1, false, 0},
+		4: {1310, 1, 1, false, 0},
+		5: {1311, 1, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
 				"#%v", i)
 		}
 	}
@@ -596,5 +598,141 @@ func TestBlockIDValidateBasic(t *testing.T) {
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
+	}
+}
+
+func makeRandHeader() Header {
+	chainID := "test"
+	t := time.Now()
+	height := tmrand.Int63()
+	randBytes := tmrand.Bytes(tmhash.Size)
+	randAddress := tmrand.Bytes(crypto.AddressSize)
+	h := Header{
+		Version:            version.Consensus{Block: 1, App: 1},
+		ChainID:            chainID,
+		Height:             height,
+		Time:               t,
+		LastBlockID:        BlockID{},
+		LastCommitHash:     randBytes,
+		DataHash:           randBytes,
+		ValidatorsHash:     randBytes,
+		NextValidatorsHash: randBytes,
+		ConsensusHash:      randBytes,
+		AppHash:            randBytes,
+
+		LastResultsHash: randBytes,
+
+		EvidenceHash:    randBytes,
+		ProposerAddress: randAddress,
+	}
+
+	return h
+}
+
+func TestHeaderProto(t *testing.T) {
+	h1 := makeRandHeader()
+	tc := []struct {
+		msg     string
+		h1      *Header
+		expPass bool
+	}{
+		{"success", &h1, true},
+		{"failure empty Header", &Header{}, false},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.msg, func(t *testing.T) {
+			pb := tt.h1.ToProto()
+			h, err := HeaderFromProto(pb)
+			if tt.expPass {
+				require.NoError(t, err, tt.msg)
+				require.Equal(t, tt.h1, &h, tt.msg)
+			} else {
+				require.Error(t, err, tt.msg)
+			}
+
+		})
+	}
+}
+
+func TestBlockIDProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	testCases := []struct {
+		msg     string
+		bid1    *BlockID
+		expPass bool
+	}{
+		{"success", &blockID, true},
+		{"success empty", &BlockID{}, true},
+		{"failure BlockID nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoBlockID := tc.bid1.ToProto()
+
+		bi, err := BlockIDFromProto(&protoBlockID)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.bid1, bi, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bid1, bi, tc.msg)
+		}
+	}
+}
+
+func TestSignedHeaderProtoBuf(t *testing.T) {
+	commit := randCommit(time.Now())
+	h := makeRandHeader()
+
+	sh := SignedHeader{Header: &h, Commit: commit}
+
+	testCases := []struct {
+		msg     string
+		sh1     *SignedHeader
+		expPass bool
+	}{
+		{"empty SignedHeader 2", &SignedHeader{}, true},
+		{"success", &sh, true},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoSignedHeader := tc.sh1.ToProto()
+
+		sh, err := SignedHeaderFromProto(protoSignedHeader)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.sh1, sh, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestCommitProtoBuf(t *testing.T) {
+	commit := randCommit(time.Now())
+
+	testCases := []struct {
+		msg     string
+		c1      *Commit
+		expPass bool
+	}{
+		{"success", commit, true},
+		// Empty value sets signatures to nil, signatures should not be nillable
+		{"empty commit", &Commit{Signatures: []CommitSig{}}, true},
+		{"fail Commit nil", nil, false},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		protoCommit := tc.c1.ToProto()
+
+		c, err := CommitFromProto(protoCommit)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.c1, c, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
 	}
 }

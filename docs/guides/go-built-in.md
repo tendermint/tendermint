@@ -331,6 +331,7 @@ Put the following code into the "main.go" file:
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -339,7 +340,6 @@ import (
 	"syscall"
 
 	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -393,13 +393,13 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	config.RootDir = filepath.Dir(filepath.Dir(configFile))
 	viper.SetConfigFile(configFile)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Wrap(err, "viper failed to read config file")
+		return nil, fmt.Errorf("viper failed to read config file: %w", err)
 	}
 	if err := viper.Unmarshal(config); err != nil {
-		return nil, errors.Wrap(err, "viper failed to unmarshal config")
+		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 	}
 	if err := config.ValidateBasic(); err != nil {
-		return nil, errors.Wrap(err, "config is invalid")
+		return nil, fmt.Errorf("config is invalid: %w", err)
 	}
 
 	// create logger
@@ -407,7 +407,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	var err error
 	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse log level")
+		return nil, fmt.Errorf("failed to parse log level: %w", err)
 	}
 
 	// read private validator
@@ -419,7 +419,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	// read node key
 	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load node's key")
+		return nil, fmt.Errorf("failed to load node's key: %w", err)
 	}
 
 	// create node
@@ -433,7 +433,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new Tendermint node")
+		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 	}
 
 	return node, nil
@@ -485,7 +485,7 @@ node, err := nm.NewNode(
 	nm.DefaultMetricsProvider(config.Instrumentation),
 	logger)
 if err != nil {
-	return nil, errors.Wrap(err, "failed to create new Tendermint node")
+	return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 }
 ```
 
@@ -503,13 +503,13 @@ config := cfg.DefaultConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
-	return nil, errors.Wrap(err, "viper failed to read config file")
+	return nil, fmt.Errorf("viper failed to read config file: %w", err)
 }
 if err := viper.Unmarshal(config); err != nil {
-	return nil, errors.Wrap(err, "viper failed to unmarshal config")
+	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 }
 if err := config.ValidateBasic(); err != nil {
-	return nil, errors.Wrap(err, "config is invalid")
+	return nil, fmt.Errorf("config is invalid: %w", err)
 }
 ```
 
@@ -530,7 +530,7 @@ pv := privval.LoadFilePV(
 ```go
 nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to load node's key")
+	return nil, fmt.Errorf("failed to load node's key: %w", err)
 }
 ```
 
@@ -543,7 +543,7 @@ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 var err error
 logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to parse log level")
+	return nil, fmt.Errorf("failed to parse log level: %w", err)
 }
 ```
 

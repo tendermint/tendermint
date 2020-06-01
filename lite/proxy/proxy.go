@@ -8,12 +8,10 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -46,7 +44,7 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	}
 	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.OnDisconnect(unsubscribeFromAllEvents))
 	wm.SetLogger(logger)
-	core.SetLogger(logger)
+	// core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
 
 	config := rpcserver.DefaultConfig()
@@ -55,7 +53,7 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	if err != nil {
 		return err
 	}
-	return rpcserver.StartHTTPServer(l, mux, logger, config)
+	return rpcserver.Serve(l, mux, logger, config)
 }
 
 // RPCRoutes just routes everything to the given client, as if it were
@@ -70,13 +68,14 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
 
 		// info API
-		"status":     rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
-		"blockchain": rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":    rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":      rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"commit":     rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":         rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"validators": rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height"),
+		"status":        rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
+		"blockchain":    rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
+		"genesis":       rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
+		"block":         rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"block_by_hash": rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
+		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
+		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"validators":    rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height"),
 
 		// broadcast API
 		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
@@ -89,7 +88,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	}
 }
 
-func makeStatusFunc(c client.StatusClient) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+func makeStatusFunc(c rpcclient.StatusClient) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status()
 	}
@@ -114,6 +113,12 @@ func makeGenesisFunc(c rpcclient.Client) func(ctx *rpctypes.Context) (*ctypes.Re
 func makeBlockFunc(c rpcclient.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 		return c.Block(height)
+	}
+}
+
+func makeBlockByHashFunc(c rpcclient.Client) func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
+	return func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
+		return c.BlockByHash(hash)
 	}
 }
 

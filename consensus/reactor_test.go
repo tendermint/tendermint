@@ -209,7 +209,7 @@ func newMockEvidencePool(val []byte) *mockEvidencePool {
 }
 
 // NOTE: maxBytes is ignored
-func (m *mockEvidencePool) PendingEvidence(maxBytes int64) []types.Evidence {
+func (m *mockEvidencePool) PendingEvidence(maxBytes uint32) []types.Evidence {
 	if m.height > 0 {
 		return m.ev
 	}
@@ -235,6 +235,7 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	}
 	return false
 }
+func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
 
 //------------------------------------
 
@@ -772,7 +773,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
-			"ProposalPOL bit array is too big: 10001, max: 10000"},
+			"proposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
 	for i, tc := range testCases {

@@ -11,7 +11,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -79,9 +79,10 @@ func TestBlockResults(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 	}
 
-	stateDB = dbm.NewMemDB()
-	sm.SaveABCIResponses(stateDB, 100, results)
-	blockStore = mockBlockStore{height: 100}
+	env = &Environment{}
+	env.StateDB = dbm.NewMemDB()
+	sm.SaveABCIResponses(env.StateDB, 100, results)
+	env.BlockStore = mockBlockStore{height: 100}
 
 	testCases := []struct {
 		height  int64

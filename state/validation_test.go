@@ -203,7 +203,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
-	state, stateDB, privVals := makeState(3, 1)
+	state, stateDB, privVals := makeState(4, 1)
+	state.ConsensusParams.Evidence.MaxNum = 3
 	blockExec := sm.NewBlockExecutor(
 		stateDB,
 		log.TestingLogger(),
@@ -215,18 +216,17 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		goodEvidence := types.NewMockEvidence(height, time.Now(), proposerAddr)
+		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
+		t.Log(maxNumEvidence)
 		if height > 1 {
 			/*
 				A block with too much evidence fails
 			*/
-			maxBlockSize := state.ConsensusParams.Block.MaxBytes
-			maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 			require.True(t, maxNumEvidence > 2)
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
-			for i := int64(0); i <= maxNumEvidence; i++ {
-				evidence = append(evidence, goodEvidence)
+			for i := uint32(0); i <= maxNumEvidence; i++ {
+				evidence = append(evidence, types.NewMockEvidence(height, time.Now(), proposerAddr))
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
@@ -237,13 +237,13 @@ func TestValidateBlockEvidence(t *testing.T) {
 		/*
 			A good block with several pieces of good evidence passes
 		*/
-		maxBlockSize := state.ConsensusParams.Block.MaxBytes
-		maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := int64(0); i < maxNumEvidence; i++ {
-			evidence = append(evidence, goodEvidence)
+		for i := uint32(0); i < maxNumEvidence; i++ {
+			// make different evidence for each validator
+			addr, _ := state.Validators.GetByIndex(int(i))
+			evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
 		}
 
 		var err error
@@ -316,27 +316,24 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TODO: prevent committing duplicate votes
-//func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
-//	var height int64 = 1
-//	var evidence []types.Evidence
-//	state, stateDB, _ := makeState(1, int(height))
-//
-//	evpool := evmock.NewDefaultEvidencePool()
-//	blockExec := sm.NewBlockExecutor(
-//		stateDB, log.TestingLogger(),
-//		nil,
-//		nil,
-//		evpool)
-//	// A block with a couple pieces of evidence passes.
-//	block := makeBlock(state, height)
-//	addr, _ := state.Validators.GetByIndex(0)
-//	for i := 0; i < 2; i++ {
-//		evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
-//	}
-//	block.Evidence.Evidence = evidence
-//	block.EvidenceHash = block.Evidence.Hash()
-//	err := blockExec.ValidateBlock(state, block)
-//
-//	require.Error(t, err)
-//}
+func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, _ := makeState(1, int(height))
+	addr, _ := state.Validators.GetByIndex(0)
+	addr2, _ := state.Validators.GetByIndex(1)
+	ev := types.NewMockEvidence(height, defaultTestTime, addr)
+	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		sm.MockEvidencePool{})
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{ev, ev2, ev2}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+
+	require.Error(t, err)
+}

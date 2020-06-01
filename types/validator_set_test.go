@@ -77,6 +77,64 @@ func TestValidatorSetBasic(t *testing.T) {
 
 }
 
+func TestValidatorSetValidateBasic(t *testing.T) {
+	val, _ := RandValidator(false, 1)
+	badVal := &Validator{}
+
+	testCases := []struct {
+		vals ValidatorSet
+		err  bool
+		msg  string
+	}{
+		{
+			vals: ValidatorSet{},
+			err:  true,
+			msg:  "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{},
+			},
+			err: true,
+			msg: "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+			},
+			err: true,
+			msg: "proposer failed validate basic, error: nil validator",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{badVal},
+			},
+			err: true,
+			msg: "invalid validator #0: validator does not have a public key",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+				Proposer:   val,
+			},
+			err: false,
+			msg: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		err := tc.vals.ValidateBasic()
+		if tc.err {
+			if assert.Error(t, err) {
+				assert.Equal(t, tc.msg, err.Error())
+			}
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+}
+
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
 	vsetHash := vset.Hash()
@@ -929,28 +987,28 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		},
 		{ // voting power changes
 			testValSet(2, 10),
-			[]testVal{{"v1", 11}, {"v2", 22}},
-			[]testVal{{"v1", 11}, {"v2", 22}},
+			[]testVal{{"v2", 22}, {"v1", 11}},
+			[]testVal{{"v2", 22}, {"v1", 11}},
 		},
 		{ // add new validators
-			[]testVal{{"v1", 10}, {"v2", 20}},
-			[]testVal{{"v3", 30}, {"v4", 40}},
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v2", 20}, {"v1", 10}},
+			[]testVal{{"v4", 40}, {"v3", 30}},
+			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
 		},
 		{ // add new validator to middle
-			[]testVal{{"v1", 10}, {"v3", 20}},
+			[]testVal{{"v3", 20}, {"v1", 10}},
 			[]testVal{{"v2", 30}},
-			[]testVal{{"v1", 10}, {"v2", 30}, {"v3", 20}},
+			[]testVal{{"v2", 30}, {"v3", 20}, {"v1", 10}},
 		},
 		{ // add new validator to beginning
-			[]testVal{{"v2", 10}, {"v3", 20}},
+			[]testVal{{"v3", 20}, {"v2", 10}},
 			[]testVal{{"v1", 30}},
-			[]testVal{{"v1", 30}, {"v2", 10}, {"v3", 20}},
+			[]testVal{{"v1", 30}, {"v3", 20}, {"v2", 10}},
 		},
 		{ // delete validators
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v3", 30}, {"v2", 20}, {"v1", 10}},
 			[]testVal{{"v2", 0}},
-			[]testVal{{"v1", 10}, {"v3", 30}},
+			[]testVal{{"v3", 30}, {"v1", 10}},
 		},
 	}
 
@@ -987,19 +1045,19 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 		updateVals []testVal
 	}{
 		0: { // order of changes should not matter, the final validator sets should be the same
-			[]testVal{{"v1", 10}, {"v2", 10}, {"v3", 30}, {"v4", 40}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 10}, {"v1", 10}},
+			[]testVal{{"v4", 44}, {"v3", 33}, {"v2", 22}, {"v1", 11}}},
 
 		1: { // order of additions should not matter
-			[]testVal{{"v1", 10}, {"v2", 20}},
+			[]testVal{{"v2", 20}, {"v1", 10}},
 			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
 
 		2: { // order of removals should not matter
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
 			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
 
 		3: { // order of mixed operations should not matter
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
 			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
 	}
 
@@ -1102,7 +1160,7 @@ type testVSetCfg struct {
 	updatedVals  []testVal
 	addedVals    []testVal
 	expectedVals []testVal
-	wantErr      bool
+	expErr       error
 }
 
 func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
@@ -1150,24 +1208,28 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 		cfg.expectedVals[i-nDel] = cfg.addedVals[i-nBase]
 	}
 
-	sort.Sort(testValsByAddress(cfg.startVals))
-	sort.Sort(testValsByAddress(cfg.deletedVals))
-	sort.Sort(testValsByAddress(cfg.updatedVals))
-	sort.Sort(testValsByAddress(cfg.addedVals))
-	sort.Sort(testValsByAddress(cfg.expectedVals))
+	sort.Sort(testValsByVotingPower(cfg.startVals))
+	sort.Sort(testValsByVotingPower(cfg.deletedVals))
+	sort.Sort(testValsByVotingPower(cfg.updatedVals))
+	sort.Sort(testValsByVotingPower(cfg.addedVals))
+	sort.Sort(testValsByVotingPower(cfg.expectedVals))
 
 	return cfg
 
 }
 
-func applyChangesToValSet(t *testing.T, wantErr bool, valSet *ValidatorSet, valsLists ...[]testVal) {
+func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, valsLists ...[]testVal) {
 	changes := make([]testVal, 0)
 	for _, valsList := range valsLists {
 		changes = append(changes, valsList...)
 	}
 	valList := createNewValidatorList(changes)
 	err := valSet.UpdateWithChangeSet(valList)
-	assert.Equal(t, wantErr, err != nil, "got error %v", err)
+	if expErr != nil {
+		assert.Equal(t, expErr, err)
+	} else {
+		assert.NoError(t, err)
+	}
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
@@ -1175,25 +1237,25 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 
 	testCases := []testVSetCfg{
 		0: { // remove high power validator, keep old equal lower power validators
-			startVals:    []testVal{{"v1", 1}, {"v2", 1}, {"v3", 1000}},
+			startVals:    []testVal{{"v3", 1000}, {"v1", 1}, {"v2", 1}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{},
 			addedVals:    []testVal{},
 			expectedVals: []testVal{{"v1", 1}, {"v2", 1}},
 		},
 		1: { // remove high power validator, keep old different power validators
-			startVals:    []testVal{{"v1", 1}, {"v2", 10}, {"v3", 1000}},
+			startVals:    []testVal{{"v3", 1000}, {"v2", 10}, {"v1", 1}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{},
 			addedVals:    []testVal{},
-			expectedVals: []testVal{{"v1", 1}, {"v2", 10}},
+			expectedVals: []testVal{{"v2", 10}, {"v1", 1}},
 		},
 		2: { // remove high power validator, add new low power validators, keep old lower power
-			startVals:    []testVal{{"v1", 1}, {"v2", 2}, {"v3", 1000}},
+			startVals:    []testVal{{"v3", 1000}, {"v2", 2}, {"v1", 1}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{{"v2", 1}},
-			addedVals:    []testVal{{"v4", 40}, {"v5", 50}},
-			expectedVals: []testVal{{"v1", 1}, {"v2", 1}, {"v4", 40}, {"v5", 50}},
+			addedVals:    []testVal{{"v5", 50}, {"v4", 40}},
+			expectedVals: []testVal{{"v5", 50}, {"v4", 40}, {"v1", 1}, {"v2", 1}},
 		},
 
 		// generate a configuration with 100 validators,
@@ -1208,10 +1270,6 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 		6: randTestVSetCfg(t, 100, 1000),
 
 		7: randTestVSetCfg(t, 1000, 1000),
-
-		8: randTestVSetCfg(t, 10000, 1000),
-
-		9: randTestVSetCfg(t, 1000, 10000),
 	}
 
 	for _, cfg := range testCases {
@@ -1228,23 +1286,23 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 	// Run election up to nMaxElections times, sort validators by priorities
 	valSet.IncrementProposerPriority(tmrand.Int()%nMaxElections + 1)
-	origValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(origValsPriSorted))
 
 	// apply the changes, get the updated validators, sort by priorities
-	applyChangesToValSet(t, false, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
-	updatedValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(updatedValsPriSorted))
+	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
 
 	// basic checks
 	assert.Equal(t, cfg.expectedVals, toTestValList(valSet.Validators))
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:
-	//  - they should be at the beginning of valListNewPriority since it is sorted by priority
+	//  - they should be at the beginning of updatedValsPriSorted since it is
+	//  sorted by priority
 	if len(cfg.addedVals) > 0 {
+		updatedValsPriSorted := validatorListCopy(valSet.Validators)
+		sort.Sort(validatorsByPriority(updatedValsPriSorted))
+
 		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
-		sort.Sort(ValidatorsByAddress(addedValsPriSlice))
+		sort.Sort(ValidatorsByVotingPower(addedValsPriSlice))
 		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))
 
 		//  - and should all have the same priority
@@ -1259,27 +1317,27 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 	testCases := []testVSetCfg{
 		{
 			name:         "1 no false overflow error messages for updates",
-			startVals:    []testVal{{"v1", 1}, {"v2", MaxTotalVotingPower - 1}},
+			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
 			updatedVals:  []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
 			expectedVals: []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
-			wantErr:      false,
+			expErr:       nil,
 		},
 		{
 			// this test shows that it is important to apply the updates in the order of the change in power
 			// i.e. apply first updates with decreases in power, v2 change in this case.
 			name:         "2 no false overflow error messages for updates",
-			startVals:    []testVal{{"v1", 1}, {"v2", MaxTotalVotingPower - 1}},
+			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
 			updatedVals:  []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
-			expectedVals: []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
-			wantErr:      false,
+			expectedVals: []testVal{{"v2", MaxTotalVotingPower / 2}, {"v1", MaxTotalVotingPower/2 - 1}},
+			expErr:       nil,
 		},
 		{
 			name:         "3 no false overflow error messages for deletes",
 			startVals:    []testVal{{"v1", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
 			deletedVals:  []testVal{{"v1", 0}},
 			addedVals:    []testVal{{"v4", MaxTotalVotingPower - 2}},
-			expectedVals: []testVal{{"v2", 1}, {"v3", 1}, {"v4", MaxTotalVotingPower - 2}},
-			wantErr:      false,
+			expectedVals: []testVal{{"v4", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
+			expErr:       nil,
 		},
 		{
 			name: "4 no false overflow error messages for adds, updates and deletes",
@@ -1291,8 +1349,8 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}},
 			addedVals: []testVal{{"v5", 3}},
 			expectedVals: []testVal{
-				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}, {"v5", 3}},
-			wantErr: false,
+				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v5", 3}, {"v4", 2}},
+			expErr: nil,
 		},
 		{
 			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
@@ -1306,7 +1364,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			expectedVals: []testVal{
 				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
 				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
-			wantErr: true,
+			expErr: ErrTotalVotingPowerOverflow,
 		},
 	}
 
@@ -1317,7 +1375,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 			verifyValidatorSet(t, valSet)
 
 			// execute update and verify returned error is as expected
-			applyChangesToValSet(t, tt.wantErr, valSet, tt.addedVals, tt.updatedVals, tt.deletedVals)
+			applyChangesToValSet(t, tt.expErr, valSet, tt.addedVals, tt.updatedVals, tt.deletedVals)
 
 			// verify updated validator set is as expected
 			assert.Equal(t, tt.expectedVals, toTestValList(valSet.Validators))
@@ -1357,7 +1415,7 @@ func TestVerifyCommitTrusting(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err = tc.valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+		err = tc.valSet.VerifyCommitTrusting("test_chain_id", commit,
 			tmmath.Fraction{Numerator: 1, Denominator: 3})
 		if tc.err {
 			assert.Error(t, err)
@@ -1375,7 +1433,7 @@ func TestVerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = valSet.VerifyCommitTrusting("test_chain_id", blockID, commit.Height, commit,
+	err = valSet.VerifyCommitTrusting("test_chain_id", commit,
 		tmmath.Fraction{Numerator: 25, Denominator: 55})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "int64 overflow")
@@ -1408,6 +1466,48 @@ func TestSafeMul(t *testing.T) {
 	}
 }
 
+func TestValidatorSetProtoBuf(t *testing.T) {
+	valset, _ := RandValidatorSet(10, 100)
+	valset2, _ := RandValidatorSet(10, 100)
+	valset2.Validators[0] = &Validator{}
+
+	valset3, _ := RandValidatorSet(10, 100)
+	valset3.Proposer = nil
+
+	valset4, _ := RandValidatorSet(10, 100)
+	valset4.Proposer = &Validator{}
+
+	testCases := []struct {
+		msg      string
+		v1       *ValidatorSet
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", valset, true, true},
+		{"fail valSet2, pubkey empty", valset2, false, false},
+		{"fail nil Proposer", valset3, false, false},
+		{"fail empty Proposer", valset4, false, false},
+		{"fail empty valSet", &ValidatorSet{}, false, false},
+		{"false nil", nil, false, false},
+	}
+	for _, tc := range testCases {
+		protoValSet, err := tc.v1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		valSet, err := ValidatorSetFromProto(protoValSet)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.v1, valSet, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
 //---------------------
 // Sort validators by priority and address
 type validatorsByPriority []*Validator
@@ -1433,18 +1533,21 @@ func (valz validatorsByPriority) Swap(i, j int) {
 }
 
 //-------------------------------------
-// Sort testVal-s by address.
-type testValsByAddress []testVal
 
-func (tvals testValsByAddress) Len() int {
+type testValsByVotingPower []testVal
+
+func (tvals testValsByVotingPower) Len() int {
 	return len(tvals)
 }
 
-func (tvals testValsByAddress) Less(i, j int) bool {
-	return bytes.Compare([]byte(tvals[i].name), []byte(tvals[j].name)) == -1
+func (tvals testValsByVotingPower) Less(i, j int) bool {
+	if tvals[i].power == tvals[j].power {
+		return bytes.Compare([]byte(tvals[i].name), []byte(tvals[j].name)) == -1
+	}
+	return tvals[i].power > tvals[j].power
 }
 
-func (tvals testValsByAddress) Swap(i, j int) {
+func (tvals testValsByVotingPower) Swap(i, j int) {
 	it := tvals[i]
 	tvals[i] = tvals[j]
 	tvals[j] = it

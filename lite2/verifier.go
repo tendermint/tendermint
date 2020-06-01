@@ -2,9 +2,9 @@ package lite
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
@@ -57,8 +57,7 @@ func VerifyNonAdjacent(
 	}
 
 	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
-	err := trustedVals.VerifyCommitTrusting(chainID, untrustedHeader.Commit.BlockID, untrustedHeader.Height,
-		untrustedHeader.Commit, trustLevel)
+	err := trustedVals.VerifyCommitTrusting(chainID, untrustedHeader.Commit, trustLevel)
 	if err != nil {
 		switch e := err.(type) {
 		case types.ErrNotEnoughVotingPowerSigned:
@@ -120,7 +119,7 @@ func VerifyAdjacent(
 
 	// Check the validator hashes are the same
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, trustedHeader.NextValidatorsHash) {
-		err := errors.Errorf("expected old header next validators (%X) to match those from new header (%X)",
+		err := fmt.Errorf("expected old header next validators (%X) to match those from new header (%X)",
 			trustedHeader.NextValidatorsHash,
 			untrustedHeader.ValidatorsHash,
 		)
@@ -165,30 +164,30 @@ func verifyNewHeaderAndVals(
 	maxClockDrift time.Duration) error {
 
 	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
-		return errors.Wrap(err, "untrustedHeader.ValidateBasic failed")
+		return fmt.Errorf("untrustedHeader.ValidateBasic failed: %w", err)
 	}
 
 	if untrustedHeader.Height <= trustedHeader.Height {
-		return errors.Errorf("expected new header height %d to be greater than one of old header %d",
+		return fmt.Errorf("expected new header height %d to be greater than one of old header %d",
 			untrustedHeader.Height,
 			trustedHeader.Height)
 	}
 
 	if !untrustedHeader.Time.After(trustedHeader.Time) {
-		return errors.Errorf("expected new header time %v to be after old header time %v",
+		return fmt.Errorf("expected new header time %v to be after old header time %v",
 			untrustedHeader.Time,
 			trustedHeader.Time)
 	}
 
 	if !untrustedHeader.Time.Before(now.Add(maxClockDrift)) {
-		return errors.Errorf("new header has a time from the future %v (now: %v; max clock drift: %v)",
+		return fmt.Errorf("new header has a time from the future %v (now: %v; max clock drift: %v)",
 			untrustedHeader.Time,
 			now,
 			maxClockDrift)
 	}
 
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
-		return errors.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
+		return fmt.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
 			untrustedHeader.ValidatorsHash,
 			untrustedVals.Hash(),
 			untrustedHeader.Height,
@@ -205,7 +204,7 @@ func ValidateTrustLevel(lvl tmmath.Fraction) error {
 	if lvl.Numerator*3 < lvl.Denominator || // < 1/3
 		lvl.Numerator > lvl.Denominator || // > 1
 		lvl.Denominator == 0 {
-		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
+		return fmt.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}
 	return nil
 }
@@ -232,14 +231,14 @@ func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.Signe
 
 	if !untrustedHeader.Time.Before(trustedHeader.Time) {
 		return ErrInvalidHeader{
-			errors.Errorf("expected older header time %v to be before new header time %v",
+			fmt.Errorf("expected older header time %v to be before new header time %v",
 				untrustedHeader.Time,
 				trustedHeader.Time)}
 	}
 
 	if !bytes.Equal(untrustedHeader.Hash(), trustedHeader.LastBlockID.Hash) {
 		return ErrInvalidHeader{
-			errors.Errorf("older header hash %X does not match trusted header's last block %X",
+			fmt.Errorf("older header hash %X does not match trusted header's last block %X",
 				untrustedHeader.Hash(),
 				trustedHeader.LastBlockID.Hash)}
 	}

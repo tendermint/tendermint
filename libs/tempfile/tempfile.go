@@ -1,7 +1,7 @@
 package tempfile
 
 import (
-	fmt "fmt"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"

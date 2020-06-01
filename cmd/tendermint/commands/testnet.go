@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -142,7 +141,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pubKey, err := pv.GetPubKey()
 		if err != nil {
-			return errors.Wrap(err, "can't get pubkey")
+			return fmt.Errorf("can't get pubkey: %w", err)
 		}
 		genVals[i] = types.GenesisValidator{
 			Address: pubKey.Address(),
