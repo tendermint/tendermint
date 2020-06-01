@@ -42,7 +42,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - cleveldb: use cleveldb as db backend instead of goleveldb.
   - race: pass -race to go build and enable data race detection.
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
-- [all] [\#4578](https://github.com/tendermint/tendermint/issues/4578) Attempt to repair the WAL file automatically in case of corruption if `json2wal` and `wal2json` are installed (@alessio).
+- [consensus] [\#4578](https://github.com/tendermint/tendermint/issues/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
+  The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
 
 ### BUG FIXES:
 
