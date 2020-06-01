@@ -302,8 +302,23 @@ func (c *Client) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
 	return res, nil
 }
 
+// BlockResults returns the block results for the given height. If no height is
+// provided, the results of the block preceding the latest are returned.
 func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
-	res, err := c.next.BlockResults(height)
+	var h int64
+	if height == nil {
+		res, err := c.next.Status()
+		if err != nil {
+			return nil, fmt.Errorf("can't get latest height: %w", err)
+		}
+		// Can't return the latest block results here because we won't be able to
+		// prove them. Return the results for the previous block instead.
+		h = res.SyncInfo.LatestBlockHeight - 1
+	} else {
+		h = *height
+	}
+
+	res, err := c.next.BlockResults(&h)
 	if err != nil {
 		return nil, err
 	}
@@ -314,14 +329,14 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLiteClientIfNeededTo(res.Height + 1)
+	trustedHeader, err := c.updateLiteClientIfNeededTo(h + 1)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify block results.
 	results := types.NewResults(res.TxsResults)
-	if rH, tH := results.Hash(), h.LastResultsHash; !bytes.Equal(rH, tH) {
+	if rH, tH := results.Hash(), trustedHeader.LastResultsHash; !bytes.Equal(rH, tH) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
 			rH, tH)
 	}
