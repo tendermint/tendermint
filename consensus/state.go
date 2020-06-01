@@ -292,14 +292,15 @@ func (cs *State) OnStart() error {
 	// log to catchup.
 	if cs.doWALCatchup {
 		repairAttempted := false
-		for !repairAttempted {
+	LOOP:
+		for {
 			err := cs.catchupReplay(cs.Height)
 			switch {
 			case err == nil:
-				break
+				break LOOP
 			case !IsDataCorruptionError(err):
 				cs.Logger.Error("Error on catchup replay. Proceeding to start State anyway", "err", err)
-				break
+				break LOOP
 			case repairAttempted:
 				return err
 			}
@@ -369,7 +370,7 @@ func (cs *State) startRoutines(maxSteps int) {
 func (cs *State) loadWalFile() error {
 	wal, err := cs.OpenWAL(cs.config.WalFile())
 	if err != nil {
-		cs.Logger.Error("Error loading State wal", "err", err.Error())
+		cs.Logger.Error("Error loading State wal", "err", err)
 		return err
 	}
 	cs.wal = wal
