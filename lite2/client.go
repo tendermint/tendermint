@@ -605,13 +605,8 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		c.logger.Error("Can't verify", "err", err)
 		return err
 	}
-	// 4) Compare header with other witnesses
-	if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
-		c.logger.Error("Error when comparing new header with witnesses", "err", err)
-		return err
-	}
 
-	// 5) Once verified, save and return
+	// 4) Once verified, save and return
 	return c.updateTrustedHeaderAndVals(newHeader, newVals)
 }
 
@@ -716,6 +711,15 @@ func (c *Client) bisection(
 		case nil:
 			// Have we verified the last header
 			if depth == 0 {
+				// Compare header with the witnesses to ensure it's not a fork.
+				// More witnesses we have, more chance to notice one.
+				//
+				// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
+				// (primary or one of the witnesses).
+				if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
+					c.logger.Error("Failed to compare new header with witnesses", "err", err)
+					return err
+				}
 				return nil
 			}
 			// If not, update the lower bound to the previous upper bound
