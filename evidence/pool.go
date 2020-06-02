@@ -498,6 +498,8 @@ func (evpool *Pool) pruneExpiredPOLC() {
 	}
 }
 
+// upgrades any potential evidence that has undergone the trial period and is primed to be made into
+// amnesia evidence
 func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyAwaiting})
 	if err != nil {

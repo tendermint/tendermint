@@ -798,7 +798,8 @@ func (e LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
 // PotentialAmnesiaEvidence is constructed when a validator votes on two different blocks at different rounds
 // in the same height. PotentialAmnesiaEvidence can then evolve into AmensiaEvidence if the indicted validator
 // is incapable of providing the proof of lock change that validates voting twice in the allotted trial period.
-// Timestamp is used for each node to keep a track of how much time has passed.
+// Heightstamp is used for each node to keep a track of how much time has passed so as to know when the trial period
+// is finished and is set when the node first receives the evidence.
 type PotentialAmnesiaEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
@@ -924,6 +925,9 @@ func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
+// Primed finds whether the PotentialAmnesiaEvidence is ready to be upgraded to Amnesia Evidence. It is decided if 
+// either the prosecuted node voted in the past or if the allocated trial period has expired without a proof of lock
+// change having been provided.
 func (e PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool {
 	// voted in the past can be instantly punishable
 	if e.VoteA.Round > e.VoteB.Round {
@@ -966,6 +970,8 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 	}
 }
 
+// EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time and the 
+// node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
 func EmptyPOLC() ProofOfLockChange {
 	return ProofOfLockChange{
 		nil,
@@ -1000,9 +1006,11 @@ func (e ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
 
-// ValidVotes checks the polc against the validator set of that height. The function makes sure that the polc contains
+
+// ValidateVotes checks the polc against the validator set of that height. The function makes sure that the polc contains
 // a majority of votes and that each
 func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) error {
+	if e.IsAbsent() { return errors.New("polc is empty") }
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := valSet.TotalVotingPower() * 2 / 3
 	for _, vote := range e.Votes {
@@ -1093,6 +1101,7 @@ func (e ProofOfLockChange) String() string {
 		e.Votes[0].Round)
 }
 
+// IsAbsent checks if the polc is empty
 func (e ProofOfLockChange) IsAbsent() bool {
 	return e.Votes == nil && e.PubKey == nil
 }
