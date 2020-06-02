@@ -28,7 +28,8 @@ func (c BareCustom) MarshalJSON() ([]byte, error) {
 type Struct struct {
 	Name  string `json:"name"`
 	Value int64
-	Child *Struct `json:"omitempty"`
+	Child *Struct `json:",omitempty"`
+	Empty string  `json:"empty,omitempty"`
 }
 
 func TestMarshal(t *testing.T) {
@@ -61,8 +62,8 @@ func TestMarshal(t *testing.T) {
 		"array int64":     {[3]int64{1, 2, 3}, `["1","2","3"]`},
 		"map int64":       {map[string]int64{"a": 1, "b": 2, "c": 3}, `{"a":"1","b":"2","c":"3"}`},
 		"struct int64": {
-			Struct{Name: "a", Value: 1, Child: &Struct{Name: "b", Value: 2}},
-			`{"Name":"a","Value":"1","Child":{"Name":"b","Value":"2","Child":null}}`,
+			Struct{Name: "a", Value: 1, Child: &Struct{}},
+			`{"name":"a","Value":"1","Child":{"name":"","Value":"0"}}`,
 		},
 	}
 	for name, tc := range testcases {
