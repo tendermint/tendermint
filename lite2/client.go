@@ -927,7 +927,7 @@ func (c *Client) backwards(
 }
 
 type errNoRespFromWitness struct {
-	Reason  error
+	Reason       error
 	WitnessIndex int
 }
 
@@ -950,20 +950,22 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	defer c.providerMutex.Unlock()
 
 	// 1. Make sure AT LEAST ONE witness returns the same header.
-	headerMatched := false
-	var potentialForkErr error
+	var (
+		headerMatched      bool
+		lastErrConfHeaders error
+	)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		if len(c.witnesses) == 0 {
 			return errNoWitnesses{}
 		}
-
-		witnessesToRemove := make([]int, 0)
 
 		// launch one goroutine per witness
 		errc := make(chan error, len(c.witnesses))
 		for i, witness := range c.witnesses {
 			go c.compareNewHeaderWithWitness(errc, h, witness, i)
 		}
+
+		witnessesToRemove := make([]int, 0)
 
 		// handle errors as they come
 		for i := 0; i < cap(errc); i++ {
@@ -975,7 +977,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			case ErrConflictingHeaders: // potential fork
 				c.logger.Error(err.Error(), "witness", e.Witness)
 				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
-				potentialForkErr = e	
+				lastErrConfHeaders = e
 			case errNoRespFromWitness:
 				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
 			case errInvalidHeader:
@@ -988,10 +990,10 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			c.removeWitness(idx)
 		}
 
-		if potentialForkErr != nil {
-			// NOTE: all the potential forks will be reported, but we only return the
-			// last error here.
-			return potentialForkErr
+		if lastErrConfHeaders != nil {
+			// NOTE: all of the potential forks will be reported, but we only return
+			// the last ErrConflictingHeaders error here.
+			return lastErrConfHeaders
 		} else if headerMatched {
 			return nil
 		}
