@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -117,17 +118,12 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
-	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
-		log.TestingLogger(),
-		dialer,
-	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
-
 	signerServer := privval.NewSignerServer(
-		dialerEndpoint,
+		addr,
 		config.ChainID(),
 		types.NewMockPV(),
+		log.TestingLogger(),
+		[]grpc.ServerOption{},
 	)
 
 	go func() {
@@ -140,7 +136,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -163,17 +159,12 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
-	dialer := privval.DialUnixFn(tmpfile)
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
-		log.TestingLogger(),
-		dialer,
-	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
-
 	pvsc := privval.NewSignerServer(
-		dialerEndpoint,
+		tmpfile,
 		config.ChainID(),
 		types.NewMockPV(),
+		log.TestingLogger(),
+		[]grpc.ServerOption{},
 	)
 
 	go func() {
@@ -184,7 +175,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.

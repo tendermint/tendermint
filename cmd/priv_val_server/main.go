@@ -47,9 +47,8 @@ func main() {
 	} else {
 		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
-	s := grpc.NewServer(opts...)
 
-	ss := privval.NewSignerServer(*addr, *chainID, pv, s, logger)
+	ss := privval.NewSignerServer(*addr, *chainID, pv, logger, opts)
 
 	err := ss.Start()
 	if err != nil {

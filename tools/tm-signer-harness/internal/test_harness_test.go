@@ -9,10 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
@@ -125,17 +127,7 @@ func newMockSignerServer(
 	breakVoteSigning bool,
 ) *privval.SignerServer {
 	mockPV := types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning)
-
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
-		th.logger,
-		privval.DialTCPFn(
-			th.addr,
-			time.Duration(defaultConnDeadline)*time.Millisecond,
-			ed25519.GenPrivKey(),
-		),
-	)
-
-	return privval.NewSignerServer(dialerEndpoint, th.chainID, mockPV)
+	return privval.NewSignerServer(th.addr, th.chainID, mockPV, th.logger, []grpc.ServerOption{})
 }
 
 // For running relatively standard tests.
@@ -162,7 +154,7 @@ func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	return TestHarnessConfig{
-		BindAddr:         privval.GetFreeLocalhostAddrPort(),
+		BindAddr:         GetFreeLocalhostAddrPort(),
 		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
 		StateFile:        makeTempFile("tm-testharness-statefile", stateFileContents),
 		GenesisFile:      makeTempFile("tm-testharness-genesisfile", genesisFileContents),
@@ -193,4 +185,13 @@ func makeTempFile(name, content string) string {
 		panic(err)
 	}
 	return tempFile.Name()
+}
+
+// GetFreeLocalhostAddrPort returns a free localhost:port address
+func GetFreeLocalhostAddrPort() string {
+	port, err := tmnet.GetFreePort()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("127.0.0.1:%d", port)
 }

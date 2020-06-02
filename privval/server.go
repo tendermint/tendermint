@@ -24,18 +24,18 @@ type SignerServer struct {
 	target  string
 	ChainID string
 	PrivVal types.PrivValidator
+	Opts    []grpc.ServerOption
 	Srv     *grpc.Server
 }
 
-func NewSignerServer(target string, chainID string, privVal types.PrivValidator,
-	srv *grpc.Server, log log.Logger) *SignerServer {
+func NewSignerServer(target string, chainID string, privVal types.PrivValidator, log log.Logger, opts []grpc.ServerOption) *SignerServer {
 	return &SignerServer{
 		Logger: log,
 
 		target:  target,
 		ChainID: chainID,
+		Opts:    opts,
 		PrivVal: privVal,
-		Srv:     srv,
 	}
 }
 
@@ -46,6 +46,8 @@ func (ss *SignerServer) OnStart() error {
 	if err != nil {
 		ss.Logger.Error("failed to listen: ", "err", err)
 	}
+	s := grpc.NewServer(ss.Opts...)
+	ss.Srv = s
 
 	privvalproto.RegisterPrivValidatorAPIServer(ss.Srv, &SignerServer{})
 
