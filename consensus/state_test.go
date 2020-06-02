@@ -1458,7 +1458,7 @@ func (n *fakeTxNotifier) Notify() {
 	n.ch <- struct{}{}
 }
 
-// 2 vals precommit votes for a block but node times out waiting for the third. Move to next round 
+// 2 vals precommit votes for a block but node times out waiting for the third. Move to next round
 // and third precommit arrives which leads to the commit of that header and the correct
 // start of the next round
 func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
@@ -1501,11 +1501,11 @@ func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
-	
+
 	// wait till timeout occurs
 	ensurePrecommitTimeout(precommitTimeoutCh)
 
-	ensureNewRound(newRoundCh, height, round + 1)
+	ensureNewRound(newRoundCh, height, round+1)
 
 	// majority is now reached
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
