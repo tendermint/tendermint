@@ -24,24 +24,13 @@ func encodeJSON(w io.Writer, v interface{}) error {
 	return encodeJSONReflect(w, reflect.ValueOf(v))
 }
 
-// This is the main entrypoint for encoding all types in json form.  This
-// function calls encodeJSONReflect*, and generally those functions should
-// only call this one, for the disfix wrapper is only written here.
-// NOTE: Unlike encodeReflectBinary, rv may be a pointer.
-// CONTRACT: rv is valid.
 func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 	if !rv.IsValid() {
 		return errors.New("invalid reflect value")
 	}
 
-	// Recursively dereference value if pointer.
+	// Recursively dereference if pointer.
 	for rv.Kind() == reflect.Ptr {
-		// If the value implements json.Marshaler, defer to stdlib directly. Dereferencing it will
-		// break json.Marshaler implementations that take a pointer receiver.
-		if rv.Type().Implements(jsonMarshalerType) {
-			return encodeJSONStdlib(w, rv.Interface())
-		}
-		// If nil, we can't dereference by definition.
 		if rv.IsNil() {
 			return writeStr(w, `null`)
 		}
@@ -53,24 +42,30 @@ func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 		rv = reflect.ValueOf(rv.Interface().(time.Time).Round(0).UTC())
 	}
 
+	// If the value implements json.Marshaler, defer to stdlib directly. Since we've already
+	// dereferenced, we try implementations with both value receiver and pointer receiver. We must
+	// do this after the time normalization above, and thus after dereferencing.
+	if rv.Type().Implements(jsonMarshalerType) {
+		return encodeJSONStdlib(w, rv.Interface())
+	} else if rv.CanAddr() && rv.Addr().Type().Implements(jsonMarshalerType) {
+		return encodeJSONStdlib(w, rv.Addr().Interface())
+	}
+
 	switch rv.Type().Kind() {
-
-	//----------------------------------------
-	// Complex types
-
 	// Complex types must be recursively encoded.
-	// FIXME Handle these
+
+	// FIXME Handle interfaces
 	//case reflect.Interface:
 	//return cdc.encodeJSONReflectInterface(w, info, rv)
 
 	case reflect.Array, reflect.Slice:
 		return encodeJSONReflectList(w, rv)
 
-	//case reflect.Struct:
-	//return cdc.encodeJSONReflectStruct(w, info, rv)
-
 	case reflect.Map:
 		return encodeJSONReflectMap(w, rv)
+
+	case reflect.Struct:
+		return encodeJSONReflectStruct(w, rv)
 
 	// 64-bit integers are emitted as strings, to avoid precision problems with e.g.
 	// Javascript which casts these to 64-bit floats (with 53-bit precision).
@@ -137,6 +132,39 @@ func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
 			return err
 		}
 		if err := encodeJSONReflect(w, rv.MapIndex(keyrv)); err != nil {
+			return err
+		}
+		writeComma = true
+	}
+	return writeStr(w, `}`)
+}
+
+func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
+	if err := writeStr(w, `{`); err != nil {
+		return err
+	}
+	length := rv.NumField()
+	writeComma := false
+	for i := 0; i < length; i++ {
+		ftype := rv.Type().Field(i)
+		frv := rv.Field(i)
+		// FIXME Needs omitempty tag handling
+		//if frv.IsZero() {
+		//    continue
+		//}
+
+		if writeComma {
+			if err := writeStr(w, `,`); err != nil {
+				return err
+			}
+		}
+		if err := encodeJSONStdlib(w, ftype.Name); err != nil {
+			return err
+		}
+		if err := writeStr(w, `:`); err != nil {
+			return err
+		}
+		if err := encodeJSONReflect(w, frv); err != nil {
 			return err
 		}
 		writeComma = true
