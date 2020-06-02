@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var waitForEventTimeout = 5 * time.Second
+var waitForEventTimeout = 8 * time.Second
 
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
