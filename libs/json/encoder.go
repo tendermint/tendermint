@@ -3,9 +3,9 @@ package json
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -16,6 +16,14 @@ var (
 	errorType           = reflect.TypeOf(new(error)).Elem()
 )
 
+func encodeJSON(w io.Writer, v interface{}) error {
+	if v == nil {
+		_, err := w.Write([]byte("null"))
+		return err
+	}
+	return encodeReflectJSON(w, reflect.ValueOf(v))
+}
+
 // This is the main entrypoint for encoding all types in json form.  This
 // function calls encodeReflectJSON*, and generally those functions should
 // only call this one, for the disfix wrapper is only written here.
@@ -23,57 +31,27 @@ var (
 // CONTRACT: rv is valid.
 func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
 	if !rv.IsValid() {
-		panic("should not happen")
+		return errors.New("invalid reflect value")
 	}
 
-	// Dereference value if pointer.
-	var isNilPtr bool
-	rv, _, isNilPtr = derefPointers(rv)
-
-	// Write null if necessary.
-	if isNilPtr {
-		err = writeStr(w, `null`)
-		return
+	// Recursively dereference value if pointer.
+	for rv.Kind() == reflect.Ptr {
+		// If the value implements json.Marshaler, defer to stdlib directly. Dereferencing it will
+		// break json.Marshaler implementations that take a pointer receiver.
+		if rv.Type().Implements(jsonMarshalerType) {
+			return encodeJSONStdlib(w, rv.Interface())
+		}
+		// If nil, we can't dereference by definition.
+		if rv.IsNil() {
+			return writeStr(w, `null`)
+		}
+		rv = rv.Elem()
 	}
 
-	// Special case:
+	// Pre-process times by converting to UTC.
 	if rv.Type() == timeType {
-		// Amino time strips the timezone.
-		// NOTE: This must be done before json.Marshaler override below.
-		ct := rv.Interface().(time.Time).Round(0).UTC()
-		rv = reflect.ValueOf(ct)
+		rv = reflect.ValueOf(rv.Interface().(time.Time).Round(0).UTC())
 	}
-	// Handle override if rv implements json.Marshaler.
-	if rv.CanAddr() { // Try pointer first.
-		if rv.Addr().Type().Implements(jsonMarshalerType) {
-			err = invokeMarshalJSON(w, rv.Addr())
-			return
-		}
-	} else if rv.Type().Implements(jsonMarshalerType) {
-		err = invokeMarshalJSON(w, rv)
-		return
-	}
-
-	// Handle override if rv implements json.Marshaler.
-	// FIXME Handle this somehow
-	/*if info.IsAminoMarshaler {
-		// First, encode rv into repr instance.
-		var (
-			rrv   reflect.Value
-			rinfo *TypeInfo
-		)
-		rrv, err = toReprObject(rv)
-		if err != nil {
-			return
-		}
-		rinfo, err = cdc.getTypeInfoWlock(info.AminoMarshalReprType)
-		if err != nil {
-			return
-		}
-		// Then, encode the repr instance.
-		err = cdc.encodeReflectJSON(w, rinfo, rrv)
-		return
-	}*/
 
 	switch rv.Type().Kind() {
 
@@ -94,54 +72,25 @@ func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
 		return cdc.encodeReflectJSONMap(w, info, rv)*/
 
 	//----------------------------------------
-	// Signed, Unsigned
+	// Scalars
 
+	// 64-bit integers are emitted as strings, to avoid precision problems with e.g.
+	// Javascript which casts these to 64-bit floats (with 53-bit precision).
 	case reflect.Int64, reflect.Int:
-		_, err = fmt.Fprintf(w, `"%d"`, rv.Int()) // JS can't handle int64
-		return
+		return writeStr(w, `"`+strconv.FormatInt(rv.Int(), 10)+`"`)
 
 	case reflect.Uint64, reflect.Uint:
-		_, err = fmt.Fprintf(w, `"%d"`, rv.Uint()) // JS can't handle uint64
-		return
+		return writeStr(w, `"`+strconv.FormatUint(rv.Uint(), 10)+`"`)
 
-	case reflect.Int32, reflect.Int16, reflect.Int8,
-		reflect.Uint32, reflect.Uint16, reflect.Uint8:
-		return invokeStdlibJSONMarshal(w, rv.Interface())
-
-	//----------------------------------------
-	// Misc
-
-	case reflect.Float64, reflect.Float32:
-		// FIXME Is Unsafe enabled by default? If not, we need to retain this.
-		//if !fopts.Unsafe {
-		return errors.New("amino.JSON float* support requires `amino:\"unsafe\"`")
-		//}
-		//fallthrough
-	case reflect.Bool, reflect.String:
-		return invokeStdlibJSONMarshal(w, rv.Interface())
-
-	//----------------------------------------
-	// Default
-
+	// For everything else, defer to the stdlib encoding/json encoder
 	default:
-		panic(fmt.Sprintf("unsupported type %v", rv.Type().Kind()))
+		return encodeJSONStdlib(w, rv.Interface())
 	}
 }
 
-// CONTRACT: rv implements json.Marshaler.
-func invokeMarshalJSON(w io.Writer, rv reflect.Value) error {
-	blob, err := rv.Interface().(json.Marshaler).MarshalJSON()
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(blob)
-	return err
-}
-
-func invokeStdlibJSONMarshal(w io.Writer, v interface{}) error {
-	// Note: Please don't stream out the output because that adds a newline
-	// using json.NewEncoder(w).Encode(data)
-	// as per https://golang.org/pkg/encoding/json/#Encoder.Encode
+func encodeJSONStdlib(w io.Writer, v interface{}) error {
+	// Doesn't stream the output because that adds a newline, as per:
+	// https://golang.org/pkg/encoding/json/#Encoder.Encode
 	blob, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -150,28 +99,7 @@ func invokeStdlibJSONMarshal(w io.Writer, v interface{}) error {
 	return err
 }
 
-// Dereference pointer recursively.
-// drv: the final non-pointer value (which may be invalid).
-// isPtr: whether rv.Kind() == reflect.Ptr.
-// isNilPtr: whether a nil pointer at any level.
-func derefPointers(rv reflect.Value) (drv reflect.Value, isPtr bool, isNilPtr bool) {
-	for rv.Kind() == reflect.Ptr {
-		isPtr = true
-		if rv.IsNil() {
-			isNilPtr = true
-			return
-		}
-		rv = rv.Elem()
-	}
-	drv = rv
-	return
-}
-
-func writeStr(w io.Writer, s string) (err error) {
-	_, err = w.Write([]byte(s))
-	return
-}
-
-func _fmt(s string, args ...interface{}) string {
-	return fmt.Sprintf(s, args...)
+func writeStr(w io.Writer, s string) error {
+	_, err := w.Write([]byte(s))
+	return err
 }
