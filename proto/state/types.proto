@@ -41,7 +41,7 @@ message State {
   Version version = 1 [(gogoproto.nullable) = false];
 
   // immutable
-  string chain_Id = 2 [(gogoproto.customname) = "ChainID"];
+  string chain_id = 2 [(gogoproto.customname) = "ChainID"];
 
   // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
   int64                          last_block_height = 3;
@@ -63,12 +63,12 @@ message State {
 
   // Consensus parameters used for validating blocks.
   // Changes returned by EndBlock and updated after Commit.
-  tendermint.proto.types.ConsensusParams consensus_params = 10 [(gogoproto.nullable) = false];
+  tendermint.proto.types.ConsensusParams consensus_params                     = 10 [(gogoproto.nullable) = false];
   int64                                  last_height_consensus_params_changed = 11;
 
   // Merkle root of the results from executing prev block
-  bytes LastResultsHash = 12;
+  bytes last_results_hash = 12;
 
   // the latest AppHash we've received from calling abci.Commit()
-  bytes AppHash = 13;
+  bytes app_hash = 13;
 }

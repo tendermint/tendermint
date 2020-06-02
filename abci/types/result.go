@@ -102,6 +102,16 @@ func (r *ResponseCommit) UnmarshalJSON(b []byte) error {
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
+func (r *EventAttribute) MarshalJSON() ([]byte, error) {
+	s, err := jsonpbMarshaller.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *EventAttribute) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
+}
+
 // Some compile time assertions to ensure we don't
 // have accidental runtime surprises later on.
 
@@ -117,3 +127,5 @@ var _ jsonRoundTripper = (*ResponseQuery)(nil)
 var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
 var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
 var _ jsonRoundTripper = (*ResponseSetOption)(nil)
+
+var _ jsonRoundTripper = (*EventAttribute)(nil)

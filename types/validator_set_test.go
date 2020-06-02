@@ -77,6 +77,64 @@ func TestValidatorSetBasic(t *testing.T) {
 
 }
 
+func TestValidatorSetValidateBasic(t *testing.T) {
+	val, _ := RandValidator(false, 1)
+	badVal := &Validator{}
+
+	testCases := []struct {
+		vals ValidatorSet
+		err  bool
+		msg  string
+	}{
+		{
+			vals: ValidatorSet{},
+			err:  true,
+			msg:  "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{},
+			},
+			err: true,
+			msg: "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+			},
+			err: true,
+			msg: "proposer failed validate basic, error: nil validator",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{badVal},
+			},
+			err: true,
+			msg: "invalid validator #0: validator does not have a public key",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+				Proposer:   val,
+			},
+			err: false,
+			msg: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		err := tc.vals.ValidateBasic()
+		if tc.err {
+			if assert.Error(t, err) {
+				assert.Equal(t, tc.msg, err.Error())
+			}
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+}
+
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
 	vsetHash := vset.Hash()
@@ -1212,10 +1270,6 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 		6: randTestVSetCfg(t, 100, 1000),
 
 		7: randTestVSetCfg(t, 1000, 1000),
-
-		8: randTestVSetCfg(t, 10000, 1000),
-
-		9: randTestVSetCfg(t, 1000, 10000),
 	}
 
 	for _, cfg := range testCases {
@@ -1232,21 +1286,21 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 	// Run election up to nMaxElections times, sort validators by priorities
 	valSet.IncrementProposerPriority(tmrand.Int()%nMaxElections + 1)
-	origValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(origValsPriSorted))
 
 	// apply the changes, get the updated validators, sort by priorities
 	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
-	updatedValsPriSorted := validatorListCopy(valSet.Validators)
-	sort.Sort(validatorsByPriority(updatedValsPriSorted))
 
 	// basic checks
 	assert.Equal(t, cfg.expectedVals, toTestValList(valSet.Validators))
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:
-	//  - they should be at the beginning of valListNewPriority since it is sorted by priority
+	//  - they should be at the beginning of updatedValsPriSorted since it is
+	//  sorted by priority
 	if len(cfg.addedVals) > 0 {
+		updatedValsPriSorted := validatorListCopy(valSet.Validators)
+		sort.Sort(validatorsByPriority(updatedValsPriSorted))
+
 		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
 		sort.Sort(ValidatorsByVotingPower(addedValsPriSlice))
 		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))
@@ -1409,6 +1463,48 @@ func TestSafeMul(t *testing.T) {
 		c, overflow := safeMul(tc.a, tc.b)
 		assert.Equal(t, tc.c, c, "#%d", i)
 		assert.Equal(t, tc.overflow, overflow, "#%d", i)
+	}
+}
+
+func TestValidatorSetProtoBuf(t *testing.T) {
+	valset, _ := RandValidatorSet(10, 100)
+	valset2, _ := RandValidatorSet(10, 100)
+	valset2.Validators[0] = &Validator{}
+
+	valset3, _ := RandValidatorSet(10, 100)
+	valset3.Proposer = nil
+
+	valset4, _ := RandValidatorSet(10, 100)
+	valset4.Proposer = &Validator{}
+
+	testCases := []struct {
+		msg      string
+		v1       *ValidatorSet
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", valset, true, true},
+		{"fail valSet2, pubkey empty", valset2, false, false},
+		{"fail nil Proposer", valset3, false, false},
+		{"fail empty Proposer", valset4, false, false},
+		{"fail empty valSet", &ValidatorSet{}, false, false},
+		{"false nil", nil, false, false},
+	}
+	for _, tc := range testCases {
+		protoValSet, err := tc.v1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		valSet, err := ValidatorSetFromProto(protoValSet)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.v1, valSet, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
 	}
 }
 

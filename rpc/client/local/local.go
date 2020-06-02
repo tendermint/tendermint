@@ -144,6 +144,10 @@ func (c *Local) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return core.Block(c.ctx, height)
 }
 
+func (c *Local) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	return core.BlockByHash(c.ctx, hash)
+}
+
 func (c *Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	return core.BlockResults(c.ctx, height)
 }

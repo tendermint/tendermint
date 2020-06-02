@@ -36,16 +36,16 @@ Example:
 
 start a fresh instance:
 
-lite cosmoshub-3 -p 52.57.29.196:26657 -w public-seed-node.cosmoshub.certus.one:26657
+lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD
 
 continue from latest state:
 
-lite cosmoshub-3 -p 52.57.29.196:26657 -w public-seed-node.cosmoshub.certus.one:26657
+lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 `,
 	RunE: runProxy,
 	Args: cobra.ExactArgs(1),
-	Example: `lite cosmoshub-3 -p 52.57.29.196:26657 -w public-seed-node.cosmoshub.certus.one:26657
+	Example: `lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD`,
 }
 
@@ -102,7 +102,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	db, err := dbm.NewGoLevelDB("lite-client-db", home)
 	if err != nil {
-		return fmt.Errorf("new goleveldb: %w", err)
+		return fmt.Errorf("can't create a db: %w", err)
 	}
 
 	var c *lite.Client
