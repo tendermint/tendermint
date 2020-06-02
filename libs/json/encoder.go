@@ -21,15 +21,15 @@ func encodeJSON(w io.Writer, v interface{}) error {
 		_, err := w.Write([]byte("null"))
 		return err
 	}
-	return encodeReflectJSON(w, reflect.ValueOf(v))
+	return encodeJSONReflect(w, reflect.ValueOf(v))
 }
 
 // This is the main entrypoint for encoding all types in json form.  This
-// function calls encodeReflectJSON*, and generally those functions should
+// function calls encodeJSONReflect*, and generally those functions should
 // only call this one, for the disfix wrapper is only written here.
 // NOTE: Unlike encodeReflectBinary, rv may be a pointer.
 // CONTRACT: rv is valid.
-func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
+func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 	if !rv.IsValid() {
 		return errors.New("invalid reflect value")
 	}
@@ -48,7 +48,7 @@ func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
 		rv = rv.Elem()
 	}
 
-	// Pre-process times by converting to UTC.
+	// Convert times to UTC.
 	if rv.Type() == timeType {
 		rv = reflect.ValueOf(rv.Interface().(time.Time).Round(0).UTC())
 	}
@@ -56,23 +56,21 @@ func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
 	switch rv.Type().Kind() {
 
 	//----------------------------------------
-	// Complex
+	// Complex types
 
+	// Complex types must be recursively encoded.
 	// FIXME Handle these
-	/*case reflect.Interface:
-		return cdc.encodeReflectJSONInterface(w, info, rv)
+	//case reflect.Interface:
+	//return cdc.encodeJSONReflectInterface(w, info, rv)
 
 	case reflect.Array, reflect.Slice:
-		return cdc.encodeReflectJSONList(w, info, rv)
+		return encodeJSONReflectList(w, rv)
 
-	case reflect.Struct:
-		return cdc.encodeReflectJSONStruct(w, info, rv)
+	//case reflect.Struct:
+	//return cdc.encodeJSONReflectStruct(w, info, rv)
 
 	case reflect.Map:
-		return cdc.encodeReflectJSONMap(w, info, rv)*/
-
-	//----------------------------------------
-	// Scalars
+		return encodeJSONReflectMap(w, rv)
 
 	// 64-bit integers are emitted as strings, to avoid precision problems with e.g.
 	// Javascript which casts these to 64-bit floats (with 53-bit precision).
@@ -86,6 +84,64 @@ func encodeReflectJSON(w io.Writer, rv reflect.Value) (err error) {
 	default:
 		return encodeJSONStdlib(w, rv.Interface())
 	}
+}
+
+func encodeJSONReflectList(w io.Writer, rv reflect.Value) error {
+	// Emit nil slices as null.
+	if rv.Kind() == reflect.Slice && rv.IsNil() {
+		return writeStr(w, `null`)
+	}
+
+	// Encode byte slices as base64 with the stdlib encoder.
+	if rv.Type().Elem().Kind() == reflect.Uint8 {
+		return encodeJSONStdlib(w, rv.Interface())
+	}
+
+	// Anything else we recursively encode ourselves.
+	length := rv.Len()
+	if err := writeStr(w, `[`); err != nil {
+		return err
+	}
+	for i := 0; i < length; i++ {
+		if err := encodeJSONReflect(w, rv.Index(i)); err != nil {
+			return err
+		}
+		if i < length-1 {
+			if err := writeStr(w, `,`); err != nil {
+				return err
+			}
+		}
+	}
+	return writeStr(w, `]`)
+}
+
+func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
+	if rv.Type().Key().Kind() != reflect.String {
+		return errors.New("map key must be string")
+	}
+
+	if err := writeStr(w, `{`); err != nil {
+		return err
+	}
+	writeComma := false
+	for _, keyrv := range rv.MapKeys() {
+		if writeComma {
+			if err := writeStr(w, `,`); err != nil {
+				return err
+			}
+		}
+		if err := encodeJSONStdlib(w, keyrv.Interface()); err != nil {
+			return err
+		}
+		if err := writeStr(w, `:`); err != nil {
+			return err
+		}
+		if err := encodeJSONReflect(w, rv.MapIndex(keyrv)); err != nil {
+			return err
+		}
+		writeComma = true
+	}
+	return writeStr(w, `}`)
 }
 
 func encodeJSONStdlib(w io.Writer, v interface{}) error {

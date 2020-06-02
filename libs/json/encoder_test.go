@@ -48,6 +48,12 @@ func TestMarshal(t *testing.T) {
 		"ptrcustom bare":  {PtrCustom{Value: "x"}, `{"Value":"x"}`}, // same as encoding/json
 		"barecustom ptr":  {&BareCustom{Value: "x"}, `"custom"`},
 		"barecustom bare": {BareCustom{Value: "x"}, `"custom"`},
+		"slice nil":       {[]int(nil), `null`},
+		"slice bytes":     {[]byte{1, 2, 3}, `"AQID"`},
+		"slice int64":     {[]int64{1, 2, 3}, `["1","2","3"]`},
+		"slice int64 ptr": {[]*int64{&i64, nil}, `["64",null]`},
+		"array int64":     {[3]int64{1, 2, 3}, `["1","2","3"]`},
+		"map int64":       {map[string]int64{"a": 1, "b": 2, "c": 3}, `{"a":"1","b":"2","c":"3"}`},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -55,7 +61,7 @@ func TestMarshal(t *testing.T) {
 			var s strings.Builder
 			err := encodeJSON(&s, tc.value)
 			require.NoError(t, err)
-			assert.EqualValues(t, tc.output, s.String())
+			assert.JSONEq(t, tc.output, s.String())
 		})
 	}
 }
