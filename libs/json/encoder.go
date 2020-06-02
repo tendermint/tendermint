@@ -29,6 +29,16 @@ var (
 	typeNames           = map[reflect.Type]string{reflect.TypeOf(Tesla{}): "car/tesla"}
 )
 
+func lookupRegistered(rv reflect.Value) string {
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return ""
+		}
+		rv = rv.Elem()
+	}
+	return typeNames[rv.Type()]
+}
+
 func encodeJSON(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {
@@ -40,10 +50,8 @@ func encodeJSON(w io.Writer, v interface{}) error {
 	// If this is a registered type, defer to interface encoder. This is necessary since reflect
 	// will return the type of the concrete type for interface variables, but not within structs.
 	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
-	if rv.Kind() == reflect.Ptr {
-		if _, ok := typeNames[rv.Elem().Type()]; ok {
-			return encodeJSONReflectInterface(w, rv)
-		}
+	if lookupRegistered(rv) != "" {
+		return encodeJSONReflectInterface(w, rv)
 	}
 
 	return encodeJSONReflect(w, rv)
@@ -209,12 +217,14 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 }
 
 func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
-	if rv.IsNil() {
-		return writeStr(w, `null`)
+	if rv.Kind() == reflect.Interface {
+		if rv.IsNil() {
+			return writeStr(w, `null`)
+		}
+		rv = rv.Elem()
 	}
 
 	// Get concrete value and dereference pointers.
-	rv = rv.Elem()
 	for rv.Kind() == reflect.Ptr {
 		if rv.IsNil() {
 			return writeStr(w, `null`)
@@ -223,8 +233,8 @@ func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
 	}
 
 	// Look up the name of the concrete type
-	name, ok := typeNames[rv.Type()]
-	if !ok {
+	name := lookupRegistered(rv)
+	if name == "" {
 		return fmt.Errorf("cannot encode unregistered concrete type %v", rv.Type())
 	}
 
