@@ -3,6 +3,7 @@ package json
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strconv"
@@ -10,19 +11,42 @@ import (
 	"time"
 )
 
+type Car interface {
+	Drive() error
+}
+
+type Tesla struct {
+	Color string
+}
+
+func (t *Tesla) Drive() error { return nil }
+
 var (
 	timeType            = reflect.TypeOf(time.Time{})
 	jsonMarshalerType   = reflect.TypeOf(new(json.Marshaler)).Elem()
 	jsonUnmarshalerType = reflect.TypeOf(new(json.Unmarshaler)).Elem()
 	errorType           = reflect.TypeOf(new(error)).Elem()
+	typeNames           = map[reflect.Type]string{reflect.TypeOf(Tesla{}): "car/tesla"}
 )
 
 func encodeJSON(w io.Writer, v interface{}) error {
+	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {
 		_, err := w.Write([]byte("null"))
 		return err
 	}
-	return encodeJSONReflect(w, reflect.ValueOf(v))
+	rv := reflect.ValueOf(v)
+
+	// If this is a registered type, defer to interface encoder. This is necessary since reflect
+	// will return the type of the concrete type for interface variables, but not within structs.
+	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
+	if rv.Kind() == reflect.Ptr {
+		if _, ok := typeNames[rv.Elem().Type()]; ok {
+			return encodeJSONReflectInterface(w, rv)
+		}
+	}
+
+	return encodeJSONReflect(w, rv)
 }
 
 func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
@@ -54,10 +78,8 @@ func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 
 	switch rv.Type().Kind() {
 	// Complex types must be recursively encoded.
-
-	// FIXME Handle interfaces
-	//case reflect.Interface:
-	//return cdc.encodeJSONReflectInterface(w, info, rv)
+	case reflect.Interface:
+		return encodeJSONReflectInterface(w, rv)
 
 	case reflect.Array, reflect.Slice:
 		return encodeJSONReflectList(w, rv)
@@ -69,7 +91,7 @@ func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 		return encodeJSONReflectStruct(w, rv)
 
 	// 64-bit integers are emitted as strings, to avoid precision problems with e.g.
-	// Javascript which casts these to 64-bit floats (with 53-bit precision).
+	// Javascript which uses 64-bit floats (having 53-bit precision).
 	case reflect.Int64, reflect.Int:
 		return writeStr(w, `"`+strconv.FormatInt(rv.Int(), 10)+`"`)
 
@@ -182,6 +204,36 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 			return err
 		}
 		writeComma = true
+	}
+	return writeStr(w, `}`)
+}
+
+func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
+	if rv.IsNil() {
+		return writeStr(w, `null`)
+	}
+
+	// Get concrete value and dereference pointers.
+	rv = rv.Elem()
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return writeStr(w, `null`)
+		}
+		rv = rv.Elem()
+	}
+
+	// Look up the name of the concrete type
+	name, ok := typeNames[rv.Type()]
+	if !ok {
+		return fmt.Errorf("cannot encode unregistered concrete type %v", rv.Type())
+	}
+
+	// Write value wrapped in interface envelope
+	if err := writeStr(w, fmt.Sprintf(`{"type":%q,"value":`, name)); err != nil {
+		return err
+	}
+	if err := encodeJSONReflect(w, rv); err != nil {
+		return err
 	}
 	return writeStr(w, `}`)
 }

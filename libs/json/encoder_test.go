@@ -1,6 +1,8 @@
 package json
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +32,14 @@ type Struct struct {
 	Value int64
 	Child *Struct `json:",omitempty"`
 	Empty string  `json:"empty,omitempty"`
+	Car   Car     `json:",omitempty"`
 }
 
 func TestMarshal(t *testing.T) {
 	i64 := int64(64)
 	ti := time.Date(2020, 6, 2, 18, 5, 13, 4346374, time.FixedZone("UTC+2", 2*60*60))
+	tesla := &Tesla{Color: "blue"}
+	fmt.Printf("%v\n", reflect.ValueOf(tesla).Kind())
 
 	testcases := map[string]struct {
 		value  interface{}
@@ -62,9 +67,10 @@ func TestMarshal(t *testing.T) {
 		"array int64":     {[3]int64{1, 2, 3}, `["1","2","3"]`},
 		"map int64":       {map[string]int64{"a": 1, "b": 2, "c": 3}, `{"a":"1","b":"2","c":"3"}`},
 		"struct int64": {
-			Struct{Name: "a", Value: 1, Child: &Struct{}},
-			`{"name":"a","Value":"1","Child":{"name":"","Value":"0"}}`,
+			Struct{Name: "a", Value: 1, Car: tesla, Child: &Struct{}},
+			`{"name":"a","Value":"1","Car":{"type":"car/tesla","value":{"Color":"blue"}},"Child":{"name":"","Value":"0"}}`,
 		},
+		"car tesla": {tesla, `{"type":"car/tesla","value":{"Color":"blue"}}`},
 	}
 	for name, tc := range testcases {
 		tc := tc
