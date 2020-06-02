@@ -112,6 +112,26 @@ func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return resBlock, nil
 }
 
+// BlockByHash returns an entire block and verifies all signatures
+func (w Wrapper) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	resBlock, err := w.Client.BlockByHash(hash)
+	if err != nil {
+		return nil, err
+	}
+	// get a checkpoint to verify from
+	resCommit, err := w.Commit(&resBlock.Block.Height)
+	if err != nil {
+		return nil, err
+	}
+	sh := resCommit.SignedHeader
+
+	err = ValidateBlock(resBlock.Block, sh)
+	if err != nil {
+		return nil, err
+	}
+	return resBlock, nil
+}
+
 // Commit downloads the Commit and certifies it with the lite.
 //
 // This is the foundation for all other verification in this module
