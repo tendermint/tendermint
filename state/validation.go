@@ -145,7 +145,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 		var header *types.Header
 		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			header = evidencePool.GetHeaderAtHeight(ev.Height())
+			header = evidencePool.Header(ev.Height())
 			if header == nil {
 				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
 			}

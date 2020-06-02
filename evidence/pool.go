@@ -181,7 +181,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// For lunatic validator evidence, a header needs to be fetched.
 		var header *types.Header
 		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			header = evpool.GetHeaderAtHeight(ev.Height())
+			header = evpool.Header(ev.Height())
 			if header == nil {
 				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
 			}
@@ -305,9 +305,9 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
-// GetHeaderAtHeight gets the header from the block store at a specified height.
+// Header gets the header from the block store at a specified height.
 // Is used for validation of LunaticValidatorEvidence
-func (evpool *Pool) GetHeaderAtHeight(height int64) *types.Header {
+func (evpool *Pool) Header(height int64) *types.Header {
 	blockMeta := evpool.blockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil

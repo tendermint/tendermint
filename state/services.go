@@ -45,7 +45,7 @@ type EvidencePool interface {
 	Update(*types.Block, State)
 	IsCommitted(types.Evidence) bool
 	IsPending(types.Evidence) bool
-	GetHeaderAtHeight(int64) *types.Header
+	Header(int64) *types.Header
 }
 
 // MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
@@ -56,4 +56,4 @@ func (me MockEvidencePool) AddEvidence(types.Evidence) error        { return nil
 func (me MockEvidencePool) Update(*types.Block, State)              {}
 func (me MockEvidencePool) IsCommitted(types.Evidence) bool         { return false }
 func (me MockEvidencePool) IsPending(types.Evidence) bool           { return false }
-func (me MockEvidencePool) GetHeaderAtHeight(int64) *types.Header   { return nil }
+func (me MockEvidencePool) Header(int64) *types.Header              { return nil }

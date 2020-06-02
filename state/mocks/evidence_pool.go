@@ -28,8 +28,8 @@ func (_m *EvidencePool) AddEvidence(_a0 types.Evidence) error {
 	return r0
 }
 
-// GetHeaderAtHeight provides a mock function with given fields: _a0
-func (_m *EvidencePool) GetHeaderAtHeight(_a0 int64) *types.Header {
+// Header provides a mock function with given fields: _a0
+func (_m *EvidencePool) Header(_a0 int64) *types.Header {
 	ret := _m.Called(_a0)
 
 	var r0 *types.Header
