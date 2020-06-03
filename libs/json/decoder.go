@@ -82,24 +82,20 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	}*/
 
 	switch rv.Type().Kind() {
+	//case reflect.Interface:
+	//	err = cdc.decodeReflectJSONInterface(bz, info, rv, fopts)
 
-	//----------------------------------------
-	// Complex
-
-	/*case reflect.Interface:
-		err = cdc.decodeReflectJSONInterface(bz, info, rv, fopts)
-
-	case reflect.Array:
-		err = cdc.decodeReflectJSONArray(bz, info, rv, fopts)
+	//case reflect.Array:
+	//	err = cdc.decodeReflectJSONArray(bz, info, rv, fopts)
 
 	case reflect.Slice:
-		err = cdc.decodeReflectJSONSlice(bz, info, rv, fopts)
+		return decodeJSONReflectSlice(bz, rv)
 
-	case reflect.Struct:
-		err = cdc.decodeReflectJSONStruct(bz, info, rv, fopts)
+	//case reflect.Struct:
+	//	err = cdc.decodeReflectJSONStruct(bz, info, rv, fopts)
 
-	case reflect.Map:
-		err = cdc.decodeReflectJSONMap(bz, info, rv, fopts)*/
+	//case reflect.Map:
+	//	err = cdc.decodeReflectJSONMap(bz, info, rv, fopts)*/
 
 	//----------------------------------------
 	// Signed, Unsigned
@@ -116,6 +112,40 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	default:
 		return decodeJSONStdlib(bz, rv)
 	}
+}
+
+func decodeJSONReflectSlice(bz []byte, rv reflect.Value) error {
+	if !rv.CanAddr() {
+		return errors.New("value is not addressable")
+	}
+
+	switch rv.Type().Elem().Kind() {
+	// Decode base64-encoded byte slices using stdlib decoder.
+	case reflect.Uint8:
+		if err := decodeJSONStdlib(bz, rv); err != nil {
+			return err
+		}
+
+	// Decode anything else into a raw JSON slice, and decode values recursively.
+	default:
+		var rawSlice []json.RawMessage
+		if err := json.Unmarshal(bz, &rawSlice); err != nil {
+			return err
+		}
+		slice := reflect.MakeSlice(reflect.SliceOf(rv.Type().Elem()), len(rawSlice), len(rawSlice))
+		for i, bz := range rawSlice {
+			if err := decodeJSONReflect(bz, slice.Index(i)); err != nil {
+				return err
+			}
+		}
+		rv.Set(slice)
+	}
+
+	// Replace empty slices with nil slices, for Amino compatiblity
+	if rv.Len() == 0 {
+		rv.Set(reflect.Zero(rv.Type()))
+	}
+	return nil
 }
 
 func decodeJSONStdlib(bz []byte, rv reflect.Value) error {

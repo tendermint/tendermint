@@ -18,21 +18,27 @@ func TestDecode(t *testing.T) {
 		value interface{}
 		err   bool
 	}{
-		"bool true":     {"true", true, false},
-		"bool false":    {"false", false, false},
-		"float32":       {"3.14", float32(3.14), false},
-		"float64":       {"3.14", float64(3.14), false},
-		"int32":         {`32`, int32(32), false},
-		"int32 string":  {`"32"`, int32(32), true},
-		"int32 ptr":     {`32`, &i32, false},
-		"int64":         {`"64"`, int64(64), false},
-		"int64 noend":   {`"64`, int64(64), true},
-		"int64 number":  {`64`, int64(64), true},
-		"int64 ptr":     {`"64"`, &i64, false},
-		"int64 ptr nil": {`null`, i64_nil, false},
-		"string":        {`"foo"`, "foo", false},
-		"string noend":  {`"foo`, "foo", true},
-		"string ptr":    {`"foo"`, &str, false},
+		"bool true":          {"true", true, false},
+		"bool false":         {"false", false, false},
+		"float32":            {"3.14", float32(3.14), false},
+		"float64":            {"3.14", float64(3.14), false},
+		"int32":              {`32`, int32(32), false},
+		"int32 string":       {`"32"`, int32(32), true},
+		"int32 ptr":          {`32`, &i32, false},
+		"int64":              {`"64"`, int64(64), false},
+		"int64 noend":        {`"64`, int64(64), true},
+		"int64 number":       {`64`, int64(64), true},
+		"int64 ptr":          {`"64"`, &i64, false},
+		"int64 ptr nil":      {`null`, i64_nil, false},
+		"string":             {`"foo"`, "foo", false},
+		"string noend":       {`"foo`, "foo", true},
+		"string ptr":         {`"foo"`, &str, false},
+		"slice byte":         {`"AQID"`, []byte{1, 2, 3}, false},
+		"slice int32":        {`[1,2,3]`, []int32{1, 2, 3}, false},
+		"slice int64":        {`["1","2","3"]`, []int64{1, 2, 3}, false},
+		"slice int64 number": {`[1,2,3]`, []int64{1, 2, 3}, true},
+		"slice int64 ptr":    {`["64"]`, []*int64{&i64}, false},
+		"slice int64 empty":  {`[]`, []int64(nil), false},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -47,7 +53,7 @@ func TestDecode(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			// Unwrap the pointer and get the bare value behind the interface.
+			// Unwrap the target pointer and get the value behind the interface.
 			actual := reflect.ValueOf(target).Elem().Interface()
 			assert.Equal(t, tc.value, actual)
 		})
