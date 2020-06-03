@@ -9,7 +9,7 @@ import (
 )
 
 func TestDecode(t *testing.T) {
-	var i64_nil *int64
+	var i64Nil *int64
 	i32 := int32(32)
 	i64 := int64(64)
 	str := string("foo")
@@ -29,7 +29,7 @@ func TestDecode(t *testing.T) {
 		"int64 noend":        {`"64`, int64(64), true},
 		"int64 number":       {`64`, int64(64), true},
 		"int64 ptr":          {`"64"`, &i64, false},
-		"int64 ptr nil":      {`null`, i64_nil, false},
+		"int64 ptr nil":      {`null`, i64Nil, false},
 		"string":             {`"foo"`, "foo", false},
 		"string noend":       {`"foo`, "foo", true},
 		"string ptr":         {`"foo"`, &str, false},
@@ -39,6 +39,14 @@ func TestDecode(t *testing.T) {
 		"slice int64 number": {`[1,2,3]`, []int64{1, 2, 3}, true},
 		"slice int64 ptr":    {`["64"]`, []*int64{&i64}, false},
 		"slice int64 empty":  {`[]`, []int64(nil), false},
+		"array byte":         {`"AQID"`, [3]byte{1, 2, 3}, false},
+		"array byte large":   {`"AQID"`, [4]byte{1, 2, 3, 4}, true},
+		"array byte small":   {`"AQID"`, [2]byte{1, 2}, true},
+		"array int32":        {`[1,2,3]`, [3]int32{1, 2, 3}, false},
+		"array int64":        {`["1","2","3"]`, [3]int64{1, 2, 3}, false},
+		"array int64 number": {`[1,2,3]`, [3]int64{1, 2, 3}, true},
+		"array int64 large":  {`["1","2","3"]`, [4]int64{1, 2, 3, 4}, true},
+		"array int64 small":  {`["1","2","3"]`, [2]int64{1, 2}, true},
 	}
 	for name, tc := range testcases {
 		tc := tc

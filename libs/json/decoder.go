@@ -85,11 +85,8 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	//case reflect.Interface:
 	//	err = cdc.decodeReflectJSONInterface(bz, info, rv, fopts)
 
-	//case reflect.Array:
-	//	err = cdc.decodeReflectJSONArray(bz, info, rv, fopts)
-
-	case reflect.Slice:
-		return decodeJSONReflectSlice(bz, rv)
+	case reflect.Slice, reflect.Array:
+		return decodeJSONReflectList(bz, rv)
 
 	//case reflect.Struct:
 	//	err = cdc.decodeReflectJSONStruct(bz, info, rv, fopts)
@@ -114,15 +111,25 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	}
 }
 
-func decodeJSONReflectSlice(bz []byte, rv reflect.Value) error {
+func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("value is not addressable")
 	}
 
 	switch rv.Type().Elem().Kind() {
-	// Decode base64-encoded byte slices using stdlib decoder.
+	// Decode base64-encoded bytes using stdlib decoder, via byte slice for arrays.
 	case reflect.Uint8:
-		if err := decodeJSONStdlib(bz, rv); err != nil {
+		if rv.Type().Kind() == reflect.Array {
+			var buf []byte
+			if err := json.Unmarshal(bz, &buf); err != nil {
+				return err
+			}
+			if len(buf) != rv.Len() {
+				return fmt.Errorf("got %v bytes, expected %v", len(buf), rv.Len())
+			}
+			reflect.Copy(rv, reflect.ValueOf(buf))
+
+		} else if err := decodeJSONStdlib(bz, rv); err != nil {
 			return err
 		}
 
@@ -132,19 +139,24 @@ func decodeJSONReflectSlice(bz []byte, rv reflect.Value) error {
 		if err := json.Unmarshal(bz, &rawSlice); err != nil {
 			return err
 		}
-		slice := reflect.MakeSlice(reflect.SliceOf(rv.Type().Elem()), len(rawSlice), len(rawSlice))
+		if rv.Type().Kind() == reflect.Slice {
+			rv.Set(reflect.MakeSlice(reflect.SliceOf(rv.Type().Elem()), len(rawSlice), len(rawSlice)))
+		}
+		if rv.Len() != len(rawSlice) { // arrays of wrong size
+			return fmt.Errorf("got list of %v elements, expected %v", len(rawSlice), rv.Len())
+		}
 		for i, bz := range rawSlice {
-			if err := decodeJSONReflect(bz, slice.Index(i)); err != nil {
+			if err := decodeJSONReflect(bz, rv.Index(i)); err != nil {
 				return err
 			}
 		}
-		rv.Set(slice)
 	}
 
-	// Replace empty slices with nil slices, for Amino compatiblity
-	if rv.Len() == 0 {
+	// Replace empty slices with nil slices, for Amino compatibility
+	if rv.Type().Kind() == reflect.Slice && rv.Len() == 0 {
 		rv.Set(reflect.Zero(rv.Type()))
 	}
+
 	return nil
 }
 

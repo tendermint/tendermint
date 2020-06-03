@@ -22,11 +22,11 @@ type Tesla struct {
 func (t *Tesla) Drive() error { return nil }
 
 var (
-	timeType            = reflect.TypeOf(time.Time{})
-	jsonMarshalerType   = reflect.TypeOf(new(json.Marshaler)).Elem()
-	jsonUnmarshalerType = reflect.TypeOf(new(json.Unmarshaler)).Elem()
-	errorType           = reflect.TypeOf(new(error)).Elem()
-	typeNames           = map[reflect.Type]string{reflect.TypeOf(Tesla{}): "car/tesla"}
+	timeType          = reflect.TypeOf(time.Time{})
+	jsonMarshalerType = reflect.TypeOf(new(json.Marshaler)).Elem()
+	//jsonUnmarshalerType = reflect.TypeOf(new(json.Unmarshaler)).Elem()
+	//errorType           = reflect.TypeOf(new(error)).Elem()
+	typeNames = map[reflect.Type]string{reflect.TypeOf(Tesla{}): "car/tesla"}
 )
 
 func lookupRegistered(rv reflect.Value) string {
