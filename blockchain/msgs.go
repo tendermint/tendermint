@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
+
 	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
@@ -17,116 +19,100 @@ const (
 		BlockResponseMessageFieldKeySize
 )
 
-// BlockchainMessage is a generic message for this reactor.
-type Message interface {
-	ValidateBasic() error
-}
+// EncodeMsg encodes a Protobuf message, panicing on error.
+func EncodeMsg(pb proto.Message) ([]byte, error) {
+	msg := bcproto.Message{}
 
-func DecodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > MaxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), MaxMsgSize)
+	switch pb := pb.(type) {
+	case *bcproto.BlockRequest:
+		msg.Sum = &bcproto.Message_BlockRequest{BlockRequest: pb}
+	case *bcproto.BlockResponse:
+		msg.Sum = &bcproto.Message_BlockResponse{BlockResponse: pb}
+	case *bcproto.NoBlockResponse:
+		msg.Sum = &bcproto.Message_NoBlockResponse{NoBlockResponse: pb}
+	case *bcproto.StatusRequest:
+		msg.Sum = &bcproto.Message_StatusRequest{StatusRequest: pb}
+	case *bcproto.StatusResponse:
+		msg.Sum = &bcproto.Message_StatusResponse{StatusResponse: pb}
+	default:
+		return nil, fmt.Errorf("unknown message type %T", pb)
 	}
-	bm := new(bcproto.Message)
-	bm.Unmarshal(bz)
-	msg, err = MsgFromProto(bm)
-	return
-}
 
-//-------------------------------------
-
-type BlockRequestMessage struct {
-	Height int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *BlockRequestMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
+	bz, err := proto.Marshal(&msg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal %T: %w", pb, err)
 	}
-	return nil
+
+	return bz, nil
 }
 
-func (m *BlockRequestMessage) String() string {
-	return fmt.Sprintf("[BlockRequestMessage %v]", m.Height)
-}
+// DecodeMsg decodes a Protobuf message.
+func DecodeMsg(bz []byte) (proto.Message, error) {
+	pb := &bcproto.Message{}
 
-type NoBlockResponseMessage struct {
-	Height int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *NoBlockResponseMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
+	err := proto.Unmarshal(bz, pb)
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
 
-func (m *NoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[NoBlockResponseMessage %d]", m.Height)
-}
-
-//-------------------------------------
-
-type BlockResponseMessage struct {
-	Block *types.Block
-}
-
-// ValidateBasic performs basic validation.
-func (m *BlockResponseMessage) ValidateBasic() error {
-	return m.Block.ValidateBasic()
-}
-
-func (m *BlockResponseMessage) String() string {
-	return fmt.Sprintf("[BlockResponseMessage %v]", m.Block.Height)
-}
-
-//-------------------------------------
-
-type StatusRequestMessage struct {
-	Base   int64
-	Height int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *StatusRequestMessage) ValidateBasic() error {
-	if m.Base < 0 {
-		return errors.New("negative Base")
+	switch msg := pb.Sum.(type) {
+	case *bcproto.Message_BlockRequest:
+		return msg.BlockRequest, nil
+	case *bcproto.Message_BlockResponse:
+		return msg.BlockResponse, nil
+	case *bcproto.Message_NoBlockResponse:
+		return msg.NoBlockResponse, nil
+	case *bcproto.Message_StatusRequest:
+		return msg.StatusRequest, nil
+	case *bcproto.Message_StatusResponse:
+		return msg.StatusResponse, nil
+	default:
+		return nil, fmt.Errorf("unknown message type %T", msg)
 	}
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Base > m.Height {
-		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
-	}
-	return nil
 }
 
-func (m *StatusRequestMessage) String() string {
-	return fmt.Sprintf("[StatusRequestMessage %v]", m.Height)
-}
-
-//-------------------------------------
-
-type StatusResponseMessage struct {
-	Height int64
-	Base   int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *StatusResponseMessage) ValidateBasic() error {
-	if m.Base < 0 {
-		return errors.New("negative Base")
+// ValidateMsg validates a message.
+func ValidateMsg(pb proto.Message) error {
+	if pb == nil {
+		return errors.New("message cannot be nil")
 	}
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Base > m.Height {
-		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+
+	switch msg := pb.(type) {
+	case *bcproto.BlockRequest:
+		if msg.Height < 0 {
+			return errors.New("negative Height")
+		}
+	case *bcproto.BlockResponse:
+		_, err := types.BlockFromProto(msg.Block)
+		if err != nil {
+			return err
+		}
+	case *bcproto.NoBlockResponse:
+		if msg.Height < 0 {
+			return errors.New("negative Height")
+		}
+	case *bcproto.StatusResponse:
+		if msg.Base < 0 {
+			return errors.New("negative Base")
+		}
+		if msg.Height < 0 {
+			return errors.New("negative Height")
+		}
+		if msg.Base > msg.Height {
+			return fmt.Errorf("base %v cannot be greater than height %v", msg.Base, msg.Height)
+		}
+	case *bcproto.StatusRequest:
+		if msg.Base < 0 {
+			return errors.New("negative Base")
+		}
+		if msg.Height < 0 {
+			return errors.New("negative Height")
+		}
+		if msg.Base > msg.Height {
+			return fmt.Errorf("base %v cannot be greater than height %v", msg.Base, msg.Height)
+		}
+	default:
+		return fmt.Errorf("unknown message type %T", msg)
 	}
 	return nil
-}
-
-func (m *StatusResponseMessage) String() string {
-	return fmt.Sprintf("[StatusResponseMessage %v]", m.Height)
 }

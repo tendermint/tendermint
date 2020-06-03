@@ -202,6 +202,58 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+// ToProto converts Block to protobuf
+func (b *Block) ToProto() (*tmproto.Block, error) {
+	if b == nil {
+		return nil, errors.New("nil Block")
+	}
+
+	pb := new(tmproto.Block)
+
+	pb.Header = *b.Header.ToProto()
+	pb.LastCommit = b.LastCommit.ToProto()
+	pb.Data = b.Data.ToProto()
+
+	protoEvidence, err := b.Evidence.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	pb.Evidence = *protoEvidence
+
+	return pb, nil
+}
+
+// FromProto sets a protobuf Block to the given pointer.
+// It returns an error if the block is invalid.
+func BlockFromProto(bp *tmproto.Block) (*Block, error) {
+	if bp == nil {
+		return nil, errors.New("nil block")
+	}
+
+	b := new(Block)
+	h, err := HeaderFromProto(&bp.Header)
+	if err != nil {
+		return nil, err
+	}
+	b.Header = h
+	data, err := DataFromProto(&bp.Data)
+	if err != nil {
+		return nil, err
+	}
+	b.Data = data
+	b.Evidence.FromProto(&bp.Evidence)
+
+	if bp.LastCommit != nil {
+		lc, err := CommitFromProto(bp.LastCommit)
+		if err != nil {
+			return nil, err
+		}
+		b.LastCommit = lc
+	}
+
+	return b, b.ValidateBasic()
+}
+
 //-----------------------------------------------------------
 // These methods are for Protobuf Compatibility
 
@@ -783,10 +835,6 @@ func (commit *Commit) ValidateBasic() error {
 	if commit.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if commit.Height >= 1 {
-		if commit.BlockID.IsZero() {
-			return errors.New("commit cannot be for nil block")
-		}
 
 	// Check that commit.Height is greater than 1
 	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
@@ -897,8 +945,8 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.Signatures = sigs
 
 	commit.Height = cp.Height
-	commit.Round = cp.Round
-	commit.BlockID = blockID
+	commit.Round = int(cp.Round)
+	commit.BlockID = *bi
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
 
@@ -1056,6 +1104,47 @@ func (data *Data) StringIndented(indent string) string {
 		indent, data.hash)
 }
 
+// ToProto converts Data to protobuf
+func (data *Data) ToProto() tmproto.Data {
+	tp := new(tmproto.Data)
+
+	if len(data.Txs) > 0 {
+		txBzs := make([][]byte, len(data.Txs))
+		for i := range data.Txs {
+			txBzs[i] = data.Txs[i]
+		}
+		tp.Txs = txBzs
+	}
+
+	if data.hash != nil {
+		tp.Hash = data.hash
+	}
+
+	return *tp
+}
+
+// DataFromProto sets a protobuf Data to the given pointer.
+func DataFromProto(dp *tmproto.Data) (Data, error) {
+	if dp == nil {
+		return Data{}, errors.New("nil data")
+	}
+	data := new(Data)
+
+	if len(dp.Txs) > 0 {
+		txBzs := make(Txs, len(dp.Txs))
+		for i := range dp.Txs {
+			txBzs[i] = Tx(dp.Txs[i])
+		}
+		data.Txs = txBzs
+	} else {
+		data.Txs = Txs{}
+	}
+
+	data.hash = dp.Hash
+
+	return *data, nil
+}
+
 //-----------------------------------------------------------------------------
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
@@ -1126,7 +1215,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 
 	eviBzs := make(EvidenceList, len(eviData.Evidence))
 	for i := range eviData.Evidence {
-		evi, err := EvidenceFromProto(eviData.Evidence[i])
+		evi, err := EvidenceFromProto(&eviData.Evidence[i])
 		if err != nil {
 			return err
 		}

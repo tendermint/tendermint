@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -372,10 +373,10 @@ func TestReactorHelperMode(t *testing.T) {
 			name:   "status request",
 			params: params,
 			msgs: []testEvent{
-				{"P1", bc.StatusRequestMessage{}},
-				{"P1", bc.BlockRequestMessage{Height: 13}},
-				{"P1", bc.BlockRequestMessage{Height: 20}},
-				{"P1", bc.BlockRequestMessage{Height: 22}},
+				{"P1", bcproto.StatusRequest{}},
+				{"P1", bcproto.BlockRequest{Height: 13}},
+				{"P1", bcproto.BlockRequest{Height: 20}},
+				{"P1", bcproto.BlockRequest{Height: 22}},
 			},
 		},
 	}
@@ -391,28 +392,23 @@ func TestReactorHelperMode(t *testing.T) {
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
 				switch ev := step.event.(type) {
-				case bc.StatusRequestMessage:
+				case bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					bm, err := bc.MsgToProto(&ev)
-					assert.NoError(t, err)
-					msg, err := bm.Marshal()
+					msg, err := bc.EncodeMsg(&ev)
 					assert.NoError(t, err)
 					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
-				case bc.BlockRequestMessage:
+				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						bm, err := bc.MsgToProto(&ev)
-						assert.NoError(t, err)
-						msg, err := bm.Marshal()
+						msg, err := bc.EncodeMsg(&ev)
 						assert.NoError(t, err)
 						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						bm, err := bc.MsgToProto(&ev)
+						msg, err := bc.EncodeMsg(&ev)
 						assert.NoError(t, err)
-						msg, err := bm.Marshal()
 						assert.NoError(t, err)
 						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)

@@ -5,6 +5,7 @@ import (
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/p2p"
+	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -46,14 +47,11 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	bm, err := bc.MsgToProto(&bc.BlockRequestMessage{Height: height})
+	msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: height})
 	if err != nil {
 		return err
 	}
-	msgBytes, err := bm.Marshal()
-	if err != nil {
-		return err
-	}
+
 	queued := peer.TrySend(BlockchainChannel, msgBytes)
 	if !queued {
 		return fmt.Errorf("send queue full")
@@ -66,11 +64,8 @@ func (sio *switchIO) sendStatusResponse(height int64, peerID p2p.ID) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	bm, err := bc.MsgToProto(&bc.StatusResponseMessage{Height: height})
-	if err != nil {
-		return err
-	}
-	msgBytes, err := bm.Marshal()
+
+	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{Height: height})
 	if err != nil {
 		return err
 	}
@@ -90,11 +85,13 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	if block == nil {
 		panic("trying to send nil block")
 	}
-	bm, err := bc.MsgToProto(&bc.BlockResponseMessage{Block: block})
+
+	bpb, err := block.ToProto()
 	if err != nil {
 		return err
 	}
-	msgBytes, err := bm.Marshal()
+
+	msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: bpb})
 	if err != nil {
 		return err
 	}
@@ -110,11 +107,7 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	bm, err := bc.MsgToProto(&bc.NoBlockResponseMessage{Height: height})
-	if err != nil {
-		return err
-	}
-	msgBytes, err := bm.Marshal()
+	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: height})
 	if err != nil {
 		return err
 	}
@@ -139,14 +132,9 @@ func (sio *switchIO) broadcastStatusRequest(base, height int64) error {
 		base = 0
 	}
 
-	bm, err := bc.MsgToProto(&bc.StatusRequestMessage{Base: base, Height: height})
+	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{Base: base, Height: height})
 	if err != nil {
 		return err
-	}
-
-	msgBytes, err := bm.Marshal()
-	if err != nil {
-		panic(err)
 	}
 
 	// XXX: maybe we should use an io specific peer list here

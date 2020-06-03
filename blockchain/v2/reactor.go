@@ -10,8 +10,14 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	// chBufferSize is the buffer size of all event channels.
+	chBufferSize int = 1000
 )
 
 type blockStore interface {
@@ -413,7 +419,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	if err = msg.ValidateBasic(); err != nil {
+	if err = bc.ValidateMsg(msg); err != nil {
 		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
@@ -422,12 +428,12 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
-	case *bc.StatusRequestMessage:
+	case *bcproto.StatusRequest:
 		if err := r.io.sendStatusResponse(r.store.Height(), src.ID()); err != nil {
 			r.logger.Error("Could not send status message to peer", "src", src)
 		}
 
-	case *bc.BlockRequestMessage:
+	case *bcproto.BlockRequest:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
 			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
@@ -441,26 +447,31 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 		}
 
-	case *bcStatusResponseMessage:
+	case *bcproto.StatusResponse:
 		r.mtx.RLock()
 		if r.events != nil {
 			r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
 		}
 		r.mtx.RUnlock()
 
-	case *bcBlockResponseMessage:
+	case *bcproto.BlockResponse:
 		r.mtx.RLock()
+		bi, err := types.BlockFromProto(msg.Block)
+		if err != nil {
+			r.logger.Error("error transitioning block from protobuf", "err", err)
+			return
+		}
 		if r.events != nil {
 			r.events <- bcBlockResponse{
 				peerID: src.ID(),
-				block:  msg.Block,
+				block:  bi,
 				size:   int64(len(msgBytes)),
 				time:   time.Now(),
 			}
 		}
 		r.mtx.RUnlock()
 
-	case *bcNoBlockResponseMessage:
+	case *bcproto.NoBlockResponse:
 		r.mtx.RLock()
 		if r.events != nil {
 			r.events <- bcNoBlockResponse{peerID: src.ID(), height: msg.Height, time: time.Now()}
