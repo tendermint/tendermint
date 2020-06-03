@@ -1119,8 +1119,12 @@ func (c *Client) signedHeaderFromPrimary(height int64) (*types.SignedHeader, err
 }
 
 func (c *Client) validateHeader(h *types.SignedHeader, expectedHeight int64) error {
-	if h == nil { return errors.New("nil header")}
-	if (expectedHeight > 0 && h.Height != expectedHeight) { return errors.New("height mismatch")} 
+	if h == nil {
+		return errors.New("nil header")
+	}
+	if expectedHeight > 0 && h.Height != expectedHeight {
+		return errors.New("height mismatch")
+	}
 	return h.ValidateBasic(c.chainID)
 }
 
@@ -1160,9 +1164,10 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 	return c.validatorSetFromPrimary(height)
 }
 
-
 func (c *Client) validateValidatorSet(vals *types.ValidatorSet) error {
-	if vals == nil { return errors.New("validator set is nil")}
+	if vals == nil {
+		return errors.New("validator set is nil")
+	}
 	return vals.ValidateBasic()
 }
 
@@ -1184,8 +1189,6 @@ func (c *Client) sendConflictingHeadersEvidence(ev types.ConflictingHeadersEvide
 		}
 	}
 }
-
-
 
 // exponential backoff (with jitter)
 //		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
