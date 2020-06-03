@@ -1458,7 +1458,10 @@ func (n *fakeTxNotifier) Notify() {
 	n.ch <- struct{}{}
 }
 
-func TestStartNextHeightCorrectly(t *testing.T) {
+// 2 vals precommit votes for a block but node times out waiting for the third. Move to next round
+// and third precommit arrives which leads to the commit of that header and the correct
+// start of the next round
+func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	config.Consensus.SkipTimeoutCommit = false
 	cs1, vss := randState(4)
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
@@ -1468,6 +1471,7 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
+	precommitTimeoutCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockHeader := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
@@ -1497,11 +1501,14 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
-	time.Sleep(5 * time.Millisecond)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
 
-	rs = cs1.GetRoundState()
-	assert.True(t, rs.TriggeredTimeoutPrecommit)
+	// wait till timeout occurs
+	ensurePrecommitTimeout(precommitTimeoutCh)
+
+	ensureNewRound(newRoundCh, height, round+1)
+
+	// majority is now reached
+	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
 
 	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
