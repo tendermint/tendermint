@@ -25,12 +25,12 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
 	bz, err := cdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
-	// if byterSrc, ok := src.(AminoMarshal); ok {
-	// 	// Make sure this is compatible with current (Bytes()) encoding.
-	// 	bza, err := byterSrc.AminoMarshal()
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, bza, bz, "Amino binary vs Bytes() mismatch")
-	// }
+	if byterSrc, ok := src.(AminoMarshal); ok {
+		// Make sure this is compatible with current (Bytes()) encoding.
+		bza, err := byterSrc.AminoMarshal()
+		assert.NoError(t, err)
+		assert.Equal(t, bza, bz, "Amino binary vs Bytes() mismatch")
+	}
 	// Make sure we have the expected length.
 	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
 
