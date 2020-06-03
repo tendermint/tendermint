@@ -362,7 +362,7 @@ func newValidator(address []byte, power int64) *Validator {
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], tmrand.Bytes(32))
-	return ed25519.PubKeyEd25519(pubKey)
+	return ed25519.PubKey(pubKey)
 }
 
 func randValidator(totalVotingPower int64) *Validator {

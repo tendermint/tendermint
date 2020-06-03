@@ -58,13 +58,13 @@ func ExamplePrintRegisteredTypes() {
 	cdc.PrintTypes(os.Stdout)
 	// Output: | Type | Name | Prefix | Length | Notes |
 	//| ---- | ---- | ------ | ----- | ------ |
-	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
-	//| PubKeySr25519 | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
-	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
-	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
-	//| PrivKeySr25519 | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
-	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
+	//| PubKey | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+	//| PubKey | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
+	//| PubKey | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
+	//| PubKey | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
+	//| PrivKey | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+	//| PrivKey | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
+	//| PrivKey | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
 }
 
 func TestKeyEncodings(t *testing.T) {
@@ -148,10 +148,10 @@ func TestPubkeyAminoName(t *testing.T) {
 		want  string
 		found bool
 	}{
-		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
-		{sr25519.PubKeySr25519{}, sr25519.PubKeyAminoName, true},
-		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
-		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
+		{ed25519.PubKey{}, ed25519.PubKeyAminoName, true},
+		{sr25519.PubKey{}, sr25519.PubKeyAminoName, true},
+		{secp256k1.PubKey{}, secp256k1.PubKeyAminoName, true},
+		{multisig.PubKey{}, multisig.PubKeyAminoRoute, true},
 	}
 	for i, tc := range tests {
 		got, found := PubkeyAminoName(cdc, tc.key)
@@ -229,8 +229,8 @@ func TestRegisterKeyType(t *testing.T) {
 	cdc = amino.NewCodec()
 	nameTable = make(map[reflect.Type]string, 3)
 	RegisterAmino(cdc)
-	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(sr25519.PubKeySr25519{})] = sr25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
-	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
+	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyAminoName
+	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyAminoRoute
 }
