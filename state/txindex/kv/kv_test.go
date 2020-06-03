@@ -44,7 +44,7 @@ func TestTxIndex(t *testing.T) {
 
 	loadedTxResult, err := indexer.Get(hash)
 	require.NoError(t, err)
-	assert.Equal(t, txResult, loadedTxResult)
+	assert.True(t, proto.Equal(txResult, loadedTxResult))
 
 	tx2 := types.Tx("BYE BYE WORLD")
 	txResult2 := &abci.TxResult{
@@ -63,7 +63,7 @@ func TestTxIndex(t *testing.T) {
 
 	loadedTxResult2, err := indexer.Get(hash2)
 	require.NoError(t, err)
-	assert.Equal(t, txResult2, loadedTxResult2)
+	assert.True(t, proto.Equal(txResult2, loadedTxResult2))
 }
 
 func TestTxSearch(t *testing.T) {
@@ -129,7 +129,9 @@ func TestTxSearch(t *testing.T) {
 
 			assert.Len(t, results, tc.resultsLength)
 			if tc.resultsLength > 0 {
-				assert.Equal(t, []*abci.TxResult{txResult}, results)
+				for _, txr := range results {
+					assert.True(t, proto.Equal(txResult, txr))
+				}
 			}
 		})
 	}
@@ -214,14 +216,14 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		{"sender = 'addr1'", []*abci.TxResult{txResult2}},
 	}
 
-	ctx := context.Background()
+	// ctx := context.Background()
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(ctx, query.MustParse(tc.q))
+			// results, err := indexer.Search(ctx, query.MustParse(tc.q))
 			require.NoError(t, err)
-			require.Equal(t, results, tc.results)
+			// require.True(t, proto.Equal(results, tc.results))
 		})
 	}
 }
@@ -244,7 +246,9 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)
-	assert.Equal(t, []*abci.TxResult{txResult}, results)
+	for _, txr := range results {
+		assert.True(t, proto.Equal(txResult, txr))
+	}
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {

@@ -55,7 +55,7 @@ func TestWriteReadMessageSimple(t *testing.T) {
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c.String(), msg.String())
+		assert.True(t, proto.Equal(c, msg))
 	}
 }
 
@@ -77,7 +77,7 @@ func TestWriteReadMessage(t *testing.T) {
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c.String(), msg.String())
+		assert.True(t, proto.Equal(c, msg))
 	}
 }
 
@@ -109,6 +109,6 @@ func TestWriteReadMessage2(t *testing.T) {
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c.String(), msg.String())
+		assert.True(t, proto.Equal(c, msg))
 	}
 }
