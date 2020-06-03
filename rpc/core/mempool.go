@@ -130,9 +130,9 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 // UnconfirmedTxs gets unconfirmed transactions (maximum ?limit entries)
 // including their number.
 // More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
-func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+func UnconfirmedTxs(ctx *rpctypes.Context, limitPtr *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
-	limit = validatePerPage(limit)
+	limit := validatePerPage(limitPtr)
 
 	txs := env.Mempool.ReapMaxTxs(limit)
 	return &ctypes.ResultUnconfirmedTxs{

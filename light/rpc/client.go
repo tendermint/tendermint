@@ -136,7 +136,7 @@ func (c *Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	return c.next.BroadcastTxSync(tx)
 }
 
-func (c *Client) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *Client) UnconfirmedTxs(limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	return c.next.UnconfirmedTxs(limit)
 }
 
@@ -396,7 +396,7 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return res, res.Proof.Validate(h.DataHash)
 }
 
-func (c *Client) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+func (c *Client) TxSearch(query string, prove bool, page, perPage *int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	return c.next.TxSearch(query, prove, page, perPage, orderBy)
 }
@@ -405,7 +405,7 @@ func (c *Client) TxSearch(query string, prove bool, page, perPage int, orderBy s
 //
 // WARNING: only full validator sets are verified (when length of validators is
 // less than +perPage+. +perPage+ default is 30, max is 100).
-func (c *Client) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	res, err := c.next.Validators(height, page, perPage)
 	if err != nil {
 		return nil, err

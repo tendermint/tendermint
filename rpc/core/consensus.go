@@ -16,7 +16,7 @@ import (
 // for the validators in the set as used in computing their Merkle root.
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
-func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := getHeight(latestUncommittedHeight(), heightPtr)
 	if err != nil {
@@ -29,8 +29,8 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	}
 
 	totalCount := len(validators.Validators)
-	perPage = validatePerPage(perPage)
-	page, err = validatePage(page, perPage, totalCount)
+	perPage := validatePerPage(perPagePtr)
+	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
