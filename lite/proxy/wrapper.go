@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/lite"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var _ rpcclient.Client = Wrapper{}
@@ -100,6 +100,26 @@ func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 	// get a checkpoint to verify from
 	resCommit, err := w.Commit(height)
+	if err != nil {
+		return nil, err
+	}
+	sh := resCommit.SignedHeader
+
+	err = ValidateBlock(resBlock.Block, sh)
+	if err != nil {
+		return nil, err
+	}
+	return resBlock, nil
+}
+
+// BlockByHash returns an entire block and verifies all signatures
+func (w Wrapper) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	resBlock, err := w.Client.BlockByHash(hash)
+	if err != nil {
+		return nil, err
+	}
+	// get a checkpoint to verify from
+	resCommit, err := w.Commit(&resBlock.Block.Height)
 	if err != nil {
 		return nil, err
 	}

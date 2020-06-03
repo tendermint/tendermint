@@ -13,7 +13,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -142,6 +142,10 @@ func (c *Local) Genesis() (*ctypes.ResultGenesis, error) {
 
 func (c *Local) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return core.Block(c.ctx, height)
+}
+
+func (c *Local) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	return core.BlockByHash(c.ctx, hash)
 }
 
 func (c *Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {

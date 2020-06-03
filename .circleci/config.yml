@@ -100,7 +100,7 @@ jobs:
             mkdir -p /tmp/logs /tmp/workspace/profiles
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
-              go test -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              go test -timeout 7m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -108,26 +108,6 @@ jobs:
             - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
-
-  localnet:
-    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace/
-      GOOS: linux
-      GOARCH: amd64
-    parallelism: 1
-    steps:
-      - checkout
-      - run:
-          name: run localnet and exit on failure
-          command: |
-            set -x
-            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
-            make localnet-start &
-            ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
   test_p2p:
     environment:
@@ -374,9 +354,6 @@ workflows:
           requires:
             - setup_dependencies
       - test_persistence:
-          requires:
-            - setup_dependencies
-      - localnet:
           requires:
             - setup_dependencies
       - test_p2p

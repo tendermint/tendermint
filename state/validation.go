@@ -127,7 +127,13 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate all evidence.
-	for _, ev := range block.Evidence.Evidence {
+	for idx, ev := range block.Evidence.Evidence {
+		// check that no evidence has been submitted more than once
+		for i := idx + 1; i < len(block.Evidence.Evidence); i++ {
+			if ev.Equal(block.Evidence.Evidence[i]) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was submitted twice"))
+			}
+		}
 		if evidencePool != nil {
 			if evidencePool.IsCommitted(ev) {
 				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
@@ -136,7 +142,16 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				continue
 			}
 		}
-		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
+
+		var header *types.Header
+		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
+			header = evidencePool.Header(ev.Height())
+			if header == nil {
+				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
+			}
+		}
+
+		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 	}

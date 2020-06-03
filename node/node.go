@@ -23,7 +23,6 @@ import (
 	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
@@ -39,7 +38,7 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
@@ -392,7 +391,7 @@ func createConsensusReactor(config *cfg.Config,
 	csMetrics *cs.Metrics,
 	waitSync bool,
 	eventBus *types.EventBus,
-	consensusLogger log.Logger) (*consensus.Reactor, *consensus.State) {
+	consensusLogger log.Logger) (*cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
 		config.Consensus,
@@ -491,7 +490,7 @@ func createSwitch(config *cfg.Config,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *statesync.Reactor,
-	consensusReactor *consensus.Reactor,
+	consensusReactor *cs.Reactor,
 	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
@@ -566,7 +565,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *consensus.Reactor,
+func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
@@ -953,32 +952,42 @@ func (n *Node) OnStop() {
 	}
 }
 
-// ConfigureRPC sets all variables in rpccore so they will serve
-// rpc calls from this node
-func (n *Node) ConfigureRPC() {
-	rpccore.SetStateDB(n.stateDB)
-	rpccore.SetBlockStore(n.blockStore)
-	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempool)
-	rpccore.SetEvidencePool(n.evidencePool)
-	rpccore.SetP2PPeers(n.sw)
-	rpccore.SetP2PTransport(n)
+// ConfigureRPC makes sure RPC has all the objects it needs to operate.
+func (n *Node) ConfigureRPC() error {
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("can't get pubkey: %w", err)
 	}
-	rpccore.SetPubKey(pubKey)
-	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetProxyAppQuery(n.proxyApp.Query())
-	rpccore.SetTxIndexer(n.txIndexer)
-	rpccore.SetConsensusReactor(n.consensusReactor)
-	rpccore.SetEventBus(n.eventBus)
-	rpccore.SetLogger(n.Logger.With("module", "rpc"))
-	rpccore.SetConfig(*n.config.RPC)
+	rpccore.SetEnvironment(&rpccore.Environment{
+		ProxyAppQuery: n.proxyApp.Query(),
+
+		StateDB:        n.stateDB,
+		BlockStore:     n.blockStore,
+		EvidencePool:   n.evidencePool,
+		ConsensusState: n.consensusState,
+		P2PPeers:       n.sw,
+		P2PTransport:   n,
+
+		PubKey:           pubKey,
+		GenDoc:           n.genesisDoc,
+		TxIndexer:        n.txIndexer,
+		ConsensusReactor: n.consensusReactor,
+		EventBus:         n.eventBus,
+		Mempool:          n.mempool,
+
+		Logger: n.Logger.With("module", "rpc"),
+
+		Config: *n.config.RPC,
+	})
+	return nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	n.ConfigureRPC()
+	err := n.ConfigureRPC()
+	if err != nil {
+		return nil, err
+	}
+
 	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
@@ -1034,7 +1043,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rootHandler = corsMiddleware.Handler(mux)
 		}
 		if n.config.RPC.IsTLSEnabled() {
-			go rpcserver.StartHTTPAndTLSServer(
+			go rpcserver.ServeTLS(
 				listener,
 				rootHandler,
 				n.config.RPC.CertFile(),
@@ -1043,7 +1052,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				config,
 			)
 		} else {
-			go rpcserver.StartHTTPServer(
+			go rpcserver.Serve(
 				listener,
 				rootHandler,
 				rpcLogger,

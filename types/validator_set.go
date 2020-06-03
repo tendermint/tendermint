@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -28,6 +29,11 @@ const (
 	// priorities.
 	PriorityWindowSizeFactor = 2
 )
+
+// ErrTotalVotingPowerOverflow is returned if the total voting power of the
+// resulting validator set exceeds MaxTotalVotingPower.
+var ErrTotalVotingPowerOverflow = fmt.Errorf("total voting power of resulting valset exceeds max %d",
+	MaxTotalVotingPower)
 
 // ValidatorSet represent a set of *Validator at a given height.
 //
@@ -71,6 +77,24 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 		vals.IncrementProposerPriority(1)
 	}
 	return vals
+}
+
+func (vals *ValidatorSet) ValidateBasic() error {
+	if vals.IsNilOrEmpty() {
+		return errors.New("validator set is nil or empty")
+	}
+
+	for idx, val := range vals.Validators {
+		if err := val.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid validator #%d: %w", idx, err)
+		}
+	}
+
+	if err := vals.Proposer.ValidateBasic(); err != nil {
+		return fmt.Errorf("proposer failed validate basic, error: %w", err)
+	}
+
+	return nil
 }
 
 // IsNilOrEmpty returns true if validator set is nil or empty.
@@ -405,6 +429,7 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
+
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
 		_, val := vals.GetByAddress(update.Address)
 		if val != nil {
@@ -422,10 +447,7 @@ func verifyUpdates(
 	for _, upd := range updatesCopy {
 		tvpAfterRemovals += delta(upd, vals)
 		if tvpAfterRemovals > MaxTotalVotingPower {
-			err = fmt.Errorf(
-				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				upd.Address, MaxTotalVotingPower)
-			return 0, err
+			return 0, ErrTotalVotingPowerOverflow
 		}
 	}
 	return tvpAfterRemovals + removedPower, nil
@@ -910,6 +932,64 @@ func (valz ValidatorsByAddress) Less(i, j int) bool {
 
 func (valz ValidatorsByAddress) Swap(i, j int) {
 	valz[i], valz[j] = valz[j], valz[i]
+}
+
+// ToProto converts ValidatorSet to protobuf
+func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
+	if vals == nil {
+		return nil, errors.New("nil validator set") // validator set should never be nil
+	}
+	vp := new(tmproto.ValidatorSet)
+	valsProto := make([]*tmproto.Validator, len(vals.Validators))
+	for i := 0; i < len(vals.Validators); i++ {
+		valp, err := vals.Validators[i].ToProto()
+		if err != nil {
+			return nil, err
+		}
+		valsProto[i] = valp
+	}
+	vp.Validators = valsProto
+
+	valProposer, err := vals.Proposer.ToProto()
+	if err != nil {
+		return nil, fmt.Errorf("toProto: validatorSet proposer error: %w", err)
+	}
+	vp.Proposer = valProposer
+
+	vp.TotalVotingPower = vals.totalVotingPower
+
+	return vp, nil
+}
+
+// ValidatorSetFromProto sets a protobuf ValidatorSet to the given pointer.
+// It returns an error if any of the validators from the set or the proposer
+// is invalid
+func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
+	if vp == nil {
+		return nil, errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
+	}
+	vals := new(ValidatorSet)
+
+	valsProto := make([]*Validator, len(vp.Validators))
+	for i := 0; i < len(vp.Validators); i++ {
+		v, err := ValidatorFromProto(vp.Validators[i])
+		if err != nil {
+			return nil, err
+		}
+		valsProto[i] = v
+	}
+	vals.Validators = valsProto
+
+	p, err := ValidatorFromProto(vp.GetProposer())
+	if err != nil {
+		return nil, fmt.Errorf("fromProto: validatorSet proposer error: %w", err)
+	}
+
+	vals.Proposer = p
+
+	vals.totalVotingPower = vp.GetTotalVotingPower()
+
+	return vals, nil
 }
 
 //----------------------------------------

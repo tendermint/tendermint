@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -63,7 +62,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 }
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
-	db := db.NewMemDB()
+	db := dbm.NewMemDB()
 	bsj := &BlockStoreStateJSON{Base: 100, Height: 1000}
 	bsj.Save(db)
 
@@ -72,7 +71,7 @@ func TestLoadBlockStoreStateJSON(t *testing.T) {
 }
 
 func TestLoadBlockStoreStateJSON_Empty(t *testing.T) {
-	db := db.NewMemDB()
+	db := dbm.NewMemDB()
 
 	bsj := &BlockStoreStateJSON{}
 	bsj.Save(db)
@@ -82,7 +81,7 @@ func TestLoadBlockStoreStateJSON_Empty(t *testing.T) {
 }
 
 func TestLoadBlockStoreStateJSON_NoBase(t *testing.T) {
-	db := db.NewMemDB()
+	db := dbm.NewMemDB()
 
 	bsj := &BlockStoreStateJSON{Height: 1000}
 	bsj.Save(db)
@@ -92,7 +91,7 @@ func TestLoadBlockStoreStateJSON_NoBase(t *testing.T) {
 }
 
 func TestNewBlockStore(t *testing.T) {
-	db := db.NewMemDB()
+	db := dbm.NewMemDB()
 	err := db.Set(blockStoreKey, []byte(`{"base": "100", "height": "10000"}`))
 	require.NoError(t, err)
 	bs := NewBlockStore(db)
@@ -126,8 +125,8 @@ func TestNewBlockStore(t *testing.T) {
 	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
 }
 
-func freshBlockStore() (*BlockStore, db.DB) {
-	db := db.NewMemDB()
+func freshBlockStore() (*BlockStore, dbm.DB) {
+	db := dbm.NewMemDB()
 	return NewBlockStore(db), db
 }
 
