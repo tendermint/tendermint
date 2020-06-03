@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -107,7 +107,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	mempool.Flush()
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
-	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	// each tx has 20 bytes
 	tests := []struct {
 		numTxsToCreate int
 		maxBytes       int64
@@ -121,11 +121,11 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 0, -1, 0},
 		{20, 0, 10, 0},
 		{20, 10, 10, 0},
-		{20, 22, 10, 1},
-		{20, 220, -1, 10},
-		{20, 220, 5, 5},
-		{20, 220, 10, 10},
-		{20, 220, 15, 10},
+		{20, 20, 10, 1},
+		{20, 100, 5, 5},
+		{20, 200, -1, 10},
+		{20, 200, 10, 10},
+		{20, 200, 15, 10},
 		{20, 20000, -1, 20},
 		{20, 20000, 5, 5},
 		{20, 20000, 30, 20},
@@ -150,7 +150,7 @@ func TestMempoolFilters(t *testing.T) {
 	nopPostFilter := func(tx types.Tx, res *abci.ResponseCheckTx) error { return nil }
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
-	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	// each tx has 20 bytes
 	tests := []struct {
 		numTxsToCreate int
 		preFilter      PreCheckFunc
@@ -158,17 +158,16 @@ func TestMempoolFilters(t *testing.T) {
 		expectedNumTxs int
 	}{
 		{10, nopPreFilter, nopPostFilter, 10},
-		{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
+		{10, PreCheckMaxBytes(10), nopPostFilter, 0},
+		{10, PreCheckMaxBytes(20), nopPostFilter, 10},
 		{10, nopPreFilter, PostCheckMaxGas(-1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(0), 0},
 		{10, nopPreFilter, PostCheckMaxGas(1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(3000), 10},
-		{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
-		{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
+		{10, PreCheckMaxBytes(10), PostCheckMaxGas(20), 0},
+		{10, PreCheckMaxBytes(30), PostCheckMaxGas(20), 10},
+		{10, PreCheckMaxBytes(20), PostCheckMaxGas(1), 10},
+		{10, PreCheckMaxBytes(20), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, abciResponses(len(emptyTxArr), abci.CodeTypeOK), tt.preFilter, tt.postFilter)
@@ -414,13 +413,6 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
 }
 
-// Size of the amino encoded TxMessage is the length of the
-// encoded byte array, plus 1 for the struct field, plus 4
-// for the amino prefix.
-func txMessageSize(tx types.Tx) int {
-	return amino.ByteSliceSize(tx) + 1 + 4
-}
-
 func TestMempoolMaxMsgSize(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -458,18 +450,18 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 
 		tx := tmrand.Bytes(testCase.len)
 		err := mempl.CheckTx(tx, nil, TxInfo{})
-		msg := &TxMessage{tx}
-		encoded := cdc.MustMarshalBinaryBare(msg)
-		require.Equal(t, len(encoded), txMessageSize(tx), caseString)
+		bv := gogotypes.BytesValue{Value: tx}
+		bz, err2 := bv.Marshal()
+		require.NoError(t, err2)
+		require.Equal(t, len(bz), proto.Size(&bv), caseString)
 		if !testCase.err {
-			require.True(t, len(encoded) <= maxMsgSize, caseString)
+			require.True(t, len(bz) <= maxMsgSize, caseString)
 			require.NoError(t, err, caseString)
 		} else {
-			require.True(t, len(encoded) > maxMsgSize, caseString)
+			require.True(t, len(bz) > maxMsgSize, caseString)
 			require.Equal(t, err, ErrTxTooLarge{maxTxSize, testCase.len}, caseString)
 		}
 	}
-
 }
 
 func TestMempoolTxsBytes(t *testing.T) {

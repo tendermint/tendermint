@@ -234,7 +234,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return err
 	}
 
-	// The size of the corresponding amino-encoded TxMessage
+	// The size of the corresponding TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
 	if txSize > mem.config.MaxTxBytes {
@@ -518,11 +518,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
-		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
-		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
+		if maxBytes > -1 && totalBytes+int64(len(memTx.tx)) > maxBytes {
 			return txs
 		}
-		totalBytes += int64(len(memTx.tx)) + aminoOverhead
+		totalBytes += int64(len(memTx.tx))
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which
