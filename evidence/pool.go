@@ -370,11 +370,14 @@ func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
 	if err != nil {
 		return err
 	}
+
 	evBytes, err := proto.Marshal(evi)
 	if err != nil {
 		return fmt.Errorf("unable to marshal evidence: %w", err)
 	}
+
 	key := keyPending(evidence)
+
 	return evpool.evidenceStore.Set(key, evBytes)
 }
 
@@ -454,6 +457,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 			if len(blockEvidenceMap) != 0 {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
+
 			return
 		}
 		evpool.removePendingEvidence(ev)
