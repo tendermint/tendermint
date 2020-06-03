@@ -926,24 +926,6 @@ func (c *Client) backwards(
 	return nil
 }
 
-type errNoRespFromWitness struct {
-	Reason       error
-	WitnessIndex int
-}
-
-func (e errNoRespFromWitness) Error() string {
-	return fmt.Sprintf("failed to get a header from witness: %v", e.Reason)
-}
-
-type errInvalidHeader struct {
-	Reason       error
-	WitnessIndex int
-}
-
-func (e errInvalidHeader) Error() string {
-	return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
-}
-
 // compare header with all witnesses provided.
 func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	c.providerMutex.Lock()
@@ -978,11 +960,12 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 				c.logger.Error(err.Error(), "witness", e.Witness)
 				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
 				lastErrConfHeaders = e
-			case errNoRespFromWitness:
+			case errBadWitness:
 				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
-			case errInvalidHeader:
-				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+				// if witness sent us invalid header, remove it
+				if e.Code == invalidHeader {
+					witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+				}
 			}
 		}
 
@@ -1010,12 +993,12 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 
 	altH, err := witness.SignedHeader(h.Height)
 	if err != nil {
-		errc <- errNoRespFromWitness{err, witnessIndex}
+		errc <- errBadWitness{err, noResponse, witnessIndex}
 		return
 	}
 
 	if err = altH.ValidateBasic(c.chainID); err != nil {
-		errc <- errInvalidHeader{err, witnessIndex}
+		errc <- errBadWitness{err, invalidHeader, witnessIndex}
 		return
 	}
 
@@ -1023,7 +1006,7 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 		// FIXME: call bisection instead of VerifyCommitTrusting
 		// https://github.com/tendermint/tendermint/issues/4934
 		if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
-			errc <- errInvalidHeader{err, witnessIndex}
+			errc <- errBadWitness{err, invalidHeader, witnessIndex}
 			return
 		}
 
