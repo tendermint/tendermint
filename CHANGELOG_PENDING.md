@@ -38,6 +38,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
     Add `max_num` to consensus evidence parameters (default: 50 items).
   - [mempool] \#4940 Migrate mempool from amino binary encoding to Protobuf
+  - [statesync] \#4943 Migrate statesync reactor from amino binary encoding to Protobuf
 
 ### FEATURES:
 
