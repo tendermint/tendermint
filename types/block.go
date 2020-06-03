@@ -902,7 +902,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
-// It is the basis of the lite client.
+// It is the basis of the light client.
 type SignedHeader struct {
 	*Header `json:"header"`
 
