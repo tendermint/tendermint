@@ -937,47 +937,52 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	defer c.providerMutex.Unlock()
 
 	// 1. Make sure AT LEAST ONE witness returns the same header.
-	headerMatched := false
-	witnessesToRemove := make([]int, 0)
+	var (
+		headerMatched      bool
+		lastErrConfHeaders error
+	)
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		if len(c.witnesses) == 0 {
 			return errNoWitnesses{}
 		}
 
+		// launch one goroutine per witness
+		errc := make(chan error, len(c.witnesses))
 		for i, witness := range c.witnesses {
-			altH, err := witness.SignedHeader(h.Height)
-			if err != nil {
-				c.logger.Error("Failed to get a header from witness", "height", h.Height, "witness", witness)
-				continue
-			}
+			go c.compareNewHeaderWithWitness(errc, h, witness, i)
+		}
 
-			if err = altH.ValidateBasic(c.chainID); err != nil {
-				c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
-				witnessesToRemove = append(witnessesToRemove, i)
-				continue
-			}
+		witnessesToRemove := make([]int, 0)
 
-			if !bytes.Equal(h.Hash(), altH.Hash()) {
-				if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
-					c.logger.Error("Witness sent us incorrect header", "err", err, "witness", witness)
-					witnessesToRemove = append(witnessesToRemove, i)
-					continue
+		// handle errors as they come
+		for i := 0; i < cap(errc); i++ {
+			err := <-errc
+
+			switch e := err.(type) {
+			case nil: // at least one header matched
+				headerMatched = true
+			case ErrConflictingHeaders: // potential fork
+				c.logger.Error(err.Error(), "witness", e.Witness)
+				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
+				lastErrConfHeaders = e
+			case errBadWitness:
+				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
+				// if witness sent us invalid header, remove it
+				if e.Code == invalidHeader {
+					witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				}
-
-				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: altH})
-
-				return ErrConflictingHeaders{H1: h, Primary: c.primary, H2: altH, Witness: witness}
 			}
-
-			headerMatched = true
 		}
 
 		for _, idx := range witnessesToRemove {
 			c.removeWitness(idx)
 		}
-		witnessesToRemove = make([]int, 0)
 
-		if headerMatched {
+		if lastErrConfHeaders != nil {
+			// NOTE: all of the potential forks will be reported, but we only return
+			// the last ErrConflictingHeaders error here.
+			return lastErrConfHeaders
+		} else if headerMatched {
 			return nil
 		}
 
@@ -986,6 +991,34 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 	}
 
 	return errors.New("awaiting response from all witnesses exceeded dropout time")
+}
+
+func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
+	witness provider.Provider, witnessIndex int) {
+
+	altH, err := witness.SignedHeader(h.Height)
+	if err != nil {
+		errc <- errBadWitness{err, noResponse, witnessIndex}
+		return
+	}
+
+	if err = altH.ValidateBasic(c.chainID); err != nil {
+		errc <- errBadWitness{err, invalidHeader, witnessIndex}
+		return
+	}
+
+	if !bytes.Equal(h.Hash(), altH.Hash()) {
+		// FIXME: call bisection instead of VerifyCommitTrusting
+		// https://github.com/tendermint/tendermint/issues/4934
+		if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
+			errc <- errBadWitness{err, invalidHeader, witnessIndex}
+			return
+		}
+
+		errc <- ErrConflictingHeaders{H1: h, Primary: c.primary, H2: altH, Witness: witness}
+	}
+
+	errc <- nil
 }
 
 // NOTE: requires a providerMutex locked.
