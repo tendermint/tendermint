@@ -32,6 +32,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -85,7 +86,7 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 }
 
 func (vs *validatorStub) signVote(
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
 
@@ -109,7 +110,7 @@ func (vs *validatorStub) signVote(
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -118,7 +119,7 @@ func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, head
 }
 
 func signVotes(
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
@@ -212,7 +213,7 @@ func addVotes(to *State, votes ...*types.Vote) {
 
 func signAddVotes(
 	to *State,
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub,
@@ -594,15 +595,15 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int3
 }
 
 func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureVote(voteCh, height, round, types.PrecommitType)
+	ensureVote(voteCh, height, round, tmproto.PrecommitType)
 }
 
 func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureVote(voteCh, height, round, types.PrevoteType)
+	ensureVote(voteCh, height, round, tmproto.PrevoteType)
 }
 
 func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
-	voteType types.SignedMsgType) {
+	voteType tmproto.SignedMsgType) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewVote event")

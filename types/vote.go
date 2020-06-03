@@ -47,14 +47,14 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int32         `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int32         `json:"validator_index"`
-	Signature        []byte        `json:"signature"`
+	Type             tmproto.SignedMsgType `json:"type"`
+	Height           int64                 `json:"height"`
+	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time             `json:"timestamp"`
+	ValidatorAddress Address               `json:"validator_address"`
+	ValidatorIndex   int32                 `json:"validator_index"`
+	Signature        []byte                `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -101,9 +101,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case tmproto.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case tmproto.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")
@@ -138,9 +138,11 @@ func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
 	}
+
 	if vote.Height < 0 {
 		return errors.New("negative Height")
 	}
+
 	if vote.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -181,7 +183,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 
 	return &tmproto.Vote{
-		Type:             tmproto.SignedMsgType(vote.Type),
+		Type:             vote.Type,
 		Height:           vote.Height,
 		Round:            vote.Round,
 		BlockID:          vote.BlockID.ToProto(),
@@ -205,7 +207,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	}
 
 	vote := new(Vote)
-	vote.Type = SignedMsgType(pv.Type)
+	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
 	vote.BlockID = *blockID

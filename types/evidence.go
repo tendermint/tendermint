@@ -1315,7 +1315,7 @@ func (e MockEvidence) String() string {
 func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLockChange {
 	voteVal := NewMockPV()
 	pKey, _ := voteVal.GetPubKey()
-	vote := Vote{Type: PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
+	vote := Vote{Type: tmproto.PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
 		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
 	_ = voteVal.SignVote("mock-chain-id", &vote)
 	return ProofOfLockChange{

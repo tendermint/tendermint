@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 type voteData struct {
@@ -31,7 +32,7 @@ func makeVote(
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             SignedMsgType(step),
+		Type:             tmproto.SignedMsgType(step),
 		Timestamp:        time,
 		BlockID:          blockID,
 	}
@@ -302,8 +303,8 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	voteSet1, valSet, vals := randVoteSet(height, 1, PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, PrecommitType, valSet)
+	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
@@ -394,7 +395,7 @@ func TestProofOfLockChange(t *testing.T) {
 		height  int64 = 37
 	)
 	// 1: valid POLC - nothing should fail
-	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, tmproto.PrecommitType)
 	pubKey, err := privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
@@ -412,7 +413,7 @@ func TestProofOfLockChange(t *testing.T) {
 	polc2 := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badPOLCs = append(badPOLCs, polc2)
 	// 3: one vote was from a different round
-	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, tmproto.PrecommitType)
 	pubKey, err = privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
@@ -488,8 +489,8 @@ func TestEvidenceProto(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	voteSet1, valSet, vals := randVoteSet(height, 1, PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, PrecommitType, valSet)
+	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
