@@ -1134,9 +1134,9 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 		c.providerMutex.Unlock()
 		if providerErr == nil {
 			err := c.validateValidatorSet(vals)
-			if err == nil {
+			if err != nil {
 				replaceErr := c.replacePrimaryProvider()
-				if err != nil {
+				if replaceErr != nil {
 					return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
 				}
 				// replace primary and request signed header again
