@@ -40,6 +40,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     Add `max_num` to consensus evidence parameters (default: 50 items).
   - [mempool] \#4940 Migrate mempool from amino binary encoding to Protobuf
   - [statesync] \#4943 Migrate statesync reactor from amino binary encoding to Protobuf
+  - [rpc/client] \#4947 `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    `UnconfirmedTxs` `limit` param is a pointer
 
 ### FEATURES:
 
@@ -66,3 +68,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [rpc] \#4937 Return an error when `page` pagination param is 0 (@melekes)
