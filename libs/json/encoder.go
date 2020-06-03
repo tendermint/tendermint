@@ -38,6 +38,15 @@ func lookupRegistered(rv reflect.Value) string {
 	return typeNames[rv.Type()]
 }
 
+func lookupRegisteredType(name string) (reflect.Type, error) {
+	for t, n := range typeNames {
+		if n == name {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown interface type %q", name)
+}
+
 func encodeJSON(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {

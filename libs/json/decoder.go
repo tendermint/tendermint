@@ -18,6 +18,14 @@ func decodeJSON(bz []byte, v interface{}) error {
 		return errors.New("must decode into a pointer")
 	}
 	rv = rv.Elem()
+
+	// If this is a registered type, defer to interface decoder. This is necessary since reflect
+	// will return the type of the concrete type for interface variables, but not within structs.
+	// FIXME This needs to handle nil pointers.
+	if lookupRegistered(rv) != "" {
+		return decodeJSONReflectInterface(bz, rv)
+	}
+
 	return decodeJSONReflect(bz, rv)
 }
 
@@ -57,8 +65,6 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 
 	switch rv.Type().Kind() {
 	// Decode complex types
-	//case reflect.Interface:
-	//	err = cdc.decodeReflectJSONInterface(bz, info, rv, fopts)
 
 	case reflect.Slice, reflect.Array:
 		return decodeJSONReflectList(bz, rv)
@@ -68,6 +74,9 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 
 	case reflect.Struct:
 		return decodeJSONReflectStruct(bz, rv)
+
+	case reflect.Interface:
+		return decodeJSONReflectInterface(bz, rv)
 
 	// For 64-bit integers, unwrap expected string and defer to stdlib for integer decoding.
 	case reflect.Int64, reflect.Int, reflect.Uint64, reflect.Uint:
@@ -184,6 +193,47 @@ func decodeJSONReflectStruct(bz []byte, rv reflect.Value) error {
 	return nil
 }
 
+func decodeJSONReflectInterface(bz []byte, rv reflect.Value) error {
+	if !rv.CanAddr() {
+		return errors.New("interface value not addressable")
+	}
+
+	// Decode the interface wrapper.
+	wrapper := interfaceWrapper{}
+	if err := json.Unmarshal(bz, &wrapper); err != nil {
+		return err
+	}
+	if wrapper.Type == "" {
+		return errors.New("interface type cannot be empty")
+	}
+	if len(wrapper.Value) == 0 {
+		return errors.New("interface value cannot be empty")
+	}
+
+	// Dereference-and-construct pointers, to handle nested pointers.
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			rv.Set(reflect.New(rv.Type().Elem()))
+		}
+		rv = rv.Elem()
+	}
+
+	// Fetch the interface type, and construct a concrete struct for the interface.
+	rt, err := lookupRegisteredType(wrapper.Type)
+	if err != nil {
+		return err
+	}
+
+	cptr := reflect.New(rt)
+	crv := cptr.Elem()
+	if err := decodeJSONReflect(wrapper.Value, crv); err != nil {
+		return err
+	}
+	rv.Set(crv)
+
+	return nil
+}
+
 func decodeJSONStdlib(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() && rv.Kind() != reflect.Ptr {
 		return errors.New("value must be addressable or pointer")
@@ -199,4 +249,9 @@ func decodeJSONStdlib(bz []byte, rv reflect.Value) error {
 	}
 	rv.Set(target.Elem())
 	return nil
+}
+
+type interfaceWrapper struct {
+	Type  string          `json:"type"`
+	Value json.RawMessage `json:"value"`
 }
