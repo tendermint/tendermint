@@ -577,11 +577,11 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 	// -------- Votes --------
 	val := NewMockPV()
 	val2 := NewMockPV()
+	val3 := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
-	v2 := makeVote(t, val2, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID2, defaultVoteTime)
+	v2 := makeVote(t, val2, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
 
 	testCases := []struct {
 		msg     string
@@ -591,7 +591,7 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 	}{
 		{"failure, empty key", ProofOfLockChange{Votes: []Vote{*v, *v2}}, true, true},
 		{"failure empty ProofOfLockChange", ProofOfLockChange{}, true, true},
-		{"success", ProofOfLockChange{Votes: []Vote{*v, *v2}, PubKey: val2.PrivKey.PubKey()}, false, false},
+		{"success", ProofOfLockChange{Votes: []Vote{*v, *v2}, PubKey: val3.PrivKey.PubKey()}, false, false},
 	}
 	for _, tc := range testCases {
 		tc := tc
