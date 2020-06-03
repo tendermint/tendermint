@@ -1136,7 +1136,7 @@ func (e PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
-// Primed finds whether the PotentialAmnesiaEvidence is ready to be upgraded to Amnesia Evidence. It is decided if 
+// Primed finds whether the PotentialAmnesiaEvidence is ready to be upgraded to Amnesia Evidence. It is decided if
 // either the prosecuted node voted in the past or if the allocated trial period has expired without a proof of lock
 // change having been provided.
 func (e PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool {
@@ -1181,8 +1181,8 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 	}
 }
 
-// EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time and the 
-// node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
+// EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time
+// and the node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
 func EmptyPOLC() ProofOfLockChange {
 	return ProofOfLockChange{
 		nil,
@@ -1217,11 +1217,12 @@ func (e ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
 
-
-// ValidateVotes checks the polc against the validator set of that height. The function makes sure that the polc contains
-// a majority of votes and that each
+// ValidateVotes checks the polc against the validator set of that height. The function makes sure that the polc
+// contains a majority of votes and that each
 func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) error {
-	if e.IsAbsent() { return errors.New("polc is empty") }
+	if e.IsAbsent() {
+		return errors.New("polc is empty")
+	}
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := valSet.TotalVotingPower() * 2 / 3
 	for _, vote := range e.Votes {

@@ -530,27 +530,10 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	state, stateDB, vals := makeState(4, 4)
 	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
 	addr, val := state.Validators.GetByIndex(0)
-	h := &types.Header{
-		Version:            version.Consensus{Block: 1, App: 2},
-		ChainID:            chainID,
-		Height:             3,
-		Time:               defaultTestTime,
-		LastBlockID:        blockID,
-		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
-		DataHash:           tmhash.Sum([]byte("data_hash")),
-		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
-		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
-		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
-		AppHash:            tmhash.Sum([]byte("app_hash")),
-		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
-		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
 	vote := makeVote(3, 1, 0, addr, blockID)
 	err := vals[val.Address.String()].SignVote(chainID, vote)
 	require.NoError(t, err)
 	ev := types.PhantomValidatorEvidence{
-		Header:                      h,
 		Vote:                        vote,
 		LastHeightValidatorWasInSet: 1,
 	}
@@ -567,7 +550,6 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	err = privVal.SignVote(chainID, vote2)
 	require.NoError(t, err)
 	ev = types.PhantomValidatorEvidence{
-		Header:                      h,
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 1,
 	}
@@ -579,7 +561,6 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	}
 
 	ev = types.PhantomValidatorEvidence{
-		Header:                      h,
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
 	}
@@ -602,7 +583,6 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 
 	stateDB.Set(valKey, valInfo.Bytes())
 	ev = types.PhantomValidatorEvidence{
-		Header:                      h,
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
 	}

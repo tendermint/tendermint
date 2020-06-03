@@ -19,6 +19,8 @@ type voteData struct {
 	valid bool
 }
 
+var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func TestEvidence(t *testing.T) {
 	val := NewMockPV()
 	val2 := NewMockPV()
@@ -447,10 +449,10 @@ func TestAmnesiaEvidence(t *testing.T) {
 		val       = privValidators[7]
 		pubKey, _ = val.GetPubKey()
 		blockID2  = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-		vote1     = makeVoteWithTimestamp(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
-		vote2     = makeVoteWithTimestamp(t, val, chainID, 7, height, 1, 2, blockID,
+		vote1     = makeVote(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
+		vote2     = makeVote(t, val, chainID, 7, height, 1, 2, blockID,
 			time.Now().Add(time.Second))
-		vote3 = makeVoteWithTimestamp(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
+		vote3 = makeVote(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
 		polc  = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	)
 
@@ -525,7 +527,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 
 }
 
-func makeVoteWithTimestamp(
+func makeVote(
 	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
 	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
@@ -544,11 +546,6 @@ func makeVoteWithTimestamp(
 		panic(err)
 	}
 	return v
-}
-
-func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int,
-	blockID BlockID) *Vote {
-	return makeVoteWithTimestamp(t, val, chainID, valIndex, height, round, step, blockID, time.Now())
 }
 
 func makeHeaderRandom() *Header {
