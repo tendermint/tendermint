@@ -216,14 +216,18 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		{"sender = 'addr1'", []*abci.TxResult{txResult2}},
 	}
 
-	// ctx := context.Background()
+	ctx := context.Background()
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			// results, err := indexer.Search(ctx, query.MustParse(tc.q))
+			results, err := indexer.Search(ctx, query.MustParse(tc.q))
 			require.NoError(t, err)
-			// require.True(t, proto.Equal(results, tc.results))
+			for _, txr := range results {
+				for _, tr := range tc.results {
+					assert.True(t, proto.Equal(tr, txr))
+				}
+			}
 		})
 	}
 }
