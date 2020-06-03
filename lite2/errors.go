@@ -63,3 +63,29 @@ type errNoWitnesses struct{}
 func (e errNoWitnesses) Error() string {
 	return "no witnesses connected. please reset light client"
 }
+
+type badWitnessCode int
+
+const (
+	noResponse badWitnessCode = iota + 1
+	invalidHeader
+)
+
+// errBadWitness is returned when the witness either does not respond or
+// responds with an invalid header.
+type errBadWitness struct {
+	Reason       error
+	Code         badWitnessCode
+	WitnessIndex int
+}
+
+func (e errBadWitness) Error() string {
+	switch e.Code {
+	case noResponse:
+		return fmt.Sprintf("failed to get a header from witness: %v", e.Reason)
+	case invalidHeader:
+		return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
+	default:
+		return fmt.Sprintf("unknown code: %d", e.Code)
+	}
+}

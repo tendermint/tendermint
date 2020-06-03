@@ -10,19 +10,19 @@ import (
 	schnorrkel "github.com/ChainSafe/go-schnorrkel"
 )
 
-// PrivKeySr25519Size is the number of bytes in an Sr25519 private key.
-const PrivKeySr25519Size = 32
+// PrivKeySize is the number of bytes in an Sr25519 private key.
+const PrivKeySize = 32
 
-// PrivKeySr25519 implements crypto.PrivKey.
-type PrivKeySr25519 [PrivKeySr25519Size]byte
+// PrivKey implements crypto.PrivKey.
+type PrivKey [PrivKeySize]byte
 
 // Bytes marshals the privkey using amino encoding.
-func (privKey PrivKeySr25519) Bytes() []byte {
+func (privKey PrivKey) Bytes() []byte {
 	return cdc.MustMarshalBinaryBare(privKey)
 }
 
 // Sign produces a signature on the provided message.
-func (privKey PrivKeySr25519) Sign(msg []byte) ([]byte, error) {
+func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
 	if err != nil {
 		return []byte{}, err
@@ -41,7 +41,7 @@ func (privKey PrivKeySr25519) Sign(msg []byte) ([]byte, error) {
 }
 
 // PubKey gets the corresponding public key from the private key.
-func (privKey PrivKeySr25519) PubKey() crypto.PubKey {
+func (privKey PrivKey) PubKey() crypto.PubKey {
 	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid private key: %v", err))
@@ -53,13 +53,13 @@ func (privKey PrivKeySr25519) PubKey() crypto.PubKey {
 		panic(fmt.Sprintf("Could not generate public key: %v", err))
 	}
 
-	return PubKeySr25519(pubkey.Encode())
+	return PubKey(pubkey.Encode())
 }
 
 // Equals - you probably don't need to use this.
 // Runs in constant time based on length of the keys.
-func (privKey PrivKeySr25519) Equals(other crypto.PrivKey) bool {
-	if otherEd, ok := other.(PrivKeySr25519); ok {
+func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
+	if otherEd, ok := other.(PrivKey); ok {
 		return subtle.ConstantTimeCompare(privKey[:], otherEd[:]) == 1
 	}
 	return false
@@ -68,12 +68,12 @@ func (privKey PrivKeySr25519) Equals(other crypto.PrivKey) bool {
 // GenPrivKey generates a new sr25519 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
-func GenPrivKey() PrivKeySr25519 {
+func GenPrivKey() PrivKey {
 	return genPrivKey(crypto.CReader())
 }
 
 // genPrivKey generates a new sr25519 private key using the provided reader.
-func genPrivKey(rand io.Reader) PrivKeySr25519 {
+func genPrivKey(rand io.Reader) PrivKey {
 	var seed [64]byte
 
 	out := make([]byte, 64)
@@ -91,9 +91,9 @@ func genPrivKey(rand io.Reader) PrivKeySr25519 {
 // that 32 byte output to create the private key.
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-func GenPrivKeyFromSecret(secret []byte) PrivKeySr25519 {
+func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-	var bz [PrivKeySr25519Size]byte
+	var bz [PrivKeySize]byte
 	copy(bz[:], seed)
 	privKey, _ := schnorrkel.NewMiniSecretKeyFromRaw(bz)
 	return privKey.ExpandEd25519().Encode()

@@ -68,13 +68,14 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
 
 		// info API
-		"status":     rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
-		"blockchain": rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":    rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":      rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"commit":     rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":         rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"validators": rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height"),
+		"status":        rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
+		"blockchain":    rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
+		"genesis":       rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
+		"block":         rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"block_by_hash": rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
+		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
+		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"validators":    rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height"),
 
 		// broadcast API
 		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
@@ -112,6 +113,12 @@ func makeGenesisFunc(c rpcclient.Client) func(ctx *rpctypes.Context) (*ctypes.Re
 func makeBlockFunc(c rpcclient.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 		return c.Block(height)
+	}
+}
+
+func makeBlockByHashFunc(c rpcclient.Client) func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
+	return func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
+		return c.BlockByHash(hash)
 	}
 }
 
