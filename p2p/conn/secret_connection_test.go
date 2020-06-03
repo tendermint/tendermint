@@ -362,7 +362,7 @@ func TestNonEd25519Pubkey(t *testing.T) {
 	assert.NotPanics(t, func() {
 		_, err := MakeSecretConnection(fooConn, fooPrvKey)
 		if assert.Error(t, err) {
-			assert.Equal(t, "expected ed25519 pubkey, got secp256k1.PubKeySecp256k1", err.Error())
+			assert.Equal(t, "expected ed25519 pubkey, got secp256k1.PubKey", err.Error())
 		}
 	})
 }

@@ -28,6 +28,22 @@ func (_m *EvidencePool) AddEvidence(_a0 types.Evidence) error {
 	return r0
 }
 
+// Header provides a mock function with given fields: _a0
+func (_m *EvidencePool) Header(_a0 int64) *types.Header {
+	ret := _m.Called(_a0)
+
+	var r0 *types.Header
+	if rf, ok := ret.Get(0).(func(int64) *types.Header); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Header)
+		}
+	}
+
+	return r0
+}
+
 // IsCommitted provides a mock function with given fields: _a0
 func (_m *EvidencePool) IsCommitted(_a0 types.Evidence) bool {
 	ret := _m.Called(_a0)
