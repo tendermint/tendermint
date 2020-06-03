@@ -26,7 +26,6 @@ const (
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
 	// This means it also excludes the overhead for individual transactions.
-	// To compute individual transactions' overhead use types.ComputeAminoOverhead(tx types.Tx, fieldNum int).
 	//
 	// Uvarint length of MaxBlockSizeBytes: 4 bytes
 	// 2 fields (2 embedded):               2 bytes
@@ -903,7 +902,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
-// It is the basis of the lite client.
+// It is the basis of the light client.
 type SignedHeader struct {
 	*Header `json:"header"`
 

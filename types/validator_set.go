@@ -728,7 +728,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 // old vals to sign the future commit at H, that way we preserve the property
 // that if they weren't being truthful about the validator set at H (block hash
 // -> vals hash) or about the app state (block hash -> app hash) we can slash
-// > 2/3.  Otherwise, the lite client isn't providing the same security
+// > 2/3.  Otherwise, the light client isn't providing the same security
 // guarantees.
 //
 // Even if we added a slashing condition that if you sign a block header with

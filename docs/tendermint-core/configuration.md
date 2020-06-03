@@ -361,7 +361,7 @@ Note after the block H, Tendermint creates something we call a "proof block"
 (only if the application hash changed) H+1. The reason for this is to support
 proofs. If you have a transaction in block H that changes the state to X, the
 new application hash will only be included in block H+1. If after your
-transaction is committed, you want to get a lite-client proof for the new state
+transaction is committed, you want to get a light-client proof for the new state
 (X), you need the new block to be committed in order to do that because the new
 block has the new application hash for the state X. That's why we make a new
 (empty) block if the application hash changes. Otherwise, you won't be able to

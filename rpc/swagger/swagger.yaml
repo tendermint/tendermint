@@ -656,7 +656,7 @@ paths:
           required: false
           schema:
             type: number
-            default: 0
+            default: 1
             example: 1
         - in: query
           name: per_page
@@ -786,9 +786,11 @@ paths:
       parameters:
         - in: query
           name: limit
-          description: Maximum number of unconfirmed transactions to return
+          description: Maximum number of unconfirmed transactions to return (max: 100)
+          required: false
           schema:
             type: number
+            default: 30
             example: 1
       tags:
         - Info

@@ -54,7 +54,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
-func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
+func TxSearch(ctx *rpctypes.Context, query string, prove bool, pagePtr, perPagePtr *int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
 	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
@@ -93,8 +93,8 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 
 	// paginate results
 	totalCount := len(results)
-	perPage = validatePerPage(perPage)
-	page, err = validatePage(page, perPage, totalCount)
+	perPage := validatePerPage(perPagePtr)
+	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
