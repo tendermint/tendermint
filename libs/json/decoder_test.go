@@ -34,11 +34,13 @@ func TestDecode(t *testing.T) {
 		"string noend":       {`"foo`, "foo", true},
 		"string ptr":         {`"foo"`, &str, false},
 		"slice byte":         {`"AQID"`, []byte{1, 2, 3}, false},
+		"slice bytes":        {`["AQID"]`, [][]byte{{1, 2, 3}}, false},
 		"slice int32":        {`[1,2,3]`, []int32{1, 2, 3}, false},
 		"slice int64":        {`["1","2","3"]`, []int64{1, 2, 3}, false},
 		"slice int64 number": {`[1,2,3]`, []int64{1, 2, 3}, true},
 		"slice int64 ptr":    {`["64"]`, []*int64{&i64}, false},
 		"slice int64 empty":  {`[]`, []int64(nil), false},
+		"slice int64 null":   {`null`, []int64(nil), false},
 		"array byte":         {`"AQID"`, [3]byte{1, 2, 3}, false},
 		"array byte large":   {`"AQID"`, [4]byte{1, 2, 3, 4}, true},
 		"array byte small":   {`"AQID"`, [2]byte{1, 2}, true},
@@ -47,6 +49,12 @@ func TestDecode(t *testing.T) {
 		"array int64 number": {`[1,2,3]`, [3]int64{1, 2, 3}, true},
 		"array int64 large":  {`["1","2","3"]`, [4]int64{1, 2, 3, 4}, true},
 		"array int64 small":  {`["1","2","3"]`, [2]int64{1, 2}, true},
+		"map bytes":          {`{"b":"AQID"}`, map[string][]byte{"b": {1, 2, 3}}, false},
+		"map int32":          {`{"a":1,"b":2}`, map[string]int32{"a": 1, "b": 2}, false},
+		"map int64":          {`{"a":"1","b":"2"}`, map[string]int64{"a": 1, "b": 2}, false},
+		"map int64 empty":    {`{}`, map[string]int64{}, false},
+		"map int64 null":     {`null`, map[string]int64(nil), false},
+		"map int key":        {`{}`, map[int]int{}, true},
 	}
 	for name, tc := range testcases {
 		tc := tc

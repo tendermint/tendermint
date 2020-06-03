@@ -82,20 +82,18 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	}*/
 
 	switch rv.Type().Kind() {
+	// Decode complex types
 	//case reflect.Interface:
 	//	err = cdc.decodeReflectJSONInterface(bz, info, rv, fopts)
 
 	case reflect.Slice, reflect.Array:
 		return decodeJSONReflectList(bz, rv)
 
+	case reflect.Map:
+		return decodeJSONReflectMap(bz, rv)
+
 	//case reflect.Struct:
 	//	err = cdc.decodeReflectJSONStruct(bz, info, rv, fopts)
-
-	//case reflect.Map:
-	//	err = cdc.decodeReflectJSONMap(bz, info, rv, fopts)*/
-
-	//----------------------------------------
-	// Signed, Unsigned
 
 	// For 64-bit integers, unwrap expected string and defer to stdlib for integer decoding.
 	case reflect.Int64, reflect.Int, reflect.Uint64, reflect.Uint:
@@ -157,6 +155,32 @@ func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 		rv.Set(reflect.Zero(rv.Type()))
 	}
 
+	return nil
+}
+
+func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
+	if !rv.CanAddr() {
+		return errors.New("value is not addressable")
+	}
+
+	// Decode into a raw JSON map, using string keys.
+	rawMap := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(bz, &rawMap); err != nil {
+		return err
+	}
+	if rv.Type().Key().Kind() != reflect.String {
+		return fmt.Errorf("map keys must be strings, got %v", rv.Type().Key().String())
+	}
+
+	// Recursively decode values.
+	rv.Set(reflect.MakeMapWithSize(rv.Type(), len(rawMap)))
+	for key, bz := range rawMap {
+		value := reflect.New(rv.Type().Elem()).Elem()
+		if err := decodeJSONReflect(bz, value); err != nil {
+			return err
+		}
+		rv.SetMapIndex(reflect.ValueOf(key), value)
+	}
 	return nil
 }
 
