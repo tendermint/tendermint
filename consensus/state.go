@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -276,23 +277,63 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 	return cs.blockStore.LoadBlockCommit(height)
 }
 
-// OnStart implements service.Service.
-// It loads the latest state via the WAL, and starts the timeout and receive routines.
+// OnStart loads the latest state via the WAL, and starts the timeout and
+// receive routines.
 func (cs *State) OnStart() error {
-	if err := cs.evsw.Start(); err != nil {
-		return err
-	}
-
-	// we may set the WAL in testing before calling Start,
-	// so only OpenWAL if its still the nilWAL
+	// We may set the WAL in testing before calling Start, so only OpenWAL if its
+	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
-		walFile := cs.config.WalFile()
-		wal, err := cs.OpenWAL(walFile)
-		if err != nil {
-			cs.Logger.Error("Error loading State wal", "err", err.Error())
+		if err := cs.loadWalFile(); err != nil {
 			return err
 		}
-		cs.wal = wal
+	}
+
+	// We may have lost some votes if the process crashed reload from consensus
+	// log to catchup.
+	if cs.doWALCatchup {
+		repairAttempted := false
+	LOOP:
+		for {
+			err := cs.catchupReplay(cs.Height)
+			switch {
+			case err == nil:
+				break LOOP
+			case !IsDataCorruptionError(err):
+				cs.Logger.Error("Error on catchup replay. Proceeding to start State anyway", "err", err)
+				break LOOP
+			case repairAttempted:
+				return err
+			}
+
+			cs.Logger.Info("WAL file is corrupted. Attempting repair", "err", err)
+
+			// 1) prep work
+			cs.wal.Stop()
+			repairAttempted = true
+
+			// 2) backup original WAL file
+			corruptedFile := fmt.Sprintf("%s.CORRUPTED", cs.config.WalFile())
+			if err := tmos.CopyFile(cs.config.WalFile(), corruptedFile); err != nil {
+				return err
+			}
+			cs.Logger.Info("Backed up WAL file", "src", cs.config.WalFile(), "dst", corruptedFile)
+
+			// 3) try to repair (WAL file will be overwritten!)
+			if err := repairWalFile(corruptedFile, cs.config.WalFile()); err != nil {
+				cs.Logger.Error("Repair failed", "err", err)
+				return err
+			}
+			cs.Logger.Info("Successful repair")
+
+			// reload WAL file
+			if err := cs.loadWalFile(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := cs.evsw.Start(); err != nil {
+		return err
 	}
 
 	// we need the timeoutRoutine for replay so
@@ -302,33 +343,6 @@ func (cs *State) OnStart() error {
 	// to deal with them (by that point, at most one will be valid)
 	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
-	}
-
-	// we may have lost some votes if the process crashed
-	// reload from consensus log to catchup
-	if cs.doWALCatchup {
-		if err := cs.catchupReplay(cs.Height); err != nil {
-			// don't try to recover from data corruption error
-			if IsDataCorruptionError(err) {
-				cs.Logger.Error("Encountered corrupt WAL file", "err", err.Error())
-				cs.Logger.Error("Please repair the WAL file before restarting")
-				fmt.Println(`You can attempt to repair the WAL as follows:
-
-----
-WALFILE=~/.tendermint/data/cs.wal/wal
-cp $WALFILE ${WALFILE}.bak # backup the file
-go run scripts/wal2json/main.go $WALFILE > wal.json # this will panic, but can be ignored
-rm $WALFILE # remove the corrupt file
-go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without corruption
-----`)
-
-				return err
-			}
-
-			cs.Logger.Error("Error on catchup replay. Proceeding to start State anyway", "err", err.Error())
-			// NOTE: if we ever do return an error here,
-			// make sure to stop the timeoutTicker
-		}
 	}
 
 	// now start the receiveRoutine
@@ -352,6 +366,17 @@ func (cs *State) startRoutines(maxSteps int) {
 	go cs.receiveRoutine(maxSteps)
 }
 
+// loadWalFile loads WAL data from file. It overwrites cs.wal.
+func (cs *State) loadWalFile() error {
+	wal, err := cs.OpenWAL(cs.config.WalFile())
+	if err != nil {
+		cs.Logger.Error("Error loading State wal", "err", err)
+		return err
+	}
+	cs.wal = wal
+	return nil
+}
+
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 	cs.evsw.Stop()
@@ -366,15 +391,17 @@ func (cs *State) Wait() {
 	<-cs.done
 }
 
-// OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
+// OpenWAL opens a file to log all consensus messages and timeouts for
+// deterministic accountability.
 func (cs *State) OpenWAL(walFile string) (WAL, error) {
 	wal, err := NewWAL(walFile)
 	if err != nil {
-		cs.Logger.Error("Failed to open WAL for consensus state", "wal", walFile, "err", err)
+		cs.Logger.Error("Failed to open WAL", "file", walFile, "err", err)
 		return nil, err
 	}
 	wal.SetLogger(cs.Logger.With("wal", walFile))
 	if err := wal.Start(); err != nil {
+		cs.Logger.Error("Failed to start WAL", "err", err)
 		return nil, err
 	}
 	return wal, nil
@@ -2033,4 +2060,40 @@ func CompareHRS(h1 int64, r1 int, s1 cstypes.RoundStepType, h2 int64, r2 int, s2
 		return 1
 	}
 	return 0
+}
+
+// repairWalFile decodes messages from src (until the decoder errors) and
+// writes them to dst.
+func repairWalFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Open(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	var (
+		dec = NewWALDecoder(in)
+		enc = NewWALEncoder(out)
+	)
+
+	// best-case repair (until first error is encountered)
+	for {
+		msg, err := dec.Decode()
+		if err != nil {
+			break
+		}
+
+		err = enc.Encode(msg)
+		if err != nil {
+			return fmt.Errorf("failed to encode msg: %w", err)
+		}
+	}
+
+	return nil
 }

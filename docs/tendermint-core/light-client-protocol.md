@@ -8,8 +8,8 @@ Light clients are an important part of the complete blockchain system for most
 applications. Tendermint provides unique speed and security properties for
 light client applications.
 
-See our [lite
-package](https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc).
+See our [light
+package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
 
 ## Overview
 
@@ -33,7 +33,7 @@ proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a9909
 
 ## Where to obtain trusted height & hash?
 
-https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc#TrustOptions
+https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions
 
 One way to obtain semi-trusted hash & height is to query multiple full nodes
 and compare their hashes:
@@ -48,16 +48,16 @@ $ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed
 
 ## HTTP proxy
 
-Tendermint comes with a built-in `tendermint lite` command, which can be used
+Tendermint comes with a built-in `tendermint light` command, which can be used
 to run a light client proxy server, verifying Tendermint rpc. All calls that
 can be tracked back to a block header by a proof will be verified before
 passing them back to the caller. Other than that, it will present the same
 interface as a full Tendermint node.
 
 ```sh
-$ tendermint lite supernova -p tcp://233.123.0.140:26657 \
+$ tendermint light supernova -p tcp://233.123.0.140:26657 \
   -w tcp://179.63.29.15:26657,tcp://144.165.223.135:26657 \
   --height=10 --hash=37E9A6DD3FA25E83B22C18835401E8E56088D0D7ABC6FD99FCDC920DD76C1C57
 ```
 
-For additional options, run `tendermint lite --help`.
+For additional options, run `tendermint light --help`.

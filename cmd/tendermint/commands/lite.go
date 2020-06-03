@@ -14,17 +14,17 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	lite "github.com/tendermint/tendermint/lite2"
-	lproxy "github.com/tendermint/tendermint/lite2/proxy"
-	lrpc "github.com/tendermint/tendermint/lite2/rpc"
-	dbs "github.com/tendermint/tendermint/lite2/store/db"
+	"github.com/tendermint/tendermint/light"
+	lproxy "github.com/tendermint/tendermint/light/proxy"
+	lrpc "github.com/tendermint/tendermint/light/rpc"
+	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
-// LiteCmd represents the base command when called without any subcommands
-var LiteCmd = &cobra.Command{
-	Use:   "lite [chainID]",
+// LightCmd represents the base command when called without any subcommands
+var LightCmd = &cobra.Command{
+	Use:   "light [chainID]",
 	Short: "Run a light client proxy server, verifying Tendermint rpc",
 	Long: `Run a light client proxy server, verifying Tendermint rpc.
 
@@ -36,16 +36,16 @@ Example:
 
 start a fresh instance:
 
-lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
+light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD
 
 continue from latest state:
 
-lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
+light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 `,
 	RunE: runProxy,
 	Args: cobra.ExactArgs(1),
-	Example: `lite cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
+	Example: `light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD`,
 }
 
@@ -65,23 +65,23 @@ var (
 )
 
 func init() {
-	LiteCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
+	LightCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
 		"Serve the proxy on the given address")
-	LiteCmd.Flags().StringVarP(&primaryAddr, "primary", "p", "",
+	LightCmd.Flags().StringVarP(&primaryAddr, "primary", "p", "",
 		"Connect to a Tendermint node at this address")
-	LiteCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
+	LightCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
 		"Tendermint nodes to cross-check the primary node, comma-separated")
-	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
-	LiteCmd.Flags().IntVar(
+	LightCmd.Flags().StringVar(&home, "home-dir", ".tendermint-light", "Specify the home directory")
+	LightCmd.Flags().IntVar(
 		&maxOpenConnections,
 		"max-open-connections",
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
-	LiteCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
+	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
 		"Trusting period. Should be significantly less than the unbonding period")
-	LiteCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
-	LiteCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
-	LiteCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
+	LightCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
+	LightCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
+	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -100,16 +100,16 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	witnessesAddrs := strings.Split(witnessAddrsJoined, ",")
 
-	db, err := dbm.NewGoLevelDB("lite-client-db", home)
+	db, err := dbm.NewGoLevelDB("light-client-db", home)
 	if err != nil {
 		return fmt.Errorf("can't create a db: %w", err)
 	}
 
-	var c *lite.Client
+	var c *light.Client
 	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		c, err = lite.NewHTTPClient(
+		c, err = light.NewHTTPClient(
 			chainID,
-			lite.TrustOptions{
+			light.TrustOptions{
 				Period: trustingPeriod,
 				Height: trustedHeight,
 				Hash:   trustedHash,
@@ -117,16 +117,16 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			primaryAddr,
 			witnessesAddrs,
 			dbs.New(db, chainID),
-			lite.Logger(logger),
+			light.Logger(logger),
 		)
 	} else { // continue from latest state
-		c, err = lite.NewHTTPClientFromTrustedStore(
+		c, err = light.NewHTTPClientFromTrustedStore(
 			chainID,
 			trustingPeriod,
 			primaryAddr,
 			witnessesAddrs,
 			dbs.New(db, chainID),
-			lite.Logger(logger),
+			light.Logger(logger),
 		)
 	}
 	if err != nil {
