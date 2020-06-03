@@ -310,9 +310,12 @@ func (evpool *Pool) RetrievePOLC(height int64, round int) (polc types.ProofOfLoc
 	if err != nil {
 		return polc, err
 	}
-	polc, err = types.ProofOfLockChangeFromProto(&pbpolc)
+	plc, err := types.ProofOfLockChangeFromProto(&pbpolc)
+	if err != nil {
+		return polc, err
+	}
 
-	return polc, err
+	return *plc, err
 }
 
 // EvidenceFront goes to the first evidence in the clist
@@ -490,6 +493,10 @@ func (evpool *Pool) pruneExpiredPOLC() {
 			continue
 		}
 		proof, err := types.ProofOfLockChangeFromProto(&pbproof)
+		if err != nil {
+			evpool.logger.Error("Unable to transition POLC from protobuf", "err", err)
+			continue
+		}
 		if !evpool.IsExpired(proof.Height()-1, proof.Time()) {
 			return
 		}

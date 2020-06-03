@@ -1248,13 +1248,17 @@ func (e ProofOfLockChange) String() string {
 		e.Votes[0].Round)
 }
 
-func (e ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
-
+func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
+	if e == nil {
+		return nil, errors.New("nil proof of lock change")
+	}
 	plc := new(tmproto.ProofOfLockChange)
-	pbvotes := make([]*tmproto.Vote, len(e.Votes))
+	vpb := make([]*tmproto.Vote, len(e.Votes))
 	for i, v := range e.Votes {
-		vpb := v.ToProto()
-		pbvotes[i] = vpb
+		pb := v.ToProto()
+		if pb != nil {
+			vpb[i] = pb
+		}
 	}
 
 	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
@@ -1262,40 +1266,39 @@ func (e ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 		return nil, err
 	}
 
-	plc.Votes = pbvotes
 	plc.PubKey = &pk
+	plc.Votes = vpb
 
 	return plc, nil
 }
 
-func ProofOfLockChangeFromProto(plc *tmproto.ProofOfLockChange) (ProofOfLockChange, error) {
-	if plc == nil {
-		return ProofOfLockChange{}, errors.New("nil proof of lock change")
+func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChange, error) {
+	if pb == nil {
+		return nil, errors.New("nil proof of lock change")
 	}
 
-	e := new(ProofOfLockChange)
-	votes := make([]Vote, len(plc.Votes))
-	for i, v := range plc.Votes {
-		vpb, err := VoteFromProto(v)
+	plc := new(ProofOfLockChange)
+	vpb := make([]Vote, len(pb.Votes))
+	for i, v := range pb.Votes {
+		vi, err := VoteFromProto(v)
 		if err != nil {
-			return ProofOfLockChange{}, err
+			return nil, err
 		}
-		votes[i] = *vpb
+		vpb[i] = *vi
 	}
 
-	if plc.PubKey == nil {
-		return ProofOfLockChange{}, errors.New("proofoflockchange: pubkey cannot be empty")
+	if pb.PubKey == nil {
+		return nil, errors.New("proofOfLockChange: nil PubKey")
 	}
-
-	pk, err := cryptoenc.PubKeyFromProto(*plc.PubKey)
+	pk, err := cryptoenc.PubKeyFromProto(*pb.PubKey)
 	if err != nil {
-		return ProofOfLockChange{}, err
+		return nil, err
 	}
 
-	e.Votes = votes
-	e.PubKey = pk
+	plc.PubKey = pk
+	plc.Votes = vpb
 
-	return *e, e.ValidateBasic()
+	return plc, nil
 }
 
 //-----------------------------------------------------------------

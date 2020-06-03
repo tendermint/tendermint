@@ -605,7 +605,7 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 		c, err := ProofOfLockChangeFromProto(pbpolc)
 		if !tc.expErr2 {
 			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.polc, c, tc.msg)
+			require.Equal(t, &tc.polc, c, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
