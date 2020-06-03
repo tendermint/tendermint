@@ -72,7 +72,7 @@ type TestHarnessConfig struct {
 	ConnDeadline   time.Duration
 	AcceptRetries  int
 
-	SecretConnKey ed25519.PrivKeyEd25519
+	SecretConnKey ed25519.PrivKey
 
 	ExitWhenComplete bool // Whether or not to call os.Exit when the harness has completed.
 }

@@ -11,6 +11,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -115,7 +116,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
-	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+	peer.Send(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 }
 
 // RemovePeer removes a peer from the pool.
@@ -411,7 +412,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
+	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
 		Height: snapshot.Height,
 		Format: snapshot.Format,
 		Index:  chunk,
