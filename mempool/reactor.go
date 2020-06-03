@@ -3,12 +3,10 @@ package mempool
 import (
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
-
+	gogotypes "github.com/gogo/protobuf/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -19,7 +17,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	aminoOverheadForTxMessage = 8
+	protoOverheadForTxMessage = 4
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 
@@ -172,20 +170,15 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
-	switch msg := msg.(type) {
-	case *TxMessage:
-		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
-		if src != nil {
-			txInfo.SenderP2PID = src.ID()
-		}
-		err := memR.mempool.CheckTx(msg.Tx, nil, txInfo)
-		if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
-		}
-		// broadcasting happens from go routines per peer
-	default:
-		memR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
+	txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+	if src != nil {
+		txInfo.SenderP2PID = src.ID()
 	}
+	err = memR.mempool.CheckTx(msg.Tx, nil, txInfo)
+	if err != nil {
+		memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
+	}
+	// broadcasting happens from go routines per peer
 }
 
 // PeerState describes the state of a peer.
@@ -238,9 +231,12 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// ensure peer hasn't already sent us this tx
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			// send memTx
-			msg := &TxMessage{Tx: memTx.tx}
-			success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
+			msg := gogotypes.BytesValue{Value: []byte(memTx.tx)}
+			bz, err := msg.Marshal()
+			if err != nil {
+				panic(err)
+			}
+			success := peer.Send(MempoolChannel, bz)
 			if !success {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
@@ -262,17 +258,16 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-// Message is a message sent or received by the Reactor.
-type Message interface{}
-
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&TxMessage{}, "tendermint/mempool/TxMessage", nil)
-}
-
-func (memR *Reactor) decodeMsg(bz []byte) (msg Message, err error) {
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	return
+func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
+	msg := gogotypes.BytesValue{}
+	err := msg.Unmarshal(bz)
+	if err != nil {
+		return TxMessage{}, err
+	}
+	txMsg := TxMessage{
+		Tx: types.Tx(msg.Value),
+	}
+	return txMsg, err
 }
 
 //-------------------------------------
@@ -288,7 +283,7 @@ func (m *TxMessage) String() string {
 }
 
 // calcMaxMsgSize returns the max size of TxMessage
-// account for amino overhead of TxMessage
+// account for proto overhead of bytesValue
 func calcMaxMsgSize(maxTxSize int) int {
-	return maxTxSize + aminoOverheadForTxMessage
+	return maxTxSize + protoOverheadForTxMessage
 }

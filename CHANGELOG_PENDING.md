@@ -12,6 +12,16 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [crypto] \#4941 Remove suffixes from all keys.
+    - ed25519: type `PrivKeyEd25519` is now `PrivKey`
+    - ed25519: type `PubKeyEd25519` is now `PubKey`
+    - secp256k1: type`PrivKeySecp256k1` is now `PrivKey`
+    - secp256k1: type`PubKeySecp256k1` is now `PubKey`
+    - sr25519: type `PrivKeySr25519` is now `PrivKey`
+    - sr25519: type `PubKeySr25519` is now `PubKey`
+    - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
+  - [light] \#4946 Rename `lite2` pkg to `light`, the lite cmd has also been renamed to `light`. Remove `lite` implementation.
+  - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
 
 - Apps
 
@@ -29,6 +39,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
   - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
     Add `max_num` to consensus evidence parameters (default: 50 items).
+  - [mempool] \#4940 Migrate mempool from amino binary encoding to Protobuf
+  - [statesync] \#4943 Migrate statesync reactor from amino binary encoding to Protobuf
+  - [rpc/client] \#4947 `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    `UnconfirmedTxs` `limit` param is a pointer
 
 ### FEATURES:
 
@@ -47,6 +61,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 - [evidence] [\#4892](https://github.com/tendermint/tendermint/pull/4892) Remove redundant header from phantom validator evidence (@cmwaters)
 - [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add ValidateBasic to validator and validator set (@cmwaters)
+- [consensus] [\#4578](https://github.com/tendermint/tendermint/issues/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
+  The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
+- [lite2] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
+- [lite2] [\#4929](https://github.com/tendermint/tendermint/pull/4929) compare header w/ witnesses only when doing bisection (@melekes)
 
 ### BUG FIXES:
 
