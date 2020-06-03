@@ -1025,13 +1025,13 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			tc.headers,
 			tc.vals,
 		)
-		c, err := lite.NewClient(
+		c, err := light.NewClient(
 			chainID,
 			trustOptions,
 			badNode,
 			[]provider.Provider{badNode, badNode},
 			dbs.New(dbm.NewMemDB(), chainID),
-			lite.MaxRetryAttempts(1),
+			light.MaxRetryAttempts(1),
 		)
 		require.NoError(t, err)
 
