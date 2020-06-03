@@ -656,7 +656,7 @@ paths:
           required: false
           schema:
             type: number
-            default: 0
+            default: 1
             example: 1
         - in: query
           name: per_page
