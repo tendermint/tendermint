@@ -29,7 +29,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
-	lite "github.com/tendermint/tendermint/lite2"
+	"github.com/tendermint/tendermint/light"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -574,11 +574,11 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	if stateProvider == nil {
 		var err error
 		stateProvider, err = statesync.NewLightClientStateProvider(state.ChainID, state.Version,
-			config.RPCServers, lite.TrustOptions{
+			config.RPCServers, light.TrustOptions{
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,
 				Hash:   config.TrustHashBytes(),
-			}, ssR.Logger.With("module", "lite"))
+			}, ssR.Logger.With("module", "light"))
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
