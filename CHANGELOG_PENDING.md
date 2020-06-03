@@ -21,6 +21,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - sr25519: type `PubKeySr25519` is now `PubKey`
     - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
   - [light] \#4946 Rename `lite2` pkg to `light`, the lite cmd has also been renamed to `light`. Remove `lite` implementation.
+  - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
 
 - Apps
 
@@ -68,4 +69,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
-- [rpc] \#4937 Return an error when `page` pagination param is 0 (@melekes)
