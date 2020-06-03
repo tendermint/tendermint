@@ -92,8 +92,8 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	case reflect.Map:
 		return decodeJSONReflectMap(bz, rv)
 
-	//case reflect.Struct:
-	//	err = cdc.decodeReflectJSONStruct(bz, info, rv, fopts)
+	case reflect.Struct:
+		return decodeJSONReflectStruct(bz, rv)
 
 	// For 64-bit integers, unwrap expected string and defer to stdlib for integer decoding.
 	case reflect.Int64, reflect.Int, reflect.Uint64, reflect.Uint:
@@ -111,7 +111,7 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 
 func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
-		return errors.New("value is not addressable")
+		return errors.New("list value is not addressable")
 	}
 
 	switch rv.Type().Elem().Kind() {
@@ -160,7 +160,7 @@ func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 
 func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
-		return errors.New("value is not addressable")
+		return errors.New("map value is not addressable")
 	}
 
 	// Decode into a raw JSON map, using string keys.
@@ -181,6 +181,32 @@ func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
 		}
 		rv.SetMapIndex(reflect.ValueOf(key), value)
 	}
+	return nil
+}
+
+func decodeJSONReflectStruct(bz []byte, rv reflect.Value) error {
+	if !rv.CanAddr() {
+		return errors.New("struct value is not addressable")
+	}
+	sInfo := makeStructInfo(rv.Type())
+
+	// Decode raw JSON values into a string-keyed map.
+	rawMap := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(bz, &rawMap); err != nil {
+		return err
+	}
+	for i, fInfo := range sInfo.fields {
+		frv := rv.Field(i)
+		bz := rawMap[fInfo.jsonName]
+		if len(bz) > 0 {
+			if err := decodeJSONReflect(bz, frv); err != nil {
+				return err
+			}
+		} else if !fInfo.omitEmpty {
+			frv.Set(reflect.Zero(frv.Type()))
+		}
+	}
+
 	return nil
 }
 

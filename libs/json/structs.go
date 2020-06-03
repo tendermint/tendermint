@@ -13,7 +13,7 @@ type structInfo struct {
 
 // fieldInfo contains JSON info for a struct field.
 type fieldInfo struct {
-	name      string
+	jsonName  string
 	omitEmpty bool
 }
 
@@ -27,13 +27,13 @@ func makeStructInfo(rt reflect.Type) *structInfo {
 	for i := 0; i < cap(fields); i++ {
 		frt := rt.Field(i)
 		fInfo := &fieldInfo{
-			name:      frt.Name,
+			jsonName:  frt.Name,
 			omitEmpty: false,
 		}
 		if o := frt.Tag.Get("json"); o != "" {
 			opts := strings.Split(o, ",")
 			if opts[0] != "" {
-				fInfo.name = opts[0]
+				fInfo.jsonName = opts[0]
 			}
 			for _, o := range opts[1:] {
 				if o == "omitempty" {

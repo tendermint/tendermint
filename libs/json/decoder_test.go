@@ -55,6 +55,16 @@ func TestDecode(t *testing.T) {
 		"map int64 empty":    {`{}`, map[string]int64{}, false},
 		"map int64 null":     {`null`, map[string]int64(nil), false},
 		"map int key":        {`{}`, map[int]int{}, true},
+		"struct": {
+			`{"name":"foo","Value":"42","Child":{"name":"bar","Value":"7"}}`,
+			Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
+			false,
+		},
+		"struct ptr": {
+			`{"name":"foo","Value":"42","Child":{"name":"bar","Value":"7"}}`,
+			&Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
+			false,
+		},
 	}
 	for name, tc := range testcases {
 		tc := tc

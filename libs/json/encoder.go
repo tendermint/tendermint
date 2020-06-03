@@ -186,7 +186,7 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 				return err
 			}
 		}
-		if err := encodeJSONStdlib(w, fInfo.name); err != nil {
+		if err := encodeJSONStdlib(w, fInfo.jsonName); err != nil {
 			return err
 		}
 		if err := writeStr(w, `:`); err != nil {
