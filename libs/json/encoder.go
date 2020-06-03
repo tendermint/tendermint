@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -171,29 +170,14 @@ func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
 }
 
 func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
+	sInfo := makeStructInfo(rv.Type())
 	if err := writeStr(w, `{`); err != nil {
 		return err
 	}
-	length := rv.NumField()
 	writeComma := false
-	for i := 0; i < length; i++ {
+	for i, fInfo := range sInfo.fields {
 		frv := rv.Field(i)
-		// FIXME This needs to be cached
-		ftype := rv.Type().Field(i)
-		jsonOmitEmpty := false
-		jsonName := ftype.Name
-		if o := ftype.Tag.Get("json"); o != "" {
-			opts := strings.Split(o, ",")
-			if opts[0] != "" {
-				jsonName = opts[0]
-			}
-			for _, o := range opts[1:] {
-				if o == "omitempty" {
-					jsonOmitEmpty = true
-				}
-			}
-		}
-		if jsonOmitEmpty && frv.IsZero() && jsonOmitEmpty {
+		if fInfo.omitEmpty && frv.IsZero() {
 			continue
 		}
 
@@ -202,7 +186,7 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 				return err
 			}
 		}
-		if err := encodeJSONStdlib(w, jsonName); err != nil {
+		if err := encodeJSONStdlib(w, fInfo.name); err != nil {
 			return err
 		}
 		if err := writeStr(w, `:`); err != nil {
