@@ -1,16 +1,11 @@
 package evidence
 
 import (
-	"fmt"
-	"reflect"
 	"time"
-
-	"github.com/gogo/protobuf/proto"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	ep "github.com/tendermint/tendermint/proto/evidence"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -65,39 +60,28 @@ func (evR *Reactor) AddPeer(peer p2p.Peer) {
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
+	evis, err := decodeMsg(msgBytes)
 	if err != nil {
-		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err, "bytes", msgBytes)
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
 
-	if err = msg.ValidateBasic(); err != nil {
-		evR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		evR.Switch.StopPeerForError(src, err)
-		return
-	}
+	evR.Logger.Debug("Receive", "src", src, "chId", chID)
 
-	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
-	switch msg := msg.(type) {
-	case *ListMessage:
-		for _, ev := range msg.Evidence {
-			err := evR.evpool.AddEvidence(ev)
-			switch err.(type) {
-			case ErrInvalidEvidence:
-				evR.Logger.Error("Evidence is not valid", "evidence", msg.Evidence, "err", err)
-				// punish peer
-				evR.Switch.StopPeerForError(src, err)
-				return
-			case nil:
-			default:
-				evR.Logger.Error("Evidence has not been added", "evidence", msg.Evidence, "err", err)
-				return
-			}
+	for _, ev := range evis {
+		err := evR.evpool.AddEvidence(ev)
+		switch err.(type) {
+		case ErrInvalidEvidence:
+			evR.Logger.Error("Evidence is not valid", "evidence", evis, "err", err)
+			// punish peer
+			evR.Switch.StopPeerForError(src, err)
+			return
+		case nil:
+		default:
+			evR.Logger.Error("Evidence has not been added", "evidence", evis, "err", err)
+			return
 		}
-	default:
-		evR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
@@ -132,16 +116,13 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		}
 
 		ev := next.Value.(types.Evidence)
-		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
-		if msg != nil {
-			pm, err := MsgToProto(msg)
+		evis, retry := evR.checkSendEvidenceMessage(peer, ev)
+		if len(evis) >= 1 {
+			msgBytes, err := encodeMsg(evis)
 			if err != nil {
 				panic(err)
 			}
-			msgBytes, err := proto.Marshal(pm)
-			if err != nil {
-				panic(err)
-			}
+
 			success := peer.Send(EvidenceChannel, msgBytes)
 			retry = !success
 		}
@@ -173,7 +154,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 func (evR Reactor) checkSendEvidenceMessage(
 	peer p2p.Peer,
 	ev types.Evidence,
-) (msg *ListMessage, retry bool) {
+) (evis []types.Evidence, retry bool) {
 
 	// make sure the peer is up to date
 	evHeight := ev.Height()
@@ -221,48 +202,10 @@ func (evR Reactor) checkSendEvidenceMessage(
 	}
 
 	// send evidence
-	msg = &ListMessage{[]types.Evidence{ev}}
-	return msg, false
+	return []types.Evidence{ev}, false
 }
 
 // PeerState describes the state of a peer.
 type PeerState interface {
 	GetHeight() int64
-}
-
-//-----------------------------------------------------------------------------
-// Messages
-
-// Message is a message sent or received by the Reactor.
-type Message interface {
-	ValidateBasic() error
-}
-
-func decodeMsg(bz []byte) (msg Message, err error) {
-	lm := ep.List{}
-	proto.Unmarshal(bz, &lm)
-	msg, err = MsgFromProto(lm)
-	return
-}
-
-//-------------------------------------
-
-// ListMessage contains a list of evidence.
-type ListMessage struct {
-	Evidence []types.Evidence
-}
-
-// ValidateBasic performs basic validation.
-func (m *ListMessage) ValidateBasic() error {
-	for i, ev := range m.Evidence {
-		if err := ev.ValidateBasic(); err != nil {
-			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
-		}
-	}
-	return nil
-}
-
-// String returns a string representation of the ListMessage.
-func (m *ListMessage) String() string {
-	return fmt.Sprintf("[ListMessage %v]", m.Evidence)
 }

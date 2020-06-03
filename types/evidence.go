@@ -279,7 +279,7 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 			InvalidHeaderField: evi.LunaticValidatorEvidence.InvalidHeaderField,
 		}
 
-		return &tp, tp.ValidateBasic()
+		return tp, tp.ValidateBasic()
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
 		voteA, err := VoteFromProto(evi.PotentialAmnesiaEvidence.GetVoteA())
 		if err != nil {

@@ -1,17 +1,21 @@
 package evidence
 
 import (
+	"fmt"
+
+	"github.com/gogo/protobuf/proto"
+
 	ep "github.com/tendermint/tendermint/proto/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-// MsgToProto takes a listMessage
-// returns the modules proto message and a error
-func MsgToProto(lm *ListMessage) (*ep.List, error) {
-	evi := make([]tmproto.Evidence, len(lm.Evidence))
-	for i := 0; i < len(lm.Evidence); i++ {
-		le := lm.Evidence[i]
+// encodemsg takes a array of evidence
+// returns the byte encoding of the List Message
+func encodeMsg(evis []types.Evidence) ([]byte, error) {
+	evi := make([]tmproto.Evidence, len(evis))
+	for i := 0; i < len(evis); i++ {
+		le := evis[i]
 		ev, err := types.EvidenceToProto(le)
 		if err != nil {
 			return nil, err
@@ -23,28 +27,29 @@ func MsgToProto(lm *ListMessage) (*ep.List, error) {
 		Evidence: evi,
 	}
 
-	return &epl, nil
+	return proto.Marshal(&epl)
 }
 
-// MsgFromProto takes a list of evidences
-// returns the modules message (ListMessage) and a error
-func MsgFromProto(pl ep.List) (*ListMessage, error) {
-	evi := make([]types.Evidence, len(pl.Evidence))
-	for i := 0; i < len(pl.Evidence); i++ {
-		ev, err := types.EvidenceFromProto(&pl.Evidence[i])
+// decodemsg takes an array of bytes
+// returns an array of evidence
+func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
+	lm := ep.List{}
+	proto.Unmarshal(bz, &lm)
+
+	evis = make([]types.Evidence, len(lm.Evidence))
+	for i := 0; i < len(lm.Evidence); i++ {
+		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
 		if err != nil {
 			return nil, err
 		}
-		evi[i] = ev
+		evis[i] = ev
 	}
 
-	lm := ListMessage{
-		Evidence: evi,
+	for i, ev := range evis {
+		if err := ev.ValidateBasic(); err != nil {
+			return nil, fmt.Errorf("invalid evidence (#%d): %v", i, err)
+		}
 	}
 
-	if err := lm.ValidateBasic(); err != nil {
-		return nil, err
-	}
-
-	return &lm, nil
+	return evis, nil
 }
