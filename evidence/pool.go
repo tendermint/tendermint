@@ -181,11 +181,10 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// For lunatic validator evidence, a header needs to be fetched.
 		var header *types.Header
 		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			blockMeta := evpool.blockStore.LoadBlockMeta(ev.Height())
-			if blockMeta == nil {
+			header = evpool.Header(ev.Height())
+			if header == nil {
 				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
 			}
-			header = &blockMeta.Header
 		}
 
 		// 1) Verify against state.
@@ -266,7 +265,7 @@ func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
 	return ok
 }
 
-// Checks whether the evidence is already pending. DB errors are passed to the logger.
+// IsPending checks whether the evidence is already pending. DB errors are passed to the logger.
 func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	key := keyPending(evidence)
 	ok, err := evpool.evidenceStore.Has(key)
@@ -304,6 +303,16 @@ func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 // SetLogger sets the Logger.
 func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
+}
+
+// Header gets the header from the block store at a specified height.
+// Is used for validation of LunaticValidatorEvidence
+func (evpool *Pool) Header(height int64) *types.Header {
+	blockMeta := evpool.blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return nil
+	}
+	return &blockMeta.Header
 }
 
 // ValidatorLastHeight returns the last height of the validator w/ the

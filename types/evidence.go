@@ -567,7 +567,6 @@ func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Vali
 
 		if !valSet.HasAddress(sig.ValidatorAddress) {
 			evList = append(evList, &PhantomValidatorEvidence{
-				Header:                      alternativeHeader.Header,
 				Vote:                        alternativeHeader.Commit.GetVote(i),
 				LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
 			})
@@ -775,20 +774,19 @@ func (ev ConflictingHeadersEvidence) String() string {
 //-------------------------------------------
 
 type PhantomValidatorEvidence struct {
-	Header                      *Header `json:"header"`
-	Vote                        *Vote   `json:"vote"`
-	LastHeightValidatorWasInSet int64   `json:"last_height_validator_was_in_set"`
+	Vote                        *Vote `json:"vote"`
+	LastHeightValidatorWasInSet int64 `json:"last_height_validator_was_in_set"`
 }
 
 var _ Evidence = &PhantomValidatorEvidence{}
 var _ Evidence = PhantomValidatorEvidence{}
 
 func (e PhantomValidatorEvidence) Height() int64 {
-	return e.Header.Height
+	return e.Vote.Height
 }
 
 func (e PhantomValidatorEvidence) Time() time.Time {
-	return e.Header.Time
+	return e.Vote.Timestamp
 }
 
 func (e PhantomValidatorEvidence) Address() []byte {
@@ -796,10 +794,7 @@ func (e PhantomValidatorEvidence) Address() []byte {
 }
 
 func (e PhantomValidatorEvidence) Hash() []byte {
-	bz := make([]byte, tmhash.Size+crypto.AddressSize)
-	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
-	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
-	return tmhash.Sum(bz)
+	return tmhash.Sum(cdcEncode(e))
 }
 
 func (e PhantomValidatorEvidence) Bytes() []byte {
@@ -807,14 +802,8 @@ func (e PhantomValidatorEvidence) Bytes() []byte {
 }
 
 func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	// chainID must be the same
-	if chainID != e.Header.ChainID {
-		return fmt.Errorf("chainID do not match: %s vs %s",
-			chainID,
-			e.Header.ChainID,
-		)
-	}
 
+	// signature must be verified to the chain ID
 	if !pubKey.VerifyBytes(e.Vote.SignBytes(chainID), e.Vote.Signature) {
 		return errors.New("invalid signature")
 	}
@@ -825,10 +814,10 @@ func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
 	switch e2 := ev.(type) {
 	case PhantomValidatorEvidence:
-		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+		return e.Vote.Height == e2.Vote.Height &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	case *PhantomValidatorEvidence:
-		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
+		return e.Vote.Height == e2.Vote.Height &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	default:
 		return false
@@ -836,16 +825,9 @@ func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
 }
 
 func (e PhantomValidatorEvidence) ValidateBasic() error {
-	if e.Header == nil {
-		return errors.New("empty header")
-	}
 
 	if e.Vote == nil {
 		return errors.New("empty vote")
-	}
-
-	if err := e.Header.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid header: %v", err)
 	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
@@ -856,13 +838,6 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 		return errors.New("expected vote for block")
 	}
 
-	if e.Header.Height != e.Vote.Height {
-		return fmt.Errorf("header and vote have different heights: %d vs %d",
-			e.Header.Height,
-			e.Vote.Height,
-		)
-	}
-
 	if e.LastHeightValidatorWasInSet <= 0 {
 		return errors.New("negative or zero LastHeightValidatorWasInSet")
 	}
@@ -871,8 +846,8 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 }
 
 func (e PhantomValidatorEvidence) String() string {
-	return fmt.Sprintf("PhantomValidatorEvidence{%X voted for %d/%X}",
-		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash())
+	return fmt.Sprintf("PhantomValidatorEvidence{%X voted at height %d}",
+		e.Vote.ValidatorAddress, e.Vote.Height)
 }
 
 //-------------------------------------------

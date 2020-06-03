@@ -77,6 +77,64 @@ func TestValidatorSetBasic(t *testing.T) {
 
 }
 
+func TestValidatorSetValidateBasic(t *testing.T) {
+	val, _ := RandValidator(false, 1)
+	badVal := &Validator{}
+
+	testCases := []struct {
+		vals ValidatorSet
+		err  bool
+		msg  string
+	}{
+		{
+			vals: ValidatorSet{},
+			err:  true,
+			msg:  "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{},
+			},
+			err: true,
+			msg: "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+			},
+			err: true,
+			msg: "proposer failed validate basic, error: nil validator",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{badVal},
+			},
+			err: true,
+			msg: "invalid validator #0: validator does not have a public key",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+				Proposer:   val,
+			},
+			err: false,
+			msg: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		err := tc.vals.ValidateBasic()
+		if tc.err {
+			if assert.Error(t, err) {
+				assert.Equal(t, tc.msg, err.Error())
+			}
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+}
+
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
 	vsetHash := vset.Hash()
@@ -1212,10 +1270,6 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 		6: randTestVSetCfg(t, 100, 1000),
 
 		7: randTestVSetCfg(t, 1000, 1000),
-
-		8: randTestVSetCfg(t, 10000, 1000),
-
-		9: randTestVSetCfg(t, 1000, 10000),
 	}
 
 	for _, cfg := range testCases {

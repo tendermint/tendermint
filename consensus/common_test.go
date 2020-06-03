@@ -50,7 +50,7 @@ type cleanupFunc func()
 var (
 	config                *cfg.Config // NOTE: must be reset for each _test.go file
 	consensusReplayConfig *cfg.Config
-	ensureTimeout         = time.Millisecond * 100
+	ensureTimeout         = time.Millisecond * 200
 )
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -622,6 +622,14 @@ func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int,
 		if vote.Type != voteType {
 			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
 		}
+	}
+}
+
+func ensurePrecommitTimeout(ch <-chan tmpubsub.Message) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for the Precommit to Timeout")
+	case <-ch:
 	}
 }
 
