@@ -107,8 +107,8 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 	pb.BlockID = p.BlockID.ToProto()
 	pb.Type = tmproto.SignedMsgType(p.Type)
 	pb.Height = p.Height
-	pb.Round = int32(p.Round)
-	pb.PolRound = int32(p.POLRound)
+	pb.Round = p.Round
+	pb.PolRound = p.POLRound
 	pb.Timestamp = p.Timestamp
 	pb.Signature = p.Signature
 

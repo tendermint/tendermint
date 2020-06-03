@@ -855,7 +855,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Signatures = sigs
 
 	c.Height = commit.Height
-	c.Round = int32(commit.Round)
+	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
 	if commit.hash != nil {
 		c.Hash = commit.hash
