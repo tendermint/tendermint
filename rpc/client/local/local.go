@@ -96,7 +96,7 @@ func (c *Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) 
 	return core.BroadcastTxSync(c.ctx, tx)
 }
 
-func (c *Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *Local) UnconfirmedTxs(limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	return core.UnconfirmedTxs(c.ctx, limit)
 }
 
@@ -156,7 +156,7 @@ func (c *Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+func (c *Local) Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	return core.Validators(c.ctx, height, page, perPage)
 }
 
@@ -164,7 +164,7 @@ func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(c.ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+func (c *Local) TxSearch(query string, prove bool, page, perPage *int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }

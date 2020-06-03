@@ -92,8 +92,8 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		return nil, err
 	}
 
-	const maxPerPage = 100
-	res, err := p.client.Validators(h, 0, maxPerPage)
+	maxPerPage := 100
+	res, err := p.client.Validators(h, nil, &maxPerPage)
 	if err != nil {
 		// TODO: standartise errors on the RPC side
 		if regexpMissingHeight.MatchString(err.Error()) {
@@ -109,7 +109,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 	// Check if there are more validators.
 	for len(res.Validators) == maxPerPage {
-		res, err = p.client.Validators(h, page, maxPerPage)
+		res, err = p.client.Validators(h, &page, &maxPerPage)
 		if err != nil {
 			return nil, err
 		}
