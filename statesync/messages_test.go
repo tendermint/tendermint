@@ -3,99 +3,76 @@ package statesync
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
+
+	ssproto "github.com/tendermint/tendermint/proto/statesync"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
-func TestSnapshotsRequestMessage_ValidateBasic(t *testing.T) {
+func TestValidateMsg(t *testing.T) {
 	testcases := map[string]struct {
-		msg   *snapshotsRequestMessage
+		msg   proto.Message
 		valid bool
 	}{
-		"nil":   {nil, false},
-		"valid": {&snapshotsRequestMessage{}, true},
-	}
-	for name, tc := range testcases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			err := tc.msg.ValidateBasic()
-			if tc.valid {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-			}
-		})
-	}
-}
+		"nil":       {nil, false},
+		"unrelated": {&tmproto.Block{}, false},
 
-func TestSnapshotsResponseMessage_ValidateBasic(t *testing.T) {
-	testcases := map[string]struct {
-		msg   *snapshotsResponseMessage
-		valid bool
-	}{
-		"nil":      {nil, false},
-		"valid":    {&snapshotsResponseMessage{Height: 1, Format: 1, Chunks: 2, Hash: []byte{1}}, true},
-		"0 height": {&snapshotsResponseMessage{Height: 0, Format: 1, Chunks: 2, Hash: []byte{1}}, false},
-		"0 format": {&snapshotsResponseMessage{Height: 1, Format: 0, Chunks: 2, Hash: []byte{1}}, true},
-		"0 chunks": {&snapshotsResponseMessage{Height: 1, Format: 1, Hash: []byte{1}}, false},
-		"no hash":  {&snapshotsResponseMessage{Height: 1, Format: 1, Chunks: 2, Hash: []byte{}}, false},
-	}
-	for name, tc := range testcases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			err := tc.msg.ValidateBasic()
-			if tc.valid {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-			}
-		})
-	}
-}
+		"ChunkRequest valid":    {&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1}, true},
+		"ChunkRequest 0 height": {&ssproto.ChunkRequest{Height: 0, Format: 1, Index: 1}, false},
+		"ChunkRequest 0 format": {&ssproto.ChunkRequest{Height: 1, Format: 0, Index: 1}, true},
+		"ChunkRequest 0 chunk":  {&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 0}, true},
 
-func TestChunkRequestMessage_ValidateBasic(t *testing.T) {
-	testcases := map[string]struct {
-		msg   *chunkRequestMessage
-		valid bool
-	}{
-		"nil":      {nil, false},
-		"valid":    {&chunkRequestMessage{Height: 1, Format: 1, Index: 1}, true},
-		"0 height": {&chunkRequestMessage{Height: 0, Format: 1, Index: 1}, false},
-		"0 format": {&chunkRequestMessage{Height: 1, Format: 0, Index: 1}, true},
-		"0 chunk":  {&chunkRequestMessage{Height: 1, Format: 1, Index: 0}, true},
-	}
-	for name, tc := range testcases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			err := tc.msg.ValidateBasic()
-			if tc.valid {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-			}
-		})
-	}
-}
+		"ChunkResponse valid": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}},
+			true},
+		"ChunkResponse 0 height": {
+			&ssproto.ChunkResponse{Height: 0, Format: 1, Index: 1, Chunk: []byte{1}},
+			false},
+		"ChunkResponse 0 format": {
+			&ssproto.ChunkResponse{Height: 1, Format: 0, Index: 1, Chunk: []byte{1}},
+			true},
+		"ChunkResponse 0 chunk": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}},
+			true},
+		"ChunkResponse empty body": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{}},
+			true},
+		"ChunkResponse nil body": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil},
+			false},
+		"ChunkResponse missing": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true},
+			true},
+		"ChunkResponse missing with empty": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{}},
+			true},
+		"ChunkResponse missing with body": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{1}},
+			false},
 
-func TestChunkResponseMessage_ValidateBasic(t *testing.T) {
-	testcases := map[string]struct {
-		msg   *chunkResponseMessage
-		valid bool
-	}{
-		"nil message":        {nil, false},
-		"valid":              {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}}, true},
-		"0 height":           {&chunkResponseMessage{Height: 0, Format: 1, Index: 1, Chunk: []byte{1}}, false},
-		"0 format":           {&chunkResponseMessage{Height: 1, Format: 0, Index: 1, Chunk: []byte{1}}, true},
-		"0 chunk":            {&chunkResponseMessage{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}}, true},
-		"empty body":         {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: []byte{}}, true},
-		"nil body":           {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Chunk: nil}, false},
-		"missing":            {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true}, true},
-		"missing with empty": {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{}}, true},
-		"missing with body":  {&chunkResponseMessage{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{1}}, false},
+		"SnapshotsRequest valid": {&ssproto.SnapshotsRequest{}, true},
+
+		"SnapshotsResponse valid": {
+			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Chunks: 2, Hash: []byte{1}},
+			true},
+		"SnapshotsResponse 0 height": {
+			&ssproto.SnapshotsResponse{Height: 0, Format: 1, Chunks: 2, Hash: []byte{1}},
+			false},
+		"SnapshotsResponse 0 format": {
+			&ssproto.SnapshotsResponse{Height: 1, Format: 0, Chunks: 2, Hash: []byte{1}},
+			true},
+		"SnapshotsResponse 0 chunks": {
+			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Hash: []byte{1}},
+			false},
+		"SnapshotsResponse no hash": {
+			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Chunks: 2, Hash: []byte{}},
+			false},
 	}
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			err := tc.msg.ValidateBasic()
+			err := validateMsg(tc.msg)
 			if tc.valid {
 				require.NoError(t, err)
 			} else {

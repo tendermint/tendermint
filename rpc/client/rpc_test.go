@@ -169,7 +169,7 @@ func TestGenesisAndValidators(t *testing.T) {
 
 		// get the current validators
 		h := int64(1)
-		vals, err := c.Validators(&h, 0, 0)
+		vals, err := c.Validators(&h, nil, nil)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
 		require.Equal(t, 1, vals.Count)
@@ -350,7 +350,8 @@ func TestUnconfirmedTxs(t *testing.T) {
 
 	for _, c := range GetClients() {
 		mc := c.(client.MempoolClient)
-		res, err := mc.UnconfirmedTxs(1)
+		limit := 1
+		res, err := mc.UnconfirmedTxs(&limit)
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, res.Count)
@@ -451,7 +452,7 @@ func TestTxSearchWithTimeout(t *testing.T) {
 	timeoutClient := getHTTPClientWithTimeout(10)
 
 	// query using a compositeKey (see kvstore application)
-	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
+	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 	require.Nil(t, err)
 	if len(result.Txs) == 0 {
 		t.Fatal("expected a lot of transactions")
@@ -470,7 +471,7 @@ func TestTxSearch(t *testing.T) {
 
 	// since we're not using an isolated test server, we'll have lingering transactions
 	// from other tests as well
-	result, err := c.TxSearch("tx.height >= 0", true, 1, 100, "asc")
+	result, err := c.TxSearch("tx.height >= 0", true, nil, nil, "asc")
 	require.NoError(t, err)
 	txCount := len(result.Txs)
 
@@ -482,7 +483,7 @@ func TestTxSearch(t *testing.T) {
 		t.Logf("client %d", i)
 
 		// now we query for the tx.
-		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, 1, 30, "asc")
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 		require.Equal(t, find.Hash, result.Txs[0].Hash)
@@ -500,57 +501,58 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, 1, 30, "asc")
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
-		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30, "asc")
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30, "asc")
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query using an index key
-		result, err = c.TxSearch("app.index_key='index is working'", false, 1, 30, "asc")
+		result, err = c.TxSearch("app.index_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query using an noindex key
-		result, err = c.TxSearch("app.noindex_key='index is working'", false, 1, 30, "asc")
+		result, err = c.TxSearch("app.noindex_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		if len(result.Txs) != 0 {
 			t.Fatal("expected no transaction")
 		}
 
 		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30, "asc")
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
 		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 
 		// query a non existing tx with page 1 and txsPerPage 1
-		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1, "asc")
+		perPage := 1
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, nil, &perPage, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// check sorting
-		result, err = c.TxSearch("tx.height >= 1", false, 1, 30, "asc")
+		result, err = c.TxSearch("tx.height >= 1", false, nil, nil, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
 
-		result, err = c.TxSearch("tx.height >= 1", false, 1, 30, "desc")
+		result, err = c.TxSearch("tx.height >= 1", false, nil, nil, "desc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
@@ -558,14 +560,15 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// check pagination
+		perPage = 3
 		var (
 			seen      = map[int64]bool{}
 			maxHeight int64
-			perPage   = 3
 			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
 		)
 		for page := 1; page <= pages; page++ {
-			result, err = c.TxSearch("tx.height >= 1", false, page, perPage, "asc")
+			page := page
+			result, err = c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
 			require.NoError(t, err)
 			if page < pages {
 				require.Len(t, result.Txs, perPage)

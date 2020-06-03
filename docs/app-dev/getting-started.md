@@ -23,6 +23,7 @@ using Tendermint.
 The first apps we will work with are written in Go. To install them, you
 need to [install Go](https://golang.org/doc/install), put
 `$GOPATH/bin` in your `$PATH` and enable go modules with these instructions:
+
 ```bash
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
@@ -58,9 +59,9 @@ Let's start a kvstore application.
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. You should already have the 
-Tendermint binary installed. If not, follow the steps from 
-[here](../introduction/install.md). If you have never run Tendermint 
+In another terminal, we can start Tendermint. You should already have the
+Tendermint binary installed. If not, follow the steps from
+[here](../introduction/install.md). If you have never run Tendermint
 before, use:
 
 ```

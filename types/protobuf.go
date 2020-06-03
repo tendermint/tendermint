@@ -101,17 +101,17 @@ func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
 // TODO: add cases when new pubkey types are added to crypto
 func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
-	case ed25519.PubKeyEd25519:
+	case ed25519.PubKey:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeEd25519,
 			Data: pk[:],
 		}
-	case sr25519.PubKeySr25519:
+	case sr25519.PubKey:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeSr25519,
 			Data: pk[:],
 		}
-	case secp256k1.PubKeySecp256k1:
+	case secp256k1.PubKey:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeSecp256k1,
 			Data: pk[:],
@@ -205,27 +205,27 @@ type pb2tm struct{}
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 	switch pubKey.Type {
 	case ABCIPubKeyTypeEd25519:
-		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
+		if len(pubKey.Data) != ed25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
-				len(pubKey.Data), ed25519.PubKeyEd25519Size)
+				len(pubKey.Data), ed25519.PubKeySize)
 		}
-		var pk ed25519.PubKeyEd25519
+		var pk ed25519.PubKey
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSr25519:
-		if len(pubKey.Data) != sr25519.PubKeySr25519Size {
+		if len(pubKey.Data) != sr25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySr25519. Got %d, expected %d",
-				len(pubKey.Data), sr25519.PubKeySr25519Size)
+				len(pubKey.Data), sr25519.PubKeySize)
 		}
-		var pk sr25519.PubKeySr25519
+		var pk sr25519.PubKey
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
-		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
+		if len(pubKey.Data) != secp256k1.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySecp256k1. Got %d, expected %d",
-				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
+				len(pubKey.Data), secp256k1.PubKeySize)
 		}
-		var pk secp256k1.PubKeySecp256k1
+		var pk secp256k1.PubKey
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	default:
