@@ -149,8 +149,9 @@ type Client struct {
 // hash does not match with the one from the header).
 //
 // Witnesses are providers, which will be used for cross-checking the primary
-// provider. At least one witness must be given. A witness can become a primary
-// iff the current primary is unavailable.
+// provider. At least one witness must be given when skipping verification is
+// used (default). A witness can become a primary iff the current primary is
+// unavailable.
 //
 // See all Option(s) for the additional configuration.
 func NewClient(
@@ -219,7 +220,7 @@ func NewClientFromTrustedStore(
 	}
 
 	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) < 1 && c.verificationMode == skipping {
 		return nil, errNoWitnesses{}
 	}
 
