@@ -17,12 +17,22 @@ func (c *PtrCustom) MarshalJSON() ([]byte, error) {
 	return []byte("\"custom\""), nil
 }
 
+func (c *PtrCustom) UnmarshalJSON(bz []byte) error {
+	c.Value = "custom"
+	return nil
+}
+
 type BareCustom struct {
 	Value string
 }
 
 func (c BareCustom) MarshalJSON() ([]byte, error) {
 	return []byte("\"custom\""), nil
+}
+
+func (c BareCustom) UnmarshalJSON(bz []byte) error {
+	c.Value = "custom"
+	return nil
 }
 
 type Struct struct {

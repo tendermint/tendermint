@@ -3,6 +3,7 @@ package json
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,6 +11,7 @@ import (
 
 func TestDecode(t *testing.T) {
 	var i64Nil *int64
+	var stNil *Struct
 	i32 := int32(32)
 	i64 := int64(64)
 	str := string("foo")
@@ -55,6 +57,9 @@ func TestDecode(t *testing.T) {
 		"map int64 empty":    {`{}`, map[string]int64{}, false},
 		"map int64 null":     {`null`, map[string]int64(nil), false},
 		"map int key":        {`{}`, map[int]int{}, true},
+		"time":               {`"2020-06-03T17:35:30Z"`, time.Date(2020, 6, 3, 17, 35, 30, 0, time.UTC), false},
+		"time non-utc":       {`"2020-06-03T17:35:30+02:00"`, time.Time{}, true},
+		"time nozone":        {`"2020-06-03T17:35:30"`, time.Time{}, true},
 		"struct": {
 			`{"name":"foo","Value":"42","Child":{"name":"bar","Value":"7"}}`,
 			Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
@@ -65,6 +70,9 @@ func TestDecode(t *testing.T) {
 			&Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
 			false,
 		},
+		"struct ptr null": {`null`, stNil, false},
+		"custom value":    {`{"Value":"foo"}`, BareCustom{}, false},
+		"custom ptr":      {`"foo"`, &PtrCustom{Value: "custom"}, false},
 	}
 	for name, tc := range testcases {
 		tc := tc

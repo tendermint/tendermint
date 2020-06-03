@@ -27,7 +27,6 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	}
 
 	// Handle null for slices, interfaces, and pointers
-	// FIXME Test this
 	if bytes.Equal(bz, []byte("null")) {
 		rv.Set(reflect.Zero(rv.Type()))
 		return nil
@@ -41,45 +40,20 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 		rv = rv.Elem()
 	}
 
-	// Special case:
-	/*if rv.Type() == timeType {
-		// Amino time strips the timezone, so must end with Z.
-		if len(bz) >= 2 && bz[0] == '"' && bz[len(bz)-1] == '"' {
-			if bz[len(bz)-2] != 'Z' {
-				return fmt.Errorf("amino:JSON time must be UTC and end with 'Z' but got %s", bz)
-			}
-		} else {
-			return fmt.Errorf("amino:JSON time must be an RFC3339Nano string, but got %s", bz)
+	// Times must be UTC and end with Z
+	if rv.Type() == timeType {
+		switch {
+		case len(bz) < 2 || bz[0] != '"' || bz[len(bz)-1] != '"':
+			return fmt.Errorf("JSON time must be an RFC3339 string, but got %s", bz)
+		case bz[len(bz)-2] != 'Z':
+			return fmt.Errorf("JSON time must be UTC and end with 'Z', but got %s", bz)
 		}
-	}*/
+	}
 
-	// Handle override if a pointer to rv implements json.Unmarshaler.
-	/*if rv.Addr().Type().Implements(jsonUnmarshalerType) {
+	// If value implements json.Umarshaler, call it.
+	if rv.Addr().Type().Implements(jsonUnmarshalerType) {
 		return rv.Addr().Interface().(json.Unmarshaler).UnmarshalJSON(bz)
-	}*/
-
-	// Handle override if a pointer to rv implements UnmarshalAmino.
-	/*if info.IsAminoUnmarshaler {
-		// First, decode repr instance from bytes.
-		rrv := reflect.New(info.AminoUnmarshalReprType).Elem()
-		var rinfo *TypeInfo
-		rinfo, err = cdc.getTypeInfoWlock(info.AminoUnmarshalReprType)
-		if err != nil {
-			return
-		}
-		err = cdc.decodeReflectJSON(bz, rinfo, rrv, fopts)
-		if err != nil {
-			return
-		}
-		// Then, decode from repr instance.
-		uwrm := rv.Addr().MethodByName("UnmarshalAmino")
-		uwouts := uwrm.Call([]reflect.Value{rrv})
-		erri := uwouts[0].Interface()
-		if erri != nil {
-			err = erri.(error)
-		}
-		return
-	}*/
+	}
 
 	switch rv.Type().Kind() {
 	// Decode complex types
