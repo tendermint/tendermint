@@ -20,6 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - sr25519: type `PrivKeySr25519` is now `PrivKey`
     - sr25519: type `PubKeySr25519` is now `PubKey`
     - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
+  - [light] \#4946 Rename lite2 to light. Remove lite implementation.
 
 - Apps
 
