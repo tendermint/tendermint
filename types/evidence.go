@@ -567,7 +567,7 @@ func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Vali
 
 		if !valSet.HasAddress(sig.ValidatorAddress) {
 			evList = append(evList, &PhantomValidatorEvidence{
-				Vote:                        alternativeHeader.Commit.GetVote(i),
+				Vote:                        alternativeHeader.Commit.GetVote(int32(i)),
 				LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
 			})
 		}
@@ -597,7 +597,7 @@ func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Vali
 			}
 			evList = append(evList, &LunaticValidatorEvidence{
 				Header:             alternativeHeader.Header,
-				Vote:               alternativeHeader.Commit.GetVote(i),
+				Vote:               alternativeHeader.Commit.GetVote(int32(i)),
 				InvalidHeaderField: invalidField,
 			})
 		}
@@ -638,15 +638,15 @@ OUTER_LOOP:
 				// immediately slashable (#F1).
 				if ev.H1.Commit.Round == ev.H2.Commit.Round {
 					evList = append(evList, &DuplicateVoteEvidence{
-						VoteA: ev.H1.Commit.GetVote(i),
-						VoteB: ev.H2.Commit.GetVote(j),
+						VoteA: ev.H1.Commit.GetVote(int32(i)),
+						VoteB: ev.H2.Commit.GetVote(int32(j)),
 					})
 				} else {
 					// if H1.Round != H2.Round we need to run full detection procedure => not
 					// immediately slashable.
 					evList = append(evList, &PotentialAmnesiaEvidence{
-						VoteA: ev.H1.Commit.GetVote(i),
-						VoteB: ev.H2.Commit.GetVote(j),
+						VoteA: ev.H1.Commit.GetVote(int32(i)),
+						VoteB: ev.H2.Commit.GetVote(int32(j)),
 					})
 				}
 
@@ -1128,7 +1128,7 @@ func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) ProofOfLockChange {
 	var votes []Vote
 	valSetSize := voteSet.Size()
-	for valIdx := 0; valIdx < valSetSize; valIdx++ {
+	for valIdx := int32(0); int(valIdx) < valSetSize; valIdx++ {
 		vote := voteSet.GetByIndex(valIdx)
 		if vote != nil && vote.BlockID.Equals(blockID) {
 			votes = append(votes, *vote)
@@ -1155,7 +1155,7 @@ func (e ProofOfLockChange) Time() time.Time {
 	return latest
 }
 
-func (e ProofOfLockChange) Round() int {
+func (e ProofOfLockChange) Round() int32 {
 	return e.Votes[0].Round
 }
 
@@ -1315,7 +1315,7 @@ func (e MockEvidence) String() string {
 func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLockChange {
 	voteVal := NewMockPV()
 	pKey, _ := voteVal.GetPubKey()
-	vote := Vote{Type: PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
+	vote := Vote{Type: tmproto.PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
 		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
 	_ = voteVal.SignVote("mock-chain-id", &vote)
 	return ProofOfLockChange{

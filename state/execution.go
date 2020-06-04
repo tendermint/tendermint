@@ -354,7 +354,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	}
 
 	return abci.LastCommitInfo{
-		Round: int32(block.LastCommit.Round),
+		Round: block.LastCommit.Round,
 		Votes: voteInfos,
 	}, byzVals
 }

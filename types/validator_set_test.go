@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -32,7 +33,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.EqualValues(t, vset, vset.Copy())
 	assert.False(t, vset.HasAddress([]byte("some val")))
 	idx, val := vset.GetByAddress([]byte("some val"))
-	assert.Equal(t, -1, idx)
+	assert.EqualValues(t, -1, idx)
 	assert.Nil(t, val)
 	addr, val := vset.GetByIndex(-100)
 	assert.Nil(t, addr)
@@ -54,7 +55,7 @@ func TestValidatorSetBasic(t *testing.T) {
 
 	assert.True(t, vset.HasAddress(val.Address))
 	idx, _ = vset.GetByAddress(val.Address)
-	assert.Equal(t, 0, idx)
+	assert.EqualValues(t, 0, idx)
 	addr, _ = vset.GetByIndex(0)
 	assert.Equal(t, []byte(val.Address), addr)
 	assert.Equal(t, 1, vset.Size())
@@ -315,7 +316,10 @@ func TestProposerSelection3(t *testing.T) {
 	// i for the loop
 	// j for the times
 	// we should go in order for ever, despite some IncrementProposerPriority with times > 1
-	var i, j int
+	var (
+		i int
+		j int32
+	)
 	for ; i < 10000; i++ {
 		got := vset.GetProposer().Address
 		expected := proposerOrder[j%4].Address
@@ -343,11 +347,11 @@ func TestProposerSelection3(t *testing.T) {
 		}
 
 		// times is usually 1
-		times := 1
+		times := int32(1)
 		mod := (tmrand.Int() % 5) + 1
 		if tmrand.Int()%mod > 0 {
 			// sometimes its up to 5
-			times = (tmrand.Int() % 4) + 1
+			times = (tmrand.Int31() % 4) + 1
 		}
 		vset.IncrementProposerPriority(times)
 
@@ -455,7 +459,7 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 	// the expected ProposerPriority.
 	tcs := []struct {
 		vs    ValidatorSet
-		times int
+		times int32
 		avg   int64
 	}{
 		0: {ValidatorSet{
@@ -505,7 +509,7 @@ func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 	tcs := []struct {
 		vals                  *ValidatorSet
 		wantProposerPrioritys []int64
-		times                 int
+		times                 int32
 		wantProposer          *Validator
 	}{
 
@@ -660,7 +664,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
@@ -1233,7 +1237,7 @@ func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, vals
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
-	const nMaxElections = 5000
+	const nMaxElections int32 = 5000
 
 	testCases := []testVSetCfg{
 		0: { // remove high power validator, keep old equal lower power validators
@@ -1283,9 +1287,9 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 	}
 }
 
-func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
+func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int32) {
 	// Run election up to nMaxElections times, sort validators by priorities
-	valSet.IncrementProposerPriority(tmrand.Int()%nMaxElections + 1)
+	valSet.IncrementProposerPriority(tmrand.Int31()%nMaxElections + 1)
 
 	// apply the changes, get the updated validators, sort by priorities
 	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
@@ -1387,7 +1391,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 func TestVerifyCommitTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
-		voteSet, originalValset, vals = randVoteSet(1, 1, PrecommitType, 6, 1)
+		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
 		commit, err                   = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
 		newValSet, _                  = RandValidatorSet(2, 1)
 	)
@@ -1428,7 +1432,7 @@ func TestVerifyCommitTrusting(t *testing.T) {
 func TestVerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
 	var (
 		blockID               = makeBlockIDRandom()
-		voteSet, valSet, vals = randVoteSet(1, 1, PrecommitType, 1, MaxTotalVotingPower)
+		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
 		commit, err           = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
 	)
 	require.NoError(t, err)

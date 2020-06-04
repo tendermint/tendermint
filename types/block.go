@@ -21,7 +21,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 632
+	MaxHeaderBytes int64 = 628
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -134,7 +134,7 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize int) *PartSet {
+func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	if b == nil {
 		return nil
 	}
@@ -657,7 +657,7 @@ type Commit struct {
 	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
 	Height     int64       `json:"height"`
-	Round      int         `json:"round"`
+	Round      int32       `json:"round"`
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`
 
@@ -669,7 +669,7 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig) *Commit {
+func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSig) *Commit {
 	return &Commit{
 		Height:     height,
 		Round:      round,
@@ -682,12 +682,12 @@ func NewCommit(height int64, round int, blockID BlockID, commitSigs []CommitSig)
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some precommits can be missing.
 		}
-		added, err := voteSet.AddVote(commit.GetVote(idx))
+		added, err := voteSet.AddVote(commit.GetVote(int32(idx)))
 		if !added || err != nil {
 			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -698,10 +698,10 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 // GetVote converts the CommitSig for the given valIdx to a Vote.
 // Returns nil if the precommit at valIdx is nil.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) GetVote(valIdx int) *Vote {
+func (commit *Commit) GetVote(valIdx int32) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
-		Type:             PrecommitType,
+		Type:             tmproto.PrecommitType,
 		Height:           commit.Height,
 		Round:            commit.Round,
 		BlockID:          commitSig.BlockID(commit.BlockID),
@@ -716,14 +716,14 @@ func (commit *Commit) GetVote(valIdx int) *Vote {
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
+func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
 	return commit.GetVote(valIdx).SignBytes(chainID)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
 // Implements VoteSetReader.
 func (commit *Commit) Type() byte {
-	return byte(PrecommitType)
+	return byte(tmproto.PrecommitType)
 }
 
 // GetHeight returns height of the commit.
@@ -734,7 +734,7 @@ func (commit *Commit) GetHeight() int64 {
 
 // GetRound returns height of the commit.
 // Implements VoteSetReader.
-func (commit *Commit) GetRound() int {
+func (commit *Commit) GetRound() int32 {
 	return commit.Round
 }
 
@@ -764,7 +764,7 @@ func (commit *Commit) BitArray() *bits.BitArray {
 // GetByIndex returns the vote corresponding to a given validator index.
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
-func (commit *Commit) GetByIndex(valIdx int) *Vote {
+func (commit *Commit) GetByIndex(valIdx int32) *Vote {
 	return commit.GetVote(valIdx)
 }
 
@@ -854,7 +854,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Signatures = sigs
 
 	c.Height = commit.Height
-	c.Round = int32(commit.Round)
+	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
 	if commit.hash != nil {
 		c.Hash = commit.hash
@@ -891,7 +891,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.Signatures = sigs
 
 	commit.Height = cp.Height
-	commit.Round = int(cp.Round)
+	commit.Round = cp.Round
 	commit.BlockID = *bi
 	commit.hash = cp.Hash
 	commit.bitArray = bitArray
