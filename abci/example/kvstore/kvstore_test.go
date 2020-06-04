@@ -274,7 +274,7 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer server.Stop()
 	defer client.Stop()
 
@@ -283,7 +283,7 @@ func TestClientServer(t *testing.T) {
 	// set up grpc app
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Nil(t, err)
+	require.Error(t, err)
 	defer gserver.Stop()
 	defer gclient.Stop()
 
