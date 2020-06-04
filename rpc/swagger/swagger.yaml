@@ -786,7 +786,7 @@ paths:
       parameters:
         - in: query
           name: limit
-          description: Maximum number of unconfirmed transactions to return (max: 100)
+          description: Maximum number of unconfirmed transactions to return (max 100)
           required: false
           schema:
             type: number
