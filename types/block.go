@@ -1090,7 +1090,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 //--------------------------------------------------------------------------------
 
-// BlockID defines the unique ID of a block as its Hash and its PartSetHeader
+// BlockID
 type BlockID struct {
 	Hash        tmbytes.HexBytes `json:"hash"`
 	PartsHeader PartSetHeader    `json:"parts"`
