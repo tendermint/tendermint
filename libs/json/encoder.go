@@ -166,7 +166,7 @@ func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 	writeComma := false
 	for i, fInfo := range sInfo.fields {
 		frv := rv.Field(i)
-		if fInfo.omitEmpty && frv.IsZero() {
+		if fInfo.hidden || (fInfo.omitEmpty && frv.IsZero()) {
 			continue
 		}
 

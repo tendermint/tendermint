@@ -54,6 +54,7 @@ func (c CustomValue) UnmarshalJSON(bz []byte) error {
 type Tags struct {
 	JSONName  string `json:"name"`
 	OmitEmpty string `json:",omitempty"`
+	Hidden    string `json:"-"`
 	Tags      *Tags  `json:"tags,omitempty"`
 }
 
@@ -70,4 +71,5 @@ type Struct struct {
 	Time         time.Time
 	Car          Car
 	Child        *Struct
+	private      string
 }

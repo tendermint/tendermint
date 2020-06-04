@@ -49,7 +49,7 @@ func TestMarshal(t *testing.T) {
 		"tesla value":     {*tesla, `{"type":"car/tesla","value":{"Color":"blue"}}`},
 		"tesla interface": {Car(tesla), `{"type":"car/tesla","value":{"Color":"blue"}}`},
 		"tags": {
-			Tags{JSONName: "name", OmitEmpty: "foo", Tags: &Tags{JSONName: "child"}},
+			Tags{JSONName: "name", OmitEmpty: "foo", Hidden: "bar", Tags: &Tags{JSONName: "child"}},
 			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,
 		},
 		"tags empty": {Tags{}, `{"name":""}`},
@@ -58,6 +58,7 @@ func TestMarshal(t *testing.T) {
 				Bool: true, Float64: 3.14, Int32: 32, Int64: 64, Int64Ptr: &i64,
 				String: "foo", StringPtrPtr: &sPtr, Bytes: []byte{1, 2, 3},
 				Time: ti, Car: tesla, Child: &Struct{Bool: false, String: "child"},
+				private: "private",
 			},
 			`{
 				"Bool":true, "Float64":3.14, "Int32":32, "Int64":"64", "Int64Ptr":"64",

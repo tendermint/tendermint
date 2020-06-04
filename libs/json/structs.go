@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -28,6 +29,7 @@ type structInfo struct {
 type fieldInfo struct {
 	jsonName  string
 	omitEmpty bool
+	hidden    bool
 }
 
 // makeStructInfo generates structInfo for a struct as a reflect.Value.
@@ -44,8 +46,12 @@ func makeStructInfo(rt reflect.Type) *structInfo {
 		fInfo := &fieldInfo{
 			jsonName:  frt.Name,
 			omitEmpty: false,
+			hidden:    frt.Name == "" || !unicode.IsUpper(rune(frt.Name[0])),
 		}
-		if o := frt.Tag.Get("json"); o != "" {
+		o := frt.Tag.Get("json")
+		if o == "-" {
+			fInfo.hidden = true
+		} else if o != "" {
 			opts := strings.Split(o, ",")
 			if opts[0] != "" {
 				fInfo.jsonName = opts[0]

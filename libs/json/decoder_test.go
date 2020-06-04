@@ -68,7 +68,7 @@ func TestUnmarshal(t *testing.T) {
 		"tesla ptr":          {`{"type":"car/tesla","value":{"Color":"blue"}}`, &Tesla{Color: "blue"}, false},
 		"tesla interface":    {`{"type":"car/tesla","value":{"Color":"blue"}}`, Car(&Tesla{Color: "blue"}), false},
 		"tags": {
-			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,
+			`{"name":"name","OmitEmpty":"foo","Hidden":"bar","tags":{"name":"child"}}`,
 			Tags{JSONName: "name", OmitEmpty: "foo", Tags: &Tags{JSONName: "child"}},
 			false,
 		},
@@ -88,7 +88,8 @@ func TestUnmarshal(t *testing.T) {
 					"Bool":false, "Float64":0, "Int32":0, "Int64":"0", "Int64Ptr":null,
 					"String":"child", "StringPtrPtr":null, "Bytes":null,
 					"Time":"0001-01-01T00:00:00Z", "Car":null, "Child":null
-				}
+				},
+				"private":"private"
 			}`,
 			Struct{
 				Bool: true, Float64: 3.14, Int32: 32, Int64: 64, Int64Ptr: &i64,

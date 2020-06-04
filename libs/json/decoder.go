@@ -183,14 +183,16 @@ func decodeReflectStruct(bz []byte, rv reflect.Value) error {
 		return err
 	}
 	for i, fInfo := range sInfo.fields {
-		frv := rv.Field(i)
-		bz := rawMap[fInfo.jsonName]
-		if len(bz) > 0 {
-			if err := decodeReflect(bz, frv); err != nil {
-				return err
+		if !fInfo.hidden {
+			frv := rv.Field(i)
+			bz := rawMap[fInfo.jsonName]
+			if len(bz) > 0 {
+				if err := decodeReflect(bz, frv); err != nil {
+					return err
+				}
+			} else if !fInfo.omitEmpty {
+				frv.Set(reflect.Zero(frv.Type()))
 			}
-		} else if !fInfo.omitEmpty {
-			frv.Set(reflect.Zero(frv.Type()))
 		}
 	}
 
