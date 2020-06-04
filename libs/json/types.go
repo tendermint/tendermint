@@ -17,7 +17,7 @@ var (
 // regardless of which interface they are wrapped in.
 //
 // Should only be called in init() functions, as it panics on error.
-func RegisterType(name string, _type interface{}) {
+func RegisterType(_type interface{}, name string) {
 	if _type == nil {
 		panic("cannot register nil type")
 	}

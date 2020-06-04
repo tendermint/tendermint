@@ -8,7 +8,7 @@ import (
 
 // Register Testa, an instance of the Car interface.
 func init() {
-	json.RegisterType("car/tesla", Tesla{})
+	json.RegisterType(Tesla{}, "car/tesla")
 }
 
 type Car interface {
