@@ -10,42 +10,11 @@ import (
 	"time"
 )
 
-type Car interface {
-	Drive() error
-}
-
-type Tesla struct {
-	Color string
-}
-
-func (t *Tesla) Drive() error { return nil }
-
 var (
 	timeType            = reflect.TypeOf(time.Time{})
 	jsonMarshalerType   = reflect.TypeOf(new(json.Marshaler)).Elem()
 	jsonUnmarshalerType = reflect.TypeOf(new(json.Unmarshaler)).Elem()
-	//errorType           = reflect.TypeOf(new(error)).Elem()
-	typeNames = map[reflect.Type]string{reflect.TypeOf(Tesla{}): "car/tesla"}
 )
-
-func lookupRegistered(rv reflect.Value) string {
-	for rv.Kind() == reflect.Ptr {
-		if rv.IsNil() {
-			return ""
-		}
-		rv = rv.Elem()
-	}
-	return typeNames[rv.Type()]
-}
-
-func lookupRegisteredType(name string) (reflect.Type, error) {
-	for t, n := range typeNames {
-		if n == name {
-			return t, nil
-		}
-	}
-	return nil, fmt.Errorf("unknown interface type %q", name)
-}
 
 func encodeJSON(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
@@ -58,7 +27,7 @@ func encodeJSON(w io.Writer, v interface{}) error {
 	// If this is a registered type, defer to interface encoder. This is necessary since reflect
 	// will return the type of the concrete type for interface variables, but not within structs.
 	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
-	if lookupRegistered(rv) != "" {
+	if typeRegistry.nameForValue(rv) != "" {
 		return encodeJSONReflectInterface(w, rv)
 	}
 
@@ -226,9 +195,9 @@ func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
 	}
 
 	// Look up the name of the concrete type
-	name := lookupRegistered(rv)
+	name := typeRegistry.nameForValue(rv)
 	if name == "" {
-		return fmt.Errorf("cannot encode unregistered concrete type %v", rv.Type())
+		return fmt.Errorf("cannot encode unregistered type %v", rv.Type())
 	}
 
 	// Write value wrapped in interface envelope

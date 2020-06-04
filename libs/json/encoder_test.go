@@ -9,6 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	RegisterType("car/tesla", Tesla{})
+}
+
+type Car interface {
+	Drive() error
+}
+
+type Tesla struct {
+	Color string
+}
+
+func (t *Tesla) Drive() error { return nil }
+
 type PtrCustom struct {
 	Value string
 }

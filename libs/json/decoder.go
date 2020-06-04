@@ -22,7 +22,7 @@ func decodeJSON(bz []byte, v interface{}) error {
 	// If this is a registered type, defer to interface decoder. This is necessary since reflect
 	// will return the type of the concrete type for interface variables, but not within structs.
 	// FIXME This needs to handle nil pointers.
-	if lookupRegistered(rv) != "" {
+	if typeRegistry.nameForValue(rv) != "" {
 		return decodeJSONReflectInterface(bz, rv)
 	}
 
@@ -219,9 +219,9 @@ func decodeJSONReflectInterface(bz []byte, rv reflect.Value) error {
 	}
 
 	// Fetch the interface type, and construct a concrete struct for the interface.
-	rt, err := lookupRegisteredType(wrapper.Type)
-	if err != nil {
-		return err
+	rt := typeRegistry.lookup(wrapper.Type)
+	if rt == nil {
+		return fmt.Errorf("unknown type %q", wrapper.Type)
 	}
 
 	cptr := reflect.New(rt)
