@@ -440,13 +440,13 @@ paths:
         - unsafe
       description: |
         Dial a peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers
-          in: body
-          name: Array of peers to connect to
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialSeedsPost"
+      requestBody:
+        description: string of possible peers
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialSeedsPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -468,13 +468,13 @@ paths:
         - unsafe
       description: |
         Set a persistent peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers, bool argument if they should be added as persistent
-          in: body
-          name: Array of peers to connect to & if they should be persistent
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialPeersPost"
+      requestBody:
+        description: string of possible peers, bool argument if they should be added as persistent
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialPeersPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -786,7 +786,7 @@ paths:
       parameters:
         - in: query
           name: limit
-          description: Maximum number of unconfirmed transactions to return (max: 100)
+          description: Maximum number of unconfirmed transactions to return (max 100)
           required: false
           schema:
             type: number
@@ -1129,16 +1129,16 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
-          earliest_block_hash:
-            type: string
-            example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
-          earliest_app_hash:
-            type: string
-            example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
-          earliest_block_height:
-            type: string
-            example: "1262196"
-          earliest_block_time:
+        earliest_block_hash:
+          type: string
+          example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+        earliest_app_hash:
+          type: string
+          example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+        earliest_block_height:
+          type: string
+          example: "1262196"
+        earliest_block_time:
             type: string
             example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
