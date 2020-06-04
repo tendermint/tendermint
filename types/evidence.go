@@ -1254,6 +1254,7 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 	}
 	plc := new(tmproto.ProofOfLockChange)
 	vpb := make([]*tmproto.Vote, len(e.Votes))
+
 	for i, v := range e.Votes {
 		pb := v.ToProto()
 		if pb != nil {
@@ -1265,7 +1266,6 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	plc.PubKey = &pk
 	plc.Votes = vpb
 

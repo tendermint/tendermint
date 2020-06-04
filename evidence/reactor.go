@@ -217,14 +217,14 @@ type PeerState interface {
 // encodemsg takes a array of evidence
 // returns the byte encoding of the List Message
 func encodeMsg(evis []types.Evidence) ([]byte, error) {
-	evi := make([]tmproto.Evidence, len(evis))
+	evi := make([]*tmproto.Evidence, len(evis))
 	for i := 0; i < len(evis); i++ {
 		le := evis[i]
 		ev, err := types.EvidenceToProto(le)
 		if err != nil {
 			return nil, err
 		}
-		evi[i] = *ev
+		evi[i] = ev
 	}
 
 	epl := ep.List{
@@ -242,7 +242,7 @@ func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
 
 	evis = make([]types.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {
-		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
+		ev, err := types.EvidenceFromProto(lm.Evidence[i])
 		if err != nil {
 			return nil, err
 		}
