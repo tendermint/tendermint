@@ -28,7 +28,7 @@ func decode(bz []byte, v interface{}) error {
 	// If this is a registered type, defer to interface decoder. This is necessary since reflect
 	// will return the concrete type for interface variables - unlike interfaces within structs.
 	if typeRegistry.name(rv.Type()) != "" {
-		return decodeJSONReflectInterface(bz, rv)
+		return decodeReflectInterface(bz, rv)
 	}
 
 	return decodeReflect(bz, rv)
@@ -233,7 +233,11 @@ func decodeReflectInterface(bz []byte, rv reflect.Value) error {
 	if err := decodeReflect(wrapper.Value, crv); err != nil {
 		return err
 	}
-	rv.Set(crv)
+	if rv.Kind() == reflect.Interface {
+		rv.Set(cptr)
+	} else {
+		rv.Set(crv)
+	}
 
 	return nil
 }

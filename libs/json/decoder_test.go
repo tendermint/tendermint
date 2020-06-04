@@ -11,12 +11,14 @@ import (
 	"github.com/tendermint/tendermint/libs/json"
 )
 
-func TestDecode(t *testing.T) {
-	var i64Nil *int64
-	var stNil *Struct
+func TestUnmarshal(t *testing.T) {
+	i64Nil := (*int64)(nil)
+	s := "string"
+	sPtr := &s
+	stNil := (*Struct)(nil)
 	i32 := int32(32)
 	i64 := int64(64)
-	str := string("foo")
+
 	testcases := map[string]struct {
 		json  string
 		value interface{}
@@ -36,7 +38,7 @@ func TestDecode(t *testing.T) {
 		"int64 ptr nil":      {`null`, i64Nil, false},
 		"string":             {`"foo"`, "foo", false},
 		"string noend":       {`"foo`, "foo", true},
-		"string ptr":         {`"foo"`, &str, false},
+		"string ptr":         {`"string"`, &s, false},
 		"slice byte":         {`"AQID"`, []byte{1, 2, 3}, false},
 		"slice bytes":        {`["AQID"]`, [][]byte{{1, 2, 3}}, false},
 		"slice int32":        {`[1,2,3]`, []int32{1, 2, 3}, false},
@@ -62,22 +64,44 @@ func TestDecode(t *testing.T) {
 		"time":               {`"2020-06-03T17:35:30Z"`, time.Date(2020, 6, 3, 17, 35, 30, 0, time.UTC), false},
 		"time non-utc":       {`"2020-06-03T17:35:30+02:00"`, time.Time{}, true},
 		"time nozone":        {`"2020-06-03T17:35:30"`, time.Time{}, true},
+		"tesla":              {`{"type":"car/tesla","value":{"Color":"blue"}}`, Tesla{Color: "blue"}, false},
+		"tesla ptr":          {`{"type":"car/tesla","value":{"Color":"blue"}}`, &Tesla{Color: "blue"}, false},
+		"tesla interface":    {`{"type":"car/tesla","value":{"Color":"blue"}}`, Car(&Tesla{Color: "blue"}), false},
+		"tags": {
+			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,
+			Tags{JSONName: "name", OmitEmpty: "foo", Tags: &Tags{JSONName: "child"}},
+			false,
+		},
+		"tags ptr": {
+			`{"name":"name","OmitEmpty":"foo","tags":null}`,
+			&Tags{JSONName: "name", OmitEmpty: "foo"},
+			false,
+		},
+		"tags real name": {`{"JSONName":"name"}`, Tags{}, false},
 		"struct": {
-			`{"name":"foo","Value":"42","Child":{"name":"bar","Value":"7"}}`,
-			Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
+			`{
+				"Bool":true, "Float64":3.14, "Int32":32, "Int64":"64", "Int64Ptr":"64",
+				"String":"foo", "StringPtrPtr": "string", "Bytes":"AQID",
+				"Time":"2020-06-02T16:05:13.004346374Z",
+				"Car":{"type":"car/tesla","value":{"Color":"blue"}},
+				"Child":{
+					"Bool":false, "Float64":0, "Int32":0, "Int64":"0", "Int64Ptr":null,
+					"String":"child", "StringPtrPtr":null, "Bytes":null,
+					"Time":"0001-01-01T00:00:00Z", "Car":null, "Child":null
+				}
+			}`,
+			Struct{
+				Bool: true, Float64: 3.14, Int32: 32, Int64: 64, Int64Ptr: &i64,
+				String: "foo", StringPtrPtr: &sPtr, Bytes: []byte{1, 2, 3},
+				Time: time.Date(2020, 6, 2, 16, 5, 13, 4346374, time.UTC),
+				Car:  &Tesla{Color: "blue"}, Child: &Struct{Bool: false, String: "child"},
+			},
 			false,
 		},
-		"struct ptr": {
-			`{"name":"foo","Value":"42","Child":{"name":"bar","Value":"7"}}`,
-			&Struct{Name: "foo", Value: 42, Child: &Struct{Name: "bar", Value: 7}},
-			false,
-		},
-		"struct ptr null": {`null`, stNil, false},
-		"custom value":    {`{"Value":"foo"}`, BareCustom{}, false},
-		"custom ptr":      {`"foo"`, &PtrCustom{Value: "custom"}, false},
-		"testa":           {`{"type":"car/tesla","value":{"Color":"blue"}}`, Tesla{Color: "blue"}, false},
-		"testa ptr":       {`{"type":"car/tesla","value":{"Color":"blue"}}`, &Tesla{Color: "blue"}, false},
-		"testa ptr car":   {`{"type":"car/tesla","value":{"Color":"blue"}}`, Car(&Tesla{Color: "blue"}), false},
+		"struct ptr null":  {`null`, stNil, false},
+		"custom value":     {`{"Value":"foo"}`, CustomValue{}, false},
+		"custom ptr":       {`"foo"`, &CustomPtr{Value: "custom"}, false},
+		"custom ptr value": {`"foo"`, CustomPtr{Value: "custom"}, false},
 	}
 	for name, tc := range testcases {
 		tc := tc

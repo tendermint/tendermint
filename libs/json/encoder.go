@@ -39,7 +39,7 @@ func encode(w io.Writer, v interface{}) error {
 	// will return the type of the concrete type for interface variables, but not within structs.
 	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
 	if typeRegistry.name(rv.Type()) != "" {
-		return encodeJSONReflectInterface(w, rv)
+		return encodeReflectInterface(w, rv)
 	}
 
 	return encodeReflect(w, rv)
