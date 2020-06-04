@@ -336,8 +336,8 @@ func RegisterMockEvidences(cdc *amino.Codec) {
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 type DuplicateVoteEvidence struct {
-	VoteA *Vote
-	VoteB *Vote
+	VoteA *Vote `json:"vote_a"`
+	VoteB *Vote `json:"vote_b"`
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
