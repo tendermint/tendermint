@@ -37,9 +37,9 @@ func TestSimpleProof(t *testing.T) {
 		proof := proofs[i]
 
 		// Check total/index
-		require.Equal(t, proof.Index, i, "Unmatched indicies: %d vs %d", proof.Index, i)
+		require.EqualValues(t, proof.Index, i, "Unmatched indicies: %d vs %d", proof.Index, i)
 
-		require.Equal(t, proof.Total, total, "Unmatched totals: %d vs %d", proof.Total, total)
+		require.EqualValues(t, proof.Total, total, "Unmatched totals: %d vs %d", proof.Total, total)
 
 		// Verify success
 		err := proof.Verify(rootHash, item)
@@ -125,6 +125,6 @@ func Test_getSplitPoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got := getSplitPoint(tt.length)
-		require.Equal(t, tt.want, got, "getSplitPoint(%d) = %v, want %v", tt.length, got, tt.want)
+		require.EqualValues(t, tt.want, got, "getSplitPoint(%d) = %v, want %v", tt.length, got, tt.want)
 	}
 }
