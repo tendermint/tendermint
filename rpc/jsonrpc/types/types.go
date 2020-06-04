@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	amino "github.com/tendermint/go-amino"
+
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -97,7 +99,7 @@ func (req RPCRequest) String() string {
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
 	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		valueJSON, err := tmjson.Marshal(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
@@ -115,7 +117,7 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
 	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		valueJSON, err := tmjson.Marshal(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
@@ -185,7 +187,7 @@ func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCR
 
 	if res != nil {
 		var js []byte
-		js, err := cdc.MarshalJSON(res)
+		js, err := tmjson.Marshal(res)
 		if err != nil {
 			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
 		}

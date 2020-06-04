@@ -6,6 +6,8 @@ import (
 	"reflect"
 
 	amino "github.com/tendermint/go-amino"
+
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values, error) {
@@ -36,7 +38,7 @@ func argsToJSON(cdc *amino.Codec, args map[string]interface{}) error {
 			continue
 		}
 
-		data, err := cdc.MarshalJSON(v)
+		data, err := tmjson.Marshal(v)
 		if err != nil {
 			return err
 		}
