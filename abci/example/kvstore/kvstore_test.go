@@ -283,7 +283,7 @@ func TestClientServer(t *testing.T) {
 	// set up grpc app
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Error(t, err)
+	require.NoError(t, err)
 	defer gserver.Stop()
 	defer gclient.Stop()
 
