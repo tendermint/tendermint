@@ -4,7 +4,20 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	lru "github.com/hashicorp/golang-lru"
 )
+
+// structInfoCache caches struct info.
+var structInfoCache *lru.Cache
+
+func init() {
+	var err error
+	structInfoCache, err = lru.New(1000)
+	if err != nil {
+		panic(err)
+	}
+}
 
 // structInfo contains JSON info for a struct.
 type structInfo struct {
@@ -18,10 +31,12 @@ type fieldInfo struct {
 }
 
 // makeStructInfo generates structInfo for a struct as a reflect.Value.
-// FIXME This should be cached.
 func makeStructInfo(rt reflect.Type) *structInfo {
 	if rt.Kind() != reflect.Struct {
-		panic(fmt.Sprintf("can't make struct info for non-struct value %v", rt.String()))
+		panic(fmt.Sprintf("can't make struct info for non-struct value %v", rt))
+	}
+	if sInfo, ok := structInfoCache.Get(rt); ok {
+		return sInfo.(*structInfo)
 	}
 	fields := make([]*fieldInfo, 0, rt.NumField())
 	for i := 0; i < cap(fields); i++ {
@@ -43,6 +58,8 @@ func makeStructInfo(rt reflect.Type) *structInfo {
 		}
 		fields = append(fields, fInfo)
 	}
+	sInfo := &structInfo{fields: fields}
+	structInfoCache.Add(rt, sInfo)
 
-	return &structInfo{fields: fields}
+	return sInfo
 }
