@@ -10,6 +10,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -104,7 +105,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 
 func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error) {
 	rv := reflect.New(rt)
-	err := cdc.UnmarshalJSON([]byte(arg), rv.Interface())
+	err := tmjson.Unmarshal([]byte(arg), rv.Interface())
 	if err != nil {
 		return rv, err
 	}
@@ -185,7 +186,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isQuotedString && expectingByteSlice {
 		v := reflect.New(reflect.TypeOf(""))
-		err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
+		err := tmjson.Unmarshal([]byte(arg), v.Interface())
 		if err != nil {
 			return reflect.ValueOf(nil), false, err
 		}

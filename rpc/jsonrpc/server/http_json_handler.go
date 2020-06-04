@@ -11,6 +11,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -139,7 +140,7 @@ func mapParamsToArgs(
 
 		if p, ok := params[argName]; ok && p != nil && len(p) > 0 {
 			val := reflect.New(argType)
-			err := cdc.UnmarshalJSON(p, val.Interface())
+			err := tmjson.Unmarshal(p, val.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -168,7 +169,7 @@ func arrayParamsToArgs(
 	for i, p := range params {
 		argType := rpcFunc.args[i+argsOffset]
 		val := reflect.New(argType)
-		err := cdc.UnmarshalJSON(p, val.Interface())
+		err := tmjson.Unmarshal(p, val.Interface())
 		if err != nil {
 			return nil, err
 		}
