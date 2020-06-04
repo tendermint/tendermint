@@ -12,6 +12,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
+  - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
+  - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
+  - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
+  - [types] \#4582 Block: `Round` is now int32
+  - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
+  - [consensus] \#4582 HeightVoteSet: `round` is now int32
+  - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
+  - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
   - [crypto] \#4941 Remove suffixes from all keys.
     - ed25519: type `PrivKeyEd25519` is now `PrivKey`
     - ed25519: type `PubKeyEd25519` is now `PubKey`
@@ -48,7 +57,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
-- [lite2] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
+- [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
 
 ### IMPROVEMENTS:
@@ -63,8 +72,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add ValidateBasic to validator and validator set (@cmwaters)
 - [consensus] [\#4578](https://github.com/tendermint/tendermint/issues/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
   The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
-- [lite2] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
-- [lite2] [\#4929](https://github.com/tendermint/tendermint/pull/4929) compare header w/ witnesses only when doing bisection (@melekes)
+- [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
+- [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) compare header w/ witnesses only when doing bisection (@melekes)
+- [light] [\#4916](https://github.com/tendermint/tendermint/pull/4916) validate basic for inbound validator sets and headers before further processing them (@cmwaters)
 
 ### BUG FIXES:
 

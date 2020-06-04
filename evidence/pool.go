@@ -292,10 +292,8 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 }
 
 // RetrievePOLC attempts to find a polc at the given height and round, if not there it returns an error
-func (evpool *Pool) RetrievePOLC(height int64, round int) (polc types.ProofOfLockChange, err error) {
-	var (
-		pbpolc tmproto.ProofOfLockChange
-	)
+func (evpool *Pool) RetrievePOLC(height int64, round int32) (polc types.ProofOfLockChange, err error) {
+	var pbpolc tmproto.ProofOfLockChange
 	key := keyPOLCFromHeightAndRound(height, round)
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
@@ -610,7 +608,7 @@ func keyPOLC(polc types.ProofOfLockChange) []byte {
 	return keyPOLCFromHeightAndRound(polc.Height(), polc.Round())
 }
 
-func keyPOLCFromHeightAndRound(height int64, round int) []byte {
+func keyPOLCFromHeightAndRound(height int64, round int32) []byte {
 	return append([]byte{baseKeyPOLC}, []byte(fmt.Sprintf("%s/%s", bE(height), bE(int64(round))))...)
 }
 

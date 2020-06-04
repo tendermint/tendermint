@@ -13,17 +13,19 @@ import (
 // PrivKeySize is the number of bytes in an Sr25519 private key.
 const PrivKeySize = 32
 
-// PrivKey implements crypto.PrivKey.
-type PrivKey [PrivKeySize]byte
+// PrivKeySr25519 implements crypto.PrivKey.
+type PrivKey []byte
 
 // Bytes marshals the privkey using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(privKey)
+	return []byte(privKey)
 }
 
 // Sign produces a signature on the provided message.
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
-	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
+	var p [PrivKeySize]byte
+	copy(p[:], privKey)
+	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(p)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -42,7 +44,9 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 // PubKey gets the corresponding public key from the private key.
 func (privKey PrivKey) PubKey() crypto.PubKey {
-	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(privKey)
+	var p [PrivKeySize]byte
+	copy(p[:], privKey)
+	miniSecretKey, err := schnorrkel.NewMiniSecretKeyFromRaw(p)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid private key: %v", err))
 	}
@@ -52,8 +56,8 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 	if err != nil {
 		panic(fmt.Sprintf("Could not generate public key: %v", err))
 	}
-
-	return PubKey(pubkey.Encode())
+	key := pubkey.Encode()
+	return PubKey(key[:])
 }
 
 // Equals - you probably don't need to use this.
@@ -84,7 +88,8 @@ func genPrivKey(rand io.Reader) PrivKey {
 
 	copy(seed[:], out)
 
-	return schnorrkel.NewMiniSecretKey(seed).ExpandEd25519().Encode()
+	key := schnorrkel.NewMiniSecretKey(seed).ExpandEd25519().Encode()
+	return key[:]
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -96,5 +101,6 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	var bz [PrivKeySize]byte
 	copy(bz[:], seed)
 	privKey, _ := schnorrkel.NewMiniSecretKeyFromRaw(bz)
-	return privKey.ExpandEd25519().Encode()
+	key := privKey.ExpandEd25519().Encode()
+	return key[:]
 }

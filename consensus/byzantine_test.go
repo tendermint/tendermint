@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -56,12 +57,12 @@ func TestByzantine(t *testing.T) {
 			// NOTE: Now, test validators are MockPV, which by default doesn't
 			// do any safety checks.
 			css[i].privValidator.(types.MockPV).DisableChecks()
-			css[i].decideProposal = func(j int) func(int64, int) {
-				return func(height int64, round int) {
+			css[i].decideProposal = func(j int32) func(int64, int32) {
+				return func(height int64, round int32) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
-			}(i)
-			css[i].doPrevote = func(height int64, round int) {}
+			}(int32(i))
+			css[i].doPrevote = func(height int64, round int32) {}
 		}
 
 		eventBus := css[i].eventBus
@@ -172,7 +173,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -209,7 +210,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Stat
 
 func sendProposalAndParts(
 	height int64,
-	round int,
+	round int32,
 	cs *State,
 	peer p2p.Peer,
 	proposal *types.Proposal,
@@ -221,7 +222,7 @@ func sendProposalAndParts(
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 
 	// parts
-	for i := 0; i < parts.Total(); i++ {
+	for i := 0; i < int(parts.Total()); i++ {
 		part := parts.GetPart(i)
 		msg := &BlockPartMessage{
 			Height: height, // This tells peer that this part applies to us.
@@ -233,8 +234,8 @@ func sendProposalAndParts(
 
 	// votes
 	cs.mtx.Lock()
-	prevote, _ := cs.signVote(types.PrevoteType, blockHash, parts.Header())
-	precommit, _ := cs.signVote(types.PrecommitType, blockHash, parts.Header())
+	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
+	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
 	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))

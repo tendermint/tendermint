@@ -28,6 +28,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -272,7 +273,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	reactor.InitPeer(peer)
@@ -294,7 +295,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	// we should call InitPeer here
@@ -692,8 +693,8 @@ func capture() {
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 	testCases := []struct { // nolint: maligned
 		expectErr              bool
-		messageRound           int
-		messageLastCommitRound int
+		messageRound           int32
+		messageLastCommitRound int32
 		messageHeight          int64
 		testName               string
 		messageStep            cstypes.RoundStepType
@@ -738,7 +739,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(types.MaxBlockPartsCount + 1) },
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
 			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
@@ -801,7 +802,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		messageHeight int64
-		messageRound  int
+		messageRound  int32
 		messagePart   *types.Part
 		expectErr     bool
 	}{
@@ -824,24 +825,24 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	}
 
 	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
-	message.Part.Index = -1
+	message.Part.Index = 1
 
 	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 }
 
 func TestHasVoteMessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	testCases := []struct { // nolint: maligned
 		expectErr     bool
-		messageRound  int
-		messageIndex  int
+		messageRound  int32
+		messageIndex  int32
 		messageHeight int64
 		testName      string
-		messageType   types.SignedMsgType
+		messageType   tmproto.SignedMsgType
 	}{
 		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
@@ -867,25 +868,25 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 
 func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
 		Hash: bytes.HexBytes{},
 		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  bytes.HexBytes{},
+			Total: 1,
+			Hash:  []byte{0},
 		},
 	}
 
 	testCases := []struct { // nolint: maligned
 		expectErr      bool
-		messageRound   int
+		messageRound   int32
 		messageHeight  int64
 		testName       string
-		messageType    types.SignedMsgType
+		messageType    tmproto.SignedMsgType
 		messageBlockID types.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
@@ -911,23 +912,22 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
+	testCases := []struct {
 		malleateFn func(*VoteSetBitsMessage)
 		expErr     string
 	}{
 		{func(msg *VoteSetBitsMessage) {}, ""},
 		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
-		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "negative Round"},
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
 				Hash: bytes.HexBytes{},
 				PartsHeader: types.PartSetHeader{
-					Total: -1,
-					Hash:  bytes.HexBytes{},
+					Total: 1,
+					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: negative Total"},
+		}, "wrong BlockID: wrong PartsHeader: wrong Hash:"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

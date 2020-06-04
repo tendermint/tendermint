@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 type voteData struct {
@@ -22,7 +23,7 @@ type voteData struct {
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
+	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
 	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
@@ -31,7 +32,7 @@ func makeVote(
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             SignedMsgType(step),
+		Type:             tmproto.SignedMsgType(step),
 		Timestamp:        time,
 		BlockID:          blockID,
 	}
@@ -108,13 +109,13 @@ func TestEvidenceList(t *testing.T) {
 
 func TestMaxEvidenceBytes(t *testing.T) {
 	val := NewMockPV()
-	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	maxTime := time.Date(9999, 0, 0, 0, 0, 0, 0, time.UTC)
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		VoteA: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID, maxTime),
-		VoteB: makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2, maxTime),
+		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID, maxTime),
+		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID2, maxTime),
 	}
 
 	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
@@ -171,8 +172,8 @@ func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	val := NewMockPV()
-	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
 
 	testCases := []struct {
@@ -188,7 +189,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, blockID2, defaultVoteTime)
+			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, blockID2, defaultVoteTime)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -199,8 +200,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID, defaultVoteTime)
-			vote2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2, defaultVoteTime)
+			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
 			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -302,8 +303,8 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	voteSet1, valSet, vals := randVoteSet(height, 1, PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, PrecommitType, valSet)
+	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
@@ -360,8 +361,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 
 	var (
 		val      = NewMockPV()
-		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID, defaultVoteTime)
 		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime)
 	)
@@ -394,7 +395,7 @@ func TestProofOfLockChange(t *testing.T) {
 		height  int64 = 37
 	)
 	// 1: valid POLC - nothing should fail
-	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 3, 7, 0, tmproto.PrecommitType)
 	pubKey, err := privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
@@ -412,7 +413,7 @@ func TestProofOfLockChange(t *testing.T) {
 	polc2 := makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badPOLCs = append(badPOLCs, polc2)
 	// 3: one vote was from a different round
-	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, PrecommitType)
+	voteSet, _, privValidators, blockID = buildVoteSet(height, 1, 3, 7, 0, tmproto.PrecommitType)
 	pubKey, err = privValidators[7].GetPubKey()
 	require.NoError(t, err)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
@@ -466,11 +467,11 @@ func makeHeaderRandom() *Header {
 func TestEvidenceProto(t *testing.T) {
 	// -------- Votes --------
 	val := NewMockPV()
-	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
-	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
-	v2 := makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
 	// -------- SignedHeaders --------
 	const height int64 = 37
@@ -488,8 +489,8 @@ func TestEvidenceProto(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	voteSet1, valSet, vals := randVoteSet(height, 1, PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, PrecommitType, valSet)
+	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),

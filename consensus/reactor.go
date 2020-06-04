@@ -14,6 +14,7 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -263,9 +264,9 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			// (and consequently shows which we don't have)
 			var ourVotes *bits.BitArray
 			switch msg.Type {
-			case types.PrevoteType:
+			case tmproto.PrevoteType:
 				ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-			case types.PrecommitType:
+			case tmproto.PrecommitType:
 				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
@@ -293,7 +294,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
 			conR.Metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
@@ -337,9 +338,9 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			if height == msg.Height {
 				var ourVotes *bits.BitArray
 				switch msg.Type {
-				case types.PrevoteType:
+				case tmproto.PrevoteType:
 					ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-				case types.PrecommitType:
+				case tmproto.PrecommitType:
 					ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 				default:
 					panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
@@ -753,7 +754,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.PrevoteType,
+						Type:    tmproto.PrevoteType,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -770,7 +771,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.PrecommitType,
+						Type:    tmproto.PrecommitType,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -787,7 +788,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
-						Type:    types.PrevoteType,
+						Type:    tmproto.PrevoteType,
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -807,7 +808,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   commit.Round,
-						Type:    types.PrecommitType,
+						Type:    tmproto.PrecommitType,
 						BlockID: commit.BlockID,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -989,7 +990,7 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	}
 
 	ps.PRS.ProposalBlockPartsHeader = proposal.BlockID.PartsHeader
-	ps.PRS.ProposalBlockParts = bits.NewBitArray(proposal.BlockID.PartsHeader.Total)
+	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(proposal.BlockID.PartsHeader.Total))
 	ps.PRS.ProposalPOLRound = proposal.POLRound
 	ps.PRS.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }
@@ -1004,11 +1005,11 @@ func (ps *PeerState) InitProposalBlockParts(partsHeader types.PartSetHeader) {
 	}
 
 	ps.PRS.ProposalBlockPartsHeader = partsHeader
-	ps.PRS.ProposalBlockParts = bits.NewBitArray(partsHeader.Total)
+	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(partsHeader.Total))
 }
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
-func (ps *PeerState) SetHasProposalBlockPart(height int64, round int, index int) {
+func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index int) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1045,7 +1046,8 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, votesType, size := votes.GetHeight(), votes.GetRound(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, votesType, size := votes.GetHeight(), votes.GetRound(),
+		tmproto.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1058,12 +1060,12 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(index), true
+		return votes.GetByIndex(int32(index)), true
 	}
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.SignedMsgType) *bits.BitArray {
+func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmproto.SignedMsgType) *bits.BitArray {
 	if !types.IsVoteTypeValid(votesType) {
 		return nil
 	}
@@ -1071,25 +1073,25 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.Si
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
 			switch votesType {
-			case types.PrevoteType:
+			case tmproto.PrevoteType:
 				return ps.PRS.Prevotes
-			case types.PrecommitType:
+			case tmproto.PrecommitType:
 				return ps.PRS.Precommits
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case tmproto.PrevoteType:
 				return nil
-			case types.PrecommitType:
+			case tmproto.PrecommitType:
 				return ps.PRS.CatchupCommit
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case tmproto.PrevoteType:
 				return ps.PRS.ProposalPOL
-			case types.PrecommitType:
+			case tmproto.PrecommitType:
 				return nil
 			}
 		}
@@ -1098,9 +1100,9 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.Si
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
 			switch votesType {
-			case types.PrevoteType:
+			case tmproto.PrevoteType:
 				return nil
-			case types.PrecommitType:
+			case tmproto.PrecommitType:
 				return ps.PRS.LastCommit
 			}
 		}
@@ -1110,7 +1112,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.Si
 }
 
 // 'round': A round for which we have a +2/3 commit.
-func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValidators int) {
+func (ps *PeerState) ensureCatchupCommitRound(height int64, round int32, numValidators int) {
 	if ps.PRS.Height != height {
 		return
 	}
@@ -1215,7 +1217,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int, voteType types.SignedMsgType, index int) {
+func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1226,7 +1228,7 @@ func (ps *PeerState) setHasVote(height int64, round int, voteType types.SignedMs
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
-		psVotes.SetIndex(index, true)
+		psVotes.SetIndex(int(index), true)
 	}
 }
 
@@ -1402,10 +1404,10 @@ func decodeMsg(bz []byte) (msg Message, err error) {
 // For every height/round/step transition
 type NewRoundStepMessage struct {
 	Height                int64
-	Round                 int
+	Round                 int32
 	Step                  cstypes.RoundStepType
 	SecondsSinceStartTime int
-	LastCommitRound       int
+	LastCommitRound       int32
 }
 
 // ValidateBasic performs basic validation.
@@ -1442,7 +1444,7 @@ func (m *NewRoundStepMessage) String() string {
 // In case the block is also committed, then IsCommit flag is set to true.
 type NewValidBlockMessage struct {
 	Height           int64
-	Round            int
+	Round            int32
 	BlockPartsHeader types.PartSetHeader
 	BlockParts       *bits.BitArray
 	IsCommit         bool
@@ -1462,12 +1464,12 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 	if m.BlockParts.Size() == 0 {
 		return errors.New("empty blockParts")
 	}
-	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
+	if m.BlockParts.Size() != int(m.BlockPartsHeader.Total) {
 		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
 	}
-	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
 		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
@@ -1501,7 +1503,7 @@ func (m *ProposalMessage) String() string {
 // ProposalPOLMessage is sent when a previous proposal is re-proposed.
 type ProposalPOLMessage struct {
 	Height           int64
-	ProposalPOLRound int
+	ProposalPOLRound int32
 	ProposalPOL      *bits.BitArray
 }
 
@@ -1532,7 +1534,7 @@ func (m *ProposalPOLMessage) String() string {
 // BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPartMessage struct {
 	Height int64
-	Round  int
+	Round  int32
 	Part   *types.Part
 }
 
@@ -1577,9 +1579,9 @@ func (m *VoteMessage) String() string {
 // HasVoteMessage is sent to indicate that a particular vote has been received.
 type HasVoteMessage struct {
 	Height int64
-	Round  int
-	Type   types.SignedMsgType
-	Index  int
+	Round  int32
+	Type   tmproto.SignedMsgType
+	Index  int32
 }
 
 // ValidateBasic performs basic validation.
@@ -1609,8 +1611,8 @@ func (m *HasVoteMessage) String() string {
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23Message struct {
 	Height  int64
-	Round   int
-	Type    types.SignedMsgType
+	Round   int32
+	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
 }
 
@@ -1641,8 +1643,8 @@ func (m *VoteSetMaj23Message) String() string {
 // VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
 type VoteSetBitsMessage struct {
 	Height  int64
-	Round   int
-	Type    types.SignedMsgType
+	Round   int32
+	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
 	Votes   *bits.BitArray
 }
@@ -1651,9 +1653,6 @@ type VoteSetBitsMessage struct {
 func (m *VoteSetBitsMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
