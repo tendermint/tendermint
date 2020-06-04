@@ -67,21 +67,12 @@ func (t *types) lookup(name string) reflect.Type {
 	return t.byName[name]
 }
 
-// name looks up the name of a type, or empty if not registered.
-func (t *types) nameForType(rt reflect.Type) string {
+// name looks up the name of a type, or empty if not registered. Unwraps pointers as necessary.
+func (t *types) name(rt reflect.Type) string {
+	for rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
 	t.RLock()
 	defer t.RUnlock()
 	return t.byType[rt]
-}
-
-// nameFromValue looks up the name of a type from a reflect.Value, unwrapping pointers as necessary.
-// Returns an empty string if not found.
-func (t *types) nameForValue(rv reflect.Value) string {
-	for rv.Kind() == reflect.Ptr {
-		if rv.IsNil() {
-			return ""
-		}
-		rv = rv.Elem()
-	}
-	return t.nameForType(rv.Type())
 }

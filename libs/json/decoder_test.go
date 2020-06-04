@@ -75,9 +75,9 @@ func TestDecode(t *testing.T) {
 		"struct ptr null": {`null`, stNil, false},
 		"custom value":    {`{"Value":"foo"}`, BareCustom{}, false},
 		"custom ptr":      {`"foo"`, &PtrCustom{Value: "custom"}, false},
-		"car testa":       {`{"type":"car/tesla","value":{"Color":"blue"}}`, Tesla{Color: "blue"}, false},
-		// FIXME Handle this
-		//"car testa ptr":   {`{"type":"car/tesla","value":{"Color":"blue"}}`, &Tesla{Color: "blue"}, false},
+		"testa":           {`{"type":"car/tesla","value":{"Color":"blue"}}`, Tesla{Color: "blue"}, false},
+		"testa ptr":       {`{"type":"car/tesla","value":{"Color":"blue"}}`, &Tesla{Color: "blue"}, false},
+		"testa ptr car":   {`{"type":"car/tesla","value":{"Color":"blue"}}`, Car(&Tesla{Color: "blue"}), false},
 	}
 	for name, tc := range testcases {
 		tc := tc

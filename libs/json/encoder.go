@@ -31,16 +31,15 @@ func Marshal(v interface{}) ([]byte, error) {
 func encode(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {
-		_, err := w.Write([]byte("null"))
-		return err
+		return writeStr(w, "null")
 	}
 	rv := reflect.ValueOf(v)
 
 	// If this is a registered type, defer to interface encoder. This is necessary since reflect
 	// will return the type of the concrete type for interface variables, but not within structs.
-	// Also, we must do this before calling encodeReflect to avoid infinite loops.
-	if typeRegistry.nameForValue(rv) != "" {
-		return encodeReflectInterface(w, rv)
+	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
+	if typeRegistry.name(rv.Type()) != "" {
+		return encodeJSONReflectInterface(w, rv)
 	}
 
 	return encodeReflect(w, rv)
@@ -207,7 +206,7 @@ func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
 	}
 
 	// Look up the name of the concrete type
-	name := typeRegistry.nameForValue(rv)
+	name := typeRegistry.name(rv.Type())
 	if name == "" {
 		return fmt.Errorf("cannot encode unregistered type %v", rv.Type())
 	}
