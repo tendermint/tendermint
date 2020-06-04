@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -42,7 +43,7 @@ func makeEvidences(
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
-		Type:             types.PrevoteType,
+		Type:             tmproto.PrevoteType,
 		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
@@ -90,7 +91,7 @@ func makeEvidences(
 	// different type
 	{
 		v := vote2
-		v.Type = types.PrecommitType
+		v.Type = tmproto.PrecommitType
 		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
 	}
 
@@ -188,7 +189,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Height:           h2.Height,
 			Round:            h2.Commit.Round,
 			Timestamp:        h2.Time,
-			Type:             types.PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          h2.Commit.BlockID,
 		}
 		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -49,8 +50,8 @@ func TestResetValidator(t *testing.T) {
 	assert.Equal(t, privVal.LastSignState, emptyState)
 
 	// test vote
-	height, round := int64(10), 1
-	voteType := byte(types.PrevoteType)
+	height, round := int64(10), int32(1)
+	voteType := byte(tmproto.PrevoteType)
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
@@ -93,7 +94,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	// create some fixed values
 	serialized := `{
 		"height": "1",
-		"round": "1",
+		"round": 1,
 		"step": 1
 	}`
 
@@ -164,8 +165,8 @@ func TestSignVote(t *testing.T) {
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
 
-	height, round := int64(10), 1
-	voteType := byte(types.PrevoteType)
+	height, round := int64(10), int32(1)
+	voteType := byte(tmproto.PrevoteType)
 
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
@@ -209,7 +210,7 @@ func TestSignProposal(t *testing.T) {
 
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{Total: 10, Hash: []byte{3, 2, 1}}}
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
@@ -250,7 +251,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
 	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
-	height, round := int64(10), 1
+	height, round := int64(10), int32(1)
 	chainID := "mychainid"
 
 	// test proposal
@@ -276,7 +277,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
-		voteType := byte(types.PrevoteType)
+		voteType := byte(tmproto.PrevoteType)
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
@@ -299,19 +300,19 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx int32, height int64, round int32, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            round,
-		Type:             types.SignedMsgType(typ),
+		Type:             tmproto.SignedMsgType(typ),
 		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}
 }
 
-func newProposal(height int64, round int, blockID types.BlockID) *types.Proposal {
+func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
 	return &types.Proposal{
 		Height:    height,
 		Round:     round,

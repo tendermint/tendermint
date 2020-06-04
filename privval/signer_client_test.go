@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -110,8 +111,8 @@ func TestSignerProposal(t *testing.T) {
 func TestSignerVote(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -126,8 +127,8 @@ func TestSignerVote(t *testing.T) {
 func TestSignerVoteResetDeadline(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -152,8 +153,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 func TestSignerVoteKeepAlive(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		defer tc.signerServer.Stop()
 		defer tc.signerClient.Close()
@@ -199,7 +200,7 @@ func TestSignerSignProposalErrors(t *testing.T) {
 func TestSignerSignVoteErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
-		vote := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		vote := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		// Replace signer service privval with one that always fails
 		tc.signerServer.privVal = types.NewErroringMockPV()
@@ -254,7 +255,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		defer tc.signerClient.Close()
 
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		e := tc.signerClient.SignVote(tc.chainID, want)
 		assert.EqualError(t, e, "received unexpected response")
