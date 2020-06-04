@@ -108,7 +108,7 @@ func BenchmarkSimpleHashAlternatives(b *testing.B) {
 
 func Test_getSplitPoint(t *testing.T) {
 	tests := []struct {
-		length int
+		length int64
 		want   int
 	}{
 		{1, 0},

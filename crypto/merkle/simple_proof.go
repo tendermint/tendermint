@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const (
@@ -23,8 +24,8 @@ const (
 // everything.  This also affects the generalized proof system as
 // well.
 type SimpleProof struct {
-	Total    int      `json:"total"`     // Total number of items.
-	Index    int      `json:"index"`     // Index of item to prove.
+	Total    int64    `json:"total"`     // Total number of items.
+	Index    int64    `json:"index"`     // Index of item to prove.
 	LeafHash []byte   `json:"leaf_hash"` // Hash of item value.
 	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
@@ -37,8 +38,8 @@ func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Simp
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
 		proofs[i] = &SimpleProof{
-			Total:    len(items),
-			Index:    i,
+			Total:    int64(len(items)),
+			Index:    int64(i),
 			LeafHash: trail.Hash,
 			Aunts:    trail.FlattenAunts(),
 		}
@@ -115,10 +116,38 @@ func (sp *SimpleProof) ValidateBasic() error {
 	return nil
 }
 
+func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
+	if sp == nil {
+		return nil
+	}
+	pb := new(tmmerkle.SimpleProof)
+
+	pb.Total = sp.Total
+	pb.Index = sp.Index
+	pb.LeafHash = sp.LeafHash
+	pb.Aunts = sp.Aunts
+
+	return pb
+}
+
+func SimpleProofFromProto(pb *tmmerkle.SimpleProof) (*SimpleProof, error) {
+	if pb == nil {
+		return nil, errors.New("nil proof")
+	}
+	sp := new(SimpleProof)
+
+	sp.Total = pb.Total
+	sp.Index = pb.Index
+	sp.LeafHash = pb.LeafHash
+	sp.Aunts = pb.Aunts
+
+	return sp, sp.ValidateBasic()
+}
+
 // Use the leafHash and innerHashes to get the root merkle hash.
 // If the length of the innerHashes slice isn't exactly correct, the result is nil.
 // Recursive impl.
-func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][]byte) []byte {
+func computeHashFromAunts(index, total int64, leafHash []byte, innerHashes [][]byte) []byte {
 	if index >= total || index < 0 || total <= 0 {
 		return nil
 	}
@@ -192,7 +221,7 @@ func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *Simp
 		trail := &SimpleProofNode{leafHash(items[0]), nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
-		k := getSplitPoint(len(items))
+		k := getSplitPoint(int64(len(items)))
 		lefts, leftRoot := trailsFromByteSlices(items[:k])
 		rights, rightRoot := trailsFromByteSlices(items[k:])
 		rootHash := innerHash(leftRoot.Hash, rightRoot.Hash)
