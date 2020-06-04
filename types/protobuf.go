@@ -209,24 +209,24 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
 				len(pubKey.Data), ed25519.PubKeySize)
 		}
-		var pk ed25519.PubKey
-		copy(pk[:], pubKey.Data)
+		var pk = make(ed25519.PubKey, ed25519.PubKeySize)
+		copy(pk, pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSr25519:
 		if len(pubKey.Data) != sr25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySr25519. Got %d, expected %d",
 				len(pubKey.Data), sr25519.PubKeySize)
 		}
-		var pk sr25519.PubKey
-		copy(pk[:], pubKey.Data)
+		var pk = make(sr25519.PubKey, sr25519.PubKeySize)
+		copy(pk, pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
 		if len(pubKey.Data) != secp256k1.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySecp256k1. Got %d, expected %d",
 				len(pubKey.Data), secp256k1.PubKeySize)
 		}
-		var pk secp256k1.PubKey
-		copy(pk[:], pubKey.Data)
+		var pk = make(secp256k1.PubKey, secp256k1.PubKeySize)
+		copy(pk, pubKey.Data)
 		return pk, nil
 	default:
 		return nil, fmt.Errorf("unknown pubkey type %v", pubKey.Type)
