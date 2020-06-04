@@ -1,16 +1,17 @@
-package json
+package json_test
 
 import (
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/libs/json"
 )
 
 func init() {
-	RegisterType("car/tesla", Tesla{})
+	json.RegisterType("car/tesla", Tesla{})
 }
 
 type Car interface {
@@ -97,10 +98,9 @@ func TestMarshal(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			var s strings.Builder
-			err := encodeJSON(&s, tc.value)
+			bz, err := json.Marshal(tc.value)
 			require.NoError(t, err)
-			assert.JSONEq(t, tc.output, s.String())
+			assert.JSONEq(t, tc.output, string(bz))
 		})
 	}
 }

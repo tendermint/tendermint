@@ -8,7 +8,13 @@ import (
 	"reflect"
 )
 
-func decodeJSON(bz []byte, v interface{}) error {
+// Unmarshal unmarshals JSON into the given value, using Amino-compatible JSON encoding (strings
+// for 64-bit numbers, and type wrappers for registered types).
+func Unmarshal(bz []byte, v interface{}) error {
+	return decode(bz, v)
+}
+
+func decode(bz []byte, v interface{}) error {
 	if len(bz) == 0 {
 		return errors.New("cannot decode empty bytes")
 	}
@@ -20,16 +26,17 @@ func decodeJSON(bz []byte, v interface{}) error {
 	rv = rv.Elem()
 
 	// If this is a registered type, defer to interface decoder. This is necessary since reflect
-	// will return the type of the concrete type for interface variables, but not within structs.
-	// FIXME This needs to handle nil pointers.
+	// will return the type of the concrete type for interface variables (e.g. a struct, not an
+	// interface). However, within structs it will return an interface, so we need to handle that
+	// inside decodeReflect() in addition to this.
 	if typeRegistry.nameForValue(rv) != "" {
-		return decodeJSONReflectInterface(bz, rv)
+		return decodeReflectInterface(bz, rv)
 	}
 
-	return decodeJSONReflect(bz, rv)
+	return decodeReflect(bz, rv)
 }
 
-func decodeJSONReflect(bz []byte, rv reflect.Value) error {
+func decodeReflect(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("value is not addressable")
 	}
@@ -64,19 +71,18 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 	}
 
 	switch rv.Type().Kind() {
-	// Decode complex types
-
+	// Decode complex types recursively.
 	case reflect.Slice, reflect.Array:
-		return decodeJSONReflectList(bz, rv)
+		return decodeReflectList(bz, rv)
 
 	case reflect.Map:
-		return decodeJSONReflectMap(bz, rv)
+		return decodeReflectMap(bz, rv)
 
 	case reflect.Struct:
-		return decodeJSONReflectStruct(bz, rv)
+		return decodeReflectStruct(bz, rv)
 
 	case reflect.Interface:
-		return decodeJSONReflectInterface(bz, rv)
+		return decodeReflectInterface(bz, rv)
 
 	// For 64-bit integers, unwrap expected string and defer to stdlib for integer decoding.
 	case reflect.Int64, reflect.Int, reflect.Uint64, reflect.Uint:
@@ -88,11 +94,11 @@ func decodeJSONReflect(bz []byte, rv reflect.Value) error {
 
 	// Anything else we defer to the stdlib.
 	default:
-		return decodeJSONStdlib(bz, rv)
+		return decodeStdlib(bz, rv)
 	}
 }
 
-func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
+func decodeReflectList(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("list value is not addressable")
 	}
@@ -110,7 +116,7 @@ func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 			}
 			reflect.Copy(rv, reflect.ValueOf(buf))
 
-		} else if err := decodeJSONStdlib(bz, rv); err != nil {
+		} else if err := decodeStdlib(bz, rv); err != nil {
 			return err
 		}
 
@@ -127,7 +133,7 @@ func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 			return fmt.Errorf("got list of %v elements, expected %v", len(rawSlice), rv.Len())
 		}
 		for i, bz := range rawSlice {
-			if err := decodeJSONReflect(bz, rv.Index(i)); err != nil {
+			if err := decodeReflect(bz, rv.Index(i)); err != nil {
 				return err
 			}
 		}
@@ -141,7 +147,7 @@ func decodeJSONReflectList(bz []byte, rv reflect.Value) error {
 	return nil
 }
 
-func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
+func decodeReflectMap(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("map value is not addressable")
 	}
@@ -159,7 +165,7 @@ func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
 	rv.Set(reflect.MakeMapWithSize(rv.Type(), len(rawMap)))
 	for key, bz := range rawMap {
 		value := reflect.New(rv.Type().Elem()).Elem()
-		if err := decodeJSONReflect(bz, value); err != nil {
+		if err := decodeReflect(bz, value); err != nil {
 			return err
 		}
 		rv.SetMapIndex(reflect.ValueOf(key), value)
@@ -167,7 +173,7 @@ func decodeJSONReflectMap(bz []byte, rv reflect.Value) error {
 	return nil
 }
 
-func decodeJSONReflectStruct(bz []byte, rv reflect.Value) error {
+func decodeReflectStruct(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("struct value is not addressable")
 	}
@@ -182,7 +188,7 @@ func decodeJSONReflectStruct(bz []byte, rv reflect.Value) error {
 		frv := rv.Field(i)
 		bz := rawMap[fInfo.jsonName]
 		if len(bz) > 0 {
-			if err := decodeJSONReflect(bz, frv); err != nil {
+			if err := decodeReflect(bz, frv); err != nil {
 				return err
 			}
 		} else if !fInfo.omitEmpty {
@@ -193,7 +199,7 @@ func decodeJSONReflectStruct(bz []byte, rv reflect.Value) error {
 	return nil
 }
 
-func decodeJSONReflectInterface(bz []byte, rv reflect.Value) error {
+func decodeReflectInterface(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() {
 		return errors.New("interface value not addressable")
 	}
@@ -226,7 +232,7 @@ func decodeJSONReflectInterface(bz []byte, rv reflect.Value) error {
 
 	cptr := reflect.New(rt)
 	crv := cptr.Elem()
-	if err := decodeJSONReflect(wrapper.Value, crv); err != nil {
+	if err := decodeReflect(wrapper.Value, crv); err != nil {
 		return err
 	}
 	rv.Set(crv)
@@ -234,7 +240,7 @@ func decodeJSONReflectInterface(bz []byte, rv reflect.Value) error {
 	return nil
 }
 
-func decodeJSONStdlib(bz []byte, rv reflect.Value) error {
+func decodeStdlib(bz []byte, rv reflect.Value) error {
 	if !rv.CanAddr() && rv.Kind() != reflect.Ptr {
 		return errors.New("value must be addressable or pointer")
 	}

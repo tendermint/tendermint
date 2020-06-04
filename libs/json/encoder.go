@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,18 @@ var (
 	jsonUnmarshalerType = reflect.TypeOf(new(json.Unmarshaler)).Elem()
 )
 
-func encodeJSON(w io.Writer, v interface{}) error {
+// Marshal marshals the value as JSON, using Amino-compatible JSON encoding (strings for
+// 64-bit numbers, and type wrappers for registered types).
+func Marshal(v interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := encode(buf, v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func encode(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {
 		_, err := w.Write([]byte("null"))
@@ -26,15 +38,15 @@ func encodeJSON(w io.Writer, v interface{}) error {
 
 	// If this is a registered type, defer to interface encoder. This is necessary since reflect
 	// will return the type of the concrete type for interface variables, but not within structs.
-	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
+	// Also, we must do this before calling encodeReflect to avoid infinite loops.
 	if typeRegistry.nameForValue(rv) != "" {
-		return encodeJSONReflectInterface(w, rv)
+		return encodeReflectInterface(w, rv)
 	}
 
-	return encodeJSONReflect(w, rv)
+	return encodeReflect(w, rv)
 }
 
-func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
+func encodeReflect(w io.Writer, rv reflect.Value) error {
 	if !rv.IsValid() {
 		return errors.New("invalid reflect value")
 	}
@@ -56,24 +68,24 @@ func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 	// dereferenced, we try implementations with both value receiver and pointer receiver. We must
 	// do this after the time normalization above, and thus after dereferencing.
 	if rv.Type().Implements(jsonMarshalerType) {
-		return encodeJSONStdlib(w, rv.Interface())
+		return encodeStdlib(w, rv.Interface())
 	} else if rv.CanAddr() && rv.Addr().Type().Implements(jsonMarshalerType) {
-		return encodeJSONStdlib(w, rv.Addr().Interface())
+		return encodeStdlib(w, rv.Addr().Interface())
 	}
 
 	switch rv.Type().Kind() {
 	// Complex types must be recursively encoded.
 	case reflect.Interface:
-		return encodeJSONReflectInterface(w, rv)
+		return encodeReflectInterface(w, rv)
 
 	case reflect.Array, reflect.Slice:
-		return encodeJSONReflectList(w, rv)
+		return encodeReflectList(w, rv)
 
 	case reflect.Map:
-		return encodeJSONReflectMap(w, rv)
+		return encodeReflectMap(w, rv)
 
 	case reflect.Struct:
-		return encodeJSONReflectStruct(w, rv)
+		return encodeReflectStruct(w, rv)
 
 	// 64-bit integers are emitted as strings, to avoid precision problems with e.g.
 	// Javascript which uses 64-bit floats (having 53-bit precision).
@@ -85,11 +97,11 @@ func encodeJSONReflect(w io.Writer, rv reflect.Value) error {
 
 	// For everything else, defer to the stdlib encoding/json encoder
 	default:
-		return encodeJSONStdlib(w, rv.Interface())
+		return encodeStdlib(w, rv.Interface())
 	}
 }
 
-func encodeJSONReflectList(w io.Writer, rv reflect.Value) error {
+func encodeReflectList(w io.Writer, rv reflect.Value) error {
 	// Emit nil slices as null.
 	if rv.Kind() == reflect.Slice && rv.IsNil() {
 		return writeStr(w, `null`)
@@ -97,7 +109,7 @@ func encodeJSONReflectList(w io.Writer, rv reflect.Value) error {
 
 	// Encode byte slices as base64 with the stdlib encoder.
 	if rv.Type().Elem().Kind() == reflect.Uint8 {
-		return encodeJSONStdlib(w, rv.Interface())
+		return encodeStdlib(w, rv.Interface())
 	}
 
 	// Anything else we recursively encode ourselves.
@@ -106,7 +118,7 @@ func encodeJSONReflectList(w io.Writer, rv reflect.Value) error {
 		return err
 	}
 	for i := 0; i < length; i++ {
-		if err := encodeJSONReflect(w, rv.Index(i)); err != nil {
+		if err := encodeReflect(w, rv.Index(i)); err != nil {
 			return err
 		}
 		if i < length-1 {
@@ -118,7 +130,7 @@ func encodeJSONReflectList(w io.Writer, rv reflect.Value) error {
 	return writeStr(w, `]`)
 }
 
-func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
+func encodeReflectMap(w io.Writer, rv reflect.Value) error {
 	if rv.Type().Key().Kind() != reflect.String {
 		return errors.New("map key must be string")
 	}
@@ -133,13 +145,13 @@ func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
 				return err
 			}
 		}
-		if err := encodeJSONStdlib(w, keyrv.Interface()); err != nil {
+		if err := encodeStdlib(w, keyrv.Interface()); err != nil {
 			return err
 		}
 		if err := writeStr(w, `:`); err != nil {
 			return err
 		}
-		if err := encodeJSONReflect(w, rv.MapIndex(keyrv)); err != nil {
+		if err := encodeReflect(w, rv.MapIndex(keyrv)); err != nil {
 			return err
 		}
 		writeComma = true
@@ -147,7 +159,7 @@ func encodeJSONReflectMap(w io.Writer, rv reflect.Value) error {
 	return writeStr(w, `}`)
 }
 
-func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
+func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 	sInfo := makeStructInfo(rv.Type())
 	if err := writeStr(w, `{`); err != nil {
 		return err
@@ -164,13 +176,13 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 				return err
 			}
 		}
-		if err := encodeJSONStdlib(w, fInfo.jsonName); err != nil {
+		if err := encodeStdlib(w, fInfo.jsonName); err != nil {
 			return err
 		}
 		if err := writeStr(w, `:`); err != nil {
 			return err
 		}
-		if err := encodeJSONReflect(w, frv); err != nil {
+		if err := encodeReflect(w, frv); err != nil {
 			return err
 		}
 		writeComma = true
@@ -178,7 +190,7 @@ func encodeJSONReflectStruct(w io.Writer, rv reflect.Value) error {
 	return writeStr(w, `}`)
 }
 
-func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
+func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
 	if rv.Kind() == reflect.Interface {
 		if rv.IsNil() {
 			return writeStr(w, `null`)
@@ -204,13 +216,13 @@ func encodeJSONReflectInterface(w io.Writer, rv reflect.Value) error {
 	if err := writeStr(w, fmt.Sprintf(`{"type":%q,"value":`, name)); err != nil {
 		return err
 	}
-	if err := encodeJSONReflect(w, rv); err != nil {
+	if err := encodeReflect(w, rv); err != nil {
 		return err
 	}
 	return writeStr(w, `}`)
 }
 
-func encodeJSONStdlib(w io.Writer, v interface{}) error {
+func encodeStdlib(w io.Writer, v interface{}) error {
 	// Doesn't stream the output because that adds a newline, as per:
 	// https://golang.org/pkg/encoding/json/#Encoder.Encode
 	blob, err := json.Marshal(v)

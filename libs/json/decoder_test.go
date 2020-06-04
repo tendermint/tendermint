@@ -1,4 +1,4 @@
-package json
+package json_test
 
 import (
 	"reflect"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/libs/json"
 )
 
 func TestDecode(t *testing.T) {
@@ -83,7 +85,7 @@ func TestDecode(t *testing.T) {
 			// Create a target variable as a pointer to the zero value of the tc.value type,
 			// and wrap it in an empty interface. Decode into that interface.
 			target := reflect.New(reflect.TypeOf(tc.value)).Interface()
-			err := decodeJSON([]byte(tc.json), target)
+			err := json.Unmarshal([]byte(tc.json), target)
 			if tc.err {
 				require.Error(t, err)
 				return
