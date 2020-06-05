@@ -96,7 +96,7 @@ func (req RPCRequest) String() string {
 	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
 }
 
-func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
+func MapToRequest(id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
 	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
 		valueJSON, err := tmjson.Marshal(value)
@@ -106,7 +106,7 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 		paramsMap[name] = valueJSON
 	}
 
-	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(paramsMap)
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -114,7 +114,7 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 	return NewRPCRequest(id, method, payload), nil
 }
 
-func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
+func ArrayToRequest(id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
 	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
 		valueJSON, err := tmjson.Marshal(value)
@@ -124,7 +124,7 @@ func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []inte
 		paramsMap[i] = valueJSON
 	}
 
-	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(paramsMap)
 	if err != nil {
 		return RPCRequest{}, err
 	}

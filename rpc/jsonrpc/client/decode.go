@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
-
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func unmarshalResponseBytes(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedID types.JSONRPCIntID,
 	result interface{},
@@ -42,7 +39,6 @@ func unmarshalResponseBytes(
 }
 
 func unmarshalResponseBytesArray(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedIDs []types.JSONRPCIntID,
 	results []interface{},

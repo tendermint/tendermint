@@ -11,8 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	amino "github.com/tendermint/go-amino"
-
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -81,10 +79,6 @@ func (u parsedURL) GetTrimmedURL() string {
 type HTTPClient interface {
 	// Call calls the given method with the params and returns a result.
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
-	// Codec returns an amino codec used.
-	Codec() *amino.Codec
-	// SetCodec sets an amino codec.
-	SetCodec(*amino.Codec)
 }
 
 // Caller implementers can facilitate calling the JSON-RPC endpoint.
@@ -97,9 +91,6 @@ type Caller interface {
 // Client is a JSON-RPC client, which sends POST HTTP requests to the
 // remote server.
 //
-// Request values are amino encoded. Response is expected to be amino encoded.
-// New amino codec is used if no other codec was set using SetCodec.
-//
 // Client is safe for concurrent use by multiple goroutines.
 type Client struct {
 	address  string
@@ -107,7 +98,6 @@ type Client struct {
 	password string
 
 	client *http.Client
-	cdc    *amino.Codec
 
 	mtx       sync.Mutex
 	nextReqID int
@@ -154,7 +144,6 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 		username: username,
 		password: password,
 		client:   client,
-		cdc:      amino.NewCodec(),
 	}
 
 	return rpcClient, nil
@@ -165,7 +154,7 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 func (c *Client) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	id := c.nextRequestID()
 
-	request, err := types.MapToRequest(c.cdc, id, method, params)
+	request, err := types.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
@@ -195,11 +184,8 @@ func (c *Client) Call(method string, params map[string]interface{}, result inter
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return unmarshalResponseBytes(c.cdc, responseBytes, id, result)
+	return unmarshalResponseBytes(responseBytes, id, result)
 }
-
-func (c *Client) Codec() *amino.Codec       { return c.cdc }
-func (c *Client) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
 // NewRequestBatch starts a batch of requests for this client.
 func (c *Client) NewRequestBatch() *RequestBatch {
@@ -248,7 +234,7 @@ func (c *Client) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, e
 		ids[i] = req.request.ID.(types.JSONRPCIntID)
 	}
 
-	return unmarshalResponseBytesArray(c.cdc, responseBytes, ids, results)
+	return unmarshalResponseBytesArray(responseBytes, ids, results)
 }
 
 func (c *Client) nextRequestID() types.JSONRPCIntID {
@@ -324,7 +310,7 @@ func (b *RequestBatch) Call(
 	result interface{},
 ) (interface{}, error) {
 	id := b.client.nextRequestID()
-	request, err := types.MapToRequest(b.client.cdc, id, method, params)
+	request, err := types.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, err
 	}

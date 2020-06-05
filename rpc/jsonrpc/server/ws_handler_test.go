@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -29,7 +28,6 @@ func TestWebsocketManagerHandler(t *testing.T) {
 
 	// check basic functionality works
 	req, err := types.MapToRequest(
-		amino.NewCodec(),
 		types.JSONRPCStringID("TestWebsocketManager"),
 		"c",
 		map[string]interface{}{"s": "a", "i": 10},
