@@ -100,9 +100,14 @@ func (conR *Reactor) OnStop() {
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
 func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.Logger.Info("SwitchToConsensus")
-	conR.conS.reconstructLastCommit(state)
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
-	// broadcast a NewRoundStepMessage.
+
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		conR.conS.reconstructLastCommit(state)
+	}
+
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
+	// NewRoundStepMessage.
 	conR.conS.updateToState(state)
 
 	conR.mtx.Lock()
