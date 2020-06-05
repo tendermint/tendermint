@@ -615,7 +615,7 @@ func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestStateLockPOLUnlock(t *testing.T) {
-	cs1, vss := randState(4)
+	cs1, vss, evpool := randStateWithEvpool(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -702,6 +702,13 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
 	ensureNewRound(newRoundCh, height, round+1)
+	// polc should be store in the evpool for round 1
+	_, exists := evpool.RetrievePOLC(height, round)
+	assert.True(t, exists)
+	// and not for round 0
+	_, exists = evpool.RetrievePOLC(height, round - 1)
+	assert.False(t, exists)
+
 }
 
 // 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
@@ -709,7 +716,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 // v1 should unlock and precommit nil. In the third round another block is proposed, all vals
 // prevote and now v1 can lock onto the third block and precommit that
 func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
-	cs1, vss := randState(4)
+	cs1, vss, evpool := randStateWithEvpool(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -801,6 +808,10 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	thirdPropBlockParts := propBlock.MakePartSet(partSize)
 	thirdPropBlockHash := propBlock.Hash()
 	require.NotEqual(t, secondBlockHash, thirdPropBlockHash)
+
+	// polc should be store in the evpool for round 1
+	_, exists := evpool.RetrievePOLC(height, round)
+	assert.True(t, exists)
 
 	incrementRound(vs2, vs3, vs4)
 
