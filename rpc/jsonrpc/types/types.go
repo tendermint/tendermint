@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"strings"
 
-	amino "github.com/tendermint/go-amino"
-
 	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
@@ -182,7 +180,7 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCResponse {
+func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 	var rawMsg json.RawMessage
 
 	if res != nil {
@@ -252,8 +250,6 @@ type WSRPCConnection interface {
 	WriteRPCResponse(resp RPCResponse)
 	// TryWriteRPCResponse tries to write the resp onto connection (NON-BLOCKING).
 	TryWriteRPCResponse(resp RPCResponse) bool
-	// Codec returns an Amino codec used.
-	Codec() *amino.Codec
 	// Context returns the connection's context.
 	Context() context.Context
 }

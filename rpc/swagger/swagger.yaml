@@ -1008,11 +1008,11 @@ paths:
       parameters:
         - in: query
           name: evidence
-          description: Amino-encoded JSON evidence
+          description: JSON evidence
           required: true
           schema:
             type: string
-            example: "JSON_EVIDENCE_Amino_encoded"
+            example: "JSON_EVIDENCE_encoded"
       tags:
         - Info
       description: |
