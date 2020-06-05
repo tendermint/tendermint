@@ -3,13 +3,6 @@ package tendermint.proto.libs.bits;
 
 option go_package = "github.com/tendermint/tendermint/proto/libs/bits";
 
-import "third_party/proto/gogoproto/gogo.proto";
-
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-option (gogoproto.goproto_registration) = true;
-
 message BitArray {
   int64           bits  = 1;
   repeated uint64 elems = 2;
