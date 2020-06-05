@@ -1813,9 +1813,10 @@ func (cs *State) addVote(
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
 	if vote.Height+1 == cs.Height && vote.Type == types.PrecommitType {
-		if !(cs.Step == cstypes.RoundStepNewHeight) {
+		if cs.Step != cstypes.RoundStepNewHeight {
 			// Late precommit at prior height is ignored
-			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
+			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored",
+				"vote height", vote.Height, "vote", vote)
 			return
 		}
 		added, err = cs.LastCommit.AddVote(vote)
