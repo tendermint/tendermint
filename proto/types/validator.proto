@@ -6,6 +6,11 @@ option go_package = "github.com/tendermint/tendermint/proto/types";
 import "third_party/proto/gogoproto/gogo.proto";
 import "proto/crypto/keys/types.proto";
 
+option (gogoproto.marshaler_all)        = true;
+option (gogoproto.unmarshaler_all)      = true;
+option (gogoproto.sizer_all)            = true;
+option (gogoproto.goproto_registration) = true;
+
 message ValidatorSet {
   repeated Validator validators         = 1;
   Validator          proposer           = 2;

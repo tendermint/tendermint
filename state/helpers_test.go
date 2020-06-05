@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -19,7 +20,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params types.ConsensusParams
+	params tmproto.ConsensusParams
 }
 
 func newTestApp() proxy.AppConns {
@@ -73,7 +74,7 @@ func makeValidCommit(
 ) (*types.Commit, error) {
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
-		_, val := vals.GetByIndex(i)
+		_, val := vals.GetByIndex(int32(i))
 		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
 			return nil, err
@@ -147,14 +148,14 @@ func makeConsensusParams(
 	blockTimeIotaMs int64,
 	evidenceAge int64,
 	maxNumEvidence uint32,
-) types.ConsensusParams {
-	return types.ConsensusParams{
-		Block: types.BlockParams{
+) tmproto.ConsensusParams {
+	return tmproto.ConsensusParams{
+		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: types.EvidenceParams{
+		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 			MaxNum:          maxNumEvidence,
@@ -211,7 +212,7 @@ func makeHeaderPartsResponsesValPowerChange(
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,
-	params types.ConsensusParams,
+	params tmproto.ConsensusParams,
 ) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)

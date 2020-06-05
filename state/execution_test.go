@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -21,9 +22,9 @@ import (
 )
 
 var (
-	chainID      = "execution_chain"
-	testPartSize = 65536
-	nTxsPerBlock = 10
+	chainID             = "execution_chain"
+	testPartSize uint32 = 65536
+	nTxsPerBlock        = 10
 )
 
 func TestApplyBlock(t *testing.T) {
@@ -177,13 +178,13 @@ func TestValidateValidatorUpdates(t *testing.T) {
 
 	secpKey := secp256k1.GenPrivKey().PubKey()
 
-	defaultValidatorParams := types.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
+	defaultValidatorParams := tmproto.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
 
 	testCases := []struct {
 		name string
 
 		abciUpdates     []abci.ValidatorUpdate
-		validatorParams types.ValidatorParams
+		validatorParams tmproto.ValidatorParams
 
 		shouldErr bool
 	}{

@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -368,12 +369,12 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) d
 		Validators:                  valSet,
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: types.ConsensusParams{
-			Block: types.BlockParams{
+		ConsensusParams: tmproto.ConsensusParams{
+			Block: tmproto.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: types.EvidenceParams{
+			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks:  20,
 				MaxAgeDuration:   48 * time.Hour,
 				ProofTrialPeriod: 1,

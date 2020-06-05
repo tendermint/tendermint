@@ -11,14 +11,15 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(byte(PrevoteType))
+	return exampleVote(byte(tmproto.PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(byte(PrecommitType))
+	return exampleVote(byte(tmproto.PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -28,7 +29,7 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		Type:      SignedMsgType(t),
+		Type:      tmproto.SignedMsgType(t),
 		Height:    12345,
 		Round:     2,
 		Timestamp: stamp,
@@ -68,7 +69,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		1: {
-			"", &Vote{Height: 1, Round: 1, Type: PrecommitType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrecommitType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -83,7 +84,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		2: {
-			"", &Vote{Height: 1, Round: 1, Type: PrevoteType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrevoteType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -174,12 +175,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   SignedMsgType
+		in   tmproto.SignedMsgType
 		out  bool
 	}{
-		{"Prevote", PrevoteType, true},
-		{"Precommit", PrecommitType, true},
-		{"InvalidType", SignedMsgType(0x3), false},
+		{"Prevote", tmproto.PrevoteType, true},
+		{"Precommit", tmproto.PrecommitType, true},
+		{"InvalidType", tmproto.SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -218,15 +219,15 @@ func TestMaxVoteBytes(t *testing.T) {
 
 	vote := &Vote{
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   math.MaxInt64,
+		ValidatorIndex:   math.MaxInt32,
 		Height:           math.MaxInt64,
-		Round:            math.MaxInt64,
+		Round:            math.MaxInt32,
 		Timestamp:        timestamp,
-		Type:             PrevoteType,
+		Type:             tmproto.PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
-				Total: math.MaxInt64,
+				Total: math.MaxInt32,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},

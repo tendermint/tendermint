@@ -2,7 +2,10 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 // BlockMeta contains meta information.
@@ -21,6 +24,45 @@ func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 		Header:    block.Header,
 		NumTxs:    len(block.Data.Txs),
 	}
+}
+
+func (bm *BlockMeta) ToProto() *tmproto.BlockMeta {
+	if bm == nil {
+		return nil
+	}
+
+	pb := &tmproto.BlockMeta{
+		BlockID:   bm.BlockID.ToProto(),
+		BlockSize: int64(bm.BlockSize),
+		Header:    *bm.Header.ToProto(),
+		NumTxs:    int64(bm.NumTxs),
+	}
+	return pb
+}
+
+func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
+	if pb == nil {
+		return nil, errors.New("blockmeta is empty")
+	}
+
+	bm := new(BlockMeta)
+
+	bi, err := BlockIDFromProto(&pb.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := HeaderFromProto(&pb.Header)
+	if err != nil {
+		return nil, err
+	}
+
+	bm.BlockID = *bi
+	bm.BlockSize = int(pb.BlockSize)
+	bm.Header = h
+	bm.NumTxs = int(pb.NumTxs)
+
+	return bm, bm.ValidateBasic()
 }
 
 //-----------------------------------------------------------

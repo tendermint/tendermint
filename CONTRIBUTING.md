@@ -116,7 +116,7 @@ To install `protoc`, download an appropriate release (https://github.com/protoco
 
 To install `gogoproto`, do the following:
 
-```sh
+```
 $ go get github.com/gogo/protobuf/gogoproto
 $ cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
 $ make install
@@ -178,34 +178,34 @@ The main development branch is master.
 
 Every release is maintained in a release branch named `vX.Y.Z`.
 
-Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to master. 
+Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to master.
 
 Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
 ### Development Procedure
 
-The latest state of development is on `master`, which must never fail `make test`. _Never_ force push `master`, unless fixing broken git history (which we rarely do anyways). 
+The latest state of development is on `master`, which must never fail `make test`. _Never_ force push `master`, unless fixing broken git history (which we rarely do anyways).
 
-To begin contributing, create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`). 
+To begin contributing, create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`).
 
 Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
 
 Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.
 
-Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!) 
+Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!)
 
-#### Merging Pull Requests 
+#### Merging Pull Requests
 
-It is also our convention that authors merge their own pull requests, when possible. External contributors may not have the necessary permissions to do this, in which case, a member of the core team will merge the pull request once it's been approved. 
+It is also our convention that authors merge their own pull requests, when possible. External contributors may not have the necessary permissions to do this, in which case, a member of the core team will merge the pull request once it's been approved.
 
-Before merging a pull request: 
+Before merging a pull request:
 
-- Ensure pull branch is up-to-date with a recent `master` (GitHub won't let you merge without this!) 
+- Ensure pull branch is up-to-date with a recent `master` (GitHub won't let you merge without this!)
 - Run `make test` to ensure that all tests pass
 - [Squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 
-#### Pull Requests for Minor Releases 
+#### Pull Requests for Minor Releases
 
 If your change should be included in a minor release, please also open a PR against the long-lived minor release candidate branch (e.g., `rc1/v0.33.5`) _immediately after your change has been merged to master_.
 
@@ -214,12 +214,12 @@ You can do this by cherry-picking your commit off master:
 ```
 $ git checkout rc1/v0.33.5
 $ git checkout -b {new branch name}
-$ git cherry-pick {commit SHA from master} 
+$ git cherry-pick {commit SHA from master}
 # may need to fix conflicts, and then use git add and git cherry-pick --continue
 $ git push origin {new branch name}
 ```
 
-After this, you can open a PR. Please note in the PR body if there were merge conflicts so that reviewers can be sure to take a thorough look. 
+After this, you can open a PR. Please note in the PR body if there were merge conflicts so that reviewers can be sure to take a thorough look.
 
 ### Git Commit Style
 
@@ -255,22 +255,22 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Minor Release
 
-Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master. 
+Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master.
 
-1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X` 
-2. Run integration tests: `make test_integrations` 
+1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
+2. Run integration tests: `make test_integrations`
 3. Prepare the release:
-	- Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-	- Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-	- Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-	- Reset the `CHANGELOG_PENDING.md`
-	- Bump the appropriate versions in `version.go`
-5. Create a release branch `release/vX.X.x` off the release candidate branch:
+   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   - Reset the `CHANGELOG_PENDING.md`
+   - Bump the appropriate versions in `version.go`
+4. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
    - Note that all branches prefixed with `release` are protected once pushed. You will need admin help to make any changes to the branch.
-6. Open a pull request of the new minor release branch onto the latest major release branch `vX.X` and then rebase to merge. This will start the release process.
-7. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
+5. Open a pull request of the new minor release branch onto the latest major release branch `vX.X` and then rebase to merge. This will start the release process.
+6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the release branch into master.
 
