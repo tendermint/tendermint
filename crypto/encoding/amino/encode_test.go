@@ -1,7 +1,6 @@
 package cryptoamino
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -17,17 +16,20 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
-type byter interface {
-	Bytes() []byte
+type AminoMarshal interface {
+	AminoMarshal() ([]byte, error)
+	AminoUnmarshal([]byte) error
 }
 
 func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
 	bz, err := cdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
-	if byterSrc, ok := src.(byter); ok {
+	if byterSrc, ok := src.(AminoMarshal); ok {
 		// Make sure this is compatible with current (Bytes()) encoding.
-		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
+		bza, err := byterSrc.AminoMarshal()
+		assert.NoError(t, err)
+		assert.Equal(t, bza, bz, "Amino binary vs Bytes() mismatch")
 	}
 	// Make sure we have the expected length.
 	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
@@ -50,21 +52,6 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 	// Unmarshal.
 	err = cdc.UnmarshalJSON(js, dst)
 	require.Nil(t, err, "%+v", err)
-}
-
-// ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
-//nolint:govet
-func ExamplePrintRegisteredTypes() {
-	cdc.PrintTypes(os.Stdout)
-	// Output: | Type | Name | Prefix | Length | Notes |
-	//| ---- | ---- | ------ | ----- | ------ |
-	//| PubKey | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
-	//| PubKey | tendermint/PubKeySr25519 | 0x0DFB1005 | 0x20 |  |
-	//| PubKey | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-	//| PubKey | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
-	//| PrivKey | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
-	//| PrivKey | tendermint/PrivKeySr25519 | 0x2F82D78B | 0x20 |  |
-	//| PrivKey | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
 }
 
 func TestKeyEncodings(t *testing.T) {

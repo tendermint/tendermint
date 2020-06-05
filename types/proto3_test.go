@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto" // nolint: staticcheck // still used by gogoproto
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/types/proto3"

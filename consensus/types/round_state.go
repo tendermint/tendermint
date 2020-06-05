@@ -66,7 +66,7 @@ func (rs RoundStepType) String() string {
 // of the cs.receiveRoutine
 type RoundState struct {
 	Height    int64         `json:"height"` // Height we are working on
-	Round     int           `json:"round"`
+	Round     int32         `json:"round"`
 	Step      RoundStepType `json:"step"`
 	StartTime time.Time     `json:"start_time"`
 
@@ -76,18 +76,18 @@ type RoundState struct {
 	Proposal           *types.Proposal     `json:"proposal"`
 	ProposalBlock      *types.Block        `json:"proposal_block"`
 	ProposalBlockParts *types.PartSet      `json:"proposal_block_parts"`
-	LockedRound        int                 `json:"locked_round"`
+	LockedRound        int32               `json:"locked_round"`
 	LockedBlock        *types.Block        `json:"locked_block"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
 
 	// Last known round with POL for non-nil valid block.
-	ValidRound int          `json:"valid_round"`
+	ValidRound int32        `json:"valid_round"`
 	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
 	// Last known block parts of POL metnioned above.
 	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
-	CommitRound               int                 `json:"commit_round"` //
+	CommitRound               int32               `json:"commit_round"` //
 	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
 	LastValidators            *types.ValidatorSet `json:"last_validators"`
 	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`

@@ -131,20 +131,20 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 }
 
 type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
-	page, perPage int, orderBy string) (*ctypes.ResultTxSearch, error)
+	page, perPage *int, orderBy string) (*ctypes.ResultTxSearch, error)
 
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage int, orderBy string) (
+	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage *int, orderBy string) (
 		*ctypes.ResultTxSearch, error) {
 		return c.TxSearch(query, prove, page, perPage, orderBy)
 	}
 }
 
 type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
-	page, perPage int) (*ctypes.ResultValidators, error)
+	page, perPage *int) (*ctypes.ResultValidators, error)
 
 func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
-	return func(ctx *rpctypes.Context, height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+	return func(ctx *rpctypes.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 		return c.Validators(height, page, perPage)
 	}
 }
@@ -173,10 +173,10 @@ func makeConsensusParamsFunc(c *lrpc.Client) rpcConsensusParamsFunc {
 	}
 }
 
-type rpcUnconfirmedTxsFunc func(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error)
+type rpcUnconfirmedTxsFunc func(ctx *rpctypes.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error)
 
 func makeUnconfirmedTxsFunc(c *lrpc.Client) rpcUnconfirmedTxsFunc {
-	return func(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+	return func(ctx *rpctypes.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
 		return c.UnconfirmedTxs(limit)
 	}
 }

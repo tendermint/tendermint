@@ -22,10 +22,10 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type      SignedMsgType
+	Type      tmproto.SignedMsgType
 	Height    int64     `json:"height"`
-	Round     int       `json:"round"`
-	POLRound  int       `json:"pol_round"` // -1 if null.
+	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
 	Signature []byte    `json:"signature"`
@@ -33,9 +33,9 @@ type Proposal struct {
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int, polRound int, blockID BlockID) *Proposal {
+func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
 	return &Proposal{
-		Type:      ProposalType,
+		Type:      tmproto.ProposalType,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
@@ -46,7 +46,7 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
-	if p.Type != ProposalType {
+	if p.Type != tmproto.ProposalType {
 		return errors.New("invalid Type")
 	}
 	if p.Height < 0 {
@@ -105,10 +105,10 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 	pb := new(tmproto.Proposal)
 
 	pb.BlockID = p.BlockID.ToProto()
-	pb.Type = tmproto.SignedMsgType(p.Type)
+	pb.Type = p.Type
 	pb.Height = p.Height
-	pb.Round = int32(p.Round)
-	pb.PolRound = int32(p.POLRound)
+	pb.Round = p.Round
+	pb.PolRound = p.POLRound
 	pb.Timestamp = p.Timestamp
 	pb.Signature = p.Signature
 
@@ -130,10 +130,10 @@ func ProposalFromProto(pp *tmproto.Proposal) (*Proposal, error) {
 	}
 
 	p.BlockID = *blockID
-	p.Type = SignedMsgType(pp.Type)
+	p.Type = pp.Type
 	p.Height = pp.Height
-	p.Round = int(pp.Round)
-	p.POLRound = int(pp.PolRound)
+	p.Round = pp.Round
+	p.POLRound = pp.PolRound
 	p.Timestamp = pp.Timestamp
 	p.Signature = pp.Signature
 

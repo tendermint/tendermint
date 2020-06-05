@@ -15,8 +15,8 @@ var _ crypto.PubKey = PubKey{}
 // PubKeySize is the number of bytes in an Sr25519 public key.
 const PubKeySize = 32
 
-// PubKey implements crypto.PubKey for the Sr25519 signature scheme.
-type PubKey [PubKeySize]byte
+// PubKeySr25519 implements crypto.PubKey for the Sr25519 signature scheme.
+type PubKey []byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKey) Address() crypto.Address {
@@ -25,11 +25,7 @@ func (pubKey PubKey) Address() crypto.Address {
 
 // Bytes marshals the PubKey using amino encoding.
 func (pubKey PubKey) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(pubKey)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return []byte(pubKey)
 }
 
 func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
@@ -41,7 +37,9 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 	copy(sig64[:], sig)
 
 	publicKey := &(schnorrkel.PublicKey{})
-	err := publicKey.Decode(pubKey)
+	var p [PubKeySize]byte
+	copy(p[:], pubKey)
+	err := publicKey.Decode(p)
 	if err != nil {
 		return false
 	}
@@ -58,7 +56,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKey{%X}", pubKey[:])
+	return fmt.Sprintf("PubKeySr25519{%X}", []byte(pubKey))
 }
 
 // Equals - checks that two public keys are the same time

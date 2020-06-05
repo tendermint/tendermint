@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -263,7 +262,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	if err != nil {
 		return sm.State{}, nil, err
 	}
-	state.Version.Consensus.App = version.Protocol(appVersion)
+	state.Version.Consensus.App = appVersion
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
