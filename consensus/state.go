@@ -33,7 +33,6 @@ var (
 	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
 	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
 	ErrAddingVote               = errors.New("error adding vote")
-	ErrVoteHeightMismatch       = errors.New("error vote height mismatch")
 )
 
 //-----------------------------------------------------------------------------
@@ -1762,9 +1761,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		// But if it's a conflicting sig, add it to the cs.evpool.
 		// If it's otherwise invalid, punish peer.
 		// nolint: gocritic
-		if err == ErrVoteHeightMismatch {
-			return added, err
-		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
+		if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			pubKey, err := cs.privValidator.GetPubKey()
 			if err != nil {
 				return false, fmt.Errorf("can't get pubkey: %w", err)
@@ -1817,15 +1814,15 @@ func (cs *State) addVote(
 
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
-	if vote.Height+1 == cs.Height {
-		if !(cs.Step == cstypes.RoundStepNewHeight && vote.Type == tmproto.PrecommitType) {
-			// TODO: give the reason ..
-			// fmt.Errorf("tryAddVote: Wrong height, not a LastCommit straggler commit.")
-			return added, ErrVoteHeightMismatch
+	if vote.Height+1 == cs.Height && vote.Type == tmproto.PrecommitType {
+		if cs.Step != cstypes.RoundStepNewHeight {
+			// Late precommit at prior height is ignored
+			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
+			return
 		}
 		added, err = cs.LastCommit.AddVote(vote)
 		if !added {
-			return added, err
+			return
 		}
 
 		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
@@ -1845,7 +1842,6 @@ func (cs *State) addVote(
 	// Height mismatch is ignored.
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if vote.Height != cs.Height {
-		err = ErrVoteHeightMismatch
 		cs.Logger.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
 		return
 	}
