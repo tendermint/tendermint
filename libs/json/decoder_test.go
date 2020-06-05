@@ -75,9 +75,9 @@ func TestUnmarshal(t *testing.T) {
 		"shoes":               {`{"type":"vehicle/shoes","value":{"Soles":"rubber"}}`, Car{}, true},
 		"shoes ptr":           {`{"type":"vehicle/shoes","value":{"Soles":"rubber"}}`, &Car{}, true},
 		"shoes iface":         {`{"type":"vehicle/shoes","value":{"Soles":"rubbes"}}`, Vehicle(&Car{}), true},
-		"key public":          {`{"type":"key/public","value":"MTIzNDU2Nzg="}`, PublicKey("12345678"), false},
-		"key wrong":           {`{"type":"key/public","value":"MTIzNDU2Nzg="}`, PrivateKey("12345678"), true},
-		"key into car":        {`{"type":"key/public","value":"MTIzNDU2Nzg="}`, Vehicle(&Car{}), true},
+		"key public":          {`{"type":"key/public","value":"AQIDBAUGBwg="}`, PublicKey{1, 2, 3, 4, 5, 6, 7, 8}, false},
+		"key wrong":           {`{"type":"key/public","value":"AQIDBAUGBwg="}`, PrivateKey{1, 2, 3, 4, 5, 6, 7, 8}, true},
+		"key into car":        {`{"type":"key/public","value":"AQIDBAUGBwg="}`, Vehicle(&Car{}), true},
 		"tags": {
 			`{"name":"name","OmitEmpty":"foo","Hidden":"bar","tags":{"name":"child"}}`,
 			Tags{JSONName: "name", OmitEmpty: "foo", Tags: &Tags{JSONName: "child"}},

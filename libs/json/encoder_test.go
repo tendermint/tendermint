@@ -44,6 +44,7 @@ func TestMarshal(t *testing.T) {
 		"slice bytes":     {[]byte{1, 2, 3}, `"AQID"`},
 		"slice int64":     {[]int64{1, 2, 3}, `["1","2","3"]`},
 		"slice int64 ptr": {[]*int64{&i64, nil}, `["64",null]`},
+		"array bytes":     {[3]byte{1, 2, 3}, `"AQID"`},
 		"array int64":     {[3]int64{1, 2, 3}, `["1","2","3"]`},
 		"map int64":       {map[string]int64{"a": 1, "b": 2, "c": 3}, `{"a":"1","b":"2","c":"3"}`},
 		"car":             {car, `{"type":"vehicle/car","value":{"Wheels":4}}`},
@@ -52,7 +53,7 @@ func TestMarshal(t *testing.T) {
 		"boat":            {boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
 		"boat ptr":        {&boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
 		"boat iface":      {Vehicle(boat), `{"type":"vehicle/boat","value":{"Sail":true}}`},
-		"key public":      {PublicKey("12345678"), `{"type":"key/public","value":"MTIzNDU2Nzg="}`},
+		"key public":      {PublicKey{1, 2, 3, 4, 5, 6, 7, 8}, `{"type":"key/public","value":"AQIDBAUGBwg="}`},
 		"tags": {
 			Tags{JSONName: "name", OmitEmpty: "foo", Hidden: "bar", Tags: &Tags{JSONName: "child"}},
 			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,

@@ -123,6 +123,12 @@ func encodeReflectList(w io.Writer, rv reflect.Value) error {
 
 	// Encode byte slices as base64 with the stdlib encoder.
 	if rv.Type().Elem().Kind() == reflect.Uint8 {
+		// Stdlib does not base64-encode byte arrays, only slices, so we copy to slice.
+		if rv.Type().Kind() == reflect.Array {
+			slice := reflect.MakeSlice(reflect.SliceOf(rv.Type().Elem()), rv.Len(), rv.Len())
+			reflect.Copy(slice, rv)
+			rv = slice
+		}
 		return encodeStdlib(w, rv.Interface())
 	}
 
