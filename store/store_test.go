@@ -182,9 +182,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	uncontiguousPartSet.AddPart(part2)
 
 	header1 := types.Header{
-		Height:  1,
-		ChainID: "block_test",
-		Time:    tmtime.Now(),
+		Height:          1,
+		ChainID:         "block_test",
+		Time:            tmtime.Now(),
+		ProposerAddress: tmrand.Bytes(crypto.AddressSize),
 	}
 
 	// End of setup, test data
