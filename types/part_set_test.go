@@ -157,3 +157,35 @@ func TestParSetHeaderProtoBuf(t *testing.T) {
 		}
 	}
 }
+
+func TestPartProtoBuf(t *testing.T) {
+
+	proof := merkle.SimpleProof{
+		Total:    1,
+		Index:    1,
+		LeafHash: tmrand.Bytes(32),
+	}
+	testCases := []struct {
+		msg     string
+		ps1     *Part
+		expPass bool
+	}{
+		{"failure empty", &Part{}, false},
+		{"failure nil", nil, false},
+		{"success",
+			&Part{Index: 1, Bytes: tmrand.Bytes(32), Proof: proof}, true},
+	}
+
+	for _, tc := range testCases {
+		proto, err := tc.ps1.ToProto()
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+		}
+
+		p, err := PartFromProto(proto)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.ps1, p, tc.msg)
+		}
+	}
+}
