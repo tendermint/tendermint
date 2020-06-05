@@ -77,7 +77,7 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr       = []byte("validator_address123")
+		valAddr       = tmrand.Bytes(crypto.AddressSize)
 		height        = int64(1)
 		lastBlockTime = time.Now()
 		stateDB       = initializeValidatorState(valAddr, height)
@@ -113,7 +113,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 
 func TestAddEvidence(t *testing.T) {
 	var (
-		valAddr      = []byte("validator_address123")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		height       = int64(30)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
