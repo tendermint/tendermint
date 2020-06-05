@@ -12,9 +12,11 @@ var (
 	typeRegistry = newTypes()
 )
 
-// RegisterType registers a type for Amino-compatible interface encoding in the global type
+// RegisterType registers a struct type for Amino-compatible interface encoding in the global type
 // registry. These types will be encoded with a type wrapper `{"type":"<type>","value":<value>}`
-// regardless of which interface they are wrapped in.
+// regardless of which interface they are wrapped in. If the type is a pointer, it will still be
+// valid both for value and pointer receivers, but decoding will prefer generating a pointer
+// receiver when possible.
 //
 // Should only be called in init() functions, as it panics on error.
 func RegisterType(_type interface{}, name string) {
@@ -27,36 +29,56 @@ func RegisterType(_type interface{}, name string) {
 	}
 }
 
+// typeInfo contains type information.
+type typeInfo struct {
+	name      string
+	rt        reflect.Type
+	returnPtr bool
+}
+
 // types is a type registry. It is safe for concurrent use.
 type types struct {
 	sync.RWMutex
-	byType map[reflect.Type]string
-	byName map[string]reflect.Type
+	byType map[reflect.Type]*typeInfo
+	byName map[string]*typeInfo
 }
 
 // newTypes creates a new type registry.
 func newTypes() types {
 	return types{
-		byType: map[reflect.Type]string{},
-		byName: map[string]reflect.Type{},
+		byType: map[reflect.Type]*typeInfo{},
+		byName: map[string]*typeInfo{},
 	}
 }
 
 // registers the given type with the given name. The name and type must not be registered already.
 func (t *types) register(name string, rt reflect.Type) error {
-	t.Lock()
-	defer t.Unlock()
 	if name == "" {
 		return errors.New("name cannot be empty")
 	}
-	if _, ok := t.byName[name]; ok {
+	// If this is a pointer type, we recursively resolve until we get a bare type, but register that
+	// we should return pointers.
+	returnPtr := false
+	for rt.Kind() == reflect.Ptr {
+		returnPtr = true
+		rt = rt.Elem()
+	}
+	tInfo := &typeInfo{
+		name:      name,
+		rt:        rt,
+		returnPtr: returnPtr,
+	}
+
+	t.Lock()
+	defer t.Unlock()
+	if _, ok := t.byName[tInfo.name]; ok {
 		return fmt.Errorf("a type with name %q is already registered", name)
 	}
-	if _, ok := t.byType[rt]; ok {
+	if _, ok := t.byType[tInfo.rt]; ok {
 		return fmt.Errorf("the type %v is already registered", rt)
 	}
-	t.byName[name] = rt
-	t.byType[rt] = name
+	t.byName[name] = tInfo
+	t.byType[rt] = tInfo
 	return nil
 }
 
@@ -64,7 +86,7 @@ func (t *types) register(name string, rt reflect.Type) error {
 func (t *types) lookup(name string) reflect.Type {
 	t.RLock()
 	defer t.RUnlock()
-	return t.byName[name]
+	return t.byName[name].rt
 }
 
 // name looks up the name of a type, or empty if not registered. Unwraps pointers as necessary.
@@ -74,5 +96,9 @@ func (t *types) name(rt reflect.Type) string {
 	}
 	t.RLock()
 	defer t.RUnlock()
-	return t.byType[rt]
+	tInfo := t.byType[rt]
+	if tInfo == nil {
+		return ""
+	}
+	return tInfo.name
 }
