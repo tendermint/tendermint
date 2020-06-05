@@ -973,3 +973,74 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 	assert.True(t, fullNode2.HasEvidence(ev))
 	assert.True(t, fullNode.HasEvidence(ev))
 }
+
+func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
+	emptyValSet := &types.ValidatorSet{
+		Validators: nil,
+		Proposer:   nil,
+	}
+
+	testCases := []struct {
+		headers map[int64]*types.SignedHeader
+		vals    map[int64]*types.ValidatorSet
+		err     bool
+	}{
+		{
+			headerSet,
+			valSet,
+			false,
+		},
+		{
+			headerSet,
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: nil,
+			},
+			true,
+		},
+		{
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: h2,
+				3: nil,
+			},
+			valSet,
+			true,
+		},
+		{
+			headerSet,
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+				3: emptyValSet,
+			},
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		badNode := mockp.New(
+			chainID,
+			tc.headers,
+			tc.vals,
+		)
+		c, err := light.NewClient(
+			chainID,
+			trustOptions,
+			badNode,
+			[]provider.Provider{badNode, badNode},
+			dbs.New(dbm.NewMemDB(), chainID),
+			light.MaxRetryAttempts(1),
+		)
+		require.NoError(t, err)
+
+		_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
+		if tc.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+}

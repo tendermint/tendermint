@@ -112,7 +112,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, pagePtr, perPageP
 		}
 
 		apiResults = append(apiResults, &ctypes.ResultTx{
-			Hash:     r.Tx.Hash(),
+			Hash:     types.Tx(r.Tx).Hash(),
 			Height:   r.Height,
 			Index:    r.Index,
 			TxResult: r.Result,

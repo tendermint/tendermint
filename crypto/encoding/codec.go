@@ -16,7 +16,7 @@ func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 	case ed25519.PubKey:
 		kp = pc.PublicKey{
 			Sum: &pc.PublicKey_Ed25519{
-				Ed25519: k[:],
+				Ed25519: k,
 			},
 		}
 	default:
@@ -33,8 +33,8 @@ func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
 				len(k.Ed25519), ed25519.PubKeySize)
 		}
-		var pk ed25519.PubKey
-		copy(pk[:], k.Ed25519)
+		pk := make(ed25519.PubKey, ed25519.PubKeySize)
+		copy(pk, k.Ed25519)
 		return pk, nil
 	default:
 		return nil, fmt.Errorf("fromproto: key type %v is not supported", k)
@@ -48,7 +48,7 @@ func PrivKeyToProto(k crypto.PrivKey) (pc.PrivateKey, error) {
 	case ed25519.PrivKey:
 		kp = pc.PrivateKey{
 			Sum: &pc.PrivateKey_Ed25519{
-				Ed25519: k[:],
+				Ed25519: k,
 			},
 		}
 	default:
@@ -66,8 +66,8 @@ func PrivKeyFromProto(k pc.PrivateKey) (crypto.PrivKey, error) {
 			return nil, fmt.Errorf("invalid size for PubKeyEd25519. Got %d, expected %d",
 				len(k.Ed25519), ed25519.PubKeySize)
 		}
-		var pk ed25519.PrivKey
-		copy(pk[:], k.Ed25519)
+		pk := make(ed25519.PrivKey, ed25519.PrivateKeySize)
+		copy(pk, k.Ed25519)
 		return pk, nil
 	default:
 		return nil, errors.New("fromproto: key type not supported")

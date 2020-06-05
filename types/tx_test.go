@@ -68,8 +68,8 @@ func TestValidTxProof(t *testing.T) {
 		for i := range txs {
 			tx := []byte(txs[i])
 			proof := txs.Proof(i)
-			assert.Equal(t, i, proof.Proof.Index, "%d: %d", h, i)
-			assert.Equal(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
+			assert.EqualValues(t, i, proof.Proof.Index, "%d: %d", h, i)
+			assert.EqualValues(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
 			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
 			assert.EqualValues(t, tx, proof.Data, "%d: %d", h, i)
 			assert.EqualValues(t, txs[i].Hash(), proof.Leaf(), "%d: %d", h, i)
