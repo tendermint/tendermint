@@ -12,19 +12,9 @@ import (
 	"io"
 	"os"
 
-	amino "github.com/tendermint/go-amino"
-
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	cs.RegisterMessages(cdc)
-	cs.RegisterWALMessages(cdc)
-	types.RegisterBlockAmino(cdc)
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -47,7 +37,7 @@ func main() {
 			panic(fmt.Errorf("failed to decode msg: %v", err))
 		}
 
-		json, err := cdc.MarshalJSON(msg)
+		json, err := tmjson.Marshal(msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to marshal msg: %v", err))
 		}

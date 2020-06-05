@@ -1394,6 +1394,18 @@ func RegisterMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&VoteSetBitsMessage{}, "tendermint/VoteSetBits", nil)
 }
 
+func init() {
+	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
+	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
+	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
+	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
+	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
+	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
+	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
+	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
+}
+
 func decodeMsg(bz []byte) (msg Message, err error) {
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
