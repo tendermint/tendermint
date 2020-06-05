@@ -5,6 +5,7 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "crypto/merkle/merkle.proto";
+import "proto/types/types.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "third_party/proto/gogoproto/gogo.proto";
@@ -77,7 +78,7 @@ message RequestQuery {
 
 message RequestBeginBlock {
   bytes             hash                 = 1;
-  Header            header               = 2 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Header            header               = 2 [(gogoproto.nullable) = false];
   LastCommitInfo    last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
@@ -326,40 +327,18 @@ message Event {
     (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
+// TxResult contains results of executing the transaction.
+//
+// One usage is indexing transaction results.
+message TxResult {
+  int64             height = 1;
+  uint32            Index  = 2;
+  bytes             tx     = 3;
+  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+}
+
 //----------------------------------------
 // Blockchain Types
-
-message Header {
-  // basic block info
-  Version                   version  = 1 [(gogoproto.nullable) = false];
-  string                    chain_id = 2 [(gogoproto.customname) = "ChainID"];
-  int64                     height   = 3;
-  google.protobuf.Timestamp time     = 4
-    [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-
-  // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
-
-  // hashes of block data
-  bytes last_commit_hash = 6;  // commit from validators from the last block
-  bytes data_hash        = 7;  // transactions
-
-  // hashes from the app output from the prev block
-  bytes validators_hash      = 8;   // validators for the current block
-  bytes next_validators_hash = 9;   // validators for the next block
-  bytes consensus_hash       = 10;  // consensus params for current block
-  bytes app_hash             = 11;  // state after txs from the previous block
-  bytes last_results_hash    = 12;  // root hash of tx results from prev block
-
-  // consensus info
-  bytes evidence_hash    = 13;  // evidence included in the block
-  bytes proposer_address = 14;  // original proposer of the block
-}
-
-message Version {
-  uint64 Block = 1;
-  uint64 App   = 2;
-}
 
 message BlockID {
   bytes         hash         = 1;

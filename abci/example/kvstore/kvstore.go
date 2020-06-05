@@ -17,7 +17,7 @@ var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
 
-	ProtocolVersion version.Protocol = 0x1
+	ProtocolVersion uint64 = 0x1
 )
 
 type State struct {
@@ -76,7 +76,7 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 	return types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:          version.ABCIVersion,
-		AppVersion:       ProtocolVersion.Uint64(),
+		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.AppHash,
 	}

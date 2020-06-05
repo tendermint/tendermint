@@ -9,6 +9,11 @@ import "proto/libs/bits/types.proto";
 import "proto/crypto/merkle/types.proto";
 import "proto/version/version.proto";
 
+option (gogoproto.marshaler_all)        = true;
+option (gogoproto.unmarshaler_all)      = true;
+option (gogoproto.sizer_all)            = true;
+option (gogoproto.goproto_registration) = true;
+
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = false;
@@ -60,7 +65,7 @@ message Header {
   google.protobuf.Timestamp          time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
 
   // hashes of block data
   bytes last_commit_hash = 6;  // commit from validators from the last block
