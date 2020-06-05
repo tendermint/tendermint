@@ -57,7 +57,6 @@ func RegisterWALMessages(cdc *amino.Codec) {
 }
 
 func init() {
-	tmjson.RegisterType(types.EventDataRoundState{}, "tendermint/wal/EventDataRoundState")
 	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
 	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
 	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
