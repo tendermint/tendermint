@@ -334,7 +334,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
+				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
 		}
