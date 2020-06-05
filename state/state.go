@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	tmversion "github.com/tendermint/tendermint/proto/version"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -23,7 +24,7 @@ var (
 // and the software version to support upgrades to the format of
 // the State as stored on disk.
 type Version struct {
-	Consensus version.Consensus
+	Consensus tmversion.Consensus
 	Software  string
 }
 
@@ -32,7 +33,7 @@ type Version struct {
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
 var InitStateVersion = Version{
-	Consensus: version.Consensus{
+	Consensus: tmversion.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
 	},

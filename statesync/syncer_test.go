@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/statesync"
+	tmversion "github.com/tendermint/tendermint/proto/version"
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
@@ -44,7 +45,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	state := sm.State{
 		ChainID: "chain",
 		Version: sm.Version{
-			Consensus: version.Consensus{
+			Consensus: tmversion.Consensus{
 				Block: version.BlockProtocol,
 				App:   0,
 			},

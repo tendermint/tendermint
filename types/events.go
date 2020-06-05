@@ -80,7 +80,7 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	TxResult
+	abci.TxResult
 }
 
 // NOTE: This goes into the replay WAL
