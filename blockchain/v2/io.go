@@ -12,7 +12,7 @@ type iIO interface {
 	sendBlockRequest(peerID p2p.ID, height int64) error
 	sendBlockToPeer(block *types.Block, peerID p2p.ID) error
 	sendBlockNotFound(height int64, peerID p2p.ID) error
-	sendStatusResponse(height int64, peerID p2p.ID) error
+	sendStatusResponse(base int64, height int64, peerID p2p.ID) error
 
 	broadcastStatusRequest(base int64, height int64)
 
@@ -54,12 +54,12 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *switchIO) sendStatusResponse(height int64, peerID p2p.ID) error {
+func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{Height: height})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{Base: base, Height: height})
 
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
 		return fmt.Errorf("peer queue full")
