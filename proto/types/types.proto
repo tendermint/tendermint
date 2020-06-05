@@ -9,11 +9,6 @@ import "proto/libs/bits/types.proto";
 import "proto/crypto/merkle/types.proto";
 import "proto/version/version.proto";
 
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-option (gogoproto.goproto_registration) = true;
-
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = false;
