@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -82,7 +81,7 @@ func TestLoadBlockStoreState(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		db := db.NewMemDB()
+		db := dbm.NewMemDB()
 		SaveBlockStoreState(tc.bss, db)
 		retrBSJ := LoadBlockStoreState(db)
 		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
@@ -90,7 +89,7 @@ func TestLoadBlockStoreState(t *testing.T) {
 }
 
 func TestNewBlockStore(t *testing.T) {
-	db := db.NewMemDB()
+	db := dbm.NewMemDB()
 	bss := tmstore.BlockStoreState{Base: 100, Height: 10000}
 	bz, _ := proto.Marshal(&bss)
 	err := db.Set(blockStoreKey, bz)
