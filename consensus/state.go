@@ -581,7 +581,9 @@ func (cs *State) updateToState(state sm.State) {
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
 		// must be called to reconstruct LastCommit from SeenCommit.
-		panic("LastCommit cannot be empty in heights > 1")
+		panic(fmt.Sprintf("LastCommit cannot be empty in heights > 1 (H:%d)",
+			state.LastBlockHeight+1,
+		))
 	}
 
 	// Next desired block height
