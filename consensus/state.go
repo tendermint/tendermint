@@ -564,7 +564,10 @@ func (cs *State) updateToState(state sm.State) {
 	validators := state.Validators
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic("updateToState(state) called but last Precommit round didn't have +2/3")
+			panic(fmt.Sprintf("updateToState(state) called, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				cs.Height,
+				cs.CommitRound,
+				cs.Votes.Precommits(cs.CommitRound)))
 		}
 		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
 	}
