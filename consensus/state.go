@@ -1817,8 +1817,7 @@ func (cs *State) addVote(
 	if vote.Height+1 == cs.Height && vote.Type == tmproto.PrecommitType {
 		if cs.Step != cstypes.RoundStepNewHeight {
 			// Late precommit at prior height is ignored
-			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored",
-				"vote height", vote.Height, "vote", vote)
+			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
 			return
 		}
 		added, err = cs.LastCommit.AddVote(vote)
