@@ -34,6 +34,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [light] \#4964 `light` reactor migration to Protobuf encoding
 
 - Apps
 
