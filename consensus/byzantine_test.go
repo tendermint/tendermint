@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -54,13 +56,13 @@ func TestByzantine(t *testing.T) {
 		if i == 0 {
 			// NOTE: Now, test validators are MockPV, which by default doesn't
 			// do any safety checks.
-			css[i].privValidator.(*types.MockPV).DisableChecks()
-			css[i].decideProposal = func(j int) func(int64, int) {
-				return func(height int64, round int) {
+			css[i].privValidator.(types.MockPV).DisableChecks()
+			css[i].decideProposal = func(j int32) func(int64, int32) {
+				return func(height int64, round int32) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
-			}(i)
-			css[i].doPrevote = func(height int64, round int) {}
+			}(int32(i))
+			css[i].doPrevote = func(height int64, round int32) {}
 		}
 
 		eventBus := css[i].eventBus
@@ -111,13 +113,13 @@ func TestByzantine(t *testing.T) {
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*Reactor)
-		cr.SwitchToConsensus(cr.conS.GetState(), 0)
+		cr.SwitchToConsensus(cr.conS.GetState(), false)
 	}
 
 	// start the byzantine state machine
 	byzR := reactors[0].(*ByzantineReactor)
 	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s, 0)
+	byzR.reactor.SwitchToConsensus(s, false)
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].
@@ -171,7 +173,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -208,7 +210,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Stat
 
 func sendProposalAndParts(
 	height int64,
-	round int,
+	round int32,
 	cs *State,
 	peer p2p.Peer,
 	proposal *types.Proposal,
@@ -220,7 +222,7 @@ func sendProposalAndParts(
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 
 	// parts
-	for i := 0; i < parts.Total(); i++ {
+	for i := 0; i < int(parts.Total()); i++ {
 		part := parts.GetPart(i)
 		msg := &BlockPartMessage{
 			Height: height, // This tells peer that this part applies to us.
@@ -232,8 +234,8 @@ func sendProposalAndParts(
 
 	// votes
 	cs.mtx.Lock()
-	prevote, _ := cs.signVote(types.PrevoteType, blockHash, parts.Header())
-	precommit, _ := cs.signVote(types.PrecommitType, blockHash, parts.Header())
+	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
+	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
 	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))
@@ -267,8 +269,8 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !br.reactor.fastSync {
+	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	if !br.reactor.waitSync {
 		br.reactor.sendNewRoundStepMessage(peer)
 	}
 }

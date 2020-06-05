@@ -7,7 +7,7 @@ order: 4
 ## XXX
 
 This page is undergoing deprecation. All content is being moved to the new [home
-of the ABCI specification](../spec/abci/README.md).
+of the ABCI specification](https://github.com/tendermint/spec/tree/master/spec/abci).
 
 ## ABCI Design
 
@@ -316,7 +316,7 @@ field can be left empty. Tendermint core will take care of updating the
 validator set. Note the change in voting power must be strictly less than 1/3
 per block if you want a light client to be able to prove the transition
 externally. See the [light client
-docs](https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators)
+docs](https://godoc.org/github.com/tendermint/tendermint/light#hdr-How_We_Track_Validators)
 for details on how it tracks validators.
 
 In go:

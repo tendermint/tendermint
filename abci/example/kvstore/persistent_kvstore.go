@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"strings"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -94,7 +95,10 @@ func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (res
 	switch reqQuery.Path {
 	case "/val":
 		key := []byte("val:" + string(reqQuery.Data))
-		value := app.app.state.db.Get(key)
+		value, err := app.app.state.db.Get(key)
+		if err != nil {
+			panic(err)
+		}
 
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
@@ -140,11 +144,34 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
+func (app *PersistentKVStoreApplication) ListSnapshots(
+	req types.RequestListSnapshots) types.ResponseListSnapshots {
+	return types.ResponseListSnapshots{}
+}
+
+func (app *PersistentKVStoreApplication) LoadSnapshotChunk(
+	req types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
+	return types.ResponseLoadSnapshotChunk{}
+}
+
+func (app *PersistentKVStoreApplication) OfferSnapshot(
+	req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_ABORT}
+}
+
+func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
+	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
+}
+
 //---------------------------------------------
 // update validators
 
 func (app *PersistentKVStoreApplication) Validators() (validators []types.ValidatorUpdate) {
-	itr := app.app.state.db.Iterator(nil, nil)
+	itr, err := app.app.state.db.Iterator(nil, nil)
+	if err != nil {
+		panic(err)
+	}
 	for ; itr.Valid(); itr.Next() {
 		if isValidatorTx(itr.Key()) {
 			validator := new(types.ValidatorUpdate)
@@ -205,12 +232,16 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey.Data))
 
-	pubkey := ed25519.PubKeyEd25519{}
-	copy(pubkey[:], v.PubKey.Data)
+	pubkey := make(ed25519.PubKey, ed25519.PubKeySize)
+	copy(pubkey, v.PubKey.Data)
 
 	if v.Power == 0 {
 		// remove validator
-		if !app.app.state.db.Has(key) {
+		hasKey, err := app.app.state.db.Has(key)
+		if err != nil {
+			panic(err)
+		}
+		if !hasKey {
 			pubStr := base64.StdEncoding.EncodeToString(v.PubKey.Data)
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,

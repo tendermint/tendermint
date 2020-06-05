@@ -2,16 +2,16 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 var (
@@ -20,21 +20,18 @@ var (
 )
 
 type Part struct {
-	Index int                `json:"index"`
+	Index uint32             `json:"index"`
 	Bytes tmbytes.HexBytes   `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 }
 
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
-	if part.Index < 0 {
-		return errors.New("negative Index")
-	}
-	if len(part.Bytes) > BlockPartSizeBytes {
-		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
+	if len(part.Bytes) > int(BlockPartSizeBytes) {
+		return fmt.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
 	}
 	if err := part.Proof.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "wrong Proof")
+		return fmt.Errorf("wrong Proof: %w", err)
 	}
 	return nil
 }
@@ -54,10 +51,41 @@ func (part *Part) StringIndented(indent string) string {
 		indent)
 }
 
+func (part *Part) ToProto() (*tmproto.Part, error) {
+	if part == nil {
+		return nil, errors.New("nil part")
+	}
+	pb := new(tmproto.Part)
+	proof := part.Proof.ToProto()
+
+	pb.Index = part.Index
+	pb.Bytes = part.Bytes
+	pb.Proof = *proof
+
+	return pb, nil
+}
+
+func PartFromProto(pb *tmproto.Part) (*Part, error) {
+	if pb == nil {
+		return nil, errors.New("nil part")
+	}
+
+	part := new(Part)
+	proof, err := merkle.SimpleProofFromProto(&pb.Proof)
+	if err != nil {
+		return nil, err
+	}
+	part.Index = pb.Index
+	part.Bytes = pb.Bytes
+	part.Proof = *proof
+
+	return part, part.ValidateBasic()
+}
+
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int              `json:"total"`
+	Total uint32           `json:"total"`
 	Hash  tmbytes.HexBytes `json:"hash"`
 }
 
@@ -75,48 +103,70 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 
 // ValidateBasic performs basic validation.
 func (psh PartSetHeader) ValidateBasic() error {
-	if psh.Total < 0 {
-		return errors.New("negative Total")
-	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
-		return errors.Wrap(err, "Wrong Hash")
+		return fmt.Errorf("wrong Hash: %w", err)
 	}
 	return nil
+}
+
+// ToProto converts BloPartSetHeaderckID to protobuf
+func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
+	if psh == nil {
+		return tmproto.PartSetHeader{}
+	}
+
+	return tmproto.PartSetHeader{
+		Total: psh.Total,
+		Hash:  psh.Hash,
+	}
+}
+
+// FromProto sets a protobuf PartSetHeader to the given pointer
+func PartSetHeaderFromProto(ppsh *tmproto.PartSetHeader) (*PartSetHeader, error) {
+	if ppsh == nil {
+		return nil, errors.New("nil PartSetHeader")
+	}
+	psh := new(PartSetHeader)
+	psh.Total = ppsh.Total
+	psh.Hash = ppsh.Hash
+
+	return psh, psh.ValidateBasic()
 }
 
 //-------------------------------------
 
 type PartSet struct {
-	total int
+	total uint32
 	hash  []byte
 
 	mtx           sync.Mutex
 	parts         []*Part
 	partsBitArray *bits.BitArray
-	count         int
+	count         uint32
 }
 
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
-func NewPartSetFromData(data []byte, partSize int) *PartSet {
+// CONTRACT: partSize is greater than zero.
+func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 	// divide data into 4kb parts.
-	total := (len(data) + partSize - 1) / partSize
+	total := (uint32(len(data)) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	partsBytes := make([][]byte, total)
-	partsBitArray := bits.NewBitArray(total)
-	for i := 0; i < total; i++ {
+	partsBitArray := bits.NewBitArray(int(total))
+	for i := uint32(0); i < total; i++ {
 		part := &Part{
 			Index: i,
-			Bytes: data[i*partSize : tmmath.MinInt(len(data), (i+1)*partSize)],
+			Bytes: data[i*partSize : tmmath.MinInt(len(data), int((i+1)*partSize))],
 		}
 		parts[i] = part
 		partsBytes[i] = part.Bytes
-		partsBitArray.SetIndex(i, true)
+		partsBitArray.SetIndex(int(i), true)
 	}
 	// Compute merkle proofs
 	root, proofs := merkle.SimpleProofsFromByteSlices(partsBytes)
-	for i := 0; i < total; i++ {
+	for i := uint32(0); i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
@@ -134,7 +184,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		total:         header.Total,
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
-		partsBitArray: bits.NewBitArray(header.Total),
+		partsBitArray: bits.NewBitArray(int(header.Total)),
 		count:         0,
 	}
 }
@@ -176,14 +226,14 @@ func (ps *PartSet) HashesTo(hash []byte) bool {
 	return bytes.Equal(ps.hash, hash)
 }
 
-func (ps *PartSet) Count() int {
+func (ps *PartSet) Count() uint32 {
 	if ps == nil {
 		return 0
 	}
 	return ps.count
 }
 
-func (ps *PartSet) Total() int {
+func (ps *PartSet) Total() uint32 {
 	if ps == nil {
 		return 0
 	}
@@ -214,7 +264,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 
 	// Add part
 	ps.parts[part.Index] = part
-	ps.partsBitArray.SetIndex(part.Index, true)
+	ps.partsBitArray.SetIndex(int(part.Index), true)
 	ps.count++
 	return true, nil
 }

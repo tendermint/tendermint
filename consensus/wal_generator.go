@@ -9,19 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
+	db "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
@@ -46,13 +44,13 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	privValidator := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		return errors.Wrap(err, "failed to read genesis file")
+		return fmt.Errorf("failed to read genesis file: %w", err)
 	}
 	blockStoreDB := db.NewMemDB()
 	stateDB := blockStoreDB
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
-		return errors.Wrap(err, "failed to make genesis state")
+		return fmt.Errorf("failed to make genesis state: %w", err)
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
 	sm.SaveState(stateDB, state)
@@ -61,18 +59,18 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
-		return errors.Wrap(err, "failed to start proxy app connections")
+		return fmt.Errorf("failed to start proxy app connections: %w", err)
 	}
 	defer proxyApp.Stop()
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
-		return errors.Wrap(err, "failed to start event bus")
+		return fmt.Errorf("failed to start event bus: %w", err)
 	}
 	defer eventBus.Stop()
-	mempool := mock.Mempool{}
-	evpool := sm.MockEvidencePool{}
+	mempool := emptyMempool{}
+	evpool := emptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
@@ -91,7 +89,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	consensusState.wal = wal
 
 	if err := consensusState.Start(); err != nil {
-		return errors.Wrap(err, "failed to start consensus state")
+		return fmt.Errorf("failed to start consensus state: %w", err)
 	}
 
 	select {
@@ -125,9 +123,9 @@ func randPort() int {
 
 func makeAddrs() (string, string, string) {
 	start := randPort()
-	return fmt.Sprintf("tcp://0.0.0.0:%d", start),
-		fmt.Sprintf("tcp://0.0.0.0:%d", start+1),
-		fmt.Sprintf("tcp://0.0.0.0:%d", start+2)
+	return fmt.Sprintf("tcp://127.0.0.1:%d", start),
+		fmt.Sprintf("tcp://127.0.0.1:%d", start+1),
+		fmt.Sprintf("tcp://127.0.0.1:%d", start+2)
 }
 
 // getConfig returns a config for test cases

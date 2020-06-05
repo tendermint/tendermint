@@ -8,19 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var config *cfg.Config
@@ -46,19 +49,23 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 }
 
 func makeVote(
+	t *testing.T,
 	header *types.Header,
 	blockID types.BlockID,
 	valset *types.ValidatorSet,
 	privVal types.PrivValidator) *types.Vote {
-	addr := privVal.GetPubKey().Address()
-	idx, _ := valset.GetByAddress(addr)
+
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+
+	valIdx, _ := valset.GetByAddress(pubKey.Address())
 	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIdx,
 		Height:           header.Height,
 		Round:            1,
 		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
 
@@ -73,6 +80,7 @@ type BlockchainReactorPair struct {
 }
 
 func newBlockchainReactor(
+	t *testing.T,
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
@@ -86,7 +94,7 @@ func newBlockchainReactor(
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(errors.Wrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	blockDB := dbm.NewMemDB()
@@ -95,7 +103,7 @@ func newBlockchainReactor(
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(errors.Wrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	// Make the BlockchainReactor itself.
@@ -114,7 +122,7 @@ func newBlockchainReactor(
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0])
+			vote := makeVote(t, &lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0])
 			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
@@ -123,9 +131,9 @@ func newBlockchainReactor(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(errors.Wrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
@@ -138,6 +146,7 @@ func newBlockchainReactor(
 }
 
 func newBlockchainReactorPair(
+	t *testing.T,
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
@@ -147,7 +156,7 @@ func newBlockchainReactorPair(
 	consensusReactor.BaseReactor = *p2p.NewBaseReactor("Consensus reactor", consensusReactor)
 
 	return BlockchainReactorPair{
-		newBlockchainReactor(logger, genDoc, privVals, maxBlockHeight),
+		newBlockchainReactor(t, logger, genDoc, privVals, maxBlockHeight),
 		consensusReactor}
 }
 
@@ -157,7 +166,7 @@ type consensusReactorTest struct {
 	mtx                 sync.Mutex
 }
 
-func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced int) {
+func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced bool) {
 	conR.mtx.Lock()
 	defer conR.mtx.Unlock()
 	conR.switchedToConsensus = true
@@ -174,8 +183,8 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
 	logger := log.TestingLogger()
-	reactorPairs[0] = newBlockchainReactorPair(logger, genDoc, privVals, maxBlockHeight)
-	reactorPairs[1] = newBlockchainReactorPair(logger, genDoc, privVals, 0)
+	reactorPairs[0] = newBlockchainReactorPair(t, logger, genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactorPair(t, logger, genDoc, privVals, 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].bcR)
@@ -239,7 +248,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	otherChain := newBlockchainReactorPair(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	otherChain := newBlockchainReactorPair(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
 		_ = otherChain.bcR.Stop()
 		_ = otherChain.conR.Stop()
@@ -254,7 +263,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 		if i == 0 {
 			height = maxBlockHeight
 		}
-		reactorPairs[i] = newBlockchainReactorPair(logger[i], genDoc, privVals, height)
+		reactorPairs[i] = newBlockchainReactorPair(t, logger[i], genDoc, privVals, height)
 	}
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, numNodes, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -296,7 +305,7 @@ outerFor:
 	reactorPairs[numNodes-1].bcR.store = otherChain.bcR.store
 
 	lastLogger := log.TestingLogger()
-	lastReactorPair := newBlockchainReactorPair(lastLogger, genDoc, privVals, 0)
+	lastReactorPair := newBlockchainReactorPair(t, lastLogger, genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {

@@ -13,7 +13,7 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 	case 1:
 		return leafHash(items[0])
 	default:
-		k := getSplitPoint(len(items))
+		k := getSplitPoint(int64(len(items)))
 		left := SimpleHashFromByteSlices(items[:k])
 		right := SimpleHashFromByteSlices(items[k:])
 		return innerHash(left, right)
@@ -91,26 +91,14 @@ func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
 	}
 }
 
-// SimpleHashFromMap computes a Merkle tree from sorted map.
-// Like calling SimpleHashFromHashers with
-// `item = []byte(Hash(key) | Hash(value))`,
-// sorted by `item`.
-func SimpleHashFromMap(m map[string][]byte) []byte {
-	sm := newSimpleMap()
-	for k, v := range m {
-		sm.Set(k, v)
-	}
-	return sm.Hash()
-}
-
 // getSplitPoint returns the largest power of 2 less than length
-func getSplitPoint(length int) int {
+func getSplitPoint(length int64) int64 {
 	if length < 1 {
 		panic("Trying to split a tree with size < 1")
 	}
 	uLength := uint(length)
 	bitlen := bits.Len(uLength)
-	k := 1 << uint(bitlen-1)
+	k := int64(1 << uint(bitlen-1))
 	if k == length {
 		k >>= 1
 	}

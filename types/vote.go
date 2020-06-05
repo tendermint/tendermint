@@ -8,11 +8,12 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64  = 223
+	MaxVoteBytes int64  = 211
 	nilVoteStr   string = "nil-Vote"
 )
 
@@ -31,12 +32,12 @@ type ErrVoteConflictingVotes struct {
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
-	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
+	return fmt.Sprintf("conflicting votes from validator %X", err.VoteA.ValidatorAddress)
 }
 
 func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		NewDuplicateVoteEvidence(val.PubKey, vote1, vote2),
+		NewDuplicateVoteEvidence(vote1, vote2),
 	}
 }
 
@@ -46,14 +47,14 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int           `json:"round"`
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int           `json:"validator_index"`
-	Signature        []byte        `json:"signature"`
+	Type             tmproto.SignedMsgType `json:"type"`
+	Height           int64                 `json:"height"`
+	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time             `json:"timestamp"`
+	ValidatorAddress Address               `json:"validator_address"`
+	ValidatorIndex   int32                 `json:"validator_index"`
+	Signature        []byte                `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -100,9 +101,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case tmproto.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case tmproto.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")
@@ -137,9 +138,11 @@ func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
 	}
+
 	if vote.Height < 0 {
 		return errors.New("negative Height")
 	}
+
 	if vote.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -170,4 +173,48 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
+}
+
+// ToProto converts the handwritten type to proto generated type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) ToProto() *tmproto.Vote {
+	if vote == nil {
+		return nil
+	}
+
+	return &tmproto.Vote{
+		Type:             vote.Type,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		BlockID:          vote.BlockID.ToProto(),
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   vote.ValidatorIndex,
+		Signature:        vote.Signature,
+	}
+}
+
+//FromProto converts a proto generetad type to a handwritten type
+// return type, nil if everything converts safely, otherwise nil, error
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+	if pv == nil {
+		return nil, errors.New("nil vote")
+	}
+
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	vote := new(Vote)
+	vote.Type = pv.Type
+	vote.Height = pv.Height
+	vote.Round = pv.Round
+	vote.BlockID = *blockID
+	vote.Timestamp = pv.Timestamp
+	vote.ValidatorAddress = pv.ValidatorAddress
+	vote.ValidatorIndex = pv.ValidatorIndex
+	vote.Signature = pv.Signature
+
+	return vote, vote.ValidateBasic()
 }

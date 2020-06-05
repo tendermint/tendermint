@@ -2,8 +2,8 @@ package merkle
 
 import (
 	"bytes"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 //----------------------------------------
@@ -44,11 +44,11 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 		key := op.GetKey()
 		if len(key) != 0 {
 			if len(keys) == 0 {
-				return errors.Errorf("key path has insufficient # of parts: expected no more keys but got %+v", string(key))
+				return fmt.Errorf("key path has insufficient # of parts: expected no more keys but got %+v", string(key))
 			}
 			lastKey := keys[len(keys)-1]
 			if !bytes.Equal(lastKey, key) {
-				return errors.Errorf("key mismatch on operation #%d: expected %+v but got %+v", i, string(lastKey), string(key))
+				return fmt.Errorf("key mismatch on operation #%d: expected %+v but got %+v", i, string(lastKey), string(key))
 			}
 			keys = keys[:len(keys)-1]
 		}
@@ -58,7 +58,7 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 		}
 	}
 	if !bytes.Equal(root, args[0]) {
-		return errors.Errorf("calculated root hash is invalid: expected %+v but got %+v", root, args[0])
+		return fmt.Errorf("calculated root hash is invalid: expected %+v but got %+v", root, args[0])
 	}
 	if len(keys) != 0 {
 		return errors.New("keypath not consumed all")
@@ -92,7 +92,7 @@ func (prt *ProofRuntime) RegisterOpDecoder(typ string, dec OpDecoder) {
 func (prt *ProofRuntime) Decode(pop ProofOp) (ProofOperator, error) {
 	decoder := prt.decoders[pop.Type]
 	if decoder == nil {
-		return nil, errors.Errorf("unrecognized proof type %v", pop.Type)
+		return nil, fmt.Errorf("unrecognized proof type %v", pop.Type)
 	}
 	return decoder(pop)
 }
@@ -102,7 +102,7 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (ProofOperators, error) {
 	for _, pop := range proof.Ops {
 		operator, err := prt.Decode(pop)
 		if err != nil {
-			return nil, errors.Wrap(err, "decoding a proof operator")
+			return nil, fmt.Errorf("decoding a proof operator: %w", err)
 		}
 		poz = append(poz, operator)
 	}
@@ -122,7 +122,7 @@ func (prt *ProofRuntime) VerifyAbsence(proof *Proof, root []byte, keypath string
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
-		return errors.Wrap(err, "decoding proof")
+		return fmt.Errorf("decoding proof: %w", err)
 	}
 	return poz.Verify(root, keypath, args)
 }

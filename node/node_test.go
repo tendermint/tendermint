@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -24,10 +26,9 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -118,7 +119,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion version.Protocol = kvstore.ProtocolVersion
+	var appVersion uint64 = kvstore.ProtocolVersion
 
 	// check version is set in state
 	state := sm.LoadState(n.stateDB)
@@ -158,7 +159,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -202,7 +203,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
@@ -217,6 +218,8 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	const minEvSize = 12
+
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -230,7 +233,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB := state(1, height)
 	maxBytes := 16384
+	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Evidence.MaxNum = uint32(maxEvidence)
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
@@ -249,17 +254,17 @@ func TestCreateProposalBlock(t *testing.T) {
 	types.RegisterMockEvidencesGlobal() // XXX!
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidencePool := evidence.NewPool(stateDB, evidenceDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	minEvSize := 12
-	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
-	for i := 0; i < numEv; i++ {
-		ev := types.NewMockRandomGoodEvidence(1, proposerAddr, tmrand.Bytes(minEvSize))
+	for i := 0; i <= maxEvidence; i++ {
+		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
 		err := evidencePool.AddEvidence(ev)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// fill the mempool with more txs

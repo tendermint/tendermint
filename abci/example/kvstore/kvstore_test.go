@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -30,6 +31,11 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	// repeating tx doesn't raise error
 	ar = app.DeliverTx(req)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	app.Commit()
+
+	info := app.Info(types.RequestInfo{})
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery := app.Query(types.RequestQuery{
@@ -37,7 +43,9 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Data: []byte(key),
 	})
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery = app.Query(types.RequestQuery{
@@ -46,7 +54,9 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Prove: true,
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }
 
 func TestKVStoreKV(t *testing.T) {
@@ -94,7 +104,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
@@ -184,7 +194,7 @@ func makeApplyBlock(
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 
@@ -264,7 +274,7 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer server.Stop()
 	defer client.Stop()
 
@@ -273,7 +283,7 @@ func TestClientServer(t *testing.T) {
 	// set up grpc app
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer gserver.Stop()
 	defer gclient.Stop()
 
@@ -300,6 +310,13 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	ar, err = app.DeliverTxSync(types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	_, err = app.CommitSync()
+	require.NoError(t, err)
+
+	info, err := app.InfoSync(types.RequestInfo{})
+	require.NoError(t, err)
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery, err := app.QuerySync(types.RequestQuery{
@@ -308,7 +325,9 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery, err = app.QuerySync(types.RequestQuery{
@@ -318,5 +337,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }

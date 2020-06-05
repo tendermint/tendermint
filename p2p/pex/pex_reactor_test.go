@@ -74,7 +74,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	books := make([]*addrBook, N)
+	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
 
 	// create switches
@@ -144,8 +144,11 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
+	peerAddr := peer.SocketAddr()
 	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
+	book.AddAddress(peerAddr, peerAddr)
+	require.True(t, book.HasAddress(peerAddr))
 
 	id := string(peer.ID())
 	msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
@@ -164,6 +167,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	r.Receive(PexChannel, peer, msg)
 	assert.False(t, r.lastReceivedRequests.Has(id))
 	assert.False(t, sw.Peers().Has(peer.ID()))
+	assert.True(t, book.IsBanned(peerAddr))
 }
 
 func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
@@ -192,9 +196,10 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.False(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	// receiving more addrs causes a disconnect
+	// receiving more unsolicited addrs causes a disconnect and ban
 	r.Receive(PexChannel, peer, msg)
 	assert.False(t, sw.Peers().Has(peer.ID()))
+	assert.True(t, book.IsBanned(peer.SocketAddr()))
 }
 
 func TestCheckSeeds(t *testing.T) {
@@ -373,9 +378,7 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
-	err = sw.Start()
-	require.NoError(t, err)
-	defer sw.Stop()
+	// No need to start sw since crawlPeers is called manually here.
 
 	peer := mock.NewPeer(nil)
 	addr := peer.SocketAddr()
@@ -384,9 +387,11 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, book.HasAddress(addr))
+
 	// imitate maxAttemptsToDial reached
 	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
 	pexR.crawlPeers([]*p2p.NetAddress{addr})
+
 	assert.False(t, book.HasAddress(addr))
 }
 
@@ -404,7 +409,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	books := make([]*addrBook, N)
+	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
 
 	// create switches
@@ -631,7 +636,7 @@ func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 	return testCreatePeerWithConfig(dir, id, conf)
 }
 
-func createReactor(conf *ReactorConfig) (r *Reactor, book *addrBook) {
+func createReactor(conf *ReactorConfig) (r *Reactor, book AddrBook) {
 	// directory to store address book
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	if err != nil {
@@ -645,8 +650,9 @@ func createReactor(conf *ReactorConfig) (r *Reactor, book *addrBook) {
 	return
 }
 
-func teardownReactor(book *addrBook) {
-	err := os.RemoveAll(filepath.Dir(book.FilePath()))
+func teardownReactor(book AddrBook) {
+	// FIXME Shouldn't rely on .(*addrBook) assertion
+	err := os.RemoveAll(filepath.Dir(book.(*addrBook).FilePath()))
 	if err != nil {
 		panic(err)
 	}

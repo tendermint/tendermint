@@ -53,7 +53,8 @@ func testCounter() {
 	}
 
 	fmt.Printf("Running %s test with abci=%s\n", abciApp, abciType)
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("abci-cli %s", abciApp))
+	subCommand := fmt.Sprintf("abci-cli %s", abciApp)
+	cmd := exec.Command("bash", "-c", subCommand)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("starting %q err: %v", abciApp, err)

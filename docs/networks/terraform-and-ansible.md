@@ -4,6 +4,8 @@ order: 3
 
 # Terraform & Ansible
 
+> Note: These commands/files are not being maintained by the tendermint team currently. Please use them carefully.
+
 Automated deployments are done using
 [Terraform](https://www.terraform.io/) to create servers on Digital
 Ocean then [Ansible](http://www.ansible.com/) to create and manage

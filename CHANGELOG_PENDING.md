@@ -1,146 +1,85 @@
-## v0.32.9
+## v0.33.6
 
 \*\*
 
-This release contains breaking changes to the `Block#Header`, specifically
-`NumTxs` and `TotalTxs` were removed (\#2521). Here's how this change affects
-different modules:
-
-- apps: it breaks the ABCI header field numbering
-- state: it breaks the format of `State` on disk
-- RPC: all RPC requests which expose the header broke
-- Go API: the `Header` broke
-- P2P: since blocks go over the wire, technically the P2P protocol broke
-
-Also, blocks are significantly smaller 🔥 because we got rid of the redundant
-information in `Block#LastCommit`. `Commit` now mainly consists of a signature
-and a validator address plus a timestamp. Note we may remove the validator
-address & timestamp fields in the future (see ADR-25).
-
 Special thanks to external contributors on this release:
-@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev, @princesinha19, @Stumble
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
 
-  - [rpc] \#3471 Paginate `/validators` response (default: 30 vals per page)
-  - [rpc] \#3188 Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
-  - [rpc] `/block_results` response format updated (see RPC docs for details)
-    ```
-    {
-      "jsonrpc": "2.0",
-      "id": "",
-      "result": {
-        "height": "2109",
-        "txs_results": null,
-        "begin_block_events": null,
-        "end_block_events": null,
-        "validator_updates": null,
-        "consensus_param_updates": null
-      }
-    }
-    ```
-  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Remove `#event` suffix from the ID in event responses.
-    `{"jsonrpc": "2.0", "id": 0, "result": ...}`
-  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Switch to integer IDs instead of `json-client-XYZ`
-    ```
-    id=0 method=/subscribe
-    id=0 result=...
-    id=1 method=/abci_query
-    id=1 result=...
-    ```
-    - ID is unique for each request;
-    - Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
-
-  - [config] \#4046 Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
-    - You will have to generate a new config for your Tendermint node(s)
+  - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
+  - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
+  - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
+  - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
+  - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
+  - [types] \#4582 Block: `Round` is now int32
+  - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
+  - [consensus] \#4582 HeightVoteSet: `round` is now int32
+  - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
+  - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
+  - [crypto] \#4941 Remove suffixes from all keys.
+    - ed25519: type `PrivKeyEd25519` is now `PrivKey`
+    - ed25519: type `PubKeyEd25519` is now `PubKey`
+    - secp256k1: type`PrivKeySecp256k1` is now `PrivKey`
+    - secp256k1: type`PubKeySecp256k1` is now `PubKey`
+    - sr25519: type `PrivKeySr25519` is now `PrivKey`
+    - sr25519: type `PubKeySr25519` is now `PubKey`
+    - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
+  - [light] \#4946 Rename `lite2` pkg to `light`, the lite cmd has also been renamed to `light`. Remove `lite` implementation.
+  - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
+  - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
+  - [state] \#4679 `state` reactor migration to Protobuf encoding
+  - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
 
 - Apps
 
-  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
-
-- Go API
-
-  - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
-  - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
-  - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
-  - [libs/common] \#3862 Remove `errors.go` from `libs/common`
-  - [libs/common] \#4230 Move `KV` out of common to its own pkg
-  - [libs/common] \#4230 Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
-  - [libs/common] \#4232 Move `Service` & `BaseService` from `libs/common` to `libs/service`
-  - [libs/common] \#4232 Move `common/nil.go` to `types/utils.go` & make the functions private
-  - [libs/common] \#4231 Move random functions from `libs/common` into pkg `rand`
-  - [libs/common] \#4237 Move byte functions from `libs/common` into pkg `bytes`
-  - [libs/common] \#4237 Move throttletimer functions from `libs/common` into pkg `timer`
-  - [libs/common] \#4237 Move tempfile functions from `libs/common` into pkg `tempfile`
-  - [libs/common] \#4240 Move os functions from `libs/common` into pkg `os`
-  - [libs/common] \#4240 Move net functions from `libs/common` into pkg `net`
-  - [libs/common] \#4240 Move mathematical functions and types out of `libs/common` to `math` pkg
-  - [libs/common] \#4240 Move string functions out of `libs/common` to `strings` pkg
-  - [libs/common] \#4240 Move async functions out of `libs/common` to `async` pkg
-  - [libs/common] \#4240 Move bit functions out of `libs/common` to `bits` pkg
-  - [libs/common] \#4240 Move cmap functions out of `libs/common` to `cmap` pkg
-  - [libs/common] \#4258 Remove `Rand` from all `rand` pkg functions
-
-
-- Blockchain Protocol
-
-  - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
-  - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
-  - [types] \#1648 Change `Commit` to consist of just signatures
+  - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0.
 
 - P2P Protocol
 
-  - [p2p] [\#3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
+- Go API
 
-- [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.
-  - ABCI becomes `tendermint.abci.types` with the new API endpoint `/tendermint.abci.types.ABCIApplication/`
-  - core_grpc becomes `tendermint.rpc.grpc` with the new API endpoint `/tendermint.rpc.grpc.BroadcastAPI/`
-  - merkle becomes `tendermint.crypto.merkle`
-  - libs.common becomes `tendermint.libs.common`
-  - proto3 becomes `tendermint.types.proto3`
+  - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
+  - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
+  - [libs] \#4831 Remove `Bech32` pkg from Tendermint. This pkg now lives in the [cosmos-sdk](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
+- Blockchain Protocol
+
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+  - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
+    Add `max_num` to consensus evidence parameters (default: 50 items).
+  - [mempool] \#4940 Migrate mempool from amino binary encoding to Protobuf
+  - [statesync] \#4943 Migrate statesync reactor from amino binary encoding to Protobuf
+  - [rpc/client] \#4947 `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    `UnconfirmedTxs` `limit` param is a pointer
 
 ### FEATURES:
 
-- [p2p] \#4053 Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
-- [tools] [\#4227](https://github.com/tendermint/tendermint/pull/4227) Implement `tendermint debug kill` and
-  `tendermint debug dump` commands for Tendermint node debugging functionality. See `--help` in both
-  commands for further documentation and usage.
-- [cli] \#4234 Add `--db_backend and --db_dir` flags (@princesinha19)
-- [cli] \#4113 Add optional `--genesis_hash` flag to check genesis hash upon startup
-- [config] \#3831 Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
-- [metrics] \#4263 Add
-  - `consensus_validator_power`: track your validators power
-  - `consensus_validator_last_signed_height`: track at which height the validator last signed
-  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
-  as gauges in prometheus for validator specific metrics
+- [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
+- [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
+- [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
+- [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
 
 ### IMPROVEMENTS:
 
-- [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
-- [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
-- [docs] [\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
-- [p2p] [\#4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
-- [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
-- [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
-- [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
-- [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
-- [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
+- [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
+  - `abci.EventAttribute` replaces `KV.Pair`
+- [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Improved evidence db (@cmwaters)
+- [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
+- [p2p/conn] \#4795 Return err on `signChallenge()` instead of panic
+- [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
+- [evidence] [\#4892](https://github.com/tendermint/tendermint/pull/4892) Remove redundant header from phantom validator evidence (@cmwaters)
+- [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add ValidateBasic to validator and validator set (@cmwaters)
+- [consensus] [\#4578](https://github.com/tendermint/tendermint/issues/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
+  The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
+- [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
+- [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) compare header w/ witnesses only when doing bisection (@melekes)
+- [light] [\#4916](https://github.com/tendermint/tendermint/pull/4916) validate basic for inbound validator sets and headers before further processing them (@cmwaters)
 
 ### BUG FIXES:
 
-- [rpc/lib][\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
-- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
-- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
-- [types] [\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
-- [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
-- [types] \#4164 Prevent temporary power overflows on validator updates (joint
-  efforts of @gchaincl and @ancazamfir)
-- [p2p] \#4140 `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
-- [consensus/types] \#4243 fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
-- [rpc] \#4256 Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
+- [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
 - [consensus] \#2737 Stricter on LastCommitRound check (@cuonglm)

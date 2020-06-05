@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"runtime/debug"
 
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -13,9 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
-
 	amino "github.com/tendermint/go-amino"
+
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -330,7 +330,7 @@ func (c *MConnection) flush() {
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
 		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
-		c.stopForError(errors.Errorf("recovered from panic: %v", r))
+		c.stopForError(fmt.Errorf("recovered from panic: %v", r))
 	}
 }
 

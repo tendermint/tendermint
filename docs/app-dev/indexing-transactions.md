@@ -14,7 +14,7 @@ type, only the key-value pairs defined in `EndBlock` are used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI](../spec/abci/abci.md) documentation.
+details on `Events`, see the [ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events) documentation.
 
 An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
 For example:
@@ -76,10 +76,11 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
     events := []abci.Event{
         {
             Type: "transfer",
-            Attributes: kv.Pairs{
-                kv.Pair{Key: []byte("sender"), Value: []byte("Bob")},
-                kv.Pair{Key: []byte("recipient"), Value: []byte("Alice")},
-                kv.Pair{Key: []byte("balance"), Value: []byte("100")},
+            Attributes: []abci.EventAttribute{
+                {Key: []byte("sender"), Value: []byte("Bob")},
+                {Key: []byte("recipient"), Value: []byte("Alice")},
+                {Key: []byte("balance"), Value: []byte("100")},
+                {Key: []byte("note"), Value: []byte("nothing"), Index: true},
             },
         },
     }
@@ -98,6 +99,9 @@ Note, there are a few predefined event types:
 
 Tendermint will throw a warning if you try to use any of the above keys.
 
+The index will be added if the `Index` field of attribute is set to true. In above example, querying
+using `transfer.note` will work.
+
 ## Querying Transactions
 
 You can query the transaction results by calling `/tx_search` RPC endpoint:
@@ -106,7 +110,7 @@ You can query the transaction results by calling `/tx_search` RPC endpoint:
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#txsearch) for more information
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search) for more information
 on query syntax and other options.
 
 ## Subscribing to Transactions
@@ -125,5 +129,5 @@ a query to `/subscribe` RPC endpoint.
 }
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#subscribe) for more information
+Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
 on query syntax and other options.

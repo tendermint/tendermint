@@ -1,10 +1,10 @@
 package privval
 
 import (
+	"errors"
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"

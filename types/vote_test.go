@@ -11,14 +11,15 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(byte(PrevoteType))
+	return exampleVote(byte(tmproto.PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(byte(PrecommitType))
+	return exampleVote(byte(tmproto.PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -28,7 +29,7 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		Type:      SignedMsgType(t),
+		Type:      tmproto.SignedMsgType(t),
 		Height:    12345,
 		Round:     2,
 		Timestamp: stamp,
@@ -68,7 +69,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		1: {
-			"", &Vote{Height: 1, Round: 1, Type: PrecommitType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrecommitType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -83,7 +84,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		2: {
-			"", &Vote{Height: 1, Round: 1, Type: PrevoteType},
+			"", &Vote{Height: 1, Round: 1, Type: tmproto.PrevoteType},
 			[]byte{
 				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
@@ -143,13 +144,14 @@ func TestVoteProposalNotEq(t *testing.T) {
 
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey()
+	require.NoError(t, err)
 
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
 
 	// sign it
-	err := privVal.SignVote("test_chain_id", vote)
+	err = privVal.SignVote("test_chain_id", vote)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -173,12 +175,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   SignedMsgType
+		in   tmproto.SignedMsgType
 		out  bool
 	}{
-		{"Prevote", PrevoteType, true},
-		{"Precommit", PrecommitType, true},
-		{"InvalidType", SignedMsgType(0x3), false},
+		{"Prevote", tmproto.PrevoteType, true},
+		{"Precommit", tmproto.PrecommitType, true},
+		{"InvalidType", tmproto.SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -193,12 +195,13 @@ func TestIsVoteTypeValid(t *testing.T) {
 
 func TestVoteVerify(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey()
+	require.NoError(t, err)
 
 	vote := examplePrevote()
 	vote.ValidatorAddress = pubkey.Address()
 
-	err := vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
+	err = vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorAddress, err)
 	}
@@ -216,15 +219,15 @@ func TestMaxVoteBytes(t *testing.T) {
 
 	vote := &Vote{
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   math.MaxInt64,
+		ValidatorIndex:   math.MaxInt32,
 		Height:           math.MaxInt64,
-		Round:            math.MaxInt64,
+		Round:            math.MaxInt32,
 		Timestamp:        timestamp,
-		Type:             PrevoteType,
+		Type:             tmproto.PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
-				Total: math.MaxInt64,
+				Total: math.MaxInt32,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
@@ -282,5 +285,33 @@ func TestVoteValidateBasic(t *testing.T) {
 			tc.malleateVote(vote)
 			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
+	}
+}
+
+func TestVoteProtobuf(t *testing.T) {
+	privVal := NewMockPV()
+	vote := examplePrecommit()
+	err := privVal.SignVote("test_chain_id", vote)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		msg     string
+		v1      *Vote
+		expPass bool
+	}{
+		{"success", vote, true},
+		{"fail vote validate basic", &Vote{}, false},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoProposal := tc.v1.ToProto()
+
+		v, err := VoteFromProto(protoProposal)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.msg)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }

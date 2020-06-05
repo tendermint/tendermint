@@ -1,17 +1,16 @@
 package pex
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/tendermint/go-amino"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/libs/rand"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
@@ -50,6 +49,9 @@ const (
 	// Especially in the beginning, node should have more trusted peers than
 	// untrusted.
 	biasToSelectNewPeers = 30 // 70 to select good peers
+
+	// if a peer is marked bad, it will be banned for at least this time period
+	defaultBanTime = 24 * time.Hour
 )
 
 type errMaxAttemptsToDial struct {
@@ -137,7 +139,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		lastReceivedRequests: cmap.NewCMap(),
 		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
-	r.BaseReactor = *p2p.NewBaseReactor("Reactor", r)
+	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
 }
 
@@ -176,9 +178,10 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
 	return []*conn.ChannelDescriptor{
 		{
-			ID:                PexChannel,
-			Priority:          1,
-			SendQueueCapacity: 10,
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -272,6 +275,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			// Check we're not receiving requests too frequently.
 			if err := r.receiveRequest(src); err != nil {
 				r.Switch.StopPeerForError(src, err)
+				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
 				return
 			}
 			r.SendAddrs(src, r.book.GetSelection())
@@ -281,6 +285,9 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		// If we asked for addresses, add them to the book
 		if err := r.ReceiveAddrs(msg.Addrs, src); err != nil {
 			r.Switch.StopPeerForError(src, err)
+			if err == ErrUnsolicitedList {
+				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			}
 			return
 		}
 	default:
@@ -340,7 +347,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return errors.New("unsolicited pexAddrsMessage")
+		return ErrUnsolicitedList
 	}
 	r.requestsSent.Delete(id)
 
@@ -401,7 +408,7 @@ func (r *Reactor) SetEnsurePeersPeriod(d time.Duration) {
 // Ensures that sufficient peers are connected. (continuous)
 func (r *Reactor) ensurePeersRoutine() {
 	var (
-		seed   = rand.NewRand()
+		seed   = tmrand.NewRand()
 		jitter = seed.Int63n(r.ensurePeersPeriod.Nanoseconds())
 	)
 
@@ -494,6 +501,12 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	if r.book.NeedMoreAddrs() {
+		// Check if banned nodes can be reinstated
+		r.book.ReinstateBadPeers()
+	}
+
+	if r.book.NeedMoreAddrs() {
+
 		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
@@ -525,18 +538,14 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
-		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
-		// failed to connect to. Then we can clean up attemptsToDial, which acts as
-		// a blacklist currently.
-		// https://github.com/tendermint/tendermint/issues/3572
-		r.book.MarkBad(addr)
+		r.book.MarkBad(addr, defaultBanTime)
 		return errMaxAttemptsToDial{}
 	}
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitterSeconds := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
-		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
+		jitter := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		backoffDuration := jitter + ((1 << uint(attempts)) * time.Second)
 		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
@@ -558,7 +567,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return errors.Wrapf(err, "dialing failed (attempts: %d)", attempts+1)
+		return fmt.Errorf("dialing failed (attempts: %d): %w", attempts+1, err)
 	}
 
 	// cleanup any history
@@ -593,7 +602,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 		case p2p.ErrNetAddressLookup:
 			r.Logger.Error("Connecting to seed failed", "err", e)
 		default:
-			return 0, nil, errors.Wrap(e, "seed node configuration has error")
+			return 0, nil, fmt.Errorf("seed node configuration has error: %w", e)
 		}
 	}
 	return numOnline, netAddrs, nil
@@ -741,7 +750,7 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
 	switch err.(type) {
 	case p2p.ErrSwitchAuthenticationFailure:
-		book.MarkBad(addr)
+		book.MarkBad(addr, defaultBanTime)
 	default:
 		book.MarkAttempt(addr)
 	}
@@ -761,9 +770,6 @@ func RegisterMessages(cdc *amino.Codec) {
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
-	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }

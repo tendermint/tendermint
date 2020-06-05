@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
-
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -110,29 +107,4 @@ func (tp TxProof) Validate(dataHash []byte) error {
 		return errors.New("proof is not internally consistent")
 	}
 	return nil
-}
-
-// TxResult contains results of executing the transaction.
-//
-// One usage is indexing transaction results.
-type TxResult struct {
-	Height int64                  `json:"height"`
-	Index  uint32                 `json:"index"`
-	Tx     Tx                     `json:"tx"`
-	Result abci.ResponseDeliverTx `json:"result"`
-}
-
-// ComputeAminoOverhead calculates the overhead for amino encoding a transaction.
-// The overhead consists of varint encoding the field number and the wire type
-// (= length-delimited = 2), and another varint encoding the length of the
-// transaction.
-// The field number can be the field number of the particular transaction, or
-// the field number of the parenting struct that contains the transactions []Tx
-// as a field (this field number is repeated for each contained Tx).
-// If some []Tx are encoded directly (without a parenting struct), the default
-// fieldNum is also 1 (see BinFieldNum in amino.MarshalBinaryBare).
-func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
-	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (fnum << 3) | uint64(amino.Typ3_ByteLength)
-	return int64(amino.UvarintSize(typ3AndFieldNum)) + int64(amino.UvarintSize(uint64(len(tx))))
 }

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -34,7 +36,7 @@ const (
 	ErrTestSignVoteFailed                 // 10
 )
 
-var voteTypes = []types.SignedMsgType{types.PrevoteType, types.PrecommitType}
+var voteTypes = []tmproto.SignedMsgType{tmproto.PrevoteType, tmproto.PrecommitType}
 
 // TestHarnessError allows us to keep track of which exit code should be used
 // when exiting the main program.
@@ -72,7 +74,7 @@ type TestHarnessConfig struct {
 	ConnDeadline   time.Duration
 	AcceptRetries  int
 
-	SecretConnKey ed25519.PrivKeyEd25519
+	SecretConnKey ed25519.PrivKey
 
 	ExitWhenComplete bool // Whether or not to call os.Exit when the harness has completed.
 }
@@ -190,9 +192,17 @@ func (th *TestHarness) Run() {
 // local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
-	th.logger.Info("Local", "pubKey", th.fpv.GetPubKey())
-	th.logger.Info("Remote", "pubKey", th.signerClient.GetPubKey())
-	if th.fpv.GetPubKey() != th.signerClient.GetPubKey() {
+	fpvk, err := th.fpv.GetPubKey()
+	if err != nil {
+		return err
+	}
+	th.logger.Info("Local", "pubKey", fpvk)
+	sck, err := th.signerClient.GetPubKey()
+	if err != nil {
+		return err
+	}
+	th.logger.Info("Remote", "pubKey", sck)
+	if !bytes.Equal(fpvk.Bytes(), sck.Bytes()) {
 		th.logger.Error("FAILED: Local and remote public keys do not match")
 		return newTestHarnessError(ErrTestPublicKeyFailed, nil, "")
 	}
@@ -206,7 +216,7 @@ func (th *TestHarness) TestSignProposal() error {
 	// sha256 hash of "hash"
 	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
-		Type:     types.ProposalType,
+		Type:     tmproto.ProposalType,
 		Height:   100,
 		Round:    0,
 		POLRound: -1,
@@ -230,8 +240,12 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
+	sck, err := th.signerClient.GetPubKey()
+	if err != nil {
+		return err
+	}
 	// now validate the signature on the proposal
-	if th.signerClient.GetPubKey().VerifyBytes(propBytes, prop.Signature) {
+	if sck.VerifyBytes(propBytes, prop.Signature) {
 		th.logger.Info("Successfully validated proposal signature")
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
@@ -274,8 +288,13 @@ func (th *TestHarness) TestSignVote() error {
 			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
+		sck, err := th.signerClient.GetPubKey()
+		if err != nil {
+			return err
+		}
+
 		// now validate the signature on the proposal
-		if th.signerClient.GetPubKey().VerifyBytes(voteBytes, vote.Signature) {
+		if sck.VerifyBytes(voteBytes, vote.Signature) {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)

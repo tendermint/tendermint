@@ -32,7 +32,7 @@ const (
 
 	stateFileContents = `{
 	"height": "0",
-	"round": "0",
+	"round": 0,
 	"step": 0
 }`
 
@@ -46,7 +46,9 @@ const (
 			"time_iota_ms": "1000"
 		},
 		"evidence": {
-			"max_age": "100000"
+			"max_age_num_blocks": "100000",
+			"max_age_duration": "172800000000000",
+			"max_num_evidence": 50
 		},
 		"validator": {
 			"pub_key_types": [

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -78,7 +77,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
 	cmd.Flags().String(
 		"consensus.create_empty_blocks_interval",
-		string(config.Consensus.CreateEmptyBlocksInterval),
+		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
 
 	// db flags
@@ -99,10 +98,20 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkGenesisHash(config); err != nil {
+				return err
+			}
+
 			n, err := nodeProvider(config, logger)
 			if err != nil {
-				return fmt.Errorf("failed to create node: %v", err)
+				return fmt.Errorf("failed to create node: %w", err)
 			}
+
+			if err := n.Start(); err != nil {
+				return fmt.Errorf("failed to start node: %w", err)
+			}
+
+			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
@@ -110,15 +119,6 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 					n.Stop()
 				}
 			})
-
-			if err := checkGenesisHash(config); err != nil {
-				return err
-			}
-
-			if err := n.Start(); err != nil {
-				return fmt.Errorf("failed to start node: %v", err)
-			}
-			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Run forever.
 			select {}
@@ -137,18 +137,18 @@ func checkGenesisHash(config *cfg.Config) error {
 	// Calculate SHA-256 hash of the genesis file.
 	f, err := os.Open(config.GenesisFile())
 	if err != nil {
-		return errors.Wrap(err, "can't open genesis file")
+		return fmt.Errorf("can't open genesis file: %w", err)
 	}
 	defer f.Close()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return errors.Wrap(err, "error when hashing genesis file")
+		return fmt.Errorf("error when hashing genesis file: %w", err)
 	}
 	actualHash := h.Sum(nil)
 
 	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
-		return errors.Errorf(
+		return fmt.Errorf(
 			"--genesis_hash=%X does not match %s hash: %X",
 			genesisHash, config.GenesisFile(), actualHash)
 	}

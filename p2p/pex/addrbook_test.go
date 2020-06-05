@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +18,8 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 )
+
+// FIXME These tests should not rely on .(*addrBook) assertions
 
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
@@ -60,13 +64,13 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	// 0 addresses
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.saveToFile(fname)
+	book.Save()
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
-	assert.Zero(t, book.Size())
+	assert.True(t, book.Empty())
 
 	// 100 addresses
 	randAddrs := randNetAddressPairs(t, 100)
@@ -76,11 +80,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	}
 
 	assert.Equal(t, 100, book.Size())
-	book.saveToFile(fname)
+	book.Save()
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.loadFromFile(fname)
+	book.Start()
 
 	assert.Equal(t, 100, book.Size())
 }
@@ -98,12 +102,8 @@ func TestAddrBookLookup(t *testing.T) {
 		src := addrSrc.src
 		book.AddAddress(addr, src)
 
-		ka := book.addrLookup[addr.ID]
-		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
-
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
-		}
+		ka := book.HasAddress(addr)
+		assert.True(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
 	}
 }
 
@@ -345,7 +345,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 		}
 	}
 
-	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
+	got, expected := int((float64(good)/float64(len(selection)))*100), 100-biasTowardsNewAddrs
 
 	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
@@ -396,6 +396,33 @@ func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []st
 		private[i] = string(addr.ID)
 	}
 	return addrs, private
+}
+
+func TestBanBadPeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addr := randIPv4Address(t)
+	_ = book.AddAddress(addr, addr)
+
+	book.MarkBad(addr, 1*time.Second)
+	// addr should not reachable
+	assert.False(t, book.HasAddress(addr))
+	assert.True(t, book.IsBanned(addr))
+
+	err := book.AddAddress(addr, addr)
+	// book should not add address from the blacklist
+	assert.Error(t, err)
+
+	time.Sleep(1 * time.Second)
+	book.ReinstateBadPeers()
+	// address should be reinstated in the new bucket
+	assert.EqualValues(t, 1, book.Size())
+	assert.True(t, book.HasAddress(addr))
+	assert.False(t, book.IsGood(addr))
 }
 
 func TestAddrBookEmpty(t *testing.T) {
@@ -546,6 +573,73 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	}
 }
 
+func TestAddrBookGroupKey(t *testing.T) {
+	// non-strict routability
+	testCases := []struct {
+		name   string
+		ip     string
+		expKey string
+	}{
+		// IPv4 normal.
+		{"ipv4 normal class a", "12.1.2.3", "12.1.0.0"},
+		{"ipv4 normal class b", "173.1.2.3", "173.1.0.0"},
+		{"ipv4 normal class c", "196.1.2.3", "196.1.0.0"},
+
+		// IPv6/IPv4 translations.
+		{"ipv6 rfc3964 with ipv4 encap", "2002:0c01:0203::", "12.1.0.0"},
+		{"ipv6 rfc4380 toredo ipv4", "2001:0:1234::f3fe:fdfc", "12.1.0.0"},
+		{"ipv6 rfc6052 well-known prefix with ipv4", "64:ff9b::0c01:0203", "12.1.0.0"},
+		{"ipv6 rfc6145 translated ipv4", "::ffff:0:0c01:0203", "12.1.0.0"},
+
+		// Tor.
+		{"ipv6 tor onioncat", "fd87:d87e:eb43:1234::5678", "tor:2"},
+		{"ipv6 tor onioncat 2", "fd87:d87e:eb43:1245::6789", "tor:2"},
+		{"ipv6 tor onioncat 3", "fd87:d87e:eb43:1345::6789", "tor:3"},
+
+		// IPv6 normal.
+		{"ipv6 normal", "2602:100::1", "2602:100::"},
+		{"ipv6 normal 2", "2602:0100::1234", "2602:100::"},
+		{"ipv6 hurricane electric", "2001:470:1f10:a1::2", "2001:470:1000::"},
+		{"ipv6 hurricane electric 2", "2001:0470:1f10:a1::2", "2001:470:1000::"},
+	}
+
+	for i, tc := range testCases {
+		nip := net.ParseIP(tc.ip)
+		key := groupKeyFor(p2p.NewNetAddressIPPort(nip, 26656), false)
+		assert.Equal(t, tc.expKey, key, "#%d", i)
+	}
+
+	// strict routability
+	testCases = []struct {
+		name   string
+		ip     string
+		expKey string
+	}{
+		// Local addresses.
+		{"ipv4 localhost", "127.0.0.1", "local"},
+		{"ipv6 localhost", "::1", "local"},
+		{"ipv4 zero", "0.0.0.0", "local"},
+		{"ipv4 first octet zero", "0.1.2.3", "local"},
+
+		// Unroutable addresses.
+		{"ipv4 invalid bcast", "255.255.255.255", "unroutable"},
+		{"ipv4 rfc1918 10/8", "10.1.2.3", "unroutable"},
+		{"ipv4 rfc1918 172.16/12", "172.16.1.2", "unroutable"},
+		{"ipv4 rfc1918 192.168/16", "192.168.1.2", "unroutable"},
+		{"ipv6 rfc3849 2001:db8::/32", "2001:db8::1234", "unroutable"},
+		{"ipv4 rfc3927 169.254/16", "169.254.1.2", "unroutable"},
+		{"ipv6 rfc4193 fc00::/7", "fc00::1234", "unroutable"},
+		{"ipv6 rfc4843 2001:10::/28", "2001:10::1234", "unroutable"},
+		{"ipv6 rfc4862 fe80::/64", "fe80::1234", "unroutable"},
+	}
+
+	for i, tc := range testCases {
+		nip := net.ParseIP(tc.ip)
+		key := groupKeyFor(p2p.NewNetAddressIPPort(nip, 26656), true)
+		assert.Equal(t, tc.expKey, key, "#%d", i)
+	}
+}
+
 func assertMOldAndNNewAddrsInSelection(t *testing.T, m, n int, addrs []*p2p.NetAddress, book *addrBook) {
 	nOld, nNew := countOldAndNewAddrsInSelection(addrs, book)
 	assert.Equal(t, m, nOld, "old addresses")
@@ -575,7 +669,7 @@ func deleteTempFile(fname string) {
 func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *addrBook, fname string) {
 	fname = createTempFileName("addrbook_test")
 
-	book = NewAddrBook(fname, true)
+	book = NewAddrBook(fname, true).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 

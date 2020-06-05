@@ -1,4 +1,4 @@
-package types // nolint: goimports
+package types
 
 import (
 	context "golang.org/x/net/context"
@@ -23,6 +23,12 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
+	// State Sync Connection
+	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
+	OfferSnapshot(RequestOfferSnapshot) ResponseOfferSnapshot                // Offer a snapshot to the application
+	LoadSnapshotChunk(RequestLoadSnapshotChunk) ResponseLoadSnapshotChunk    // Load a snapshot chunk
+	ApplySnapshotChunk(RequestApplySnapshotChunk) ResponseApplySnapshotChunk // Apply a shapshot chunk
 }
 
 //-------------------------------------------------------
@@ -71,6 +77,22 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (BaseApplication) ListSnapshots(req RequestListSnapshots) ResponseListSnapshots {
+	return ResponseListSnapshots{}
+}
+
+func (BaseApplication) OfferSnapshot(req RequestOfferSnapshot) ResponseOfferSnapshot {
+	return ResponseOfferSnapshot{}
+}
+
+func (BaseApplication) LoadSnapshotChunk(req RequestLoadSnapshotChunk) ResponseLoadSnapshotChunk {
+	return ResponseLoadSnapshotChunk{}
+}
+
+func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) ResponseApplySnapshotChunk {
+	return ResponseApplySnapshotChunk{}
 }
 
 //-------------------------------------------------------
@@ -134,5 +156,29 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	res := app.app.EndBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ListSnapshots(
+	ctx context.Context, req *RequestListSnapshots) (*ResponseListSnapshots, error) {
+	res := app.app.ListSnapshots(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) OfferSnapshot(
+	ctx context.Context, req *RequestOfferSnapshot) (*ResponseOfferSnapshot, error) {
+	res := app.app.OfferSnapshot(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) LoadSnapshotChunk(
+	ctx context.Context, req *RequestLoadSnapshotChunk) (*ResponseLoadSnapshotChunk, error) {
+	res := app.app.LoadSnapshotChunk(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ApplySnapshotChunk(
+	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
+	res := app.app.ApplySnapshotChunk(*req)
 	return &res, nil
 }

@@ -7,7 +7,7 @@ info:
     name: Apache 2.0
     url: https://github.com/tendermint/tendermint/blob/master/LICENSE
 servers:
-  - url: https://stargate.cosmos.network:26657
+  - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC
   - url: http://localhost:26657
     description: Interact with the Tendermint RPC locally on your device
@@ -253,9 +253,10 @@ paths:
         https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
 
         ```go
+        import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
         err := client.Start()
         if err != nil {
           handle error
@@ -309,7 +310,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
         err := client.Start()
         if err != nil {
            handle error
@@ -439,13 +440,13 @@ paths:
         - unsafe
       description: |
         Dial a peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers
-          in: body
-          name: Array of peers to connect to
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialSeedsPost"
+      requestBody:
+        description: string of possible peers
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialSeedsPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -467,13 +468,13 @@ paths:
         - unsafe
       description: |
         Set a persistent peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers, bool argument if they should be added as persistent
-          in: body
-          name: Array of peers to connect to & if they should be persistent
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialPeersPost"
+      requestBody:
+        description: string of possible peers, bool argument if they should be added as persistent
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialPeersPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -537,6 +538,35 @@ paths:
         - Info
       description: |
         Get Block.
+      responses:
+        200:
+          description: Block informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResponse"
+        500:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /block_by_hash:
+    get:
+      summary: Get block by hash
+      operationId: block_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: block hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Get Block By Hash.
       responses:
         200:
           description: Block informations.
@@ -626,7 +656,7 @@ paths:
           required: false
           schema:
             type: number
-            default: 0
+            default: 1
             example: 1
         - in: query
           name: per_page
@@ -639,7 +669,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators.
+        Get Validators. Validators are sorted by voting power.
       responses:
         200:
           description: Commit results.
@@ -682,6 +712,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
@@ -703,6 +735,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
@@ -752,9 +786,11 @@ paths:
       parameters:
         - in: query
           name: limit
-          description: Maximum number of unconfirmed transactions to return
+          description: Maximum number of unconfirmed transactions to return (max 100)
+          required: false
           schema:
             type: number
+            default: 30
             example: 1
       tags:
         - Info
@@ -830,6 +866,14 @@ paths:
             type: number
             default: 30
             example: 30
+        - in: query
+          name: order_by
+          description: Order in which transactions are sorted ("asc" or "desc"), by height & index. If empty, default sorting will be still applied.
+          required: false
+          schema:
+            type: string
+            default: "asc"
+            example: "asc"
       tags:
         - Info
       description: |
@@ -1085,6 +1129,18 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+        earliest_block_hash:
+          type: string
+          example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+        earliest_app_hash:
+          type: string
+          example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+        earliest_block_height:
+          type: string
+          example: "1262196"
+        earliest_block_time:
+            type: string
+            example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
           example: false
@@ -1319,32 +1375,11 @@ components:
           type: string
           example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
       type: object
-    BlockId:
-      required:
-        - "hash"
-        - "parts"
-      properties:
-        hash:
-          type: string
-          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
-        parts:
-          required:
-            - "total"
-            - "hash"
-          properties:
-            total:
-              type: string
-              example: "1"
-            hash:
-              type: string
-              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-          type: object
-      type: object
     BlockMeta:
       type: object
       properties:
         block_id:
-          $ref: "#/components/schemas/BlockId"
+          $ref: "#/components/schemas/BlockID"
         block_size:
           type: number
           example: 1000000
@@ -1872,6 +1907,12 @@ components:
                   proposer_priority:
                     type: "string"
                     example: "13769415"
+            count:
+              type: "number"
+              example: 1
+            total:
+              type: "number"
+              example: 25
           type: "object"
     GenesisResponse:
       type: object
@@ -2910,6 +2951,9 @@ components:
             log:
               type: "string"
               example: ""
+            codespace:
+              type: "string"
+              example: "ibc"
             hash:
               type: "string"
               example: "0D33F2F03A5234F38706E43004489E061AC40A2E"
@@ -2927,7 +2971,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialSeedsPost:
       type: object
       properties:
@@ -2935,7 +2980,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialResp:
       type: object
       properties:

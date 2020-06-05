@@ -5,8 +5,9 @@ import (
 	"crypto/cipher"
 	crand "crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -38,7 +38,6 @@ const (
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
-	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
 
 	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
 	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
@@ -152,7 +151,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sign the challenge bytes for authentication.
-	locSignature := signChallenge(&challenge, locPrivKey)
+	locSignature, err := signChallenge(&challenge, locPrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
@@ -161,8 +163,8 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
-	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
-		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
+	if _, ok := remPubKey.(ed25519.PubKey); !ok {
+		return nil, fmt.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
@@ -358,19 +360,14 @@ func deriveSecrets(
 
 // computeDHSecret computes a Diffie-Hellman shared secret key
 // from our own local private key and the other's public key.
-//
-// It returns an error if the computed shared secret is all zeroes.
-func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {
-	shrKey = new([32]byte)
-	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
-
-	// reject if the returned shared secret is all zeroes
-	// related to: https://github.com/tendermint/tendermint/issues/3010
-	zero := new([32]byte)
-	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
-		return nil, ErrSharedSecretIsZero
+func computeDHSecret(remPubKey, locPrivKey *[32]byte) (*[32]byte, error) {
+	shrKey, err := curve25519.X25519(locPrivKey[:], remPubKey[:])
+	if err != nil {
+		return nil, err
 	}
-	return
+	var shrKeyArray [32]byte
+	copy(shrKeyArray[:], shrKey)
+	return &shrKeyArray, nil
 }
 
 func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
@@ -384,13 +381,12 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 	return
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature []byte) {
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
 	signature, err := locPrivKey.Sign(challenge[:])
-	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return
+	return signature, nil
 }
 
 type authSigMessage struct {

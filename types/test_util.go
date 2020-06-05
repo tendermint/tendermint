@@ -1,26 +1,32 @@
 package types
 
 import (
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"fmt"
+	"time"
+
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int,
-	voteSet *VoteSet, validators []PrivValidator) (*Commit, error) {
+func MakeCommit(blockID BlockID, height int64, round int32,
+	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		addr := validators[i].GetPubKey().Address()
+		pubKey, err := validators[i].GetPubKey()
+		if err != nil {
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
 		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
+			ValidatorAddress: pubKey.Address(),
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
-			Type:             PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
-			Timestamp:        tmtime.Now(),
+			Timestamp:        now,
 		}
 
-		_, err := signAddVote(validators[i], vote, voteSet)
+		_, err = signAddVote(validators[i], vote, voteSet)
 		if err != nil {
 			return nil, err
 		}
@@ -43,16 +49,21 @@ func MakeVote(
 	valSet *ValidatorSet,
 	privVal PrivValidator,
 	chainID string,
+	now time.Time,
 ) (*Vote, error) {
-	addr := privVal.GetPubKey().Address()
+	pubKey, err := privVal.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+	addr := pubKey.Address()
 	idx, _ := valSet.GetByAddress(addr)
 	vote := &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            0,
-		Timestamp:        tmtime.Now(),
-		Type:             PrecommitType,
+		Timestamp:        now,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
 	if err := privVal.SignVote(chainID, vote); err != nil {

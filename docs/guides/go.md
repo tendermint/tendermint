@@ -1,6 +1,6 @@
----
+<!---
 order: 1
----
+--->
 
 # Creating an application in Go
 
@@ -43,7 +43,7 @@ Verify that you have the latest version of Go installed:
 
 ```sh
 $ go version
-go version go1.13 darwin/amd64
+go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
@@ -58,8 +58,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```sh
-$ mkdir -p $GOPATH/src/github.com/me/kvstore
-$ cd $GOPATH/src/github.com/me/kvstore
+$ mkdir kvstore
+$ cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -154,6 +154,8 @@ When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
 
 ```go
+import "bytes"
+
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
@@ -226,9 +228,9 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```
@@ -289,7 +291,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/lite2)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -433,12 +435,12 @@ This should build the binary.
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
-Tendermint Core.
+Tendermint Core. Please refer to [the official
+guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
 ```sh
 $ rm -rf /tmp/example
-$ cd $GOPATH/src/github.com/tendermint/tendermint
-$ make install
 $ TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json

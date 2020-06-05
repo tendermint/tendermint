@@ -5,12 +5,13 @@ import (
 	"sync/atomic"
 
 	"github.com/Workiva/go-datastructures/queue"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 type handleFunc = func(event Event) (Event, error)
 
-// Routines are a structure which model a finite state machine as serialized
+// Routine is a structure that models a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
 // handles the concurrency and messaging guarantees. Events are sent via
 // `send` are handled by the `handle` function to produce an iterator
@@ -42,7 +43,6 @@ func newRoutine(name string, handleFunc handleFunc, bufferSize int) *Routine {
 	}
 }
 
-// nolint: unused
 func (rt *Routine) setLogger(logger log.Logger) {
 	rt.logger = logger
 }
@@ -68,9 +68,11 @@ func (rt *Routine) start() {
 
 	for {
 		events, err := rt.queue.Get(1)
-		if err != nil {
-			rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
-			rt.terminate(fmt.Errorf("stopped"))
+		if err == queue.ErrDisposed {
+			rt.terminate(nil)
+			return
+		} else if err != nil {
+			rt.terminate(err)
 			return
 		}
 		oEvent, err := rt.handle(events[0].(Event))
@@ -80,7 +82,7 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s produced %T %+v\n", rt.name, oEvent, oEvent))
+		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v\n", rt.name, oEvent, oEvent))
 
 		rt.out <- oEvent
 	}
@@ -98,6 +100,7 @@ func (rt *Routine) send(event Event) bool {
 		rt.logger.Info(fmt.Sprintf("%s: send failed, queue was full/stopped \n", rt.name))
 		return false
 	}
+
 	rt.metrics.EventsSent.With("routine", rt.name).Add(1)
 	return true
 }
@@ -129,6 +132,7 @@ func (rt *Routine) final() chan error {
 
 // XXX: Maybe get rid of this
 func (rt *Routine) terminate(reason error) {
-	close(rt.out)
+	// We don't close the rt.out channel here, to avoid spinning on the closed channel
+	// in the event loop.
 	rt.fin <- reason
 }

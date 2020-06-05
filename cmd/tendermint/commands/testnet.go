@@ -137,11 +137,15 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pvKeyFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorKey)
 		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
-
 		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
+
+		pubKey, err := pv.GetPubKey()
+		if err != nil {
+			return fmt.Errorf("can't get pubkey: %w", err)
+		}
 		genVals[i] = types.GenesisValidator{
-			Address: pv.GetPubKey().Address(),
-			PubKey:  pv.GetPubKey(),
+			Address: pubKey.Address(),
+			PubKey:  pubKey,
 			Power:   1,
 			Name:    nodeDirName,
 		}

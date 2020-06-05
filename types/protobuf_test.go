@@ -4,15 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -103,8 +105,8 @@ func TestABCIHeader(t *testing.T) {
 	cdc := amino.NewCodec()
 	headerBz := cdc.MustMarshalBinaryBare(header)
 
-	pbHeader := TM2PB.Header(header)
-	pbHeaderBz, err := proto.Marshal(&pbHeader)
+	pbHeader := header.ToProto()
+	pbHeaderBz, err := proto.Marshal(pbHeader)
 	assert.NoError(t, err)
 
 	// assert some fields match
@@ -131,11 +133,11 @@ func TestABCIEvidence(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
-	pubKey := val.GetPubKey()
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
 	ev := &DuplicateVoteEvidence{
-		PubKey: pubKey,
-		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
-		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
+		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
+		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,

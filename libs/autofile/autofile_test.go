@@ -3,26 +3,34 @@ package autofile
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 func TestSIGHUP(t *testing.T) {
-	// First, create an AutoFile writing to a tempfile dir
-	file, err := ioutil.TempFile("", "sighup_test")
+	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	err = file.Close()
-	require.NoError(t, err)
-	name := file.Name()
+	defer os.Chdir(origDir)
 
-	// Here is the actual AutoFile
+	// First, create a temporary directory and move into it
+	dir, err := ioutil.TempDir("", "sighup_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	err = os.Chdir(dir)
+	require.NoError(t, err)
+
+	// Create an AutoFile in the temporary directory
+	name := "sighup_test"
 	af, err := OpenAutoFile(name)
 	require.NoError(t, err)
+	require.True(t, filepath.IsAbs(af.Path))
 
 	// Write to the file.
 	_, err = af.Write([]byte("Line 1\n"))
@@ -32,6 +40,13 @@ func TestSIGHUP(t *testing.T) {
 
 	// Move the file over
 	err = os.Rename(name, name+"_old")
+	require.NoError(t, err)
+
+	// Move into a different temporary directory
+	otherDir, err := ioutil.TempDir("", "sighup_test_other")
+	require.NoError(t, err)
+	defer os.RemoveAll(otherDir)
+	err = os.Chdir(otherDir)
 	require.NoError(t, err)
 
 	// Send SIGHUP to self.
@@ -49,12 +64,17 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Both files should exist
-	if body := tmos.MustReadFile(name + "_old"); string(body) != "Line 1\nLine 2\n" {
+	if body := tmos.MustReadFile(filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
 		t.Errorf("unexpected body %s", body)
 	}
-	if body := tmos.MustReadFile(name); string(body) != "Line 3\nLine 4\n" {
+	if body := tmos.MustReadFile(filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
 		t.Errorf("unexpected body %s", body)
 	}
+
+	// The current directory should be empty
+	files, err := ioutil.ReadDir(".")
+	require.NoError(t, err)
+	assert.Empty(t, files)
 }
 
 // // Manually modify file permissions, close, and reopen using autofile:

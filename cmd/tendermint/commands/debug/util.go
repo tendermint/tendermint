@@ -8,17 +8,16 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	cfg "github.com/tendermint/tendermint/config"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
 // dumpStatus gets node status state dump from the Tendermint RPC and writes it
 // to file. It returns an error upon failure.
-func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
+func dumpStatus(rpc *rpchttp.HTTP, dir, filename string) error {
 	status, err := rpc.Status()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node status")
+		return fmt.Errorf("failed to get node status: %w", err)
 	}
 
 	return writeStateJSONToFile(status, dir, filename)
@@ -26,10 +25,10 @@ func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
 
 // dumpNetInfo gets network information state dump from the Tendermint RPC and
 // writes it to file. It returns an error upon failure.
-func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
+func dumpNetInfo(rpc *rpchttp.HTTP, dir, filename string) error {
 	netInfo, err := rpc.NetInfo()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node network information")
+		return fmt.Errorf("failed to get node network information: %w", err)
 	}
 
 	return writeStateJSONToFile(netInfo, dir, filename)
@@ -37,10 +36,10 @@ func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
 
 // dumpConsensusState gets consensus state dump from the Tendermint RPC and
 // writes it to file. It returns an error upon failure.
-func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
+func dumpConsensusState(rpc *rpchttp.HTTP, dir, filename string) error {
 	consDump, err := rpc.DumpConsensusState()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node consensus dump")
+		return fmt.Errorf("failed to get node consensus dump: %w", err)
 	}
 
 	return writeStateJSONToFile(consDump, dir, filename)
@@ -69,13 +68,13 @@ func dumpProfile(dir, addr, profile string, debug int) error {
 
 	resp, err := http.Get(endpoint) // nolint: gosec
 	if err != nil {
-		return errors.Wrapf(err, "failed to query for %s profile", profile)
+		return fmt.Errorf("failed to query for %s profile: %w", profile, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read %s profile response body", profile)
+		return fmt.Errorf("failed to read %s profile response body: %w", profile, err)
 	}
 
 	return ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s.out", profile)), body, os.ModePerm)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 

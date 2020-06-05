@@ -1,9 +1,8 @@
 package privval
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
@@ -22,7 +21,7 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start listener endpoint")
+			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
 
@@ -66,25 +65,26 @@ func (sc *SignerClient) Ping() error {
 }
 
 // GetPubKey retrieves a public key from a remote signer
-func (sc *SignerClient) GetPubKey() crypto.PubKey {
+// returns an error if client is not able to provide the key
+func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
-		return nil
+		return nil, fmt.Errorf("send: %w", err)
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
-		return nil
+		return nil, fmt.Errorf("unexpected response type %T", response)
 	}
 
 	if pubKeyResp.Error != nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil
+		return nil, fmt.Errorf("remote error: %w", pubKeyResp.Error)
 	}
 
-	return pubKeyResp.PubKey
+	return pubKeyResp.PubKey, nil
 }
 
 // SignVote requests a remote signer to sign a vote

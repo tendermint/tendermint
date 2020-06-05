@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,13 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
 var killCmd = &cobra.Command{
@@ -44,7 +44,10 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc := rpcclient.NewHTTP(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
+	if err != nil {
+		return fmt.Errorf("failed to create new http client: %w", err)
+	}
 
 	home := viper.GetString(cli.HomeFlag)
 	conf := cfg.DefaultConfig()
@@ -55,7 +58,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	// relevant files and directories that will be compressed into a file.
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "tendermint_debug_tmp")
 	if err != nil {
-		return errors.Wrap(err, "failed to create temporary directory")
+		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -121,7 +124,7 @@ func killProc(pid uint64, dir string) error {
 	go func() {
 		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
 		// a goroutine stacktrace.
-		p, err := os.FindProcess(os.Getpid())
+		p, err := os.FindProcess(int(pid))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
 		} else if err = p.Signal(syscall.SIGABRT); err != nil {

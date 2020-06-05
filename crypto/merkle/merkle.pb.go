@@ -4,7 +4,6 @@
 package merkle
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -28,12 +27,9 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // The data could be arbitrary format, providing nessecary data
 // for example neighbouring node hash
 type ProofOp struct {
-	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Key                  []byte   `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Data                 []byte   `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Key  []byte `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Data []byte `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
 func (m *ProofOp) Reset()         { *m = ProofOp{} }
@@ -92,10 +88,7 @@ func (m *ProofOp) GetData() []byte {
 
 // Proof is Merkle proof defined by the list of ProofOps
 type Proof struct {
-	Ops                  []ProofOp `protobuf:"bytes,1,rep,name=ops,proto3" json:"ops"`
-	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
-	XXX_unrecognized     []byte    `json:"-"`
-	XXX_sizecache        int32     `json:"-"`
+	Ops []ProofOp `protobuf:"bytes,1,rep,name=ops,proto3" json:"ops"`
 }
 
 func (m *Proof) Reset()         { *m = Proof{} }
@@ -146,89 +139,24 @@ func init() {
 func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_9c1c2162d560d38e) }
 
 var fileDescriptor_9c1c2162d560d38e = []byte{
-	// 226 bytes of a gzipped FileDescriptorProto
+	// 234 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0x85, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,
 	0xf9, 0x42, 0x12, 0x25, 0xa9, 0x79, 0x29, 0xa9, 0x45, 0xb9, 0x99, 0x79, 0x25, 0x7a, 0x10, 0x65,
-	0x7a, 0x10, 0x79, 0x29, 0xdd, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0xfd,
-	0xf4, 0xfc, 0xf4, 0x7c, 0x7d, 0xb0, 0x86, 0xa4, 0xd2, 0x34, 0x30, 0x0f, 0xcc, 0x01, 0xb3, 0x20,
-	0x06, 0x29, 0x39, 0x73, 0xb1, 0x07, 0x14, 0xe5, 0xe7, 0xa7, 0xf9, 0x17, 0x08, 0x09, 0x71, 0xb1,
-	0x94, 0x54, 0x16, 0xa4, 0x4a, 0x30, 0x2a, 0x30, 0x6a, 0x70, 0x06, 0x81, 0xd9, 0x42, 0x02, 0x5c,
-	0xcc, 0xd9, 0xa9, 0x95, 0x12, 0x4c, 0x0a, 0x8c, 0x1a, 0x3c, 0x41, 0x20, 0x26, 0x48, 0x55, 0x4a,
-	0x62, 0x49, 0xa2, 0x04, 0x33, 0x58, 0x08, 0xcc, 0x56, 0x72, 0xe2, 0x62, 0x05, 0x1b, 0x22, 0x64,
-	0xc9, 0xc5, 0x9c, 0x5f, 0x50, 0x2c, 0xc1, 0xa8, 0xc0, 0xac, 0xc1, 0x6d, 0xa4, 0xa8, 0x87, 0xcb,
-	0x91, 0x7a, 0x50, 0x2b, 0x9d, 0x58, 0x4e, 0xdc, 0x93, 0x67, 0x08, 0x02, 0xe9, 0x71, 0x72, 0xf9,
-	0xf1, 0x50, 0x8e, 0x71, 0xc5, 0x23, 0x39, 0xc6, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c, 0x92, 0x63,
-	0x7c, 0xf0, 0x48, 0x8e, 0x31, 0x4a, 0x0f, 0xc9, 0x37, 0x08, 0xd3, 0x90, 0x99, 0x28, 0x81, 0x94,
-	0xc4, 0x06, 0xf6, 0x95, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0xbb, 0x95, 0x22, 0x4e, 0x3c, 0x01,
-	0x00, 0x00,
+	0x7a, 0x10, 0x79, 0x29, 0xb5, 0x92, 0x8c, 0xcc, 0xa2, 0x94, 0xf8, 0x82, 0xc4, 0xa2, 0x92, 0x4a,
+	0x7d, 0xb0, 0x62, 0xfd, 0xf4, 0xfc, 0xf4, 0x7c, 0x04, 0x0b, 0x62, 0x82, 0x92, 0x33, 0x17, 0x7b,
+	0x40, 0x51, 0x7e, 0x7e, 0x9a, 0x7f, 0x81, 0x90, 0x10, 0x17, 0x4b, 0x49, 0x65, 0x41, 0xaa, 0x04,
+	0xa3, 0x02, 0xa3, 0x06, 0x67, 0x10, 0x98, 0x2d, 0x24, 0xc0, 0xc5, 0x9c, 0x9d, 0x5a, 0x29, 0xc1,
+	0xa4, 0xc0, 0xa8, 0xc1, 0x13, 0x04, 0x62, 0x82, 0x54, 0xa5, 0x24, 0x96, 0x24, 0x4a, 0x30, 0x83,
+	0x85, 0xc0, 0x6c, 0x25, 0x27, 0x2e, 0x56, 0xb0, 0x21, 0x42, 0x96, 0x5c, 0xcc, 0xf9, 0x05, 0xc5,
+	0x12, 0x8c, 0x0a, 0xcc, 0x1a, 0xdc, 0x46, 0x8a, 0x7a, 0xb8, 0x5c, 0xa7, 0x07, 0xb5, 0xd2, 0x89,
+	0xe5, 0xc4, 0x3d, 0x79, 0x86, 0x20, 0x90, 0x1e, 0x27, 0x8f, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c,
+	0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x71, 0xc2, 0x63, 0x39, 0x86, 0x0b, 0x8f, 0xe5, 0x18, 0x6e,
+	0x3c, 0x96, 0x63, 0x88, 0xd2, 0x4b, 0xcf, 0x2c, 0xc9, 0x28, 0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5,
+	0x47, 0x98, 0x88, 0xcc, 0x44, 0x09, 0xa1, 0x24, 0x36, 0xb0, 0xcf, 0x8c, 0x01, 0x01, 0x00, 0x00,
+	0xff, 0xff, 0x39, 0xc0, 0xa3, 0x13, 0x39, 0x01, 0x00, 0x00,
 }
 
-func (this *ProofOp) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ProofOp)
-	if !ok {
-		that2, ok := that.(ProofOp)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Type != that1.Type {
-		return false
-	}
-	if !bytes.Equal(this.Key, that1.Key) {
-		return false
-	}
-	if !bytes.Equal(this.Data, that1.Data) {
-		return false
-	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
-	return true
-}
-func (this *Proof) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Proof)
-	if !ok {
-		that2, ok := that.(Proof)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if len(this.Ops) != len(that1.Ops) {
-		return false
-	}
-	for i := range this.Ops {
-		if !this.Ops[i].Equal(&that1.Ops[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
-	return true
-}
 func (m *ProofOp) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -249,10 +177,6 @@ func (m *ProofOp) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Data) > 0 {
 		i -= len(m.Data)
 		copy(dAtA[i:], m.Data)
@@ -297,10 +221,6 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Ops) > 0 {
 		for iNdEx := len(m.Ops) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -329,113 +249,6 @@ func encodeVarintMerkle(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func NewPopulatedProofOp(r randyMerkle, easy bool) *ProofOp {
-	this := &ProofOp{}
-	this.Type = string(randStringMerkle(r))
-	v1 := r.Intn(100)
-	this.Key = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Key[i] = byte(r.Intn(256))
-	}
-	v2 := r.Intn(100)
-	this.Data = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.Data[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedMerkle(r, 4)
-	}
-	return this
-}
-
-func NewPopulatedProof(r randyMerkle, easy bool) *Proof {
-	this := &Proof{}
-	if r.Intn(5) != 0 {
-		v3 := r.Intn(5)
-		this.Ops = make([]ProofOp, v3)
-		for i := 0; i < v3; i++ {
-			v4 := NewPopulatedProofOp(r, easy)
-			this.Ops[i] = *v4
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedMerkle(r, 2)
-	}
-	return this
-}
-
-type randyMerkle interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneMerkle(r randyMerkle) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringMerkle(r randyMerkle) string {
-	v5 := r.Intn(100)
-	tmps := make([]rune, v5)
-	for i := 0; i < v5; i++ {
-		tmps[i] = randUTF8RuneMerkle(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedMerkle(r randyMerkle, maxFieldNumber int) (dAtA []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		dAtA = randFieldMerkle(dAtA, r, fieldNumber, wire)
-	}
-	return dAtA
-}
-func randFieldMerkle(dAtA []byte, r randyMerkle, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		v6 := r.Int63()
-		if r.Intn(2) == 0 {
-			v6 *= -1
-		}
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(v6))
-	case 1:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		ll := r.Intn(100)
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(ll))
-		for j := 0; j < ll; j++ {
-			dAtA = append(dAtA, byte(r.Intn(256)))
-		}
-	default:
-		dAtA = encodeVarintPopulateMerkle(dAtA, uint64(key))
-		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return dAtA
-}
-func encodeVarintPopulateMerkle(dAtA []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	dAtA = append(dAtA, uint8(v))
-	return dAtA
-}
 func (m *ProofOp) Size() (n int) {
 	if m == nil {
 		return 0
@@ -454,9 +267,6 @@ func (m *ProofOp) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMerkle(uint64(l))
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
-	}
 	return n
 }
 
@@ -471,9 +281,6 @@ func (m *Proof) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovMerkle(uint64(l))
 		}
-	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -628,7 +435,6 @@ func (m *ProofOp) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -716,7 +522,6 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -729,6 +534,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 func skipMerkle(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -760,10 +566,8 @@ func skipMerkle(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -784,55 +588,30 @@ func skipMerkle(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthMerkle
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthMerkle
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowMerkle
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipMerkle(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthMerkle
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupMerkle
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthMerkle
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthMerkle = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowMerkle   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthMerkle        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowMerkle          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupMerkle = fmt.Errorf("proto: unexpected end of group")
 )

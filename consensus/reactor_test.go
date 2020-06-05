@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -26,10 +28,10 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 //----------------------------------------------
@@ -74,7 +76,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 	// TODO: is this still true with new pubsub?
 	for i := 0; i < n; i++ {
 		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToConsensus(s, 0)
+		reactors[i].SwitchToConsensus(s, false)
 	}
 	return reactors, blocksSubs, eventBuses
 }
@@ -154,8 +156,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		addr := privVals[vIdx].GetPubKey().Address()
-		evpool := newMockEvidencePool(addr)
+		pubKey, err := privVals[vIdx].GetPubKey()
+		require.NoError(t, err)
+		evpool := newMockEvidencePool(pubKey.Address())
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -202,12 +205,12 @@ type mockEvidencePool struct {
 
 func newMockEvidencePool(val []byte) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockGoodEvidence(1, 1, val)},
+		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), val)},
 	}
 }
 
 // NOTE: maxBytes is ignored
-func (m *mockEvidencePool) PendingEvidence(maxBytes int64) []types.Evidence {
+func (m *mockEvidencePool) PendingEvidence(maxBytes uint32) []types.Evidence {
 	if m.height > 0 {
 		return m.ev
 	}
@@ -223,6 +226,18 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 	m.height++
 }
 func (m *mockEvidencePool) IsCommitted(types.Evidence) bool { return false }
+func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
+	if m.height > 0 {
+		for _, e := range m.ev {
+			if e.Equal(evidence) {
+				return true
+			}
+		}
+	}
+	return false
+}
+func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
+func (m *mockEvidencePool) Header(int64) *types.Header            { return nil }
 
 //------------------------------------
 
@@ -258,7 +273,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	reactor.InitPeer(peer)
@@ -280,7 +295,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	// we should call InitPeer here
@@ -331,7 +346,9 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		addr := css[i].privValidator.GetPubKey().Address()
+		pubKey, err := css[i].privValidator.GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
 		activeVals[string(addr)] = struct{}{}
 	}
 
@@ -343,7 +360,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Debug("---------------------------- Testing changing the voting power of one validator a few times")
 
-	val1PubKey := css[0].privValidator.GetPubKey()
+	val1PubKey, err := css[0].privValidator.GetPubKey()
+	require.NoError(t, err)
 	val1PubKeyABCI := types.TM2PB.PubKey(val1PubKey)
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
@@ -410,8 +428,9 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		addr := css[i].privValidator.GetPubKey().Address()
-		activeVals[string(addr)] = struct{}{}
+		pubKey, err := css[i].privValidator.GetPubKey()
+		require.NoError(t, err)
+		activeVals[string(pubKey.Address())] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -422,7 +441,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding one validator")
 
-	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 
@@ -449,7 +469,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
 
-	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	require.NoError(t, err)
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
@@ -469,11 +490,13 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
 
-	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
+	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
-	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
+	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
+	require.NoError(t, err)
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
@@ -670,8 +693,8 @@ func capture() {
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 	testCases := []struct { // nolint: maligned
 		expectErr              bool
-		messageRound           int
-		messageLastCommitRound int
+		messageRound           int32
+		messageLastCommitRound int32
 		messageHeight          int64
 		testName               string
 		messageStep            cstypes.RoundStepType
@@ -717,7 +740,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(types.MaxBlockPartsCount + 1) },
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
 			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
@@ -754,7 +777,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
-			"ProposalPOL bit array is too big: 10001, max: 10000"},
+			"proposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
 	for i, tc := range testCases {
@@ -782,7 +805,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		messageHeight int64
-		messageRound  int
+		messageRound  int32
 		messagePart   *types.Part
 		expectErr     bool
 	}{
@@ -806,24 +829,24 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	}
 
 	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
-	message.Part.Index = -1
+	message.Part.Index = 1
 
 	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 }
 
 func TestHasVoteMessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	testCases := []struct { // nolint: maligned
 		expectErr     bool
-		messageRound  int
-		messageIndex  int
+		messageRound  int32
+		messageIndex  int32
 		messageHeight int64
 		testName      string
-		messageType   types.SignedMsgType
+		messageType   tmproto.SignedMsgType
 	}{
 		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
@@ -850,25 +873,25 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 
 func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
 		Hash: bytes.HexBytes{},
 		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  bytes.HexBytes{},
+			Total: 1,
+			Hash:  []byte{0},
 		},
 	}
 
 	testCases := []struct { // nolint: maligned
 		expectErr      bool
-		messageRound   int
+		messageRound   int32
 		messageHeight  int64
 		testName       string
-		messageType    types.SignedMsgType
+		messageType    tmproto.SignedMsgType
 		messageBlockID types.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
@@ -895,23 +918,22 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
+	testCases := []struct {
 		malleateFn func(*VoteSetBitsMessage)
 		expErr     string
 	}{
 		{func(msg *VoteSetBitsMessage) {}, ""},
 		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
-		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "negative Round"},
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
 				Hash: bytes.HexBytes{},
 				PartsHeader: types.PartSetHeader{
-					Total: -1,
-					Hash:  bytes.HexBytes{},
+					Total: 1,
+					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: negative Total"},
+		}, "wrong BlockID: wrong PartsHeader: wrong Hash:"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

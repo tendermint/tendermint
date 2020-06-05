@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	amino "github.com/tendermint/go-amino"
+
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/types"
 )
@@ -48,7 +49,7 @@ func main() {
 	// the length of tendermint/wal/MsgInfo in the wal.json may exceed the defaultBufSize(4096) of bufio
 	// because of the byte array in BlockPart
 	// leading to unmarshal error: unexpected end of JSON input
-	br := bufio.NewReaderSize(f, 2*types.BlockPartSizeBytes)
+	br := bufio.NewReaderSize(f, int(2*types.BlockPartSizeBytes))
 	dec := cs.NewWALEncoder(walFile)
 
 	for {

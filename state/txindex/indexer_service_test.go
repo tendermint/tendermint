@@ -7,12 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	db "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
 )
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
@@ -38,14 +39,14 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Header: types.Header{Height: 1},
 		NumTxs: int64(2),
 	})
-	txResult1 := &types.TxResult{
+	txResult1 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(0),
 		Tx:     types.Tx("foo"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
 	eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
-	txResult2 := &types.TxResult{
+	txResult2 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(1),
 		Tx:     types.Tx("bar"),

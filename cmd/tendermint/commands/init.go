@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	cfg "github.com/tendermint/tendermint/config"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -60,10 +61,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
-		key := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey()
+		if err != nil {
+			return fmt.Errorf("can't get pubkey: %w", err)
+		}
 		genDoc.Validators = []types.GenesisValidator{{
-			Address: key.Address(),
-			PubKey:  key,
+			Address: pubKey.Address(),
+			PubKey:  pubKey,
 			Power:   10,
 		}}
 

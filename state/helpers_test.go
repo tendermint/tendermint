@@ -3,6 +3,7 @@ package state_test
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -20,14 +21,6 @@ type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
 }
-
-// always returns true if asked if any evidence was already committed.
-type mockEvPoolAlwaysCommitted struct{}
-
-func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
-func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)          {}
-func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
@@ -65,7 +58,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, err := blockExec.ApplyBlock(state, blockID, block)
+	state, _, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -80,8 +73,8 @@ func makeValidCommit(
 ) (*types.Commit, error) {
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
-		_, val := vals.GetByIndex(i)
-		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID)
+		_, val := vals.GetByIndex(int32(i))
+		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
 			return nil, err
 		}
@@ -153,6 +146,7 @@ func makeConsensusParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
+	maxNumEvidence uint32,
 ) types.ConsensusParams {
 	return types.ConsensusParams{
 		Block: types.BlockParams{
@@ -161,7 +155,9 @@ func makeConsensusParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAgeNumBlocks: evidenceAge,
+			MaxAgeDuration:  time.Duration(evidenceAge),
+			MaxNum:          maxNumEvidence,
 		},
 	}
 }

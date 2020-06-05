@@ -68,8 +68,8 @@ func TestValidTxProof(t *testing.T) {
 		for i := range txs {
 			tx := []byte(txs[i])
 			proof := txs.Proof(i)
-			assert.Equal(t, i, proof.Proof.Index, "%d: %d", h, i)
-			assert.Equal(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
+			assert.EqualValues(t, i, proof.Proof.Index, "%d: %d", h, i)
+			assert.EqualValues(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
 			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
 			assert.EqualValues(t, tx, proof.Data, "%d: %d", h, i)
 			assert.EqualValues(t, txs[i].Hash(), proof.Leaf(), "%d: %d", h, i)
@@ -92,63 +92,6 @@ func TestTxProofUnchangable(t *testing.T) {
 	// run the other test a bunch...
 	for i := 0; i < 40; i++ {
 		testTxProofUnchangable(t)
-	}
-}
-
-func TestComputeTxsOverhead(t *testing.T) {
-	cases := []struct {
-		txs          Txs
-		wantOverhead int
-	}{
-		{Txs{[]byte{6, 6, 6, 6, 6, 6}}, 2},
-		// one 21 Mb transaction:
-		{Txs{make([]byte, 22020096)}, 5},
-		// two 21Mb/2 sized transactions:
-		{Txs{make([]byte, 11010048), make([]byte, 11010048)}, 10},
-		{Txs{[]byte{1, 2, 3}, []byte{1, 2, 3}, []byte{4, 5, 6}}, 6},
-		{Txs{[]byte{100, 5, 64}, []byte{42, 116, 118}, []byte{6, 6, 6}, []byte{6, 6, 6}}, 8},
-	}
-
-	for _, tc := range cases {
-		totalBytes := int64(0)
-		totalOverhead := int64(0)
-		for _, tx := range tc.txs {
-			aminoOverhead := ComputeAminoOverhead(tx, 1)
-			totalOverhead += aminoOverhead
-			totalBytes += aminoOverhead + int64(len(tx))
-		}
-		bz, err := cdc.MarshalBinaryBare(tc.txs)
-		assert.EqualValues(t, tc.wantOverhead, totalOverhead)
-		assert.NoError(t, err)
-		assert.EqualValues(t, len(bz), totalBytes)
-	}
-}
-
-func TestComputeAminoOverhead(t *testing.T) {
-	cases := []struct {
-		tx       Tx
-		fieldNum int
-		want     int
-	}{
-		{[]byte{6, 6, 6}, 1, 2},
-		{[]byte{6, 6, 6}, 16, 3},
-		{[]byte{6, 6, 6}, 32, 3},
-		{[]byte{6, 6, 6}, 64, 3},
-		{[]byte{6, 6, 6}, 512, 3},
-		{[]byte{6, 6, 6}, 1024, 3},
-		{[]byte{6, 6, 6}, 2048, 4},
-		{make([]byte, 64), 1, 2},
-		{make([]byte, 65), 1, 2},
-		{make([]byte, 127), 1, 2},
-		{make([]byte, 128), 1, 3},
-		{make([]byte, 256), 1, 3},
-		{make([]byte, 512), 1, 3},
-		{make([]byte, 1024), 1, 3},
-		{make([]byte, 128), 16, 4},
-	}
-	for _, tc := range cases {
-		got := ComputeAminoOverhead(tc.tx, tc.fieldNum)
-		assert.EqualValues(t, tc.want, got)
 	}
 }
 

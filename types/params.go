@@ -1,7 +1,9 @@
 package types
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -13,10 +15,13 @@ const (
 	MaxBlockSizeBytes = 104857600 // 100MB
 
 	// BlockPartSizeBytes is the size of one block part.
-	BlockPartSizeBytes = 65536 // 64kB
+	BlockPartSizeBytes uint32 = 65536 // 64kB
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
+
+	// Restrict the upper bound of the amount of evidence (uses uint16 for safe conversion)
+	MaxEvidencePerBlock = 65535
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
@@ -28,14 +33,13 @@ type ConsensusParams struct {
 }
 
 // HashedParams is a subset of ConsensusParams.
-// It is amino encoded and hashed into
-// the Header.ConsensusHash.
+// It is amino encoded and hashed into the Header.ConsensusHash.
 type HashedParams struct {
 	BlockMaxBytes int64
 	BlockMaxGas   int64
 }
 
-// BlockParams define limits on the block size and gas plus minimum time
+// BlockParams defines limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
 	MaxBytes int64 `json:"max_bytes"`
@@ -45,9 +49,33 @@ type BlockParams struct {
 	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
-// EvidenceParams determine how we handle evidence of malfeasance.
+// EvidenceParams determines how we handle evidence of malfeasance.
+//
+// Evidence older than MaxAgeNumBlocks && MaxAgeDuration is considered
+// stale and ignored.
+//
+// In Cosmos-SDK based blockchains, MaxAgeDuration is usually equal to the
+// unbonding period. MaxAgeNumBlocks is calculated by dividing the unboding
+// period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
 type EvidenceParams struct {
-	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
+	// Max age of evidence, in blocks.
+	//
+	// The basic formula for calculating this is: MaxAgeDuration / {average block
+	// time}.
+	MaxAgeNumBlocks int64 `json:"max_age_num_blocks"`
+
+	// Max age of evidence, in time.
+	//
+	// It should correspond with an app's "unbonding period" or other similar
+	// mechanism for handling [Nothing-At-Stake
+	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
+	MaxAgeDuration time.Duration `json:"max_age_duration"`
+
+	// This sets the maximum number of evidence that can be committed in a single block.
+	// and should fall comfortably under the max block bytes when we consider the size of
+	// each evidence (See MaxEvidenceBytes). The maximum number is MaxEvidencePerBlock.
+	// Default is 50
+	MaxNum uint32 `json:"max_num"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -74,10 +102,12 @@ func DefaultBlockParams() BlockParams {
 	}
 }
 
-// DefaultEvidenceParams Params returns a default EvidenceParams.
+// DefaultEvidenceParams returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAge: 100000, // 27.8 hrs at 1block/s
+		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
+		MaxAgeDuration:  48 * time.Hour,
+		MaxNum:          50,
 	}
 }
 
@@ -100,27 +130,42 @@ func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 // allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
 	if params.Block.MaxBytes <= 0 {
-		return errors.Errorf("block.MaxBytes must be greater than 0. Got %d",
+		return fmt.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
 	}
 	if params.Block.MaxBytes > MaxBlockSizeBytes {
-		return errors.Errorf("block.MaxBytes is too big. %d > %d",
+		return fmt.Errorf("block.MaxBytes is too big. %d > %d",
 			params.Block.MaxBytes, MaxBlockSizeBytes)
 	}
 
 	if params.Block.MaxGas < -1 {
-		return errors.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
+		return fmt.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
 	}
 
 	if params.Block.TimeIotaMs <= 0 {
-		return errors.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
+		return fmt.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
 			params.Block.TimeIotaMs)
 	}
 
-	if params.Evidence.MaxAge <= 0 {
-		return errors.Errorf("evidenceParams.MaxAge must be greater than 0. Got %d",
-			params.Evidence.MaxAge)
+	if params.Evidence.MaxAgeNumBlocks <= 0 {
+		return fmt.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+			params.Evidence.MaxAgeNumBlocks)
+	}
+
+	if params.Evidence.MaxAgeDuration <= 0 {
+		return fmt.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
+			params.Evidence.MaxAgeDuration)
+	}
+
+	if params.Evidence.MaxNum > MaxEvidencePerBlock {
+		return fmt.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
+			params.Evidence.MaxNum, MaxEvidencePerBlock)
+	}
+
+	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
+		return fmt.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
+			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -131,7 +176,7 @@ func (params *ConsensusParams) Validate() error {
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
 		if _, ok := ABCIPubKeyTypesToAminoNames[keyType]; !ok {
-			return errors.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
+			return fmt.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}
 	}
@@ -177,7 +222,9 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.Block.MaxGas = params2.Block.MaxGas
 	}
 	if params2.Evidence != nil {
-		res.Evidence.MaxAge = params2.Evidence.MaxAge
+		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
+		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
+		res.Evidence.MaxNum = params2.Evidence.MaxNum
 	}
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.

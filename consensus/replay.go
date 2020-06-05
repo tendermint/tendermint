@@ -16,11 +16,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -260,8 +258,8 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	)
 
 	// Set AppVersion on the state.
-	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
-		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
+	if h.initialState.Version.Consensus.App != res.AppVersion {
+		h.initialState.Version.Consensus.App = res.AppVersion
 		sm.SaveState(h.stateDB, h.initialState)
 	}
 
@@ -288,6 +286,7 @@ func (h *Handshaker) ReplayBlocks(
 	appBlockHeight int64,
 	proxyApp proxy.AppConns,
 ) ([]byte, error) {
+	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
 	h.logger.Info(
@@ -341,11 +340,15 @@ func (h *Handshaker) ReplayBlocks(
 		}
 	}
 
-	// First handle edge cases and constraints on the storeBlockHeight.
+	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
 	switch {
 	case storeBlockHeight == 0:
 		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
+
+	case appBlockHeight < storeBlockBase-1:
+		// the app is too far behind truncated store (can be 1 behind since we replay the next)
+		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
 	case storeBlockHeight < appBlockHeight:
 		// the app should never be ahead of the store (but this is under app's control)
@@ -468,11 +471,13 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, sm.MockEvidencePool{})
+	// Use stubs for both mempool and evidence pool since no transactions nor
+	// evidence are needed here - block already exists.
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, emptyMempool{}, emptyEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)
+	state, _, err = blockExec.ApplyBlock(state, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -502,47 +507,4 @@ State: %v
 Did you reset Tendermint without resetting your application's data?`,
 			appHash, state.AppHash, state))
 	}
-}
-
-//--------------------------------------------------------------------------------
-// mockProxyApp uses ABCIResponses to give the right results
-// Useful because we don't want to call Commit() twice for the same block on the real app.
-
-func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
-		appHash:       appHash,
-		abciResponses: abciResponses,
-	})
-	cli, _ := clientCreator.NewABCIClient()
-	err := cli.Start()
-	if err != nil {
-		panic(err)
-	}
-	return proxy.NewAppConnConsensus(cli)
-}
-
-type mockProxyApp struct {
-	abci.BaseApplication
-
-	appHash       []byte
-	txCount       int
-	abciResponses *sm.ABCIResponses
-}
-
-func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
-	mock.txCount++
-	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
-		return abci.ResponseDeliverTx{}
-	}
-	return *r
-}
-
-func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
-}
-
-func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
 }

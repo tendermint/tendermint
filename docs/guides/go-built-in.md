@@ -1,6 +1,6 @@
----
+<!---
 order: 2
----
+--->
 
 # Creating a built-in application in Go
 
@@ -40,7 +40,7 @@ Verify that you have the latest version of Go installed:
 
 ```sh
 $ go version
-go version go1.13 darwin/amd64
+go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
@@ -55,8 +55,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```sh
-$ mkdir -p $GOPATH/src/github.com/me/kvstore
-$ cd $GOPATH/src/github.com/me/kvstore
+$ mkdir kvstore
+$ cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -151,6 +151,8 @@ When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
 
 ```go
+import "bytes"
+
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
@@ -286,7 +288,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -329,6 +331,7 @@ Put the following code into the "main.go" file:
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -337,7 +340,6 @@ import (
 	"syscall"
 
 	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -391,13 +393,13 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	config.RootDir = filepath.Dir(filepath.Dir(configFile))
 	viper.SetConfigFile(configFile)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Wrap(err, "viper failed to read config file")
+		return nil, fmt.Errorf("viper failed to read config file: %w", err)
 	}
 	if err := viper.Unmarshal(config); err != nil {
-		return nil, errors.Wrap(err, "viper failed to unmarshal config")
+		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 	}
 	if err := config.ValidateBasic(); err != nil {
-		return nil, errors.Wrap(err, "config is invalid")
+		return nil, fmt.Errorf("config is invalid: %w", err)
 	}
 
 	// create logger
@@ -405,7 +407,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	var err error
 	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse log level")
+		return nil, fmt.Errorf("failed to parse log level: %w", err)
 	}
 
 	// read private validator
@@ -417,7 +419,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	// read node key
 	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load node's key")
+		return nil, fmt.Errorf("failed to load node's key: %w", err)
 	}
 
 	// create node
@@ -431,7 +433,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new Tendermint node")
+		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 	}
 
 	return node, nil
@@ -483,7 +485,7 @@ node, err := nm.NewNode(
 	nm.DefaultMetricsProvider(config.Instrumentation),
 	logger)
 if err != nil {
-	return nil, errors.Wrap(err, "failed to create new Tendermint node")
+	return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 }
 ```
 
@@ -501,13 +503,13 @@ config := cfg.DefaultConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
-	return nil, errors.Wrap(err, "viper failed to read config file")
+	return nil, fmt.Errorf("viper failed to read config file: %w", err)
 }
 if err := viper.Unmarshal(config); err != nil {
-	return nil, errors.Wrap(err, "viper failed to unmarshal config")
+	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 }
 if err := config.ValidateBasic(); err != nil {
-	return nil, errors.Wrap(err, "config is invalid")
+	return nil, fmt.Errorf("config is invalid: %w", err)
 }
 ```
 
@@ -528,7 +530,7 @@ pv := privval.LoadFilePV(
 ```go
 nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to load node's key")
+	return nil, fmt.Errorf("failed to load node's key: %w", err)
 }
 ```
 
@@ -541,7 +543,7 @@ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 var err error
 logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to parse log level")
+	return nil, fmt.Errorf("failed to parse log level: %w", err)
 }
 ```
 
@@ -567,7 +569,6 @@ We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
 ```sh
-$ export GO111MODULE=on
 $ go mod init github.com/me/example
 $ go build
 ```
@@ -576,12 +577,12 @@ This should build the binary.
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
-Tendermint Core.
+Tendermint Core. Please refer to [the official
+guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
 ```sh
 $ rm -rf /tmp/example
-$ cd $GOPATH/src/github.com/tendermint/tendermint
-$ make install
 $ TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json

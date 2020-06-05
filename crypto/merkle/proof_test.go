@@ -1,9 +1,10 @@
 package merkle
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	amino "github.com/tendermint/go-amino"
 )
@@ -34,7 +35,7 @@ func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
 	var op DominoOp // a bit strange as we'll discard this, but it works.
 	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
-		return nil, errors.Wrap(err, "decoding ProofOp.Data into SimpleValueOp")
+		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
 	}
 	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
 }
@@ -53,7 +54,7 @@ func (dop DominoOp) Run(input [][]byte) (output [][]byte, err error) {
 		return nil, errors.New("expected input of length 1")
 	}
 	if string(input[0]) != dop.Input {
-		return nil, errors.Errorf("expected input %v, got %v",
+		return nil, fmt.Errorf("expected input %v, got %v",
 			dop.Input, string(input[0]))
 	}
 	return [][]byte{[]byte(dop.Output)}, nil
