@@ -1099,14 +1099,14 @@ func stateAndStore(
 
 type mockBlockStore struct {
 	config  *cfg.Config
-	params  types.ConsensusParams
+	params  tmproto.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 	base    int64
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+func newMockBlockStore(config *cfg.Config, params tmproto.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil, 0}
 }
 
