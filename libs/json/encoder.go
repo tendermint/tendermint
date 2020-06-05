@@ -68,7 +68,7 @@ func encodeReflect(w io.Writer, rv reflect.Value) error {
 	// Recursively dereference if pointer.
 	for rv.Kind() == reflect.Ptr {
 		if rv.IsNil() {
-			return writeStr(w, `null`)
+			return writeStr(w, "null")
 		}
 		rv = rv.Elem()
 	}
@@ -118,7 +118,7 @@ func encodeReflect(w io.Writer, rv reflect.Value) error {
 func encodeReflectList(w io.Writer, rv reflect.Value) error {
 	// Emit nil slices as null.
 	if rv.Kind() == reflect.Slice && rv.IsNil() {
-		return writeStr(w, `null`)
+		return writeStr(w, "null")
 	}
 
 	// Encode byte slices as base64 with the stdlib encoder.
@@ -134,7 +134,7 @@ func encodeReflectList(w io.Writer, rv reflect.Value) error {
 
 	// Anything else we recursively encode ourselves.
 	length := rv.Len()
-	if err := writeStr(w, `[`); err != nil {
+	if err := writeStr(w, "["); err != nil {
 		return err
 	}
 	for i := 0; i < length; i++ {
@@ -142,12 +142,12 @@ func encodeReflectList(w io.Writer, rv reflect.Value) error {
 			return err
 		}
 		if i < length-1 {
-			if err := writeStr(w, `,`); err != nil {
+			if err := writeStr(w, ","); err != nil {
 				return err
 			}
 		}
 	}
-	return writeStr(w, `]`)
+	return writeStr(w, "]")
 }
 
 func encodeReflectMap(w io.Writer, rv reflect.Value) error {
@@ -155,20 +155,20 @@ func encodeReflectMap(w io.Writer, rv reflect.Value) error {
 		return errors.New("map key must be string")
 	}
 
-	if err := writeStr(w, `{`); err != nil {
+	if err := writeStr(w, "{"); err != nil {
 		return err
 	}
 	writeComma := false
 	for _, keyrv := range rv.MapKeys() {
 		if writeComma {
-			if err := writeStr(w, `,`); err != nil {
+			if err := writeStr(w, ","); err != nil {
 				return err
 			}
 		}
 		if err := encodeStdlib(w, keyrv.Interface()); err != nil {
 			return err
 		}
-		if err := writeStr(w, `:`); err != nil {
+		if err := writeStr(w, ":"); err != nil {
 			return err
 		}
 		if err := encodeReflect(w, rv.MapIndex(keyrv)); err != nil {
@@ -176,12 +176,12 @@ func encodeReflectMap(w io.Writer, rv reflect.Value) error {
 		}
 		writeComma = true
 	}
-	return writeStr(w, `}`)
+	return writeStr(w, "}")
 }
 
 func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 	sInfo := makeStructInfo(rv.Type())
-	if err := writeStr(w, `{`); err != nil {
+	if err := writeStr(w, "{"); err != nil {
 		return err
 	}
 	writeComma := false
@@ -192,14 +192,14 @@ func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 		}
 
 		if writeComma {
-			if err := writeStr(w, `,`); err != nil {
+			if err := writeStr(w, ","); err != nil {
 				return err
 			}
 		}
 		if err := encodeStdlib(w, fInfo.jsonName); err != nil {
 			return err
 		}
-		if err := writeStr(w, `:`); err != nil {
+		if err := writeStr(w, ":"); err != nil {
 			return err
 		}
 		if err := encodeReflect(w, frv); err != nil {
@@ -207,14 +207,14 @@ func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 		}
 		writeComma = true
 	}
-	return writeStr(w, `}`)
+	return writeStr(w, "}")
 }
 
 func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
 	// Get concrete value and dereference pointers.
 	for rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Interface {
 		if rv.IsNil() {
-			return writeStr(w, `null`)
+			return writeStr(w, "null")
 		}
 		rv = rv.Elem()
 	}
@@ -232,7 +232,7 @@ func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
 	if err := encodeReflect(w, rv); err != nil {
 		return err
 	}
-	return writeStr(w, `}`)
+	return writeStr(w, "}")
 }
 
 func encodeStdlib(w io.Writer, v interface{}) error {
