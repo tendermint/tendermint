@@ -9,6 +9,11 @@ import "proto/libs/bits/types.proto";
 import "proto/crypto/merkle/types.proto";
 import "proto/version/version.proto";
 
+option (gogoproto.marshaler_all)        = true;
+option (gogoproto.unmarshaler_all)      = true;
+option (gogoproto.sizer_all)            = true;
+option (gogoproto.goproto_registration) = true;
+
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = false;
@@ -33,8 +38,8 @@ enum SignedMsgType {
 
 // PartsetHeader
 message PartSetHeader {
-  int64 total = 1;
-  bytes hash  = 2;
+  uint32 total = 1;
+  bytes  hash  = 2;
 }
 
 message Part {
@@ -60,7 +65,7 @@ message Header {
   google.protobuf.Timestamp          time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
 
   // hashes of block data
   bytes last_commit_hash = 6;  // commit from validators from the last block
@@ -93,13 +98,13 @@ message Data {
 message Vote {
   SignedMsgType type     = 1;
   int64         height   = 2;
-  int64         round    = 3;
+  int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes validator_address = 6;
-  int64 validator_index   = 7;
+  int32 validator_index   = 7;
   bytes signature         = 8;
 }
 

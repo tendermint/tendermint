@@ -7,5 +7,5 @@ for dir in $proto_dirs; do
   protoc \
   -I. \
   --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc,paths=source_relative:. \
-  $(find "${dir}" -name '*.proto')
+  $(find "${dir}" -maxdepth 1 -name '*.proto')
 done
