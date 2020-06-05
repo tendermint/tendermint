@@ -31,6 +31,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - multisig: type `PubKeyMultisigThreshold` is now `PubKey`
   - [light] \#4946 Rename `lite2` pkg to `light`, the lite cmd has also been renamed to `light`. Remove `lite` implementation.
   - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
+  - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
+  - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
 
 - Apps

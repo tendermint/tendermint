@@ -2,17 +2,14 @@ syntax = "proto3";
 package tendermint.rpc.grpc;
 option  go_package = "github.com/tendermint/tendermint/rpc/grpc;coregrpc";
 
-import "third_party/proto/gogoproto/gogo.proto";
 import "abci/types/types.proto";
+import "third_party/proto/gogoproto/gogo.proto";
 
 option (gogoproto.marshaler_all)        = true;
 option (gogoproto.unmarshaler_all)      = true;
 option (gogoproto.sizer_all)            = true;
 option (gogoproto.goproto_registration) = true;
 
-
-//----------------------------------------
-// Message types
 
 //----------------------------------------
 // Request types
