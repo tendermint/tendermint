@@ -4,11 +4,9 @@
 package version
 
 import (
-	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
-	golang_proto "github.com/golang/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -16,7 +14,6 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = golang_proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
@@ -30,11 +27,8 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // This information is included in ResponseInfo. The App.Protocol can be
 // updated in ResponseEndBlock.
 type App struct {
-	Protocol             uint64   `protobuf:"varint,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	Software             string   `protobuf:"bytes,2,opt,name=software,proto3" json:"software,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Protocol uint64 `protobuf:"varint,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	Software string `protobuf:"bytes,2,opt,name=software,proto3" json:"software,omitempty"`
 }
 
 func (m *App) Reset()         { *m = App{} }
@@ -88,11 +82,8 @@ func (m *App) GetSoftware() string {
 // including all blockchain data structures and the rules of the application's
 // state transition machine.
 type Consensus struct {
-	Block                uint64   `protobuf:"varint,1,opt,name=block,proto3" json:"block,omitempty"`
-	App                  uint64   `protobuf:"varint,2,opt,name=app,proto3" json:"app,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Block uint64 `protobuf:"varint,1,opt,name=block,proto3" json:"block,omitempty"`
+	App   uint64 `protobuf:"varint,2,opt,name=app,proto3" json:"app,omitempty"`
 }
 
 func (m *Consensus) Reset()         { *m = Consensus{} }
@@ -144,18 +135,13 @@ func (m *Consensus) GetApp() uint64 {
 
 func init() {
 	proto.RegisterType((*App)(nil), "tendermint.proto.version.App")
-	golang_proto.RegisterType((*App)(nil), "tendermint.proto.version.App")
 	proto.RegisterType((*Consensus)(nil), "tendermint.proto.version.Consensus")
-	golang_proto.RegisterType((*Consensus)(nil), "tendermint.proto.version.Consensus")
 }
 
 func init() { proto.RegisterFile("proto/version/version.proto", fileDescriptor_14aa2353622f11e1) }
-func init() {
-	golang_proto.RegisterFile("proto/version/version.proto", fileDescriptor_14aa2353622f11e1)
-}
 
 var fileDescriptor_14aa2353622f11e1 = []byte{
-	// 216 bytes of a gzipped FileDescriptorProto
+	// 224 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2e, 0x28, 0xca, 0x2f,
 	0xc9, 0xd7, 0x2f, 0x4b, 0x2d, 0x2a, 0xce, 0xcc, 0xcf, 0x83, 0xd1, 0x7a, 0x60, 0x51, 0x21, 0x89,
 	0x92, 0xd4, 0xbc, 0x94, 0xd4, 0xa2, 0xdc, 0xcc, 0xbc, 0x12, 0x88, 0x88, 0x1e, 0x54, 0x5e, 0x4a,
@@ -166,10 +152,10 @@ var fileDescriptor_14aa2353622f11e1 = []byte{
 	0x38, 0x5f, 0xc9, 0x92, 0x8b, 0xd3, 0x39, 0x3f, 0xaf, 0x38, 0x35, 0xaf, 0xb8, 0xb4, 0x58, 0x48,
 	0x84, 0x8b, 0x35, 0x29, 0x27, 0x3f, 0x39, 0x1b, 0x6a, 0x02, 0x84, 0x23, 0x24, 0xc0, 0xc5, 0x9c,
 	0x58, 0x50, 0x00, 0xd6, 0xc9, 0x12, 0x04, 0x62, 0x5a, 0xb1, 0xbc, 0x58, 0x20, 0xcf, 0xe8, 0xe4,
-	0x70, 0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x0f, 0x1e, 0xc9, 0x31, 0x1e, 0x78, 0x2c,
-	0xc7, 0x18, 0xa5, 0x97, 0x9e, 0x59, 0x92, 0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x8f, 0xf0,
-	0x18, 0x32, 0x13, 0x25, 0x2c, 0x92, 0xd8, 0xc0, 0x5c, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0xe4, 0xc8, 0xb4, 0x99, 0x23, 0x01, 0x00, 0x00,
+	0x71, 0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x0f, 0x1e, 0xc9, 0x31, 0x4e, 0x78, 0x2c,
+	0xc7, 0x70, 0xe1, 0xb1, 0x1c, 0xc3, 0x8d, 0xc7, 0x72, 0x0c, 0x51, 0x7a, 0xe9, 0x99, 0x25, 0x19,
+	0xa5, 0x49, 0x7a, 0xc9, 0xf9, 0xb9, 0xfa, 0x08, 0x0f, 0x22, 0x33, 0x51, 0xc2, 0x24, 0x89, 0x0d,
+	0xcc, 0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x05, 0x3a, 0xdb, 0xd4, 0x2b, 0x01, 0x00, 0x00,
 }
 
 func (this *Consensus) Equal(that interface{}) bool {
@@ -197,9 +183,6 @@ func (this *Consensus) Equal(that interface{}) bool {
 	if this.App != that1.App {
 		return false
 	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
 	return true
 }
 func (m *App) Marshal() (dAtA []byte, err error) {
@@ -222,10 +205,6 @@ func (m *App) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Software) > 0 {
 		i -= len(m.Software)
 		copy(dAtA[i:], m.Software)
@@ -261,10 +240,6 @@ func (m *Consensus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if m.App != 0 {
 		i = encodeVarintVersion(dAtA, i, uint64(m.App))
 		i--
@@ -302,9 +277,6 @@ func (m *App) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovVersion(uint64(l))
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
-	}
 	return n
 }
 
@@ -319,9 +291,6 @@ func (m *Consensus) Size() (n int) {
 	}
 	if m.App != 0 {
 		n += 1 + sovVersion(uint64(m.App))
-	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -427,7 +396,6 @@ func (m *App) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -519,7 +487,6 @@ func (m *Consensus) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}

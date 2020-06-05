@@ -7,6 +7,10 @@ import "third_party/proto/gogoproto/gogo.proto";
 import "google/protobuf/duration.proto";
 
 option (gogoproto.equal_all) = true;
+option (gogoproto.marshaler_all)        = true;
+option (gogoproto.unmarshaler_all)      = true;
+option (gogoproto.sizer_all)            = true;
+option (gogoproto.goproto_registration) = true;
 
 // ConsensusParams contains consensus critical parameters that determine the
 // validity of blocks.
@@ -53,6 +57,9 @@ message EvidenceParams {
 // ValidatorParams restrict the public key types validators can use.
 // NOTE: uses ABCI pubkey naming, not Amino names.
 message ValidatorParams {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
+
   repeated string pub_key_types = 1;
 }
 

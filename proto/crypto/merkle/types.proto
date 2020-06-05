@@ -3,12 +3,6 @@ package tendermint.proto.crypto.merkle;
 
 option go_package = "github.com/tendermint/tendermint/proto/crypto/merkle";
 
-import "third_party/proto/gogoproto/gogo.proto";
-
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-
 message SimpleProof {
   int64          total     = 1;
   int64          index     = 2;
