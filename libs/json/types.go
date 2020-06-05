@@ -12,11 +12,11 @@ var (
 	typeRegistry = newTypes()
 )
 
-// RegisterType registers a struct type for Amino-compatible interface encoding in the global type
+// RegisterType registers a type for Amino-compatible interface encoding in the global type
 // registry. These types will be encoded with a type wrapper `{"type":"<type>","value":<value>}`
-// regardless of which interface they are wrapped in. If the type is a pointer, it will still be
-// valid both for value and pointer receivers, but decoding will prefer generating a pointer
-// receiver when possible.
+// regardless of which interface they are wrapped in (if any). If the type is a pointer, it will
+// still be valid both for value and pointer types, but decoding into an interface will generate
+// the a value or pointer based on the registered type.
 //
 // Should only be called in init() functions, as it panics on error.
 func RegisterType(_type interface{}, name string) {
@@ -83,10 +83,14 @@ func (t *types) register(name string, rt reflect.Type) error {
 }
 
 // lookup looks up a type from a name, or nil if not registered.
-func (t *types) lookup(name string) reflect.Type {
+func (t *types) lookup(name string) (reflect.Type, bool) {
 	t.RLock()
 	defer t.RUnlock()
-	return t.byName[name].rt
+	tInfo := t.byName[name]
+	if tInfo == nil {
+		return nil, false
+	}
+	return tInfo.rt, tInfo.returnPtr
 }
 
 // name looks up the name of a type, or empty if not registered. Unwraps pointers as necessary.

@@ -25,8 +25,10 @@ func decode(bz []byte, v interface{}) error {
 	}
 	rv = rv.Elem()
 
-	// If this is a registered type, defer to interface decoder. This is necessary since reflect
-	// will return the concrete type for interface variables - unlike interfaces within structs.
+	// If this is a registered type, defer to interface decoder regardless of whether the input is
+	// an interface or a bare value. This retains Amino's behavior, but is inconsistent with
+	// behavior in structs where an interface field will get the type wrapper while a bare value
+	// field will not.
 	if typeRegistry.name(rv.Type()) != "" {
 		return decodeReflectInterface(bz, rv)
 	}
@@ -224,8 +226,8 @@ func decodeReflectInterface(bz []byte, rv reflect.Value) error {
 		rv = rv.Elem()
 	}
 
-	// Fetch the interface type, and construct a concrete struct for the interface.
-	rt := typeRegistry.lookup(wrapper.Type)
+	// Look up the interface type, and construct a concrete value.
+	rt, returnPtr := typeRegistry.lookup(wrapper.Type)
 	if rt == nil {
 		return fmt.Errorf("unknown type %q", wrapper.Type)
 	}
@@ -235,12 +237,21 @@ func decodeReflectInterface(bz []byte, rv reflect.Value) error {
 	if err := decodeReflect(wrapper.Value, crv); err != nil {
 		return err
 	}
-	if rv.Kind() == reflect.Interface {
+
+	// This makes sure interface implementations with pointer receivers (e.g. func (c *Car)) are
+	// constructed as pointers behind the interface. The types must be registered as pointers with
+	// RegisterType().
+	if rv.Type().Kind() == reflect.Interface && returnPtr {
+		if !cptr.Type().AssignableTo(rv.Type()) {
+			return fmt.Errorf("invalid type %q for this value", wrapper.Type)
+		}
 		rv.Set(cptr)
 	} else {
+		if !crv.Type().AssignableTo(rv.Type()) {
+			return fmt.Errorf("invalid type %q for this value", wrapper.Type)
+		}
 		rv.Set(crv)
 	}
-
 	return nil
 }
 

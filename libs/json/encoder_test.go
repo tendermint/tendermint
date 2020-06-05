@@ -52,6 +52,7 @@ func TestMarshal(t *testing.T) {
 		"boat":            {boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
 		"boat ptr":        {&boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
 		"boat iface":      {Vehicle(boat), `{"type":"vehicle/boat","value":{"Sail":true}}`},
+		"key public":      {PublicKey("12345678"), `{"type":"key/public","value":"MTIzNDU2Nzg="}`},
 		"tags": {
 			Tags{JSONName: "name", OmitEmpty: "foo", Hidden: "bar", Tags: &Tags{JSONName: "child"}},
 			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,

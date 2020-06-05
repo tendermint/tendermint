@@ -10,6 +10,8 @@ import (
 func init() {
 	json.RegisterType(&Car{}, "vehicle/car")
 	json.RegisterType(Boat{}, "vehicle/boat")
+	json.RegisterType(PublicKey{}, "key/public")
+	json.RegisterType(PrivateKey{}, "key/private")
 }
 
 type Vehicle interface {
@@ -29,6 +31,10 @@ type Boat struct {
 }
 
 func (b Boat) Drive() error { return nil }
+
+// These are public and private encryption keys.
+type PublicKey []byte
+type PrivateKey []byte
 
 // Custom has custom marshalers and unmarshalers, taking pointer receivers.
 type CustomPtr struct {
