@@ -96,7 +96,7 @@ func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
