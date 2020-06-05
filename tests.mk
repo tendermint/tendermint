@@ -10,6 +10,12 @@ build_docker_test_image:
 	docker build -t tester -f ./test/docker/Dockerfile .
 .PHONY: build_docker_test_image
 
+### coverage, app, persistence, and libs tests
+test_cover:
+	# run the go unit tests with coverage
+	bash test/test_cover.sh
+.PHONY: test_cover
+
 test_apps:
 	# run the app tests using bash
 	# requires `abci-cli` and `tendermint` binaries installed
