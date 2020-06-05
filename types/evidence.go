@@ -330,11 +330,11 @@ func RegisterEvidences(cdc *amino.Codec) {
 }
 
 func init() {
-	tmjson.RegisterType(DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
-	tmjson.RegisterType(ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence")
-	tmjson.RegisterType(PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence")
-	tmjson.RegisterType(LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence")
-	tmjson.RegisterType(PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence")
+	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
+	tmjson.RegisterType(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence")
+	tmjson.RegisterType(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence")
+	tmjson.RegisterType(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence")
+	tmjson.RegisterType(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence")
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
