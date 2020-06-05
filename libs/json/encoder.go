@@ -28,6 +28,20 @@ func Marshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// MarshalIndent marshals the value as JSON, using the given prefix and indentation.
+func MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	bz, err := Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	err = json.Indent(buf, bz, prefix, indent)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func encode(w io.Writer, v interface{}) error {
 	// Bare nil values can't be reflected, so we must handle them here.
 	if v == nil {
