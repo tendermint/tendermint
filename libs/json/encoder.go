@@ -35,9 +35,10 @@ func encode(w io.Writer, v interface{}) error {
 	}
 	rv := reflect.ValueOf(v)
 
-	// If this is a registered type, defer to interface encoder. This is necessary since reflect
-	// will return the type of the concrete type for interface variables, but not within structs.
-	// Also, we must do this before calling encodeJSONReflect to avoid infinite loops.
+	// If this is a registered type, defer to interface encoder regardless of whether the input is
+	// an interface or a bare value. This retains Amino's behavior, but is inconsistent with
+	// behavior in structs where an interface field will get the type wrapper while a bare value
+	// field will not.
 	if typeRegistry.name(rv.Type()) != "" {
 		return encodeReflectInterface(w, rv)
 	}
@@ -190,15 +191,8 @@ func encodeReflectStruct(w io.Writer, rv reflect.Value) error {
 }
 
 func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
-	if rv.Kind() == reflect.Interface {
-		if rv.IsNil() {
-			return writeStr(w, `null`)
-		}
-		rv = rv.Elem()
-	}
-
 	// Get concrete value and dereference pointers.
-	for rv.Kind() == reflect.Ptr {
+	for rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Interface {
 		if rv.IsNil() {
 			return writeStr(w, `null`)
 		}

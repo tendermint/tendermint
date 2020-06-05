@@ -6,20 +6,29 @@ import (
 	"github.com/tendermint/tendermint/libs/json"
 )
 
-// Register Testa, an instance of the Car interface.
+// Register Car, an instance of the Vehicle interface.
 func init() {
-	json.RegisterType(Tesla{}, "car/tesla")
+	json.RegisterType(&Car{}, "vehicle/car")
+	json.RegisterType(Boat{}, "vehicle/boat")
 }
 
-type Car interface {
+type Vehicle interface {
 	Drive() error
 }
 
-type Tesla struct {
-	Color string
+// Car is a pointer implementation of Vehicle.
+type Car struct {
+	Wheels int32
 }
 
-func (t *Tesla) Drive() error { return nil }
+func (c *Car) Drive() error { return nil }
+
+// Boat is a value implementation of Vehicle.
+type Boat struct {
+	Sail bool
+}
+
+func (b Boat) Drive() error { return nil }
 
 // Custom has custom marshalers and unmarshalers, taking pointer receivers.
 type CustomPtr struct {
@@ -69,7 +78,9 @@ type Struct struct {
 	StringPtrPtr **string
 	Bytes        []byte
 	Time         time.Time
-	Car          Car
+	Car          *Car
+	Boat         Boat
+	Vehicles     []Vehicle
 	Child        *Struct
 	private      string
 }

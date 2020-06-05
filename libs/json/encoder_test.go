@@ -15,7 +15,8 @@ func TestMarshal(t *testing.T) {
 	sPtr := &s
 	i64 := int64(64)
 	ti := time.Date(2020, 6, 2, 18, 5, 13, 4346374, time.FixedZone("UTC+2", 2*60*60))
-	tesla := &Tesla{Color: "blue"}
+	car := &Car{Wheels: 4}
+	boat := Boat{Sail: true}
 
 	testcases := map[string]struct {
 		value  interface{}
@@ -45,30 +46,43 @@ func TestMarshal(t *testing.T) {
 		"slice int64 ptr": {[]*int64{&i64, nil}, `["64",null]`},
 		"array int64":     {[3]int64{1, 2, 3}, `["1","2","3"]`},
 		"map int64":       {map[string]int64{"a": 1, "b": 2, "c": 3}, `{"a":"1","b":"2","c":"3"}`},
-		"tesla":           {tesla, `{"type":"car/tesla","value":{"Color":"blue"}}`},
-		"tesla value":     {*tesla, `{"type":"car/tesla","value":{"Color":"blue"}}`},
-		"tesla interface": {Car(tesla), `{"type":"car/tesla","value":{"Color":"blue"}}`},
+		"car":             {car, `{"type":"vehicle/car","value":{"Wheels":4}}`},
+		"car value":       {*car, `{"type":"vehicle/car","value":{"Wheels":4}}`},
+		"car iface":       {Vehicle(car), `{"type":"vehicle/car","value":{"Wheels":4}}`},
+		"boat":            {boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
+		"boat ptr":        {&boat, `{"type":"vehicle/boat","value":{"Sail":true}}`},
+		"boat iface":      {Vehicle(boat), `{"type":"vehicle/boat","value":{"Sail":true}}`},
 		"tags": {
 			Tags{JSONName: "name", OmitEmpty: "foo", Hidden: "bar", Tags: &Tags{JSONName: "child"}},
 			`{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`,
 		},
 		"tags empty": {Tags{}, `{"name":""}`},
+		// The encoding of the Car and Boat fields do not have type wrappers, even though they get
+		// type wrappers when encoded directly (see "car" and "boat" tests). This is to retain the
+		// same behavior as Amino. If the field was a Vehicle interface instead, it would get
+		// type wrappers, as seen in the Vehicles field.
 		"struct": {
 			Struct{
 				Bool: true, Float64: 3.14, Int32: 32, Int64: 64, Int64Ptr: &i64,
 				String: "foo", StringPtrPtr: &sPtr, Bytes: []byte{1, 2, 3},
-				Time: ti, Car: tesla, Child: &Struct{Bool: false, String: "child"},
-				private: "private",
+				Time: ti, Car: car, Boat: boat, Vehicles: []Vehicle{car, boat},
+				Child: &Struct{Bool: false, String: "child"}, private: "private",
 			},
 			`{
 				"Bool":true, "Float64":3.14, "Int32":32, "Int64":"64", "Int64Ptr":"64",
 				"String":"foo", "StringPtrPtr": "string", "Bytes":"AQID",
 				"Time":"2020-06-02T16:05:13.004346374Z",
-				"Car":{"type":"car/tesla","value":{"Color":"blue"}},
+				"Car":{"Wheels":4},
+				"Boat":{"Sail":true},
+				"Vehicles":[
+					{"type":"vehicle/car","value":{"Wheels":4}},
+					{"type":"vehicle/boat","value":{"Sail":true}}
+				],
 				"Child":{
 					"Bool":false, "Float64":0, "Int32":0, "Int64":"0", "Int64Ptr":null,
 					"String":"child", "StringPtrPtr":null, "Bytes":null,
-					"Time":"0001-01-01T00:00:00Z", "Car":null, "Child":null
+					"Time":"0001-01-01T00:00:00Z",
+					"Car":null, "Boat":{"Sail":false}, "Vehicles":null, "Child":null
 				}
 			}`,
 		},
