@@ -154,7 +154,7 @@ func TestAddEvidence(t *testing.T) {
 func TestEvidencePoolUpdate(t *testing.T) {
 	var (
 		valAddr      = tmrand.Bytes(crypto.AddressSize)
-		height       = int64(1)
+		height       = int64(21)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
