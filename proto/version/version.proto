@@ -5,6 +5,11 @@ option go_package = "github.com/tendermint/tendermint/proto/version";
 
 import "third_party/proto/gogoproto/gogo.proto";
 
+option (gogoproto.marshaler_all)        = true;
+option (gogoproto.unmarshaler_all)      = true;
+option (gogoproto.sizer_all)            = true;
+option (gogoproto.goproto_registration) = true;
+
 // App includes the protocol and software version for the application.
 // This information is included in ResponseInfo. The App.Protocol can be
 // updated in ResponseEndBlock.
@@ -17,7 +22,7 @@ message App {
 // including all blockchain data structures and the rules of the application's
 // state transition machine.
 message Consensus {
-  option (gogoproto.equal) = true;
+  option (gogoproto.equal)    = true;
 
   uint64 block = 1;
   uint64 app   = 2;
