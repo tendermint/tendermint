@@ -17,6 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
   - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
   - [types] \#4582 Block: `Round` is now int32
+  - [types] \#4962 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
   - [consensus] \#4582 HeightVoteSet: `round` is now int32
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.

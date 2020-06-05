@@ -6,7 +6,7 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "crypto/merkle/merkle.proto";
 import "proto/types/types.proto";
-import "google/protobuf/duration.proto";
+import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "third_party/proto/gogoproto/gogo.proto";
 
@@ -277,8 +277,8 @@ message ResponseApplySnapshotChunk {
 // that can be adjusted by the abci app
 message ConsensusParams {
   BlockParams     block     = 1;
-  EvidenceParams  evidence  = 2;
-  ValidatorParams validator = 3;
+  tendermint.proto.types.EvidenceParams  evidence  = 2;
+  tendermint.proto.types.ValidatorParams validator = 3;
 }
 
 // BlockParams contains limits on the block size.
@@ -287,19 +287,6 @@ message BlockParams {
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-}
-
-message EvidenceParams {
-  // Note: must be greater than 0
-  int64                    max_age_num_blocks = 1;
-  google.protobuf.Duration max_age_duration   = 2
-    [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
-  uint32                   max_num            = 3;
-}
-
-// ValidatorParams contains limits on validators.
-message ValidatorParams {
-  repeated string pub_key_types = 1;
 }
 
 message LastCommitInfo {
