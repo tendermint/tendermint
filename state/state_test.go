@@ -371,7 +371,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 
 	// assert frequencies match expected (max off by 1)
 	for i, freq := range freqs {
-		_, val := valSet.GetByIndex(i)
+		_, val := valSet.GetByIndex(int32(i))
 		expectFreq := int(val.VotingPower) * runMult
 		gotFreq := freq
 		abs := int(math.Abs(float64(expectFreq - gotFreq)))

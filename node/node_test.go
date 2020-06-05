@@ -29,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -120,7 +119,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion version.Protocol = kvstore.ProtocolVersion
+	var appVersion uint64 = kvstore.ProtocolVersion
 
 	// check version is set in state
 	state := sm.LoadState(n.stateDB)

@@ -73,7 +73,7 @@ func makeValidCommit(
 ) (*types.Commit, error) {
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
-		_, val := vals.GetByIndex(i)
+		_, val := vals.GetByIndex(int32(i))
 		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
 			return nil, err
