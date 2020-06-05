@@ -4,20 +4,37 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode"
-
-	lru "github.com/hashicorp/golang-lru"
 )
 
-// structInfoCache caches struct info.
-var structInfoCache *lru.Cache
+var (
+	// cache caches struct info.
+	cache = newStructInfoCache()
+)
 
-func init() {
-	var err error
-	structInfoCache, err = lru.New(1000)
-	if err != nil {
-		panic(err)
+// structCache is a cache of struct info.
+type structInfoCache struct {
+	sync.RWMutex
+	structInfos map[reflect.Type]*structInfo
+}
+
+func newStructInfoCache() *structInfoCache {
+	return &structInfoCache{
+		structInfos: make(map[reflect.Type]*structInfo),
 	}
+}
+
+func (c *structInfoCache) get(rt reflect.Type) *structInfo {
+	c.RLock()
+	defer c.RUnlock()
+	return c.structInfos[rt]
+}
+
+func (c *structInfoCache) set(rt reflect.Type, sInfo *structInfo) {
+	c.Lock()
+	defer c.Unlock()
+	c.structInfos[rt] = sInfo
 }
 
 // structInfo contains JSON info for a struct.
@@ -37,8 +54,8 @@ func makeStructInfo(rt reflect.Type) *structInfo {
 	if rt.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("can't make struct info for non-struct value %v", rt))
 	}
-	if sInfo, ok := structInfoCache.Get(rt); ok {
-		return sInfo.(*structInfo)
+	if sInfo := cache.get(rt); sInfo != nil {
+		return sInfo
 	}
 	fields := make([]*fieldInfo, 0, rt.NumField())
 	for i := 0; i < cap(fields); i++ {
@@ -65,7 +82,6 @@ func makeStructInfo(rt reflect.Type) *structInfo {
 		fields = append(fields, fInfo)
 	}
 	sInfo := &structInfo{fields: fields}
-	structInfoCache.Add(rt, sInfo)
-
+	cache.set(rt, sInfo)
 	return sInfo
 }
