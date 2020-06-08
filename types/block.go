@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -140,9 +142,11 @@ func (b *Block) MakePartSet(partSize uint32) *PartSet {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	// We prefix the byte length, so that unmarshaling
-	// can easily happen via a reader.
-	bz, err := cdc.MarshalBinaryLengthPrefixed(b)
+	pbb, err := b.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(pbb)
 	if err != nil {
 		panic(err)
 	}
@@ -1121,7 +1125,7 @@ func (data *Data) ToProto() tmproto.Data {
 	return *tp
 }
 
-// DataFromProto takes a protobud representation of Data &
+// DataFromProto takes a protobuf representation of Data &
 // returns the native type.
 func DataFromProto(dp *tmproto.Data) (Data, error) {
 	if dp == nil {
