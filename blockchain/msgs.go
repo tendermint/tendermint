@@ -19,7 +19,7 @@ const (
 		BlockResponseMessageFieldKeySize
 )
 
-// EncodeMsg encodes a Protobuf message, panicing on error.
+// EncodeMsg encodes a Protobuf message
 func EncodeMsg(pb proto.Message) ([]byte, error) {
 	msg := bcproto.Message{}
 

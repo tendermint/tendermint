@@ -207,12 +207,12 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 	if block != nil {
 		pbbi, err := block.ToProto()
 		if err != nil {
-			bcR.Logger.Error("Could not send block message to peer: ", "err", err)
+			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
 		msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: pbbi})
 		if err != nil {
-			bcR.Logger.Error("unable to marshal msg: ", "err", err)
+			bcR.Logger.Error("unable to marshal msg", "err", err)
 			return false
 		}
 		return src.TrySend(BlockchainChannel, msgBytes)
@@ -222,7 +222,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 
 	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: msg.Height})
 	if err != nil {
-		bcR.Logger.Error("unable to marshal msg: ", "err", err)
+		bcR.Logger.Error("unable to marshal msg", "err", err)
 		return false
 	}
 	return src.TrySend(BlockchainChannel, msgBytes)
@@ -234,7 +234,7 @@ func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusReques
 		Height: bcR.store.Height(),
 	})
 	if err != nil {
-		bcR.Logger.Error("unable to marshal msg: ", "err", err)
+		bcR.Logger.Error("unable to marshal msg", "err", err)
 		return false
 	}
 
