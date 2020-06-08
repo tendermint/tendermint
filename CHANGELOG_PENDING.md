@@ -12,6 +12,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [blockchain] \#4637 Transition blockchain reactor(s) to Protobuf encoding
   - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
   - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
   - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
