@@ -16,14 +16,14 @@ const (
 	MaxAunts = 100
 )
 
-// SimpleProof represents a simple Merkle proof.
+// Proof represents a simple Merkle proof.
 // NOTE: The convention for proofs is to include leaf hashes but to
 // exclude the root hash.
 // This convention is implemented across IAVL range proofs as well.
 // Keep this consistent unless there's a very good reason to change
 // everything.  This also affects the generalized proof system as
 // well.
-type SimpleProof struct {
+type Proof struct {
 	Total    int64    `json:"total"`     // Total number of items.
 	Index    int64    `json:"index"`     // Index of item to prove.
 	LeafHash []byte   `json:"leaf_hash"` // Hash of item value.
@@ -32,12 +32,12 @@ type SimpleProof struct {
 
 // SimpleProofsFromByteSlices computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*SimpleProof) {
+func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Proof) {
 	trails, rootSPN := trailsFromByteSlices(items)
 	rootHash = rootSPN.Hash
-	proofs = make([]*SimpleProof, len(items))
+	proofs = make([]*Proof, len(items))
 	for i, trail := range trails {
-		proofs[i] = &SimpleProof{
+		proofs[i] = &Proof{
 			Total:    int64(len(items)),
 			Index:    int64(i),
 			LeafHash: trail.Hash,
@@ -49,7 +49,7 @@ func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Simp
 
 // Verify that the SimpleProof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
-func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
+func (sp *Proof) Verify(rootHash []byte, leaf []byte) error {
 	leafHash := leafHash(leaf)
 	if sp.Total < 0 {
 		return errors.New("proof total must be positive")
@@ -68,7 +68,7 @@ func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
 }
 
 // Compute the root hash given a leaf hash.  Does not verify the result.
-func (sp *SimpleProof) ComputeRootHash() []byte {
+func (sp *Proof) ComputeRootHash() []byte {
 	return computeHashFromAunts(
 		sp.Index,
 		sp.Total,
@@ -79,12 +79,12 @@ func (sp *SimpleProof) ComputeRootHash() []byte {
 
 // String implements the stringer interface for SimpleProof.
 // It is a wrapper around StringIndented.
-func (sp *SimpleProof) String() string {
+func (sp *Proof) String() string {
 	return sp.StringIndented("")
 }
 
 // StringIndented generates a canonical string representation of a SimpleProof.
-func (sp *SimpleProof) StringIndented(indent string) string {
+func (sp *Proof) StringIndented(indent string) string {
 	return fmt.Sprintf(`SimpleProof{
 %s  Aunts: %X
 %s}`,
@@ -95,7 +95,7 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 // ValidateBasic performs basic validation.
 // NOTE: it expects the LeafHash and the elements of Aunts to be of size tmhash.Size,
 // and it expects at most MaxAunts elements in Aunts.
-func (sp *SimpleProof) ValidateBasic() error {
+func (sp *Proof) ValidateBasic() error {
 	if sp.Total < 0 {
 		return errors.New("negative Total")
 	}
@@ -116,7 +116,7 @@ func (sp *SimpleProof) ValidateBasic() error {
 	return nil
 }
 
-func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
+func (sp *Proof) ToProto() *tmmerkle.SimpleProof {
 	if sp == nil {
 		return nil
 	}
@@ -130,11 +130,11 @@ func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
 	return pb
 }
 
-func SimpleProofFromProto(pb *tmmerkle.SimpleProof) (*SimpleProof, error) {
+func SimpleProofFromProto(pb *tmmerkle.SimpleProof) (*Proof, error) {
 	if pb == nil {
 		return nil, errors.New("nil proof")
 	}
-	sp := new(SimpleProof)
+	sp := new(Proof)
 
 	sp.Total = pb.Total
 	sp.Index = pb.Index

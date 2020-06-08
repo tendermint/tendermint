@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const ProofOpValue = "simple:v"
@@ -24,19 +25,19 @@ type ValueOp struct {
 	key []byte
 
 	// To encode in ProofOp.Data
-	Proof *SimpleProof `json:"simple_proof"`
+	Proof *Proof `json:"simple_proof"`
 }
 
 var _ ProofOperator = ValueOp{}
 
-func NewValueOp(key []byte, proof *SimpleProof) ValueOp {
+func NewValueOp(key []byte, proof *Proof) ValueOp {
 	return ValueOp{
 		key:   key,
 		Proof: proof,
 	}
 }
 
-func ValueOpDecoder(pop ProofOp) (ProofOperator, error) {
+func ValueOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpValue {
 		return nil, fmt.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpValue)
 	}
@@ -48,9 +49,9 @@ func ValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 	return NewValueOp(pop.Key, op.Proof), nil
 }
 
-func (op ValueOp) ProofOp() ProofOp {
+func (op ValueOp) ProofOp() tmmerkle.ProofOp {
 	bz := cdc.MustMarshalBinaryLengthPrefixed(op)
-	return ProofOp{
+	return tmmerkle.ProofOp{
 		Type: ProofOpValue,
 		Key:  op.key,
 		Data: bz,

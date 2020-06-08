@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	amino "github.com/tendermint/go-amino"
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const ProofOpDomino = "test:domino"
@@ -28,7 +29,7 @@ func NewDominoOp(key, input, output string) DominoOp {
 }
 
 //nolint:unused
-func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
+func DominoOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpDomino {
 		panic("unexpected proof op type")
 	}
@@ -40,9 +41,9 @@ func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
 	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
 }
 
-func (dop DominoOp) ProofOp() ProofOp {
+func (dop DominoOp) ProofOp() tmmerkle.ProofOp {
 	bz := amino.MustMarshalBinaryLengthPrefixed(dop)
-	return ProofOp{
+	return tmmerkle.ProofOp{
 		Type: ProofOpDomino,
 		Key:  []byte(dop.key),
 		Data: bz,

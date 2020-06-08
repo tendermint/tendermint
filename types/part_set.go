@@ -21,9 +21,9 @@ var (
 )
 
 type Part struct {
-	Index uint32             `json:"index"`
-	Bytes tmbytes.HexBytes   `json:"bytes"`
-	Proof merkle.SimpleProof `json:"proof"`
+	Index uint32           `json:"index"`
+	Bytes tmbytes.HexBytes `json:"bytes"`
+	Proof merkle.Proof     `json:"proof"`
 }
 
 // ValidateBasic performs basic validation.

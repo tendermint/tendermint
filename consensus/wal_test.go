@@ -128,7 +128,7 @@ func TestWALWrite(t *testing.T) {
 		Part: &tmtypes.Part{
 			Index: 1,
 			Bytes: make([]byte, 1),
-			Proof: merkle.SimpleProof{
+			Proof: merkle.Proof{
 				Total:    1,
 				Index:    1,
 				LeafHash: make([]byte, maxMsgSizeBytes-30),

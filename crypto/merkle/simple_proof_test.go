@@ -9,17 +9,17 @@ import (
 func TestSimpleProofValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
-		malleateProof func(*SimpleProof)
+		malleateProof func(*Proof)
 		errStr        string
 	}{
-		{"Good", func(sp *SimpleProof) {}, ""},
-		{"Negative Total", func(sp *SimpleProof) { sp.Total = -1 }, "negative Total"},
-		{"Negative Index", func(sp *SimpleProof) { sp.Index = -1 }, "negative Index"},
-		{"Invalid LeafHash", func(sp *SimpleProof) { sp.LeafHash = make([]byte, 10) },
+		{"Good", func(sp *Proof) {}, ""},
+		{"Negative Total", func(sp *Proof) { sp.Total = -1 }, "negative Total"},
+		{"Negative Index", func(sp *Proof) { sp.Index = -1 }, "negative Index"},
+		{"Invalid LeafHash", func(sp *Proof) { sp.LeafHash = make([]byte, 10) },
 			"expected LeafHash size to be 32, got 10"},
-		{"Too many Aunts", func(sp *SimpleProof) { sp.Aunts = make([][]byte, MaxAunts+1) },
+		{"Too many Aunts", func(sp *Proof) { sp.Aunts = make([][]byte, MaxAunts+1) },
 			"expected no more than 100 aunts, got 101"},
-		{"Invalid Aunt", func(sp *SimpleProof) { sp.Aunts[0] = make([]byte, 10) },
+		{"Invalid Aunt", func(sp *Proof) { sp.Aunts[0] = make([]byte, 10) },
 			"expected Aunts#0 size to be 32, got 10"},
 	}
 
