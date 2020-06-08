@@ -92,6 +92,30 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 		indent)
 }
 
+// ValidateBasic performs basic validation.
+// NOTE: it expects the LeafHash and the elements of Aunts to be of size tmhash.Size,
+// and it expects at most MaxAunts elements in Aunts.
+func (sp *SimpleProof) ValidateBasic() error {
+	if sp.Total < 0 {
+		return errors.New("negative Total")
+	}
+	if sp.Index < 0 {
+		return errors.New("negative Index")
+	}
+	if len(sp.LeafHash) != tmhash.Size {
+		return fmt.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
+	}
+	if len(sp.Aunts) > MaxAunts {
+		return fmt.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
+	}
+	for i, auntHash := range sp.Aunts {
+		if len(auntHash) != tmhash.Size {
+			return fmt.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
+		}
+	}
+	return nil
+}
+
 func (sp *SimpleProof) ToProto() *tmmerkle.SimpleProof {
 	if sp == nil {
 		return nil
@@ -118,30 +142,6 @@ func SimpleProofFromProto(pb *tmmerkle.SimpleProof) (*SimpleProof, error) {
 	sp.Aunts = pb.Aunts
 
 	return sp, sp.ValidateBasic()
-}
-
-// ValidateBasic performs basic validation.
-// NOTE: it expects the LeafHash and the elements of Aunts to be of size tmhash.Size,
-// and it expects at most MaxAunts elements in Aunts.
-func (sp *SimpleProof) ValidateBasic() error {
-	if sp.Total < 0 {
-		return errors.New("negative Total")
-	}
-	if sp.Index < 0 {
-		return errors.New("negative Index")
-	}
-	if len(sp.LeafHash) != tmhash.Size {
-		return fmt.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
-	}
-	if len(sp.Aunts) > MaxAunts {
-		return fmt.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
-	}
-	for i, auntHash := range sp.Aunts {
-		if len(auntHash) != tmhash.Size {
-			return fmt.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
-		}
-	}
-	return nil
 }
 
 // Use the leafHash and innerHashes to get the root merkle hash.
