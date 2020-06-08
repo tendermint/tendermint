@@ -59,9 +59,9 @@ func decodeReflect(bz []byte, rv reflect.Value) error {
 	if rv.Type() == timeType {
 		switch {
 		case len(bz) < 2 || bz[0] != '"' || bz[len(bz)-1] != '"':
-			return fmt.Errorf("JSON time must be an RFC3339 string, but got %s", bz)
+			return fmt.Errorf("JSON time must be an RFC3339 string, but got %q", bz)
 		case bz[len(bz)-2] != 'Z':
-			return fmt.Errorf("JSON time must be UTC and end with 'Z', but got %s", bz)
+			return fmt.Errorf("JSON time must be UTC and end with 'Z', but got %q", bz)
 		}
 	}
 
