@@ -1012,20 +1012,35 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 		},
 	)
 
+	differentVals, _ := types.RandValidatorSet(10, 100)
+
+	badValSetNode := mockp.New(
+		chainID,
+		headerSet,
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: differentVals,
+			3: differentVals,
+		},
+	)
+
 	c, err := light.NewClient(
 		chainID,
 		trustOptions,
 		noValSetNode,
-		[]provider.Provider{fullNode, fullNode},
+		[]provider.Provider{badValSetNode, fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(c.Witnesses()))
+	assert.Equal(t, 2, len(c.Witnesses()))
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-	require.NoError(t, err)
-	require.Equal(t, 1, len(c.Witnesses()))
+	assert.Error(t, err)
+	assert.Equal(t, 1, len(c.Witnesses()))
+
+	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
+	assert.NoError(t, err)
 
 	valSet, height, err := c.TrustedValidatorSet(0)
 	assert.NoError(t, err)
