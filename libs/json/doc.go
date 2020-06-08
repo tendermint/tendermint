@@ -82,9 +82,11 @@
 //
 //	RegisterType(&Car{}, "vehicle/car")
 //
-//	Car{Wheels: 4}  // Output: {"type":"vehicle/car","value":{"Wheels":4}}
-//	&Car{Wheels: 4} // Output: {"type":"vehicle/car","value":{"Wheels":4}}
-//	(*Car)(nil)     // Output: null
+//	Car{Wheels: 4}           // Output: {"type":"vehicle/car","value":{"Wheels":4}}
+//	&Car{Wheels: 4}          // Output: {"type":"vehicle/car","value":{"Wheels":4}}
+//	(*Car)(nil)              // Output: null
+//	Vehicle(Car{Wheels: 4})  // Output: {"type":"vehicle/car","value":{"Wheels":4}}
+//	Vehicle(nil)             // Output: null
 //
 //	type Struct struct {
 //		Car *Car
