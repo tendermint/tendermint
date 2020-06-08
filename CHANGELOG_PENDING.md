@@ -35,6 +35,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [p2p/pex] \#4973 `p2p/pex` reactor migration to Protobuf encoding
+  - [light] \#4964 `light` reactor migration to Protobuf encoding
+  - [store] \#4778 Transition store module to protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
 
 - Apps
 
@@ -63,6 +67,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
 - [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 
 ### IMPROVEMENTS:
 

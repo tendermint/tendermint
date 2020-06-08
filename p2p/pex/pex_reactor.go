@@ -3,11 +3,10 @@ package pex
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -15,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 type Peer = p2p.Peer
@@ -244,7 +244,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
-	case *pexRequestMessage:
+	case *tmp2p.PexRequest:
 
 		// NOTE: this is a prime candidate for amplification attacks,
 		// so it's important we
@@ -281,17 +281,25 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 
-	case *pexAddrsMessage:
+	case *tmp2p.PexAddrs:
 		// If we asked for addresses, add them to the book
-		if err := r.ReceiveAddrs(msg.Addrs, src); err != nil {
+		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
+		if err != nil {
+			r.Switch.StopPeerForError(src, err)
+			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			return
+		}
+		err = r.ReceiveAddrs(addrs, src)
+		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			if err == ErrUnsolicitedList {
 				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
 			}
 			return
 		}
+
 	default:
-		r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
+		r.Logger.Error(fmt.Sprintf("Unknown message type %T", msg))
 	}
 }
 
@@ -338,7 +346,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	}
 	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexRequestMessage{}))
+	p.Send(PexChannel, mustEncode(&tmp2p.PexRequest{}))
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -397,7 +405,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: netAddrs}))
+	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -759,38 +767,37 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 //-----------------------------------------------------------------------------
 // Messages
 
-// Message is a primary type for PEX messages. Underneath, it could contain
-// either pexRequestMessage, or pexAddrsMessage messages.
-type Message interface{}
+// mustEncode proto encodes a tmp2p.Message
+func mustEncode(pb proto.Message) []byte {
+	msg := tmp2p.Message{}
+	switch pb := pb.(type) {
+	case *tmp2p.PexRequest:
+		msg.Sum = &tmp2p.Message_PexRequest{PexRequest: pb}
+	case *tmp2p.PexAddrs:
+		msg.Sum = &tmp2p.Message_PexAddrs{PexAddrs: pb}
+	default:
+		panic(fmt.Sprintf("Unknown message type %T", pb))
+	}
 
-func RegisterMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Message)(nil), nil)
-	cdc.RegisterConcrete(&pexRequestMessage{}, "tendermint/p2p/PexRequestMessage", nil)
-	cdc.RegisterConcrete(&pexAddrsMessage{}, "tendermint/p2p/PexAddrsMessage", nil)
+	bz, err := proto.Marshal(&msg)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
+	}
+	return bz
 }
 
-func decodeMsg(bz []byte) (msg Message, err error) {
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	return
-}
-
-/*
-A pexRequestMessage requests additional peer addresses.
-*/
-type pexRequestMessage struct {
-}
-
-func (m *pexRequestMessage) String() string {
-	return "[pexRequest]"
-}
-
-/*
-A message with announced peer addresses.
-*/
-type pexAddrsMessage struct {
-	Addrs []*p2p.NetAddress
-}
-
-func (m *pexAddrsMessage) String() string {
-	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)
+func decodeMsg(bz []byte) (proto.Message, error) {
+	pb := &tmp2p.Message{}
+	err := proto.Unmarshal(bz, pb)
+	if err != nil {
+		return nil, err
+	}
+	switch msg := pb.Sum.(type) {
+	case *tmp2p.Message_PexRequest:
+		return msg.PexRequest, nil
+	case *tmp2p.Message_PexAddrs:
+		return msg.PexAddrs, nil
+	default:
+		return nil, fmt.Errorf("unknown message: %T", msg)
+	}
 }
