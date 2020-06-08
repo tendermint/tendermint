@@ -6,6 +6,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmstate "github.com/tendermint/tendermint/proto/state"
@@ -290,6 +291,15 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
+	var dtxs []*abci.ResponseDeliverTx
+	//strip nil values,
+	for _, tx := range abciResponses.DeliverTxs {
+		if tx != nil {
+			dtxs = append(dtxs, tx)
+		}
+	}
+	abciResponses.DeliverTxs = dtxs
+
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
