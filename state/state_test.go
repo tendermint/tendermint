@@ -18,6 +18,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -48,6 +50,7 @@ func TestStateCopy(t *testing.T) {
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
+	stateCopy.LastValidators = state.Validators
 	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
 }
@@ -72,6 +75,7 @@ func TestStateSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
+	state.LastValidators = state.Validators
 	sm.SaveState(stateDB, state)
 
 	loadedState := sm.LoadState(stateDB)
@@ -90,7 +94,11 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 
 	// Build mock responses.
 	block := makeBlock(state, 2)
-	abciResponses := sm.NewABCIResponses(block)
+
+	abciResponses := new(tmstate.ABCIResponses)
+	dtxs := make([]*abci.ResponseDeliverTx, 2)
+	abciResponses.DeliverTxs = dtxs
+
 	abciResponses.DeliverTxs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
 	abciResponses.DeliverTxs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
@@ -147,6 +155,10 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			nil,
 			nil,
 		},
+		4: {
+			[]*abci.ResponseDeliverTx{nil},
+			nil,
+		},
 	}
 
 	// Query all before, this should return error.
@@ -159,7 +171,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// Add all cases.
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
-		responses := &sm.ABCIResponses{
+		responses := &tmstate.ABCIResponses{
 			DeliverTxs: tc.added,
 			EndBlock:   &abci.ResponseEndBlock{},
 		}
@@ -171,7 +183,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		h := int64(i + 1)
 		res, err := sm.LoadABCIResponses(stateDB, h)
 		assert.NoError(err, "%d", i)
-		assert.Equal(tc.expected.Hash(), res.ResultsHash(), "%d", i)
+		assert.Equal(tc.expected.Hash(), sm.ABCIResponsesResultsHash(*res), "%d", i)
 	}
 }
 
@@ -406,7 +418,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -517,7 +529,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	block := makeBlock(state, state.LastBlockHeight+1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 	// no updates:
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -617,7 +629,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// no changes in voting power and both validators have same voting power
 	// -> proposers should alternate:
 	oldState := updatedState3
-	abciResponses = &sm.ABCIResponses{
+	abciResponses = &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -632,7 +644,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		// no validator updates:
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 		}
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -689,7 +701,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	oldState := state
 	for i := 0; i < 10; i++ {
 		// no updates:
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 		}
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -718,7 +730,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	firstAddedVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(firstAddedValPubKey), Power: firstAddedValVotingPower}
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{firstAddedVal})
 	assert.NoError(t, err)
-	abciResponses := &sm.ABCIResponses{
+	abciResponses := &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal}},
 	}
 	block := makeBlock(oldState, oldState.LastBlockHeight+1)
@@ -729,7 +741,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	lastState := updatedState
 	for i := 0; i < 200; i++ {
 		// no updates:
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 		}
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -763,7 +775,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{addedVal})
 		assert.NoError(t, err)
 
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{addedVal}},
 		}
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
@@ -775,7 +787,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 
 	// remove genesis validator:
 	removeGenesisVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(genesisPubKey), Power: 0}
-	abciResponses = &sm.ABCIResponses{
+	abciResponses = &tmstate.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal}},
 	}
 	block = makeBlock(oldState, oldState.LastBlockHeight+1)
@@ -793,7 +805,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	count := 0
 	isProposerUnchanged := true
 	for isProposerUnchanged {
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 		}
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -816,7 +828,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	proposers := make([]*types.Validator, numVals)
 	for i := 0; i < 100; i++ {
 		// no updates:
-		abciResponses := &sm.ABCIResponses{
+		abciResponses := &tmstate.ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 		}
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
@@ -932,7 +944,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 	// Each valset is just one validator.
 	// create list of them.
-	params := make([]types.ConsensusParams, N+1)
+	params := make([]tmproto.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
 		params[i] = *types.DefaultConsensusParams()
@@ -979,7 +991,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	for _, testCase := range testCases {
 		p, err := sm.LoadConsensusParams(stateDB, testCase.height)
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
+		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
 	}
 }
@@ -988,9 +1000,9 @@ func TestApplyUpdates(t *testing.T) {
 	initParams := makeConsensusParams(1, 2, 3, 4, 5)
 	const maxAge int64 = 66
 	cases := [...]struct {
-		init     types.ConsensusParams
+		init     tmproto.ConsensusParams
 		updates  abci.ConsensusParams
-		expected types.ConsensusParams
+		expected tmproto.ConsensusParams
 	}{
 		0: {initParams, abci.ConsensusParams{}, initParams},
 		1: {initParams, abci.ConsensusParams{}, initParams},
@@ -1004,7 +1016,7 @@ func TestApplyUpdates(t *testing.T) {
 			makeConsensusParams(44, 55, 3, 4, 5)},
 		3: {initParams,
 			abci.ConsensusParams{
-				Evidence: &abci.EvidenceParams{
+				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: maxAge,
 					MaxAgeDuration:  time.Duration(maxAge),
 					MaxNum:          10,
@@ -1014,7 +1026,40 @@ func TestApplyUpdates(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		res := tc.init.Update(&(tc.updates))
+		res := types.UpdateConsensusParams(tc.init, &(tc.updates))
 		assert.Equal(t, tc.expected, res, "case %d", i)
+	}
+}
+
+func TestStateProto(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+
+	tc := []struct {
+		testName string
+		state    *sm.State
+		expPass  bool
+	}{
+		{"empty state", &sm.State{}, false},
+		{"nil failure state", nil, false},
+		{"success state", &state, true},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		pbs, err := tt.state.ToProto()
+		if !tt.expPass {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err, tt.testName)
+		}
+
+		smt, err := sm.StateFromProto(pbs)
+		if tt.expPass {
+			require.NoError(t, err, tt.testName)
+			require.Equal(t, tt.state, smt, tt.testName)
+		} else {
+			require.Error(t, err, tt.testName)
+		}
 	}
 }

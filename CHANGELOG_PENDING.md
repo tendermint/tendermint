@@ -17,6 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
   - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
   - [types] \#4582 Block: `Round` is now int32
+  - [types] \#4962 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
   - [consensus] \#4582 HeightVoteSet: `round` is now int32
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
@@ -34,6 +35,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [p2p/pex] \#4973 `p2p/pex` reactor migration to Protobuf encoding
+  - [light] \#4964 `light` reactor migration to Protobuf encoding
+  - [store] \#4778 Transition store module to protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
 
 - Apps
 
@@ -62,6 +67,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
 - [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 
 ### IMPROVEMENTS:
 
@@ -82,3 +88,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)

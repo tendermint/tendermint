@@ -6,13 +6,9 @@ import (
 	"hash/crc32"
 	"io"
 	"reflect"
-
-	//"strconv"
-	//"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -334,7 +330,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
+				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
 		}
