@@ -6,7 +6,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmstate "github.com/tendermint/tendermint/proto/state"
@@ -253,6 +252,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 	return nil
 }
 
+// ABCIResponsesResultsHash returns the merkle hash of the deliverTxs within ABCIResponses
 func ABCIResponsesResultsHash(ar tmstate.ABCIResponses) []byte {
 	results := types.NewResults(ar.DeliverTxs)
 	return results.Hash()
@@ -290,16 +290,6 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	// can't preallocate as values will be set to nil instead of empty
-	var dtxs []*abci.ResponseDeliverTx
-	//strip nil values, currently gogoproto panics on an array of nil values.
-	for _, tx := range abciResponses.DeliverTxs {
-		if tx != nil {
-			dtxs = append(dtxs, tx)
-		}
-	}
-	abciResponses.DeliverTxs = dtxs
-
 	bz, err := abciResponses.Marshal()
 	if err != nil {
 		panic(err)
