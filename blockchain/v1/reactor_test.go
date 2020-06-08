@@ -72,6 +72,7 @@ func makeVote(
 	vpb := vote.ToProto()
 
 	_ = privVal.SignVote(header.ChainID, vpb)
+	vote.Signature = vpb.Signature
 
 	return vote
 }

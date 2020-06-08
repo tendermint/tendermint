@@ -13,10 +13,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
-	privvalproto "github.com/tendermint/tendermint/proto/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -141,44 +139,6 @@ func (lss *FilePVLastSignState) Save() {
 	}
 }
 
-func (lss *FilePVLastSignState) ToProto() (*privvalproto.FilePVLastSignState, error) {
-	if lss == nil {
-		return nil, errors.New("nil FilePVLastSignState")
-	}
-
-	pb := new(privvalproto.FilePVLastSignState)
-
-	pb.Height = lss.Height
-	pb.Round = lss.Round
-	pb.Step = int32(lss.Step)
-	pb.Signature = lss.Signature
-	pb.SignBytes = lss.SignBytes
-	pb.FilePath = lss.filePath
-
-	return pb, nil
-}
-
-func FilePVLastSignStateFromProto(pb *privvalproto.FilePVLastSignState) (*FilePVLastSignState, error) {
-	if pb == nil {
-		return nil, errors.New("nil FilePVLastSignState")
-	}
-
-	pvl := new(FilePVLastSignState)
-
-	pvl.Height = pb.Height
-	pvl.Round = pb.Round
-	i8, err := tmmath.SafeConvertInt8(int64(pb.Step))
-	if err != nil {
-		return nil, fmt.Errorf("deny conversion due to possible int8 overflow: %w", err)
-	}
-	pvl.Step = i8
-	pvl.Signature = pb.Signature
-	pvl.SignBytes = pb.SignBytes
-	pvl.filePath = pb.FilePath
-
-	return pvl, nil
-}
-
 //-------------------------------------------------------------------------------
 
 // FilePV implements PrivValidator using data persisted to disk
@@ -240,29 +200,24 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
-	pvS := privvalproto.FilePVLastSignState{}
+	pvState := FilePVLastSignState{}
 
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
 			tmos.Exit(err.Error())
 		}
-		err = tmjson.Unmarshal(stateJSONBytes, &pvS)
+		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
 			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
 		}
-	}
-
-	pvState, err := FilePVLastSignStateFromProto(&pvS)
-	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error transistioning PrivValidator from proto from : %v\n", err))
 	}
 
 	pvState.filePath = stateFilePath
 
 	return &FilePV{
 		Key:           pvKey,
-		LastSignState: *pvState,
+		LastSignState: pvState,
 	}
 }
 
