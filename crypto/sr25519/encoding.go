@@ -2,7 +2,9 @@ package sr25519
 
 import (
 	"github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 var _ crypto.PrivKey = PrivKey{}
@@ -26,4 +28,7 @@ func init() {
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKey{},
 		PrivKeyAminoName, nil)
+
+	tmjson.RegisterType(PubKey{}, PubKeyAminoName)
+	tmjson.RegisterType(PrivKey{}, PrivKeyAminoName)
 }

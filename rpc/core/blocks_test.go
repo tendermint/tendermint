@@ -10,6 +10,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -69,7 +70,7 @@ func TestBlockchainInfo(t *testing.T) {
 }
 
 func TestBlockResults(t *testing.T) {
-	results := &sm.ABCIResponses{
+	results := &tmstate.ABCIResponses{
 		DeliverTxs: []*abci.ResponseDeliverTx{
 			{Code: 0, Data: []byte{0x01}, Log: "ok"},
 			{Code: 0, Data: []byte{0x02}, Log: "ok"},

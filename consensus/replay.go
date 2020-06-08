@@ -6,13 +6,9 @@ import (
 	"hash/crc32"
 	"io"
 	"reflect"
-
-	//"strconv"
-	//"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"

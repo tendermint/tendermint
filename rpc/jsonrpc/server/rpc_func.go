@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -15,14 +13,14 @@ import (
 // general jsonrpc and websocket handlers for all functions. "result" is the
 // interface on which the result objects are registered, and is popualted with
 // every RPCResponse
-func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) {
+func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger log.Logger) {
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
-		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, cdc, logger))
+		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
 	}
 
 	// JSONRPC endpoints
-	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, cdc, logger)))
+	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
 }
 
 ///////////////////////////////////////////////////////////////////////////////

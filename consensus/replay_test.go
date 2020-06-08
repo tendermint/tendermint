@@ -28,6 +28,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
+	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -176,6 +177,7 @@ LOOP:
 		csWal, err := cs.OpenWAL(walFile)
 		require.NoError(t, err)
 		crashingWal.next = csWal
+
 		// reset the message counter
 		crashingWal.msgIndex = 1
 		cs.wal = crashingWal
@@ -577,13 +579,13 @@ func TestMockProxyApp(t *testing.T) {
 	txIndex := 0
 
 	assert.NotPanics(t, func() {
-		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
+		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
 		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
 		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
-		loadedAbciRes := new(sm.ABCIResponses)
+		loadedAbciRes := new(tmstate.ABCIResponses)
 
 		// this also happens sm.LoadABCIResponses
 		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
@@ -591,7 +593,7 @@ func TestMockProxyApp(t *testing.T) {
 
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
-		abciRes := new(sm.ABCIResponses)
+		abciRes := new(tmstate.ABCIResponses)
 		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {

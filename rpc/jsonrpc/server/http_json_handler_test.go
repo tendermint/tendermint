@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -22,11 +20,10 @@ func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
 		"c": NewRPCFunc(func(ctx *types.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
-	cdc := amino.NewCodec()
 	mux := http.NewServeMux()
 	buf := new(bytes.Buffer)
 	logger := log.NewTMLogger(buf)
-	RegisterRPCFuncs(mux, funcMap, cdc, logger)
+	RegisterRPCFuncs(mux, funcMap, logger)
 
 	return mux
 }
