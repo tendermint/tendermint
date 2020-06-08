@@ -759,8 +759,8 @@ func (c *Client) bisection(
 				return err
 			}
 			if !bytes.Equal(newProviderHeader.Hash(), newHeader.Hash()) || !bytes.Equal(newProviderVals.Hash(), newVals.Hash()) {
-				err := fmt.Errorf("replacement provider has a different header: %X and/or vals: %X at height: %d to the one being verified",
-					newProviderHeader.Hash(), newProviderVals.Hash(), newHeader.Height)
+				err := fmt.Errorf("replacement provider has a different header: %X and/or vals: %X at height: %d"+
+					"to the one being verified", newProviderHeader.Hash(), newProviderVals.Hash(), newHeader.Height)
 				return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
 					trustedHeader.Height, headerCache[depth].sh.Height, err)
 			}
