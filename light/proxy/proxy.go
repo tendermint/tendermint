@@ -6,12 +6,9 @@ import (
 	"net"
 	"net/http"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
@@ -19,7 +16,6 @@ import (
 type Proxy struct {
 	Addr     string // TCP address to listen on, ":http" if empty
 	Config   *rpcserver.Config
-	Codec    *amino.Codec
 	Client   *lrpc.Client
 	Logger   log.Logger
 	Listener net.Listener
@@ -65,17 +61,15 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 }
 
 func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
-	ctypes.RegisterAmino(p.Codec)
-
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
 	r := RPCRoutes(p.Client)
-	rpcserver.RegisterRPCFuncs(mux, r, p.Codec, p.Logger)
+	rpcserver.RegisterRPCFuncs(mux, r, p.Logger)
 
 	// 2) Allow websocket connections.
 	wmLogger := p.Logger.With("protocol", "websocket")
-	wm := rpcserver.NewWebsocketManager(r, p.Codec,
+	wm := rpcserver.NewWebsocketManager(r,
 		rpcserver.OnDisconnect(func(remoteAddr string) {
 			err := p.Client.UnsubscribeAll(context.Background(), remoteAddr)
 			if err != nil && err != tmpubsub.ErrSubscriptionNotFound {

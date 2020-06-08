@@ -12,6 +12,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/consensus"
@@ -954,12 +955,12 @@ func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	return &prs
 }
 
-// ToJSON returns a json of PeerState, marshalled using go-amino.
+// ToJSON returns a json of PeerState.
 func (ps *PeerState) ToJSON() ([]byte, error) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	return cdc.MarshalJSON(ps)
+	return tmjson.Marshal(ps)
 }
 
 // GetHeight returns an atomic snapshot of the PeerRoundState's height
@@ -1379,6 +1380,18 @@ func (ps *PeerState) StringIndented(indent string) string {
 // Message is a message that can be sent and received on the Reactor
 type Message interface {
 	ValidateBasic() error
+}
+
+func init() {
+	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
+	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
+	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
+	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
+	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
+	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
+	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
+	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
 }
 
 func decodeMsg(bz []byte) (msg Message, err error) {

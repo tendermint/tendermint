@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -99,7 +100,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	}`
 
 	val := FilePVLastSignState{}
-	err := cdc.UnmarshalJSON([]byte(serialized), &val)
+	err := tmjson.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
@@ -108,7 +109,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	assert.EqualValues(val.Step, 1)
 
 	// export it and make sure it is the same
-	out, err := cdc.MarshalJSON(val)
+	out, err := tmjson.Marshal(val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
@@ -138,7 +139,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 }`, addr, pubB64, privB64)
 
 	val := FilePVKey{}
-	err := cdc.UnmarshalJSON([]byte(serialized), &val)
+	err := tmjson.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
@@ -147,7 +148,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := cdc.MarshalJSON(val)
+	out, err := tmjson.Marshal(val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
