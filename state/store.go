@@ -203,7 +203,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 
 				bz, err := v.Marshal()
 				if err != nil {
-					panic(err)
+					return err
 				}
 				batch.Set(calcValidatorsKey(h), bz)
 			}
@@ -221,7 +221,7 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 				p.LastHeightChanged = h
 				bz, err := p.Marshal()
 				if err != nil {
-					panic(err)
+					return err
 				}
 				batch.Set(calcConsensusParamsKey(h), bz)
 			}
