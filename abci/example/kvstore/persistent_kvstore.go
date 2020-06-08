@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	pc "github.com/tendermint/tendermint/proto/crypto/keys"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -188,7 +188,7 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 }
 
 func MakeValSetChangeTx(pubkey pc.PublicKey, power int64) []byte {
-	pk, err := cryptoencoding.PubKeyFromProto(pubkey)
+	pk, err := cryptoenc.PubKeyFromProto(pubkey)
 	if err != nil {
 		panic(err)
 	}
@@ -237,7 +237,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey.GetEd25519()))
-	pubkey, err := cryptoencoding.PubKeyFromProto(v.PubKey)
+	pubkey, err := cryptoenc.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("error testing: %w", err))
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -176,9 +176,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 func TestValidateValidatorUpdates(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	pubkey2 := ed25519.GenPrivKey().PubKey()
-	pk1, err := cryptoencoding.PubKeyToProto(pubkey1)
+	pk1, err := cryptoenc.PubKeyToProto(pubkey1)
 	assert.NoError(t, err)
-	pk2, err := cryptoencoding.PubKeyToProto(pubkey2)
+	pk2, err := cryptoenc.PubKeyToProto(pubkey2)
 	assert.NoError(t, err)
 
 	defaultValidatorParams := tmproto.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
@@ -236,9 +236,9 @@ func TestUpdateValidators(t *testing.T) {
 	pubkey2 := ed25519.GenPrivKey().PubKey()
 	val2 := types.NewValidator(pubkey2, 20)
 
-	pk, err := cryptoencoding.PubKeyToProto(pubkey1)
+	pk, err := cryptoenc.PubKeyToProto(pubkey1)
 	require.NoError(t, err)
-	pk2, err := cryptoencoding.PubKeyToProto(pubkey2)
+	pk2, err := cryptoenc.PubKeyToProto(pubkey2)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -339,7 +339,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
-	pk, err := cryptoencoding.PubKeyToProto(pubkey)
+	pk, err := cryptoenc.PubKeyToProto(pubkey)
 	require.NoError(t, err)
 	app.ValidatorUpdates = []abci.ValidatorUpdate{
 		{PubKey: pk, Power: 10},
@@ -394,7 +394,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
-	vp, err := cryptoencoding.PubKeyToProto(state.Validators.Validators[0].PubKey)
+	vp, err := cryptoenc.PubKeyToProto(state.Validators.Validators[0].PubKey)
 	require.NoError(t, err)
 	// Remove the only validator
 	app.ValidatorUpdates = []abci.ValidatorUpdate{

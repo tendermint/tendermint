@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 )
 
 const (
@@ -11,7 +11,7 @@ const (
 
 func Ed25519ValidatorUpdate(pk []byte, power int64) ValidatorUpdate {
 	pke := ed25519.PubKey(pk)
-	pkp, err := cryptoencoding.PubKeyToProto(pke)
+	pkp, err := cryptoenc.PubKeyToProto(pke)
 	if err != nil {
 		panic(err)
 	}

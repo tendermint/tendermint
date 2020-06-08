@@ -8,7 +8,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -381,7 +381,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
-		pk, err := cryptoencoding.PubKeyFromProto(valUpdate.PubKey)
+		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
 		if err != nil {
 			return err
 		}
