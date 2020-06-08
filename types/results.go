@@ -54,7 +54,7 @@ func (a ABCIResults) Bytes() []byte {
 func (a ABCIResults) Hash() []byte {
 	// NOTE: we copy the impl of the merkle tree for txs -
 	// we should be consistent and either do it for both or not.
-	return merkle.SimpleHashFromByteSlices(a.toByteSlices())
+	return merkle.HashFromByteSlices(a.toByteSlices())
 }
 
 // ProveResult returns a merkle proof of one result from the set

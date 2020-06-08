@@ -127,12 +127,11 @@ func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args 
 	return poz.Verify(root, keypath, args)
 }
 
-// DefaultProofRuntime only knows about Simple value
-// proofs.
+// DefaultProofRuntime only knows about value proofs.
 // To use e.g. IAVL proofs, register op-decoders as
 // defined in the IAVL package.
 func DefaultProofRuntime() (prt *ProofRuntime) {
 	prt = NewProofRuntime()
-	prt.RegisterOpDecoder(ProofOpSimpleValue, SimpleValueOpDecoder)
+	prt.RegisterOpDecoder(ProofOpValue, ValueOpDecoder)
 	return
 }
