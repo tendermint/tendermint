@@ -1047,8 +1047,8 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, votesType, size := votes.GetHeight(), votes.GetRound(),
-		tmproto.SignedMsgType(votes.Type()), votes.Size()
+	height, round, votesType, size :=
+		votes.GetHeight(), votes.GetRound(), tmproto.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
