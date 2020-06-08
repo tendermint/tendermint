@@ -67,8 +67,7 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	return nodeKey, nil
 }
 
-// LoadNodeKey loads NodeKey located in filePath. It returns an error if the
-// file is not found, or there's an decoder error.
+// LoadNodeKey loads NodeKey located in filePath.
 func LoadNodeKey(filePath string) (*NodeKey, error) {
 	jsonBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -88,7 +87,8 @@ func SaveNodeKey(key *NodeKey, filePath string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filePath, jsonBytes, 0600)
+	const perm = 0600
+	err = ioutil.WriteFile(filePath, jsonBytes, perm)
 	if err != nil {
 		return err
 	}
