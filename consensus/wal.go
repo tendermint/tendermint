@@ -11,6 +11,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
@@ -53,6 +54,12 @@ func RegisterWALMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(msgInfo{}, "tendermint/wal/MsgInfo", nil)
 	cdc.RegisterConcrete(timeoutInfo{}, "tendermint/wal/TimeoutInfo", nil)
 	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessage", nil)
+}
+
+func init() {
+	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
+	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
+	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
 }
 
 //--------------------------------------------------------
