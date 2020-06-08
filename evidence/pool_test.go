@@ -10,6 +10,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -26,7 +28,7 @@ func TestMain(m *testing.M) {
 
 func TestEvidencePool(t *testing.T) {
 	var (
-		valAddr      = []byte("val1")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		height       = int64(52)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
@@ -75,7 +77,7 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr       = []byte("validator_address")
+		valAddr       = tmrand.Bytes(crypto.AddressSize)
 		height        = int64(1)
 		lastBlockTime = time.Now()
 		stateDB       = initializeValidatorState(valAddr, height)
@@ -111,7 +113,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 
 func TestAddEvidence(t *testing.T) {
 	var (
-		valAddr      = []byte("val1")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		height       = int64(30)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
@@ -151,7 +153,7 @@ func TestAddEvidence(t *testing.T) {
 
 func TestEvidencePoolUpdate(t *testing.T) {
 	var (
-		valAddr      = []byte("validator_address")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		height       = int64(21)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
@@ -186,7 +188,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 func TestEvidencePoolNewPool(t *testing.T) {
 	var (
-		valAddr      = []byte("validator_address")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		height       = int64(1)
 		stateDB      = initializeValidatorState(valAddr, height)
 		evidenceDB   = dbm.NewMemDB()
@@ -204,7 +206,7 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 func TestAddingAndPruningPOLC(t *testing.T) {
 	var (
-		valAddr      = []byte("validator_address")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		stateDB      = initializeValidatorState(valAddr, 1)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
@@ -252,7 +254,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 
 func TestRecoverPendingEvidence(t *testing.T) {
 	var (
-		valAddr         = []byte("val1")
+		valAddr         = tmrand.Bytes(crypto.AddressSize)
 		height          = int64(30)
 		stateDB         = initializeValidatorState(valAddr, height)
 		evidenceDB      = dbm.NewMemDB()
