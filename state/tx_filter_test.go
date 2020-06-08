@@ -35,7 +35,7 @@ func TestTxFilter(t *testing.T) {
 		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state)
+		f := sm.TxPreCheck(state) // current max size of a tx 1850
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {

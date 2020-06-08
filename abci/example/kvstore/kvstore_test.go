@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -103,7 +104,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
@@ -193,7 +194,7 @@ func makeApplyBlock(
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 
@@ -273,7 +274,7 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer server.Stop()
 	defer client.Stop()
 
@@ -282,7 +283,7 @@ func TestClientServer(t *testing.T) {
 	// set up grpc app
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer gserver.Stop()
 	defer gclient.Stop()
 

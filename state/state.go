@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"time"
 
+	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmversion "github.com/tendermint/tendermint/proto/version"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -23,7 +25,7 @@ var (
 // and the software version to support upgrades to the format of
 // the State as stored on disk.
 type Version struct {
-	Consensus version.Consensus
+	Consensus tmversion.Consensus
 	Software  string
 }
 
@@ -32,7 +34,7 @@ type Version struct {
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
 var InitStateVersion = Version{
-	Consensus: version.Consensus{
+	Consensus: tmversion.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
@@ -72,7 +74,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  types.ConsensusParams
+	ConsensusParams                  tmproto.ConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -152,7 +154,7 @@ func (state State) MakeBlock(
 		state.Version.Consensus, state.ChainID,
 		timestamp, state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
-		state.ConsensusParams.Hash(), state.AppHash, state.LastResultsHash,
+		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
 		proposerAddress,
 	)
 

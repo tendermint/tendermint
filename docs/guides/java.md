@@ -430,7 +430,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 

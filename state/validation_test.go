@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	memmock "github.com/tendermint/tendermint/mempool/mock"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
@@ -185,7 +186,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			Height:           height,
 			Round:            0,
 			Timestamp:        tmtime.Now(),
-			Type:             types.PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 		}
 		err = badPrivVal.SignVote(chainID, goodVote)
@@ -240,9 +241,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := uint32(0); i < maxNumEvidence; i++ {
+		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
 			// make different evidence for each validator
-			addr, _ := state.Validators.GetByIndex(int(i))
+			addr, _ := state.Validators.GetByIndex(i)
 			evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
 		}
 

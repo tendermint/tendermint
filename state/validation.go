@@ -21,7 +21,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate basic info.
-	if block.Version != state.Version.Consensus {
+	if block.Version.App != state.Version.Consensus.App ||
+		block.Version.Block != state.Version.Consensus.Block {
 		return fmt.Errorf("wrong Block.Header.Version. Expected %v, got %v",
 			state.Version.Consensus,
 			block.Version,
@@ -55,9 +56,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.AppHash,
 		)
 	}
-	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
+	hashCP := types.HashConsensusParams(state.ConsensusParams)
+	if !bytes.Equal(block.ConsensusHash, hashCP) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
-			state.ConsensusParams.Hash(),
+			hashCP,
 			block.ConsensusHash,
 		)
 	}

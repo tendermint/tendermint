@@ -41,12 +41,12 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		edt := msg.Data().(EventDataTx)
 		assert.Equal(t, int64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
-		assert.Equal(t, tx, edt.Tx)
+		assert.EqualValues(t, tx, edt.Tx)
 		assert.Equal(t, result, edt.Result)
 		close(done)
 	}()
 
-	err = eventBus.PublishEventTx(EventDataTx{TxResult{
+	err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
@@ -183,7 +183,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 				data := msg.Data().(EventDataTx)
 				assert.Equal(t, int64(1), data.Height)
 				assert.Equal(t, uint32(0), data.Index)
-				assert.Equal(t, tx, data.Tx)
+				assert.EqualValues(t, tx, data.Tx)
 				assert.Equal(t, result, data.Result)
 				close(done)
 			case <-time.After(1 * time.Second):
@@ -191,7 +191,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			}
 		}()
 
-		err = eventBus.PublishEventTx(EventDataTx{TxResult{
+		err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
 			Height: 1,
 			Index:  0,
 			Tx:     tx,

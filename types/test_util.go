@@ -3,9 +3,11 @@ package types
 import (
 	"fmt"
 	"time"
+
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int,
+func MakeCommit(blockID BlockID, height int64, round int32,
 	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
@@ -16,10 +18,10 @@ func MakeCommit(blockID BlockID, height int64, round int,
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
-			ValidatorIndex:   i,
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
-			Type:             PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 			Timestamp:        now,
 		}
@@ -61,7 +63,7 @@ func MakeVote(
 		Height:           height,
 		Round:            0,
 		Timestamp:        now,
-		Type:             PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
 	if err := privVal.SignVote(chainID, vote); err != nil {
