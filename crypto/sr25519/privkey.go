@@ -16,7 +16,7 @@ const PrivKeySize = 32
 // PrivKeySr25519 implements crypto.PrivKey.
 type PrivKey []byte
 
-// Bytes marshals the privkey using amino encoding.
+// Bytes returns the byte representation of the PrivKey.
 func (privKey PrivKey) Bytes() []byte {
 	return []byte(privKey)
 }

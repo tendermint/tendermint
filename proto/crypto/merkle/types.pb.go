@@ -90,28 +90,149 @@ func (m *SimpleProof) GetAunts() [][]byte {
 	return nil
 }
 
+type SimpleValueOp struct {
+	// Encoded in ProofOp.Key.
+	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// To encode in ProofOp.Data
+	Proof *SimpleProof `protobuf:"bytes,2,opt,name=proof,proto3" json:"proof,omitempty"`
+}
+
+func (m *SimpleValueOp) Reset()         { *m = SimpleValueOp{} }
+func (m *SimpleValueOp) String() string { return proto.CompactTextString(m) }
+func (*SimpleValueOp) ProtoMessage()    {}
+func (*SimpleValueOp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_57e39eefdaf7ae96, []int{1}
+}
+func (m *SimpleValueOp) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SimpleValueOp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SimpleValueOp.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SimpleValueOp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleValueOp.Merge(m, src)
+}
+func (m *SimpleValueOp) XXX_Size() int {
+	return m.Size()
+}
+func (m *SimpleValueOp) XXX_DiscardUnknown() {
+	xxx_messageInfo_SimpleValueOp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SimpleValueOp proto.InternalMessageInfo
+
+func (m *SimpleValueOp) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *SimpleValueOp) GetProof() *SimpleProof {
+	if m != nil {
+		return m.Proof
+	}
+	return nil
+}
+
+type DominoOp struct {
+	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Input  string `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
+	Output string `protobuf:"bytes,3,opt,name=output,proto3" json:"output,omitempty"`
+}
+
+func (m *DominoOp) Reset()         { *m = DominoOp{} }
+func (m *DominoOp) String() string { return proto.CompactTextString(m) }
+func (*DominoOp) ProtoMessage()    {}
+func (*DominoOp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_57e39eefdaf7ae96, []int{2}
+}
+func (m *DominoOp) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DominoOp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DominoOp.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *DominoOp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DominoOp.Merge(m, src)
+}
+func (m *DominoOp) XXX_Size() int {
+	return m.Size()
+}
+func (m *DominoOp) XXX_DiscardUnknown() {
+	xxx_messageInfo_DominoOp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DominoOp proto.InternalMessageInfo
+
+func (m *DominoOp) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *DominoOp) GetInput() string {
+	if m != nil {
+		return m.Input
+	}
+	return ""
+}
+
+func (m *DominoOp) GetOutput() string {
+	if m != nil {
+		return m.Output
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*SimpleProof)(nil), "tendermint.proto.crypto.merkle.SimpleProof")
+	proto.RegisterType((*SimpleValueOp)(nil), "tendermint.proto.crypto.merkle.SimpleValueOp")
+	proto.RegisterType((*DominoOp)(nil), "tendermint.proto.crypto.merkle.DominoOp")
 }
 
 func init() { proto.RegisterFile("proto/crypto/merkle/types.proto", fileDescriptor_57e39eefdaf7ae96) }
 
 var fileDescriptor_57e39eefdaf7ae96 = []byte{
-	// 214 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2f, 0x28, 0xca, 0x2f,
-	0xc9, 0xd7, 0x4f, 0x2e, 0xaa, 0x2c, 0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0xd5,
-	0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x03, 0xcb, 0x08, 0xc9, 0x95, 0xa4, 0xe6, 0xa5, 0xa4, 0x16,
-	0xe5, 0x66, 0xe6, 0x95, 0x40, 0x44, 0xf4, 0x20, 0x6a, 0xf5, 0x20, 0x6a, 0x95, 0x72, 0xb8, 0xb8,
-	0x83, 0x33, 0x73, 0x0b, 0x72, 0x52, 0x03, 0x8a, 0xf2, 0xf3, 0xd3, 0x84, 0x44, 0xb8, 0x58, 0x4b,
-	0xf2, 0x4b, 0x12, 0x73, 0x24, 0x18, 0x15, 0x18, 0x35, 0x98, 0x83, 0x20, 0x1c, 0x90, 0x68, 0x66,
-	0x5e, 0x4a, 0x6a, 0x85, 0x04, 0x13, 0x44, 0x14, 0xcc, 0x11, 0x92, 0xe6, 0xe2, 0xcc, 0x49, 0x4d,
-	0x4c, 0x8b, 0xcf, 0x48, 0x2c, 0xce, 0x90, 0x60, 0x56, 0x60, 0xd4, 0xe0, 0x09, 0xe2, 0x00, 0x09,
-	0x78, 0x24, 0x16, 0x67, 0x80, 0xb4, 0x24, 0x96, 0xe6, 0x95, 0x14, 0x4b, 0xb0, 0x28, 0x30, 0x6b,
-	0xf0, 0x04, 0x41, 0x38, 0x4e, 0x7e, 0x27, 0x1e, 0xc9, 0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0,
-	0x91, 0x1c, 0xe3, 0x84, 0xc7, 0x72, 0x0c, 0x17, 0x1e, 0xcb, 0x31, 0xdc, 0x78, 0x2c, 0xc7, 0x10,
-	0x65, 0x92, 0x9e, 0x59, 0x92, 0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x8f, 0x70, 0x32, 0x32,
-	0x13, 0x8b, 0x4f, 0x93, 0xd8, 0xc0, 0x82, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x91, 0x57,
-	0x16, 0x46, 0x07, 0x01, 0x00, 0x00,
+	// 296 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x91, 0xc1, 0x4a, 0xc4, 0x30,
+	0x10, 0x86, 0x1b, 0xeb, 0x2e, 0xdb, 0x6c, 0x05, 0x09, 0x22, 0x05, 0x21, 0x96, 0x9e, 0x0a, 0x42,
+	0x0a, 0xea, 0x0b, 0x28, 0x1e, 0xc4, 0x83, 0x4a, 0x04, 0x0f, 0x5e, 0x24, 0xbb, 0xcd, 0xda, 0xb2,
+	0x69, 0x13, 0xda, 0x14, 0xec, 0x5b, 0xf8, 0x58, 0x1e, 0xf7, 0xe8, 0x51, 0xda, 0x17, 0x91, 0x24,
+	0x82, 0x2b, 0x88, 0xb7, 0xf9, 0xbf, 0xcc, 0xf0, 0xcd, 0x10, 0x78, 0xac, 0x1a, 0xa9, 0x65, 0xb6,
+	0x6c, 0x7a, 0xa5, 0x65, 0x56, 0xf1, 0x66, 0x2d, 0x78, 0xa6, 0x7b, 0xc5, 0x5b, 0x62, 0x5f, 0x10,
+	0xd6, 0xbc, 0xce, 0x79, 0x53, 0x95, 0xb5, 0x76, 0x84, 0xb8, 0x5e, 0xe2, 0x7a, 0x13, 0x01, 0xe7,
+	0x0f, 0x65, 0xa5, 0x04, 0xbf, 0x6f, 0xa4, 0x5c, 0xa1, 0x03, 0x38, 0xd1, 0x52, 0x33, 0x11, 0x81,
+	0x18, 0xa4, 0x3e, 0x75, 0xc1, 0xd0, 0xb2, 0xce, 0xf9, 0x6b, 0xb4, 0xe3, 0xa8, 0x0d, 0xe8, 0x08,
+	0x06, 0x82, 0xb3, 0xd5, 0x73, 0xc1, 0xda, 0x22, 0xf2, 0x63, 0x90, 0x86, 0x74, 0x66, 0xc0, 0x35,
+	0x6b, 0x0b, 0x33, 0xc2, 0xba, 0x5a, 0xb7, 0xd1, 0x6e, 0xec, 0xa7, 0x21, 0x75, 0x21, 0xc9, 0xe1,
+	0x9e, 0xb3, 0x3d, 0x32, 0xd1, 0xf1, 0x3b, 0x85, 0xf6, 0xa1, 0xbf, 0xe6, 0xbd, 0xb5, 0x85, 0xd4,
+	0x94, 0xe8, 0x02, 0x4e, 0x94, 0x59, 0xc5, 0xba, 0xe6, 0xa7, 0x27, 0xe4, 0xff, 0x03, 0xc8, 0xd6,
+	0xf6, 0xd4, 0x4d, 0x26, 0x37, 0x70, 0x76, 0x25, 0xab, 0xb2, 0x96, 0xbf, 0x05, 0x81, 0x13, 0xd8,
+	0x63, 0x54, 0xa7, 0xad, 0x20, 0xa0, 0x2e, 0xa0, 0x43, 0x38, 0x95, 0x9d, 0x36, 0xd8, 0xb7, 0xf8,
+	0x3b, 0x5d, 0xde, 0xbe, 0x0f, 0x18, 0x6c, 0x06, 0x0c, 0x3e, 0x07, 0x0c, 0xde, 0x46, 0xec, 0x6d,
+	0x46, 0xec, 0x7d, 0x8c, 0xd8, 0x7b, 0x3a, 0x7f, 0x29, 0x75, 0xd1, 0x2d, 0xc8, 0x52, 0x56, 0xd9,
+	0xcf, 0x8e, 0xdb, 0xe5, 0x1f, 0x7f, 0xb3, 0x98, 0x5a, 0x78, 0xf6, 0x15, 0x00, 0x00, 0xff, 0xff,
+	0xd2, 0x6b, 0x0c, 0x30, 0xb9, 0x01, 0x00, 0x00,
 }
 
 func (m *SimpleProof) Marshal() (dAtA []byte, err error) {
@@ -163,6 +284,92 @@ func (m *SimpleProof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *SimpleValueOp) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SimpleValueOp) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *SimpleValueOp) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Proof != nil {
+		{
+			size, err := m.Proof.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DominoOp) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DominoOp) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *DominoOp) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Output) > 0 {
+		i -= len(m.Output)
+		copy(dAtA[i:], m.Output)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Output)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Input) > 0 {
+		i -= len(m.Input)
+		copy(dAtA[i:], m.Input)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Input)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	offset -= sovTypes(v)
 	base := offset
@@ -195,6 +402,44 @@ func (m *SimpleProof) Size() (n int) {
 			l = len(b)
 			n += 1 + l + sovTypes(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *SimpleValueOp) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Proof != nil {
+		l = m.Proof.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *DominoOp) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Input)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Output)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
 }
@@ -337,6 +582,278 @@ func (m *SimpleProof) Unmarshal(dAtA []byte) error {
 			}
 			m.Aunts = append(m.Aunts, make([]byte, postIndex-iNdEx))
 			copy(m.Aunts[len(m.Aunts)-1], dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SimpleValueOp) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SimpleValueOp: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SimpleValueOp: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Proof", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Proof == nil {
+				m.Proof = &SimpleProof{}
+			}
+			if err := m.Proof.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DominoOp) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DominoOp: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DominoOp: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Input", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Input = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Output", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Output = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

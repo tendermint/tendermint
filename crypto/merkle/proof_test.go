@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	amino "github.com/tendermint/go-amino"
+
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const ProofOpDomino = "test:domino"
@@ -27,21 +28,17 @@ func NewDominoOp(key, input, output string) DominoOp {
 	}
 }
 
-//nolint:unused
-func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
-	if pop.Type != ProofOpDomino {
-		panic("unexpected proof op type")
-	}
-	var op DominoOp // a bit strange as we'll discard this, but it works.
-	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
-	if err != nil {
-		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
-	}
-	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
-}
-
 func (dop DominoOp) ProofOp() ProofOp {
-	bz := amino.MustMarshalBinaryLengthPrefixed(dop)
+	dopb := tmmerkle.DominoOp{
+		Key:    dop.key,
+		Input:  dop.Input,
+		Output: dop.Output,
+	}
+	bz, err := dopb.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return ProofOp{
 		Type: ProofOpDomino,
 		Key:  []byte(dop.key),
@@ -71,8 +68,6 @@ func TestProofOperators(t *testing.T) {
 
 	// ProofRuntime setup
 	// TODO test this somehow.
-	// prt := NewProofRuntime()
-	// prt.RegisterOpDecoder(ProofOpDomino, DominoOpDecoder)
 
 	// ProofOperators setup
 	op1 := NewDominoOp("KEY1", "INPUT1", "INPUT2")

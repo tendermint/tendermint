@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// MaxHeaderBytes is a maximum header size (including amino overhead).
+	// MaxHeaderBytes is a maximum header size.
 	MaxHeaderBytes int64 = 628
 
-	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
+	// MaxOverheadForBlock - maximum overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
 	// This means it also excludes the overhead for individual transactions.
 	//
@@ -32,7 +32,7 @@ const (
 	// 2 fields (2 embedded):               2 bytes
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
-	MaxAminoOverheadForBlock int64 = 11
+	MaxOverheadForBlock int64 = 11
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -257,28 +257,6 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	return b, b.ValidateBasic()
 }
 
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
-
-// Marshal returns the amino encoding.
-func (b *Block) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(b)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (b *Block) MarshalTo(data []byte) (int, error) {
-	bs, err := b.Marshal()
-	if err != nil {
-		return -1, err
-	}
-	return copy(data, bs), nil
-}
-
-// Unmarshal deserializes from amino encoded form.
-func (b *Block) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, b)
-}
-
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
@@ -286,7 +264,7 @@ func (b *Block) Unmarshal(bs []byte) error {
 // XXX: Panics on negative result.
 func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 	maxDataBytes := maxBytes -
-		MaxAminoOverheadForBlock -
+		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		int64(evidenceCount)*MaxEvidenceBytes
@@ -311,7 +289,7 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int, maxNumEvidence uint32) int64 {
 	maxEvidenceBytes := int64(maxNumEvidence) * MaxEvidenceBytes
 	maxDataBytes := maxBytes -
-		MaxAminoOverheadForBlock -
+		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		maxEvidenceBytes

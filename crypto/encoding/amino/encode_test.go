@@ -136,10 +136,10 @@ func TestPubkeyAminoName(t *testing.T) {
 		want  string
 		found bool
 	}{
-		{ed25519.PubKey{}, ed25519.PubKeyAminoName, true},
-		{sr25519.PubKey{}, sr25519.PubKeyAminoName, true},
-		{secp256k1.PubKey{}, secp256k1.PubKeyAminoName, true},
-		{multisig.PubKey{}, multisig.PubKeyAminoRoute, true},
+		{ed25519.PubKey{}, ed25519.PubKeyName, true},
+		{sr25519.PubKey{}, sr25519.PubKeyName, true},
+		{secp256k1.PubKey{}, secp256k1.PubKeyName, true},
+		{multisig.PubKey{}, multisig.PubKeyRoute, true},
 	}
 	for i, tc := range tests {
 		got, found := PubkeyAminoName(cdc, tc.key)
@@ -217,8 +217,8 @@ func TestRegisterKeyType(t *testing.T) {
 	cdc = amino.NewCodec()
 	nameTable = make(map[reflect.Type]string, 3)
 	RegisterAmino(cdc)
-	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyAminoName
-	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyAminoRoute
+	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyName
+	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyName
+	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyName
+	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyRoute
 }

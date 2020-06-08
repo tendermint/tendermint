@@ -3,8 +3,6 @@ package types
 import (
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -46,19 +44,6 @@ const (
 // TMEventData implements events.EventData.
 type TMEventData interface {
 	// empty interface
-}
-
-func RegisterEventDatas(cdc *amino.Codec) {
-	cdc.RegisterInterface((*TMEventData)(nil), nil)
-	cdc.RegisterConcrete(EventDataNewBlock{}, "tendermint/event/NewBlock", nil)
-	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
-	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
-	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
-	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
-	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
-	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
-	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
-	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
 
 func init() {

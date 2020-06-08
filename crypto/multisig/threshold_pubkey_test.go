@@ -145,7 +145,7 @@ func TestAddress(t *testing.T) {
 	require.Len(t, multisigKey.Address().Bytes(), 20)
 }
 
-func TestPubKeyMultisigThresholdAminoToIface(t *testing.T) {
+func TestPubKeyMultisigThresholdToIface(t *testing.T) {
 	msg := []byte{1, 2, 3, 4}
 	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
 	multisigKey := NewPubKeyMultisigThreshold(2, pubkeys)

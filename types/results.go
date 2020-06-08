@@ -4,6 +4,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -16,9 +17,17 @@ type ABCIResult struct {
 	Data bytes.HexBytes `json:"data"`
 }
 
-// Bytes returns the amino encoded ABCIResult
+// Bytes returns the protobuf encoding of ABCIResult
 func (a ABCIResult) Bytes() []byte {
-	return cdcEncode(a)
+	pba := tmproto.ABCIResult{
+		Code: a.Code,
+		Data: a.Data,
+	}
+	bz, err := pba.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // ABCIResults wraps the deliver tx results to return a proof

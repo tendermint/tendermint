@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 const ProofOpSimpleValue = "simple:v"
@@ -12,8 +13,8 @@ const ProofOpSimpleValue = "simple:v"
 // SimpleValueOp takes a key and a single value as argument and
 // produces the root hash.  The corresponding tree structure is
 // the SimpleMap tree.  SimpleMap takes a Hasher, and currently
-// Tendermint uses aminoHasher.  SimpleValueOp should support
-// the hash function as used in aminoHasher.  TODO support
+// Tendermint uses tmhash.  SimpleValueOp should support
+// the hash function as used in tmhash.  TODO support
 // additional hash functions here as options/args to this
 // operator.
 //
@@ -40,16 +41,28 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpSimpleValue {
 		return nil, fmt.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
 	}
-	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
-	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
+	var pbop tmmerkle.SimpleValueOp // a bit strange as we'll discard this, but it works.
+	err := pbop.Unmarshal(pop.Data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
 	}
-	return NewSimpleValueOp(pop.Key, op.Proof), nil
+
+	sp, err := SimpleProofFromProto(pbop.Proof)
+	if err != nil {
+		return nil, err
+	}
+	return NewSimpleValueOp(pop.Key, sp), nil
 }
 
 func (op SimpleValueOp) ProofOp() ProofOp {
-	bz := cdc.MustMarshalBinaryLengthPrefixed(op)
+	pbval := tmmerkle.SimpleValueOp{
+		Key:   op.key,
+		Proof: op.Proof.ToProto(),
+	}
+	bz, err := pbval.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	return ProofOp{
 		Type: ProofOpSimpleValue,
 		Key:  op.key,

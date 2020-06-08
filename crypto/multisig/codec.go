@@ -12,7 +12,7 @@ import (
 // TODO: Figure out API for others to either add their own pubkey types, or
 // to make verify / marshal accept a cdc.
 const (
-	PubKeyAminoRoute = "tendermint/PubKeyMultisigThreshold"
+	PubKeyRoute = "tendermint/PubKeyMultisigThreshold"
 )
 
 var cdc = amino.NewCodec()
@@ -20,11 +20,11 @@ var cdc = amino.NewCodec()
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKey{},
-		PubKeyAminoRoute, nil)
+		PubKeyRoute, nil)
 	cdc.RegisterConcrete(ed25519.PubKey{},
-		ed25519.PubKeyAminoName, nil)
+		ed25519.PubKeyName, nil)
 	cdc.RegisterConcrete(sr25519.PubKey{},
-		sr25519.PubKeyAminoName, nil)
+		sr25519.PubKeyName, nil)
 	cdc.RegisterConcrete(secp256k1.PubKey{},
-		secp256k1.PubKeyAminoName, nil)
+		secp256k1.PubKeyName, nil)
 }

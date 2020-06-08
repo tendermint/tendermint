@@ -9,3 +9,17 @@ message SimpleProof {
   bytes          leaf_hash = 3;
   repeated bytes aunts     = 4;
 }
+
+message SimpleValueOp {
+  // Encoded in ProofOp.Key.
+  bytes key = 1;
+
+  // To encode in ProofOp.Data
+  SimpleProof proof = 2;
+}
+
+message DominoOp {
+  string key    = 1;
+  string input  = 2;
+  string output = 3;
+}
