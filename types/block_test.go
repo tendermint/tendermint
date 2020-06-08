@@ -660,6 +660,7 @@ func TestBlockProtoBuf(t *testing.T) {
 		} else {
 			require.Error(t, err, tc.msg)
 		}
+
 		block, err := BlockFromProto(pb)
 		if tc.expPass2 {
 			require.NoError(t, err, tc.msg)
