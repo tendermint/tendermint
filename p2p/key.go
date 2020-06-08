@@ -60,7 +60,7 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 		PrivKey: privKey,
 	}
 
-	if err := SaveNodeKey(nodeKey, filePath); err != nil {
+	if err := nodeKey.SaveAs(filePath); err != nil {
 		return nil, err
 	}
 
@@ -81,14 +81,13 @@ func LoadNodeKey(filePath string) (*NodeKey, error) {
 	return nodeKey, nil
 }
 
-// SaveNodeKey persists the given NodeKey to filePath.
-func SaveNodeKey(key *NodeKey, filePath string) error {
-	jsonBytes, err := cdc.MarshalJSON(key)
+// SaveAs persists the NodeKey to filePath.
+func (nodeKey *NodeKey) SaveAs(filePath string) error {
+	jsonBytes, err := cdc.MarshalJSON(nodeKey)
 	if err != nil {
 		return err
 	}
-	const perm = 0600
-	err = ioutil.WriteFile(filePath, jsonBytes, perm)
+	err = ioutil.WriteFile(filePath, jsonBytes, 0600)
 	if err != nil {
 		return err
 	}

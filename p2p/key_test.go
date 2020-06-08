@@ -39,7 +39,7 @@ func TestLoadNodeKey(t *testing.T) {
 	assert.NotNil(t, nodeKey)
 }
 
-func TestSaveNodeKey(t *testing.T) {
+func TestNodeKeySaveAs(t *testing.T) {
 	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
 
 	assert.NoFileExists(t, filePath)
@@ -48,7 +48,7 @@ func TestSaveNodeKey(t *testing.T) {
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}
-	err := SaveNodeKey(nodeKey, filePath)
+	err := nodeKey.SaveAs(filePath)
 	assert.NoError(t, err)
 	assert.FileExists(t, filePath)
 }
