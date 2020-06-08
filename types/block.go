@@ -839,6 +839,7 @@ func (commit *Commit) ValidateBasic() error {
 	if commit.Round < 0 {
 		return errors.New("negative Round")
 	}
+
 	if commit.Height >= 1 {
 		if commit.BlockID.IsZero() {
 			return errors.New("commit cannot be for nil block")
@@ -853,7 +854,6 @@ func (commit *Commit) ValidateBasic() error {
 			}
 		}
 	}
-
 	return nil
 }
 

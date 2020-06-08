@@ -11,8 +11,6 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -36,7 +34,6 @@ type WebsocketManager struct {
 	websocket.Upgrader
 
 	funcMap       map[string]*RPCFunc
-	cdc           *amino.Codec
 	logger        log.Logger
 	wsConnOptions []func(*wsConnection)
 }
@@ -45,12 +42,10 @@ type WebsocketManager struct {
 // functions, connection options and logger to new WS connections.
 func NewWebsocketManager(
 	funcMap map[string]*RPCFunc,
-	cdc *amino.Codec,
 	wsConnOptions ...func(*wsConnection),
 ) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
-		cdc:     cdc,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
@@ -91,7 +86,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// register connection
-	con := newWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := newWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
@@ -123,7 +118,6 @@ type wsConnection struct {
 	readRoutineQuit chan struct{}
 
 	funcMap map[string]*RPCFunc
-	cdc     *amino.Codec
 
 	// write channel capacity
 	writeChanCapacity int
@@ -156,14 +150,12 @@ type wsConnection struct {
 func newWSConnection(
 	baseConn *websocket.Conn,
 	funcMap map[string]*RPCFunc,
-	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
-		cdc:               cdc,
 		writeWait:         defaultWSWriteWait,
 		writeChanCapacity: defaultWSWriteChanCapacity,
 		readWait:          defaultWSReadWait,
@@ -280,12 +272,6 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	}
 }
 
-// Codec returns an amino codec used to decode parameters and encode results.
-// It implements WSRPCConnection.
-func (wsc *wsConnection) Codec() *amino.Codec {
-	return wsc.cdc
-}
-
 // Context returns the connection's context.
 // The context is canceled when the client's connection closes.
 func (wsc *wsConnection) Context() context.Context {
@@ -363,7 +349,7 @@ func (wsc *wsConnection) readRoutine() {
 			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
 			args := []reflect.Value{reflect.ValueOf(ctx)}
 			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					wsc.WriteRPCResponse(
 						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
@@ -384,7 +370,7 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(request.ID, result))
 		}
 	}
 }

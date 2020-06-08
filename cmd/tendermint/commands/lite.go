@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -152,7 +151,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	p := lproxy.Proxy{
 		Addr:   listenAddr,
 		Config: cfg,
-		Codec:  amino.NewCodec(),
 		Client: lrpc.NewClient(rpcClient, c),
 		Logger: logger,
 	}
