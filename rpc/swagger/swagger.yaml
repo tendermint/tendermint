@@ -880,8 +880,6 @@ paths:
             example: "asc"
       tags:
         - Info
-      description: |
-        Get list of unconfirmed transactions
       responses:
         200:
           description: List of unconfirmed transactions
