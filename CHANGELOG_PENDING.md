@@ -39,6 +39,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [light] \#4964 `light` reactor migration to Protobuf encoding
   - [store] \#4778 Transition store module to protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
 
 - Apps
 
