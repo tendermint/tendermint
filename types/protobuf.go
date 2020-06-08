@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 //-------------------------------------------------------
@@ -42,17 +43,14 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) abci.Header {
-	return abci.Header{
-		Version: abci.Version{
-			Block: header.Version.Block.Uint64(),
-			App:   header.Version.App.Uint64(),
-		},
+func (tm2pb) Header(header *Header) tmproto.Header {
+	return tmproto.Header{
+		Version: header.Version,
 		ChainID: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
 
-		LastBlockId: TM2PB.BlockID(header.LastBlockID),
+		LastBlockId: header.LastBlockID.ToProto(),
 
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
@@ -130,20 +128,14 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
+func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
 			MaxBytes: params.Block.MaxBytes,
 			MaxGas:   params.Block.MaxGas,
 		},
-		Evidence: &abci.EvidenceParams{
-			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
-			MaxAgeDuration:  params.Evidence.MaxAgeDuration,
-			MaxNum:          params.Evidence.MaxNum,
-		},
-		Validator: &abci.ValidatorParams{
-			PubKeyTypes: params.Validator.PubKeyTypes,
-		},
+		Evidence:  &params.Evidence,
+		Validator: &params.Validator,
 	}
 }
 

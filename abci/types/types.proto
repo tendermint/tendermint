@@ -5,18 +5,14 @@ option  go_package = "github.com/tendermint/tendermint/abci/types";
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "crypto/merkle/merkle.proto";
-import "google/protobuf/duration.proto";
+import "proto/types/types.proto";
+import "proto/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "third_party/proto/gogoproto/gogo.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
 // https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
-
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-option (gogoproto.goproto_registration) = true;
 
 //----------------------------------------
 // Request types
@@ -77,7 +73,7 @@ message RequestQuery {
 
 message RequestBeginBlock {
   bytes             hash                 = 1;
-  Header            header               = 2 [(gogoproto.nullable) = false];
+  tendermint.proto.types.Header            header               = 2 [(gogoproto.nullable) = false];
   LastCommitInfo    last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
@@ -281,8 +277,8 @@ message ResponseApplySnapshotChunk {
 // that can be adjusted by the abci app
 message ConsensusParams {
   BlockParams     block     = 1;
-  EvidenceParams  evidence  = 2;
-  ValidatorParams validator = 3;
+  tendermint.proto.types.EvidenceParams  evidence  = 2;
+  tendermint.proto.types.ValidatorParams validator = 3;
 }
 
 // BlockParams contains limits on the block size.
@@ -291,19 +287,6 @@ message BlockParams {
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-}
-
-message EvidenceParams {
-  // Note: must be greater than 0
-  int64                    max_age_num_blocks = 1;
-  google.protobuf.Duration max_age_duration   = 2
-    [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
-  uint32                   max_num            = 3;
-}
-
-// ValidatorParams contains limits on validators.
-message ValidatorParams {
-  repeated string pub_key_types = 1;
 }
 
 message LastCommitInfo {
@@ -326,40 +309,18 @@ message Event {
     (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
+// TxResult contains results of executing the transaction.
+//
+// One usage is indexing transaction results.
+message TxResult {
+  int64             height = 1;
+  uint32            Index  = 2;
+  bytes             tx     = 3;
+  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+}
+
 //----------------------------------------
 // Blockchain Types
-
-message Header {
-  // basic block info
-  Version                   version  = 1 [(gogoproto.nullable) = false];
-  string                    chain_id = 2 [(gogoproto.customname) = "ChainID"];
-  int64                     height   = 3;
-  google.protobuf.Timestamp time     = 4
-    [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-
-  // prev block info
-  BlockID last_block_id = 5 [(gogoproto.nullable) = false];
-
-  // hashes of block data
-  bytes last_commit_hash = 6;  // commit from validators from the last block
-  bytes data_hash        = 7;  // transactions
-
-  // hashes from the app output from the prev block
-  bytes validators_hash      = 8;   // validators for the current block
-  bytes next_validators_hash = 9;   // validators for the next block
-  bytes consensus_hash       = 10;  // consensus params for current block
-  bytes app_hash             = 11;  // state after txs from the previous block
-  bytes last_results_hash    = 12;  // root hash of tx results from prev block
-
-  // consensus info
-  bytes evidence_hash    = 13;  // evidence included in the block
-  bytes proposer_address = 14;  // original proposer of the block
-}
-
-message Version {
-  uint64 Block = 1;
-  uint64 App   = 2;
-}
 
 message BlockID {
   bytes         hash         = 1;

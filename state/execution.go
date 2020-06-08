@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
+	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -250,11 +253,13 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-) (*ABCIResponses, error) {
+) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-	abciResponses := NewABCIResponses(block)
+	abciResponses := new(tmstate.ABCIResponses)
+	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
+	abciResponses.DeliverTxs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -279,9 +284,13 @@ func execBlockOnProxyApp(
 
 	// Begin block
 	var err error
+	pbh := block.Header.ToProto()
+	if pbh == nil {
+		return nil, errors.New("nil header")
+	}
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(&block.Header),
+		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
@@ -360,7 +369,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params types.ValidatorParams) error {
+	params tmproto.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
@@ -372,7 +381,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
-		if !params.IsValidPubkeyType(thisKeyType) {
+		if !types.IsValidPubkeyType(params, thisKeyType) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
@@ -385,7 +394,7 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -412,8 +421,8 @@ func updateState(
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
-		err := nextParams.Validate()
+		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
+		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
@@ -438,7 +447,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
+		LastResultsHash:                  ABCIResponsesResultsHash(*abciResponses),
 		AppHash:                          nil,
 	}, nil
 }
@@ -450,7 +459,7 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
@@ -466,7 +475,7 @@ func fireEvents(
 	})
 
 	for i, tx := range block.Data.Txs {
-		eventBus.PublishEventTx(types.EventDataTx{TxResult: types.TxResult{
+		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,

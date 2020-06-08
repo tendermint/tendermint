@@ -8,8 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	amino "github.com/tendermint/go-amino"
-
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -21,7 +20,7 @@ import (
 var reInt = regexp.MustCompile(`^-?[0-9]+$`)
 
 // convert from a function name to the http handler
-func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func(http.ResponseWriter, *http.Request) {
+func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
 	// Always return -1 as there's no ID here.
 	dummyID := types.JSONRPCIntID(-1) // URIClientRequestID
 
@@ -39,7 +38,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 		ctx := &types.Context{HTTPReq: r}
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 
-		fnArgs, err := httpParamsToArgs(rpcFunc, cdc, r)
+		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
 			WriteRPCResponseHTTP(
 				w,
@@ -60,13 +59,13 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 			WriteRPCResponseHTTP(w, types.RPCInternalError(dummyID, err))
 			return
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, dummyID, result))
+		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
 	}
 }
 
 // Covert an http query to a list of properly typed values.
 // To be properly decoded the arg must be a concrete type from tendermint (if its an interface).
-func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]reflect.Value, error) {
+func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
 	// skip types.Context
 	const argsOffset = 1
 
@@ -84,7 +83,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 			continue
 		}
 
-		v, ok, err := nonJSONStringToArg(cdc, argType, arg)
+		v, ok, err := nonJSONStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +92,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 			continue
 		}
 
-		values[i], err = jsonStringToArg(cdc, argType, arg)
+		values[i], err = jsonStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -102,9 +101,9 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 	return values, nil
 }
 
-func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error) {
+func jsonStringToArg(rt reflect.Type, arg string) (reflect.Value, error) {
 	rv := reflect.New(rt)
-	err := cdc.UnmarshalJSON([]byte(arg), rv.Interface())
+	err := tmjson.Unmarshal([]byte(arg), rv.Interface())
 	if err != nil {
 		return rv, err
 	}
@@ -112,9 +111,9 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 	return rv, nil
 }
 
-func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
+func nonJSONStringToArg(rt reflect.Type, arg string) (reflect.Value, bool, error) {
 	if rt.Kind() == reflect.Ptr {
-		rv1, ok, err := nonJSONStringToArg(cdc, rt.Elem(), arg)
+		rv1, ok, err := nonJSONStringToArg(rt.Elem(), arg)
 		switch {
 		case err != nil:
 			return reflect.Value{}, false, err
@@ -126,12 +125,12 @@ func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.
 			return reflect.Value{}, false, nil
 		}
 	} else {
-		return _nonJSONStringToArg(cdc, rt, arg)
+		return _nonJSONStringToArg(rt, arg)
 	}
 }
 
 // NOTE: rt.Kind() isn't a pointer.
-func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
+func _nonJSONStringToArg(rt reflect.Type, arg string) (reflect.Value, bool, error) {
 	isIntString := reInt.Match([]byte(arg))
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
@@ -157,7 +156,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isIntString && expectingInt {
 		qarg := `"` + arg + `"`
-		rv, err := jsonStringToArg(cdc, rt, qarg)
+		rv, err := jsonStringToArg(rt, qarg)
 		if err != nil {
 			return rv, false, err
 		}
@@ -185,7 +184,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isQuotedString && expectingByteSlice {
 		v := reflect.New(reflect.TypeOf(""))
-		err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
+		err := tmjson.Unmarshal([]byte(arg), v.Interface())
 		if err != nil {
 			return reflect.ValueOf(nil), false, err
 		}

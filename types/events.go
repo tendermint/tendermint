@@ -6,6 +6,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -60,6 +61,18 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
 
+func init() {
+	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
+	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
+	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
+	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
+	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
+	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
+	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
+	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
+	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
+}
+
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
 
@@ -80,7 +93,7 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	TxResult
+	abci.TxResult
 }
 
 // NOTE: This goes into the replay WAL

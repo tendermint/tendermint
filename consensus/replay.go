@@ -6,20 +6,15 @@ import (
 	"hash/crc32"
 	"io"
 	"reflect"
-
-	//"strconv"
-	//"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -259,8 +254,8 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	)
 
 	// Set AppVersion on the state.
-	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
-		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
+	if h.initialState.Version.Consensus.App != res.AppVersion {
+		h.initialState.Version.Consensus.App = res.AppVersion
 		sm.SaveState(h.stateDB, h.initialState)
 	}
 
@@ -335,7 +330,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
+				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
 		}

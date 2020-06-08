@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -66,7 +66,7 @@ func TestABCIValidators(t *testing.T) {
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
 	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := cp.Update(abciCP)
+	cp2 := UpdateConsensusParams(*cp, abciCP)
 
 	assert.Equal(t, *cp, cp2)
 }
@@ -105,8 +105,8 @@ func TestABCIHeader(t *testing.T) {
 	cdc := amino.NewCodec()
 	headerBz := cdc.MustMarshalBinaryBare(header)
 
-	pbHeader := TM2PB.Header(header)
-	pbHeaderBz, err := proto.Marshal(&pbHeader)
+	pbHeader := header.ToProto()
+	pbHeaderBz, err := proto.Marshal(pbHeader)
 	assert.NoError(t, err)
 
 	// assert some fields match

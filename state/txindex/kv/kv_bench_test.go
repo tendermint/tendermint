@@ -44,7 +44,7 @@ func BenchmarkTxSearch(b *testing.B) {
 			b.Errorf("failed produce random bytes: %s", err)
 		}
 
-		txResult := &types.TxResult{
+		txResult := &abci.TxResult{
 			Height: int64(i),
 			Index:  0,
 			Tx:     types.Tx(string(txBz)),
