@@ -409,7 +409,7 @@ func (h Header) ValidateBasic() error {
 		return fmt.Errorf("wrong EvidenceHash: %v", err)
 	}
 
-	if len(h.ProposerAddress) > 0 && len(h.ProposerAddress) != crypto.AddressSize {
+	if len(h.ProposerAddress) != crypto.AddressSize {
 		return fmt.Errorf(
 			"invalid ProposerAddress length; got: %d, expected: %d",
 			len(h.ProposerAddress), crypto.AddressSize,
