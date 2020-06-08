@@ -44,8 +44,8 @@ func PubKeyToID(pubKey crypto.PubKey) ID {
 	return ID(hex.EncodeToString(pubKey.Address()))
 }
 
-// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath.
-// If the file does not exist, it generates and saves a new NodeKey.
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
+// the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	if tmos.FileExists(filePath) {
 		nodeKey, err := LoadNodeKey(filePath)
@@ -54,9 +54,20 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 		}
 		return nodeKey, nil
 	}
-	return genNodeKey(filePath)
+
+	privKey := ed25519.GenPrivKey()
+	nodeKey := &NodeKey{
+		PrivKey: privKey,
+	}
+
+	if err := nodeKey.SaveAs(filePath); err != nil {
+		return nil, err
+	}
+
+	return nodeKey, nil
 }
 
+// LoadNodeKey loads NodeKey located in filePath.
 func LoadNodeKey(filePath string) (*NodeKey, error) {
 	jsonBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -65,26 +76,22 @@ func LoadNodeKey(filePath string) (*NodeKey, error) {
 	nodeKey := new(NodeKey)
 	err = cdc.UnmarshalJSON(jsonBytes, nodeKey)
 	if err != nil {
-		return nil, fmt.Errorf("error reading NodeKey from %v: %v", filePath, err)
+		return nil, err
 	}
 	return nodeKey, nil
 }
 
-func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := ed25519.GenPrivKey()
-	nodeKey := &NodeKey{
-		PrivKey: privKey,
-	}
-
+// SaveAs persists the NodeKey to filePath.
+func (nodeKey *NodeKey) SaveAs(filePath string) error {
 	jsonBytes, err := cdc.MarshalJSON(nodeKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	err = ioutil.WriteFile(filePath, jsonBytes, 0600)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return nodeKey, nil
+	return nil
 }
 
 //------------------------------------------------------------------------------
