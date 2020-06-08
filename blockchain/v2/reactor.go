@@ -561,7 +561,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *bcStatusRequestMessage:
-		if err := r.io.sendStatusResponse(r.store.Height(), src.ID()); err != nil {
+		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src.ID()); err != nil {
 			r.logger.Error("Could not send status message to peer", "src", src)
 		}
 
@@ -609,7 +609,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // AddPeer implements Reactor interface
 func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	err := r.io.sendStatusResponse(r.store.Height(), peer.ID())
+	err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), peer.ID())
 	if err != nil {
 		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
 	}
