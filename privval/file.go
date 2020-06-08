@@ -11,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -70,55 +69,6 @@ func (pvKey FilePVKey) Save() {
 		panic(err)
 	}
 
-}
-
-// ToProto transistions FilePVKey to the protobuf representation
-func (pvKey *FilePVKey) ToProto() (*privvalproto.FilePVKey, error) {
-	if pvKey == nil {
-		return nil, errors.New("nil FilePVKey")
-	}
-
-	pb := new(privvalproto.FilePVKey)
-	pb.Address = pvKey.Address
-	pb.FilePath = pvKey.filePath
-
-	pubKey, err := cryptoenc.PubKeyToProto(pvKey.PubKey)
-	if err != nil {
-		return nil, err
-	}
-	pb.PubKey = pubKey
-
-	privKey, err := cryptoenc.PrivKeyToProto(pvKey.PrivKey)
-	if err != nil {
-		return nil, err
-	}
-	pb.PrivKey = privKey
-
-	return pb, nil
-}
-
-func FilePVKeyFromProto(pb *privvalproto.FilePVKey) (FilePVKey, error) {
-	if pb == nil {
-		return FilePVKey{}, errors.New("nil FilePVKey")
-	}
-
-	pv := new(FilePVKey)
-	pv.Address = tmbytes.HexBytes(pb.Address)
-	pv.filePath = pb.FilePath
-
-	pubKey, err := cryptoenc.PubKeyFromProto(pb.PubKey)
-	if err != nil {
-		return FilePVKey{}, err
-	}
-	pv.PubKey = pubKey
-
-	privKey, err := cryptoenc.PrivKeyFromProto(pb.PrivKey)
-	if err != nil {
-		return FilePVKey{}, err
-	}
-	pv.PrivKey = privKey
-
-	return *pv, nil
 }
 
 //-------------------------------------------------------------------------------

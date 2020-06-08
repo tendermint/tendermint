@@ -143,7 +143,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	// require.NoError(err, "%+v", err)
+	assert.EqualValues(addr, val.Address)
+	assert.EqualValues(pubKey, val.PubKey)
+	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
 	out, err := tmjson.Marshal(val)
@@ -373,55 +375,6 @@ func TestFilePVKeyProtobuf(t *testing.T) {
 		fpvk, err := FilePVKeyFromProto(pb)
 		if tc.expPass2 {
 			require.Equal(t, tc.fpk, &fpvk, tc.testname)
-			require.NoError(t, err)
-		} else {
-			require.Error(t, err)
-		}
-	}
-}
-
-func TestFilePVLastSignStateProtobuf(t *testing.T) {
-	path := "stateFilePath "
-
-	f1 := FilePVLastSignState{
-		Step:     stepNone,
-		filePath: path,
-	}
-
-	f2 := FilePVLastSignState{
-		Height:    1,
-		Round:     2,
-		Step:      stepPropose,
-		Signature: []byte("sigs"),
-		SignBytes: []byte("signBytes"),
-
-		filePath: path,
-	}
-
-	type cases struct {
-		testname string
-		fpk      *FilePVLastSignState
-		expPass  bool
-		expPass2 bool
-	}
-
-	testCases := []cases{
-		{"success valid FilePVKey", &f1, true, true},
-		{"success valid FilePVKey", &f2, true, true},
-		{"fail nil FilePVKey", nil, false, false},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-
-		pb, err := tc.fpk.ToProto()
-		if !tc.expPass {
-			require.Error(t, err)
-		}
-
-		fpvss, err := FilePVLastSignStateFromProto(pb)
-		if tc.expPass2 {
-			require.Equal(t, tc.fpk, fpvss, tc.testname)
 			require.NoError(t, err)
 		} else {
 			require.Error(t, err)

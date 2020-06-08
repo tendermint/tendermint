@@ -488,8 +488,14 @@ var testGenesisFmt = `{
 
 var testPrivValidatorKey = `{
   "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
-  "pub_key": {"ed25519": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},
-  "priv_key": {"ed25519": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="}
+  "pub_key": {
+			"type": "tendermint/PubKeyEd25519",
+			"value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
+		},
+		"priv_key": {
+			"type": "tendermint/PrivKeyEd25519",
+			"value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
+		}
 }`
 
 var testPrivValidatorState = `{
