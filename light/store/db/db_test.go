@@ -52,8 +52,9 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 	assert.Nil(t, valSet)
 
 	// 1 key
+	pa := vals.Validators[0].Address
 	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 1}}, vals)
+		&types.SignedHeader{Header: &types.Header{Height: 1, ProposerAddress: pa}}, vals)
 	require.NoError(t, err)
 
 	h, err = dbStore.SignedHeader(1)
@@ -80,6 +81,7 @@ func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
 func Test_SignedHeaderBefore(t *testing.T) {
 	dbStore := New(dbm.NewMemDB(), "Test_SignedHeaderBefore")
 	valSet, _ := types.RandValidatorSet(10, 100)
+	pa := valSet.Proposer.Address
 
 	assert.Panics(t, func() {
 		_, _ = dbStore.SignedHeaderBefore(0)
@@ -87,7 +89,7 @@ func Test_SignedHeaderBefore(t *testing.T) {
 	})
 
 	err := dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 2}}, valSet)
+		&types.SignedHeader{Header: &types.Header{Height: 2, ProposerAddress: pa}}, valSet)
 	require.NoError(t, err)
 
 	h, err := dbStore.SignedHeaderBefore(3)
