@@ -425,6 +425,9 @@ func (txi *TxIndex) match(
 			default:
 			}
 		}
+		if err := it.Error(); err != nil {
+			panic(err)
+		}
 
 	case c.Op == query.OpExists:
 		// XXX: can't use startKeyBz here because c.Operand is nil
@@ -444,6 +447,9 @@ func (txi *TxIndex) match(
 				break
 			default:
 			}
+		}
+		if err := it.Error(); err != nil {
+			panic(err)
 		}
 
 	case c.Op == query.OpContains:
@@ -471,6 +477,9 @@ func (txi *TxIndex) match(
 				break
 			default:
 			}
+		}
+		if err := it.Error(); err != nil {
+			panic(err)
 		}
 	default:
 		panic("other operators should be handled already")
@@ -572,6 +581,9 @@ LOOP:
 			break
 		default:
 		}
+	}
+	if err := it.Error(); err != nil {
+		panic(err)
 	}
 
 	if len(tmpHashes) == 0 || firstRun {
