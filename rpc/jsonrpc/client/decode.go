@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
-
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func unmarshalResponseBytes(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedID types.JSONRPCIntID,
 	result interface{},
@@ -33,7 +31,7 @@ func unmarshalResponseBytes(
 	}
 
 	// Unmarshal the RawMessage into the result.
-	if err := cdc.UnmarshalJSON(response.Result, result); err != nil {
+	if err := tmjson.Unmarshal(response.Result, result); err != nil {
 		return nil, fmt.Errorf("error unmarshalling result: %w", err)
 	}
 
@@ -41,7 +39,6 @@ func unmarshalResponseBytes(
 }
 
 func unmarshalResponseBytesArray(
-	cdc *amino.Codec,
 	responseBytes []byte,
 	expectedIDs []types.JSONRPCIntID,
 	results []interface{},
@@ -80,7 +77,7 @@ func unmarshalResponseBytesArray(
 	}
 
 	for i := 0; i < len(responses); i++ {
-		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
+		if err := tmjson.Unmarshal(responses[i].Result, results[i]); err != nil {
 			return nil, fmt.Errorf("error unmarshalling #%d result: %w", i, err)
 		}
 	}

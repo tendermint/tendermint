@@ -17,6 +17,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/fail"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -235,18 +236,18 @@ func (cs *State) GetRoundState() *cstypes.RoundState {
 	return &rs
 }
 
-// GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
+// GetRoundStateJSON returns a json of RoundState.
 func (cs *State) GetRoundStateJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return cdc.MarshalJSON(cs.RoundState)
+	return tmjson.Marshal(cs.RoundState)
 }
 
 // GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
 func (cs *State) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
+	return tmjson.Marshal(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.

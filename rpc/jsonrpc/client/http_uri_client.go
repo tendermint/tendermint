@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	amino "github.com/tendermint/go-amino"
-
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -18,14 +16,10 @@ const (
 // URIClient is a JSON-RPC client, which sends POST form HTTP requests to the
 // remote server.
 //
-// Request values are amino encoded. Response is expected to be amino encoded.
-// New amino codec is used if no other codec was set using SetCodec.
-//
 // URIClient is safe for concurrent use by multiple goroutines.
 type URIClient struct {
 	address string
 	client  *http.Client
-	cdc     *amino.Codec
 }
 
 var _ HTTPClient = (*URIClient)(nil)
@@ -49,7 +43,6 @@ func NewURI(remote string) (*URIClient, error) {
 	uriClient := &URIClient{
 		address: parsedURL.GetTrimmedURL(),
 		client:  httpClient,
-		cdc:     amino.NewCodec(),
 	}
 
 	return uriClient, nil
@@ -57,7 +50,7 @@ func NewURI(remote string) (*URIClient, error) {
 
 // Call issues a POST form HTTP request.
 func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	values, err := argsToURLValues(c.cdc, params)
+	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
@@ -73,8 +66,5 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return unmarshalResponseBytes(c.cdc, responseBytes, URIClientRequestID, result)
+	return unmarshalResponseBytes(responseBytes, URIClientRequestID, result)
 }
-
-func (c *URIClient) Codec() *amino.Codec       { return c.cdc }
-func (c *URIClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }

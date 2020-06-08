@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 type AminoMarshal interface {
@@ -39,9 +40,9 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	require.Nil(t, err, "%+v", err)
 }
 
-func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) {
+func checkJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) {
 	// Marshal to JSON bytes.
-	js, err := cdc.MarshalJSON(src)
+	js, err := tmjson.Marshal(src)
 	require.Nil(t, err, "%+v", err)
 	if isNil {
 		assert.Equal(t, string(js), `null`)
@@ -50,7 +51,7 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 		assert.Contains(t, string(js), `"value":`)
 	}
 	// Unmarshal.
-	err = cdc.UnmarshalJSON(js, dst)
+	err = tmjson.Unmarshal(js, dst)
 	require.Nil(t, err, "%+v", err)
 }
 
@@ -85,7 +86,7 @@ func TestKeyEncodings(t *testing.T) {
 		var priv2, priv3 crypto.PrivKey
 		checkAminoBinary(t, tc.privKey, &priv2, tc.privSize)
 		assert.EqualValues(t, tc.privKey, priv2, "tc #%d", tcIndex)
-		checkAminoJSON(t, tc.privKey, &priv3, false) // TODO also check Prefix bytes.
+		checkJSON(t, tc.privKey, &priv3, false) // TODO also check Prefix bytes.
 		assert.EqualValues(t, tc.privKey, priv3, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of Signatures.
@@ -100,7 +101,7 @@ func TestKeyEncodings(t *testing.T) {
 		var pub2, pub3 crypto.PubKey
 		checkAminoBinary(t, pubKey, &pub2, tc.pubSize)
 		assert.EqualValues(t, pubKey, pub2, "tc #%d", tcIndex)
-		checkAminoJSON(t, pubKey, &pub3, false) // TODO also check Prefix bytes.
+		checkJSON(t, pubKey, &pub3, false) // TODO also check Prefix bytes.
 		assert.EqualValues(t, pubKey, pub3, "tc #%d", tcIndex)
 	}
 }
@@ -109,17 +110,17 @@ func TestNilEncodings(t *testing.T) {
 
 	// Check nil Signature.
 	var a, b []byte
-	checkAminoJSON(t, &a, &b, true)
+	checkJSON(t, &a, &b, true)
 	assert.EqualValues(t, a, b)
 
 	// Check nil PubKey.
 	var c, d crypto.PubKey
-	checkAminoJSON(t, &c, &d, true)
+	checkJSON(t, &c, &d, true)
 	assert.EqualValues(t, c, d)
 
 	// Check nil PrivKey.
 	var e, f crypto.PrivKey
-	checkAminoJSON(t, &e, &f, true)
+	checkJSON(t, &e, &f, true)
 	assert.EqualValues(t, e, f)
 }
 
