@@ -12,8 +12,6 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
-	amino "github.com/tendermint/go-amino"
-
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -32,7 +30,6 @@ const (
 // WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct { // nolint: maligned
 	conn *websocket.Conn
-	cdc  *amino.Codec
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
@@ -101,7 +98,6 @@ func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, 
 	}
 
 	c := &WSClient{
-		cdc:                  amino.NewCodec(),
 		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
@@ -234,7 +230,7 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest(c.cdc, c.nextRequestID(), method, params)
+	request, err := types.MapToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -244,15 +240,12 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 // CallWithArrayParams enqueues a call request onto the Send queue. Params are
 // in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest(c.cdc, c.nextRequestID(), method, params)
+	request, err := types.ArrayToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
 }
-
-func (c *WSClient) Codec() *amino.Codec       { return c.cdc }
-func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Private methods
