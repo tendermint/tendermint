@@ -21,13 +21,13 @@ const (
 	keyFileContents = `{
 	"address": "D08FCA3BA74CF17CBFC15E64F9505302BB0E2748",
 	"pub_key": {
-			"type": "tendermint/PubKeyEd25519",
-			"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
+		"type": "tendermint/PubKeyEd25519",
+		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
 		},
-		"priv_key": {
-			"type": "tendermint/PrivKeyEd25519",
-			"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
-		}
+	"priv_key": {
+		"type": "tendermint/PrivKeyEd25519",
+		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
+	}
 }`
 
 	stateFileContents = `{
