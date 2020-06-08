@@ -61,16 +61,7 @@ func main() {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}
 
-		wal, err := cs.WALFromProto(tWalMsg.Msg)
-		if err != nil {
-			panic("error on transforming WAL message from proto")
-		}
-		walMsg := cs.TimedWALMessage{
-			Time: tWalMsg.Time,
-			Msg:  wal,
-		}
-
-		err = dec.Encode(&walMsg)
+		err = dec.Encode(&msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to encode msg: %v", err))
 		}
