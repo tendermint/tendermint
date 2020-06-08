@@ -155,6 +155,8 @@ func encodeReflectMap(w io.Writer, rv reflect.Value) error {
 		return errors.New("map key must be string")
 	}
 
+	// nil maps are not emitted as nil, to retain Amino compatibility.
+
 	if err := writeStr(w, "{"); err != nil {
 		return err
 	}
