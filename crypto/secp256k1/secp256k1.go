@@ -16,7 +16,10 @@ import (
 
 var _ crypto.PrivKey = PrivKey{}
 
-const PrivKeySize = 32
+const (
+	PrivKeySize = 32
+	keyType     = "secp256k1"
+)
 
 // PrivKey implements PrivKey.
 type PrivKey []byte
@@ -43,7 +46,7 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 func (privKey PrivKey) Type() string {
-	return "secp256k1"
+	return keyType
 }
 
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
@@ -145,7 +148,7 @@ func (pubKey PubKey) String() string {
 }
 
 func (pubKey PubKey) Type() string {
-	return "secp256k1"
+	return keyType
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {

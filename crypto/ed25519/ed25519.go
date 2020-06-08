@@ -30,6 +30,8 @@ const (
 	// SeedSize is the size, in bytes, of private key seeds. These are the
 	// private key representations used by RFC 8032.
 	SeedSize = 32
+
+	keyType = "ed25519"
 )
 
 func init() {
@@ -91,7 +93,7 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 func (privKey PrivKey) Type() string {
-	return "ed25519"
+	return keyType
 }
 
 // GenPrivKey generates a new ed25519 private key.
@@ -156,7 +158,7 @@ func (pubKey PubKey) String() string {
 }
 
 func (pubKey PubKey) Type() string {
-	return "ed25519"
+	return keyType
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
