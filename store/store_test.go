@@ -9,14 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmstore "github.com/tendermint/tendermint/proto/store"
 	sm "github.com/tendermint/tendermint/state"
-
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -29,11 +32,12 @@ type cleanupFunc func()
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []types.CommitSig{{
 		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: []byte("ValidatorAddress"),
+		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+	return types.NewCommit(height, 0,
+		types.BlockID{Hash: []byte(""), PartsHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {
@@ -61,38 +65,34 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }
 
-func TestLoadBlockStoreStateJSON(t *testing.T) {
-	db := dbm.NewMemDB()
-	bsj := &BlockStoreStateJSON{Base: 100, Height: 1000}
-	bsj.Save(db)
+func TestLoadBlockStoreState(t *testing.T) {
 
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, *bsj, retrBSJ, "expected the retrieved DBs to match")
-}
+	type blockStoreTest struct {
+		testName string
+		bss      *tmstore.BlockStoreState
+		want     tmstore.BlockStoreState
+	}
 
-func TestLoadBlockStoreStateJSON_Empty(t *testing.T) {
-	db := dbm.NewMemDB()
+	testCases := []blockStoreTest{
+		{"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
+			tmstore.BlockStoreState{Base: 100, Height: 1000}},
+		{"empty", &tmstore.BlockStoreState{}, tmstore.BlockStoreState{}},
+		{"no base", &tmstore.BlockStoreState{Height: 1000}, tmstore.BlockStoreState{Base: 1, Height: 1000}},
+	}
 
-	bsj := &BlockStoreStateJSON{}
-	bsj.Save(db)
-
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, BlockStoreStateJSON{}, retrBSJ, "expected the retrieved DBs to match")
-}
-
-func TestLoadBlockStoreStateJSON_NoBase(t *testing.T) {
-	db := dbm.NewMemDB()
-
-	bsj := &BlockStoreStateJSON{Height: 1000}
-	bsj.Save(db)
-
-	retrBSJ := LoadBlockStoreStateJSON(db)
-	assert.Equal(t, BlockStoreStateJSON{Base: 1, Height: 1000}, retrBSJ, "expected the retrieved DBs to match")
+	for _, tc := range testCases {
+		db := dbm.NewMemDB()
+		SaveBlockStoreState(tc.bss, db)
+		retrBSJ := LoadBlockStoreState(db)
+		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
+	}
 }
 
 func TestNewBlockStore(t *testing.T) {
 	db := dbm.NewMemDB()
-	err := db.Set(blockStoreKey, []byte(`{"base": "100", "height": "10000"}`))
+	bss := tmstore.BlockStoreState{Base: 100, Height: 10000}
+	bz, _ := proto.Marshal(&bss)
+	err := db.Set(blockStoreKey, bz)
 	require.NoError(t, err)
 	bs := NewBlockStore(db)
 	require.Equal(t, int64(100), bs.Base(), "failed to properly parse blockstore")
@@ -181,9 +181,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	uncontiguousPartSet.AddPart(part2)
 
 	header1 := types.Header{
-		Height:  1,
-		ChainID: "block_test",
-		Time:    tmtime.Now(),
+		Height:          1,
+		ChainID:         "block_test",
+		Time:            tmtime.Now(),
+		ProposerAddress: tmrand.Bytes(crypto.AddressSize),
 	}
 
 	// End of setup, test data
@@ -215,7 +216,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: newBlock( // New block at height 5 in empty block store is fine
-				types.Header{Height: 5, ChainID: "block_test", Time: tmtime.Now()},
+				types.Header{
+					Height:          5,
+					ChainID:         "block_test",
+					Time:            tmtime.Now(),
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
 				makeTestCommit(5, tmtime.Now()),
 			),
 			parts:      validPartSet,
@@ -233,14 +238,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
-			wantPanic:         "unmarshal to types.Commit failed",
+			wantPanic:         "error reading block commit",
 		},
 
 		{
 			block:            newBlock(header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
-			wantPanic:        "unmarshal to types.BlockMeta failed",
+			wantPanic:        "unmarshal to tmproto.BlockMeta",
 			corruptBlockInDB: true, // Corrupt the DB's block entry
 		},
 
@@ -259,7 +264,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			seenCommit: seenCommit1,
 
 			corruptSeenCommitInDB: true,
-			wantPanic:             "unmarshal to types.Commit failed",
+			wantPanic:             "error reading block seen commit",
 		},
 
 		{
@@ -372,10 +377,12 @@ func TestLoadBlockPart(t *testing.T) {
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "unmarshal to types.Part failed")
+	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
-	err = db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
+	pb1, err := part1.ToProto()
+	require.NoError(t, err)
+	err = db.Set(calcBlockPartKey(height, index), mustEncode(pb1))
 	require.NoError(t, err)
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
@@ -423,10 +430,10 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 301, bs.Size())
-	assert.EqualValues(t, BlockStoreStateJSON{
+	assert.EqualValues(t, tmstore.BlockStoreState{
 		Base:   1200,
 		Height: 1500,
-	}, LoadBlockStoreStateJSON(db))
+	}, LoadBlockStoreState(db))
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))
@@ -489,17 +496,22 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "unmarshal to types.BlockMeta")
+	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
-	meta := &types.BlockMeta{}
-	err = db.Set(calcBlockMetaKey(height), cdc.MustMarshalBinaryBare(meta))
+	meta := &types.BlockMeta{Header: types.Header{Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
+	pbm := meta.ToProto()
+	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)
 	gotMeta, _, panicErr := doFn(loadMeta)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved blockMeta should return a proper blocMeta ")
-	require.Equal(t, cdc.MustMarshalBinaryBare(meta), cdc.MustMarshalBinaryBare(gotMeta),
-		"expecting successful retrieval of previously saved blockMeta")
+	pbmeta := meta.ToProto()
+	if gmeta, ok := gotMeta.(*types.BlockMeta); ok {
+		pbgotMeta := gmeta.ToProto()
+		require.Equal(t, mustEncode(pbmeta), mustEncode(pbgotMeta),
+			"expecting successful retrieval of previously saved blockMeta")
+	}
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
@@ -514,8 +526,12 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
 	blockAtHeight := bs.LoadBlock(bs.Height())
-	bz1 := cdc.MustMarshalBinaryBare(block)
-	bz2 := cdc.MustMarshalBinaryBare(blockAtHeight)
+	b1, err := block.ToProto()
+	require.NoError(t, err)
+	b2, err := blockAtHeight.ToProto()
+	require.NoError(t, err)
+	bz1 := mustEncode(b1)
+	bz2 := mustEncode(b2)
 	require.Equal(t, bz1, bz2)
 	require.Equal(t, block.Hash(), blockAtHeight.Hash(),
 		"expecting a successful load of the last saved block")
