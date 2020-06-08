@@ -426,6 +426,26 @@ func (txi *TxIndex) match(
 			}
 		}
 
+	case c.Op == query.OpExists:
+		// XXX: can't use startKeyBz here because c.Operand is nil
+		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
+		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
+		if err != nil {
+			panic(err)
+		}
+		defer it.Close()
+
+		for ; it.Valid(); it.Next() {
+			tmpHashes[string(it.Value())] = it.Value()
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
+		}
+
 	case c.Op == query.OpContains:
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
