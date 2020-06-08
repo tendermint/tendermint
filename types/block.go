@@ -836,8 +836,6 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 
-	// Check that commit.Height is greater than 1
-	// block 1 has commit of block 0 :?? so BlockID & CommitSigs are empty
 	if commit.Height >= 1 {
 		if commit.BlockID.IsZero() {
 			return errors.New("commit cannot be for nil block")
