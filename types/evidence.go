@@ -246,6 +246,7 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 
 		return &dve, dve.ValidateBasic()
 	case *tmproto.Evidence_ConflictingHeadersEvidence:
+
 		h1, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H1)
 		if err != nil {
 			return nil, fmt.Errorf("from proto err: %w", err)
