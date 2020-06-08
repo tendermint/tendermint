@@ -207,7 +207,7 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 func TestAddingAndPruningPOLC(t *testing.T) {
 	var (
-		valAddr      = []byte("validator_address")
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
 		stateDB      = initializeValidatorState(valAddr, 1)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()

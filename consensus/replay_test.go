@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1016,11 +1017,20 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var block = new(types.Block)
-				_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
+				var pbb = new(tmproto.Block)
+				bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
 				if err != nil {
 					panic(err)
 				}
+				err = proto.Unmarshal(bz, pbb)
+				if err != nil {
+					panic(err)
+				}
+				block, err := types.BlockFromProto(pbb)
+				if err != nil {
+					panic(err)
+				}
+
 				if block.Height != height+1 {
 					panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 				}
@@ -1047,8 +1057,16 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	var block = new(types.Block)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
+	bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+	if err != nil {
+		panic(err)
+	}
+	var pbb = new(tmproto.Block)
+	err = proto.Unmarshal(bz, pbb)
+	if err != nil {
+		panic(err)
+	}
+	block, err := types.BlockFromProto(pbb)
 	if err != nil {
 		panic(err)
 	}
