@@ -287,6 +287,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			return
 		}
 		err = r.ReceiveAddrs(addrs, src)
 		if err != nil {
@@ -797,6 +798,6 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	case *tmp2p.Message_PexAddrs:
 		return msg.PexAddrs, nil
 	default:
-		return nil, fmt.Errorf("unknown message %t", msg)
+		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
 }
