@@ -109,9 +109,6 @@ func TestReactorBasic(t *testing.T) {
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
-	types.RegisterMockEvidences(cdc)
-	types.RegisterMockEvidences(types.GetCodec())
-
 	nValidators := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	amino "github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -15,12 +14,6 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	types.RegisterBlockAmino(cdc)
-}
 
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {

@@ -582,11 +582,12 @@ func TestMockProxyApp(t *testing.T) {
 		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
-		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
+		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
+		require.NoError(t, err)
 		loadedAbciRes := new(tmstate.ABCIResponses)
 
 		// this also happens sm.LoadABCIResponses
-		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
+		err = proto.Unmarshal(bytes, loadedAbciRes)
 		require.NoError(t, err)
 
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
