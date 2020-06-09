@@ -573,3 +573,42 @@ func TestEvidenceProto(t *testing.T) {
 		})
 	}
 }
+
+func TestProofOfLockChangeProtoBuf(t *testing.T) {
+	// -------- Votes --------
+	val := NewMockPV()
+	val2 := NewMockPV()
+	val3 := NewMockPV()
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+	v2 := makeVote(t, val2, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+
+	testCases := []struct {
+		msg     string
+		polc    ProofOfLockChange
+		expErr  bool
+		expErr2 bool
+	}{
+		{"failure, empty key", ProofOfLockChange{Votes: []Vote{*v, *v2}}, true, true},
+		{"failure empty ProofOfLockChange", ProofOfLockChange{}, true, true},
+		{"success", ProofOfLockChange{Votes: []Vote{*v, *v2}, PubKey: val3.PrivKey.PubKey()}, false, false},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		pbpolc, err := tc.polc.ToProto()
+		if tc.expErr {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
+
+		c, err := ProofOfLockChangeFromProto(pbpolc)
+		if !tc.expErr2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, &tc.polc, c, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}

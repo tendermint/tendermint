@@ -252,7 +252,6 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// Make EvidencePool
 	types.RegisterMockEvidencesGlobal() // XXX!
-	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
