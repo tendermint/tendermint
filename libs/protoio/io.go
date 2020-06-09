@@ -73,7 +73,8 @@ func getSize(v interface{}) (int, bool) {
 }
 
 // byteReader wraps an io.Reader and implements io.ByteReader. Reading one byte at a
-// time is extremely slow, but this is what Amino did already, and
+// time is extremely slow, but this is what Amino did already, and the caller can
+// wrap the reader in bufio.Reader if appropriate.
 type byteReader struct {
 	io.Reader
 	bytes []byte
