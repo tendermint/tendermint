@@ -45,9 +45,9 @@ func TestSimpleProofValidateBasic(t *testing.T) {
 
 func TestSimpleProofProtoBuf(t *testing.T) {
 	testCases := []struct {
-		msg     string
-		ps1     *SimpleProof
-		expPass bool
+		testName string
+		ps1      *SimpleProof
+		expPass  bool
 	}{
 		{"failure empty", &SimpleProof{}, false},
 		{"failure nil", nil, false},
@@ -61,14 +61,16 @@ func TestSimpleProofProtoBuf(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		proto := tc.ps1.ToProto()
-
-		p, err := SimpleProofFromProto(proto)
-		if tc.expPass {
-			require.NoError(t, err)
-			require.Equal(t, tc.ps1, p, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			proto := tc.ps1.ToProto()
+			p, err := SimpleProofFromProto(proto)
+			if tc.expPass {
+				require.NoError(t, err)
+				require.Equal(t, tc.ps1, p, tc.testName)
+			} else {
+				require.Error(t, err, tc.testName)
+			}
+		})
 	}
 }

@@ -136,11 +136,9 @@ func TestWALWrite(t *testing.T) {
 		},
 	}
 
-	twal := msgInfo{
+	err = wal.Write(msgInfo{
 		Msg: msg,
-	}
-
-	err = wal.Write(twal)
+	})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}
