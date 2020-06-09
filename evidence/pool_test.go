@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -291,6 +292,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 			Validators: []*types.Validator{
 				val.ExtractIntoValidator(0),
 			},
+			Proposer: val.ExtractIntoValidator(0),
 		}
 		height       = int64(30)
 		stateDB      = initializeStateFromValidatorSet(valSet, height)
@@ -319,6 +321,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
 
+	pool.SetLogger(log.TestingLogger())
+
 	polc := types.NewMockPOLC(25, evidenceTime, pubKey)
 	err = pool.AddPOLC(polc)
 	require.NoError(t, err)
@@ -332,10 +336,17 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	voteB := makeVote(25, 1, 0, pubKey.Address(), secondBlockID)
 	err = val.SignVote(evidenceChainID, voteB)
 	require.NoError(t, err)
+	voteC := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
+	voteC.Timestamp.Add(1 * time.Second)
+	err = val.SignVote(evidenceChainID, voteC)
+	require.NoError(t, err)
 	ev := types.PotentialAmnesiaEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
 	}
+	// we expect the evidence pool to find the polc but log an error as the polc is not valid -> vote was
+	// not from a validator in this set. However, an error isn't thrown because the evidence pool
+	// should still be able to save the regular potential amensia evidence.
 	err = pool.AddEvidence(ev)
 	assert.NoError(t, err)
 
@@ -358,9 +369,11 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
 
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
+	voteA.Timestamp.Add(1 * time.Second)
+
 	ev2 := types.PotentialAmnesiaEvidence{
 		VoteA: voteB,
-		VoteB: voteA,
+		VoteB: voteC,
 	}
 	err = pool.AddEvidence(ev2)
 	assert.NoError(t, err)
@@ -404,11 +417,13 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) d
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 
+	pubKey, _ := types.NewMockPV().GetPubKey()
+	validator := &types.Validator{Address: valAddr, VotingPower: 0, PubKey: pubKey}
+
 	// create validator set and state
 	valSet := &types.ValidatorSet{
-		Validators: []*types.Validator{
-			{Address: valAddr, VotingPower: 0},
-		},
+		Validators: []*types.Validator{validator},
+		Proposer:   validator,
 	}
 
 	return initializeStateFromValidatorSet(valSet, height)

@@ -18,6 +18,8 @@ message DuplicateVoteEvidence {
 message PotentialAmnesiaEvidence {
   Vote vote_a = 1;
   Vote vote_b = 2;
+
+  int64 height_stamp = 3;
 }
 
 message AmnesiaEvidence {

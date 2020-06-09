@@ -167,6 +167,7 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
 					VoteA: voteA,
 					VoteB: voteB,
+					HeightStamp: evi.HeightStamp,
 				},
 			},
 		}
@@ -181,6 +182,7 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
 					VoteA: voteA,
 					VoteB: voteB,
+					HeightStamp: evi.HeightStamp,
 				},
 			},
 		}
@@ -336,21 +338,24 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 
 		return &tp, tp.ValidateBasic()
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
-		voteA, err := VoteFromProto(evi.PotentialAmnesiaEvidence.GetVoteA())
+		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
+
+	case *tmproto.Evidence_AmnesiaEvidence:
+		pae, err := PotentialAmnesiaEvidenceFromProto(evi.AmnesiaEvidence.PotentialAmnesiaEvidence)
+		if err != nil {
+			return nil, err
+		}
+		polc, err := ProofOfLockChangeFromProto(evi.AmnesiaEvidence.Polc)
 		if err != nil {
 			return nil, err
 		}
 
-		voteB, err := VoteFromProto(evi.PotentialAmnesiaEvidence.GetVoteB())
-		if err != nil {
-			return nil, err
-		}
-		tp := PotentialAmnesiaEvidence{
-			VoteA: voteA,
-			VoteB: voteB,
+		tp := AmnesiaEvidence{
+			PotentialAmnesiaEvidence: *pae,
+			Polc: *polc,
 		}
 
-		return &tp, tp.ValidateBasic()
+		return tp, tp.ValidateBasic()
 	case *tmproto.Evidence_MockEvidence:
 		me := MockEvidence{
 			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
@@ -389,6 +394,7 @@ func init() {
 	tmjson.RegisterType(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence")
 	tmjson.RegisterType(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence")
 	tmjson.RegisterType(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence")
+	tmjson.RegisterType(&AmnesiaEvidence{}, "tendermint/AmnesiaEvidence")
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
@@ -1154,12 +1160,6 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
 	}
 
-	// R must be less for vote A than for vote B
-	if e.VoteA.Round >= e.VoteB.Round {
-		return fmt.Errorf("expected round from vote A to be less than round from vote B, but got %d >= %d",
-			e.VoteA.Round, e.VoteB.Round)
-	}
-
 	// Enforce that vote A came before vote B
 	if e.VoteA.Timestamp.After(e.VoteB.Timestamp) {
 		return fmt.Errorf("vote A should have a timestamp before vote B, but got %s > %s",
@@ -1473,6 +1473,11 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 	plc := new(tmproto.ProofOfLockChange)
 	vpb := make([]*tmproto.Vote, len(e.Votes))
 
+	// if absent create empty proto polc
+	if e.IsAbsent() {
+		return plc, nil
+	}
+
 	for i, v := range e.Votes {
 		pb := v.ToProto()
 		if pb != nil {
@@ -1496,6 +1501,12 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 	}
 
 	plc := new(ProofOfLockChange)
+
+	// check if it is an empty polc
+	if pb.PubKey == nil && pb.Votes == nil {
+		return plc, nil
+	}
+
 	vpb := make([]Vote, len(pb.Votes))
 	for i, v := range pb.Votes {
 		vi, err := VoteFromProto(v)
@@ -1517,6 +1528,25 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 	plc.Votes = vpb
 
 	return plc, nil
+}
+
+func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*PotentialAmnesiaEvidence, error) {
+	voteA, err := VoteFromProto(pb.GetVoteA())
+	if err != nil {
+		return nil, err
+	}
+
+	voteB, err := VoteFromProto(pb.GetVoteB())
+	if err != nil {
+		return nil, err
+	}
+	tp := PotentialAmnesiaEvidence{
+		VoteA: voteA,
+		VoteB: voteB,
+		HeightStamp: pb.GetHeightStamp(),
+	}
+
+	return &tp, tp.ValidateBasic()
 }
 
 //-----------------------------------------------------------------
