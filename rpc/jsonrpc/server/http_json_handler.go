@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"sort"
 
-	amino "github.com/tendermint/go-amino"
-
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -20,7 +19,7 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
-func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) http.HandlerFunc {
+func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -88,7 +87,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
 			args := []reflect.Value{reflect.ValueOf(ctx)}
 			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
+				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					responses = append(
 						responses,
@@ -105,7 +104,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				responses = append(responses, types.RPCInternalError(request.ID, err))
 				continue
 			}
-			responses = append(responses, types.NewRPCSuccessResponse(cdc, request.ID, result))
+			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 		}
 		if len(responses) > 0 {
 			WriteRPCResponseArrayHTTP(w, responses)
@@ -128,7 +127,6 @@ func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
 
 func mapParamsToArgs(
 	rpcFunc *RPCFunc,
-	cdc *amino.Codec,
 	params map[string]json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
@@ -139,7 +137,7 @@ func mapParamsToArgs(
 
 		if p, ok := params[argName]; ok && p != nil && len(p) > 0 {
 			val := reflect.New(argType)
-			err := cdc.UnmarshalJSON(p, val.Interface())
+			err := tmjson.Unmarshal(p, val.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +152,6 @@ func mapParamsToArgs(
 
 func arrayParamsToArgs(
 	rpcFunc *RPCFunc,
-	cdc *amino.Codec,
 	params []json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
@@ -168,7 +165,7 @@ func arrayParamsToArgs(
 	for i, p := range params {
 		argType := rpcFunc.args[i+argsOffset]
 		val := reflect.New(argType)
-		err := cdc.UnmarshalJSON(p, val.Interface())
+		err := tmjson.Unmarshal(p, val.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +180,7 @@ func arrayParamsToArgs(
 // Example:
 //   rpcFunc.args = [rpctypes.Context string]
 //   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect.Value, error) {
+func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 	const argsOffset = 1
 
 	// TODO: Make more efficient, perhaps by checking the first character for '{' or '['?
@@ -191,14 +188,14 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect
 	var m map[string]json.RawMessage
 	err := json.Unmarshal(raw, &m)
 	if err == nil {
-		return mapParamsToArgs(rpcFunc, cdc, m, argsOffset)
+		return mapParamsToArgs(rpcFunc, m, argsOffset)
 	}
 
 	// Otherwise, try an array.
 	var a []json.RawMessage
 	err = json.Unmarshal(raw, &a)
 	if err == nil {
-		return arrayParamsToArgs(rpcFunc, cdc, a, argsOffset)
+		return arrayParamsToArgs(rpcFunc, a, argsOffset)
 	}
 
 	// Otherwise, bad format, we cannot parse

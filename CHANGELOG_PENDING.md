@@ -12,6 +12,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [blockchain] \#4637 Transition blockchain reactor(s) to Protobuf encoding
   - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
   - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
   - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
@@ -22,6 +23,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [consensus] \#4582 HeightVoteSet: `round` is now int32
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
+  - [crypto] \4988 Removal of key type multisig
+    - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
   - [crypto] \#4941 Remove suffixes from all keys.
     - ed25519: type `PrivKeyEd25519` is now `PrivKey`
     - ed25519: type `PubKeyEd25519` is now `PubKey`
@@ -35,6 +38,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [p2p/pex] \#4973 `p2p/pex` reactor migration to Protobuf encoding
+  - [light] \#4964 `light` reactor migration to Protobuf encoding
+  - [store] \#4778 Transition store module to protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+  - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
 
 - Apps
 
@@ -63,6 +72,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
 - [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
+- [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 
 ### IMPROVEMENTS:
 

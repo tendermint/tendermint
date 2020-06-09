@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/tempfile"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -55,7 +56,7 @@ func (pvKey FilePVKey) Save() {
 		panic("cannot save PrivValidator key: filePath not set")
 	}
 
-	jsonBytes, err := cdc.MarshalJSONIndent(pvKey, "", "  ")
+	jsonBytes, err := tmjson.MarshalIndent(pvKey, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -126,7 +127,7 @@ func (lss *FilePVLastSignState) Save() {
 	if outFile == "" {
 		panic("cannot save FilePVLastSignState: filePath not set")
 	}
-	jsonBytes, err := cdc.MarshalJSONIndent(lss, "", "  ")
+	jsonBytes, err := tmjson.MarshalIndent(lss, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +188,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		tmos.Exit(err.Error())
 	}
 	pvKey := FilePVKey{}
-	err = cdc.UnmarshalJSON(keyJSONBytes, &pvKey)
+	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
@@ -203,7 +204,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		if err != nil {
 			tmos.Exit(err.Error())
 		}
-		err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
+		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
 			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
 		}
@@ -406,8 +407,8 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	now := tmtime.Now()
 	lastVote.Timestamp = now
 	newVote.Timestamp = now
-	lastVoteBytes, _ := cdc.MarshalJSON(lastVote)
-	newVoteBytes, _ := cdc.MarshalJSON(newVote)
+	lastVoteBytes, _ := tmjson.Marshal(lastVote)
+	newVoteBytes, _ := tmjson.Marshal(newVote)
 
 	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }

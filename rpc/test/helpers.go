@@ -41,7 +41,6 @@ func waitForRPC() {
 	if err != nil {
 		panic(err)
 	}
-	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
 		_, err := client.Call("status", map[string]interface{}{}, result)
