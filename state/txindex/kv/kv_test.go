@@ -117,6 +117,10 @@ func TestTxSearch(t *testing.T) {
 		{"account.owner CONTAINS 'Vlad'", 0},
 		// search using the wrong key (of numeric type) using CONTAINS
 		{"account.number CONTAINS 'Iv'", 0},
+		// search using EXISTS
+		{"account.number EXISTS", 1},
+		// search using EXISTS for non existing key
+		{"account.date EXISTS", 0},
 	}
 
 	ctx := context.Background()
