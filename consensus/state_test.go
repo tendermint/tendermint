@@ -703,11 +703,11 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
 	ensureNewRound(newRoundCh, height, round+1)
-	// polc should be store in the evpool for round 1
+	// polc should be in the evpool for round 1
 	_, exists := evpool.RetrievePOLC(height, round)
 	assert.True(t, exists)
-	// and not for round 0
-	_, exists = evpool.RetrievePOLC(height, round - 1)
+	// but not for round 0
+	_, exists = evpool.RetrievePOLC(height, round-1)
 	assert.False(t, exists)
 
 }
@@ -810,7 +810,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	thirdPropBlockHash := propBlock.Hash()
 	require.NotEqual(t, secondBlockHash, thirdPropBlockHash)
 
-	// polc should be store in the evpool for round 1
+	// polc should be in the evpool for round 1
 	_, exists := evpool.RetrievePOLC(height, round)
 	assert.True(t, exists)
 

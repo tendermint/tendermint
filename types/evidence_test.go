@@ -444,12 +444,12 @@ func TestAmnesiaEvidence(t *testing.T) {
 		height  int64 = 37
 	)
 
-	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 2, 7, 0, tmproto.PrecommitType)
 
 	var (
 		val       = privValidators[7]
 		pubKey, _ = val.GetPubKey()
-		blockID2  = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+		blockID2  = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		vote1     = makeVote(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
 		vote2     = makeVote(t, val, chainID, 7, height, 1, 2, blockID,
 			time.Now().Add(time.Second))
@@ -502,20 +502,20 @@ func TestAmnesiaEvidence(t *testing.T) {
 
 	var badAE []AmnesiaEvidence
 	// 1) Polc is at an incorrect height
-	voteSet, _, _ = buildVoteSetForBlock(height+1, 1, 2, 7, 0, PrecommitType, blockID)
+	voteSet, _, _ = buildVoteSetForBlock(height+1, 1, 2, 7, 0, tmproto.PrecommitType, blockID)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 2) Polc is of a later round
-	voteSet, _, _ = buildVoteSetForBlock(height, 2, 2, 7, 0, PrecommitType, blockID)
+	voteSet, _, _ = buildVoteSetForBlock(height, 2, 2, 7, 0, tmproto.PrecommitType, blockID)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 3) Polc has a different public key
-	voteSet, _, privValidators = buildVoteSetForBlock(height, 1, 2, 7, 0, PrecommitType, blockID)
+	voteSet, _, privValidators = buildVoteSetForBlock(height, 1, 2, 7, 0, tmproto.PrecommitType, blockID)
 	pubKey2, _ := privValidators[7].GetPubKey()
 	polc = makePOLCFromVoteSet(voteSet, pubKey2, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 	// 4) Polc has a different block ID
-	voteSet, _, _, blockID = buildVoteSet(height, 1, 2, 7, 0, PrecommitType)
+	voteSet, _, _, blockID = buildVoteSet(height, 1, 2, 7, 0, tmproto.PrecommitType)
 	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
 	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
 
@@ -529,7 +529,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 }
 
 func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID,
+	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
 	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
@@ -538,7 +538,7 @@ func makeVote(
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             SignedMsgType(step),
+		Type:             tmproto.SignedMsgType(step),
 		BlockID:          blockID,
 		Timestamp:        time,
 	}

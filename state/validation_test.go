@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/proto/version"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -454,8 +454,8 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	}
 	err = sm.VerifyEvidence(stateDB, state, badAe, nil)
 	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), "amnesia evidence contains invalid polc, err: not enough voting power "+
-			"to reach majority needed: 2667, got 1000")
+		assert.Equal(t, err.Error(), "amnesia evidence contains invalid polc, err: "+
+			"invalid commit -- insufficient voting power: got 1000, needed more than 2667")
 	}
 	addr3, val3 := state.Validators.GetByIndex(2)
 	voteD := makeVote(height, 2, 2, addr3, blockID)
@@ -596,9 +596,9 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 
 }
 
-func makeVote(height int64, round, index int, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
+func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
-		Type:             types.SignedMsgType(2),
+		Type:             tmproto.SignedMsgType(2),
 		Height:           height,
 		Round:            round,
 		BlockID:          blockID,

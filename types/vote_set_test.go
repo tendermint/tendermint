@@ -600,7 +600,7 @@ func TestMakeCommit(t *testing.T) {
 func buildVoteSet(
 	height int64,
 	round int32, nonVotes, nonNilVotes, nilVotes int,
-	voteType SignedMsgType) (voteSet *VoteSet, valSet *ValidatorSet, privValidators []PrivValidator, blockID BlockID) {
+	voteType tmproto.SignedMsgType) (voteSet *VoteSet, valSet *ValidatorSet, privValidators []PrivValidator, blockID BlockID) {
 
 	blockID = makeBlockIDRandom()
 	voteSet, valSet, privValidators = buildVoteSetForBlock(height, round, nonVotes, nonNilVotes, nilVotes, voteType,
@@ -609,8 +609,8 @@ func buildVoteSet(
 }
 
 func buildVoteSetForBlock(height int64,
-	round, nonVotes, nonNilVotes, nilVotes int,
-	voteType SignedMsgType, blockID BlockID) (*VoteSet, *ValidatorSet, []PrivValidator) {
+	round int32, nonVotes, nonNilVotes, nilVotes int,
+	voteType tmproto.SignedMsgType, blockID BlockID) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSize := nonVotes + nilVotes + nonNilVotes
 	voteSet, valSet, privValidators := randVoteSet(height, round, voteType, valSize, 1)
 	voteProto := &Vote{

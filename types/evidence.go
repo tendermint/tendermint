@@ -1243,8 +1243,10 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 		}
 	}
 	if talliedVotingPower <= votingPowerNeeded {
-		return fmt.Errorf("not enough voting power to reach majority needed: %d, got %d",
-			votingPowerNeeded+1, talliedVotingPower)
+		return ErrNotEnoughVotingPowerSigned{
+			Got:    talliedVotingPower,
+			Needed: votingPowerNeeded + 1,
+		}
 	}
 	return nil
 }

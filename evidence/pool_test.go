@@ -433,9 +433,9 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
-func makeVote(height int64, round, index int, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
+func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
-		Type:             types.SignedMsgType(2),
+		Type:             tmproto.SignedMsgType(2),
 		Height:           height,
 		Round:            round,
 		BlockID:          blockID,

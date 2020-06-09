@@ -456,7 +456,7 @@ func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.P
 	cs.SetEventBus(eventBus)
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = newValidatorStub(privVals[i], i)
+		vss[i] = newValidatorStub(privVals[i], int32(i))
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)

@@ -206,7 +206,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			pe.HeightStamp = evpool.State().LastBlockHeight
 
 			// a) first try to find a corresponding polc
-			for round := pe.VoteA.Round + 1; round <= pe.VoteB.Round; round++ {
+			for round := pe.VoteB.Round; round > pe.VoteA.Round; round-- {
 				polc, exists = evpool.RetrievePOLC(height, round)
 				if exists {
 					// we should not need to verify it if both the polc and potential amnesia evidence have already
@@ -516,7 +516,8 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 		return -1
 	}
 	defer iter.Close()
-	// 1) Iterate through all potential amnesiae evidence in order of height
+	trialPeriod := evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
+	// 1) Iterate through all potential amnesia evidence in order of height
 	for ; iter.Valid(); iter.Next() {
 		paeBytes := iter.Value()
 		// 2) Retrieve the evidence
@@ -526,12 +527,12 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 			evpool.logger.Error("Unable to unmarshal potential amnesia evidence", "err", err)
 			continue
 		}
-		trialPeriod := evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
 		if ev.Primed(trialPeriod, evpool.State().LastBlockHeight) {
 			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(ev, types.EmptyPOLC()))
 			if err != nil {
 				evpool.logger.Error("Unable to add amnesia evidence", "err", err)
+				continue
 			}
 			err = evpool.evidenceStore.Delete(iter.Key())
 			if err != nil {
@@ -543,6 +544,7 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 			return ev.HeightStamp + trialPeriod
 		}
 	}
+	// if we have no evidence left to process we want to reset nextEvidenceTrialEndedHeight
 	return -1
 }
 
