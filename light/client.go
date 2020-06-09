@@ -21,7 +21,7 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultPruningSize      = 100
+	defaultPruningSize      = 1000
 	defaultMaxRetryAttempts = 10
 	// For bisection, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal bisection) so to
