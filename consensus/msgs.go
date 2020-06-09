@@ -119,30 +119,23 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 		bi := msg.BlockID.ToProto()
 		bits := msg.Votes.ToProto()
 
-		if bits == nil {
-			pb = tmcons.Message{
-				Sum: &tmcons.Message_VoteSetBits{
-					VoteSetBits: &tmcons.VoteSetBits{
-						Height:  msg.Height,
-						Round:   msg.Round,
-						Type:    msg.Type,
-						BlockID: bi,
-					},
-				},
-			}
-		} else {
-			pb = tmcons.Message{
-				Sum: &tmcons.Message_VoteSetBits{
-					VoteSetBits: &tmcons.VoteSetBits{
-						Height:  msg.Height,
-						Round:   msg.Round,
-						Type:    msg.Type,
-						BlockID: bi,
-						Votes:   *bits,
-					},
-				},
-			}
+		vsb := &tmcons.Message_VoteSetBits{
+			VoteSetBits: &tmcons.VoteSetBits{
+				Height:  msg.Height,
+				Round:   msg.Round,
+				Type:    msg.Type,
+				BlockID: bi,
+			},
 		}
+
+		if bits != nil {
+			vsb.VoteSetBits.Votes = *bits
+		}
+
+		pb = tmcons.Message{
+			Sum: vsb,
+		}
+
 	default:
 		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
 	}
