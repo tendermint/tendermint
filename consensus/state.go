@@ -1961,7 +1961,7 @@ func (cs *State) addVote(
 		}
 
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type))
+		panic(fmt.Sprintf("Unexpected vote type %v", vote.Type))
 	}
 
 	return added, err

@@ -15,6 +15,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// MsgToProto takes a consensus message type and returns the proto defined consensus message
+// If an error occurs it will be returned
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
@@ -110,7 +112,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 					Height:  msg.Height,
 					Round:   msg.Round,
 					Type:    msg.Type,
-					BlockID: bi, // nil pointer deference
+					BlockID: bi,
 				},
 			},
 		}
@@ -129,9 +131,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 					},
 				},
 			}
-		}
-
-		if bits != nil {
+		} else {
 			pb = tmcons.Message{
 				Sum: &tmcons.Message_VoteSetBits{
 					VoteSetBits: &tmcons.VoteSetBits{
@@ -150,6 +150,9 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 
 	return &pb, nil
 }
+
+// MsgFromProto takes a consensus proto message and returns the native go type
+// If an error occurs it will be returned
 func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: nil message")
@@ -266,7 +269,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	return pb, nil
 }
 
-//MustEncode takes the reactors msg, makes it proto and marshals it
+// MustEncode takes the reactors msg, makes it proto and marshals it
 // this mimics `MustMarshalBinaryBare` in that is panics on error
 func MustEncode(msg Message) []byte {
 	pb, err := MsgToProto(msg)
