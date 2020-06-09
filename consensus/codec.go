@@ -145,7 +145,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 			}
 		}
 	default:
-		return nil, fmt.Errorf("consensus: message not recognized, %T", msg)
+		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
 	}
 
 	return &pb, nil
