@@ -21,7 +21,7 @@ message ProofOp {
   bytes  data = 3;
 }
 
-// Proof is Merkle proof defined by the list of ProofOps
+// ProofOps is Merkle proof defined by the list of ProofOps
 message ProofOps {
   repeated ProofOp ops = 1 [(gogoproto.nullable) = false];
 }
