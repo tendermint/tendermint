@@ -494,7 +494,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 
 	// validator has incorrectly voted for a previous round after voting for a later round
 	ae := MakeAmnesiaEvidence(pe2, EmptyPOLC())
-	assert.Error(t, ae.ValidateBasic())
+	assert.NoError(t, ae.ValidateBasic())
 	violated, reason = ae.ViolatedConsensus()
 	if assert.True(t, violated) {
 		assert.Equal(t, reason, "validator went back and voted on a previous round")
@@ -694,24 +694,25 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 		expErr2 bool
 	}{
 		{"failure, empty key", ProofOfLockChange{Votes: []Vote{*v, *v2}}, true, true},
-		{"failure empty ProofOfLockChange", ProofOfLockChange{}, true, true},
+		{"failure, empty votes", ProofOfLockChange{PubKey: val3.PrivKey.PubKey()}, true, true},
+		{"success empty ProofOfLockChange", EmptyPOLC(), false, false},
 		{"success", ProofOfLockChange{Votes: []Vote{*v, *v2}, PubKey: val3.PrivKey.PubKey()}, false, false},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		pbpolc, err := tc.polc.ToProto()
 		if tc.expErr {
-			require.Error(t, err)
+			assert.Error(t, err, tc.msg)
 		} else {
-			require.NoError(t, err)
+			assert.NoError(t, err, tc.msg)
 		}
 
 		c, err := ProofOfLockChangeFromProto(pbpolc)
 		if !tc.expErr2 {
-			require.NoError(t, err, tc.msg)
-			require.Equal(t, &tc.polc, c, tc.msg)
+			assert.NoError(t, err, tc.msg)
+			assert.Equal(t, &tc.polc, c, tc.msg)
 		} else {
-			require.Error(t, err, tc.msg)
+			assert.Error(t, err, tc.msg)
 		}
 	}
 }

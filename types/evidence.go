@@ -165,8 +165,8 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
-					VoteA: voteA,
-					VoteB: voteB,
+					VoteA:       voteA,
+					VoteB:       voteB,
 					HeightStamp: evi.HeightStamp,
 				},
 			},
@@ -180,8 +180,8 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
 				PotentialAmnesiaEvidence: &tmproto.PotentialAmnesiaEvidence{
-					VoteA: voteA,
-					VoteB: voteB,
+					VoteA:       voteA,
+					VoteB:       voteB,
 					HeightStamp: evi.HeightStamp,
 				},
 			},
@@ -352,7 +352,7 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 
 		tp := AmnesiaEvidence{
 			PotentialAmnesiaEvidence: *pae,
-			Polc: *polc,
+			Polc:                     *polc,
 		}
 
 		return tp, tp.ValidateBasic()
@@ -1320,6 +1320,11 @@ func (e ProofOfLockChange) Equal(e2 ProofOfLockChange) bool {
 }
 
 func (e ProofOfLockChange) ValidateBasic() error {
+	// first check if the polc is absent / empty
+	if e.IsAbsent() {
+		return nil
+	}
+
 	if e.PubKey == nil {
 		return errors.New("missing public key")
 	}
@@ -1381,6 +1386,38 @@ func (e ProofOfLockChange) String() string {
 // IsAbsent checks if the polc is empty
 func (e ProofOfLockChange) IsAbsent() bool {
 	return e.Votes == nil && e.PubKey == nil
+}
+
+func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
+	if e == nil {
+		return nil, errors.New("nil proof of lock change")
+	}
+	plc := new(tmproto.ProofOfLockChange)
+	vpb := make([]*tmproto.Vote, len(e.Votes))
+
+	// if absent create empty proto polc
+	if e.IsAbsent() {
+		return plc, nil
+	}
+
+	if e.Votes == nil {
+		return nil, errors.New("polc is not absent but has no votes")
+	}
+	for i, v := range e.Votes {
+		pb := v.ToProto()
+		if pb != nil {
+			vpb[i] = pb
+		}
+	}
+
+	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	plc.PubKey = &pk
+	plc.Votes = vpb
+
+	return plc, nil
 }
 
 // AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
@@ -1466,35 +1503,6 @@ func (e AmnesiaEvidence) String() string {
 	return fmt.Sprintf("AmnesiaEvidence{ %v, polc: %v }", e.PotentialAmnesiaEvidence, e.Polc)
 }
 
-func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
-	if e == nil {
-		return nil, errors.New("nil proof of lock change")
-	}
-	plc := new(tmproto.ProofOfLockChange)
-	vpb := make([]*tmproto.Vote, len(e.Votes))
-
-	// if absent create empty proto polc
-	if e.IsAbsent() {
-		return plc, nil
-	}
-
-	for i, v := range e.Votes {
-		pb := v.ToProto()
-		if pb != nil {
-			vpb[i] = pb
-		}
-	}
-
-	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
-	if err != nil {
-		return nil, err
-	}
-	plc.PubKey = &pk
-	plc.Votes = vpb
-
-	return plc, nil
-}
-
 func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChange, error) {
 	if pb == nil {
 		return nil, errors.New("nil proof of lock change")
@@ -1507,6 +1515,10 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 		return plc, nil
 	}
 
+	if pb.Votes == nil {
+		return nil, errors.New("proofOfLockChange: is not absent but has no votes")
+	}
+
 	vpb := make([]Vote, len(pb.Votes))
 	for i, v := range pb.Votes {
 		vi, err := VoteFromProto(v)
@@ -1517,7 +1529,7 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 	}
 
 	if pb.PubKey == nil {
-		return nil, errors.New("proofOfLockChange: nil PubKey")
+		return nil, errors.New("proofOfLockChange: is not abest but has nil PubKey")
 	}
 	pk, err := cryptoenc.PubKeyFromProto(*pb.PubKey)
 	if err != nil {
@@ -1541,8 +1553,8 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 		return nil, err
 	}
 	tp := PotentialAmnesiaEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:       voteA,
+		VoteB:       voteB,
 		HeightStamp: pb.GetHeightStamp(),
 	}
 
