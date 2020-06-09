@@ -602,44 +602,18 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 }
 
-func makeRandHeader() Header {
-	chainID := "test"
-	t := time.Now()
-	height := tmrand.Int63()
-	randBytes := tmrand.Bytes(tmhash.Size)
-	randAddress := tmrand.Bytes(crypto.AddressSize)
-	h := Header{
-		Version:            version.Consensus{Block: 1, App: 1},
-		ChainID:            chainID,
-		Height:             height,
-		Time:               t,
-		LastBlockID:        BlockID{},
-		LastCommitHash:     randBytes,
-		DataHash:           randBytes,
-		ValidatorsHash:     randBytes,
-		NextValidatorsHash: randBytes,
-		ConsensusHash:      randBytes,
-		AppHash:            randBytes,
-
-		LastResultsHash: randBytes,
-
-		EvidenceHash:    randBytes,
-		ProposerAddress: randAddress,
-	}
-
-	return h
-}
-
 func TestBlockProtoBuf(t *testing.T) {
 	h := tmrand.Int63()
 	c1 := randCommit(time.Now())
 	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
 	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
+
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
 	evi := NewMockEvidence(b2.Height, time.Now(), tmrand.Bytes(32))
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
+
 	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
 	b3.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
 	testCases := []struct {
@@ -679,7 +653,6 @@ func TestDataProtoBuf(t *testing.T) {
 	_ = data.Hash()
 	data2 := &Data{Txs: Txs{}}
 	_ = data2.Hash()
-
 	testCases := []struct {
 		msg     string
 		data1   *Data
@@ -698,6 +671,74 @@ func TestDataProtoBuf(t *testing.T) {
 			require.Error(t, err, tc.msg)
 		}
 	}
+}
+
+func TestEvidenceDataProtoBuf(t *testing.T) {
+	val := NewMockPV()
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
+	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
+	ev := NewDuplicateVoteEvidence(v2, v)
+	data := &EvidenceData{Evidence: EvidenceList{ev}}
+	_ = data.Hash()
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceData
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", data, true, true},
+		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
+		{"fail nil Data", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		eviD := new(EvidenceData)
+		err = eviD.FromProto(protoData)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func makeRandHeader() Header {
+	chainID := "test"
+	t := time.Now()
+	height := tmrand.Int63()
+	randBytes := tmrand.Bytes(tmhash.Size)
+	randAddress := tmrand.Bytes(crypto.AddressSize)
+	h := Header{
+		Version:            version.Consensus{Block: 1, App: 1},
+		ChainID:            chainID,
+		Height:             height,
+		Time:               t,
+		LastBlockID:        BlockID{},
+		LastCommitHash:     randBytes,
+		DataHash:           randBytes,
+		ValidatorsHash:     randBytes,
+		NextValidatorsHash: randBytes,
+		ConsensusHash:      randBytes,
+		AppHash:            randBytes,
+
+		LastResultsHash: randBytes,
+
+		EvidenceHash:    randBytes,
+		ProposerAddress: randAddress,
+	}
+
+	return h
 }
 
 func TestHeaderProto(t *testing.T) {
@@ -774,73 +815,6 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
 			require.Equal(t, tc.sh1, sh, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
-	}
-}
-
-func TestEvidenceDataProtoBuf(t *testing.T) {
-	val := NewMockPV()
-	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
-	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
-	ev := NewDuplicateVoteEvidence(v2, v)
-	data := &EvidenceData{Evidence: EvidenceList{ev}}
-	_ = data.Hash()
-	testCases := []struct {
-		msg      string
-		data1    *EvidenceData
-		expPass1 bool
-		expPass2 bool
-	}{
-		{"success", data, true, true},
-		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
-		{"fail nil Data", nil, false, false},
-	}
-
-	for _, tc := range testCases {
-		protoData, err := tc.data1.ToProto()
-		if tc.expPass1 {
-			require.NoError(t, err, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
-
-		eviD := new(EvidenceData)
-		err = eviD.FromProto(protoData)
-		if tc.expPass2 {
-			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.data1, eviD, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
-	}
-}
-func TestCommitProtoBuf(t *testing.T) {
-	commit := randCommit(time.Now())
-
-	testCases := []struct {
-		msg     string
-		c1      *Commit
-		expPass bool
-	}{
-		{"success", commit, true},
-		// Empty value sets signatures to nil, signatures should not be nillable
-		{"empty commit", &Commit{Signatures: []CommitSig{}}, true},
-		{"fail Commit nil", nil, false},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		protoCommit := tc.c1.ToProto()
-
-		c, err := CommitFromProto(protoCommit)
-
-		if tc.expPass {
-			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.c1, c, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}

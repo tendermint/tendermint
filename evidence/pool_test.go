@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -283,19 +284,21 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	stateDB := dbm.NewMemDB()
+	pk := ed25519.GenPrivKey().PubKey()
 
 	// create validator set and state
+	validator := &types.Validator{Address: valAddr, VotingPower: 100, PubKey: pk}
 	valSet := &types.ValidatorSet{
-		Validators: []*types.Validator{
-			{Address: valAddr, VotingPower: 0},
-		},
+		Validators: []*types.Validator{validator},
+		Proposer:   validator,
 	}
+
 	state := sm.State{
 		LastBlockHeight:             height,
 		LastBlockTime:               tmtime.Now(),
-		LastValidators:              valSet,
 		Validators:                  valSet,
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
+		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

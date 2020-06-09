@@ -6,6 +6,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -58,6 +59,18 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
 	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
+}
+
+func init() {
+	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
+	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
+	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
+	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
+	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
+	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
+	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
+	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
+	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
 }
 
 // Most event messages are basic types (a block, a transaction)

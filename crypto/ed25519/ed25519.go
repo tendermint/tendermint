@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 //-------------------------------------
@@ -30,6 +31,11 @@ const (
 	// private key representations used by RFC 8032.
 	SeedSize = 32
 )
+
+func init() {
+	tmjson.RegisterType(PubKey{}, PubKeyAminoName)
+	tmjson.RegisterType(PrivKey{}, PrivKeyAminoName)
+}
 
 // PrivKey implements crypto.PrivKey.
 type PrivKey []byte
