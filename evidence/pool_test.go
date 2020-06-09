@@ -346,7 +346,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	}
 	// we expect the evidence pool to find the polc but log an error as the polc is not valid -> vote was
 	// not from a validator in this set. However, an error isn't thrown because the evidence pool
-	// should still be able to save the regular potential amensia evidence.
+	// should still be able to save the regular potential amnesia evidence.
 	err = pool.AddEvidence(ev)
 	assert.NoError(t, err)
 
