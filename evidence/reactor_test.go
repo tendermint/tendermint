@@ -205,31 +205,3 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peers := reactors[1].Switch.Peers().List()
 	assert.Equal(t, 1, len(peers))
 }
-func TestListMessageValidationBasic(t *testing.T) {
-
-	testCases := []struct {
-		testName          string
-		malleateEvListMsg func(*ListMessage)
-		expectErr         bool
-	}{
-		{"Good ListMessage", func(evList *ListMessage) {}, false},
-		{"Invalid ListMessage", func(evList *ListMessage) {
-			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{})
-		}, true},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			evListMsg := &ListMessage{}
-			n := 3
-			valAddr := []byte("myval")
-			evListMsg.Evidence = make([]types.Evidence, n)
-			for i := 0; i < n; i++ {
-				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), valAddr)
-			}
-			tc.malleateEvListMsg(evListMsg)
-			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
