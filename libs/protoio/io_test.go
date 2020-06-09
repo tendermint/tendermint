@@ -138,7 +138,7 @@ func TestVarintMaxSize(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 20)
-	if err := iotest(writer, reader); err != io.ErrShortBuffer {
+	if err := iotest(writer, reader); err == nil {
 		t.Error(err)
 	} else {
 		t.Logf("%s", err)
