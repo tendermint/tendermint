@@ -324,7 +324,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = pool.RetrievePOLC(25, 1)
-	require.NoError(t, exists)
+	require.NoError(t, err)
 
 	voteA := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
 	err = val.SignVote(evidenceChainID, voteA)

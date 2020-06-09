@@ -594,6 +594,10 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 			continue
 		}
 		ev, err := types.EvidenceFromProto(&evpb)
+		if err != nil {
+			evpool.logger.Error("coverting to evidence from proto", "err", err)
+			continue
+		}
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
 		if ev, ok := ev.(types.PotentialAmnesiaEvidence); ok {
 			if ev.Primed(trialPeriod, evpool.State().LastBlockHeight) {

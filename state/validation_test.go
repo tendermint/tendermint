@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	memmock "github.com/tendermint/tendermint/mempool/mock"
+	protostate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
@@ -577,12 +578,17 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	require.NoError(t, err)
 	vals2.Validators = append(vals2.Validators, types.NewValidator(pubKey, 1000))
 	valKey := []byte("validatorsKey:2")
-	valInfo := &sm.ValidatorsInfo{
+	protoVals, err := vals2.ToProto()
+	require.NoError(t, err)
+	valInfo := &protostate.ValidatorsInfo{
 		LastHeightChanged: 2,
-		ValidatorSet:      vals2,
+		ValidatorSet:      protoVals,
 	}
 
-	stateDB.Set(valKey, valInfo.Bytes())
+	bz, err := valInfo.Marshal()
+	require.NoError(t, err)
+
+	stateDB.Set(valKey, bz)
 	ev = types.PhantomValidatorEvidence{
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
