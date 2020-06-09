@@ -5,7 +5,7 @@ option go_package = "github.com/tendermint/tendermint/proto/crypto/merkle";
 
 import "third_party/proto/gogoproto/gogo.proto";
 
-message SimpleProof {
+message Proof {
   int64          total     = 1;
   int64          index     = 2;
   bytes          leaf_hash = 3;
@@ -22,6 +22,6 @@ message ProofOp {
 }
 
 // Proof is Merkle proof defined by the list of ProofOps
-message Proof {
+message ProofOps {
   repeated ProofOp ops = 1 [(gogoproto.nullable) = false];
 }
