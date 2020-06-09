@@ -21,7 +21,7 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultPruningSize      = 1000
+	defaultPruningSize      = 100
 	defaultMaxRetryAttempts = 10
 	// For bisection, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal bisection) so to
@@ -650,8 +650,8 @@ func (c *Client) sequence(
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, interimVals,
 			c.trustingPeriod, now, c.maxClockDrift)
 		if err != nil {
-			// return fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
-			// 	trustedHeader.Height, interimHeader.Height, err)
+			err := fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
+				trustedHeader.Height, interimHeader.Height, err)
 
 			switch errors.Unwrap(err).(type) {
 			case ErrInvalidHeader:
@@ -659,7 +659,7 @@ func (c *Client) sequence(
 				replaceErr := c.replacePrimaryProvider()
 				if replaceErr != nil {
 					c.logger.Error("Can't replace primary", "err", replaceErr)
-					return err // return original error
+					return fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
 				}
 				// attempt to verify header again
 				height--
