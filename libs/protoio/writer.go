@@ -31,6 +31,7 @@
 package protoio
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
@@ -87,4 +88,13 @@ func (w *varintWriter) Close() error {
 		return closer.Close()
 	}
 	return nil
+}
+
+func MarshalDelimited(msg proto.Message) ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := NewDelimitedWriter(&buf).WriteMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

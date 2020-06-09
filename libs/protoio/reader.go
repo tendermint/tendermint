@@ -31,6 +31,7 @@
 package protoio
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
@@ -79,4 +80,8 @@ func (r *varintReader) Close() error {
 		return r.closer.Close()
 	}
 	return nil
+}
+
+func UnmarshalDelimited(data []byte, msg proto.Message) error {
+	return NewDelimitedReader(bytes.NewReader(data), len(data)).ReadMsg(msg)
 }
