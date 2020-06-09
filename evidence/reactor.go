@@ -71,8 +71,6 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	evR.Logger.Debug("Receive", "src", src, "chId", chID)
-
 	for _, ev := range evis {
 		err := evR.evpool.AddEvidence(ev)
 		switch err.(type) {
@@ -121,7 +119,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 
 		ev := next.Value.(types.Evidence)
 		evis, retry := evR.checkSendEvidenceMessage(peer, ev)
-		if len(evis) >= 1 {
+		if len(evis) > 0 {
 			msgBytes, err := encodeMsg(evis)
 			if err != nil {
 				panic(err)
@@ -219,8 +217,7 @@ type PeerState interface {
 func encodeMsg(evis []types.Evidence) ([]byte, error) {
 	evi := make([]*tmproto.Evidence, len(evis))
 	for i := 0; i < len(evis); i++ {
-		le := evis[i]
-		ev, err := types.EvidenceToProto(le)
+		ev, err := types.EvidenceToProto(evis[i])
 		if err != nil {
 			return nil, err
 		}
