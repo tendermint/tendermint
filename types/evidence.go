@@ -184,15 +184,34 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 				},
 			},
 		}
+		return tp, nil
 
-	case AmnesiaEvidence, *AmnesiaEvidence:
+	case AmnesiaEvidence:
 		potentialAmensiaEvidence, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
-		if err != nil { return nil, err}
-		
+		if err != nil {
+			return nil, err
+		}
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_AmnesiaEvidence{
 				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-					potentialAmnesiaEvidence, 
+					potentialAmnesiaEvidence,
+					Polc: evi.Polc.ToProto(),
+				},
+			},
+		}
+
+		return tp, nil
+	case *AmnesiaEvidence:
+		potentialAmensiaEvidence, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+		if err != nil {
+			return nil, err
+		}
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_AmnesiaEvidence{
+				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
+					potentialAmnesiaEvidence,
 					Polc: evi.Polc.ToProto(),
 				},
 			},
