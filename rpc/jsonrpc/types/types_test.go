@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	amino "github.com/tendermint/go-amino"
 )
 
 type SampleResult struct {
@@ -32,10 +31,9 @@ var responseTests = []responseTest{
 
 func TestResponses(t *testing.T) {
 	assert := assert.New(t)
-	cdc := amino.NewCodec()
 	for _, tt := range responseTests {
 		jsonid := tt.id
-		a := NewRPCSuccessResponse(cdc, jsonid, &SampleResult{"hello"})
+		a := NewRPCSuccessResponse(jsonid, &SampleResult{"hello"})
 		b, _ := json.Marshal(a)
 		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
 		assert.Equal(s, string(b))
@@ -54,7 +52,6 @@ func TestResponses(t *testing.T) {
 
 func TestUnmarshallResponses(t *testing.T) {
 	assert := assert.New(t)
-	cdc := amino.NewCodec()
 	for _, tt := range responseTests {
 		response := &RPCResponse{}
 		err := json.Unmarshal(
@@ -62,7 +59,7 @@ func TestUnmarshallResponses(t *testing.T) {
 			response,
 		)
 		assert.Nil(err)
-		a := NewRPCSuccessResponse(cdc, tt.id, &SampleResult{"hello"})
+		a := NewRPCSuccessResponse(tt.id, &SampleResult{"hello"})
 		assert.Equal(*response, a)
 	}
 	response := &RPCResponse{}
