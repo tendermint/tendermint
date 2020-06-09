@@ -12,7 +12,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -81,14 +80,13 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr       = tmrand.Bytes(crypto.AddressSize)
-		height        = int64(1)
-		lastBlockTime = time.Now()
-		stateDB       = initializeValidatorState(valAddr, height)
-		evidenceDB    = dbm.NewMemDB()
-		blockStoreDB  = dbm.NewMemDB()
-		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
-		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		height       = int64(1)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -224,13 +222,13 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	assert.NoError(t, err)
 
 	// should be able to retrieve polc
-	newPolc, exists := pool.RetrievePOLC(1, 1)
-	assert.True(t, exists)
+	newPolc, err := pool.RetrievePOLC(1, 1)
+	assert.NoError(t, err)
 	assert.True(t, polc.Equal(newPolc))
 
 	// should not be able to retrieve
-	emptyPolc, exists := pool.RetrievePOLC(2, 1)
-	assert.False(t, exists)
+	emptyPolc, err := pool.RetrievePOLC(2, 1)
+	assert.Error(t, err)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 	lastCommit := makeCommit(height-1, valAddr)
@@ -242,8 +240,8 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	// update should prune the polc
 	pool.Update(block, state)
 
-	emptyPolc, exists = pool.RetrievePOLC(1, 1)
-	assert.False(t, exists)
+	emptyPolc, err = pool.RetrievePOLC(1, 1)
+	assert.Error(t, err)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }
@@ -325,8 +323,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	err = pool.AddPOLC(polc)
 	require.NoError(t, err)
 
-	_, exists := pool.RetrievePOLC(25, 1)
-	require.True(t, exists)
+	_, err = pool.RetrievePOLC(25, 1)
+	require.NoError(t, exists)
 
 	voteA := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
 	err = val.SignVote(evidenceChainID, voteA)
@@ -389,6 +387,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) d
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks:  20,
 				MaxAgeDuration:   48 * time.Hour,
+				MaxNum:           50,
 				ProofTrialPeriod: 1,
 			},
 		},

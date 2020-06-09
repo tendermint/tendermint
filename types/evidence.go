@@ -187,7 +187,17 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		return tp, nil
 
 	case AmnesiaEvidence:
-		potentialAmensiaEvidence, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+		ev, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+		if err != nil {
+			return nil, err
+		}
+		// EvidenceToProto turns the evidence into Evidence oneof but we neeed a specific type
+		paepb := ev.GetPotentialAmnesiaEvidence()
+		if paepb == nil {
+			return nil, errors.New("provided evidence is not potential amnesia evidence")
+		}
+
+		polc, err := evi.Polc.ToProto()
 		if err != nil {
 			return nil, err
 		}
@@ -195,15 +205,25 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_AmnesiaEvidence{
 				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-					potentialAmnesiaEvidence,
-					Polc: evi.Polc.ToProto(),
+					PotentialAmnesiaEvidence: paepb,
+					Polc:                     polc,
 				},
 			},
 		}
 
 		return tp, nil
 	case *AmnesiaEvidence:
-		potentialAmensiaEvidence, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+		ev, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+		if err != nil {
+			return nil, err
+		}
+
+		paepb := ev.GetPotentialAmnesiaEvidence()
+		if paepb == nil {
+			return nil, errors.New("provided evidence is not potential amnesia evidence")
+		}
+
+		polc, err := evi.Polc.ToProto()
 		if err != nil {
 			return nil, err
 		}
@@ -211,8 +231,8 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_AmnesiaEvidence{
 				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-					potentialAmnesiaEvidence,
-					Polc: evi.Polc.ToProto(),
+					PotentialAmnesiaEvidence: paepb,
+					Polc:                     polc,
 				},
 			},
 		}

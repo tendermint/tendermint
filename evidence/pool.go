@@ -217,8 +217,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
 			// a) first try to find a corresponding polc
 			for round := pe.VoteB.Round; round > pe.VoteA.Round; round-- {
-				polc, exists = evpool.RetrievePOLC(height, round)
-				if exists {
+				polc, err = evpool.RetrievePOLC(height, round)
+				if err != nil {
 					// we should not need to verify it if both the polc and potential amnesia evidence have already
 					// been verified. We replace the potential amnesia evidence.
 					err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pe, polc))
@@ -241,9 +241,16 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				pe.Height()+evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks {
 				// if we can't find a proof of lock change and we know that the trial period will finish before the
 				// evidence has expired, then we commence the trial period by saving it in the awaiting bucket
-				evBytes := cdc.MustMarshalBinaryBare(pe)
+				pbe, err := types.EvidenceToProto(pe)
+				if err != nil {
+					return err
+				}
+				evBytes, err := pbe.Marshal()
+				if err != nil {
+					return err
+				}
 				key := keyAwaiting(pe)
-				err := evpool.evidenceStore.Set(key, evBytes)
+				err = evpool.evidenceStore.Set(key, evBytes)
 				if err != nil {
 					return err
 				}
@@ -353,11 +360,11 @@ func (evpool *Pool) RetrievePOLC(height int64, round int32) (polc types.ProofOfL
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve polc", "err", err)
-		return
+		return polc, err
 	}
 
 	if polcBytes == nil {
-		return
+		return polc, fmt.Errorf("nil value in database for key: %s", key)
 	}
 
 	err = proto.Unmarshal(polcBytes, &pbpolc)
@@ -580,27 +587,30 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 	for ; iter.Valid(); iter.Next() {
 		paeBytes := iter.Value()
 		// 2) Retrieve the evidence
-		var ev types.PotentialAmnesiaEvidence
-		err := cdc.UnmarshalBinaryBare(paeBytes, &ev)
+		var evpb tmproto.Evidence
+		err := evpb.Unmarshal(paeBytes)
 		if err != nil {
 			evpool.logger.Error("Unable to unmarshal potential amnesia evidence", "err", err)
 			continue
 		}
+		ev, err := types.EvidenceFromProto(&evpb)
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
-		if ev.Primed(trialPeriod, evpool.State().LastBlockHeight) {
-			err := evpool.AddEvidence(types.MakeAmnesiaEvidence(ev, types.EmptyPOLC()))
-			if err != nil {
-				evpool.logger.Error("Unable to add amnesia evidence", "err", err)
-				continue
+		if ev, ok := ev.(types.PotentialAmnesiaEvidence); ok {
+			if ev.Primed(trialPeriod, evpool.State().LastBlockHeight) {
+				err := evpool.AddEvidence(types.MakeAmnesiaEvidence(ev, types.EmptyPOLC()))
+				if err != nil {
+					evpool.logger.Error("Unable to add amnesia evidence", "err", err)
+					continue
+				}
+				err = evpool.evidenceStore.Delete(iter.Key())
+				if err != nil {
+					evpool.logger.Error("Unable to delete potential amnesia evidence", "err", err)
+					continue
+				}
+			} else {
+				// once we reach a piece of evidence that isn't ready send back the height with which it will be ready
+				return ev.HeightStamp + trialPeriod
 			}
-			err = evpool.evidenceStore.Delete(iter.Key())
-			if err != nil {
-				evpool.logger.Error("Unable to delete potential amnesia evidence", "err", err)
-				continue
-			}
-		} else {
-			// once we reach a piece of evidence that isn't ready send back the height with which it will be ready
-			return ev.HeightStamp + trialPeriod
 		}
 	}
 	// if we have no evidence left to process we want to reset nextEvidenceTrialEndedHeight
