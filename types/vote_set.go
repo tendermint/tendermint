@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/libs/bits"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -477,7 +478,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return cdc.MarshalJSON(VoteSetJSON{
+	return tmjson.Marshal(VoteSetJSON{
 		voteSet.voteStrings(),
 		voteSet.bitArrayString(),
 		voteSet.peerMaj23s,

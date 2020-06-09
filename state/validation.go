@@ -40,7 +40,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.Height,
 		)
 	}
-
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
@@ -103,7 +102,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				state.LastBlockTime,
 			)
 		}
-
 		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
 			return fmt.Errorf("invalid block time. Expected %v, got %v",
@@ -210,10 +208,6 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-
-	// TODO: function should compare with the header the node received of the same height not the latest height because
-	// the validator hashes could potentially be different anyway and this could mean that nodes could falsely
-	// create evidence against an honest node
 	if ev, ok := evidence.(types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err

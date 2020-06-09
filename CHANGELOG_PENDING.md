@@ -12,6 +12,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [blockchain] \#4637 Transition blockchain reactor(s) to Protobuf encoding
   - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
   - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
   - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
@@ -35,6 +36,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
   - [state] \#4679 `state` reactor migration to Protobuf encoding
   - [evidence] \#4959 Add json tags to `DuplicateVoteEvidence`
+  - [p2p/pex] \#4973 `p2p/pex` reactor migration to Protobuf encoding
+  - [light] \#4964 `light` reactor migration to Protobuf encoding
+  - [store] \#4778 Transition store module to protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+  - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
 
 - Apps
 
@@ -63,6 +70,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
 - [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
+- [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 
 ### IMPROVEMENTS:
 
@@ -83,3 +92,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)

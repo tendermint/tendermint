@@ -13,7 +13,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -134,7 +136,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// create statedb for everyone
 	stateDBs := make([]dbm.DB, N)
-	valAddr := []byte("myval")
+	valAddr := tmrand.Bytes(crypto.AddressSize)
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
 	for i := 0; i < N; i++ {
@@ -169,7 +171,7 @@ func (ps peerState) GetHeight() int64 {
 func TestReactorSelectiveBroadcast(t *testing.T) {
 	config := cfg.TestConfig()
 
-	valAddr := []byte("myval")
+	valAddr := tmrand.Bytes(crypto.AddressSize)
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
@@ -202,32 +204,4 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()
 	assert.Equal(t, 1, len(peers))
-}
-func TestListMessageValidationBasic(t *testing.T) {
-
-	testCases := []struct {
-		testName          string
-		malleateEvListMsg func(*ListMessage)
-		expectErr         bool
-	}{
-		{"Good ListMessage", func(evList *ListMessage) {}, false},
-		{"Invalid ListMessage", func(evList *ListMessage) {
-			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{})
-		}, true},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			evListMsg := &ListMessage{}
-			n := 3
-			valAddr := []byte("myval")
-			evListMsg.Evidence = make([]types.Evidence, n)
-			for i := 0; i < n; i++ {
-				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), valAddr)
-			}
-			tc.malleateEvListMsg(evListMsg)
-			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
 }

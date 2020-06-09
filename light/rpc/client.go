@@ -479,7 +479,6 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 				// depending on the event's type.
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
-						ctx.WSConn.Codec(),
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))

@@ -65,6 +65,6 @@ message EvidenceData {
 }
 
 message ProofOfLockChange {
-  repeated Vote                          votes   = 1 [(gogoproto.nullable) = false];
-  tendermint.proto.crypto.keys.PublicKey pub_key = 2 [(gogoproto.nullable) = false];
+  repeated Vote                          votes   = 1;
+  tendermint.proto.crypto.keys.PublicKey pub_key = 2;
 }
