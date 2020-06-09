@@ -710,7 +710,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	t.Log(polc.Address())
 	// but not for round 0
 	polc, err = evpool.RetrievePOLC(height, round-1)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.True(t, polc.IsAbsent())
 
 }
