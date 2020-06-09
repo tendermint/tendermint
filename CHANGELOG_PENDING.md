@@ -23,6 +23,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [consensus] \#4582 HeightVoteSet: `round` is now int32
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
+  - [crypto] \4988 Removal of key type multisig
+    - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
   - [crypto] \#4941 Remove suffixes from all keys.
     - ed25519: type `PrivKeyEd25519` is now `PrivKey`
     - ed25519: type `PubKeyEd25519` is now `PubKey`
