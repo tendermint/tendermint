@@ -6,12 +6,16 @@ import (
 	"io"
 	"testing"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/gtank/merlin"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/chacha20poly1305"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 type buffer struct {
@@ -80,14 +84,15 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 	switch c.readStep {
 	case 0:
 		if !c.badEphKey {
-			bz, err := cdc.MarshalBinaryLengthPrefixed(c.locEphPub)
+			lc := *c.locEphPub
+			bz, err := protoio.MarshalDelimited(&gogotypes.BytesValue{Value: lc[:]})
 			if err != nil {
 				panic(err)
 			}
 			copy(data, bz[c.readOffset:])
 			n = len(data)
 		} else {
-			bz, err := cdc.MarshalBinaryLengthPrefixed([]byte("drop users;"))
+			bz, err := protoio.MarshalDelimited(&gogotypes.BytesValue{Value: []byte("drop users;")})
 			if err != nil {
 				panic(err)
 			}
@@ -108,7 +113,11 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 	case 1:
 		signature := c.signChallenge()
 		if !c.badAuthSignature {
-			bz, err := cdc.MarshalBinaryLengthPrefixed(authSigMessage{c.privKey.PubKey(), signature})
+			pkpb, err := cryptoenc.PubKeyToProto(c.privKey.PubKey())
+			if err != nil {
+				panic(err)
+			}
+			bz, err := protoio.MarshalDelimited(&tmp2p.AuthSigMessage{PubKey: pkpb, Sig: signature})
 			if err != nil {
 				panic(err)
 			}
@@ -121,7 +130,7 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 			}
 			copy(data, c.buffer.Bytes()[c.readOffset:])
 		} else {
-			bz, err := cdc.MarshalBinaryLengthPrefixed([]byte("select * from users;"))
+			bz, err := protoio.MarshalDelimited(&gogotypes.BytesValue{Value: []byte("select * from users;")})
 			if err != nil {
 				panic(err)
 			}
@@ -144,10 +153,16 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 func (c *evilConn) Write(data []byte) (n int, err error) {
 	switch c.writeStep {
 	case 0:
-		err := cdc.UnmarshalBinaryLengthPrefixed(data, c.remEphPub)
+		var (
+			bytes     gogotypes.BytesValue
+			remEphPub [32]byte
+		)
+		err := protoio.UnmarshalDelimited(data, &bytes)
 		if err != nil {
 			panic(err)
 		}
+		copy(remEphPub[:], bytes.Value)
+		c.remEphPub = &remEphPub
 		c.writeStep = 1
 		if !c.shareAuthSignature {
 			c.writeStep = 2
@@ -235,7 +250,7 @@ func TestMakeSecretConnection(t *testing.T) {
 		errMsg string
 	}{
 		{"refuse to share ethimeral key", newEvilConn(false, false, false, false), "EOF"},
-		{"share bad ethimeral key", newEvilConn(true, true, false, false), "Insufficient bytes to decode"},
+		{"share bad ethimeral key", newEvilConn(true, true, false, false), "wrong wireType"},
 		{"refuse to share auth signature", newEvilConn(true, false, false, false), "EOF"},
 		{"share bad auth signature", newEvilConn(true, false, true, true), "failed to decrypt SecretConnection"},
 		{"all good", newEvilConn(true, false, true, false), ""},
