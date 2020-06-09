@@ -25,7 +25,7 @@ type ValueOp struct {
 	key []byte
 
 	// To encode in ProofOp.Data
-	Proof *Proof `json:"simple_proof"`
+	Proof *Proof `json:"proof"`
 }
 
 var _ ProofOperator = ValueOp{}
@@ -44,7 +44,7 @@ func ValueOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
 	var op ValueOp // a bit strange as we'll discard this, but it works.
 	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
-		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
+		return nil, fmt.Errorf("decoding ProofOp.Data into ValueOp: %w", err)
 	}
 	return NewValueOp(pop.Key, op.Proof), nil
 }
@@ -59,7 +59,7 @@ func (op ValueOp) ProofOp() tmmerkle.ProofOp {
 }
 
 func (op ValueOp) String() string {
-	return fmt.Sprintf("SimpleValueOp{%v}", op.GetKey())
+	return fmt.Sprintf("ValueOp{%v}", op.GetKey())
 }
 
 func (op ValueOp) Run(args [][]byte) ([][]byte, error) {

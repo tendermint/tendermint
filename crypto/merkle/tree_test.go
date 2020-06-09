@@ -17,7 +17,7 @@ func (tI testItem) Hash() []byte {
 	return []byte(tI)
 }
 
-func TestSimpleProof(t *testing.T) {
+func TestProof(t *testing.T) {
 
 	total := 100
 
@@ -28,7 +28,7 @@ func TestSimpleProof(t *testing.T) {
 
 	rootHash := HashFromByteSlices(items)
 
-	rootHash2, proofs := SimpleProofsFromByteSlices(items)
+	rootHash2, proofs := ProofsFromByteSlices(items)
 
 	require.Equal(t, rootHash, rootHash2, "Unmatched root hashes: %X vs %X", rootHash, rootHash2)
 
@@ -70,7 +70,7 @@ func TestSimpleProof(t *testing.T) {
 	}
 }
 
-func TestSimpleHashAlternatives(t *testing.T) {
+func TestHashAlternatives(t *testing.T) {
 
 	total := 100
 
@@ -84,7 +84,7 @@ func TestSimpleHashAlternatives(t *testing.T) {
 	require.Equal(t, rootHash1, rootHash2, "Unmatched root hashes: %X vs %X", rootHash1, rootHash2)
 }
 
-func BenchmarkSimpleHashAlternatives(b *testing.B) {
+func BenchmarkHashAlternatives(b *testing.B) {
 	total := 100
 
 	items := make([][]byte, total)

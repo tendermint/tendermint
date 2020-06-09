@@ -142,7 +142,7 @@ func bz(s string) []byte {
 	return []byte(s)
 }
 
-func TestSimpleProofValidateBasic(t *testing.T) {
+func TestProofValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		malleateProof func(*Proof)
@@ -162,7 +162,7 @@ func TestSimpleProofValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			_, proofs := SimpleProofsFromByteSlices([][]byte{
+			_, proofs := ProofsFromByteSlices([][]byte{
 				[]byte("apple"),
 				[]byte("watermelon"),
 				[]byte("kiwi"),

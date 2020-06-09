@@ -59,7 +59,7 @@ func (a ABCIResults) Hash() []byte {
 
 // ProveResult returns a merkle proof of one result from the set
 func (a ABCIResults) ProveResult(i int) merkle.Proof {
-	_, proofs := merkle.SimpleProofsFromByteSlices(a.toByteSlices())
+	_, proofs := merkle.ProofsFromByteSlices(a.toByteSlices())
 	return *proofs[i]
 }
 

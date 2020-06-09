@@ -69,7 +69,7 @@ func (txs Txs) Proof(i int) TxProof {
 	for i := 0; i < l; i++ {
 		bzs[i] = txs[i].Hash()
 	}
-	root, proofs := merkle.SimpleProofsFromByteSlices(bzs)
+	root, proofs := merkle.ProofsFromByteSlices(bzs)
 
 	return TxProof{
 		RootHash: root,

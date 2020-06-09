@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	// MaxAunts is the maximum number of aunts that can be included in a SimpleProof.
+	// MaxAunts is the maximum number of aunts that can be included in a Proof.
 	// This corresponds to a tree of size 2^100, which should be sufficient for all conceivable purposes.
 	// This maximum helps prevent Denial-of-Service attacks by limitting the size of the proofs.
 	MaxAunts = 100
 )
 
-// Proof represents a simple Merkle proof.
+// Proof represents a Merkle proof.
 // NOTE: The convention for proofs is to include leaf hashes but to
 // exclude the root hash.
 // This convention is implemented across IAVL range proofs as well.
@@ -30,9 +30,9 @@ type Proof struct {
 	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
 
-// SimpleProofsFromByteSlices computes inclusion proof for given items.
+// ProofsFromByteSlices computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Proof) {
+func ProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Proof) {
 	trails, rootSPN := trailsFromByteSlices(items)
 	rootHash = rootSPN.Hash
 	proofs = make([]*Proof, len(items))
@@ -47,7 +47,7 @@ func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Proo
 	return
 }
 
-// Verify that the SimpleProof proves the root hash.
+// Verify that the Proof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
 func (sp *Proof) Verify(rootHash []byte, leaf []byte) error {
 	leafHash := leafHash(leaf)
@@ -77,15 +77,15 @@ func (sp *Proof) ComputeRootHash() []byte {
 	)
 }
 
-// String implements the stringer interface for SimpleProof.
+// String implements the stringer interface for Proof.
 // It is a wrapper around StringIndented.
 func (sp *Proof) String() string {
 	return sp.StringIndented("")
 }
 
-// StringIndented generates a canonical string representation of a SimpleProof.
+// StringIndented generates a canonical string representation of a Proof.
 func (sp *Proof) StringIndented(indent string) string {
-	return fmt.Sprintf(`SimpleProof{
+	return fmt.Sprintf(`Proof{
 %s  Aunts: %X
 %s}`,
 		indent, sp.Aunts,
@@ -130,7 +130,7 @@ func (sp *Proof) ToProto() *tmmerkle.Proof {
 	return pb
 }
 
-func SimpleProofFromProto(pb *tmmerkle.Proof) (*Proof, error) {
+func ProofFromProto(pb *tmmerkle.Proof) (*Proof, error) {
 	if pb == nil {
 		return nil, errors.New("nil proof")
 	}
@@ -179,21 +179,21 @@ func computeHashFromAunts(index, total int64, leafHash []byte, innerHashes [][]b
 	}
 }
 
-// SimpleProofNode is a helper structure to construct merkle proof.
+// ProofNode is a helper structure to construct merkle proof.
 // The node and the tree is thrown away afterwards.
 // Exactly one of node.Left and node.Right is nil, unless node is the root, in which case both are nil.
 // node.Parent.Hash = hash(node.Hash, node.Right.Hash) or
 // hash(node.Left.Hash, node.Hash), depending on whether node is a left/right child.
-type SimpleProofNode struct {
+type ProofNode struct {
 	Hash   []byte
-	Parent *SimpleProofNode
-	Left   *SimpleProofNode // Left sibling  (only one of Left,Right is set)
-	Right  *SimpleProofNode // Right sibling (only one of Left,Right is set)
+	Parent *ProofNode
+	Left   *ProofNode // Left sibling  (only one of Left,Right is set)
+	Right  *ProofNode // Right sibling (only one of Left,Right is set)
 }
 
 // FlattenAunts will return the inner hashes for the item corresponding to the leaf,
-// starting from a leaf SimpleProofNode.
-func (spn *SimpleProofNode) FlattenAunts() [][]byte {
+// starting from a leaf ProofNode.
+func (spn *ProofNode) FlattenAunts() [][]byte {
 	// Nonrecursive impl.
 	innerHashes := [][]byte{}
 	for spn != nil {
@@ -212,20 +212,20 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 
 // trails[0].Hash is the leaf hash for items[0].
 // trails[i].Parent.Parent....Parent == root for all i.
-func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *SimpleProofNode) {
+func trailsFromByteSlices(items [][]byte) (trails []*ProofNode, root *ProofNode) {
 	// Recursive impl.
 	switch len(items) {
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{leafHash(items[0]), nil, nil, nil}
-		return []*SimpleProofNode{trail}, trail
+		trail := &ProofNode{leafHash(items[0]), nil, nil, nil}
+		return []*ProofNode{trail}, trail
 	default:
 		k := getSplitPoint(int64(len(items)))
 		lefts, leftRoot := trailsFromByteSlices(items[:k])
 		rights, rightRoot := trailsFromByteSlices(items[k:])
 		rootHash := innerHash(leftRoot.Hash, rightRoot.Hash)
-		root := &SimpleProofNode{rootHash, nil, nil, nil}
+		root := &ProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root
 		leftRoot.Right = rightRoot
 		rightRoot.Parent = root
