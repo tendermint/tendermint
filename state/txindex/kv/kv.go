@@ -425,6 +425,32 @@ func (txi *TxIndex) match(
 			default:
 			}
 		}
+		if err := it.Error(); err != nil {
+			panic(err)
+		}
+
+	case c.Op == query.OpExists:
+		// XXX: can't use startKeyBz here because c.Operand is nil
+		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
+		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
+		if err != nil {
+			panic(err)
+		}
+		defer it.Close()
+
+		for ; it.Valid(); it.Next() {
+			tmpHashes[string(it.Value())] = it.Value()
+
+			// Potentially exit early.
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
+		}
+		if err := it.Error(); err != nil {
+			panic(err)
+		}
 
 	case c.Op == query.OpContains:
 		// XXX: startKey does not apply here.
@@ -451,6 +477,9 @@ func (txi *TxIndex) match(
 				break
 			default:
 			}
+		}
+		if err := it.Error(); err != nil {
+			panic(err)
 		}
 	default:
 		panic("other operators should be handled already")
@@ -552,6 +581,9 @@ LOOP:
 			break
 		default:
 		}
+	}
+	if err := it.Error(); err != nil {
+		panic(err)
 	}
 
 	if len(tmpHashes) == 0 || firstRun {
