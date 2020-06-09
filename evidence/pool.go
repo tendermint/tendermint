@@ -5,10 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -131,7 +134,14 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 // that may be needed in the future to verify votes
 func (evpool *Pool) AddPOLC(polc types.ProofOfLockChange) error {
 	key := keyPOLC(polc)
-	polcBytes := cdc.MustMarshalBinaryBare(polc)
+	pbplc, err := polc.ToProto()
+	if err != nil {
+		return err
+	}
+	polcBytes, err := proto.Marshal(pbplc)
+	if err != nil {
+		return fmt.Errorf("addPOLC: unable to marshal ProofOfLockChange: %w", err)
+	}
 	return evpool.evidenceStore.Set(key, polcBytes)
 }
 
@@ -214,7 +224,13 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, lastBlockTime time.Tim
 	for _, ev := range evidence {
 		// As the evidence is stored in the block store we only need to record the height that it was saved at.
 		key := keyCommitted(ev)
-		evBytes := cdc.MustMarshalBinaryBare(height)
+
+		h := gogotypes.Int64Value{Value: height}
+		evBytes, err := proto.Marshal(&h)
+		if err != nil {
+			panic(err)
+		}
+
 		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
 			evpool.logger.Error("Unable to add committed evidence", "err", err)
 			// if we can't move evidence to committed then don't remove the evidence from pending
@@ -276,18 +292,28 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 }
 
 // RetrievePOLC attempts to find a polc at the given height and round, if not there it returns an error
-func (evpool *Pool) RetrievePOLC(height int64, round int32) (types.ProofOfLockChange, error) {
-	var polc types.ProofOfLockChange
+func (evpool *Pool) RetrievePOLC(height int64, round int32) (polc types.ProofOfLockChange, err error) {
+	var pbpolc tmproto.ProofOfLockChange
 	key := keyPOLCFromHeightAndRound(height, round)
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
 		return polc, err
 	}
+
 	if polcBytes == nil {
 		return polc, fmt.Errorf("unable to find polc at height %d and round %d", height, round)
 	}
-	err = cdc.UnmarshalBinaryBare(polcBytes, &polc)
-	return polc, err
+
+	err = proto.Unmarshal(polcBytes, &pbpolc)
+	if err != nil {
+		return polc, err
+	}
+	plc, err := types.ProofOfLockChangeFromProto(&pbpolc)
+	if err != nil {
+		return polc, err
+	}
+
+	return *plc, err
 }
 
 // EvidenceFront goes to the first evidence in the clist
@@ -338,8 +364,18 @@ func (evpool *Pool) State() sm.State {
 }
 
 func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
-	evBytes := cdc.MustMarshalBinaryBare(evidence)
+	evi, err := types.EvidenceToProto(evidence)
+	if err != nil {
+		return err
+	}
+
+	evBytes, err := proto.Marshal(evi)
+	if err != nil {
+		return fmt.Errorf("unable to marshal evidence: %w", err)
+	}
+
 	key := keyPending(evidence)
+
 	return evpool.evidenceStore.Set(key, evBytes)
 }
 
@@ -370,13 +406,23 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 		}
 		count++
 
-		var ev types.Evidence
-		err := cdc.UnmarshalBinaryBare(val, &ev)
+		var (
+			ev   types.Evidence
+			evpb tmproto.Evidence
+		)
+		err := proto.Unmarshal(val, &evpb)
 		if err != nil {
 			return nil, err
 		}
+
+		ev, err = types.EvidenceFromProto(&evpb)
+		if err != nil {
+			return nil, err
+		}
+
 		evidence = append(evidence, ev)
 	}
+
 	return evidence, nil
 }
 
@@ -390,16 +436,26 @@ func (evpool *Pool) removeExpiredPendingEvidence() {
 	blockEvidenceMap := make(map[string]struct{})
 	for ; iter.Valid(); iter.Next() {
 		evBytes := iter.Value()
-		var ev types.Evidence
-		err := cdc.UnmarshalBinaryBare(evBytes, &ev)
+		var (
+			ev   types.Evidence
+			evpb tmproto.Evidence
+		)
+		err := proto.Unmarshal(evBytes, &evpb)
 		if err != nil {
-			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
+			evpool.logger.Error("Unable to unmarshal Evidence", "err", err)
+			continue
+		}
+
+		ev, err = types.EvidenceFromProto(&evpb)
+		if err != nil {
+			evpool.logger.Error("Error in transition evidence from protobuf", "err", err)
 			continue
 		}
 		if !evpool.IsExpired(ev.Height()-1, ev.Time()) {
 			if len(blockEvidenceMap) != 0 {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
+
 			return
 		}
 		evpool.removePendingEvidence(ev)
@@ -430,10 +486,17 @@ func (evpool *Pool) pruneExpiredPOLC() {
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		proofBytes := iter.Value()
-		var proof types.ProofOfLockChange
-		err := cdc.UnmarshalBinaryBare(proofBytes, &proof)
+		var (
+			pbproof tmproto.ProofOfLockChange
+		)
+		err := proto.Unmarshal(proofBytes, &pbproof)
 		if err != nil {
 			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
+			continue
+		}
+		proof, err := types.ProofOfLockChangeFromProto(&pbproof)
+		if err != nil {
+			evpool.logger.Error("Unable to transition POLC from protobuf", "err", err)
 			continue
 		}
 		if !evpool.IsExpired(proof.Height()-1, proof.Time()) {

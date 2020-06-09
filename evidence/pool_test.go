@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +22,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	RegisterMockEvidences()
 
 	code := m.Run()
 	os.Exit(code)
@@ -269,12 +269,20 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 	// load good evidence
 	goodKey := keyPending(goodEvidence)
-	goodEvidenceBytes := cdc.MustMarshalBinaryBare(goodEvidence)
+	evi, err := types.EvidenceToProto(goodEvidence)
+	require.NoError(t, err)
+	goodEvidenceBytes, err := proto.Marshal(evi)
+	require.NoError(t, err)
 	_ = evidenceDB.Set(goodKey, goodEvidenceBytes)
 
 	// load expired evidence
 	expiredKey := keyPending(expiredEvidence)
-	expiredEvidenceBytes := cdc.MustMarshalBinaryBare(expiredEvidence)
+	eevi, err := types.EvidenceToProto(expiredEvidence)
+	require.NoError(t, err)
+
+	expiredEvidenceBytes, err := proto.Marshal(eevi)
+	require.NoError(t, err)
+
 	_ = evidenceDB.Set(expiredKey, expiredEvidenceBytes)
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
