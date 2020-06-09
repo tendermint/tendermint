@@ -31,7 +31,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 					Height:                msg.Height,
 					Round:                 msg.Round,
 					Step:                  uint32(msg.Step),
-					SecondsSinceStartTime: int64(msg.SecondsSinceStartTime),
+					SecondsSinceStartTime: msg.SecondsSinceStartTime,
 					LastCommitRound:       msg.LastCommitRound,
 				},
 			},
@@ -170,7 +170,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Height:                msg.NewRoundStep.Height,
 			Round:                 msg.NewRoundStep.Round,
 			Step:                  cstypes.RoundStepType(rs),
-			SecondsSinceStartTime: int(msg.NewRoundStep.SecondsSinceStartTime),
+			SecondsSinceStartTime: msg.NewRoundStep.SecondsSinceStartTime,
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}
 	case *tmcons.Message_NewValidBlock:
