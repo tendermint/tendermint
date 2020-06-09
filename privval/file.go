@@ -36,7 +36,7 @@ func voteToStep(vote *tmproto.Vote) int8 {
 	case tmproto.PrecommitType:
 		return stepPrecommit
 	default:
-		panic(fmt.Sprintf("Unknown vote type: %T", vote.Type))
+		panic(fmt.Sprintf("Unknown vote type: %v", vote.Type))
 	}
 }
 
