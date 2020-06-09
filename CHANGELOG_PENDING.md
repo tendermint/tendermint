@@ -41,6 +41,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#4778 Transition store module to protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+  - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
 
 - Apps
 
@@ -69,6 +70,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
 - [light] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Submit conflicting headers, if any, to a full node & all witnesses (@melekes)
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
 - [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 
 ### IMPROVEMENTS:
