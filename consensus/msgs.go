@@ -16,7 +16,6 @@ import (
 )
 
 // MsgToProto takes a consensus message type and returns the proto defined consensus message
-// If an error occurs it will be returned
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
@@ -152,7 +151,6 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 }
 
 // MsgFromProto takes a consensus proto message and returns the native go type
-// If an error occurs it will be returned
 func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: nil message")

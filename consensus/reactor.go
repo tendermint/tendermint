@@ -1400,8 +1400,7 @@ func decodeMsg(bz []byte) (msg Message, err error) {
 		return msg, err
 	}
 
-	message, err := MsgFromProto(pb)
-	return message, err
+	return MsgFromProto(pb)
 }
 
 //-------------------------------------

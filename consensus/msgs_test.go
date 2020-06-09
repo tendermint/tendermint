@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -43,7 +44,7 @@ func TestMsgToProto(t *testing.T) {
 	require.NoError(t, err)
 
 	proposal := types.Proposal{
-		Type:      3, //proposal type in enum is 3
+		Type:      tmproto.ProposalType,
 		Height:    1,
 		Round:     1,
 		POLRound:  1,
