@@ -81,6 +81,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
 - [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
 - [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
+- [evidence] [#4821](https://github.com/tendermint/tendermint/pull/4821) Amnesia evidence can be detected, verified and committed (@cmwaters)
 
 ### IMPROVEMENTS:
 

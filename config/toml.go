@@ -72,7 +72,9 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
-##### main base config options #####
+#######################################################################
+###                   Main Base Config Options                      ###
+#######################################################################
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
@@ -141,9 +143,14 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-##### advanced configuration options #####
 
-##### rpc server configuration options #####
+#######################################################################
+###                 Advanced Configuration Options                  ###
+#######################################################################
+
+#######################################################
+###       RPC Server Configuration Options          ###
+#######################################################
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -222,7 +229,9 @@ tls_cert_file = "{{ .RPC.TLSCertFile }}"
 # Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
-##### peer to peer configuration options #####
+#######################################################
+###           P2P Configuration Options             ###
+#######################################################
 [p2p]
 
 # Address to listen for incoming connections
@@ -293,7 +302,9 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
-##### mempool configuration options #####
+#######################################################
+###          Mempool Configurattion Option          ###
+#######################################################
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
@@ -315,7 +326,9 @@ cache_size = {{ .Mempool.CacheSize }}
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
-##### state sync configuration options #####
+#######################################################
+###         State Sync Configuration Options        ###
+#######################################################
 [statesync]
 # State sync rapidly bootstraps a new node by discovering, fetching, and restoring a state machine
 # snapshot from peers instead of fetching and replaying historical blocks. Requires some peers in
@@ -339,7 +352,9 @@ trust_period = "{{ .StateSync.TrustPeriod }}"
 # Will create a new, randomly named directory within, and remove it when done.
 temp_dir = "{{ .StateSync.TempDir }}"
 
-##### fast sync configuration options #####
+#######################################################
+###       Fast Sync Configuration Connections       ###
+#######################################################
 [fastsync]
 
 # Fast Sync version to use:
@@ -348,7 +363,9 @@ temp_dir = "{{ .StateSync.TempDir }}"
 #   2) "v2" - complete redesign of v0, optimized for testability & readability 
 version = "{{ .FastSync.Version }}"
 
-##### consensus configuration options #####
+#######################################################
+###         Consensus Configuration Options         ###
+#######################################################
 [consensus]
 
 wal_file = "{{ js .Consensus.WalPath }}"
@@ -372,7 +389,9 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
-##### transactions indexer configuration options #####
+#######################################################
+###   Transaction Indexer Configuration Options     ###
+#######################################################
 [tx_index]
 
 # What indexer to use for transactions
@@ -404,7 +423,9 @@ index_keys = "{{ .TxIndex.IndexKeys }}"
 # indexed).
 index_all_keys = {{ .TxIndex.IndexAllKeys }}
 
-##### instrumentation configuration options #####
+#######################################################
+###       Instrumentation Configuration Options     ###
+#######################################################
 [instrumentation]
 
 # When true, Prometheus metrics are served under /metrics on
