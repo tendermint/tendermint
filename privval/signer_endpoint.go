@@ -6,8 +6,7 @@ import (
 	"sync"
 	"time"
 
-	protoio "github.com/gogo/protobuf/io"
-
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/libs/service"
 	privvalproto "github.com/tendermint/tendermint/proto/privval"
 )
@@ -130,7 +129,7 @@ func (se *signerEndpoint) WriteMessage(msg privvalproto.Message) (err error) {
 		return
 	}
 
-	err = protoWriter.WriteMsg(&msg)
+	_, err = protoWriter.WriteMsg(&msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
 			err = fmt.Errorf("%v: %w", err, ErrWriteTimeout)

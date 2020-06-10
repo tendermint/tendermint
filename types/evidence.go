@@ -1252,7 +1252,8 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 		for _, validator := range valSet.Validators {
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
-				if !validator.PubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+				v := vote.ToProto()
+				if !validator.PubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
 					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v",
 						vote.ValidatorIndex, vote.Signature)
 				}

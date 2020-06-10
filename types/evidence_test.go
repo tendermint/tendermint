@@ -547,10 +547,13 @@ func makeVote(
 		BlockID:          blockID,
 		Timestamp:        time,
 	}
-	err = val.SignVote(chainID, v)
+
+	vpb := v.ToProto()
+	err = val.SignVote(chainID, vpb)
 	if err != nil {
 		panic(err)
 	}
+	v.Signature = vpb.Signature
 	return v
 }
 
