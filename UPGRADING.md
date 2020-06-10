@@ -11,6 +11,10 @@ a newer version of Tendermint Core.
 
 - `KV.Pair` has been replaced with `abci.EventAttribute`. This allows applications to indicate if a msg should be indexed at runtime. Previously this was only possible if the node operator decided to index specific or all messages on startup of the node, now the application can indicate which msgs should be indexed.
 
+### Crypto
+
+- `Multsig` & `PubKeyMultisigThreshold` have been moved to the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk). (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+
 ## v0.33.4
 
 ### Go API

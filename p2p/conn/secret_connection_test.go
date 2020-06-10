@@ -257,38 +257,30 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 
 func TestNilPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = privKeyWithNilPubKey{ed25519.GenPrivKey()}
 
-	go func() {
-		_, err := MakeSecretConnection(barConn, barPrvKey)
-		assert.NoError(t, err)
-	}()
+	go MakeSecretConnection(fooConn, fooPrvKey)
 
-	assert.NotPanics(t, func() {
-		_, err := MakeSecretConnection(fooConn, fooPrvKey)
-		if assert.Error(t, err) {
-			assert.Equal(t, "expected ed25519 pubkey, got <nil>", err.Error())
-		}
-	})
+	_, err := MakeSecretConnection(barConn, barPrvKey)
+	require.Error(t, err)
+	assert.Equal(t, "toproto: key type <nil> is not supported", err.Error())
 }
 
 func TestNonEd25519Pubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = secp256k1.GenPrivKey()
 
-	go func() {
-		_, err := MakeSecretConnection(barConn, barPrvKey)
-		assert.NoError(t, err)
-	}()
+	go MakeSecretConnection(fooConn, fooPrvKey)
 
-	assert.NotPanics(t, func() {
-		_, err := MakeSecretConnection(fooConn, fooPrvKey)
-		if assert.Error(t, err) {
-			assert.Equal(t, "expected ed25519 pubkey, got secp256k1.PubKey", err.Error())
-		}
-	})
+	_, err := MakeSecretConnection(barConn, barPrvKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not supported")
 }
 
 func writeLots(t *testing.T, wg *sync.WaitGroup, conn io.Writer, txt string, n int) {
