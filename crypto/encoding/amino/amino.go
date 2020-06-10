@@ -7,7 +7,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
@@ -34,7 +33,6 @@ func init() {
 	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyName
 	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyName
 	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyName
-	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyRoute
 }
 
 // PubkeyAminoName returns the amino route of a pubkey
@@ -55,8 +53,6 @@ func RegisterAmino(cdc *amino.Codec) {
 		sr25519.PubKeyName, nil)
 	cdc.RegisterConcrete(secp256k1.PubKey{},
 		secp256k1.PubKeyName, nil)
-	cdc.RegisterConcrete(multisig.PubKey{},
-		multisig.PubKeyRoute, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(ed25519.PrivKey{},

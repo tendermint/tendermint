@@ -21,9 +21,9 @@ var (
 )
 
 type Part struct {
-	Index uint32             `json:"index"`
-	Bytes tmbytes.HexBytes   `json:"bytes"`
-	Proof merkle.SimpleProof `json:"proof"`
+	Index uint32           `json:"index"`
+	Bytes tmbytes.HexBytes `json:"bytes"`
+	Proof merkle.Proof     `json:"proof"`
 }
 
 // ValidateBasic performs basic validation.
@@ -72,7 +72,7 @@ func PartFromProto(pb *tmproto.Part) (*Part, error) {
 	}
 
 	part := new(Part)
-	proof, err := merkle.SimpleProofFromProto(&pb.Proof)
+	proof, err := merkle.ProofFromProto(&pb.Proof)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 		partsBitArray.SetIndex(int(i), true)
 	}
 	// Compute merkle proofs
-	root, proofs := merkle.SimpleProofsFromByteSlices(partsBytes)
+	root, proofs := merkle.ProofsFromByteSlices(partsBytes)
 	for i := uint32(0); i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}

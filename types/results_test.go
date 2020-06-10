@@ -26,7 +26,7 @@ func TestABCIResults(t *testing.T) {
 	results := ABCIResults{a, c, d, e, f}
 
 	// Make sure each result serializes differently
-	var last []byte
+	var last = []byte{}
 	assert.Equal(t, last, a.Bytes()) // first one is empty
 	for i, res := range results[1:] {
 		bz := res.Bytes()

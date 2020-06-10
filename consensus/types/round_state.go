@@ -84,7 +84,7 @@ type RoundState struct {
 	ValidRound int32        `json:"valid_round"`
 	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
-	// Last known block parts of POL metnioned above.
+	// Last known block parts of POL mentioned above.
 	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
 	CommitRound               int32               `json:"commit_round"` //
@@ -212,32 +212,4 @@ func (rs *RoundState) StringIndented(indent string) string {
 func (rs *RoundState) StringShort() string {
 	return fmt.Sprintf(`RoundState{H:%v R:%v S:%v ST:%v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
-}
-
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
-
-// Size returns the size of the amino encoding, in bytes.
-func (rs *RoundStateSimple) Size() int {
-	bs, _ := rs.Marshal()
-	return len(bs)
-}
-
-// Marshal returns the amino encoding.
-func (rs *RoundStateSimple) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(rs)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (rs *RoundStateSimple) MarshalTo(data []byte) (int, error) {
-	bs, err := rs.Marshal()
-	if err != nil {
-		return -1, err
-	}
-	return copy(data, bs), nil
-}
-
-// Unmarshal deserializes from amino encoded form.
-func (rs *RoundStateSimple) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, rs)
 }

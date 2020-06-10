@@ -833,6 +833,10 @@ paths:
   /tx_search:
     get:
       summary: Search for transactions
+      description: |
+        Search for transactions w/ their results.
+
+        See /subscribe for the query syntax.
       operationId: tx_search
       parameters:
         - in: query
@@ -876,8 +880,6 @@ paths:
             example: "asc"
       tags:
         - Info
-      description: |
-        Get list of unconfirmed transactions
       responses:
         200:
           description: List of unconfirmed transactions

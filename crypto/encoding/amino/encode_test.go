@@ -11,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -139,7 +138,6 @@ func TestPubkeyAminoName(t *testing.T) {
 		{ed25519.PubKey{}, ed25519.PubKeyName, true},
 		{sr25519.PubKey{}, sr25519.PubKeyName, true},
 		{secp256k1.PubKey{}, secp256k1.PubKeyName, true},
-		{multisig.PubKey{}, multisig.PubKeyRoute, true},
 	}
 	for i, tc := range tests {
 		got, found := PubkeyAminoName(cdc, tc.key)
@@ -220,5 +218,4 @@ func TestRegisterKeyType(t *testing.T) {
 	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyName
 	nameTable[reflect.TypeOf(sr25519.PubKey{})] = sr25519.PubKeyName
 	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyName
-	nameTable[reflect.TypeOf(multisig.PubKey{})] = multisig.PubKeyRoute
 }

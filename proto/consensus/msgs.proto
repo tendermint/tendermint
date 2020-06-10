@@ -57,7 +57,7 @@ message HasVote {
   int64                                height = 1;
   int32                                round  = 2;
   tendermint.proto.types.SignedMsgType type   = 3;
-  uint32                               index  = 4;
+  int32                                index  = 4;
 }
 
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.

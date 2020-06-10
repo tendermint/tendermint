@@ -219,7 +219,7 @@ func sendProposalAndParts(
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
+	peer.Send(DataChannel, MustEncode(msg))
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -229,7 +229,7 @@ func sendProposalAndParts(
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
+		peer.Send(DataChannel, MustEncode(msg))
 	}
 
 	// votes
@@ -238,8 +238,8 @@ func sendProposalAndParts(
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
-	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))
-	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{precommit}))
+	peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+	peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
 }
 
 //----------------------------------------

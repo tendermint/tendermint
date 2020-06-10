@@ -8,9 +8,9 @@ import (
 	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
-const ProofOpSimpleValue = "simple:v"
+const ProofOpValue = "simple:v"
 
-// SimpleValueOp takes a key and a single value as argument and
+// ValueOp takes a key and a single value as argument and
 // produces the root hash.  The corresponding tree structure is
 // the SimpleMap tree.  SimpleMap takes a Hasher, and currently
 // Tendermint uses tmhash.  SimpleValueOp should support
@@ -20,42 +20,42 @@ const ProofOpSimpleValue = "simple:v"
 //
 // If the produced root hash matches the expected hash, the
 // proof is good.
-type SimpleValueOp struct {
+type ValueOp struct {
 	// Encoded in ProofOp.Key.
 	key []byte
 
 	// To encode in ProofOp.Data
-	Proof *SimpleProof `json:"simple_proof"`
+	Proof *Proof `json:"proof"`
 }
 
-var _ ProofOperator = SimpleValueOp{}
+var _ ProofOperator = ValueOp{}
 
-func NewSimpleValueOp(key []byte, proof *SimpleProof) SimpleValueOp {
-	return SimpleValueOp{
+func NewValueOp(key []byte, proof *Proof) ValueOp {
+	return ValueOp{
 		key:   key,
 		Proof: proof,
 	}
 }
 
-func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
-	if pop.Type != ProofOpSimpleValue {
-		return nil, fmt.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
+func ValueOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
+	if pop.Type != ProofOpValue {
+		return nil, fmt.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpValue)
 	}
-	var pbop tmmerkle.SimpleValueOp // a bit strange as we'll discard this, but it works.
+	var pbop tmmerkle.ValueOp // a bit strange as we'll discard this, but it works.
 	err := pbop.Unmarshal(pop.Data)
 	if err != nil {
-		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
+		return nil, fmt.Errorf("decoding ProofOp.Data into ValueOp: %w", err)
 	}
 
-	sp, err := SimpleProofFromProto(pbop.Proof)
+	sp, err := ProofFromProto(pbop.Proof)
 	if err != nil {
 		return nil, err
 	}
-	return NewSimpleValueOp(pop.Key, sp), nil
+	return NewValueOp(pop.Key, sp), nil
 }
 
-func (op SimpleValueOp) ProofOp() ProofOp {
-	pbval := tmmerkle.SimpleValueOp{
+func (op ValueOp) ProofOp() tmmerkle.ProofOp {
+	pbval := tmmerkle.ValueOp{
 		Key:   op.key,
 		Proof: op.Proof.ToProto(),
 	}
@@ -63,18 +63,18 @@ func (op SimpleValueOp) ProofOp() ProofOp {
 	if err != nil {
 		panic(err)
 	}
-	return ProofOp{
-		Type: ProofOpSimpleValue,
+	return tmmerkle.ProofOp{
+		Type: ProofOpValue,
 		Key:  op.key,
 		Data: bz,
 	}
 }
 
-func (op SimpleValueOp) String() string {
-	return fmt.Sprintf("SimpleValueOp{%v}", op.GetKey())
+func (op ValueOp) String() string {
+	return fmt.Sprintf("ValueOp{%v}", op.GetKey())
 }
 
-func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
+func (op ValueOp) Run(args [][]byte) ([][]byte, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("expected 1 arg, got %v", len(args))
 	}
@@ -98,6 +98,6 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	}, nil
 }
 
-func (op SimpleValueOp) GetKey() []byte {
+func (op ValueOp) GetKey() []byte {
 	return op.key
 }

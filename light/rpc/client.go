@@ -83,7 +83,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 	if resp.IsErr() {
 		return nil, fmt.Errorf("err response code: %v", resp.Code)
 	}
-	if len(resp.Key) == 0 || resp.Proof == nil {
+	if len(resp.Key) == 0 || resp.ProofOps == nil {
 		return nil, errors.New("empty tree")
 	}
 	if resp.Height <= 0 {
@@ -108,7 +108,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
-		err = c.prt.VerifyValue(resp.Proof, h.AppHash, kp.String(), resp.Value)
+		err = c.prt.VerifyValue(resp.ProofOps, h.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
@@ -117,7 +117,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 
 	// OR validate the ansence proof against the trusted header.
 	// XXX How do we encode the key into a string...
-	err = c.prt.VerifyAbsence(resp.Proof, h.AppHash, string(resp.Key))
+	err = c.prt.VerifyAbsence(resp.ProofOps, h.AppHash, string(resp.Key))
 	if err != nil {
 		return nil, fmt.Errorf("verify absence proof: %w", err)
 	}
