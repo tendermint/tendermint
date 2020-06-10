@@ -7,8 +7,8 @@ import (
 func defaultProofRuntime() *merkle.ProofRuntime {
 	prt := merkle.NewProofRuntime()
 	prt.RegisterOpDecoder(
-		merkle.ProofOpSimpleValue,
-		merkle.SimpleValueOpDecoder,
+		merkle.ProofOpValue,
+		merkle.ValueOpDecoder,
 	)
 	return prt
 }

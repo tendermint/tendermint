@@ -22,7 +22,7 @@ import (
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/abci/version"
-	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
 // client is a global variable so it can be reused by the console
@@ -98,10 +98,10 @@ type response struct {
 }
 
 type queryResponse struct {
-	Key    []byte
-	Value  []byte
-	Height int64
-	Proof  *merkle.Proof
+	Key      []byte
+	Value    []byte
+	Height   int64
+	ProofOps *merkle.ProofOps
 }
 
 func Execute() error {
@@ -616,10 +616,10 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		Info: resQuery.Info,
 		Log:  resQuery.Log,
 		Query: &queryResponse{
-			Key:    resQuery.Key,
-			Value:  resQuery.Value,
-			Height: resQuery.Height,
-			Proof:  resQuery.Proof,
+			Key:      resQuery.Key,
+			Value:    resQuery.Value,
+			Height:   resQuery.Height,
+			ProofOps: resQuery.ProofOps,
 		},
 	})
 	return nil
@@ -719,8 +719,8 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 			fmt.Printf("-> value: %s\n", rsp.Query.Value)
 			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
 		}
-		if rsp.Query.Proof != nil {
-			fmt.Printf("-> proof: %#v\n", rsp.Query.Proof)
+		if rsp.Query.ProofOps != nil {
+			fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
 		}
 	}
 }

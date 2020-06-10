@@ -520,7 +520,7 @@ func (evl EvidenceList) Hash() []byte {
 	for i := 0; i < len(evl); i++ {
 		evidenceBzs[i] = evl[i].Bytes()
 	}
-	return merkle.SimpleHashFromByteSlices(evidenceBzs)
+	return merkle.HashFromByteSlices(evidenceBzs)
 }
 
 func (evl EvidenceList) String() string {

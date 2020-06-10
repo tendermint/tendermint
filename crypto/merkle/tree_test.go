@@ -17,7 +17,7 @@ func (tI testItem) Hash() []byte {
 	return []byte(tI)
 }
 
-func TestSimpleProof(t *testing.T) {
+func TestProof(t *testing.T) {
 
 	total := 100
 
@@ -26,9 +26,9 @@ func TestSimpleProof(t *testing.T) {
 		items[i] = testItem(tmrand.Bytes(tmhash.Size))
 	}
 
-	rootHash := SimpleHashFromByteSlices(items)
+	rootHash := HashFromByteSlices(items)
 
-	rootHash2, proofs := SimpleProofsFromByteSlices(items)
+	rootHash2, proofs := ProofsFromByteSlices(items)
 
 	require.Equal(t, rootHash, rootHash2, "Unmatched root hashes: %X vs %X", rootHash, rootHash2)
 
@@ -70,7 +70,7 @@ func TestSimpleProof(t *testing.T) {
 	}
 }
 
-func TestSimpleHashAlternatives(t *testing.T) {
+func TestHashAlternatives(t *testing.T) {
 
 	total := 100
 
@@ -79,12 +79,12 @@ func TestSimpleHashAlternatives(t *testing.T) {
 		items[i] = testItem(tmrand.Bytes(tmhash.Size))
 	}
 
-	rootHash1 := SimpleHashFromByteSlicesIterative(items)
-	rootHash2 := SimpleHashFromByteSlices(items)
+	rootHash1 := HashFromByteSlicesIterative(items)
+	rootHash2 := HashFromByteSlices(items)
 	require.Equal(t, rootHash1, rootHash2, "Unmatched root hashes: %X vs %X", rootHash1, rootHash2)
 }
 
-func BenchmarkSimpleHashAlternatives(b *testing.B) {
+func BenchmarkHashAlternatives(b *testing.B) {
 	total := 100
 
 	items := make([][]byte, total)
@@ -95,13 +95,13 @@ func BenchmarkSimpleHashAlternatives(b *testing.B) {
 	b.ResetTimer()
 	b.Run("recursive", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = SimpleHashFromByteSlices(items)
+			_ = HashFromByteSlices(items)
 		}
 	})
 
 	b.Run("iterative", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = SimpleHashFromByteSlicesIterative(items)
+			_ = HashFromByteSlicesIterative(items)
 		}
 	})
 }
