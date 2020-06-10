@@ -12,7 +12,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -99,7 +101,7 @@ func TestPruneStates(t *testing.T) {
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: []byte{1, 2, 3}, VotingPower: 100, PubKey: pk}
+			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
 			validatorSet := &types.ValidatorSet{
 				Validators: []*types.Validator{validator},
 				Proposer:   validator,

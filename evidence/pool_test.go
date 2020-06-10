@@ -12,7 +12,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -26,6 +27,8 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	os.Exit(code)
 }
+
+const evidenceChainID = "test_chain"
 
 func TestEvidencePool(t *testing.T) {
 	var (
@@ -78,14 +81,13 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr       = tmrand.Bytes(crypto.AddressSize)
-		height        = int64(1)
-		lastBlockTime = time.Now()
-		stateDB       = initializeValidatorState(valAddr, height)
-		evidenceDB    = dbm.NewMemDB()
-		blockStoreDB  = dbm.NewMemDB()
-		blockStore    = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
-		evidenceTime  = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		height       = int64(1)
+		stateDB      = initializeValidatorState(valAddr, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -104,7 +106,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	assert.Equal(t, proposedEvidence[0], evidence)
 
 	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, lastBlockTime, proposedEvidence)
+	pool.MarkEvidenceAsCommitted(height, proposedEvidence)
 	assert.True(t, pool.IsCommitted(evidence))
 	assert.False(t, pool.IsPending(evidence))
 	assert.Equal(t, 0, pool.evidenceList.Len())
@@ -161,13 +163,9 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		blockStoreDB = dbm.NewMemDB()
 		state        = sm.LoadState(stateDB)
 		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
-		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
-	require.NoError(t, err)
-	expiredEvidence := types.NewMockEvidence(1, evidenceTime, valAddr)
-	err = pool.AddEvidence(expiredEvidence)
 	require.NoError(t, err)
 
 	// create new block (no need to save it to blockStore)
@@ -183,8 +181,6 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	assert.True(t, pool.IsCommitted(evidence))
 	// b) Update updates valToLastHeight map
 	assert.Equal(t, height+1, pool.ValidatorLastHeight(valAddr))
-	// c) Expired ecvidence should be removed
-	assert.False(t, pool.IsPending(expiredEvidence))
 }
 
 func TestEvidencePoolNewPool(t *testing.T) {
@@ -246,9 +242,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	pool.Update(block, state)
 
 	emptyPolc, err = pool.RetrievePOLC(1, 1)
-	if assert.Error(t, err) {
-		assert.Equal(t, "unable to find polc at height 1 and round 1", err.Error())
-	}
+	assert.Error(t, err)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }
@@ -290,18 +284,108 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.True(t, pool.IsPending(goodEvidence))
 }
 
-func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
-	stateDB := dbm.NewMemDB()
-	pk := ed25519.GenPrivKey().PubKey()
+func TestPotentialAmnesiaEvidence(t *testing.T) {
+	var (
+		val    = types.NewMockPV()
+		pubKey = val.PrivKey.PubKey()
+		valSet = &types.ValidatorSet{
+			Validators: []*types.Validator{
+				val.ExtractIntoValidator(0),
+			},
+			Proposer: val.ExtractIntoValidator(0),
+		}
+		height       = int64(30)
+		stateDB      = initializeStateFromValidatorSet(valSet, height)
+		evidenceDB   = dbm.NewMemDB()
+		blockStoreDB = dbm.NewMemDB()
+		state        = sm.LoadState(stateDB)
+		blockStore   = initializeBlockStore(blockStoreDB, state, pubKey.Address())
+		//evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		firstBlockID = types.BlockID{
+			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			PartsHeader: types.PartSetHeader{
+				Total: 1,
+				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			},
+		}
+		secondBlockID = types.BlockID{
+			Hash: []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+			PartsHeader: types.PartSetHeader{
+				Total: 1,
+				Hash:  []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+			},
+		}
+		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
 
-	// create validator set and state
-	validator := &types.Validator{Address: valAddr, VotingPower: 100, PubKey: pk}
-	valSet := &types.ValidatorSet{
-		Validators: []*types.Validator{validator},
-		Proposer:   validator,
+	pool, err := NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
+
+	pool.SetLogger(log.TestingLogger())
+
+	polc := types.NewMockPOLC(25, evidenceTime, pubKey)
+	err = pool.AddPOLC(polc)
+	require.NoError(t, err)
+
+	_, err = pool.RetrievePOLC(25, 1)
+	require.NoError(t, err)
+
+	voteA := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
+	err = val.SignVote(evidenceChainID, voteA)
+	require.NoError(t, err)
+	voteB := makeVote(25, 1, 0, pubKey.Address(), secondBlockID)
+	err = val.SignVote(evidenceChainID, voteB)
+	require.NoError(t, err)
+	voteC := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
+	voteC.Timestamp.Add(1 * time.Second)
+	err = val.SignVote(evidenceChainID, voteC)
+	require.NoError(t, err)
+	ev := types.PotentialAmnesiaEvidence{
+		VoteA: voteA,
+		VoteB: voteB,
 	}
+	// we expect the evidence pool to find the polc but log an error as the polc is not valid -> vote was
+	// not from a validator in this set. However, an error isn't thrown because the evidence pool
+	// should still be able to save the regular potential amnesia evidence.
+	err = pool.AddEvidence(ev)
+	assert.NoError(t, err)
 
+	// evidence requires trial period until it is available -> we expect no evidence to be returned
+	assert.Equal(t, 0, len(pool.PendingEvidence(1)))
+
+	nextHeight := pool.nextEvidenceTrialEndedHeight
+	assert.Greater(t, nextHeight, int64(0))
+
+	// evidence is not ready to be upgraded so we return the height we expect the evidence to be.
+	nextHeight = pool.upgradePotentialAmnesiaEvidence()
+	assert.Equal(t, height+pool.state.ConsensusParams.Evidence.ProofTrialPeriod, nextHeight)
+
+	// now evidence is ready to be upgraded to amnesia evidence -> we expect -1 to be the next height as their is
+	// no more pending potential amnesia evidence left
+	pool.state.LastBlockHeight = nextHeight
+	nextHeight = pool.upgradePotentialAmnesiaEvidence()
+	assert.Equal(t, int64(-1), nextHeight)
+
+	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
+
+	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
+	voteA.Timestamp.Add(1 * time.Second)
+
+	ev2 := types.PotentialAmnesiaEvidence{
+		VoteA: voteB,
+		VoteB: voteC,
+	}
+	err = pool.AddEvidence(ev2)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+
+}
+
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) dbm.DB {
+	stateDB := dbm.NewMemDB()
 	state := sm.State{
+		ChainID:                     evidenceChainID,
 		LastBlockHeight:             height,
 		LastBlockTime:               tmtime.Now(),
 		Validators:                  valSet,
@@ -314,8 +398,10 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 				MaxGas:   -1,
 			},
 			Evidence: tmproto.EvidenceParams{
-				MaxAgeNumBlocks: 20,
-				MaxAgeDuration:  48 * time.Hour,
+				MaxAgeNumBlocks:  20,
+				MaxAgeDuration:   48 * time.Hour,
+				MaxNum:           50,
+				ProofTrialPeriod: 1,
 			},
 		},
 	}
@@ -327,6 +413,20 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	}
 
 	return stateDB
+}
+
+func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
+
+	pubKey, _ := types.NewMockPV().GetPubKey()
+	validator := &types.Validator{Address: valAddr, VotingPower: 0, PubKey: pubKey}
+
+	// create validator set and state
+	valSet := &types.ValidatorSet{
+		Validators: []*types.Validator{validator},
+		Proposer:   validator,
+	}
+
+	return initializeStateFromValidatorSet(valSet, height)
 }
 
 // initializeBlockStore creates a block storage and populates it w/ a dummy
@@ -357,4 +457,16 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 		Signature:        []byte("Signature"),
 	}}
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+}
+
+func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
+	return &types.Vote{
+		Type:             tmproto.SignedMsgType(2),
+		Height:           height,
+		Round:            round,
+		BlockID:          blockID,
+		Timestamp:        time.Now(),
+		ValidatorAddress: addr,
+		ValidatorIndex:   index,
+	}
 }
