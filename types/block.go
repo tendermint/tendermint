@@ -449,7 +449,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromByteSlices([][]byte{
+	return merkle.HashFromByteSlices([][]byte{
 		cdcEncode(h.Version),
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
@@ -867,7 +867,7 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 		for i, commitSig := range commit.Signatures {
 			bs[i] = cdcEncode(commitSig)
 		}
-		commit.hash = merkle.SimpleHashFromByteSlices(bs)
+		commit.hash = merkle.HashFromByteSlices(bs)
 	}
 	return commit.hash
 }
