@@ -189,57 +189,11 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		return tp, nil
 
 	case AmnesiaEvidence:
-		ev, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
-		if err != nil {
-			return nil, err
-		}
-		// EvidenceToProto turns the evidence into Evidence oneof but we neeed a specific type
-		paepb := ev.GetPotentialAmnesiaEvidence()
-		if paepb == nil {
-			return nil, errors.New("provided evidence is not potential amnesia evidence")
-		}
+		return AmnesiaEvidenceToProto(evi)
 
-		polc, err := evi.Polc.ToProto()
-		if err != nil {
-			return nil, err
-		}
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_AmnesiaEvidence{
-				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-					PotentialAmnesiaEvidence: paepb,
-					Polc:                     polc,
-				},
-			},
-		}
-
-		return tp, nil
 	case *AmnesiaEvidence:
-		ev, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
-		if err != nil {
-			return nil, err
-		}
+		return AmnesiaEvidenceToProto(*evi)
 
-		paepb := ev.GetPotentialAmnesiaEvidence()
-		if paepb == nil {
-			return nil, errors.New("provided evidence is not potential amnesia evidence")
-		}
-
-		polc, err := evi.Polc.ToProto()
-		if err != nil {
-			return nil, err
-		}
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_AmnesiaEvidence{
-				AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-					PotentialAmnesiaEvidence: paepb,
-					Polc:                     polc,
-				},
-			},
-		}
-
-		return tp, nil
 	case MockEvidence:
 		if err := evi.ValidateBasic(); err != nil {
 			return nil, err
@@ -1559,6 +1513,35 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 	}
 
 	return &tp, tp.ValidateBasic()
+}
+
+func AmnesiaEvidenceToProto(evi AmnesiaEvidence) (*tmproto.Evidence, error) {
+	ev, err := EvidenceToProto(evi.PotentialAmnesiaEvidence)
+	if err != nil {
+		return nil, err
+	}
+
+	paepb := ev.GetPotentialAmnesiaEvidence()
+	if paepb == nil {
+		return nil, errors.New("provided evidence is not potential amnesia evidence")
+	}
+
+	polc, err := evi.Polc.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	tp := &tmproto.Evidence{
+		Sum: &tmproto.Evidence_AmnesiaEvidence{
+			AmnesiaEvidence: &tmproto.AmnesiaEvidence{
+				PotentialAmnesiaEvidence: paepb,
+				Polc:                     polc,
+			},
+		},
+		}
+
+	return tp, nil
+
 }
 
 //-----------------------------------------------------------------
