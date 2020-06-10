@@ -671,13 +671,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
 			blockID, commit.BlockID)
 	}
-	if height != commit.Height {
-		return NewErrInvalidCommitHeight(height, commit.Height)
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
-			blockID, commit.BlockID)
-	}
 
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
@@ -862,6 +855,9 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	if vals == nil {
 		return nil, errors.New("nil validator set") // validator set should never be nil
+	}
+	if err := vals.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("validator set failed basic: %w", err)
 	}
 	vp := new(tmproto.ValidatorSet)
 	valsProto := make([]*tmproto.Validator, len(vals.Validators))

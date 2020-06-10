@@ -82,6 +82,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 	msgs := []TimedWALMessage{
 		{Time: now, Msg: EndHeightMessage{0}},
 		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: tmtypes.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
 	}
 
 	b := new(bytes.Buffer)
@@ -98,7 +99,6 @@ func TestWALEncoderDecoder(t *testing.T) {
 		dec := NewWALDecoder(b)
 		decoded, err := dec.Decode()
 		require.NoError(t, err)
-
 		assert.Equal(t, msg.Time.UTC(), decoded.Time)
 		assert.Equal(t, msg.Msg, decoded.Msg)
 	}
@@ -135,7 +135,10 @@ func TestWALWrite(t *testing.T) {
 			},
 		},
 	}
-	err = wal.Write(msg)
+
+	err = wal.Write(msgInfo{
+		Msg: msg,
+	})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}

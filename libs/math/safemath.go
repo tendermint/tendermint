@@ -47,8 +47,8 @@ func SafeConvertInt32(a int64) int32 {
 func SafeConvertUint8(a int64) (uint8, error) {
 	if a > math.MaxUint8 {
 		return 0, ErrOverflowUint8
-	} else if a < math.MinInt8 {
-		panic(ErrOverflowInt32)
+	} else if a < 0 {
+		return 0, ErrOverflowUint8
 	}
 	return uint8(a), nil
 }
@@ -58,7 +58,7 @@ func SafeConvertUint8(a int64) (uint8, error) {
 func SafeConvertInt8(a int64) (int8, error) {
 	if a > math.MaxInt8 {
 		return 0, ErrOverflowInt8
-	} else if a < 0 {
+	} else if a < math.MinInt8 {
 		return 0, ErrOverflowInt8
 	}
 	return int8(a), nil
