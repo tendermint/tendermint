@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -167,11 +168,12 @@ func (b *Block) HashesTo(hash []byte) bool {
 
 // Size returns size of the block in bytes.
 func (b *Block) Size() int {
-	bz, err := cdc.MarshalBinaryBare(b)
+	pbb, err := b.ToProto()
 	if err != nil {
 		return 0
 	}
-	return len(bz)
+
+	return pbb.Size()
 }
 
 // String returns a string representation of the block
@@ -427,12 +429,27 @@ func (h *Header) Hash() tmbytes.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
+	hbz, err := h.Version.Marshal()
+	if err != nil {
+		return nil
+	}
+
+	pbt, err := gogotypes.StdTimeMarshal(h.Time)
+	if err != nil {
+		return nil
+	}
+
+	pbbi := h.LastBlockID.ToProto()
+	bzbi, err := pbbi.Marshal()
+	if err != nil {
+		return nil
+	}
 	return merkle.HashFromByteSlices([][]byte{
-		cdcEncode(h.Version),
+		hbz,
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
-		cdcEncode(h.Time),
-		cdcEncode(h.LastBlockID),
+		pbt,
+		bzbi,
 		cdcEncode(h.LastCommitHash),
 		cdcEncode(h.DataHash),
 		cdcEncode(h.ValidatorsHash),
@@ -843,7 +860,13 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	if commit.hash == nil {
 		bs := make([][]byte, len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
-			bs[i] = cdcEncode(commitSig)
+			pbcs := commitSig.ToProto()
+			bz, err := pbcs.Marshal()
+			if err != nil {
+				panic(err)
+			}
+
+			bs[i] = bz
 		}
 		commit.hash = merkle.HashFromByteSlices(bs)
 	}
@@ -1225,10 +1248,12 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	bz, err := cdc.MarshalBinaryBare(blockID.PartsHeader)
+	pbph := blockID.PartsHeader.ToProto()
+	bz, err := pbph.Marshal()
 	if err != nil {
 		panic(err)
 	}
+
 	return string(blockID.Hash) + string(bz)
 }
 
