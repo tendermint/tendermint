@@ -33,7 +33,7 @@ func TestMsgToProto(t *testing.T) {
 	parts := types.Part{
 		Index: 1,
 		Bytes: []byte("test"),
-		Proof: merkle.SimpleProof{
+		Proof: merkle.Proof{
 			Total:    1,
 			Index:    1,
 			LeafHash: tmrand.Bytes(32),
@@ -211,7 +211,7 @@ func TestWALMsgProto(t *testing.T) {
 	parts := types.Part{
 		Index: 1,
 		Bytes: []byte("test"),
-		Proof: merkle.SimpleProof{
+		Proof: merkle.Proof{
 			Total:    1,
 			Index:    1,
 			LeafHash: tmrand.Bytes(32),

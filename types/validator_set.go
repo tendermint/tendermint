@@ -352,7 +352,7 @@ func (vals *ValidatorSet) Hash() []byte {
 	for i, val := range vals.Validators {
 		bzs[i] = val.Bytes()
 	}
-	return merkle.SimpleHashFromByteSlices(bzs)
+	return merkle.HashFromByteSlices(bzs)
 }
 
 // Iterate will run the given function over the set.
