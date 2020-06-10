@@ -110,9 +110,6 @@ func TestReactorBasic(t *testing.T) {
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
-	types.RegisterMockEvidences(cdc)
-	types.RegisterMockEvidences(types.GetCodec())
-
 	nValidators := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
@@ -274,7 +271,8 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
+			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	reactor.InitPeer(peer)
@@ -296,7 +294,8 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = mock.NewPeer(nil)
-		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: tmproto.PrevoteType})
+		msg     = MustEncode(&HasVoteMessage{Height: 1,
+			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	// we should call InitPeer here
@@ -706,12 +705,12 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		testName               string
 		messageStep            cstypes.RoundStepType
 	}{
-		{false, 0, 0, 0, "Valid Message", 0x01},
-		{true, -1, 0, 0, "Invalid Message", 0x01},
-		{true, 0, 0, -1, "Invalid Message", 0x01},
-		{true, 0, 0, 1, "Invalid Message", 0x00},
-		{true, 0, 0, 1, "Invalid Message", 0x00},
-		{true, 0, -2, 2, "Invalid Message", 0x01},
+		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
+		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
+		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
+		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
+		{true, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
+		{true, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
 	}
 
 	for _, tc := range testCases {

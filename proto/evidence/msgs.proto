@@ -7,7 +7,7 @@ import "third_party/proto/gogoproto/gogo.proto";
 import "proto/types/evidence.proto";
 
 message List {
-  repeated tendermint.proto.types.Evidence evidence = 1 [(gogoproto.nullable) = false];
+  repeated tendermint.proto.types.Evidence evidence = 1;
 }
 
 message Info {

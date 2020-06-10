@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestSimpleProofValidateBasic(t *testing.T) {
@@ -35,6 +38,38 @@ func TestSimpleProofValidateBasic(t *testing.T) {
 			err := proofs[0].ValidateBasic()
 			if tc.errStr != "" {
 				assert.Contains(t, err.Error(), tc.errStr)
+			}
+		})
+	}
+}
+
+func TestSimpleProofProtoBuf(t *testing.T) {
+	testCases := []struct {
+		testName string
+		ps1      *SimpleProof
+		expPass  bool
+	}{
+		{"failure empty", &SimpleProof{}, false},
+		{"failure nil", nil, false},
+		{"success",
+			&SimpleProof{
+				Total:    1,
+				Index:    1,
+				LeafHash: tmrand.Bytes(32),
+				Aunts:    [][]byte{tmrand.Bytes(32), tmrand.Bytes(32), tmrand.Bytes(32)},
+			}, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			proto := tc.ps1.ToProto()
+			p, err := SimpleProofFromProto(proto)
+			if tc.expPass {
+				require.NoError(t, err)
+				require.Equal(t, tc.ps1, p, tc.testName)
+			} else {
+				require.Error(t, err, tc.testName)
 			}
 		})
 	}
