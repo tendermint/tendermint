@@ -101,9 +101,14 @@ func (conR *Reactor) OnStop() {
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
 func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.Logger.Info("SwitchToConsensus")
-	conR.conS.reconstructLastCommit(state)
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
-	// broadcast a NewRoundStepMessage.
+
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		conR.conS.reconstructLastCommit(state)
+	}
+
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
+	// NewRoundStepMessage.
 	conR.conS.updateToState(state)
 
 	conR.mtx.Lock()
@@ -1438,7 +1443,7 @@ func (m *NewRoundStepMessage) ValidateBasic() error {
 	// NOTE: SecondsSinceStartTime may be negative
 
 	if (m.Height == 1 && m.LastCommitRound != -1) ||
-		(m.Height > 1 && m.LastCommitRound < -1) { // TODO: #2737 LastCommitRound should always be >= 0 for heights > 1
+		(m.Height > 1 && m.LastCommitRound < 0) {
 		return errors.New("invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
 	}
 	return nil
