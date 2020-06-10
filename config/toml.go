@@ -353,7 +353,7 @@ trust_period = "{{ .StateSync.TrustPeriod }}"
 temp_dir = "{{ .StateSync.TempDir }}"
 
 #######################################################
-###       Fast Sync Configuration Connections 			###
+###       Fast Sync Configuration Connections       ###
 #######################################################
 [fastsync]
 
