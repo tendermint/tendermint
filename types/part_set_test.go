@@ -115,7 +115,7 @@ func TestPartValidateBasic(t *testing.T) {
 		{"Good Part", func(pt *Part) {}, false},
 		{"Too big part", func(pt *Part) { pt.Bytes = make([]byte, BlockPartSizeBytes+1) }, true},
 		{"Too big proof", func(pt *Part) {
-			pt.Proof = merkle.SimpleProof{
+			pt.Proof = merkle.Proof{
 				Total:    1,
 				Index:    1,
 				LeafHash: make([]byte, 1024*1024),
@@ -160,7 +160,7 @@ func TestParSetHeaderProtoBuf(t *testing.T) {
 
 func TestPartProtoBuf(t *testing.T) {
 
-	proof := merkle.SimpleProof{
+	proof := merkle.Proof{
 		Total:    1,
 		Index:    1,
 		LeafHash: tmrand.Bytes(32),

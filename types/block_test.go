@@ -306,7 +306,7 @@ func TestHeaderHash(t *testing.T) {
 					byteSlices = append(byteSlices, cdcEncode(f.Interface()))
 				}
 				assert.Equal(t,
-					bytes.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
+					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tc.header.Hash())
 			}
 		})
 	}

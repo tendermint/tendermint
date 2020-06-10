@@ -38,9 +38,9 @@ message PartSetHeader {
 }
 
 message Part {
-  uint32                                     index = 1;
-  bytes                                      bytes = 2;
-  tendermint.proto.crypto.merkle.SimpleProof proof = 3 [(gogoproto.nullable) = false];
+  uint32                               index = 1;
+  bytes                                bytes = 2;
+  tendermint.proto.crypto.merkle.Proof proof = 3 [(gogoproto.nullable) = false];
 }
 
 // BlockID
