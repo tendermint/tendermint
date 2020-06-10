@@ -332,16 +332,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	}
 }
 
-func RegisterEvidences(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Evidence)(nil), nil)
-	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
-	cdc.RegisterConcrete(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence", nil)
-	cdc.RegisterConcrete(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence", nil)
-	cdc.RegisterConcrete(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence", nil)
-	cdc.RegisterConcrete(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence", nil)
-	cdc.RegisterConcrete(&AmnesiaEvidence{}, "tendermint/AmnesiaEvidence", nil)
-}
-
 func init() {
 	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
 	tmjson.RegisterType(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence")
