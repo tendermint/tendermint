@@ -94,4 +94,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
 - [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)

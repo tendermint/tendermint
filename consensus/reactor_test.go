@@ -699,12 +699,12 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		testName               string
 		messageStep            cstypes.RoundStepType
 	}{
-		{false, 0, 0, 0, "Valid Message", 0x01},
-		{true, -1, 0, 0, "Invalid Message", 0x01},
-		{true, 0, 0, -1, "Invalid Message", 0x01},
-		{true, 0, 0, 1, "Invalid Message", 0x00},
-		{true, 0, 0, 1, "Invalid Message", 0x00},
-		{true, 0, -2, 2, "Invalid Message", 0x01},
+		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
+		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
+		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
+		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
+		{true, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
+		{true, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
 	}
 
 	for _, tc := range testCases {
