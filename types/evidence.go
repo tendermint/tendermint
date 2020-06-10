@@ -1538,7 +1538,7 @@ func AmnesiaEvidenceToProto(evi AmnesiaEvidence) (*tmproto.Evidence, error) {
 				Polc:                     polc,
 			},
 		},
-		}
+	}
 
 	return tp, nil
 
