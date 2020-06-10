@@ -410,10 +410,8 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	now := tmtime.Now()
 	lastVote.Timestamp = now
 	newVote.Timestamp = now
-	lastVoteBytes, _ := tmjson.Marshal(lastVote)
-	newVoteBytes, _ := tmjson.Marshal(newVote)
 
-	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
+	return lastTime, proto.Equal(&newVote, &lastVote)
 }
 
 // returns the timestamp from the lastSignBytes.
@@ -432,8 +430,6 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := proto.Marshal(&lastProposal)
-	newProposalBytes, _ := proto.Marshal(&newProposal)
 
-	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
+	return lastTime, proto.Equal(&newProposal, &lastProposal)
 }
