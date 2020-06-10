@@ -4,6 +4,7 @@ package tendermint.proto.p2p;
 option go_package = "github.com/tendermint/tendermint/proto/p2p";
 
 import "third_party/proto/gogoproto/gogo.proto";
+import "proto/crypto/keys/types.proto";
 
 message PacketPing {}
 
@@ -21,4 +22,9 @@ message Packet {
     PacketPong packet_pong = 2;
     PacketMsg  packet_msg  = 3;
   }
+}
+
+message AuthSigMessage {
+  tendermint.proto.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  bytes                                  sig     = 2;
 }

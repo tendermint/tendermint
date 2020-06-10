@@ -22,27 +22,6 @@ type voteData struct {
 
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
-	time time.Time) *Vote {
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	v := &Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		Timestamp:        time,
-		BlockID:          blockID,
-	}
-	err = val.SignVote(chainID, v)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
-
 func TestEvidence(t *testing.T) {
 	val := NewMockPV()
 	val2 := NewMockPV()
@@ -368,8 +347,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	)
 
 	ev := &PotentialAmnesiaEvidence{
-		VoteA: vote2,
-		VoteB: vote1,
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 
 	assert.Equal(t, height, ev.Height())
@@ -391,7 +370,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 
 func TestProofOfLockChange(t *testing.T) {
 	const (
-		chainID       = "TestProofOfLockChange"
+		chainID       = "test_chain_id"
 		height  int64 = 37
 	)
 	// 1: valid POLC - nothing should fail
@@ -402,8 +381,20 @@ func TestProofOfLockChange(t *testing.T) {
 
 	assert.Equal(t, height, polc.Height())
 	assert.NoError(t, polc.ValidateBasic())
-	assert.True(t, polc.MajorityOfVotes(valSet))
+	assert.NoError(t, polc.ValidateVotes(valSet, chainID))
 	assert.NotEmpty(t, polc.String())
+
+	// tamper with one of the votes
+	polc.Votes[0].Timestamp = time.Now().Add(1 * time.Second)
+	err = polc.ValidateVotes(valSet, chainID)
+	t.Log(err)
+	assert.Error(t, err)
+
+	// remove a vote such that majority wasn't reached
+	polc.Votes = polc.Votes[1:]
+	err = polc.ValidateVotes(valSet, chainID)
+	t.Log(err)
+	assert.Error(t, err)
 
 	// test validate basic on a set of bad cases
 	var badPOLCs []ProofOfLockChange
@@ -438,12 +429,124 @@ func TestProofOfLockChange(t *testing.T) {
 
 	for idx, polc := range badPOLCs {
 		err := polc.ValidateBasic()
+		t.Logf("case: %d: %v", idx+2, err)
 		assert.Error(t, err)
 		if err == nil {
 			t.Errorf("test no. %d failed", idx+2)
 		}
 	}
 
+}
+
+func TestAmnesiaEvidence(t *testing.T) {
+	const (
+		chainID       = "test_chain_id"
+		height  int64 = 37
+	)
+
+	voteSet, valSet, privValidators, blockID := buildVoteSet(height, 1, 2, 7, 0, tmproto.PrecommitType)
+
+	var (
+		val       = privValidators[7]
+		pubKey, _ = val.GetPubKey()
+		blockID2  = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+		vote1     = makeVote(t, val, chainID, 7, height, 0, 2, blockID2, time.Now())
+		vote2     = makeVote(t, val, chainID, 7, height, 1, 2, blockID,
+			time.Now().Add(time.Second))
+		vote3 = makeVote(t, val, chainID, 7, height, 2, 2, blockID2, time.Now())
+		polc  = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	)
+
+	require.False(t, polc.IsAbsent())
+
+	pe := PotentialAmnesiaEvidence{
+		VoteA: vote1,
+		VoteB: vote2,
+	}
+
+	emptyAmnesiaEvidence := MakeAmnesiaEvidence(pe, EmptyPOLC())
+
+	assert.NoError(t, emptyAmnesiaEvidence.ValidateBasic())
+	violated, reason := emptyAmnesiaEvidence.ViolatedConsensus()
+	if assert.True(t, violated) {
+		assert.Equal(t, reason, "no proof of lock was provided")
+	}
+	assert.NoError(t, emptyAmnesiaEvidence.Verify(chainID, pubKey))
+
+	completeAmnesiaEvidence := MakeAmnesiaEvidence(pe, polc)
+
+	assert.NoError(t, completeAmnesiaEvidence.ValidateBasic())
+	violated, reason = completeAmnesiaEvidence.ViolatedConsensus()
+	if !assert.False(t, violated) {
+		t.Log(reason)
+	}
+	assert.NoError(t, completeAmnesiaEvidence.Verify(chainID, pubKey))
+	assert.NoError(t, completeAmnesiaEvidence.Polc.ValidateVotes(valSet, chainID))
+
+	assert.True(t, completeAmnesiaEvidence.Equal(emptyAmnesiaEvidence))
+	assert.NotEmpty(t, completeAmnesiaEvidence.Hash())
+	assert.NotEmpty(t, completeAmnesiaEvidence.Bytes())
+
+	pe2 := PotentialAmnesiaEvidence{
+		VoteA: vote3,
+		VoteB: vote2,
+	}
+
+	// validator has incorrectly voted for a previous round after voting for a later round
+	ae := MakeAmnesiaEvidence(pe2, EmptyPOLC())
+	assert.NoError(t, ae.ValidateBasic())
+	violated, reason = ae.ViolatedConsensus()
+	if assert.True(t, violated) {
+		assert.Equal(t, reason, "validator went back and voted on a previous round")
+	}
+
+	var badAE []AmnesiaEvidence
+	// 1) Polc is at an incorrect height
+	voteSet, _, _ = buildVoteSetForBlock(height+1, 1, 2, 7, 0, tmproto.PrecommitType, blockID)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 2) Polc is of a later round
+	voteSet, _, _ = buildVoteSetForBlock(height, 2, 2, 7, 0, tmproto.PrecommitType, blockID)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 3) Polc has a different public key
+	voteSet, _, privValidators = buildVoteSetForBlock(height, 1, 2, 7, 0, tmproto.PrecommitType, blockID)
+	pubKey2, _ := privValidators[7].GetPubKey()
+	polc = makePOLCFromVoteSet(voteSet, pubKey2, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+	// 4) Polc has a different block ID
+	voteSet, _, _, blockID = buildVoteSet(height, 1, 2, 7, 0, tmproto.PrecommitType)
+	polc = makePOLCFromVoteSet(voteSet, pubKey, blockID)
+	badAE = append(badAE, MakeAmnesiaEvidence(pe, polc))
+
+	for idx, ae := range badAE {
+		t.Log(ae.ValidateBasic())
+		if !assert.Error(t, ae.ValidateBasic()) {
+			t.Errorf("test no. %d failed", idx+1)
+		}
+	}
+
+}
+
+func makeVote(
+	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
+	time time.Time) *Vote {
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
+	v := &Vote{
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIndex,
+		Height:           height,
+		Round:            round,
+		Type:             tmproto.SignedMsgType(step),
+		BlockID:          blockID,
+		Timestamp:        time,
+	}
+	err = val.SignVote(chainID, v)
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 func makeHeaderRandom() *Header {
@@ -591,24 +694,25 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 		expErr2 bool
 	}{
 		{"failure, empty key", ProofOfLockChange{Votes: []Vote{*v, *v2}}, true, true},
-		{"failure empty ProofOfLockChange", ProofOfLockChange{}, true, true},
+		{"failure, empty votes", ProofOfLockChange{PubKey: val3.PrivKey.PubKey()}, true, true},
+		{"success empty ProofOfLockChange", EmptyPOLC(), false, false},
 		{"success", ProofOfLockChange{Votes: []Vote{*v, *v2}, PubKey: val3.PrivKey.PubKey()}, false, false},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		pbpolc, err := tc.polc.ToProto()
 		if tc.expErr {
-			require.Error(t, err)
+			assert.Error(t, err, tc.msg)
 		} else {
-			require.NoError(t, err)
+			assert.NoError(t, err, tc.msg)
 		}
 
 		c, err := ProofOfLockChangeFromProto(pbpolc)
 		if !tc.expErr2 {
-			require.NoError(t, err, tc.msg)
-			require.Equal(t, &tc.polc, c, tc.msg)
+			assert.NoError(t, err, tc.msg)
+			assert.Equal(t, &tc.polc, c, tc.msg)
 		} else {
-			require.Error(t, err, tc.msg)
+			assert.Error(t, err, tc.msg)
 		}
 	}
 }
