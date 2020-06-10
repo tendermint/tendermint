@@ -239,7 +239,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	key := []byte("val:" + string(v.PubKey.GetEd25519()))
 	pubkey, err := cryptoenc.PubKeyFromProto(v.PubKey)
 	if err != nil {
-		panic(fmt.Errorf("error testing: %w", err))
+		panic(fmt.Errorf("can't decode public key: %w", err))
 	}
 
 	if v.Power == 0 {

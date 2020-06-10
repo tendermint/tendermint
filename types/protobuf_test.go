@@ -25,10 +25,10 @@ func TestABCIPubKey(t *testing.T) {
 
 func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 	abciPubKey, err := cryptoenc.PubKeyToProto(pk)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pk2, err := cryptoenc.PubKeyFromProto(abciPubKey)
-	assert.NoError(t, err)
-	assert.Equal(t, pk, pk2)
+	require.NoError(t, err)
+	require.Equal(t, pk, pk2)
 	return nil
 }
 
