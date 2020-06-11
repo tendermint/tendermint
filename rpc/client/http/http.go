@@ -207,6 +207,7 @@ func (c *baseRPCClient) Status() (*ctypes.ResultStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -216,6 +217,7 @@ func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -234,6 +236,7 @@ func (c *baseRPCClient) ABCIQueryWithOptions(
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 

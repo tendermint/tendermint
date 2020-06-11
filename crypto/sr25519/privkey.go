@@ -69,6 +69,10 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
+func (privKey PrivKey) Type() string {
+	return keyType
+}
+
 // GenPrivKey generates a new sr25519 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
