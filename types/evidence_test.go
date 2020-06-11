@@ -130,7 +130,9 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
+		pb, err := EvidenceToProto(tt.evidence)
+		require.NoError(t, err, tt.testName)
+		bz, err := pb.Marshal()
 		require.NoError(t, err, tt.testName)
 
 		assert.LessOrEqual(t, int64(len(bz)), MaxEvidenceBytes, tt.testName)
