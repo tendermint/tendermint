@@ -17,7 +17,7 @@ import (
 	/32:)
 
 	For example, for a Cosmos-SDK application where the first two proof layers
-	are SimpleValueOps, and the third proof layer is an IAVLValueOp, the keys
+	are ValueOps, and the third proof layer is an IAVLValueOp, the keys
 	might look like:
 
 	0: []byte("App")

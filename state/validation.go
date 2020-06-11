@@ -142,6 +142,16 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				continue
 			}
 		}
+		// if we don't already have amnesia evidence we need to add it to start our own timer unless
+		// a) a valid polc has already been attached
+		// b) the accused node voted back on an earlier round
+		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+			ae.PotentialAmnesiaEvidence.VoteB.Round {
+			if err := evidencePool.AddEvidence(ae); err != nil {
+				return types.NewErrEvidenceInvalid(ev,
+					fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
+			}
+		}
 
 		var header *types.Header
 		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
@@ -154,6 +164,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
+
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we dont
@@ -197,7 +208,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
+	if ev, ok := evidence.(types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err
 		}
@@ -216,7 +227,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	// For PhantomValidatorEvidence, check evidence.Address was not part of the
 	// validator set at height evidence.Height, but was a validator before OR
 	// after.
-	if phve, ok := evidence.(*types.PhantomValidatorEvidence); ok {
+	if phve, ok := evidence.(types.PhantomValidatorEvidence); ok {
+		// confirm that it hasn't been forged
+
 		_, val = valset.GetByAddress(addr)
 		if val != nil {
 			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
@@ -224,9 +237,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 
 		// check if last height validator was in the validator set is within
 		// MaxAgeNumBlocks.
-		if ageNumBlocks > 0 && phve.LastHeightValidatorWasInSet <= ageNumBlocks {
+		if height-phve.LastHeightValidatorWasInSet > evidenceParams.MaxAgeNumBlocks {
 			return fmt.Errorf("last time validator was in the set at height %d, min: %d",
-				phve.LastHeightValidatorWasInSet, ageNumBlocks+1)
+				phve.LastHeightValidatorWasInSet, height-phve.LastHeightValidatorWasInSet)
 		}
 
 		valset, err := LoadValidators(stateDB, phve.LastHeightValidatorWasInSet)
@@ -240,6 +253,16 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			return fmt.Errorf("phantom validator %X not found", addr)
 		}
 	} else {
+		if ae, ok := evidence.(types.AmnesiaEvidence); ok {
+			// check the validator set against the polc to make sure that a majority of valid votes was reached
+			if !ae.Polc.IsAbsent() {
+				err = ae.Polc.ValidateVotes(valset, state.ChainID)
+				if err != nil {
+					return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
+				}
+			}
+		}
+
 		// For all other types, expect evidence.Address to be a validator at height
 		// evidence.Height.
 		_, val = valset.GetByAddress(addr)

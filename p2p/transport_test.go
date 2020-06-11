@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 var defaultNodeName = "host_peer"
@@ -575,19 +577,24 @@ func TestTransportHandshake(t *testing.T) {
 		}
 
 		go func(c net.Conn) {
-			_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, peerNodeInfo.(DefaultNodeInfo))
+			_, err := protoio.NewDelimitedWriter(c).WriteMsg(peerNodeInfo.(DefaultNodeInfo).ToProto())
 			if err != nil {
 				t.Error(err)
 			}
 		}(c)
 		go func(c net.Conn) {
-			var ni DefaultNodeInfo
-
-			_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
-				c,
-				&ni,
-				int64(MaxNodeInfoSize()),
+			var (
+				// ni   DefaultNodeInfo
+				pbni tmp2p.DefaultNodeInfo
 			)
+
+			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
+			err := protoReader.ReadMsg(&pbni)
+			if err != nil {
+				t.Error(err)
+			}
+
+			_, err = DefaultNodeInfoFromToProto(&pbni)
 			if err != nil {
 				t.Error(err)
 			}

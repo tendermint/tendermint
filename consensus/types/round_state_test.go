@@ -84,6 +84,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 		LastCommit:         nil, // TODO
 		LastValidators:     vset,
 	}
+
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {

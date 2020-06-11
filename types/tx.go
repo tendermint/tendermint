@@ -37,7 +37,7 @@ func (txs Txs) Hash() []byte {
 	for i := 0; i < len(txs); i++ {
 		txBzs[i] = txs[i].Hash()
 	}
-	return merkle.SimpleHashFromByteSlices(txBzs)
+	return merkle.HashFromByteSlices(txBzs)
 }
 
 // Index returns the index of this transaction in the list, or -1 if not found
@@ -69,7 +69,7 @@ func (txs Txs) Proof(i int) TxProof {
 	for i := 0; i < l; i++ {
 		bzs[i] = txs[i].Hash()
 	}
-	root, proofs := merkle.SimpleProofsFromByteSlices(bzs)
+	root, proofs := merkle.ProofsFromByteSlices(bzs)
 
 	return TxProof{
 		RootHash: root,
@@ -80,9 +80,9 @@ func (txs Txs) Proof(i int) TxProof {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
-	RootHash tmbytes.HexBytes   `json:"root_hash"`
-	Data     Tx                 `json:"data"`
-	Proof    merkle.SimpleProof `json:"proof"`
+	RootHash tmbytes.HexBytes `json:"root_hash"`
+	Data     Tx               `json:"data"`
+	Proof    merkle.Proof     `json:"proof"`
 }
 
 // Leaf returns the hash(tx), which is the leaf in the merkle tree which this proof refers to.

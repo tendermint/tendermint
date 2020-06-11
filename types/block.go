@@ -449,7 +449,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromByteSlices([][]byte{
+	return merkle.HashFromByteSlices([][]byte{
 		cdcEncode(h.Version),
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
@@ -773,7 +773,8 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
 func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
-	return commit.GetVote(valIdx).SignBytes(chainID)
+	v := commit.GetVote(valIdx).ToProto()
+	return VoteSignBytes(chainID, v)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -867,7 +868,7 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 		for i, commitSig := range commit.Signatures {
 			bs[i] = cdcEncode(commitSig)
 		}
-		commit.hash = merkle.SimpleHashFromByteSlices(bs)
+		commit.hash = merkle.HashFromByteSlices(bs)
 	}
 	return commit.hash
 }

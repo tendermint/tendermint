@@ -9,21 +9,20 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"sort"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -353,17 +352,21 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
 	require.NoError(t, err)
-	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
+	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
+	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
+
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
-	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -381,17 +384,21 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
 	require.NoError(t, err)
-	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
+	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
+	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
+
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
-	if err := vss[2].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -409,13 +416,15 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
 	require.NoError(t, err)
-	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
+	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
+	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
 	require.NoError(t, err)
-	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
+	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
+	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
@@ -444,9 +453,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	selfIndex := valIndexFn(0)
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
-	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -505,9 +516,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
-	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -584,11 +597,12 @@ func TestMockProxyApp(t *testing.T) {
 		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
-		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
+		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
+		require.NoError(t, err)
 		loadedAbciRes := new(tmstate.ABCIResponses)
 
 		// this also happens sm.LoadABCIResponses
-		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
+		err = proto.Unmarshal(bytes, loadedAbciRes)
 		require.NoError(t, err)
 
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)

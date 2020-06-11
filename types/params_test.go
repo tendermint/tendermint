@@ -23,24 +23,24 @@ func TestConsensusParamsValidation(t *testing.T) {
 		valid  bool
 	}{
 		// test block params
-		0: {makeParams(1, 0, 10, 1, 0, valEd25519), true},
-		1: {makeParams(0, 0, 10, 1, 0, valEd25519), false},
-		2: {makeParams(47*1024*1024, 0, 10, 1, 0, valEd25519), true},
-		3: {makeParams(10, 0, 10, 1, 0, valEd25519), true},
-		4: {makeParams(100*1024*1024, 0, 10, 1, 0, valEd25519), true},
-		5: {makeParams(101*1024*1024, 0, 10, 1, 0, valEd25519), false},
-		6: {makeParams(1024*1024*1024, 0, 10, 1, 0, valEd25519), false},
+		0: {makeParams(1, 0, 10, 2, 0, valEd25519), true},
+		1: {makeParams(0, 0, 10, 2, 0, valEd25519), false},
+		2: {makeParams(47*1024*1024, 0, 10, 2, 0, valEd25519), true},
+		3: {makeParams(10, 0, 10, 2, 0, valEd25519), true},
+		4: {makeParams(100*1024*1024, 0, 10, 2, 0, valEd25519), true},
+		5: {makeParams(101*1024*1024, 0, 10, 2, 0, valEd25519), false},
+		6: {makeParams(1024*1024*1024, 0, 10, 2, 0, valEd25519), false},
 		7: {makeParams(1024*1024*1024, 0, 10, -1, 0, valEd25519), false},
-		8: {makeParams(1, 0, -10, 1, 0, valEd25519), false},
+		8: {makeParams(1, 0, -10, 2, 0, valEd25519), false},
 		// test evidence params
 		9:  {makeParams(1, 0, 10, 0, 0, valEd25519), false},
-		10: {makeParams(1, 0, 10, 1, 1, valEd25519), false},
-		11: {makeParams(1000, 0, 10, 1, 1, valEd25519), true},
+		10: {makeParams(1, 0, 10, 2, 1, valEd25519), false},
+		11: {makeParams(1000, 0, 10, 2, 1, valEd25519), true},
 		12: {makeParams(1, 0, 10, -1, 0, valEd25519), false},
 		// test no pubkey type provided
-		13: {makeParams(1, 0, 10, 1, 0, []string{}), false},
+		13: {makeParams(1, 0, 10, 2, 0, []string{}), false},
 		// test invalid pubkey type provided
-		14: {makeParams(1, 0, 10, 1, 0, []string{"potatoes make good pubkeys"}), false},
+		14: {makeParams(1, 0, 10, 2, 0, []string{"potatoes make good pubkeys"}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -65,9 +65,10 @@ func makeParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: tmproto.EvidenceParams{
-			MaxAgeNumBlocks: evidenceAge,
-			MaxAgeDuration:  time.Duration(evidenceAge),
-			MaxNum:          maxEvidence,
+			MaxAgeNumBlocks:  evidenceAge,
+			MaxAgeDuration:   time.Duration(evidenceAge),
+			MaxNum:           maxEvidence,
+			ProofTrialPeriod: 1,
 		},
 		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
