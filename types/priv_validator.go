@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 // PrivValidator defines the functionality of a local Tendermint validator
@@ -14,8 +15,8 @@ import (
 type PrivValidator interface {
 	GetPubKey() (crypto.PubKey, error)
 
-	SignVote(chainID string, vote *Vote) error
-	SignProposal(chainID string, proposal *Proposal) error
+	SignVote(chainID string, vote *tmproto.Vote) error
+	SignProposal(chainID string, proposal *tmproto.Proposal) error
 }
 
 type PrivValidatorsByAddress []PrivValidator
@@ -71,12 +72,13 @@ func (pv MockPV) GetPubKey() (crypto.PubKey, error) {
 }
 
 // Implements PrivValidator.
-func (pv MockPV) SignVote(chainID string, vote *Vote) error {
+func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
 	}
-	signBytes := vote.SignBytes(useChainID)
+
+	signBytes := VoteSignBytes(useChainID, vote)
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
@@ -86,12 +88,13 @@ func (pv MockPV) SignVote(chainID string, vote *Vote) error {
 }
 
 // Implements PrivValidator.
-func (pv MockPV) SignProposal(chainID string, proposal *Proposal) error {
+func (pv MockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 	useChainID := chainID
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
 	}
-	signBytes := proposal.SignBytes(useChainID)
+
+	signBytes := ProposalSignBytes(useChainID, proposal)
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
@@ -128,12 +131,12 @@ type ErroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // Implements PrivValidator.
-func (pv *ErroringMockPV) SignVote(chainID string, vote *Vote) error {
+func (pv *ErroringMockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	return ErroringMockPVErr
 }
 
 // Implements PrivValidator.
-func (pv *ErroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
+func (pv *ErroringMockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 	return ErroringMockPVErr
 }
 

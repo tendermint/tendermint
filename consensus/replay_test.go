@@ -360,10 +360,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	propBlock, _ := css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
+
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
-	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -389,10 +392,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
+
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
-	if err := vss[2].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -447,9 +453,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	selfIndex := valIndexFn(0)
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
-	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -508,9 +516,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
-	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+	p = proposal.ToProto()
+	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
