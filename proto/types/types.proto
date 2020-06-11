@@ -11,7 +11,7 @@ import "proto/version/version.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
-  option (gogoproto.goproto_enum_stringer) = false;
+  option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
 
   BLOCKD_ID_FLAG_UNKNOWN = 0;
@@ -22,7 +22,7 @@ enum BlockIDFlag {
 
 // SignedMsgType is a type of signed message in the consensus.
 enum SignedMsgType {
-  option (gogoproto.goproto_enum_stringer) = false;
+  option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
 
   SIGNED_MSG_TYPE_UNKNOWN = 0;

@@ -205,9 +205,12 @@ func TestStateBadProposal(t *testing.T) {
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
-	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vs2.SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -1034,9 +1037,13 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	round++ // moving to the next round
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, round, 0, propBlockID0)
-	if err := vs3.SignProposal(config.ChainID(), newProp); err != nil {
+	p := newProp.ToProto()
+	if err := vs3.SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal(err)
 	}
+
+	newProp.Signature = p.Signature
+
 	if err := cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
 		t.Fatal(err)
 	}

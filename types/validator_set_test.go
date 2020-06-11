@@ -667,7 +667,9 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
-	sig, err := privKey.Sign(vote.SignBytes(chainID))
+
+	v := vote.ToProto()
+	sig, err := privKey.Sign(VoteSignBytes(chainID, v))
 	assert.NoError(t, err)
 	vote.Signature = sig
 	commit := NewCommit(vote.Height, vote.Round, blockID, []CommitSig{vote.CommitSig()})

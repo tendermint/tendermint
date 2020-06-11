@@ -49,6 +49,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#4778 Transition store module to protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+  - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
+  - [privval] \#4985 `privval` reactor migration to Protobuf encoding
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
 
 - Apps

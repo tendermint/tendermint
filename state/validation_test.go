@@ -195,10 +195,16 @@ func TestValidateBlockCommit(t *testing.T) {
 			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 		}
-		err = badPrivVal.SignVote(chainID, goodVote)
+
+		g := goodVote.ToProto()
+		b := badVote.ToProto()
+
+		err = badPrivVal.SignVote(chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, badVote)
+		err = badPrivVal.SignVote(chainID, b)
 		require.NoError(t, err, "height %d", height)
+
+		goodVote.Signature, badVote.Signature = g.Signature, b.Signature
 
 		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
@@ -358,10 +364,14 @@ func TestValidateAmnesiaEvidence(t *testing.T) {
 	state, stateDB, vals := makeState(1, int(height))
 	addr, val := state.Validators.GetByIndex(0)
 	voteA := makeVote(height, 1, 0, addr, blockID)
-	err := vals[val.Address.String()].SignVote(chainID, voteA)
+	vA := voteA.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, vA)
+	voteA.Signature = vA.Signature
 	require.NoError(t, err)
 	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
-	err = vals[val.Address.String()].SignVote(chainID, voteB)
+	vB := voteB.ToProto()
+	err = vals[val.Address.String()].SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
 	require.NoError(t, err)
 	ae := types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
@@ -434,13 +444,19 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	addr, val := state.Validators.GetByIndex(0)
 	addr2, val2 := state.Validators.GetByIndex(1)
 	voteA := makeVote(height, 1, 0, addr, types.BlockID{})
-	err := vals[val.Address.String()].SignVote(chainID, voteA)
+	vA := voteA.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, vA)
+	voteA.Signature = vA.Signature
 	require.NoError(t, err)
 	voteB := makeVote(height, 2, 0, addr, blockID)
-	err = vals[val.Address.String()].SignVote(chainID, voteB)
+	vB := voteB.ToProto()
+	err = vals[val.Address.String()].SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
 	require.NoError(t, err)
 	voteC := makeVote(height, 2, 1, addr2, blockID)
-	err = vals[val2.Address.String()].SignVote(chainID, voteC)
+	vC := voteC.ToProto()
+	err = vals[val2.Address.String()].SignVote(chainID, vC)
+	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	//var ae types.Evidence
 	badAe := types.AmnesiaEvidence{
@@ -460,11 +476,15 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	}
 	addr3, val3 := state.Validators.GetByIndex(2)
 	voteD := makeVote(height, 2, 2, addr3, blockID)
-	err = vals[val3.Address.String()].SignVote(chainID, voteD)
+	vD := voteD.ToProto()
+	err = vals[val3.Address.String()].SignVote(chainID, vD)
 	require.NoError(t, err)
+	voteD.Signature = vD.Signature
 	addr4, val4 := state.Validators.GetByIndex(3)
 	voteE := makeVote(height, 2, 3, addr4, blockID)
-	err = vals[val4.Address.String()].SignVote(chainID, voteE)
+	vE := voteE.ToProto()
+	err = vals[val4.Address.String()].SignVote(chainID, vE)
+	voteE.Signature = vE.Signature
 	require.NoError(t, err)
 
 	goodAe := types.AmnesiaEvidence{
@@ -513,7 +533,9 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
 	vote := makeVote(3, 1, 0, addr, blockID)
-	err := vals[val.Address.String()].SignVote(chainID, vote)
+	v := vote.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, v)
+	vote.Signature = v.Signature
 	require.NoError(t, err)
 	ev := types.LunaticValidatorEvidence{
 		Header:             h,
@@ -533,7 +555,9 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
 	addr, val := state.Validators.GetByIndex(0)
 	vote := makeVote(3, 1, 0, addr, blockID)
-	err := vals[val.Address.String()].SignVote(chainID, vote)
+	v := vote.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, v)
+	vote.Signature = v.Signature
 	require.NoError(t, err)
 	ev := types.PhantomValidatorEvidence{
 		Vote:                        vote,
@@ -549,7 +573,9 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	privVal := types.NewMockPV()
 	pubKey, _ := privVal.GetPubKey()
 	vote2 := makeVote(3, 1, 0, pubKey.Address(), blockID)
-	err = privVal.SignVote(chainID, vote2)
+	v2 := vote2.ToProto()
+	err = privVal.SignVote(chainID, v2)
+	vote2.Signature = v2.Signature
 	require.NoError(t, err)
 	ev = types.PhantomValidatorEvidence{
 		Vote:                        vote2,

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -71,6 +73,7 @@ func (p *Proposal) ValidateBasic() error {
 	if len(p.Signature) == 0 {
 		return errors.New("signature is missing")
 	}
+
 	if len(p.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
@@ -88,9 +91,10 @@ func (p *Proposal) String() string {
 		CanonicalTime(p.Timestamp))
 }
 
-// SignBytes returns the Proposal bytes for signing
-func (p *Proposal) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeProposal(chainID, p))
+// ProposalSignBytes returns the Proposal bytes for signing
+func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
+	pb := CanonicalizeProposal(chainID, p)
+	bz, err := proto.Marshal(&pb)
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +104,7 @@ func (p *Proposal) SignBytes(chainID string) []byte {
 // ToProto converts Proposal to protobuf
 func (p *Proposal) ToProto() *tmproto.Proposal {
 	if p == nil {
-		return nil
+		return &tmproto.Proposal{}
 	}
 	pb := new(tmproto.Proposal)
 

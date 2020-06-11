@@ -331,14 +331,20 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	voteA := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
-	err = val.SignVote(evidenceChainID, voteA)
+	vA := voteA.ToProto()
+	err = val.SignVote(evidenceChainID, vA)
+	voteA.Signature = vA.Signature
 	require.NoError(t, err)
 	voteB := makeVote(25, 1, 0, pubKey.Address(), secondBlockID)
-	err = val.SignVote(evidenceChainID, voteB)
+	vB := voteB.ToProto()
+	err = val.SignVote(evidenceChainID, vB)
+	voteB.Signature = vB.Signature
 	require.NoError(t, err)
 	voteC := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
 	voteC.Timestamp.Add(1 * time.Second)
-	err = val.SignVote(evidenceChainID, voteC)
+	vC := voteC.ToProto()
+	err = val.SignVote(evidenceChainID, vC)
+	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	ev := types.PotentialAmnesiaEvidence{
 		VoteA: voteA,
