@@ -284,7 +284,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.True(t, pool.IsPending(goodEvidence))
 }
 
-func TestPotentialAmnesiaEvidence(t *testing.T) {
+func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	var (
 		val    = types.NewMockPV()
 		pubKey = val.PrivKey.PubKey()
@@ -330,13 +330,13 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	_, err = pool.RetrievePOLC(25, 1)
 	require.NoError(t, err)
 
-	voteA := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
+	voteA := makeVote(height, 0, 0, pubKey.Address(), firstBlockID)
 	err = val.SignVote(evidenceChainID, voteA)
 	require.NoError(t, err)
-	voteB := makeVote(25, 1, 0, pubKey.Address(), secondBlockID)
+	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID)
 	err = val.SignVote(evidenceChainID, voteB)
 	require.NoError(t, err)
-	voteC := makeVote(25, 0, 0, pubKey.Address(), firstBlockID)
+	voteC := makeVote(height, 0, 0, pubKey.Address(), firstBlockID)
 	voteC.Timestamp.Add(1 * time.Second)
 	err = val.SignVote(evidenceChainID, voteC)
 	require.NoError(t, err)
@@ -359,12 +359,19 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	// evidence is not ready to be upgraded so we return the height we expect the evidence to be.
 	nextHeight = pool.upgradePotentialAmnesiaEvidence()
 	assert.Equal(t, height+pool.state.ConsensusParams.Evidence.ProofTrialPeriod, nextHeight)
+	t.Log(nextHeight)
 
 	// now evidence is ready to be upgraded to amnesia evidence -> we expect -1 to be the next height as their is
 	// no more pending potential amnesia evidence left
-	pool.state.LastBlockHeight = nextHeight
-	nextHeight = pool.upgradePotentialAmnesiaEvidence()
-	assert.Equal(t, int64(-1), nextHeight)
+	// lastCommit := makeCommit(height+ 1, pubKey.Address())
+	// block := types.MakeBlock(height + 2, []types.Tx{}, lastCommit, []types.Evidence{})
+	// // update state (partially)
+	// state.LastBlockHeight = height + 2
+	// t.Log(state.LastBlockHeight)
+
+	// pool.Update(block, state)
+	pool.upgradePotentialAmnesiaEvidence()
+	assert.Equal(t, int64(-1), pool.nextEvidenceTrialEndedHeight)
 
 	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
 
@@ -379,6 +386,16 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+
+	// test for receiving amnesia evidence
+	ae := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: ev2, 
+		Polc: types.EmptyPOLC(),
+	}
+	err = pool.AddEvidence(ae)
+	assert.Error(t, err)
+	t.Log(err)
+
 
 }
 

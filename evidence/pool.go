@@ -157,6 +157,13 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		evList = []types.Evidence{evidence}
 	)
 
+	// If we already have this evidence either pending or committed we no longer need
+	// to do any more processing. This does not pick up on composite evidence
+	if ae, ok := evidence.(types.AmnesiaEvidence); (!ok || ok && ae.Polc.IsAbsent()) && 
+	( evpool.IsPending(evidence) || evpool.IsCommitted(evidence)) {
+		return nil
+	}
+
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
 		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
@@ -206,12 +213,17 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		}
 
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
-		// to form AmensiaEvidence
+		// to form AmensiaEvidence else start the trial period for the piece of evidence
 		if pe, ok := ev.(types.PotentialAmnesiaEvidence); ok {
 			if err := evpool.handleInboundPotentialAmnesiaEvidence(pe); err != nil {
 				return err
 			}
-			// we don't need to do anymore processing so we can move on to the next piece of evidence
+			continue
+		} else if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+		ae.PotentialAmnesiaEvidence.VoteB.Round {
+			if err := evpool.AddEvidence(ae.PotentialAmnesiaEvidence); err != nil {
+				return fmt.Errorf("failed to handle amnesia evidence, err: %w", err)
+			}
 			continue
 		}
 
