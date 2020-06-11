@@ -25,6 +25,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
   - [crypto] \4988 Removal of key type multisig
     - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+  - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`. 
+      - `merkle.Proof` has been renamed to `ProofOps`.
+      - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`
+      - `SimpleHashFromByteSlices` has been renamed to `HashFromByteSlices`
+      - `SimpleHashFromByteSlicesIterative` has been renamed to `HashFromByteSlicesIterative`
+      - `SimpleProofsFromByteSlices` has been renamed to `ProofsFromByteSlices`
   - [crypto] \#4941 Remove suffixes from all keys.
     - ed25519: type `PrivKeyEd25519` is now `PrivKey`
     - ed25519: type `PubKeyEd25519` is now `PubKey`
@@ -43,11 +49,14 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#4778 Transition store module to protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+  - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
+  - [privval] \#4985 `privval` reactor migration to Protobuf encoding
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
 
 - Apps
 
   - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0.
+  - [abci] \#4989 `Proof` within `ResponseQuery` has been renamed to `ProofOps`
 
 - P2P Protocol
 
@@ -77,6 +86,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
 - [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
 - [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
+- [evidence] [#4821](https://github.com/tendermint/tendermint/pull/4821) Amnesia evidence can be detected, verified and committed (@cmwaters)
 
 ### IMPROVEMENTS:
 

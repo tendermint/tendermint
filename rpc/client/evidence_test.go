@@ -11,6 +11,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -24,10 +25,14 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	chainID string) *types.DuplicateVoteEvidence {
 
 	var err error
-	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+	v := vote.ToProto()
+	v2 := vote2.ToProto()
+
+	vote.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.Signature, err = val.Key.PrivKey.Sign(vote2.SignBytes(chainID))
+	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2)
@@ -122,7 +127,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 		status, err := c.Status()
 		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+		require.NoError(t, err)
 
 		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
 		rawpub := ed25519pub.Bytes()
@@ -135,7 +141,10 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
+		require.NoError(t, err)
+
+		require.EqualValues(t, rawpub, pk.Bytes(), "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
@@ -192,8 +201,12 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Type:             tmproto.PrecommitType,
 			BlockID:          h2.Commit.BlockID,
 		}
-		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+		v := vote.ToProto()
+		signBytes, err := pv.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 		require.NoError(t, err)
+		vote.Signature = v.Signature
+
 		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h2.Time)
 
 		t.Logf("h1 AppHash: %X", h1.AppHash)

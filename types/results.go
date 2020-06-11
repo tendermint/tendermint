@@ -20,12 +20,12 @@ func NewResults(responses []*abci.ResponseDeliverTx) ABCIResults {
 
 // Hash returns a merkle hash of all results.
 func (a ABCIResults) Hash() []byte {
-	return merkle.SimpleHashFromByteSlices(a.toByteSlices())
+	return merkle.HashFromByteSlices(a.toByteSlices())
 }
 
-// ProveResult returns a merkle proof of one result from the set.
-func (a ABCIResults) ProveResult(i int) merkle.SimpleProof {
-	_, proofs := merkle.SimpleProofsFromByteSlices(a.toByteSlices())
+// ProveResult returns a merkle proof of one result from the set
+func (a ABCIResults) ProveResult(i int) merkle.Proof {
+	_, proofs := merkle.ProofsFromByteSlices(a.toByteSlices())
 	return *proofs[i]
 }
 

@@ -18,10 +18,19 @@ message FilePVKey {
 // FilePVLastSignState stores the mutable part of PrivValidator.
 message FilePVLastSignState {
   int64 height     = 1;
-  int64 round      = 2;
+  int32 round      = 2;
   int32 step       = 3;
   bytes signature  = 4;
   bytes sign_bytes = 5;
 
   string file_path = 6;
+}
+
+enum Errors {
+  ERRORS_UNKNOWN             = 0;
+  ERRORS_UNEXPECTED_RESPONSE = 1;
+  ERRORS_NO_CONNECTION       = 2;
+  ERRORS_CONNECTION_TIMEOUT  = 3;
+  ERRORS_READ_TIMEOUT        = 4;
+  ERRORS_WRITE_TIMEOUT       = 5;
 }

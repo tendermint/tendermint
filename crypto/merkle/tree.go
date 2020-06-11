@@ -4,9 +4,9 @@ import (
 	"math/bits"
 )
 
-// SimpleHashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
+// HashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
 // in the provided order.
-func SimpleHashFromByteSlices(items [][]byte) []byte {
+func HashFromByteSlices(items [][]byte) []byte {
 	switch len(items) {
 	case 0:
 		return nil
@@ -14,27 +14,27 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 		return leafHash(items[0])
 	default:
 		k := getSplitPoint(int64(len(items)))
-		left := SimpleHashFromByteSlices(items[:k])
-		right := SimpleHashFromByteSlices(items[k:])
+		left := HashFromByteSlices(items[:k])
+		right := HashFromByteSlices(items[k:])
 		return innerHash(left, right)
 	}
 }
 
-// SimpleHashFromByteSliceIterative is an iterative alternative to
-// SimpleHashFromByteSlice motivated by potential performance improvements.
+// HashFromByteSliceIterative is an iterative alternative to
+// HashFromByteSlice motivated by potential performance improvements.
 // (#2611) had suggested that an iterative version of
-// SimpleHashFromByteSlice would be faster, presumably because
+// HashFromByteSlice would be faster, presumably because
 // we can envision some overhead accumulating from stack
 // frames and function calls. Additionally, a recursive algorithm risks
 // hitting the stack limit and causing a stack overflow should the tree
 // be too large.
 //
-// Provided here is an iterative alternative, a simple test to assert
+// Provided here is an iterative alternative, a test to assert
 // correctness and a benchmark. On the performance side, there appears to
 // be no overall difference:
 //
-// BenchmarkSimpleHashAlternatives/recursive-4                20000 77677 ns/op
-// BenchmarkSimpleHashAlternatives/iterative-4                20000 76802 ns/op
+// BenchmarkHashAlternatives/recursive-4                20000 77677 ns/op
+// BenchmarkHashAlternatives/iterative-4                20000 76802 ns/op
 //
 // On the surface it might seem that the additional overhead is due to
 // the different allocation patterns of the implementations. The recursive
@@ -47,9 +47,9 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 //
 // These preliminary results suggest:
 //
-// 1. The performance of the SimpleHashFromByteSlice is pretty good
+// 1. The performance of the HashFromByteSlice is pretty good
 // 2. Go has low overhead for recursive functions
-// 3. The performance of the SimpleHashFromByteSlice routine is dominated
+// 3. The performance of the HashFromByteSlice routine is dominated
 //    by the actual hashing of data
 //
 // Although this work is in no way exhaustive, point #3 suggests that
@@ -59,7 +59,7 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 // Finally, considering that the recursive implementation is easier to
 // read, it might not be worthwhile to switch to a less intuitive
 // implementation for so little benefit.
-func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
+func HashFromByteSlicesIterative(input [][]byte) []byte {
 	items := make([][]byte, len(input))
 
 	for i, leaf := range input {

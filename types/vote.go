@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -13,7 +15,7 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64  = 211
+	MaxVoteBytes int64  = 209
 	nilVoteStr   string = "nil-Vote"
 )
 
@@ -81,8 +83,11 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
-func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+//VoteSignBytes take the chainID & a vote, represented in protobuf, and creates a signature.
+// If any error arises this will panic
+func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVote(chainID, vote)
+	bz, err := proto.Marshal(&pb)
 	if err != nil {
 		panic(err)
 	}
@@ -126,8 +131,8 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
 		return ErrVoteInvalidValidatorAddress
 	}
-
-	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+	v := vote.ToProto()
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
@@ -152,11 +157,13 @@ func (vote *Vote) ValidateBasic() error {
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)
 	}
+
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
+
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
 		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
@@ -169,9 +176,11 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) == 0 {
 		return errors.New("signature is missing")
 	}
+
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+
 	return nil
 }
 

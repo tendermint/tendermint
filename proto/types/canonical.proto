@@ -1,0 +1,37 @@
+syntax = "proto3";
+package tendermint.proto.types;
+
+option go_package = "github.com/tendermint/tendermint/proto/types";
+
+import "third_party/proto/gogoproto/gogo.proto";
+import "proto/types/types.proto";
+import "google/protobuf/timestamp.proto";
+
+message CanonicalBlockID {
+  bytes                  hash         = 1;
+  CanonicalPartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
+}
+
+message CanonicalPartSetHeader {
+  bytes  hash  = 1;
+  uint32 total = 2;
+}
+
+message CanonicalProposal {
+  SignedMsgType             type      = 1;  // type alias for byte
+  int64                     height    = 2;
+  int64                     round     = 3;
+  int64                     pol_round = 4 [(gogoproto.customname) = "POLRound"];
+  CanonicalBlockID          block_id  = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  google.protobuf.Timestamp timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    chain_id  = 7 [(gogoproto.customname) = "ChainID"];
+}
+
+message CanonicalVote {
+  SignedMsgType             type      = 1;  // type alias for byte
+  int64                     height    = 2;
+  int64                     round     = 3;
+  CanonicalBlockID          block_id  = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  google.protobuf.Timestamp timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                    chain_id  = 7 [(gogoproto.customname) = "ChainID"];
+}

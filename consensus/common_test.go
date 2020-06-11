@@ -25,6 +25,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/evidence"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -104,8 +105,10 @@ func (vs *validatorStub) signVote(
 		Type:             voteType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
+	v := vote.ToProto()
+	err = vs.PrivValidator.SignVote(config.ChainID(), v)
+	vote.Signature = v.Signature
 
-	err = vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
@@ -199,9 +202,13 @@ func decideProposal(
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
-	if err := vs.SignProposal(chainID, proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vs.SignProposal(chainID, p); err != nil {
 		panic(err)
 	}
+
+	proposal.Signature = p.Signature
+
 	return
 }
 
@@ -420,6 +427,47 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	incrementHeight(vss[1:]...)
 
 	return cs, vss
+}
+
+func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.Pool) {
+	state, privVals := randGenesisState(nValidators, false, 10)
+
+	vss := make([]*validatorStub, nValidators)
+
+	app := counter.NewApplication(true)
+	config := cfg.ResetTestRoot("consensus_state_test")
+
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	evidenceDB := dbm.NewMemDB()
+
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+	mempool := mempl.NewCListMempool(config.Mempool, proxyAppConnMem, 0)
+	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+	if config.Consensus.WaitForTxs() {
+		mempool.EnableTxsAvailable()
+	}
+	stateDB := dbm.NewMemDB()
+	evpool, _ := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
+	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+	cs.SetPrivValidator(privVals[0])
+
+	eventBus := types.NewEventBus()
+	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus.Start()
+	cs.SetEventBus(eventBus)
+
+	for i := 0; i < nValidators; i++ {
+		vss[i] = newValidatorStub(privVals[i], int32(i))
+	}
+	// since cs1 starts at 1
+	incrementHeight(vss[1:]...)
+
+	return cs, vss, evpool
 }
 
 //-------------------------------------------------------------------------------

@@ -18,6 +18,13 @@ message DuplicateVoteEvidence {
 message PotentialAmnesiaEvidence {
   Vote vote_a = 1;
   Vote vote_b = 2;
+
+  int64 height_stamp = 3;
+}
+
+message AmnesiaEvidence {
+  PotentialAmnesiaEvidence potential_amnesia_evidence = 1;
+  ProofOfLockChange        polc                       = 2;
 }
 
 // MockEvidence is used for testing pruposes
@@ -52,9 +59,10 @@ message Evidence {
     ConflictingHeadersEvidence conflicting_headers_evidence = 2;
     LunaticValidatorEvidence   lunatic_validator_evidence   = 3;
     PotentialAmnesiaEvidence   potential_amnesia_evidence   = 4;
+    AmnesiaEvidence            amnesia_evidence             = 5;
 
-    MockEvidence       mock_evidence        = 5;
-    MockRandomEvidence mock_random_evidence = 6;
+    MockEvidence       mock_evidence        = 6;
+    MockRandomEvidence mock_random_evidence = 7;
   }
 }
 

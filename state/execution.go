@@ -8,6 +8,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -380,10 +381,14 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
-		thisKeyType := valUpdate.PubKey.Type
-		if !types.IsValidPubkeyType(params, thisKeyType) {
+		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
+		if err != nil {
+			return err
+		}
+
+		if !types.IsValidPubkeyType(params, pk.Type()) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, thisKeyType)
+				valUpdate, pk.Type())
 		}
 	}
 	return nil
