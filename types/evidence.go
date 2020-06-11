@@ -463,12 +463,13 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
 			addr, pubKey, pubKey.Address())
 	}
-
+	va := dve.VoteA.ToProto()
+	vb := dve.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -841,8 +842,8 @@ func (e PhantomValidatorEvidence) Bytes() []byte {
 
 func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 
-	// signature must be verified to the chain ID
-	if !pubKey.VerifyBytes(e.Vote.SignBytes(chainID), e.Vote.Signature) {
+	v := e.Vote.ToProto()
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
 		return errors.New("invalid signature")
 	}
 
@@ -930,7 +931,8 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 		)
 	}
 
-	if !pubKey.VerifyBytes(e.Vote.SignBytes(chainID), e.Vote.Signature) {
+	v := e.Vote.ToProto()
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
 		return errors.New("invalid signature")
 	}
 
@@ -1072,11 +1074,14 @@ func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 			addr, pubKey, pubKey.Address())
 	}
 
+	va := e.VoteA.ToProto()
+	vb := e.VoteB.ToProto()
+
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(e.VoteA.SignBytes(chainID), e.VoteA.Signature) {
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), e.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(e.VoteB.SignBytes(chainID), e.VoteB.Signature) {
+	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), e.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -1247,7 +1252,8 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 		for _, validator := range valSet.Validators {
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
-				if !validator.PubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+				v := vote.ToProto()
+				if !validator.PubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
 					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v",
 						vote.ValidatorIndex, vote.Signature)
 				}
@@ -1615,7 +1621,13 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 	pKey, _ := voteVal.GetPubKey()
 	vote := Vote{Type: tmproto.PrecommitType, Height: height, Round: 1, BlockID: BlockID{},
 		Timestamp: time, ValidatorAddress: pKey.Address(), ValidatorIndex: 1, Signature: []byte{}}
-	_ = voteVal.SignVote("mock-chain-id", &vote)
+
+	v := vote.ToProto()
+	if err := voteVal.SignVote("mock-chain-id", v); err != nil {
+		panic(err)
+	}
+	vote.Signature = v.Signature
+
 	return ProofOfLockChange{
 		Votes:  []Vote{vote},
 		PubKey: pubKey,

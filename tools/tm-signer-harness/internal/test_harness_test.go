@@ -23,7 +23,7 @@ const (
 	"pub_key": {
 		"type": "tendermint/PubKeyEd25519",
 		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-	},
+		},
 	"priv_key": {
 		"type": "tendermint/PrivKeyEd25519",
 		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="

@@ -150,6 +150,7 @@ func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
 	if len(sig) != SignatureSize {
 		return false
 	}
+
 	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
 }
 

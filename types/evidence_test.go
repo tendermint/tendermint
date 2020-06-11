@@ -34,11 +34,16 @@ func TestEvidence(t *testing.T) {
 	const chainID = "mychain"
 
 	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	err := val.SignVote(chainID, vote1)
+	v1 := vote1.ToProto()
+	err := val.SignVote(chainID, v1)
 	require.NoError(t, err)
 	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	err = val2.SignVote(chainID, badVote)
+	bv := badVote.ToProto()
+	err = val2.SignVote(chainID, bv)
 	require.NoError(t, err)
+
+	vote1.Signature = v1.Signature
+	badVote.Signature = bv.Signature
 
 	cases := []voteData{
 		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime), true}, // different block ids
@@ -542,10 +547,13 @@ func makeVote(
 		BlockID:          blockID,
 		Timestamp:        time,
 	}
-	err = val.SignVote(chainID, v)
+
+	vpb := v.ToProto()
+	err = val.SignVote(chainID, vpb)
 	if err != nil {
 		panic(err)
 	}
+	v.Signature = vpb.Signature
 	return v
 }
 
