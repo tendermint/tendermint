@@ -11,8 +11,9 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
+	pc "github.com/tendermint/tendermint/proto/crypto/keys"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -30,7 +31,7 @@ type PersistentKVStoreApplication struct {
 	// validator set
 	ValUpdates []types.ValidatorUpdate
 
-	valAddrToPubKeyMap map[string]types.PubKey
+	valAddrToPubKeyMap map[string]pc.PublicKey
 
 	logger log.Logger
 }
@@ -46,7 +47,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 
 	return &PersistentKVStoreApplication{
 		app:                &Application{state: state},
-		valAddrToPubKeyMap: make(map[string]types.PubKey),
+		valAddrToPubKeyMap: make(map[string]pc.PublicKey),
 		logger:             log.NewNopLogger(),
 	}
 }
@@ -136,6 +137,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 			})
 		}
 	}
+
 	return types.ResponseBeginBlock{}
 }
 
@@ -185,8 +187,12 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 	return
 }
 
-func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
-	pubStr := base64.StdEncoding.EncodeToString(pubkey.Data)
+func MakeValSetChangeTx(pubkey pc.PublicKey, power int64) []byte {
+	pk, err := cryptoenc.PubKeyFromProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
+	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
 	return []byte(fmt.Sprintf("val:%s!%d", pubStr, power))
 }
 
@@ -230,10 +236,11 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
-	key := []byte("val:" + string(v.PubKey.Data))
-
-	pubkey := make(ed25519.PubKey, ed25519.PubKeySize)
-	copy(pubkey, v.PubKey.Data)
+	key := []byte("val:" + string(v.PubKey.GetEd25519()))
+	pubkey, err := cryptoenc.PubKeyFromProto(v.PubKey)
+	if err != nil {
+		panic(fmt.Errorf("can't decode public key: %w", err))
+	}
 
 	if v.Power == 0 {
 		// remove validator
@@ -242,7 +249,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 			panic(err)
 		}
 		if !hasKey {
-			pubStr := base64.StdEncoding.EncodeToString(v.PubKey.Data)
+			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}

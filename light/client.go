@@ -477,6 +477,8 @@ func (c *Client) compareWithLatestHeight(height int64) (int64, error) {
 //
 // It returns provider.ErrSignedHeaderNotFound if header is not found by
 // primary.
+//
+// It will replace the primary provider if an error from a request to the provider occurs
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.SignedHeader, error) {
 	if height <= 0 {
 		return nil, errors.New("negative or zero height")
@@ -639,7 +641,7 @@ func (c *Client) sequence(
 		}
 
 		// 2) Verify them
-		c.logger.Debug("Verify newHeader against trustedHeader",
+		c.logger.Debug("Verify adjacent newHeader against trustedHeader",
 			"trustedHeight", trustedHeader.Height,
 			"trustedHash", hash2str(trustedHeader.Hash()),
 			"newHeight", interimHeader.Height,
@@ -648,7 +650,7 @@ func (c *Client) sequence(
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, interimVals,
 			c.trustingPeriod, now, c.maxClockDrift)
 		if err != nil {
-			err = fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
+			err := fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
 				trustedHeader.Height, interimHeader.Height, err)
 
 			switch errors.Unwrap(err).(type) {
@@ -657,7 +659,7 @@ func (c *Client) sequence(
 				replaceErr := c.replacePrimaryProvider()
 				if replaceErr != nil {
 					c.logger.Error("Can't replace primary", "err", replaceErr)
-					return err // return original error
+					return fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
 				}
 				// attempt to verify header again
 				height--
@@ -700,7 +702,7 @@ func (c *Client) bisection(
 	)
 
 	for {
-		c.logger.Debug("Verify newHeader against trustedHeader",
+		c.logger.Debug("Verify non-adjacent newHeader against trustedHeader",
 			"trustedHeight", trustedHeader.Height,
 			"trustedHash", hash2str(trustedHeader.Hash()),
 			"newHeight", headerCache[depth].sh.Height,
@@ -752,8 +754,18 @@ func (c *Client) bisection(
 				return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
 					trustedHeader.Height, headerCache[depth].sh.Height, err)
 			}
+			newProviderHeader, newProviderVals, err := c.fetchHeaderAndValsAtHeight(newHeader.Height)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(newProviderHeader.Hash(), newHeader.Hash()) || !bytes.Equal(newProviderVals.Hash(), newVals.Hash()) {
+				err := fmt.Errorf("replacement provider has a different header: %X and/or vals: %X at height: %d"+
+					"to the one being verified", newProviderHeader.Hash(), newProviderVals.Hash(), newHeader.Height)
+				return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
+					trustedHeader.Height, headerCache[depth].sh.Height, err)
+			}
 			// attempt to verify the header again
-			continue
+			return c.bisection(initiallyTrustedHeader, initiallyTrustedVals, newHeader, newVals, now)
 
 		default:
 			return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",

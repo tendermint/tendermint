@@ -108,13 +108,15 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
+
+	v := vote.ToProto()
 	// Sign it
-	signBytes := vote.SignBytes(header.ChainID)
-	// TODO Consider reworking makeVote API to return an error
+	signBytes := types.VoteSignBytes(header.ChainID, v)
 	sig, err := key.Sign(signBytes)
 	if err != nil {
 		panic(err)
 	}
+
 	vote.Signature = sig
 
 	return vote

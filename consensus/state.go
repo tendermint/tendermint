@@ -175,11 +175,16 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		cs.reconstructLastCommit(state)
+	}
+
 	cs.updateToState(state)
 
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
-	cs.reconstructLastCommit(state)
+
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
@@ -243,7 +248,7 @@ func (cs *State) GetRoundStateJSON() ([]byte, error) {
 	return tmjson.Marshal(cs.RoundState)
 }
 
-// GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
+// GetRoundStateSimpleJSON returns a json of RoundStateSimple
 func (cs *State) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
@@ -517,18 +522,17 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	if state.LastBlockHeight == 0 {
-		return
-	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	if seenCommit == nil {
 		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
 			state.LastBlockHeight))
 	}
+
 	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
 	}
+
 	cs.LastCommit = lastPrecommits
 }
 
@@ -564,12 +568,24 @@ func (cs *State) updateToState(state sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	lastPrecommits := (*types.VoteSet)(nil)
-	if cs.CommitRound > -1 && cs.Votes != nil {
+
+	switch {
+	case state.LastBlockHeight == 0: // Very first commit should be empty.
+		cs.LastCommit = (*types.VoteSet)(nil)
+	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic("updateToState(state) called but last Precommit round didn't have +2/3")
+			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				state.LastBlockHeight,
+				cs.CommitRound,
+				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+	case cs.LastCommit == nil:
+		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
+		// must be called to reconstruct LastCommit from SeenCommit.
+		panic(fmt.Sprintf("LastCommit cannot be empty in heights > 1 (H:%d)",
+			state.LastBlockHeight+1,
+		))
 	}
 
 	// Next desired block height
@@ -601,7 +617,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
-	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
 
@@ -1017,7 +1032,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
+	p := proposal.ToProto()
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
+		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
@@ -1668,11 +1685,13 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
+	p := proposal.ToProto()
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
+	proposal.Signature = p.Signature
 	cs.Proposal = proposal
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
@@ -1961,7 +1980,7 @@ func (cs *State) addVote(
 		}
 
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type)) // go-amino should prevent this.
+		panic(fmt.Sprintf("Unexpected vote type %v", vote.Type))
 	}
 
 	return added, err
@@ -1993,8 +2012,10 @@ func (cs *State) signVote(
 		Type:             msgType,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
+	v := vote.ToProto()
+	err = cs.privValidator.SignVote(cs.state.ChainID, v)
+	vote.Signature = v.Signature
 
-	err = cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
 }
 

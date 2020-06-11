@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -23,7 +24,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/async"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -250,7 +254,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	defer pool.Put(frame)
 	_, err = sc.recvAead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("failed to decrypt SecretConnection")
+		return n, fmt.Errorf("failed to decrypt SecretConnection: %w", err)
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption
@@ -300,18 +304,22 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
-			if err1 != nil {
-				return nil, true, err1 // abort
+			lc := *locEphPub
+			_, err = protoio.NewDelimitedWriter(conn).WriteMsg(&gogotypes.BytesValue{Value: lc[:]})
+			if err != nil {
+				return nil, true, err // abort
 			}
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _remEphPub [32]byte
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, true, err2 // abort
+			var bytes gogotypes.BytesValue
+			err = protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
+			if err != nil {
+				return nil, true, err // abort
 			}
+
+			var _remEphPub [32]byte
+			copy(_remEphPub[:], bytes.Value)
 			return _remEphPub, false, nil
 		},
 	)
@@ -399,17 +407,31 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
-			if err1 != nil {
-				return nil, true, err1 // abort
+			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+			if err != nil {
+				return nil, true, err
+			}
+			_, err = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
+			if err != nil {
+				return nil, true, err // abort
 			}
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _recvMsg authSigMessage
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, true, err2 // abort
+			var pba tmp2p.AuthSigMessage
+			err = protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
+			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
+			_recvMsg := authSigMessage{
+				Key: pk,
+				Sig: pba.Sig,
 			}
 			return _recvMsg, false, nil
 		},
