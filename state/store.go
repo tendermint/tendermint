@@ -281,7 +281,7 @@ func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 	}
 
 	// Build a Merkle tree out of the above 3 binary slices.
-	return merkle.SimpleHashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+	return merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
