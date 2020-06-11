@@ -5,7 +5,6 @@ package privval
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	keys "github.com/tendermint/tendermint/proto/crypto/keys"
 	types "github.com/tendermint/tendermint/proto/types"
@@ -169,7 +168,8 @@ func (m *PubKeyResponse) GetError() *RemoteSignerError {
 
 // SignVoteRequest is a request to sign a vote
 type SignVoteRequest struct {
-	Vote *types.Vote `protobuf:"bytes,1,opt,name=vote,proto3" json:"vote,omitempty"`
+	ChainId string      `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	Vote    *types.Vote `protobuf:"bytes,2,opt,name=vote,proto3" json:"vote,omitempty"`
 }
 
 func (m *SignVoteRequest) Reset()         { *m = SignVoteRequest{} }
@@ -204,6 +204,13 @@ func (m *SignVoteRequest) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_SignVoteRequest proto.InternalMessageInfo
+
+func (m *SignVoteRequest) GetChainId() string {
+	if m != nil {
+		return m.ChainId
+	}
+	return ""
+}
 
 func (m *SignVoteRequest) GetVote() *types.Vote {
 	if m != nil {
@@ -267,7 +274,8 @@ func (m *SignedVoteResponse) GetError() *RemoteSignerError {
 
 // SignProposalRequest is a request to sign a proposal
 type SignProposalRequest struct {
-	Proposal types.Proposal `protobuf:"bytes,1,opt,name=proposal,proto3" json:"proposal"`
+	ChainId  string          `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	Proposal *types.Proposal `protobuf:"bytes,2,opt,name=proposal,proto3" json:"proposal,omitempty"`
 }
 
 func (m *SignProposalRequest) Reset()         { *m = SignProposalRequest{} }
@@ -303,11 +311,18 @@ func (m *SignProposalRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SignProposalRequest proto.InternalMessageInfo
 
-func (m *SignProposalRequest) GetProposal() types.Proposal {
+func (m *SignProposalRequest) GetChainId() string {
+	if m != nil {
+		return m.ChainId
+	}
+	return ""
+}
+
+func (m *SignProposalRequest) GetProposal() *types.Proposal {
 	if m != nil {
 		return m.Proposal
 	}
-	return types.Proposal{}
+	return nil
 }
 
 // SignedProposalResponse is response containing a signed proposal or an error
@@ -363,80 +378,6 @@ func (m *SignedProposalResponse) GetError() *RemoteSignerError {
 	return nil
 }
 
-// PingRequest is a request to confirm that the connection is alive.
-type PingRequest struct {
-}
-
-func (m *PingRequest) Reset()         { *m = PingRequest{} }
-func (m *PingRequest) String() string { return proto.CompactTextString(m) }
-func (*PingRequest) ProtoMessage()    {}
-func (*PingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9ec52cc5e378f9a4, []int{7}
-}
-func (m *PingRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *PingRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_PingRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *PingRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PingRequest.Merge(m, src)
-}
-func (m *PingRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *PingRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PingRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PingRequest proto.InternalMessageInfo
-
-// PingResponse is a response to confirm that the connection is alive.
-type PingResponse struct {
-}
-
-func (m *PingResponse) Reset()         { *m = PingResponse{} }
-func (m *PingResponse) String() string { return proto.CompactTextString(m) }
-func (*PingResponse) ProtoMessage()    {}
-func (*PingResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9ec52cc5e378f9a4, []int{8}
-}
-func (m *PingResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *PingResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_PingResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *PingResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PingResponse.Merge(m, src)
-}
-func (m *PingResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *PingResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_PingResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PingResponse proto.InternalMessageInfo
-
 type Message struct {
 	// Types that are valid to be assigned to Sum:
 	//	*Message_PubKeyRequest
@@ -445,8 +386,6 @@ type Message struct {
 	//	*Message_SignedVoteResponse
 	//	*Message_SignProposalRequest
 	//	*Message_SignedProposalResponse
-	//	*Message_PingRequest
-	//	*Message_PingResponse
 	Sum isMessage_Sum `protobuf_oneof:"sum"`
 }
 
@@ -454,7 +393,7 @@ func (m *Message) Reset()         { *m = Message{} }
 func (m *Message) String() string { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()    {}
 func (*Message) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9ec52cc5e378f9a4, []int{9}
+	return fileDescriptor_9ec52cc5e378f9a4, []int{7}
 }
 func (m *Message) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -507,12 +446,6 @@ type Message_SignProposalRequest struct {
 type Message_SignedProposalResponse struct {
 	SignedProposalResponse *SignedProposalResponse `protobuf:"bytes,6,opt,name=signed_proposal_response,json=signedProposalResponse,proto3,oneof" json:"signed_proposal_response,omitempty"`
 }
-type Message_PingRequest struct {
-	PingRequest *PingRequest `protobuf:"bytes,7,opt,name=ping_request,json=pingRequest,proto3,oneof" json:"ping_request,omitempty"`
-}
-type Message_PingResponse struct {
-	PingResponse *PingResponse `protobuf:"bytes,8,opt,name=ping_response,json=pingResponse,proto3,oneof" json:"ping_response,omitempty"`
-}
 
 func (*Message_PubKeyRequest) isMessage_Sum()          {}
 func (*Message_PubKeyResponse) isMessage_Sum()         {}
@@ -520,8 +453,6 @@ func (*Message_SignVoteRequest) isMessage_Sum()        {}
 func (*Message_SignedVoteResponse) isMessage_Sum()     {}
 func (*Message_SignProposalRequest) isMessage_Sum()    {}
 func (*Message_SignedProposalResponse) isMessage_Sum() {}
-func (*Message_PingRequest) isMessage_Sum()            {}
-func (*Message_PingResponse) isMessage_Sum()           {}
 
 func (m *Message) GetSum() isMessage_Sum {
 	if m != nil {
@@ -572,20 +503,6 @@ func (m *Message) GetSignedProposalResponse() *SignedProposalResponse {
 	return nil
 }
 
-func (m *Message) GetPingRequest() *PingRequest {
-	if x, ok := m.GetSum().(*Message_PingRequest); ok {
-		return x.PingRequest
-	}
-	return nil
-}
-
-func (m *Message) GetPingResponse() *PingResponse {
-	if x, ok := m.GetSum().(*Message_PingResponse); ok {
-		return x.PingResponse
-	}
-	return nil
-}
-
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Message) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -595,8 +512,6 @@ func (*Message) XXX_OneofWrappers() []interface{} {
 		(*Message_SignedVoteResponse)(nil),
 		(*Message_SignProposalRequest)(nil),
 		(*Message_SignedProposalResponse)(nil),
-		(*Message_PingRequest)(nil),
-		(*Message_PingResponse)(nil),
 	}
 }
 
@@ -608,55 +523,49 @@ func init() {
 	proto.RegisterType((*SignedVoteResponse)(nil), "tendermint.proto.privval.SignedVoteResponse")
 	proto.RegisterType((*SignProposalRequest)(nil), "tendermint.proto.privval.SignProposalRequest")
 	proto.RegisterType((*SignedProposalResponse)(nil), "tendermint.proto.privval.SignedProposalResponse")
-	proto.RegisterType((*PingRequest)(nil), "tendermint.proto.privval.PingRequest")
-	proto.RegisterType((*PingResponse)(nil), "tendermint.proto.privval.PingResponse")
 	proto.RegisterType((*Message)(nil), "tendermint.proto.privval.Message")
 }
 
 func init() { proto.RegisterFile("proto/privval/msgs.proto", fileDescriptor_9ec52cc5e378f9a4) }
 
 var fileDescriptor_9ec52cc5e378f9a4 = []byte{
-	// 629 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x95, 0x41, 0x6f, 0xd3, 0x3c,
-	0x1c, 0xc6, 0x93, 0x77, 0xed, 0xb6, 0xf7, 0xdf, 0x75, 0x65, 0x1e, 0x8c, 0x6a, 0x82, 0x52, 0x45,
-	0x62, 0x0c, 0x01, 0xe9, 0x34, 0xae, 0x1c, 0xa0, 0x08, 0x29, 0x80, 0x26, 0x15, 0x83, 0x40, 0x70,
-	0x29, 0x6d, 0x6a, 0x65, 0xd1, 0xda, 0xd8, 0xd8, 0xce, 0xa4, 0x7c, 0x04, 0x6e, 0x5c, 0x38, 0xf0,
-	0x8d, 0x76, 0xdc, 0x91, 0x13, 0x42, 0xdd, 0x17, 0x41, 0xb1, 0x9d, 0x26, 0x6d, 0xd7, 0x4d, 0x93,
-	0x76, 0x8b, 0x9f, 0xd8, 0xbf, 0xff, 0xf3, 0xc4, 0x4f, 0x55, 0xa8, 0x33, 0x4e, 0x25, 0x6d, 0x31,
-	0x1e, 0x1e, 0x1f, 0xf7, 0x86, 0xad, 0x91, 0x08, 0x84, 0xab, 0x24, 0x54, 0x97, 0x24, 0x1a, 0x10,
-	0x3e, 0x0a, 0x23, 0xa9, 0x15, 0xd7, 0x6c, 0xda, 0xde, 0x91, 0x87, 0x21, 0x1f, 0x74, 0x59, 0x8f,
-	0xcb, 0xa4, 0xa5, 0xcf, 0x07, 0x34, 0xa0, 0xf9, 0x93, 0xde, 0xbf, 0x7d, 0x57, 0x2b, 0x3e, 0x4f,
-	0x98, 0xa4, 0xad, 0x23, 0x92, 0x88, 0x96, 0x4c, 0x18, 0x31, 0x03, 0xb6, 0x6f, 0xeb, 0xd7, 0x4a,
-	0x2a, 0xbe, 0x70, 0x5e, 0xc3, 0x06, 0x26, 0x23, 0x2a, 0xc9, 0xfb, 0x30, 0x88, 0x08, 0x7f, 0xc5,
-	0x39, 0xe5, 0x08, 0x41, 0xc9, 0xa7, 0x03, 0x52, 0xb7, 0x9b, 0xf6, 0x6e, 0x19, 0xab, 0x67, 0xd4,
-	0x84, 0xca, 0x80, 0x08, 0x9f, 0x87, 0x4c, 0x86, 0x34, 0xaa, 0xff, 0xd7, 0xb4, 0x77, 0xff, 0xc7,
-	0x45, 0xc9, 0xa9, 0x41, 0xb5, 0x13, 0xf7, 0xdf, 0x92, 0x04, 0x93, 0x6f, 0x31, 0x11, 0xd2, 0xf9,
-	0x69, 0xc3, 0x7a, 0xa6, 0x08, 0x46, 0x23, 0x41, 0xd0, 0x73, 0x58, 0x61, 0x71, 0xbf, 0x7b, 0x44,
-	0x12, 0x05, 0xaf, 0xec, 0x3f, 0x70, 0xe7, 0xa2, 0xeb, 0x0c, 0x6e, 0x9a, 0xc1, 0xed, 0xc4, 0xfd,
-	0x61, 0xe8, 0xa7, 0x84, 0x65, 0xa6, 0x48, 0xe8, 0x05, 0x94, 0x49, 0x6a, 0x52, 0x39, 0xa8, 0xec,
-	0x3f, 0x72, 0x17, 0x7d, 0x3a, 0x77, 0x2e, 0x17, 0xd6, 0x27, 0x9d, 0x97, 0x50, 0x4b, 0xd5, 0x8f,
-	0x54, 0x12, 0x63, 0x15, 0xed, 0x41, 0xe9, 0x98, 0x4a, 0x62, 0x4c, 0xdd, 0x99, 0x87, 0xea, 0x6f,
-	0xa6, 0x8e, 0xa8, 0x9d, 0xce, 0x77, 0x1b, 0x90, 0x62, 0x0f, 0x34, 0xc7, 0x04, 0xbc, 0x32, 0xe8,
-	0x3a, 0x02, 0x7d, 0x86, 0xcd, 0x54, 0xed, 0x70, 0xca, 0xa8, 0xe8, 0x0d, 0xb3, 0x50, 0x6d, 0x58,
-	0x65, 0x46, 0x32, 0x7e, 0x9a, 0x8b, 0xfc, 0x64, 0x47, 0xdb, 0xa5, 0x93, 0x3f, 0xf7, 0x2c, 0x3c,
-	0x39, 0xe7, 0xfc, 0xb2, 0x61, 0x4b, 0xc7, 0xcc, 0xe9, 0x26, 0xea, 0xb3, 0xab, 0xe3, 0x73, 0xf0,
-	0x75, 0xc4, 0xae, 0x42, 0xa5, 0x13, 0x46, 0x41, 0x56, 0xb7, 0x75, 0x58, 0xd3, 0x4b, 0xed, 0xcf,
-	0x19, 0x97, 0x61, 0xe5, 0x80, 0x08, 0xd1, 0x0b, 0x08, 0x7a, 0x07, 0x35, 0xd3, 0xbb, 0x2e, 0xd7,
-	0xdb, 0x17, 0xf7, 0x2f, 0x9b, 0x3b, 0x55, 0x66, 0xcf, 0xc2, 0x55, 0x56, 0x14, 0xd0, 0x07, 0xb8,
-	0x91, 0x23, 0xf5, 0x48, 0x93, 0x65, 0xf7, 0x72, 0xa6, 0xde, 0xef, 0x59, 0x78, 0x9d, 0x4d, 0xff,
-	0x40, 0x3e, 0xc1, 0x86, 0x08, 0x83, 0xa8, 0x9b, 0x56, 0x63, 0x62, 0x75, 0x49, 0x61, 0x1f, 0x2e,
-	0xc6, 0xce, 0xd4, 0xd9, 0xb3, 0x70, 0x4d, 0xcc, 0x34, 0xfc, 0x2b, 0xdc, 0x14, 0xea, 0x1e, 0x33,
-	0xb4, 0xb1, 0x5c, 0x52, 0xec, 0xc7, 0x17, 0xb3, 0xa7, 0x4b, 0xee, 0x59, 0x18, 0x89, 0xf9, 0xea,
-	0xfb, 0x70, 0x4b, 0x59, 0xcf, 0xae, 0x78, 0x62, 0xbf, 0xac, 0x46, 0x3c, 0xb9, 0x78, 0xc4, 0x4c,
-	0x79, 0x3d, 0x0b, 0x6f, 0x8a, 0x73, 0x3a, 0x3d, 0x84, 0xba, 0x89, 0x51, 0x18, 0x63, 0xa2, 0x2c,
-	0xab, 0x39, 0x7b, 0x97, 0x45, 0x99, 0x2d, 0xb2, 0x67, 0xe1, 0x2d, 0x71, 0x7e, 0xc5, 0xdf, 0xc0,
-	0x1a, 0x0b, 0xa3, 0x60, 0x92, 0x64, 0x45, 0x4d, 0xb8, 0x7f, 0xc1, 0xfd, 0xe6, 0x7d, 0xf4, 0x2c,
-	0x5c, 0x61, 0xf9, 0x12, 0x1d, 0x40, 0xd5, 0xb0, 0x8c, 0xdd, 0x55, 0x05, 0xdb, 0xb9, 0x0c, 0x36,
-	0x31, 0xb9, 0xc6, 0x0a, 0xeb, 0x76, 0x19, 0x96, 0x44, 0x3c, 0x6a, 0x7b, 0x27, 0xe3, 0x86, 0x7d,
-	0x3a, 0x6e, 0xd8, 0x7f, 0xc7, 0x0d, 0xfb, 0xc7, 0x59, 0xc3, 0x3a, 0x3d, 0x6b, 0x58, 0xbf, 0xcf,
-	0x1a, 0xd6, 0x17, 0x37, 0x08, 0xe5, 0x61, 0xdc, 0x77, 0x7d, 0x3a, 0x6a, 0xe5, 0x23, 0x8a, 0x8f,
-	0x53, 0x7f, 0x47, 0xfd, 0x65, 0xb5, 0x7c, 0xfa, 0x2f, 0x00, 0x00, 0xff, 0xff, 0x18, 0x03, 0x41,
-	0x2e, 0xa6, 0x06, 0x00, 0x00,
+	// 570 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0x4f, 0x6f, 0xd3, 0x3e,
+	0x1c, 0xc6, 0xe3, 0xdf, 0xfa, 0x67, 0xfb, 0x56, 0x5b, 0x7f, 0xf3, 0x60, 0x94, 0x09, 0xa2, 0x2a,
+	0x17, 0x8a, 0x80, 0x74, 0x1a, 0x57, 0x0e, 0x30, 0x09, 0x29, 0x13, 0x42, 0x2a, 0x06, 0x81, 0xc4,
+	0x81, 0xd2, 0x26, 0x56, 0x17, 0xad, 0x8d, 0x8d, 0xed, 0x54, 0xea, 0x4b, 0xe0, 0xc6, 0x85, 0x03,
+	0xaf, 0x08, 0x8e, 0x3b, 0x72, 0x44, 0xed, 0x1b, 0x41, 0xb1, 0xdd, 0x36, 0x6d, 0xd7, 0x6d, 0x48,
+	0xbb, 0x25, 0x5f, 0xdb, 0x9f, 0xe7, 0x79, 0x9c, 0xa7, 0x85, 0x1a, 0x17, 0x4c, 0xb1, 0x26, 0x17,
+	0xf1, 0x70, 0xd8, 0xe9, 0x37, 0x07, 0xb2, 0x27, 0x7d, 0x3d, 0xc2, 0x35, 0x45, 0x93, 0x88, 0x8a,
+	0x41, 0x9c, 0x28, 0x33, 0xf1, 0xed, 0xa6, 0x83, 0xfb, 0xe6, 0x4c, 0x28, 0x46, 0x5c, 0xb1, 0xe6,
+	0x19, 0x1d, 0xc9, 0xa6, 0x1a, 0x71, 0x6a, 0x0f, 0x1e, 0xdc, 0x31, 0xcb, 0x7a, 0x94, 0x5f, 0xf0,
+	0x4e, 0x60, 0x97, 0xd0, 0x01, 0x53, 0xf4, 0x6d, 0xdc, 0x4b, 0xa8, 0x78, 0x29, 0x04, 0x13, 0x18,
+	0x43, 0x21, 0x64, 0x11, 0xad, 0xa1, 0x3a, 0x6a, 0x14, 0x89, 0x7e, 0xc6, 0x75, 0xa8, 0x44, 0x54,
+	0x86, 0x22, 0xe6, 0x2a, 0x66, 0x49, 0xed, 0xbf, 0x3a, 0x6a, 0x6c, 0x91, 0xfc, 0xc8, 0xab, 0xc2,
+	0x76, 0x2b, 0xed, 0xbe, 0xa2, 0x23, 0x42, 0xbf, 0xa4, 0x54, 0x2a, 0xef, 0x3b, 0x82, 0x9d, 0xe9,
+	0x44, 0x72, 0x96, 0x48, 0x8a, 0x9f, 0x43, 0x99, 0xa7, 0xdd, 0xf6, 0x19, 0x1d, 0x69, 0x78, 0xe5,
+	0xe8, 0x81, 0xbf, 0x12, 0xc9, 0x64, 0xf0, 0xb3, 0x0c, 0x7e, 0x2b, 0xed, 0xf6, 0xe3, 0x30, 0x23,
+	0x94, 0xb8, 0x26, 0xe1, 0x17, 0x50, 0xa4, 0x99, 0x49, 0xed, 0xa0, 0x72, 0xf4, 0xc8, 0x5f, 0x77,
+	0x25, 0xfe, 0x4a, 0x2e, 0x62, 0x4e, 0x7a, 0x9f, 0xa0, 0x9a, 0x4d, 0xdf, 0x33, 0x45, 0xad, 0x55,
+	0x7c, 0x17, 0x36, 0xc3, 0xd3, 0x4e, 0x9c, 0xb4, 0xe3, 0x48, 0x1b, 0xdb, 0x22, 0x65, 0xfd, 0x7e,
+	0x12, 0xe1, 0x43, 0x28, 0x0c, 0x99, 0xa2, 0x56, 0xef, 0xde, 0xaa, 0x9e, 0xb9, 0x4e, 0x4d, 0xd3,
+	0x3b, 0xbd, 0xaf, 0x08, 0xb0, 0x96, 0x8d, 0x8c, 0x84, 0xcd, 0x3e, 0x05, 0xa1, 0xeb, 0x82, 0x6e,
+	0x22, 0x6b, 0x02, 0x7b, 0xd9, 0xb4, 0x25, 0x18, 0x67, 0xb2, 0xd3, 0xbf, 0x46, 0xde, 0x67, 0xb0,
+	0xc9, 0xed, 0x6e, 0xab, 0x5b, 0x5f, 0x67, 0x75, 0x46, 0x9d, 0x9d, 0xf0, 0x7e, 0x20, 0xd8, 0x37,
+	0xd9, 0xe7, 0x92, 0x36, 0x7f, 0x1e, 0x8c, 0xfe, 0x15, 0x7c, 0x13, 0x77, 0xf1, 0xb3, 0x00, 0xe5,
+	0xd7, 0x54, 0xca, 0x4e, 0x8f, 0xe2, 0x37, 0x50, 0xb5, 0x45, 0x6c, 0x0b, 0x73, 0x27, 0xeb, 0x0b,
+	0x39, 0x05, 0x2f, 0xb4, 0x3b, 0x70, 0xc8, 0x36, 0xcf, 0x0f, 0xf0, 0x3b, 0xf8, 0x7f, 0x8e, 0x34,
+	0x99, 0xad, 0xd9, 0xc6, 0xd5, 0x4c, 0xb3, 0x3f, 0x70, 0xc8, 0x0e, 0x5f, 0xfc, 0xc5, 0x7c, 0x80,
+	0x5d, 0x19, 0xf7, 0x92, 0x76, 0x56, 0x88, 0x99, 0xd5, 0x0d, 0x8d, 0x7d, 0xb8, 0x1e, 0xbb, 0xd4,
+	0xef, 0xc0, 0x21, 0x55, 0xb9, 0x54, 0xf9, 0xcf, 0x70, 0x4b, 0xea, 0x0f, 0x35, 0x45, 0x5b, 0xcb,
+	0x05, 0xcd, 0x7e, 0x7c, 0x39, 0x7b, 0xb1, 0xda, 0x81, 0x43, 0xb0, 0x5c, 0x2d, 0x7c, 0x08, 0xb7,
+	0xb5, 0xf5, 0xe9, 0x37, 0x9c, 0xd9, 0x2f, 0x6a, 0x89, 0x27, 0x97, 0x4b, 0x2c, 0x55, 0x36, 0x70,
+	0xc8, 0x9e, 0xbc, 0xa0, 0xc9, 0x7d, 0xa8, 0xd9, 0x18, 0x39, 0x19, 0x1b, 0xa5, 0xa4, 0x75, 0x0e,
+	0xaf, 0x8a, 0xb2, 0xdc, 0xd4, 0xc0, 0x21, 0xfb, 0xf2, 0xc2, 0x95, 0xe3, 0x22, 0x6c, 0xc8, 0x74,
+	0x70, 0x1c, 0xfc, 0x1a, 0xbb, 0xe8, 0x7c, 0xec, 0xa2, 0x3f, 0x63, 0x17, 0x7d, 0x9b, 0xb8, 0xce,
+	0xf9, 0xc4, 0x75, 0x7e, 0x4f, 0x5c, 0xe7, 0xa3, 0xdf, 0x8b, 0xd5, 0x69, 0xda, 0xf5, 0x43, 0x36,
+	0x68, 0xce, 0x65, 0xf3, 0x8f, 0x0b, 0x7f, 0xee, 0xdd, 0x92, 0x7e, 0x7d, 0xfa, 0x37, 0x00, 0x00,
+	0xff, 0xff, 0xed, 0xfb, 0xba, 0x76, 0xf4, 0x05, 0x00, 0x00,
 }
 
 func (m *RemoteSignerError) Marshal() (dAtA []byte, err error) {
@@ -794,6 +703,13 @@ func (m *SignVoteRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i = encodeVarintMsgs(dAtA, i, uint64(size))
 		}
 		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ChainId) > 0 {
+		i -= len(m.ChainId)
+		copy(dAtA[i:], m.ChainId)
+		i = encodeVarintMsgs(dAtA, i, uint64(len(m.ChainId)))
+		i--
 		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
@@ -866,16 +782,25 @@ func (m *SignProposalRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	{
-		size, err := m.Proposal.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
+	if m.Proposal != nil {
+		{
+			size, err := m.Proposal.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMsgs(dAtA, i, uint64(size))
 		}
-		i -= size
-		i = encodeVarintMsgs(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
 	}
-	i--
-	dAtA[i] = 0xa
+	if len(m.ChainId) > 0 {
+		i -= len(m.ChainId)
+		copy(dAtA[i:], m.ChainId)
+		i = encodeVarintMsgs(dAtA, i, uint64(len(m.ChainId)))
+		i--
+		dAtA[i] = 0xa
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -923,52 +848,6 @@ func (m *SignedProposalResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 		i--
 		dAtA[i] = 0xa
 	}
-	return len(dAtA) - i, nil
-}
-
-func (m *PingRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *PingRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *PingRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *PingResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *PingResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *PingResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
 	return len(dAtA) - i, nil
 }
 
@@ -1130,48 +1009,6 @@ func (m *Message_SignedProposalResponse) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Message_PingRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_PingRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PingRequest != nil {
-		{
-			size, err := m.PingRequest.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMsgs(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Message_PingResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_PingResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PingResponse != nil {
-		{
-			size, err := m.PingResponse.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMsgs(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x42
-	}
-	return len(dAtA) - i, nil
-}
 func encodeVarintMsgs(dAtA []byte, offset int, v uint64) int {
 	offset -= sovMsgs(v)
 	base := offset
@@ -1231,6 +1068,10 @@ func (m *SignVoteRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ChainId)
+	if l > 0 {
+		n += 1 + l + sovMsgs(uint64(l))
+	}
 	if m.Vote != nil {
 		l = m.Vote.Size()
 		n += 1 + l + sovMsgs(uint64(l))
@@ -1261,8 +1102,14 @@ func (m *SignProposalRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = m.Proposal.Size()
-	n += 1 + l + sovMsgs(uint64(l))
+	l = len(m.ChainId)
+	if l > 0 {
+		n += 1 + l + sovMsgs(uint64(l))
+	}
+	if m.Proposal != nil {
+		l = m.Proposal.Size()
+		n += 1 + l + sovMsgs(uint64(l))
+	}
 	return n
 }
 
@@ -1280,24 +1127,6 @@ func (m *SignedProposalResponse) Size() (n int) {
 		l = m.Error.Size()
 		n += 1 + l + sovMsgs(uint64(l))
 	}
-	return n
-}
-
-func (m *PingRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *PingResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
 	return n
 }
 
@@ -1381,30 +1210,6 @@ func (m *Message_SignedProposalResponse) Size() (n int) {
 	_ = l
 	if m.SignedProposalResponse != nil {
 		l = m.SignedProposalResponse.Size()
-		n += 1 + l + sovMsgs(uint64(l))
-	}
-	return n
-}
-func (m *Message_PingRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PingRequest != nil {
-		l = m.PingRequest.Size()
-		n += 1 + l + sovMsgs(uint64(l))
-	}
-	return n
-}
-func (m *Message_PingResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PingResponse != nil {
-		l = m.PingResponse.Size()
 		n += 1 + l + sovMsgs(uint64(l))
 	}
 	return n
@@ -1729,6 +1534,38 @@ func (m *SignVoteRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ChainId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ChainId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Vote", wireType)
 			}
 			var msglen int
@@ -1943,6 +1780,38 @@ func (m *SignProposalRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ChainId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgs
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ChainId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Proposal", wireType)
 			}
 			var msglen int
@@ -1969,6 +1838,9 @@ func (m *SignProposalRequest) Unmarshal(dAtA []byte) error {
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
+			}
+			if m.Proposal == nil {
+				m.Proposal = &types.Proposal{}
 			}
 			if err := m.Proposal.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2099,112 +1971,6 @@ func (m *SignedProposalResponse) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipMsgs(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *PingRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowMsgs
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: PingRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PingRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipMsgs(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *PingResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowMsgs
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: PingResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PingResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMsgs(dAtA[iNdEx:])
@@ -2467,76 +2233,6 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Sum = &Message_SignedProposalResponse{v}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PingRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgs
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &PingRequest{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Message_PingRequest{v}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PingResponse", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgs
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgs
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &PingResponse{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Message_PingResponse{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

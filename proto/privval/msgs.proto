@@ -3,7 +3,6 @@ package tendermint.proto.privval;
 
 option go_package = "github.com/tendermint/tendermint/proto/privval";
 
-import "third_party/proto/gogoproto/gogo.proto";
 import "proto/crypto/keys/types.proto";
 import "proto/types/types.proto";
 
@@ -23,7 +22,8 @@ message PubKeyResponse {
 
 // SignVoteRequest is a request to sign a vote
 message SignVoteRequest {
-  tendermint.proto.types.Vote vote = 1;
+  string                      chain_id = 1;
+  tendermint.proto.types.Vote vote     = 2;
 }
 
 // SignedVoteResponse is a response containing a signed vote or an error
@@ -34,7 +34,8 @@ message SignedVoteResponse {
 
 // SignProposalRequest is a request to sign a proposal
 message SignProposalRequest {
-  tendermint.proto.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  string                          chain_id = 1;
+  tendermint.proto.types.Proposal proposal = 2;
 }
 
 // SignedProposalResponse is response containing a signed proposal or an error
@@ -42,12 +43,6 @@ message SignedProposalResponse {
   tendermint.proto.types.Proposal proposal = 1;
   RemoteSignerError               error    = 2;
 }
-
-// PingRequest is a request to confirm that the connection is alive.
-message PingRequest {}
-
-// PingResponse is a response to confirm that the connection is alive.
-message PingResponse {}
 
 message Message {
   oneof sum {
@@ -57,7 +52,5 @@ message Message {
     SignedVoteResponse     signed_vote_response     = 4;
     SignProposalRequest    sign_proposal_request    = 5;
     SignedProposalResponse signed_proposal_response = 6;
-    PingRequest            ping_request             = 7;
-    PingResponse           ping_response            = 8;
   }
 }
