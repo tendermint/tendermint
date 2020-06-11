@@ -618,6 +618,8 @@ via light client.
       unbonding period. `MaxAgeNumBlocks` is calculated by dividing the unboding
       period by the average block time (e.g. 2 weeks / 6s per block = 2d8h).
   - `MaxNum (uint32)`: The maximum number of evidence that can be committed to a single block
+  - `ProofTrialPeriod (int64)`: The duration in terms of blocks that an indicted node has to
+      provide proof of correctly executing a lock change in the event of amnesia evidence. 
 
 ### ValidatorParams
 
