@@ -154,7 +154,7 @@ func (m *ProofOp) GetData() []byte {
 	return nil
 }
 
-// Proof is Merkle proof defined by the list of ProofOps
+// ProofOps is Merkle proof defined by the list of ProofOps
 type ProofOps struct {
 	Ops []ProofOp `protobuf:"bytes,1,rep,name=ops,proto3" json:"ops"`
 }

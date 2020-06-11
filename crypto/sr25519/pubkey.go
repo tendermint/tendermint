@@ -13,7 +13,10 @@ import (
 var _ crypto.PubKey = PubKey{}
 
 // PubKeySize is the number of bytes in an Sr25519 public key.
-const PubKeySize = 32
+const (
+	PubKeySize = 32
+	keyType    = "sr25519"
+)
 
 // PubKeySr25519 implements crypto.PubKey for the Sr25519 signature scheme.
 type PubKey []byte
@@ -66,4 +69,9 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 		return bytes.Equal(pubKey[:], otherEd[:])
 	}
 	return false
+}
+
+func (pubKey PubKey) Type() string {
+	return keyType
+
 }
