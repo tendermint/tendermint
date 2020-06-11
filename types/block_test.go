@@ -26,8 +26,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	RegisterMockEvidences(cdc)
-
 	code := m.Run()
 	os.Exit(code)
 }

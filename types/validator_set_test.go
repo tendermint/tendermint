@@ -388,17 +388,28 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 }
 
 func (vals *ValidatorSet) toBytes() []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(vals)
+	pbvs, err := vals.ToProto()
 	if err != nil {
 		panic(err)
 	}
+	bz, err := pbvs.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return bz
 }
 
 func (vals *ValidatorSet) fromBytes(b []byte) {
-	err := cdc.UnmarshalBinaryLengthPrefixed(b, &vals)
+	pbvs := new(tmproto.ValidatorSet)
+	err := pbvs.Unmarshal(b)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		panic(err)
+	}
+
+	vals, err = ValidatorSetFromProto(pbvs)
+	if err != nil {
 		panic(err)
 	}
 }
