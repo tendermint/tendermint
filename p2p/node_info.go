@@ -1,11 +1,13 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -220,30 +222,50 @@ func (info DefaultNodeInfo) NetAddress() (*NetAddress, error) {
 	return NewNetAddressString(idAddr)
 }
 
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
+func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
 
-// Size returns the size of the amino encoding, in bytes.
-func (info *DefaultNodeInfo) Size() int {
-	bs, _ := info.Marshal()
-	return len(bs)
-}
-
-// Marshal returns the amino encoding.
-func (info *DefaultNodeInfo) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(info)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
-	bs, err := info.Marshal()
-	if err != nil {
-		return -1, err
+	dni := new(tmp2p.DefaultNodeInfo)
+	dni.ProtocolVersion = tmp2p.ProtocolVersion{
+		P2P:   info.ProtocolVersion.P2P,
+		Block: info.ProtocolVersion.Block,
+		App:   info.ProtocolVersion.App,
 	}
-	return copy(data, bs), nil
+
+	dni.DefaultNodeID = string(info.DefaultNodeID)
+	dni.ListenAddr = info.ListenAddr
+	dni.Network = info.Network
+	dni.Version = info.Version
+	dni.Channels = info.Channels
+	dni.Moniker = info.Moniker
+	dni.Other = tmp2p.DefaultNodeInfoOther{
+		TxIndex:    info.Other.TxIndex,
+		RPCAddress: info.Other.RPCAddress,
+	}
+
+	return dni
 }
 
-// Unmarshal deserializes from amino encoded form.
-func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, info)
+func DefaultNodeInfoFromToProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, error) {
+	if pb == nil {
+		return DefaultNodeInfo{}, errors.New("nil node info")
+	}
+	dni := DefaultNodeInfo{
+		ProtocolVersion: ProtocolVersion{
+			P2P:   pb.ProtocolVersion.P2P,
+			Block: pb.ProtocolVersion.Block,
+			App:   pb.ProtocolVersion.App,
+		},
+		DefaultNodeID: ID(pb.DefaultNodeID),
+		ListenAddr:    pb.ListenAddr,
+		Network:       pb.Network,
+		Version:       pb.Version,
+		Channels:      pb.Channels,
+		Moniker:       pb.Moniker,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    pb.Other.TxIndex,
+			RPCAddress: pb.Other.RPCAddress,
+		},
+	}
+
+	return dni, nil
 }
