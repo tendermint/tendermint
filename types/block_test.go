@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -268,7 +269,7 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-		}, hexBytesFromString("ABDC78921B18A47EE6BEF5E31637BADB0F3E587E3C0F4DB2D1E93E9FF0533862")},
+		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -296,12 +297,33 @@ func TestHeaderHash(t *testing.T) {
 			// fields in the test struct are non-zero.
 			if tc.header != nil && tc.expectHash != nil {
 				byteSlices := [][]byte{}
+
 				s := reflect.ValueOf(*tc.header)
 				for i := 0; i < s.NumField(); i++ {
 					f := s.Field(i)
+
 					assert.False(t, f.IsZero(), "Found zero-valued field %v",
 						s.Type().Field(i).Name)
-					byteSlices = append(byteSlices, cdcEncode(f.Interface()))
+
+					switch f := f.Interface().(type) {
+					case int64, bytes.HexBytes, string:
+						byteSlices = append(byteSlices, cdcEncode(f))
+					case time.Time:
+						bz, err := gogotypes.StdTimeMarshal(f)
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					case version.Consensus:
+						bz, err := f.Marshal()
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					case BlockID:
+						pbbi := f.ToProto()
+						bz, err := pbbi.Marshal()
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					default:
+						t.Errorf("unknown type %T", f)
+					}
 				}
 				assert.Equal(t,
 					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tc.header.Hash())
@@ -376,9 +398,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {846, 1, 0, true, 0},
-		3: {848, 1, 0, false, 0},
-		4: {849, 1, 0, false, 1},
+		2: {844, 1, 0, true, 0},
+		3: {846, 1, 0, false, 0},
+		4: {847, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -406,10 +428,10 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 0, 1, true, 0},
 		1: {10, 0, 1, true, 0},
-		2: {847, 0, 1, true, 0},
-		3: {848, 0, 1, false, 0},
-		4: {1292, 1, 1, false, 0},
-		5: {1293, 1, 1, false, 1},
+		2: {845, 0, 1, true, 0},
+		3: {846, 0, 1, false, 0},
+		4: {1290, 1, 1, false, 0},
+		5: {1291, 1, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

@@ -467,10 +467,24 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
 		return false
 	}
+	pbdev := dve.ToProto()
+	bz, err := pbdev.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	var evbz []byte
+	if ev, ok := ev.(*DuplicateVoteEvidence); ok {
+		evpb := ev.ToProto()
+		evbz, err = evpb.Marshal()
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	// just check their hashes
-	dveHash := tmhash.Sum(cdcEncode(dve))
-	evHash := tmhash.Sum(cdcEncode(ev))
+	dveHash := tmhash.Sum(bz)
+	evHash := tmhash.Sum(evbz)
 	return bytes.Equal(dveHash, evHash)
 }
 
