@@ -687,6 +687,9 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe types.PotentialAmne
 		if evpool.nextEvidenceTrialEndedHeight == -1 {
 			evpool.nextEvidenceTrialEndedHeight = pe.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
 		}
+		
+		// add to the broadcast list so it can continue to be gossiped
+		evpool.evidenceList.PushBack(pe)
 	}
 
 	return nil
