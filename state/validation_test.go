@@ -368,7 +368,7 @@ func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	}
 	ae := types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
-		Polc: types.EmptyPOLC(),
+		Polc:                     types.EmptyPOLC(),
 	}
 
 	evpool := &mocks.EvidencePool{}
@@ -387,7 +387,7 @@ func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	block.Evidence.Evidence = []types.Evidence{ae}
 	block.EvidenceHash = block.Evidence.Hash()
 	err = blockExec.ValidateBlock(state, block)
-	// if we don't have this evidence and it is has an empty polc then we expect to 
+	// if we don't have this evidence and it is has an empty polc then we expect to
 	// start our own trial period first
 	errMsg := "Invalid evidence: amnesia evidence is new and hasn't undergone trial period yet."
 	if assert.Error(t, err) {
@@ -413,7 +413,7 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	}
 	ae := types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
-		Polc: types.EmptyPOLC(),
+		Polc:                     types.EmptyPOLC(),
 	}
 
 	evpool := &mocks.EvidencePool{}
@@ -432,7 +432,7 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	block.Evidence.Evidence = []types.Evidence{ae}
 	block.EvidenceHash = block.Evidence.Hash()
 	err = blockExec.ValidateBlock(state, block)
-	// No error because this type of amnesia evidence is punishable 
+	// No error because this type of amnesia evidence is punishable
 	// without the need of a trial period
 	assert.NoError(t, err)
 }

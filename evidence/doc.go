@@ -53,10 +53,10 @@ As a result it is also removed from the concurrent list so that it is no longer 
 
 Minor Functionality
 
-As all evidence (including POLC's) are bounded by an expiration date, those that exceed this are no longer needed and hence 
-pruned. Currently, only committed evidence in which a marker to the height that the evidence was committed and hence very 
-small is saved. All updates are made from the `Update(block, state)` function which should be called when a new block 
-is committed.
+As all evidence (including POLC's) are bounded by an expiration date, those that exceed this are no longer needed
+and hence pruned. Currently, only committed evidence in which a marker to the height that the evidence was committed
+and hence very small is saved. All updates are made from the `Update(block, state)` function which should be called
+when a new block is committed.
 
 */
 package evidence
