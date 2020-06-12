@@ -452,7 +452,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  ABCIResponsesResultsHash(*abciResponses),
+		LastResultsHash:                  ABCIResponsesResultsHash(abciResponses),
 		AppHash:                          nil,
 	}, nil
 }
