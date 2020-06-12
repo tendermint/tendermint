@@ -484,6 +484,7 @@ func TestAmnesiaEvidence(t *testing.T) {
 	assert.NoError(t, completeAmnesiaEvidence.Polc.ValidateVotes(valSet, chainID))
 
 	assert.True(t, completeAmnesiaEvidence.Equal(emptyAmnesiaEvidence))
+	assert.NotEqual(t, completeAmnesiaEvidence.Hash(), emptyAmnesiaEvidence.Hash())
 	assert.NotEmpty(t, completeAmnesiaEvidence.Hash())
 	assert.NotEmpty(t, completeAmnesiaEvidence.Bytes())
 
