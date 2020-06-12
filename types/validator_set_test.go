@@ -301,14 +301,17 @@ func TestProposerSelection2(t *testing.T) {
 
 func TestProposerSelection3(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		newValidator([]byte("a"), 1),
-		newValidator([]byte("b"), 1),
-		newValidator([]byte("c"), 1),
-		newValidator([]byte("d"), 1),
+		newValidator([]byte("avalidator_address12"), 1),
+		newValidator([]byte("bvalidator_address12"), 1),
+		newValidator([]byte("cvalidator_address12"), 1),
+		newValidator([]byte("dvalidator_address12"), 1),
 	})
 
 	proposerOrder := make([]*Validator, 4)
 	for i := 0; i < 4; i++ {
+		// need to give all validators to have keys
+		pk := ed25519.GenPrivKey().PubKey()
+		vset.Validators[i].PubKey = pk
 		proposerOrder[i] = vset.GetProposer()
 		vset.IncrementProposerPriority(1)
 	}
@@ -392,6 +395,7 @@ func (vals *ValidatorSet) toBytes() []byte {
 	if err != nil {
 		panic(err)
 	}
+
 	bz, err := pbvs.Marshal()
 	if err != nil {
 		panic(err)
@@ -408,10 +412,12 @@ func (vals *ValidatorSet) fromBytes(b []byte) {
 		panic(err)
 	}
 
-	vals, err = ValidatorSetFromProto(pbvs)
+	v, err := ValidatorSetFromProto(pbvs)
 	if err != nil {
 		panic(err)
 	}
+
+	vals = v
 }
 
 //-------------------------------------------------------------------

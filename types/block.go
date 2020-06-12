@@ -23,7 +23,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size.
-	MaxHeaderBytes int64 = 628
+	MaxHeaderBytes int64 = 626
 
 	// MaxOverheadForBlock - maximum overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.

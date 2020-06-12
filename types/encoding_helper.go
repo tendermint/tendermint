@@ -1,7 +1,11 @@
 package types
 
 import (
+	"fmt"
+
 	gogotypes "github.com/gogo/protobuf/types"
+
+	"github.com/tendermint/tendermint/libs/bytes"
 )
 
 // cdcEncode returns nil if the input is nil, otherwise returns
@@ -27,7 +31,7 @@ func cdcEncode(item interface{}) []byte {
 				return nil
 			}
 			return bz
-		case []byte:
+		case bytes.HexBytes:
 			i := gogotypes.BytesValue{
 				Value: item,
 			}
@@ -36,8 +40,11 @@ func cdcEncode(item interface{}) []byte {
 				return nil
 			}
 			return bz
+		default:
+			fmt.Println("here", item)
+			return nil
 		}
-
 	}
+
 	return nil
 }
