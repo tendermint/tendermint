@@ -1056,8 +1056,12 @@ func (e PotentialAmnesiaEvidence) Address() []byte {
 	return e.VoteA.ValidatorAddress
 }
 
+// NOTE: Heightstamp must not be included in hash
 func (e PotentialAmnesiaEvidence) Hash() []byte {
-	return tmhash.Sum(cdcEncode(e))
+	return merkle.HashFromByteSlices([][]byte{
+		cdcEncode(e.VoteA),
+		cdcEncode(e.VoteB),
+	})
 }
 
 func (e PotentialAmnesiaEvidence) Bytes() []byte {
@@ -1398,6 +1402,14 @@ func (e AmnesiaEvidence) Equal(ev Evidence) bool {
 		return false
 	}
 	return e.PotentialAmnesiaEvidence.Equal(e2.PotentialAmnesiaEvidence)
+}
+
+func (e AmnesiaEvidence) Hash() []byte {
+	return merkle.HashFromByteSlices([][]byte{
+		cdcEncode(e.PotentialAmnesiaEvidence.VoteA),
+		cdcEncode(e.PotentialAmnesiaEvidence.VoteB),
+		cdcEncode(e.Polc),
+	})
 }
 
 func (e AmnesiaEvidence) ValidateBasic() error {
