@@ -464,12 +464,12 @@ via light client.
     - `ACCEPT`: The chunk was accepted.
     - `ABORT`: Abort snapshot restoration, and don't try any other snapshots.
     - `RETRY`: Reapply this chunk, combine with `RefetchChunks` and `RejectSenders` as appropriate.
-    - `RETRY_SNAPSHOT`: Restart this snapshot from `OfferSnapshot`, reusing chunks unless 
+    - `RETRY_SNAPSHOT`: Restart this snapshot from `OfferSnapshot`, reusing chunks unless
       instructed otherwise.
     - `REJECT_SNAPSHOT`: Reject this snapshot, try a different one.
-  - `RefetchChunks ([]uint32)`: Refetch and reapply the given chunks, regardless of `Result`. Only  
+  - `RefetchChunks ([]uint32)`: Refetch and reapply the given chunks, regardless of `Result`. Only
     the listed chunks will be refetched, and reapplied in sequential order.
-  - `RejectSenders ([]string)`: Reject the given P2P senders, regardless of `Result`. Any chunks 
+  - `RejectSenders ([]string)`: Reject the given P2P senders, regardless of `Result`. Any chunks
     already applied will not be refetched unless explicitly requested, but queued chunks from these senders will be discarded, and new chunks or other snapshots rejected.
 - **Usage**:
   - The application can choose to refetch chunks and/or ban P2P peers as appropriate. Tendermint
@@ -478,13 +478,13 @@ via light client.
     `Snapshot.Metadata` and/or incrementally verifying contents against `AppHash`.
   - When all chunks have been accepted, Tendermint will make an ABCI `Info` call to verify that
     `LastBlockAppHash` and `LastBlockHeight` matches the expected values, and record the
-    `AppVersion` in the node state. It then switches to fast sync or consensus and joins the 
+    `AppVersion` in the node state. It then switches to fast sync or consensus and joins the
     network.
   - If Tendermint is unable to retrieve the next chunk after some time (e.g. because no suitable
     peers are available), it will reject the snapshot and try a different one via `OfferSnapshot`.
     The application should be prepared to reset and accept it or abort as appropriate.
 
-### 
+###
 
 ## Data Types
 
@@ -506,7 +506,7 @@ via light client.
   - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
     Merkle root of the application state after executing the previous block's
     transactions
-  - `LastResultsHash ([]byte)`: Hash of the ABCI results returned by the last block
+  - `LastResultsHash ([]byte)`: Root hash of `BeginBlock` events, root hash of all results from the txs from the previous block, and `EndBlock` events
   - `EvidenceHash ([]byte)`: Hash of the evidence included in this block
   - `ProposerAddress ([]byte)`: Original proposer for the block
 - **Usage**:
@@ -515,6 +515,10 @@ via light client.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+  - `LastResultsHash` is the root hash of a Merkle tree w/ 3 leafs:
+    proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
+    from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
+    ignored), and proto-encoded `ResponseEndBlock#Events`.
 
 ### Version
 
@@ -646,17 +650,17 @@ via light client.
 
 - **Fields**:
   - `Height (uint64)`: The height at which the snapshot was taken (after commit).
-  - `Format (uint32)`: An application-specific snapshot format, allowing applications to version 
-    their snapshot data format and make backwards-incompatible changes. Tendermint does not 
+  - `Format (uint32)`: An application-specific snapshot format, allowing applications to version
+    their snapshot data format and make backwards-incompatible changes. Tendermint does not
     interpret this.
   - `Chunks (uint32)`: The number of chunks in the snapshot. Must be at least 1 (even if empty).
-  - `Hash (bytes)`: An arbitrary snapshot hash. Must be equal only for identical snapshots across 
+  - `Hash (bytes)`: An arbitrary snapshot hash. Must be equal only for identical snapshots across
     nodes. Tendermint does not interpret the hash, it only compares them.
-  - `Metadata (bytes)`: Arbitrary application metadata, for example chunk hashes or other 
+  - `Metadata (bytes)`: Arbitrary application metadata, for example chunk hashes or other
     verification data.
 
 - **Usage**:
   - Used for state sync snapshots, see [separate section](apps.md#state-sync) for details.
-  - A snapshot is considered identical across nodes only if _all_ fields are equal (including 
+  - A snapshot is considered identical across nodes only if _all_ fields are equal (including
     `Metadata`). Chunks may be retrieved from all nodes that have the same snapshot.
   - When sent across the network, a snapshot message can be at most 4 MB.
