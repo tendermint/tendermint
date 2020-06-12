@@ -129,21 +129,23 @@ func testTxProofUnchangable(t *testing.T) {
 
 // This makes sure that the proof doesn't deserialize into something valid.
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
+
 	var (
 		proof   TxProof
 		pbProof tmproto.TxProof
 	)
 	err := pbProof.Unmarshal(bad)
-	require.NoError(t, err)
-	proof, err = TxProofFromProto(pbProof)
 	if err == nil {
-		err = proof.Validate(root)
+		proof, err = TxProofFromProto(pbProof)
 		if err == nil {
-			// XXX Fix simple merkle proofs so the following is *not* OK.
-			// This can happen if we have a slightly different total (where the
-			// path ends up the same). If it is something else, we have a real
-			// problem.
-			assert.NotEqual(t, proof.Proof.Total, good.Proof.Total, "bad: %#v\ngood: %#v", proof, good)
+			err = proof.Validate(root)
+			if err == nil {
+				// XXX Fix simple merkle proofs so the following is *not* OK.
+				// This can happen if we have a slightly different total (where the
+				// path ends up the same). If it is something else, we have a real
+				// problem.
+				assert.NotEqual(t, proof.Proof.Total, good.Proof.Total, "bad: %#v\ngood: %#v", proof, good)
+			}
 		}
 	}
 }

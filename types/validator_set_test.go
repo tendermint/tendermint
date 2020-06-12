@@ -412,12 +412,10 @@ func (vals *ValidatorSet) fromBytes(b []byte) {
 		panic(err)
 	}
 
-	v, err := ValidatorSetFromProto(pbvs)
+	vals, err = ValidatorSetFromProto(pbvs)
 	if err != nil {
 		panic(err)
 	}
-
-	vals = v
 }
 
 //-------------------------------------------------------------------

@@ -61,17 +61,6 @@ func TestABCIConsensusParams(t *testing.T) {
 	assert.Equal(t, *cp, cp2)
 }
 
-func newHeader(
-	height int64, commitHash, dataHash, evidenceHash []byte,
-) *Header {
-	return &Header{
-		Height:         height,
-		LastCommitHash: commitHash,
-		DataHash:       dataHash,
-		EvidenceHash:   evidenceHash,
-	}
-}
-
 func TestABCIEvidence(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
