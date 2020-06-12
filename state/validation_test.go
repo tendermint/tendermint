@@ -1,7 +1,6 @@
 package state_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -353,7 +352,7 @@ var blockID = types.BlockID{
 	},
 }
 
-func TestValidateAmnesiaEvidence(t *testing.T) {
+func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, vals := makeState(1, int(height))
 	addr, val := state.Validators.GetByIndex(0)
@@ -363,18 +362,20 @@ func TestValidateAmnesiaEvidence(t *testing.T) {
 	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
 	err = vals[val.Address.String()].SignVote(chainID, voteB)
 	require.NoError(t, err)
+	pe := types.PotentialAmnesiaEvidence{
+		VoteA: voteA,
+		VoteB: voteB,
+	}
 	ae := types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
-			VoteA: voteA,
-			VoteB: voteB,
-		},
+		PotentialAmnesiaEvidence: pe,
 		Polc: types.EmptyPOLC(),
 	}
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ae).Return(false)
 	evpool.On("IsCommitted", ae).Return(false)
-	evpool.On("AddEvidence", ae).Return(fmt.Errorf("test error"))
+	evpool.On("AddEvidence", ae).Return(nil)
+	evpool.On("AddEvidence", pe).Return(nil)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -386,11 +387,54 @@ func TestValidateAmnesiaEvidence(t *testing.T) {
 	block.Evidence.Evidence = []types.Evidence{ae}
 	block.EvidenceHash = block.Evidence.Hash()
 	err = blockExec.ValidateBlock(state, block)
-
-	errMsg := "Invalid evidence: unknown amnesia evidence, trying to add to evidence pool, err: test error"
+	// if we don't have this evidence and it is has an empty polc then we expect to 
+	// start our own trial period first
+	errMsg := "Invalid evidence: amnesia evidence is new and hasn't undergone trial period yet."
 	if assert.Error(t, err) {
-		assert.Equal(t, err.Error()[:len(errMsg)], errMsg)
+		assert.Equal(t, errMsg, err.Error()[:len(errMsg)])
 	}
+}
+
+// Amnesia Evidence can be directly approved without needing to undergo the trial period
+func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, vals := makeState(1, int(height))
+	addr, val := state.Validators.GetByIndex(0)
+	voteA := makeVote(height, 1, 0, addr, blockID)
+	voteA.Timestamp = time.Now().Add(1 * time.Minute)
+	err := vals[val.Address.String()].SignVote(chainID, voteA)
+	require.NoError(t, err)
+	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
+	err = vals[val.Address.String()].SignVote(chainID, voteB)
+	require.NoError(t, err)
+	pe := types.PotentialAmnesiaEvidence{
+		VoteA: voteB,
+		VoteB: voteA,
+	}
+	ae := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: pe,
+		Polc: types.EmptyPOLC(),
+	}
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", ae).Return(false)
+	evpool.On("IsCommitted", ae).Return(false)
+	evpool.On("AddEvidence", ae).Return(nil)
+	evpool.On("AddEvidence", pe).Return(nil)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		evpool)
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{ae}
+	block.EvidenceHash = block.Evidence.Hash()
+	err = blockExec.ValidateBlock(state, block)
+	// No error because this type of amnesia evidence is punishable 
+	// without the need of a trial period
+	assert.NoError(t, err)
 }
 
 func TestVerifyEvidenceWrongAddress(t *testing.T) {
