@@ -338,14 +338,19 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	require.NotEmpty(t, polc)
 
 	voteA := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime)
-	err = val.SignVote(evidenceChainID, voteA)
+	vA := voteA.ToProto()
+	err = val.SignVote(evidenceChainID, vA)
+	voteA.Signature = vA.Signature
 	require.NoError(t, err)
 	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID, evidenceTime.Add(2*time.Second))
-	err = val.SignVote(evidenceChainID, voteB)
+	vB := voteB.ToProto()
+	err = val.SignVote(evidenceChainID, vB)
+	voteB.Signature = vB.Signature
 	require.NoError(t, err)
 	voteC := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(3*time.Second))
-	voteC.Timestamp.Add(1 * time.Second)
-	err = val.SignVote(evidenceChainID, voteC)
+	vC := voteC.ToProto()
+	err = val.SignVote(evidenceChainID, vC)
+	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	ev := types.PotentialAmnesiaEvidence{
 		VoteA: voteA,
@@ -353,8 +358,11 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	}
 
 	secondValVote := makeVote(height, 1, 0, pubKey2.Address(), secondBlockID, evidenceTime.Add(1*time.Second))
-	err = val2.SignVote(evidenceChainID, secondValVote)
+	vv2 := secondValVote.ToProto()
+	err = val2.SignVote(evidenceChainID, vv2)
 	require.NoError(t, err)
+	secondValVote.Signature = vv2.Signature
+	
 
 	validPolc := types.ProofOfLockChange{
 		Votes:  []types.Vote{*secondValVote},
@@ -424,8 +432,10 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
 
 	voteD := makeVote(height, 2, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(4*time.Second))
-	err = val.SignVote(evidenceChainID, voteD)
+	vD := voteD.ToProto()
+	err = val.SignVote(evidenceChainID, vD)
 	require.NoError(t, err)
+	voteD.Signature = vD.Signature
 
 	// CASE F
 	pool.logger.Info("CASE F")

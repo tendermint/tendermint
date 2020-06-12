@@ -70,9 +70,14 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
-	err = privVal.SignVote(chainID, vote)
+
+	v := vote.ToProto()
+	err = privVal.SignVote(chainID, v)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}
+
+	vote.Signature = v.Signature
+
 	return vote
 }

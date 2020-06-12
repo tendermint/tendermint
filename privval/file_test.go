@@ -52,10 +52,10 @@ func TestResetValidator(t *testing.T) {
 
 	// test vote
 	height, round := int64(10), int32(1)
-	voteType := byte(tmproto.PrevoteType)
+	voteType := tmproto.PrevoteType
 	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
-	err = privVal.SignVote("mychainid", vote)
+	err = privVal.SignVote("mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -121,8 +121,8 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
-	pubBytes := []byte(pubKey.(ed25519.PubKey))
-	privBytes := []byte(privKey)
+	pubBytes := pubKey.Bytes()
+	privBytes := privKey.Bytes()
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
 	privB64 := base64.StdEncoding.EncodeToString(privBytes)
 
@@ -167,15 +167,16 @@ func TestSignVote(t *testing.T) {
 	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
 
 	height, round := int64(10), int32(1)
-	voteType := byte(tmproto.PrevoteType)
+	voteType := tmproto.PrevoteType
 
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
-	err = privVal.SignVote("mychainid", vote)
+	v := vote.ToProto()
+	err = privVal.SignVote("mychainid", v)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote("mychainid", vote)
+	err = privVal.SignVote("mychainid", v)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
@@ -187,14 +188,15 @@ func TestSignVote(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignVote("mychainid", c)
+		cpb := c.ToProto()
+		err = privVal.SignVote("mychainid", cpb)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
 
 	// try signing a vote with a different time stamp
 	sig := vote.Signature
 	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignVote("mychainid", vote)
+	err = privVal.SignVote("mychainid", v)
 	assert.NoError(err)
 	assert.Equal(sig, vote.Signature)
 }
@@ -215,11 +217,12 @@ func TestSignProposal(t *testing.T) {
 
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
-	err = privVal.SignProposal("mychainid", proposal)
+	pbp := proposal.ToProto()
+	err = privVal.SignProposal("mychainid", pbp)
 	assert.NoError(err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
-	err = privVal.SignProposal("mychainid", proposal)
+	err = privVal.SignProposal("mychainid", pbp)
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
@@ -231,14 +234,14 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignProposal("mychainid", c)
+		err = privVal.SignProposal("mychainid", c.ToProto())
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal("mychainid", proposal)
+	err = privVal.SignProposal("mychainid", pbp)
 	assert.NoError(err)
 	assert.Equal(sig, proposal.Signature)
 }
@@ -258,56 +261,60 @@ func TestDifferByTimestamp(t *testing.T) {
 	// test proposal
 	{
 		proposal := newProposal(height, round, block1)
-		err := privVal.SignProposal(chainID, proposal)
+		pb := proposal.ToProto()
+		err := privVal.SignProposal(chainID, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
-		signBytes := proposal.SignBytes(chainID)
+		signBytes := types.ProposalSignBytes(chainID, pb)
+
 		sig := proposal.Signature
 		timeStamp := proposal.Timestamp
 
 		// manipulate the timestamp. should get changed back
-		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
+		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		proposal.Signature = emptySig
-		err = privVal.SignProposal("mychainid", proposal)
+		err = privVal.SignProposal("mychainid", pb)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
-		assert.Equal(t, timeStamp, proposal.Timestamp)
-		assert.Equal(t, signBytes, proposal.SignBytes(chainID))
+		assert.Equal(t, timeStamp, pb.Timestamp)
+		assert.Equal(t, signBytes, types.ProposalSignBytes(chainID, pb))
 		assert.Equal(t, sig, proposal.Signature)
 	}
 
 	// test vote
 	{
-		voteType := byte(tmproto.PrevoteType)
+		voteType := tmproto.PrevoteType
 		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
-		err := privVal.SignVote("mychainid", vote)
+		v := vote.ToProto()
+		err := privVal.SignVote("mychainid", v)
 		assert.NoError(t, err, "expected no error signing vote")
 
-		signBytes := vote.SignBytes(chainID)
-		sig := vote.Signature
+		signBytes := types.VoteSignBytes(chainID, v)
+		sig := v.Signature
 		timeStamp := vote.Timestamp
 
 		// manipulate the timestamp. should get changed back
-		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
+		v.Timestamp = v.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
-		vote.Signature = emptySig
-		err = privVal.SignVote("mychainid", vote)
+		v.Signature = emptySig
+		err = privVal.SignVote("mychainid", v)
 		assert.NoError(t, err, "expected no error on signing same vote")
 
-		assert.Equal(t, timeStamp, vote.Timestamp)
-		assert.Equal(t, signBytes, vote.SignBytes(chainID))
-		assert.Equal(t, sig, vote.Signature)
+		assert.Equal(t, timeStamp, v.Timestamp)
+		assert.Equal(t, signBytes, types.VoteSignBytes(chainID, v))
+		assert.Equal(t, sig, v.Signature)
 	}
 }
 
-func newVote(addr types.Address, idx int32, height int64, round int32, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx int32, height int64, round int32,
+	typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            round,
-		Type:             tmproto.SignedMsgType(typ),
+		Type:             typ,
 		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}
