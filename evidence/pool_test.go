@@ -229,7 +229,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 
 	// should not be able to retrieve
 	emptyPolc, err := pool.RetrievePOLC(2, 1)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 	lastCommit := makeCommit(height-1, valAddr)
@@ -242,7 +242,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	pool.Update(block, state)
 
 	emptyPolc, err = pool.RetrievePOLC(1, 1)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
 
 }
@@ -284,15 +284,20 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.True(t, pool.IsPending(goodEvidence))
 }
 
+// Comprehensive set of test cases relating to the adding, upgrading and overall
+// processing of PotentialAmnesiaEvidence and AmnesiaEvidence
 func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	var (
 		val    = types.NewMockPV()
+		val2   = types.NewMockPV()
 		pubKey = val.PrivKey.PubKey()
+		pubKey2= val2.PrivKey.PubKey()
 		valSet = &types.ValidatorSet{
 			Validators: []*types.Validator{
-				val.ExtractIntoValidator(0),
+				val.ExtractIntoValidator(1),
+				val2.ExtractIntoValidator(3),
 			},
-			Proposer: val.ExtractIntoValidator(0),
+			Proposer: val.ExtractIntoValidator(1),
 		}
 		height       = int64(30)
 		stateDB      = initializeStateFromValidatorSet(valSet, height)
@@ -318,25 +323,27 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
+	// TEST SETUP
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
 
 	pool.SetLogger(log.TestingLogger())
 
-	polc := types.NewMockPOLC(25, evidenceTime, pubKey)
+	polc := types.NewMockPOLC(height, evidenceTime, pubKey)
 	err = pool.AddPOLC(polc)
 	require.NoError(t, err)
 
-	_, err = pool.RetrievePOLC(25, 1)
+	polc, err = pool.RetrievePOLC(height, 1)
 	require.NoError(t, err)
+	require.NotEmpty(t, polc)
 
-	voteA := makeVote(height, 0, 0, pubKey.Address(), firstBlockID)
+	voteA := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime)
 	err = val.SignVote(evidenceChainID, voteA)
 	require.NoError(t, err)
-	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID)
+	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID, evidenceTime.Add(2 * time.Second))
 	err = val.SignVote(evidenceChainID, voteB)
 	require.NoError(t, err)
-	voteC := makeVote(height, 0, 0, pubKey.Address(), firstBlockID)
+	voteC := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(3 * time.Second))
 	voteC.Timestamp.Add(1 * time.Second)
 	err = val.SignVote(evidenceChainID, voteC)
 	require.NoError(t, err)
@@ -344,6 +351,18 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		VoteA: voteA,
 		VoteB: voteB,
 	}
+	
+	secondValVote := makeVote(height, 1, 0, pubKey2.Address(), secondBlockID, evidenceTime.Add(1 * time.Second))
+	err = val2.SignVote(evidenceChainID, secondValVote)
+	require.NoError(t, err)
+	
+	validPolc := types.ProofOfLockChange {
+		Votes: []types.Vote{*secondValVote},
+		PubKey: pubKey,
+	}
+	
+	
+	// CASE A
 	// we expect the evidence pool to find the polc but log an error as the polc is not valid -> vote was
 	// not from a validator in this set. However, an error isn't thrown because the evidence pool
 	// should still be able to save the regular potential amnesia evidence.
@@ -352,49 +371,96 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 
 	// evidence requires trial period until it is available -> we expect no evidence to be returned
 	assert.Equal(t, 0, len(pool.PendingEvidence(1)))
+	assert.True(t, pool.IsOnTrial(ev))
 
 	nextHeight := pool.nextEvidenceTrialEndedHeight
 	assert.Greater(t, nextHeight, int64(0))
 
+	// CASE B
 	// evidence is not ready to be upgraded so we return the height we expect the evidence to be.
 	nextHeight = pool.upgradePotentialAmnesiaEvidence()
 	assert.Equal(t, height+pool.state.ConsensusParams.Evidence.ProofTrialPeriod, nextHeight)
-	t.Log(nextHeight)
 
+	// CASE C
 	// now evidence is ready to be upgraded to amnesia evidence -> we expect -1 to be the next height as their is
 	// no more pending potential amnesia evidence left
-	// lastCommit := makeCommit(height+ 1, pubKey.Address())
-	// block := types.MakeBlock(height + 2, []types.Tx{}, lastCommit, []types.Evidence{})
-	// // update state (partially)
-	// state.LastBlockHeight = height + 2
-	// t.Log(state.LastBlockHeight)
+	lastCommit := makeCommit(height+ 1, pubKey.Address())
+	block := types.MakeBlock(height + 2, []types.Tx{}, lastCommit, []types.Evidence{})
+	state.LastBlockHeight = height + 2
 
-	// pool.Update(block, state)
-	pool.upgradePotentialAmnesiaEvidence()
+	pool.Update(block, state)
 	assert.Equal(t, int64(-1), pool.nextEvidenceTrialEndedHeight)
 
 	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
 
+	// CASE D
+	pool.logger.Info("CASE D")
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
-	voteA.Timestamp.Add(1 * time.Second)
-
 	ev2 := types.PotentialAmnesiaEvidence{
 		VoteA: voteB,
 		VoteB: voteC,
 	}
 	err = pool.AddEvidence(ev2)
 	assert.NoError(t, err)
-
-	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
-
-	// test for receiving amnesia evidence
-	ae := types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: ev2, 
+	expectedAe := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: ev2,
 		Polc: types.EmptyPOLC(),
 	}
+	
+	assert.True(t, pool.IsPending(expectedAe))
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	
+	// CASE E
+	pool.logger.Info("CASE E")
+	// test for receiving amnesia evidence
+	ae := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: ev, 
+		Polc: types.EmptyPOLC(),
+	}
+	// we need to run the trial period ourselves so amnesia evidence should not be added, instead
+	// we should extract out the potential amnesia evidence and trying to add that before realising
+	// that we already have it -> no error
 	err = pool.AddEvidence(ae)
-	assert.Error(t, err)
-	t.Log(err)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	
+	voteD := makeVote(height, 2, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(4 * time.Second))
+	err = val.SignVote(evidenceChainID, voteD)
+	require.NoError(t, err)
+	
+	// CASE F
+	pool.logger.Info("CASE F")
+	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
+	// and start our own trial
+	newPe := types.PotentialAmnesiaEvidence{
+		VoteA: voteB,
+		VoteB: voteD,
+	}
+	newAe := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: newPe,
+		Polc: types.EmptyPOLC(),
+	}
+	err = pool.AddEvidence(newAe)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	assert.True(t, pool.IsOnTrial(newPe))
+	t.Log(pool.AllPendingEvidence())
+	
+	// CASE G
+	pool.logger.Info("CASE G")
+	// Finally, we receive an amnesia evidence containing a valid polc for an earlier potential amnesia evidence 
+	// that we have already upgraded to. We should ad this new amnesia evidence in replace of the prior 
+	// amnesia evidence with an empty polc that we have
+	aeWithPolc := types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: ev,
+		Polc: validPolc,
+	}
+	err = pool.AddEvidence(aeWithPolc)
+	assert.NoError(t, err)
+	assert.True(t, pool.IsPending(aeWithPolc))
+	assert.False(t, pool.IsPending(ae))
+	t.Log(pool.AllPendingEvidence())
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
 
 
 }
@@ -476,13 +542,13 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
-func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
+func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID, time time.Time) *types.Vote {
 	return &types.Vote{
 		Type:             tmproto.SignedMsgType(2),
 		Height:           height,
 		Round:            round,
 		BlockID:          blockID,
-		Timestamp:        time.Now(),
+		Timestamp:        time,
 		ValidatorAddress: addr,
 		ValidatorIndex:   index,
 	}
