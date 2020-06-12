@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,6 +15,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/state"
 	tmproto "github.com/tendermint/tendermint/proto/types"
@@ -185,6 +187,27 @@ func TestPruneStates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestABCIResponsesResultsHash(t *testing.T) {
+	responses := &tmstate.ABCIResponses{
+		BeginBlock: &abci.ResponseBeginBlock{},
+		DeliverTxs: []*abci.ResponseDeliverTx{
+			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+		},
+		EndBlock: &abci.ResponseEndBlock{},
+	}
+
+	root := sm.ABCIResponsesResultsHash(responses)
+
+	bbeBytes, _ := proto.Marshal(responses.BeginBlock)
+	results := types.NewResults(responses.DeliverTxs)
+	ebeBytes, _ := proto.Marshal(responses.EndBlock)
+
+	root2, proofs := merkle.ProofsFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+
+	assert.Equal(t, root2, root)
+	assert.NoError(t, proofs[1].Verify(root, results.Hash()))
 }
 
 func sliceToMap(s []int64) map[int64]bool {
