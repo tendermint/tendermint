@@ -51,6 +51,8 @@ type Pool struct {
 // Validator.Address -> Last height it was in validator set
 type valToLastHeightMap map[string]int64
 
+// Creates a new pool. If using an existing evidence store, it will add all pending evidence
+// to the concurrent list.
 func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
 	var (
 		state = sm.LoadState(stateDB)
@@ -82,7 +84,7 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
-// If maxNum is -1, all evidence is returned. Pending evidence is prioritised based on time.
+// If maxNum is -1, all evidence is returned. Pending evidence is prioritized based on time.
 func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 	evpool.removeExpiredPendingEvidence()
 	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
@@ -92,6 +94,7 @@ func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 	return evidence
 }
 
+// AllPendingEvidence returns all evidence ready to be proposed and committed.
 func (evpool *Pool) AllPendingEvidence() []types.Evidence {
 	evpool.removeExpiredPendingEvidence()
 	evidence, err := evpool.listEvidence(baseKeyPending, -1)
