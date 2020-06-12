@@ -362,7 +362,6 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	err = val2.SignVote(evidenceChainID, vv2)
 	require.NoError(t, err)
 	secondValVote.Signature = vv2.Signature
-	
 
 	validPolc := types.ProofOfLockChange{
 		Votes:  []types.Vote{*secondValVote},
