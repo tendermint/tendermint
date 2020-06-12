@@ -80,11 +80,6 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		// index tx by events
 		txi.indexEvents(result, hash, storeBatch)
 
-		// // index tx by height
-		// if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
-		// 	storeBatch.Set(keyForHeight(result), hash)
-		// }
-
 		// index tx by hash
 		rawBytes, err := proto.Marshal(result)
 		if err != nil {
@@ -109,11 +104,6 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 
 	// index tx by events
 	txi.indexEvents(result, hash, b)
-
-	// index tx by height
-	// if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
-	// 	b.Set(keyForHeight(result), hash)
-	// }
 
 	// index tx by hash
 	rawBytes, err := proto.Marshal(result)
