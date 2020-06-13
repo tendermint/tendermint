@@ -65,6 +65,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
   - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
   - [libs] \#4831 Remove `Bech32` pkg from Tendermint. This pkg now lives in the [cosmos-sdk](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
+  - [rpc/client] \#4947 `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    `UnconfirmedTxs` `limit` param is a pointer
+  - [types] \#4845 Remove `ABCIResult`
+
 - Blockchain Protocol
 
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
@@ -72,8 +76,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     Add `max_num` to consensus evidence parameters (default: 50 items).
   - [mempool] \#4940 Migrate mempool from amino binary encoding to Protobuf
   - [statesync] \#4943 Migrate statesync reactor from amino binary encoding to Protobuf
-  - [rpc/client] \#4947 `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
-    `UnconfirmedTxs` `limit` param is a pointer
+  - [state] \#4845 Include BeginBlock#Events, EndBlock#Events, DeliverTx#Events, GasWanted and GasUsed into `LastResultsHash` (@melekes)
 
 ### FEATURES:
 
