@@ -7,6 +7,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmstate "github.com/tendermint/tendermint/proto/state"
@@ -138,8 +139,6 @@ func BootstrapState(db dbm.DB, state State) error {
 	return db.SetSync(stateKey, state.Bytes())
 }
 
-//------------------------------------------------------------------------
-
 // PruneStates deletes states between the given heights (including from, excluding to). It is not
 // guaranteed to delete all states, since the last checkpointed state and states being pointed to by
 // e.g. `LastHeightChanged` must remain. The state at to must also exist.
@@ -253,15 +252,44 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 	return nil
 }
 
-// ABCIResponsesResultsHash returns the merkle hash of the deliverTxs within ABCIResponses
-func ABCIResponsesResultsHash(ar tmstate.ABCIResponses) []byte {
+//------------------------------------------------------------------------
+
+// ABCIResponsesResultsHash returns the root hash of a Merkle tree with 3 leafs:
+//   1) proto encoded ResponseBeginBlock.Events
+//   2) root hash of a Merkle tree of ResponseDeliverTx responses (see ABCIResults.Hash)
+//   3) proto encoded ResponseEndBlock.Events
+//
+// See merkle.SimpleHashFromByteSlices
+func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
+	// proto-encode BeginBlock events.
+	bbeBytes, err := proto.Marshal(&abci.ResponseBeginBlock{
+		Events: ar.BeginBlock.Events,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
 	results := types.NewResults(ar.DeliverTxs)
-	return results.Hash()
+
+	// proto-encode EndBlock events.
+	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
+		Events: ar.EndBlock.Events,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Build a Merkle tree out of the above 3 binary slices.
+	return merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
 }
 
-// LoadABCIResponses loads the ABCIResponses for the given height from the database.
-// This is useful for recovering from crashes where we called app.Commit and before we called
-// s.Save(). It can also be used to produce Merkle proofs of the result of txs.
+// LoadABCIResponses loads the ABCIResponses for the given height from the
+// database. If not found, ErrNoABCIResponsesForHeight is returned.
+//
+// This is useful for recovering from crashes where we called app.Commit and
+// before we called s.Save(). It can also be used to produce Merkle proofs of
+// the result of txs.
 func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) {
 	buf, err := db.Get(calcABCIResponsesKey(height))
 	if err != nil {
