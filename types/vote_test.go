@@ -132,7 +132,8 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 	for i, tc := range tests {
 		v := tc.vote.ToProto()
 		got := VoteSignBytes(tc.chainID, v)
-		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
+		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)
+		assert.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
 }
 

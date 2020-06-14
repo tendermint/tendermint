@@ -2,8 +2,10 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -91,7 +93,20 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	if err != nil {
 		panic(err)
 	}
-	return bz
+	// TODO
+	var buf = new(bytes.Buffer)
+	// bytes.Buffer.Write won't err
+	_ = encodeUvarint(buf, uint64(len(bz)))
+	buf.Write(bz)
+
+	return buf.Bytes()
+}
+
+func encodeUvarint(w io.Writer, u uint64) (err error) {
+	var buf [10]byte
+	n := binary.PutUvarint(buf[:], u)
+	_, err = w.Write(buf[0:n])
+	return
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -217,8 +232,8 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 
 	vote := new(Vote)
 	vote.Type = pv.Type
-	vote.Height = pv.Height
-	vote.Round = pv.Round
+	vote.Height = int64(pv.Height)
+	vote.Round = int32(pv.Round) // FIXME: can this overflow? Why was this ever i64??
 	vote.BlockID = *blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress

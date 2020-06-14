@@ -8,11 +8,11 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
-	_ "github.com/golang/protobuf/ptypes/timestamp"
 	keys "github.com/tendermint/tendermint/proto/crypto/keys"
 	merkle "github.com/tendermint/tendermint/proto/crypto/merkle"
-	types "github.com/tendermint/tendermint/proto/types"
+	types1 "github.com/tendermint/tendermint/proto/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -720,7 +720,7 @@ func (m *RequestQuery) GetProve() bool {
 
 type RequestBeginBlock struct {
 	Hash                []byte         `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Header              types.Header   `protobuf:"bytes,2,opt,name=header,proto3" json:"header"`
+	Header              types1.Header  `protobuf:"bytes,2,opt,name=header,proto3" json:"header"`
 	LastCommitInfo      LastCommitInfo `protobuf:"bytes,3,opt,name=last_commit_info,json=lastCommitInfo,proto3" json:"last_commit_info"`
 	ByzantineValidators []Evidence     `protobuf:"bytes,4,rep,name=byzantine_validators,json=byzantineValidators,proto3" json:"byzantine_validators"`
 }
@@ -765,11 +765,11 @@ func (m *RequestBeginBlock) GetHash() []byte {
 	return nil
 }
 
-func (m *RequestBeginBlock) GetHeader() types.Header {
+func (m *RequestBeginBlock) GetHeader() types1.Header {
 	if m != nil {
 		return m.Header
 	}
-	return types.Header{}
+	return types1.Header{}
 }
 
 func (m *RequestBeginBlock) GetLastCommitInfo() LastCommitInfo {
@@ -2417,9 +2417,9 @@ func (m *ResponseApplySnapshotChunk) GetRejectSenders() []string {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 type ConsensusParams struct {
-	Block     *BlockParams           `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
-	Evidence  *types.EvidenceParams  `protobuf:"bytes,2,opt,name=evidence,proto3" json:"evidence,omitempty"`
-	Validator *types.ValidatorParams `protobuf:"bytes,3,opt,name=validator,proto3" json:"validator,omitempty"`
+	Block     *BlockParams            `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+	Evidence  *types1.EvidenceParams  `protobuf:"bytes,2,opt,name=evidence,proto3" json:"evidence,omitempty"`
+	Validator *types1.ValidatorParams `protobuf:"bytes,3,opt,name=validator,proto3" json:"validator,omitempty"`
 }
 
 func (m *ConsensusParams) Reset()         { *m = ConsensusParams{} }
@@ -2462,14 +2462,14 @@ func (m *ConsensusParams) GetBlock() *BlockParams {
 	return nil
 }
 
-func (m *ConsensusParams) GetEvidence() *types.EvidenceParams {
+func (m *ConsensusParams) GetEvidence() *types1.EvidenceParams {
 	if m != nil {
 		return m.Evidence
 	}
 	return nil
 }
 
-func (m *ConsensusParams) GetValidator() *types.ValidatorParams {
+func (m *ConsensusParams) GetValidator() *types1.ValidatorParams {
 	if m != nil {
 		return m.Validator
 	}
@@ -13148,7 +13148,7 @@ func (m *ConsensusParams) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Evidence == nil {
-				m.Evidence = &types.EvidenceParams{}
+				m.Evidence = &types1.EvidenceParams{}
 			}
 			if err := m.Evidence.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -13184,7 +13184,7 @@ func (m *ConsensusParams) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Validator == nil {
-				m.Validator = &types.ValidatorParams{}
+				m.Validator = &types1.ValidatorParams{}
 			}
 			if err := m.Validator.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err

@@ -26,9 +26,12 @@ enum SignedMsgType {
   option (gogoproto.goproto_enum_prefix)   = false;
 
   SIGNED_MSG_TYPE_UNKNOWN = 0;
+  // Votes
   PREVOTE_TYPE            = 1 [(gogoproto.enumvalue_customname) = "PrevoteType"];
   PRECOMMIT_TYPE          = 2 [(gogoproto.enumvalue_customname) = "PrecommitType"];
-  PROPOSAL_TYPE           = 3 [(gogoproto.enumvalue_customname) = "ProposalType"];
+
+  // Proposals
+  PROPOSAL_TYPE           = 32 [(gogoproto.enumvalue_customname) = "ProposalType"];
 }
 
 // PartsetHeader

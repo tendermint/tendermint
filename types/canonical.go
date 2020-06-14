@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	ptypes "github.com/gogo/protobuf/types"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -42,12 +43,17 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 }
 
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
+	timestamp, err := ptypes.TimestampProto(vote.Timestamp)
+	if err != nil {
+		panic("TODO" + err.Error())
+	}
+
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
 		Height:    vote.Height,
-		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		Round:     int64(vote.Round),
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
-		Timestamp: vote.Timestamp,
+		Timestamp: timestamp,
 		ChainID:   chainID,
 	}
 }

@@ -162,7 +162,9 @@ func init() {
 }
 
 func init() { proto.RegisterFile("proto/types/validator.proto", fileDescriptor_2e7c6b38c20e5406) }
-func init() { golang_proto.RegisterFile("proto/types/validator.proto", fileDescriptor_2e7c6b38c20e5406) }
+func init() {
+	golang_proto.RegisterFile("proto/types/validator.proto", fileDescriptor_2e7c6b38c20e5406)
+}
 
 var fileDescriptor_2e7c6b38c20e5406 = []byte{
 	// 358 bytes of a gzipped FileDescriptorProto
