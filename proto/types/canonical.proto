@@ -31,7 +31,7 @@ message CanonicalVote {
   SignedMsgType             type      = 1;  // type alias for byte
   sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
-  CanonicalBlockID          block_id  = 5 [(gogoproto.nullable) = true, (gogoproto.customname) = "BlockID"];
-  google.protobuf.Timestamp timestamp = 6;
-  string                    chain_id  = 7 [(gogoproto.customname) = "ChainID"];
+  CanonicalBlockID          block_id  = 4 [(gogoproto.nullable) = true, (gogoproto.customname) = "BlockID"];
+  google.protobuf.Timestamp timestamp = 5;
+  string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
 }
