@@ -3,20 +3,18 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
 
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/net"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -104,12 +102,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 	logger.Info("Loaded genesis file", "chainID", st.ChainID)
 
-	spv, err := newTestHarnessListener(logger, cfg)
-	if err != nil {
-		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
-	}
-
-	signerClient, err := privval.NewSignerClient(spv)
+	signerClient, err := privval.NewSignerClient(cfg.BindAddr, []grpc.DialOption{}, logger)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
@@ -147,22 +140,22 @@ func (th *TestHarness) Run() {
 	for acceptRetries := th.acceptRetries; acceptRetries > 0; acceptRetries-- {
 		th.logger.Info("Attempting to accept incoming connection", "acceptRetries", acceptRetries)
 
-		if err := th.signerClient.WaitForConnection(10 * time.Millisecond); err != nil {
-			// if it wasn't a timeout error
-			if _, ok := err.(timeoutError); !ok {
-				th.logger.Error("Failed to start listener", "err", err)
-				th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
-				// we need the return statements in case this is being run
-				// from a unit test - otherwise this function will just die
-				// when os.Exit is called
-				return
-			}
-			startErr = err
-		} else {
-			th.logger.Info("Accepted external connection")
-			accepted = true
-			break
-		}
+		// if err := th.signerClient.WaitForConnection(10 * time.Millisecond); err != nil {
+		// 	// if it wasn't a timeout error
+		// 	if _, ok := err.(timeoutError); !ok {
+		// 		th.logger.Error("Failed to start listener", "err", err)
+		// 		th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
+		// 		// we need the return statements in case this is being run
+		// 		// from a unit test - otherwise this function will just die
+		// 		// when os.Exit is called
+		// 		return
+		// 	}
+		// 	startErr = err
+		// } else {
+		th.logger.Info("Accepted external connection")
+		accepted = true
+		break
+		// }
 	}
 	if !accepted {
 		th.logger.Error("Maximum accept retries reached", "acceptRetries", th.acceptRetries)
@@ -341,43 +334,6 @@ func (th *TestHarness) Shutdown(err error) {
 	if th.exitWhenComplete {
 		os.Exit(exitCode)
 	}
-}
-
-// newTestHarnessListener creates our client instance which we will use for testing.
-func newTestHarnessListener(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerListenerEndpoint, error) {
-	proto, addr := tmnet.ProtocolAndAddress(cfg.BindAddr)
-	if proto == "unix" {
-		// make sure the socket doesn't exist - if so, try to delete it
-		if tmos.FileExists(addr) {
-			if err := os.Remove(addr); err != nil {
-				logger.Error("Failed to remove existing Unix domain socket", "addr", addr)
-				return nil, err
-			}
-		}
-	}
-	ln, err := net.Listen(proto, addr)
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("Listening", "proto", proto, "addr", addr)
-	var svln net.Listener
-	switch proto {
-	case "unix":
-		unixLn := privval.NewUnixListener(ln)
-		privval.UnixListenerTimeoutAccept(cfg.AcceptDeadline)(unixLn)
-		privval.UnixListenerTimeoutReadWrite(cfg.ConnDeadline)(unixLn)
-		svln = unixLn
-	case "tcp":
-		tcpLn := privval.NewTCPListener(ln, cfg.SecretConnKey)
-		privval.TCPListenerTimeoutAccept(cfg.AcceptDeadline)(tcpLn)
-		privval.TCPListenerTimeoutReadWrite(cfg.ConnDeadline)(tcpLn)
-		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
-		svln = tcpLn
-	default:
-		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
-		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
-	}
-	return privval.NewSignerListenerEndpoint(logger, svln), nil
 }
 
 func newTestHarnessError(code int, err error, info string) *TestHarnessError {
