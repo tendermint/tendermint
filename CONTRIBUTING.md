@@ -108,7 +108,7 @@ For linting and checking breaking changes, we use [buf](https://buf.build/). If 
 There are two ways to generate your proto stubs.
 
 1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `protoc` and gogoproto.
+2. Run `make proto-gen` after installing `protoc` and gogoproto, you can do this by running `make protobuf`.
 
 ### Installation Instructions
 
