@@ -3,17 +3,33 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
-## Unreleased
+## v0.34.0
 
-<Overview>
+This release is not compatible with previous blockchains due to switching from
+amino to proto3 encoding and breaking changes to the header.
+
+### Blockchain Protocol
+
+- `Header#LastResultsHash`, which previously was the root hash of a Merkle tree
+  built from `ResponseDeliverTx(Code, Data)` responses, became the root hash of
+  a Merkle tree built from:
+  - `BeginBlock#Events`;
+  - root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data, GasWanted, GasUsed, Events)` responses;
+  - `BeginBlock#Events`.
 
 ### Events
 
-- `KV.Pair` has been replaced with `abci.EventAttribute`. This allows applications to indicate if a msg should be indexed at runtime. Previously this was only possible if the node operator decided to index specific or all messages on startup of the node, now the application can indicate which msgs should be indexed.
+- `KV.Pair` has been replaced with `abci.EventAttribute`. This allows
+  applications to indicate if a msg should be indexed at runtime. Previously
+  this was only possible if the node operator decided to index specific or all
+  messages on startup of the node, now the application can indicate which msgs
+  should be indexed.
 
 ### Crypto
 
-- `Multsig` & `PubKeyMultisigThreshold` have been moved to the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk). (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+- `Multsig` & `PubKeyMultisigThreshold` have been moved to the
+  [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk).
+  (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
 
 ## v0.33.4
 
