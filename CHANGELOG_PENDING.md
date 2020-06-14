@@ -52,6 +52,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
   - [privval] \#4985 `privval` reactor migration to Protobuf encoding
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
+  - [indexer] \#5006 Tx indexer now relies on the application to tell it what to index. There is no longer a way to set which txs to index by the node operator.
 
 - Apps
 
