@@ -13,8 +13,8 @@ message CanonicalBlockID {
 }
 
 message CanonicalPartSetHeader {
-  bytes  hash  = 1;
-  uint32 total = 2;
+  uint32 total = 1;
+  bytes  hash  = 2;
 }
 
 message CanonicalProposal {
