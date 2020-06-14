@@ -47,12 +47,20 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 	if err != nil {
 		panic("TODO" + err.Error())
 	}
-
+	// TODO remove this:
+	rbid, _ := BlockIDFromProto(&vote.BlockID)
+	var cbid *tmproto.CanonicalBlockID
+	if rbid.IsZero() {
+		cbid = nil
+	} else {
+		c := CanonicalizeBlockID(vote.BlockID)
+		cbid = &c
+	}
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
 		Height:    vote.Height,
 		Round:     int64(vote.Round),
-		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		BlockID:   cbid,
 		Timestamp: timestamp,
 		ChainID:   chainID,
 	}
