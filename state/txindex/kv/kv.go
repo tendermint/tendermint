@@ -30,16 +30,10 @@ type TxIndex struct {
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
-	txi := &TxIndex{
+func NewTxIndex(store dbm.DB) *TxIndex {
+	return &TxIndex{
 		store: store,
 	}
-
-	for _, o := range options {
-		o(txi)
-	}
-
-	return txi
 }
 
 // Get gets transaction from the TxIndex storage and returns it or nil if the
