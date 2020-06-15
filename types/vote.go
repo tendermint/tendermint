@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -93,8 +92,10 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	if err != nil {
 		panic(err)
 	}
-	// TODO
-	var buf = new(bytes.Buffer)
+	// length prefix for backwards compatibility to amino
+	// TODO link a yet to be created issue
+	buf := new(bytes.Buffer)
+	buf.Grow(len(bz) + 2)
 	// bytes.Buffer.Write won't err
 	_ = encodeUvarint(buf, uint64(len(bz)))
 	buf.Write(bz)
@@ -102,7 +103,7 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return buf.Bytes()
 }
 
-func encodeUvarint(w io.Writer, u uint64) (err error) {
+func encodeUvarint(w *bytes.Buffer, u uint64) (err error) {
 	var buf [10]byte
 	n := binary.PutUvarint(buf[:], u)
 	_, err = w.Write(buf[0:n])

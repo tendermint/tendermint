@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"math"
 	"testing"
 	"time"
@@ -53,7 +54,11 @@ func TestVoteSignable(t *testing.T) {
 	pb := CanonicalizeVote("test_chain_id", v)
 
 	// TODO expected needs a length prefixing to pass:
-	expected, err := proto.Marshal(&pb)
+	pbz, err := proto.Marshal(&pb)
+	buf := new(bytes.Buffer)
+	_ = encodeUvarint(buf, uint64(len(pbz)))
+	buf.Write(pbz)
+	expected := buf.Bytes()
 	require.NoError(t, err)
 
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")

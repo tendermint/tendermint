@@ -3,7 +3,6 @@ package types
 import (
 	"time"
 
-	ptypes "github.com/gogo/protobuf/types"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -43,7 +42,7 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 }
 
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
-	timestamp, err := ptypes.TimestampProto(vote.Timestamp)
+	timestamp, err := tmtime.ToProtoTime(vote.Timestamp)
 	if err != nil {
 		panic("TODO" + err.Error())
 	}
