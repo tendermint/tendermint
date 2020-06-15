@@ -14,6 +14,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/libs/tempfile"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
@@ -397,15 +398,14 @@ func (pv *FilePV) saveSigned(height int64, round int32, step int8,
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote tmproto.CanonicalVote
-	if err := proto.Unmarshal(lastSignBytes, &lastVote); err != nil {
+	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := proto.Unmarshal(newSignBytes, &newVote); err != nil {
+	if err := protoio.UnmarshalDelimited(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
 	lastTime := lastVote.Timestamp
-
 	// set the times to the same value and check equality
 	now := tmtime.Now()
 	lastVote.Timestamp = now
@@ -418,10 +418,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal tmproto.CanonicalProposal
-	if err := proto.Unmarshal(lastSignBytes, &lastProposal); err != nil {
+	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := proto.Unmarshal(newSignBytes, &newProposal); err != nil {
+	if err := protoio.UnmarshalDelimited(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 

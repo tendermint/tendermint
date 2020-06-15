@@ -1306,6 +1306,7 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	if bID == nil {
 		return nil, errors.New("nil BlockID")
 	}
+
 	blockID := new(BlockID)
 	ph, err := PartSetHeaderFromProto(&bID.PartsHeader)
 	if err != nil {
