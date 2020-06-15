@@ -12,6 +12,20 @@ message Proof {
   repeated bytes aunts     = 4;
 }
 
+message ValueOp {
+  // Encoded in ProofOp.Key.
+  bytes key = 1;
+
+  // To encode in ProofOp.Data
+  Proof proof = 2;
+}
+
+message DominoOp {
+  string key    = 1;
+  string input  = 2;
+  string output = 3;
+}
+
 // ProofOp defines an operation used for calculating Merkle root
 // The data could be arbitrary format, providing nessecary data
 // for example neighbouring node hash

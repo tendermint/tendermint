@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	amino "github.com/tendermint/go-amino"
+	"github.com/stretchr/testify/require"
 	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
@@ -28,21 +28,17 @@ func NewDominoOp(key, input, output string) DominoOp {
 	}
 }
 
-//nolint:unused
-func DominoOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
-	if pop.Type != ProofOpDomino {
-		panic("unexpected proof op type")
-	}
-	var op DominoOp // a bit strange as we'll discard this, but it works.
-	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
-	if err != nil {
-		return nil, fmt.Errorf("decoding ProofOp.Data into ValueOp: %w", err)
-	}
-	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
-}
-
 func (dop DominoOp) ProofOp() tmmerkle.ProofOp {
-	bz := amino.MustMarshalBinaryLengthPrefixed(dop)
+	dopb := tmmerkle.DominoOp{
+		Key:    dop.key,
+		Input:  dop.Input,
+		Output: dop.Output,
+	}
+	bz, err := dopb.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return tmmerkle.ProofOp{
 		Type: ProofOpDomino,
 		Key:  []byte(dop.key),
@@ -72,8 +68,6 @@ func TestProofOperators(t *testing.T) {
 
 	// ProofRuntime setup
 	// TODO test this somehow.
-	// prt := NewProofRuntime()
-	// prt.RegisterOpDecoder(ProofOpDomino, DominoOpDecoder)
 
 	// ProofOperators setup
 	op1 := NewDominoOp("KEY1", "INPUT1", "INPUT2")
@@ -173,5 +167,33 @@ func TestProofValidateBasic(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.errStr)
 			}
 		})
+	}
+}
+func TestVoteProtobuf(t *testing.T) {
+
+	_, proofs := ProofsFromByteSlices([][]byte{
+		[]byte("apple"),
+		[]byte("watermelon"),
+		[]byte("kiwi"),
+	})
+	testCases := []struct {
+		testName string
+		v1       *Proof
+		expPass  bool
+	}{
+		{"empty proof", &Proof{}, false},
+		{"failure nil", nil, false},
+		{"success", proofs[0], true},
+	}
+	for _, tc := range testCases {
+		pb := tc.v1.ToProto()
+
+		v, err := ProofFromProto(pb)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.testName)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }

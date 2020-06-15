@@ -134,6 +134,7 @@ func ProofFromProto(pb *tmmerkle.Proof) (*Proof, error) {
 	if pb == nil {
 		return nil, errors.New("nil proof")
 	}
+
 	sp := new(Proof)
 
 	sp.Total = pb.Total
