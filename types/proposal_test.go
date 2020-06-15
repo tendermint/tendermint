@@ -26,9 +26,10 @@ func init() {
 		panic(err)
 	}
 	testProposal = &Proposal{
-		Height:    12345,
-		Round:     23456,
-		BlockID:   BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}},
+		Height: 12345,
+		Round:  23456,
+		BlockID: BlockID{Hash: tmrand.Bytes(tmhash.Size),
+			PartsHeader: PartSetHeader{Total: 111, Hash: tmrand.Bytes(tmhash.Size)}},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
