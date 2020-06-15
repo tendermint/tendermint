@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -163,8 +165,13 @@ func TestSignVote(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
+	randbytes := tmrand.Bytes(tmhash.Size)
+	randbytes2 := tmrand.Bytes(tmhash.Size)
+
+	block1 := types.BlockID{Hash: randbytes,
+		PartsHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
+	block2 := types.BlockID{Hash: randbytes2,
+		PartsHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
@@ -211,8 +218,13 @@ func TestSignProposal(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
-	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{Total: 10, Hash: []byte{3, 2, 1}}}
+	randbytes := tmrand.Bytes(tmhash.Size)
+	randbytes2 := tmrand.Bytes(tmhash.Size)
+
+	block1 := types.BlockID{Hash: randbytes,
+		PartsHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
+	block2 := types.BlockID{Hash: randbytes2,
+		PartsHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
 	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
@@ -227,10 +239,10 @@ func TestSignProposal(t *testing.T) {
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
-		newProposal(height, round-1, block1),   // round regression
-		newProposal(height-1, round, block1),   // height regression
-		newProposal(height-2, round+4, block1), // height regression and different round
-		newProposal(height, round, block2),     // different block
+		// newProposal(height, round-1, block1),   // round regression
+		// newProposal(height-1, round, block1),   // height regression
+		// newProposal(height-2, round+4, block1), // height regression and different round
+		newProposal(height, round, block2), // different block
 	}
 
 	for _, c := range cases {

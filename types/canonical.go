@@ -21,11 +21,10 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 	if rbid == nil || rbid.IsZero() {
 		cbid = nil
 	} else {
-		c := tmproto.CanonicalBlockID{
+		cbid = &tmproto.CanonicalBlockID{
 			Hash:        bid.Hash,
 			PartsHeader: CanonicalizePartSetHeader(bid.PartsHeader),
 		}
-		cbid = &c
 	}
 
 	return cbid
