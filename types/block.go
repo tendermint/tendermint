@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -21,10 +22,10 @@ import (
 )
 
 const (
-	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 628
+	// MaxHeaderBytes is a maximum header size.
+	MaxHeaderBytes int64 = 626
 
-	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
+	// MaxOverheadForBlock - maximum overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
 	// This means it also excludes the overhead for individual transactions.
 	//
@@ -32,7 +33,7 @@ const (
 	// 2 fields (2 embedded):               2 bytes
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
-	MaxAminoOverheadForBlock int64 = 11
+	MaxOverheadForBlock int64 = 11
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -167,11 +168,12 @@ func (b *Block) HashesTo(hash []byte) bool {
 
 // Size returns size of the block in bytes.
 func (b *Block) Size() int {
-	bz, err := cdc.MarshalBinaryBare(b)
+	pbb, err := b.ToProto()
 	if err != nil {
 		return 0
 	}
-	return len(bz)
+
+	return pbb.Size()
 }
 
 // String returns a string representation of the block
@@ -257,28 +259,6 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	return b, b.ValidateBasic()
 }
 
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
-
-// Marshal returns the amino encoding.
-func (b *Block) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(b)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (b *Block) MarshalTo(data []byte) (int, error) {
-	bs, err := b.Marshal()
-	if err != nil {
-		return -1, err
-	}
-	return copy(data, bs), nil
-}
-
-// Unmarshal deserializes from amino encoded form.
-func (b *Block) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, b)
-}
-
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
@@ -286,7 +266,7 @@ func (b *Block) Unmarshal(bs []byte) error {
 // XXX: Panics on negative result.
 func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 	maxDataBytes := maxBytes -
-		MaxAminoOverheadForBlock -
+		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		int64(evidenceCount)*MaxEvidenceBytes
@@ -311,7 +291,7 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int, maxNumEvidence uint32) int64 {
 	maxEvidenceBytes := int64(maxNumEvidence) * MaxEvidenceBytes
 	maxDataBytes := maxBytes -
-		MaxAminoOverheadForBlock -
+		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
 		maxEvidenceBytes
@@ -449,12 +429,27 @@ func (h *Header) Hash() tmbytes.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
+	hbz, err := h.Version.Marshal()
+	if err != nil {
+		return nil
+	}
+
+	pbt, err := gogotypes.StdTimeMarshal(h.Time)
+	if err != nil {
+		return nil
+	}
+
+	pbbi := h.LastBlockID.ToProto()
+	bzbi, err := pbbi.Marshal()
+	if err != nil {
+		return nil
+	}
 	return merkle.HashFromByteSlices([][]byte{
-		cdcEncode(h.Version),
+		hbz,
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
-		cdcEncode(h.Time),
-		cdcEncode(h.LastBlockID),
+		pbt,
+		bzbi,
 		cdcEncode(h.LastCommitHash),
 		cdcEncode(h.DataHash),
 		cdcEncode(h.ValidatorsHash),
@@ -866,7 +861,13 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	if commit.hash == nil {
 		bs := make([][]byte, len(commit.Signatures))
 		for i, commitSig := range commit.Signatures {
-			bs[i] = cdcEncode(commitSig)
+			pbcs := commitSig.ToProto()
+			bz, err := pbcs.Marshal()
+			if err != nil {
+				panic(err)
+			}
+
+			bs[i] = bz
 		}
 		commit.hash = merkle.HashFromByteSlices(bs)
 	}
@@ -1248,10 +1249,12 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	bz, err := cdc.MarshalBinaryBare(blockID.PartsHeader)
+	pbph := blockID.PartsHeader.ToProto()
+	bz, err := pbph.Marshal()
 	if err != nil {
 		panic(err)
 	}
+
 	return string(blockID.Hash) + string(bz)
 }
 

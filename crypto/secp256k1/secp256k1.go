@@ -24,7 +24,7 @@ const (
 // PrivKey implements PrivKey.
 type PrivKey []byte
 
-// Bytes marshalls the private key using amino encoding.
+// Bytes returns the byte representation of the Private Key.
 func (privKey PrivKey) Bytes() []byte {
 	return []byte(privKey)
 }

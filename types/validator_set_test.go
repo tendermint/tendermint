@@ -301,14 +301,17 @@ func TestProposerSelection2(t *testing.T) {
 
 func TestProposerSelection3(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		newValidator([]byte("a"), 1),
-		newValidator([]byte("b"), 1),
-		newValidator([]byte("c"), 1),
-		newValidator([]byte("d"), 1),
+		newValidator([]byte("avalidator_address12"), 1),
+		newValidator([]byte("bvalidator_address12"), 1),
+		newValidator([]byte("cvalidator_address12"), 1),
+		newValidator([]byte("dvalidator_address12"), 1),
 	})
 
 	proposerOrder := make([]*Validator, 4)
 	for i := 0; i < 4; i++ {
+		// need to give all validators to have keys
+		pk := ed25519.GenPrivKey().PubKey()
+		vset.Validators[i].PubKey = pk
 		proposerOrder[i] = vset.GetProposer()
 		vset.IncrementProposerPriority(1)
 	}
@@ -329,7 +332,7 @@ func TestProposerSelection3(t *testing.T) {
 
 		// serialize, deserialize, check proposer
 		b := vset.toBytes()
-		vset.fromBytes(b)
+		vset = vset.fromBytes(b)
 
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
@@ -388,19 +391,33 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 }
 
 func (vals *ValidatorSet) toBytes() []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(vals)
+	pbvs, err := vals.ToProto()
 	if err != nil {
 		panic(err)
 	}
+
+	bz, err := pbvs.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return bz
 }
 
-func (vals *ValidatorSet) fromBytes(b []byte) {
-	err := cdc.UnmarshalBinaryLengthPrefixed(b, &vals)
+func (vals *ValidatorSet) fromBytes(b []byte) *ValidatorSet {
+	pbvs := new(tmproto.ValidatorSet)
+	err := pbvs.Unmarshal(b)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)
 	}
+
+	vs, err := ValidatorSetFromProto(pbvs)
+	if err != nil {
+		panic(err)
+	}
+
+	return vs
 }
 
 //-------------------------------------------------------------------
