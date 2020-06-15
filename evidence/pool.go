@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	baseKeyCommitted = byte(0x00)
-	baseKeyPending   = byte(0x01)
-	baseKeyPOLC      = byte(0x02)
-	baseKeyAwaitingTrial  = byte(0x03)
+	baseKeyCommitted     = byte(0x00)
+	baseKeyPending       = byte(0x01)
+	baseKeyPOLC          = byte(0x02)
+	baseKeyAwaitingTrial = byte(0x03)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
