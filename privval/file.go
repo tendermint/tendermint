@@ -421,15 +421,9 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	// if err := proto.Unmarshal(lastSignBytes, &lastProposal); err != nil {
-	// 	panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
-	// }
 	if err := protoio.UnmarshalDelimited(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	// if err := proto.Unmarshal(newSignBytes, &newProposal); err != nil {
-	// 	panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
-	// }
 
 	lastTime := lastProposal.Timestamp
 	// set the times to the same value and check equality
