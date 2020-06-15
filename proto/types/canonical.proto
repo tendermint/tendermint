@@ -22,7 +22,7 @@ message CanonicalProposal {
   sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
   int64                     pol_round = 4 [(gogoproto.customname) = "POLRound"];
-  CanonicalBlockID          block_id  = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  CanonicalBlockID          block_id  = 5 [(gogoproto.customname) = "BlockID"];
   google.protobuf.Timestamp timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                    chain_id  = 7 [(gogoproto.customname) = "ChainID"];
 }
@@ -31,7 +31,7 @@ message CanonicalVote {
   SignedMsgType             type      = 1;  // type alias for byte
   sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
-  CanonicalBlockID          block_id  = 4 [(gogoproto.nullable) = true, (gogoproto.customname) = "BlockID"];
+  CanonicalBlockID          block_id  = 4 [(gogoproto.customname) = "BlockID"];
   google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
 }

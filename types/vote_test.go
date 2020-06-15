@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"math"
 	"testing"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/protoio"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
@@ -52,13 +52,7 @@ func TestVoteSignable(t *testing.T) {
 	v := vote.ToProto()
 	signBytes := VoteSignBytes("test_chain_id", v)
 	pb := CanonicalizeVote("test_chain_id", v)
-
-	// TODO expected needs a length prefixing to pass:
-	pbz, err := proto.Marshal(&pb)
-	buf := new(bytes.Buffer)
-	_ = encodeUvarint(buf, uint64(len(pbz)))
-	buf.Write(pbz)
-	expected := buf.Bytes()
+	expected, err := protoio.MarshalDelimited(&pb)
 	require.NoError(t, err)
 
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")

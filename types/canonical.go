@@ -15,25 +15,31 @@ const TimeFormat = time.RFC3339Nano
 //-----------------------------------
 // Canonicalize the structs
 
-func CanonicalizeBlockID(blockID tmproto.BlockID) tmproto.CanonicalBlockID {
-	return tmproto.CanonicalBlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: CanonicalizePartSetHeader(blockID.PartsHeader),
+func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
+	rbid, _ := BlockIDFromProto(&bid)
+	var cbid *tmproto.CanonicalBlockID
+	if rbid == nil || rbid.IsZero() {
+		cbid = nil
+	} else {
+		c := tmproto.CanonicalBlockID{
+			Hash:        bid.Hash,
+			PartsHeader: CanonicalizePartSetHeader(bid.PartsHeader),
+		}
+		cbid = &c
 	}
+
+	return cbid
 }
 
 func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
-	return tmproto.CanonicalPartSetHeader{
-		Hash:  psh.Hash,
-		Total: psh.Total,
-	}
+	return tmproto.CanonicalPartSetHeader(psh)
 }
 
 func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
 	return tmproto.CanonicalProposal{
 		Type:      tmproto.ProposalType,
 		Height:    proposal.Height,
-		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		Round:     int64(proposal.Round),
 		POLRound:  int64(proposal.PolRound),
 		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
@@ -42,24 +48,11 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 }
 
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
-	// timestamp, err := tmtime.ToProtoTime(vote.Timestamp)
-	// if err != nil {
-	// 	panic("TODO" + err.Error())
-	// }
-	// // TODO remove this:
-	rbid, _ := BlockIDFromProto(&vote.BlockID)
-	var cbid *tmproto.CanonicalBlockID
-	if rbid.IsZero() {
-		cbid = nil
-	} else {
-		c := CanonicalizeBlockID(vote.BlockID)
-		cbid = &c
-	}
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
 		Height:    vote.Height,
 		Round:     int64(vote.Round),
-		BlockID:   cbid,
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
 	}

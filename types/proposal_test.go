@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
@@ -38,7 +39,8 @@ func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
 	signBytes := ProposalSignBytes(chainID, pbp)
 	pb := CanonicalizeProposal(chainID, pbp)
-	expected, err := proto.Marshal(&pb)
+
+	expected, err := protoio.MarshalDelimited(&pb)
 	require.NoError(t, err)
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Proposal")
 }
