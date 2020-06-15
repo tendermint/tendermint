@@ -25,7 +25,7 @@ responses.
 To use ABCI in your programming language of choice, there must be a ABCI
 server in that language. Tendermint supports three implementations of the ABCI, written in Go:
 
-- In-process (Golang only)
+- In-process ([Golang](https://github.com/tendermint/tendermint/tree/master/abci), [Rust](https://github.com/tendermint/rust-abci))
 - ABCI-socket
 - GRPC
 
