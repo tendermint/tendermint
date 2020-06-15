@@ -26,7 +26,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
 }
 
-// Bytes marshals the PubKey using amino encoding.
+// Bytes returns the byte representation of the PubKey.
 func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
 }
