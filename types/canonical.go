@@ -16,8 +16,10 @@ const TimeFormat = time.RFC3339Nano
 // Canonicalize the structs
 
 func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
-	//TODO: decide how to handle panic here
-	rbid, _ := BlockIDFromProto(&bid)
+	rbid, err := BlockIDFromProto(&bid)
+	if err != nil {
+		panic(err)
+	}
 	var cbid *tmproto.CanonicalBlockID
 	if rbid == nil || rbid.IsZero() {
 		cbid = nil
