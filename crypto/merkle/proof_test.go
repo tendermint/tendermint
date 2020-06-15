@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 )
 
@@ -166,5 +168,33 @@ func TestProofValidateBasic(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.errStr)
 			}
 		})
+	}
+}
+func TestVoteProtobuf(t *testing.T) {
+
+	_, proofs := ProofsFromByteSlices([][]byte{
+		[]byte("apple"),
+		[]byte("watermelon"),
+		[]byte("kiwi"),
+	})
+	testCases := []struct {
+		testName string
+		v1       *Proof
+		expPass  bool
+	}{
+		{"empty proof", &Proof{}, false},
+		{"failure nil", nil, false},
+		{"success", proofs[0], true},
+	}
+	for _, tc := range testCases {
+		pb := tc.v1.ToProto()
+
+		v, err := ProofFromProto(pb)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.testName)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }

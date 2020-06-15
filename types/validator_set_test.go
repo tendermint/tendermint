@@ -332,7 +332,7 @@ func TestProposerSelection3(t *testing.T) {
 
 		// serialize, deserialize, check proposer
 		b := vset.toBytes()
-		vset.fromBytes(b)
+		vset = vset.fromBytes(b)
 
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
@@ -404,7 +404,7 @@ func (vals *ValidatorSet) toBytes() []byte {
 	return bz
 }
 
-func (vals *ValidatorSet) fromBytes(b []byte) {
+func (vals *ValidatorSet) fromBytes(b []byte) *ValidatorSet {
 	pbvs := new(tmproto.ValidatorSet)
 	err := pbvs.Unmarshal(b)
 	if err != nil {
@@ -412,10 +412,12 @@ func (vals *ValidatorSet) fromBytes(b []byte) {
 		panic(err)
 	}
 
-	vals, err = ValidatorSetFromProto(pbvs)
+	vs, err := ValidatorSetFromProto(pbvs)
 	if err != nil {
 		panic(err)
 	}
+
+	return vs
 }
 
 //-------------------------------------------------------------------

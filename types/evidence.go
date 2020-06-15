@@ -227,78 +227,17 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	switch evi := evidence.Sum.(type) {
 	//todo: reduce duplication by seperateing into fromproto
 	case *tmproto.Evidence_DuplicateVoteEvidence:
-
-		vA, err := VoteFromProto(evi.DuplicateVoteEvidence.VoteA)
-		if err != nil {
-			return nil, err
-		}
-
-		vB, err := VoteFromProto(evi.DuplicateVoteEvidence.VoteB)
-		if err != nil {
-			return nil, err
-		}
-
-		dve := DuplicateVoteEvidence{
-			VoteA: vA,
-			VoteB: vB,
-		}
-
-		return &dve, dve.ValidateBasic()
+		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
 	case *tmproto.Evidence_ConflictingHeadersEvidence:
-
-		h1, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H1)
-		if err != nil {
-			return nil, fmt.Errorf("from proto err: %w", err)
-		}
-		h2, err := SignedHeaderFromProto(evi.ConflictingHeadersEvidence.H2)
-		if err != nil {
-			return nil, fmt.Errorf("from proto err: %w", err)
-		}
-
-		tp := ConflictingHeadersEvidence{
-			H1: h1,
-			H2: h2,
-		}
-
-		return tp, tp.ValidateBasic()
+		return ConflictingHeadersEvidenceFromProto(evi.ConflictingHeadersEvidence)
 	case *tmproto.Evidence_LunaticValidatorEvidence:
-
-		h, err := HeaderFromProto(evi.LunaticValidatorEvidence.GetHeader())
-		if err != nil {
-			return nil, err
-		}
-
-		v, err := VoteFromProto(evi.LunaticValidatorEvidence.GetVote())
-		if err != nil {
-			return nil, err
-		}
-
-		tp := LunaticValidatorEvidence{
-			Header:             &h,
-			Vote:               v,
-			InvalidHeaderField: evi.LunaticValidatorEvidence.InvalidHeaderField,
-		}
-
-		return &tp, tp.ValidateBasic()
+		return LunaticValidatorEvidenceFromProto(evi.LunaticValidatorEvidence)
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
 		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
-
 	case *tmproto.Evidence_AmnesiaEvidence:
-		pae, err := PotentialAmnesiaEvidenceFromProto(evi.AmnesiaEvidence.PotentialAmnesiaEvidence)
-		if err != nil {
-			return nil, err
-		}
-		polc, err := ProofOfLockChangeFromProto(evi.AmnesiaEvidence.Polc)
-		if err != nil {
-			return nil, err
-		}
-
-		tp := AmnesiaEvidence{
-			PotentialAmnesiaEvidence: *pae,
-			Polc:                     *polc,
-		}
-
-		return tp, tp.ValidateBasic()
+		return AmensiaEvidenceFromProto(evi.AmnesiaEvidence)
+	case *tmproto.Evidence_PhantomValidatorEvidence:
+		return PhantomValidatorEvidenceFromProto(evi.PhantomValidatorEvidence)
 	case *tmproto.Evidence_MockEvidence:
 		me := MockEvidence{
 			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
@@ -514,6 +453,29 @@ func (dve DuplicateVoteEvidence) ToProto() tmproto.DuplicateVoteEvidence {
 		VoteB: voteB,
 	}
 	return tp
+}
+
+func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*DuplicateVoteEvidence, error) {
+	if pb == nil {
+		return nil, errors.New("nil duplicate vote evidence")
+	}
+
+	vA, err := VoteFromProto(pb.VoteA)
+	if err != nil {
+		return nil, err
+	}
+
+	vB, err := VoteFromProto(pb.VoteB)
+	if err != nil {
+		return nil, err
+	}
+
+	dve := new(DuplicateVoteEvidence)
+
+	dve.VoteA = vA
+	dve.VoteB = vB
+
+	return dve, dve.ValidateBasic()
 }
 
 //-------------------------------------------
@@ -838,6 +800,27 @@ func (ev ConflictingHeadersEvidence) ToProto() tmproto.ConflictingHeadersEvidenc
 	return tp
 }
 
+func ConflictingHeadersEvidenceFromProto(pb *tmproto.ConflictingHeadersEvidence) (ConflictingHeadersEvidence, error) {
+	if pb == nil {
+		return ConflictingHeadersEvidence{}, errors.New("nil ConflictingHeadersEvidence")
+	}
+	h1, err := SignedHeaderFromProto(pb.H1)
+	if err != nil {
+		return ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
+	}
+	h2, err := SignedHeaderFromProto(pb.H2)
+	if err != nil {
+		return ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
+	}
+
+	tp := ConflictingHeadersEvidence{
+		H1: h1,
+		H2: h2,
+	}
+
+	return tp, tp.ValidateBasic()
+}
+
 //-------------------------------------------
 
 type PhantomValidatorEvidence struct {
@@ -938,6 +921,24 @@ func (e PhantomValidatorEvidence) ToProto() tmproto.PhantomValidatorEvidence {
 	}
 
 	return tp
+}
+
+func PhantomValidatorEvidenceFromProto(pb *tmproto.PhantomValidatorEvidence) (PhantomValidatorEvidence, error) {
+	if pb == nil {
+		return PhantomValidatorEvidence{}, errors.New("nil PhantomValidatorEvidence")
+	}
+
+	vpb, err := VoteFromProto(pb.Vote)
+	if err != nil {
+		return PhantomValidatorEvidence{}, err
+	}
+
+	tp := PhantomValidatorEvidence{
+		Vote:                        vpb,
+		LastHeightValidatorWasInSet: pb.LastHeightValidatorWasInSet,
+	}
+
+	return tp, tp.ValidateBasic()
 }
 
 //-------------------------------------------
@@ -1099,6 +1100,30 @@ func (e LunaticValidatorEvidence) ToProto() tmproto.LunaticValidatorEvidence {
 	}
 
 	return tp
+}
+
+func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*LunaticValidatorEvidence, error) {
+	if pb == nil {
+		return nil, errors.New("nil LunaticValidatorEvidence")
+	}
+
+	h, err := HeaderFromProto(pb.GetHeader())
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := VoteFromProto(pb.GetVote())
+	if err != nil {
+		return nil, err
+	}
+
+	tp := LunaticValidatorEvidence{
+		Header:             &h,
+		Vote:               v,
+		InvalidHeaderField: pb.InvalidHeaderField,
+	}
+
+	return &tp, tp.ValidateBasic()
 }
 
 //-------------------------------------------
@@ -1639,7 +1664,28 @@ func AmnesiaEvidenceToProto(evi AmnesiaEvidence) (*tmproto.Evidence, error) {
 	}
 
 	return tp, nil
+}
 
+func AmensiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (AmnesiaEvidence, error) {
+	if pb == nil {
+		return AmnesiaEvidence{}, errors.New("nil duplicate vote evidence")
+	}
+
+	pae, err := PotentialAmnesiaEvidenceFromProto(pb.PotentialAmnesiaEvidence)
+	if err != nil {
+		return AmnesiaEvidence{}, err
+	}
+	polc, err := ProofOfLockChangeFromProto(pb.Polc)
+	if err != nil {
+		return AmnesiaEvidence{}, err
+	}
+
+	tp := AmnesiaEvidence{
+		PotentialAmnesiaEvidence: *pae,
+		Polc:                     *polc,
+	}
+
+	return tp, tp.ValidateBasic()
 }
 
 //-----------------------------------------------------------------
