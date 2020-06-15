@@ -21,7 +21,7 @@ const (
 	baseKeyCommitted = byte(0x00)
 	baseKeyPending   = byte(0x01)
 	baseKeyPOLC      = byte(0x02)
-	baseKeyAwaiting  = byte(0x03)
+	baseKeyAwaitingTrial  = byte(0x03)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -232,9 +232,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				}
 				if evpool.IsPending(aeWithoutPolc) {
 					evpool.removePendingEvidence(aeWithoutPolc)
-				}
-				if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
-					key := keyAwaiting(ae.PotentialAmnesiaEvidence)
+				} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
+					key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
 					if err := evpool.evidenceStore.Delete(key); err != nil {
 						evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
 					}
@@ -335,7 +334,7 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 // Only Potential Amnesia Evidence is stored here.
 func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
 	if pe, ok := evidence.(types.PotentialAmnesiaEvidence); ok {
-		key := keyAwaiting(pe)
+		key := keyAwaitingTrial(pe)
 		ok, err := evpool.evidenceStore.Has(key)
 		if err != nil {
 			evpool.logger.Error("Unable to find evidence on trial", "err", err)
@@ -575,7 +574,7 @@ func (evpool *Pool) updateState(state sm.State) {
 // upgrades any potential evidence that has undergone the trial period and is primed to be made into
 // amnesia evidence
 func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyAwaiting})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyAwaitingTrial})
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
 		return -1
@@ -678,7 +677,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe types.PotentialAmne
 		if err != nil {
 			return err
 		}
-		key := keyAwaiting(pe)
+		key := keyAwaitingTrial(pe)
 		err = evpool.evidenceStore.Set(key, evBytes)
 		if err != nil {
 			return err
@@ -790,8 +789,8 @@ func keyPending(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
 }
 
-func keyAwaiting(evidence types.PotentialAmnesiaEvidence) []byte {
-	return append([]byte{baseKeyAwaiting}, keySuffix(evidence)...)
+func keyAwaitingTrial(evidence types.PotentialAmnesiaEvidence) []byte {
+	return append([]byte{baseKeyAwaitingTrial}, keySuffix(evidence)...)
 }
 
 func keyPOLC(polc types.ProofOfLockChange) []byte {

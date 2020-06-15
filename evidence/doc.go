@@ -30,7 +30,7 @@ Three are four buckets that evidence can be stored in: Pending, Committed, Await
 
 2. Committed is for those already on the block and is to ensure that evidence isn't submitted twice
 
-3. Awaiting primarily refers to PotentialAmnesiaEvidence which must wait for a trial period before
+3. AwaitingTrial primarily refers to PotentialAmnesiaEvidence which must wait for a trial period before
 being ready to be submitted (see docs/architecture/adr-056)
 
 4. POLC's store all the ProofOfLockChanges that the node has done as part of consensus. To change lock is to vote
