@@ -404,19 +404,11 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
-	lastTime, err := tmtime.FromProtoTime(lastVote.Timestamp)
-	if err != nil {
-		panic(fmt.Sprintf("cannot convert time: %v", err))
-	}
-
+	lastTime := lastVote.Timestamp
 	// set the times to the same value and check equality
 	now := tmtime.Now()
-	nowt, err := tmtime.ToProtoTime(now)
-	if err != nil {
-		panic(fmt.Sprintf("cannot convert time: %v", err))
-	}
-	lastVote.Timestamp = nowt
-	newVote.Timestamp = nowt
+	lastVote.Timestamp = now
+	newVote.Timestamp = now
 
 	return lastTime, proto.Equal(&newVote, &lastVote)
 }

@@ -3,8 +3,6 @@ package time
 import (
 	"sort"
 	"time"
-
-	ptypes "github.com/gogo/protobuf/types"
 )
 
 // Now returns the current time in UTC with no monotonic component.
@@ -17,14 +15,6 @@ func Now() time.Time {
 // See https://github.com/tendermint/tendermint/pull/2203#discussion_r215064334
 func Canonical(t time.Time) time.Time {
 	return t.Round(0).UTC()
-}
-
-func ToProtoTime(t time.Time) (*ptypes.Timestamp, error) {
-	return ptypes.TimestampProto(t)
-}
-
-func FromProtoTime(t *ptypes.Timestamp) (time.Time, error) {
-	return ptypes.TimestampFromProto(t)
 }
 
 // WeightedTime for computing a median.

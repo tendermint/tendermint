@@ -42,11 +42,11 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 }
 
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
-	timestamp, err := tmtime.ToProtoTime(vote.Timestamp)
-	if err != nil {
-		panic("TODO" + err.Error())
-	}
-	// TODO remove this:
+	// timestamp, err := tmtime.ToProtoTime(vote.Timestamp)
+	// if err != nil {
+	// 	panic("TODO" + err.Error())
+	// }
+	// // TODO remove this:
 	rbid, _ := BlockIDFromProto(&vote.BlockID)
 	var cbid *tmproto.CanonicalBlockID
 	if rbid.IsZero() {
@@ -60,7 +60,7 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 		Height:    vote.Height,
 		Round:     int64(vote.Round),
 		BlockID:   cbid,
-		Timestamp: timestamp,
+		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
 	}
 }
