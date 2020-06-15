@@ -225,7 +225,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	}
 
 	switch evi := evidence.Sum.(type) {
-	//todo: reduce duplication by seperateing into fromproto
 	case *tmproto.Evidence_DuplicateVoteEvidence:
 		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
 	case *tmproto.Evidence_ConflictingHeadersEvidence:
