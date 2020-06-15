@@ -128,7 +128,7 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	// Check if keyType is a known ABCIPubKeyType
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
-		if _, ok := ABCIPubKeyTypesToAminoNames[keyType]; !ok {
+		if _, ok := ABCIPubKeyTypesToNames[keyType]; !ok {
 			return fmt.Errorf("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}

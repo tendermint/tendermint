@@ -144,3 +144,10 @@ message BlockMeta {
   Header  header     = 3 [(gogoproto.nullable) = false];
   int64   num_txs    = 4;
 }
+
+// TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
+message TxProof {
+  bytes                                root_hash = 1;
+  bytes                                data      = 2;
+  tendermint.proto.crypto.merkle.Proof Proof     = 3;
+}
