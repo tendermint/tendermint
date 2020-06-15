@@ -7,8 +7,8 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
-	_ "github.com/golang/protobuf/ptypes/timestamp"
 	merkle "github.com/tendermint/tendermint/proto/crypto/merkle"
 	bits "github.com/tendermint/tendermint/proto/libs/bits"
 	version "github.com/tendermint/tendermint/proto/version"
@@ -67,23 +67,25 @@ type SignedMsgType int32
 
 const (
 	SIGNED_MSG_TYPE_UNKNOWN SignedMsgType = 0
-	PrevoteType             SignedMsgType = 1
-	PrecommitType           SignedMsgType = 2
-	ProposalType            SignedMsgType = 3
+	// Votes
+	PrevoteType   SignedMsgType = 1
+	PrecommitType SignedMsgType = 2
+	// Proposals
+	ProposalType SignedMsgType = 32
 )
 
 var SignedMsgType_name = map[int32]string{
-	0: "SIGNED_MSG_TYPE_UNKNOWN",
-	1: "PREVOTE_TYPE",
-	2: "PRECOMMIT_TYPE",
-	3: "PROPOSAL_TYPE",
+	0:  "SIGNED_MSG_TYPE_UNKNOWN",
+	1:  "PREVOTE_TYPE",
+	2:  "PRECOMMIT_TYPE",
+	32: "PROPOSAL_TYPE",
 }
 
 var SignedMsgType_value = map[string]int32{
 	"SIGNED_MSG_TYPE_UNKNOWN": 0,
 	"PREVOTE_TYPE":            1,
 	"PRECOMMIT_TYPE":          2,
-	"PROPOSAL_TYPE":           3,
+	"PROPOSAL_TYPE":           32,
 }
 
 func (x SignedMsgType) String() string {
