@@ -239,10 +239,10 @@ func TestSignProposal(t *testing.T) {
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
-		// newProposal(height, round-1, block1),   // round regression
-		// newProposal(height-1, round, block1),   // height regression
-		// newProposal(height-2, round+4, block1), // height regression and different round
-		newProposal(height, round, block2), // different block
+		newProposal(height, round-1, block1),   // round regression
+		newProposal(height-1, round, block1),   // height regression
+		newProposal(height-2, round+4, block1), // height regression and different round
+		newProposal(height, round, block2),     // different block
 	}
 
 	for _, c := range cases {
