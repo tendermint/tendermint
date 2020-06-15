@@ -40,8 +40,8 @@ func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartS
 func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
 	return tmproto.CanonicalProposal{
 		Type:      tmproto.ProposalType,
-		Height:    proposal.Height,       // encoded as sfixedsize64
-		Round:     int64(proposal.Round), // encoded as sfixedsize64
+		Height:    proposal.Height,       // encoded as sfixed64
+		Round:     int64(proposal.Round), // encoded as sfixed64
 		POLRound:  int64(proposal.PolRound),
 		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
@@ -52,8 +52,8 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
-		Height:    vote.Height,       // encoded as sfixedsize64
-		Round:     int64(vote.Round), // encoded as sfixedsize64
+		Height:    vote.Height,       // encoded as sfixed64
+		Round:     int64(vote.Round), // encoded as sfixed64
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
