@@ -52,6 +52,7 @@ func TestVoteSignable(t *testing.T) {
 	signBytes := VoteSignBytes("test_chain_id", v)
 	pb := CanonicalizeVote("test_chain_id", v)
 
+	// TODO expected needs a length prefixing to pass:
 	expected, err := proto.Marshal(&pb)
 	require.NoError(t, err)
 
