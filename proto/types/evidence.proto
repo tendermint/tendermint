@@ -53,6 +53,11 @@ message LunaticValidatorEvidence {
   string invalid_header_field = 3;
 }
 
+message PhantomValidatorEvidence {
+  Vote  vote                             = 1;
+  int64 last_height_validator_was_in_set = 2;
+}
+
 message Evidence {
   oneof sum {
     DuplicateVoteEvidence      duplicate_vote_evidence      = 1;
@@ -60,9 +65,10 @@ message Evidence {
     LunaticValidatorEvidence   lunatic_validator_evidence   = 3;
     PotentialAmnesiaEvidence   potential_amnesia_evidence   = 4;
     AmnesiaEvidence            amnesia_evidence             = 5;
+    PhantomValidatorEvidence   phantom_validator_evidence   = 6;
 
-    MockEvidence       mock_evidence        = 6;
-    MockRandomEvidence mock_random_evidence = 7;
+    MockEvidence       mock_evidence        = 7;
+    MockRandomEvidence mock_random_evidence = 8;
   }
 }
 

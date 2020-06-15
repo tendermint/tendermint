@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 // Tx is an arbitrary byte array.
@@ -107,4 +108,32 @@ func (tp TxProof) Validate(dataHash []byte) error {
 		return errors.New("proof is not internally consistent")
 	}
 	return nil
+}
+
+func (tp TxProof) ToProto() tmproto.TxProof {
+
+	pbProof := tp.Proof.ToProto()
+
+	pbtp := tmproto.TxProof{
+		RootHash: tp.RootHash,
+		Data:     tp.Data,
+		Proof:    pbProof,
+	}
+
+	return pbtp
+}
+func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
+
+	pbProof, err := merkle.ProofFromProto(pb.Proof)
+	if err != nil {
+		return TxProof{}, err
+	}
+
+	pbtp := TxProof{
+		RootHash: pb.RootHash,
+		Data:     pb.Data,
+		Proof:    *pbProof,
+	}
+
+	return pbtp, nil
 }

@@ -135,7 +135,9 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		bz, err := cdc.MarshalBinaryLengthPrefixed(tt.evidence)
+		pb, err := EvidenceToProto(tt.evidence)
+		require.NoError(t, err, tt.testName)
+		bz, err := pb.Marshal()
 		require.NoError(t, err, tt.testName)
 
 		assert.LessOrEqual(t, int64(len(bz)), MaxEvidenceBytes, tt.testName)
@@ -664,6 +666,11 @@ func TestEvidenceProto(t *testing.T) {
 		{"&PotentialAmnesiaEvidence nil VoteB", &PotentialAmnesiaEvidence{VoteA: v, VoteB: nil}, false, true},
 		{"&PotentialAmnesiaEvidence nil VoteA", &PotentialAmnesiaEvidence{VoteA: nil, VoteB: v2}, false, true},
 		{"&PotentialAmnesiaEvidence success", &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v}, false, false},
+		{"&PhantomValidatorEvidence empty fail", &PhantomValidatorEvidence{}, false, true},
+		{"&PhantomValidatorEvidence nil LastHeightValidatorWasInSet", &PhantomValidatorEvidence{Vote: v}, false, true},
+		{"&PhantomValidatorEvidence nil Vote", &PhantomValidatorEvidence{LastHeightValidatorWasInSet: 2}, false, true},
+		{"PhantomValidatorEvidence success", PhantomValidatorEvidence{Vote: v2, LastHeightValidatorWasInSet: 2},
+			false, false},
 	}
 	for _, tt := range tests {
 		tt := tt

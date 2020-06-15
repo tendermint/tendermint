@@ -23,3 +23,8 @@ message Validator {
   int64                                  voting_power      = 3;
   int64                                  proposer_priority = 4;
 }
+
+message SimpleValidator {
+  tendermint.proto.crypto.keys.PublicKey pub_key      = 1;
+  int64                                  voting_power = 2;
+}
