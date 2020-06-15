@@ -1,8 +1,6 @@
 package types
 
 import (
-	"fmt"
-
 	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -41,7 +39,6 @@ func cdcEncode(item interface{}) []byte {
 			}
 			return bz
 		default:
-			fmt.Println("here", item)
 			return nil
 		}
 	}

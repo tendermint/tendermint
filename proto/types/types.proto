@@ -145,15 +145,6 @@ message BlockMeta {
   int64   num_txs    = 4;
 }
 
-message ABCIResult {
-  uint32 code = 1;
-  bytes  data = 2;
-}
-
-message ABCIResults {
-  repeated ABCIResult abci_result = 1;
-}
-
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 message TxProof {
   bytes                                root_hash = 1;
