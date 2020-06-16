@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
-	"github.com/tendermint/tendermint/libs/bytes"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/protoio"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -87,17 +86,18 @@ func (p *Proposal) String() string {
 		p.Round,
 		p.BlockID,
 		p.POLRound,
-		bytes.Fingerprint(p.Signature),
+		tmbytes.Fingerprint(p.Signature),
 		CanonicalTime(p.Timestamp))
 }
 
 // ProposalSignBytes returns the Proposal bytes for signing
 func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
-	bz, err := proto.Marshal(&pb)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 

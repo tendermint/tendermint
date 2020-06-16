@@ -323,7 +323,7 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 cache_size = {{ .Mempool.CacheSize }}
 
 # Maximum size of a single transaction.
-# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 #######################################################

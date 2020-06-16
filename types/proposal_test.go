@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 )
@@ -25,9 +26,10 @@ func init() {
 		panic(err)
 	}
 	testProposal = &Proposal{
-		Height:    12345,
-		Round:     23456,
-		BlockID:   BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}},
+		Height: 12345,
+		Round:  23456,
+		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
+			PartsHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
@@ -38,14 +40,15 @@ func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
 	signBytes := ProposalSignBytes(chainID, pbp)
 	pb := CanonicalizeProposal(chainID, pbp)
-	expected, err := proto.Marshal(&pb)
+
+	expected, err := protoio.MarshalDelimited(&pb)
 	require.NoError(t, err)
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Proposal")
 }
 
 func TestProposalString(t *testing.T) {
 	str := testProposal.String()
-	expected := `Proposal{12345/23456 (010203:111:626C6F636B70, -1) 000000000000 @ 2018-02-11T07:09:22.765Z}`
+	expected := `Proposal{12345/23456 (2D2D4A756E655F31355F323032305F616D696E6F5F7761735F72656D6F766564:111:2D2D4A756E65, -1) 000000000000 @ 2018-02-11T07:09:22.765Z}` //nolint:lll // ignore line length for tests
 	if str != expected {
 		t.Errorf("got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
 	}
