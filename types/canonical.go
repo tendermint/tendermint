@@ -40,15 +40,19 @@ type CanonicalVote struct {
 	BlockID   CanonicalBlockID
 	Timestamp time.Time
 	ChainID   string
+
+	Data          []byte         // [peppermint] tx hash
+	SideTxResults []SideTxResult // [peppermint] side tx results
 }
 
-// [peppermint] create RLP vote to decode in contract
+// CanonicalRLPVote create RLP vote to decode in contract
+// [peppermint]
 type CanonicalRLPVote struct {
 	ChainID string
-	Type   byte
-	Height uint
-	Round  uint
-	Data   []byte
+	Type    byte
+	Height  uint
+	Round   uint
+	Data    []byte
 }
 
 //-----------------------------------
@@ -80,22 +84,16 @@ func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal 
 	}
 }
 
-func CanonicalizeVote(chainID string, vote *Vote) CanonicalRLPVote {
-	// return CanonicalVote{
-	// 	Type:      vote.Type,
-	// 	Height:    vote.Height,
-	// 	Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
-	// 	BlockID:   CanonicalizeBlockID(vote.BlockID),
-	// 	Timestamp: vote.Timestamp,
-	// 	ChainID:   chainID,
-	// }
-	// TODO ensure that removing Timestamp and BlockID has no security issues
-	return CanonicalRLPVote{
-		ChainID: chainID,
-		Type:    byte(vote.Type),
-		Height:  uint(vote.Height),
-		Round:   uint(vote.Round),
-		Data:    vote.Data,
+func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
+	return CanonicalVote{
+		Type:      vote.Type,
+		Height:    vote.Height,
+		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		Timestamp: vote.Timestamp,
+		ChainID:   chainID,
+
+		SideTxResults: vote.SideTxResults,
 	}
 }
 

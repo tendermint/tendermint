@@ -135,6 +135,22 @@ func ToRequestEndBlock(req RequestEndBlock) *Request {
 	}
 }
 
+//
+// side channel
+//
+
+func ToRequestBeginSideBlock(req RequestBeginSideBlock) *Request {
+	return &Request{
+		Value: &Request_BeginSideBlock{&req},
+	}
+}
+
+func ToRequestDeliverSideTx(req RequestDeliverSideTx) *Request {
+	return &Request{
+		Value: &Request_DeliverSideTx{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -206,5 +222,21 @@ func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
 func ToResponseEndBlock(res ResponseEndBlock) *Response {
 	return &Response{
 		Value: &Response_EndBlock{&res},
+	}
+}
+
+//
+// side channel
+//
+
+func ToResponseBeginSideBlock(req ResponseBeginSideBlock) *Response {
+	return &Response{
+		Value: &Response_BeginSideBlock{&req},
+	}
+}
+
+func ToResponseDeliverSideTx(req ResponseDeliverSideTx) *Response {
+	return &Response{
+		Value: &Response_DeliverSideTx{&req},
 	}
 }

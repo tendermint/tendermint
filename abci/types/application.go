@@ -23,6 +23,10 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
+	// Consensus side connection
+	BeginSideBlock(RequestBeginSideBlock) ResponseBeginSideBlock // Signals the beginning of a block with side txs
+	DeliverSideTx(RequestDeliverSideTx) ResponseDeliverSideTx    // Deliver a tx for full state-less processing
 }
 
 //-------------------------------------------------------
@@ -71,6 +75,14 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (BaseApplication) BeginSideBlock(req RequestBeginSideBlock) ResponseBeginSideBlock {
+	return ResponseBeginSideBlock{}
+}
+
+func (BaseApplication) DeliverSideTx(req RequestDeliverSideTx) ResponseDeliverSideTx {
+	return ResponseDeliverSideTx{}
 }
 
 //-------------------------------------------------------
@@ -134,5 +146,15 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	res := app.app.EndBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) BeginSideBlock(ctx context.Context, req *RequestBeginSideBlock) (*ResponseBeginSideBlock, error) {
+	res := app.app.BeginSideBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) DeliverSideTx(ctx context.Context, req *RequestDeliverSideTx) (*ResponseDeliverSideTx, error) {
+	res := app.app.DeliverSideTx(*req)
 	return &res, nil
 }

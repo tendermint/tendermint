@@ -17,6 +17,7 @@ type PrivValidator interface {
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
+	SignSideTxResult(sideTxResult *SideTxResultWithData) error
 }
 
 //----------------------------------------
@@ -95,6 +96,16 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	return nil
 }
 
+// SignSideTxResult implements PrivValidator.
+func (pv *MockPV) SignSideTxResult(sideTxResult *SideTxResultWithData) error {
+	sig, err := pv.privKey.Sign(sideTxResult.GetBytes())
+	if err != nil {
+		return err
+	}
+	sideTxResult.Sig = sig
+	return nil
+}
+
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
 	addr := pv.GetPubKey().Address()
@@ -121,6 +132,11 @@ func (pv *erroringMockPV) SignVote(chainID string, vote *Vote) error {
 // Implements PrivValidator.
 func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
 	return ErroringMockPVErr
+}
+
+// Implements PrivValidator.
+func (pv *erroringMockPV) SignBytes(data []byte) ([]byte, error) {
+	return nil, ErroringMockPVErr
 }
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.

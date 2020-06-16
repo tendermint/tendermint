@@ -47,6 +47,11 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
+
+	BeginSideBlockAsync(types.RequestBeginSideBlock) *ReqRes
+	BeginSideBlockSync(types.RequestBeginSideBlock) (*types.ResponseBeginSideBlock, error)
+	DeliverSideTxAsync(types.RequestDeliverSideTx) *ReqRes
+	DeliverSideTxSync(types.RequestDeliverSideTx) (*types.ResponseDeliverSideTx, error)
 }
 
 //----------------------------------------

@@ -552,7 +552,8 @@ func (commit *Commit) GetVote(valIdx int) *Vote {
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
-		Data:             commitSig.Data,
+
+		SideTxResults: commitSig.SideTxResults,
 	}
 }
 
