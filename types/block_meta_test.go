@@ -50,6 +50,8 @@ func TestBlockMeta_ValidateBasic(t *testing.T) {
 	bi := BlockID{Hash: h.Hash(), PartsHeader: PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
 	bi2 := BlockID{Hash: tmrand.Bytes(tmhash.Size),
 		PartsHeader: PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi3 := BlockID{Hash: []byte("incorrect hash"),
+		PartsHeader: PartSetHeader{Total: 123, Hash: []byte("incorrect hash")}}
 
 	bm := &BlockMeta{
 		BlockID:   bi,
@@ -65,13 +67,21 @@ func TestBlockMeta_ValidateBasic(t *testing.T) {
 		NumTxs:    0,
 	}
 
+	bm3 := &BlockMeta{
+		BlockID:   bi3,
+		BlockSize: 200,
+		Header:    h,
+		NumTxs:    0,
+	}
+
 	tests := []struct {
 		name    string
 		bm      *BlockMeta
 		wantErr bool
 	}{
 		{"success", bm, false},
-		{"failure wrong block hash", bm2, true},
+		{"failure wrong blockID hash", bm2, true},
+		{"failure wrong length blockID hash", bm3, true},
 	}
 	for _, tt := range tests {
 		tt := tt
