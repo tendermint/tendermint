@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.proto.types;
+package tendermint.types;
 
 option go_package = "github.com/tendermint/tendermint/proto/types";
 
@@ -79,6 +79,6 @@ message EvidenceData {
 }
 
 message ProofOfLockChange {
-  repeated Vote                          votes   = 1;
-  tendermint.proto.crypto.keys.PublicKey pub_key = 2;
+  repeated Vote                    votes   = 1;
+  tendermint.crypto.keys.PublicKey pub_key = 2;
 }
