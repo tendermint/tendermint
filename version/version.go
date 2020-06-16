@@ -20,11 +20,11 @@ const (
 	// Must be a string because scripts like dist.sh read this file.
 	// XXX: Don't change the name of this variable or you will break
 	// automation :)
-
 	TMCoreSemVer = "0.33.5"
 
 	// ABCISemVer is the semantic version of the ABCI library
-	ABCISemVer  = "0.17.0"
+	ABCISemVer = "0.17.0"
+
 	ABCIVersion = ABCISemVer
 )
 

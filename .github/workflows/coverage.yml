@@ -1,0 +1,101 @@
+name: Test Coverage
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+
+      
+
+jobs: 
+
+  split-test-files: 
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - name: Create a file with all the pkgs
+        run: go list ./... > pkgs.txt
+      - name: Split pkgs into 4 files
+        run: split -n l/4 --additional-suffix=.txt ./pkgs.txt
+      # cache multiple
+      - uses: actions/upload-artifact@v2
+        with:
+          name: '${{ github.sha }}-aa'
+          path: ./xaa.txt
+      - uses: actions/upload-artifact@v2
+        with:          
+          name: '${{ github.sha }}-ab'
+          path: ./xab.txt
+      - uses: actions/upload-artifact@v2
+        with:        
+          name: '${{ github.sha }}-ac'
+          path: ./xac.txt
+      - uses: actions/upload-artifact@v2
+        with:        
+          name: '${{ github.sha }}-ad'
+          path: ./xad.txt
+
+  test-coverage-part-1:
+    runs-on: ubuntu-latest
+    needs: split-test-files
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: '${{ github.sha }}-aa'
+      - name: test & coverage report creation
+        run: |
+          cat xaa.txt | xargs go test -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+
+  test-coverage-part-2:
+    runs-on: ubuntu-latest
+    needs: split-test-files
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: '${{ github.sha }}-ab'
+      - name: test & coverage report creation
+        run: |
+          cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+
+  test-coverage-part-3:
+    runs-on: ubuntu-latest
+    needs: split-test-files
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: '${{ github.sha }}-ac'
+      - name: test & coverage report creation
+        run: |
+          cat xac.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+
+  test-coverage-part-4:
+    runs-on: ubuntu-latest
+    needs: split-test-files
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: '${{ github.sha }}-ad'
+      - name: test & coverage report creation
+        run: |
+          cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
