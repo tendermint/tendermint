@@ -15,25 +15,33 @@ const TimeFormat = time.RFC3339Nano
 //-----------------------------------
 // Canonicalize the structs
 
-func CanonicalizeBlockID(blockID tmproto.BlockID) tmproto.CanonicalBlockID {
-	return tmproto.CanonicalBlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: CanonicalizePartSetHeader(blockID.PartsHeader),
+func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
+	rbid, err := BlockIDFromProto(&bid)
+	if err != nil {
+		panic(err)
 	}
+	var cbid *tmproto.CanonicalBlockID
+	if rbid == nil || rbid.IsZero() {
+		cbid = nil
+	} else {
+		cbid = &tmproto.CanonicalBlockID{
+			Hash:        bid.Hash,
+			PartsHeader: CanonicalizePartSetHeader(bid.PartsHeader),
+		}
+	}
+
+	return cbid
 }
 
 func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
-	return tmproto.CanonicalPartSetHeader{
-		Hash:  psh.Hash,
-		Total: psh.Total,
-	}
+	return tmproto.CanonicalPartSetHeader(psh)
 }
 
 func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
 	return tmproto.CanonicalProposal{
 		Type:      tmproto.ProposalType,
-		Height:    proposal.Height,
-		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		Height:    proposal.Height,       // encoded as sfixed64
+		Round:     int64(proposal.Round), // encoded as sfixed64
 		POLRound:  int64(proposal.PolRound),
 		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
@@ -44,8 +52,8 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
-		Height:    vote.Height,
-		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		Height:    vote.Height,       // encoded as sfixed64
+		Round:     int64(vote.Round), // encoded as sfixed64
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
