@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.proto.version;
+package tendermint.version;
 
 option go_package = "github.com/tendermint/tendermint/proto/version";
 

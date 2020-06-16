@@ -1,15 +1,10 @@
 syntax = "proto3";
-package tendermint.proto.types;
+package tendermint.types;
 
 option go_package = "github.com/tendermint/tendermint/proto/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 import "proto/crypto/keys/types.proto";
-
-option (gogoproto.marshaler_all)        = true;
-option (gogoproto.unmarshaler_all)      = true;
-option (gogoproto.sizer_all)            = true;
-option (gogoproto.goproto_registration) = true;
 
 message ValidatorSet {
   repeated Validator validators         = 1;
@@ -18,13 +13,13 @@ message ValidatorSet {
 }
 
 message Validator {
-  bytes                                  address           = 1;
-  tendermint.proto.crypto.keys.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
-  int64                                  voting_power      = 3;
-  int64                                  proposer_priority = 4;
+  bytes                            address           = 1;
+  tendermint.crypto.keys.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
+  int64                            voting_power      = 3;
+  int64                            proposer_priority = 4;
 }
 
 message SimpleValidator {
-  tendermint.proto.crypto.keys.PublicKey pub_key      = 1;
-  int64                                  voting_power = 2;
+  tendermint.crypto.keys.PublicKey pub_key      = 1;
+  int64                            voting_power = 2;
 }
