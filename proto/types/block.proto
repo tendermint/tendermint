@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.proto.types;
+package tendermint.types;
 
 option go_package = "github.com/tendermint/tendermint/proto/types";
 
@@ -8,8 +8,8 @@ import "proto/types/types.proto";
 import "proto/types/evidence.proto";
 
 message Block {
-  Header                              header      = 1 [(gogoproto.nullable) = false];
-  Data                                data        = 2 [(gogoproto.nullable) = false];
-  tendermint.proto.types.EvidenceData evidence    = 3 [(gogoproto.nullable) = false];
-  Commit                              last_commit = 4;
+  Header                        header      = 1 [(gogoproto.nullable) = false];
+  Data                          data        = 2 [(gogoproto.nullable) = false];
+  tendermint.types.EvidenceData evidence    = 3 [(gogoproto.nullable) = false];
+  Commit                        last_commit = 4;
 }

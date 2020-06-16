@@ -2,7 +2,7 @@ syntax = "proto3";
 package tendermint.rpc.grpc;
 option  go_package = "github.com/tendermint/tendermint/rpc/grpc;coregrpc";
 
-import "abci/types/types.proto";
+import "proto/abci/types.proto";
 
 //----------------------------------------
 // Request types
