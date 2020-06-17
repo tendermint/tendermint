@@ -14,11 +14,11 @@ plugins=grpc,paths=source_relative:. \
   $(find "${dir}" -maxdepth 1 -name '*.proto')
 done
 
-cp -r tendermint/abci/types.pb.go ./abci/types
-rm -rf tendermint/abci/types.pb.go
-
-cp -r tendermint/rpc/types.pb.go ./rpc/grpc
-rm -rf tendermint/rpc/types.pb.go
-
-cp -r tendermint/* ./proto/tendermint/*
+cp -r ./tendermint/* ./proto/*
 rm -rf tendermint
+
+cp -r ./proto/tendermint/abci/types.pb.go ./abci/types
+rm -rf ./proto/tendermint/abci/types.pb.go
+
+cp -r ./proto/tendermint/rpc/types.pb.go ./rpc/grpc
+rm -rf ./proto/tendermint/rpc/types.pb.go
