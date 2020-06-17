@@ -27,7 +27,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/async"
 	"github.com/tendermint/tendermint/libs/protoio"
-	tmp2p "github.com/tendermint/tendermint/proto/p2p"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 // 4 + 1024 == 1028 total frame size
