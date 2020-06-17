@@ -707,7 +707,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
+	app abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
@@ -721,7 +721,6 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 			opt(thisConfig)
 		}
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 

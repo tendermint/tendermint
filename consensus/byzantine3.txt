@@ -1,0 +1,355 @@
+=== RUN   TestByzantine
+I[2020-06-16|17:42:27.404] Starting EventBus service                    module=events impl=EventBus
+I[2020-06-16|17:42:27.404] Starting PubSub service                      module=pubsub impl=PubSub
+I[2020-06-16|17:42:27.406] Starting EventBus service                    module=events impl=EventBus
+I[2020-06-16|17:42:27.406] Starting PubSub service                      module=pubsub impl=PubSub
+I[2020-06-16|17:42:27.407] Starting EventBus service                    module=events impl=EventBus
+I[2020-06-16|17:42:27.407] Starting PubSub service                      module=pubsub impl=PubSub
+I[2020-06-16|17:42:27.409] Starting EventBus service                    module=events impl=EventBus
+I[2020-06-16|17:42:27.409] Starting PubSub service                      module=pubsub impl=PubSub
+I[2020-06-16|17:42:27.420] Starting Consensus service                   module=consensus test=byzantine validator=1 impl=ConsensusReactor
+I[2020-06-16|17:42:27.420] Reactor                                      module=consensus test=byzantine validator=1 waitSync=true
+D[2020-06-16|17:42:27.422] No votes to send, sleeping                   module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" rs.Height=1 prs.Height=0 localPV=BA{4:____} peerPV=nil-BitArray localPC=BA{4:____} peerPC=nil-BitArray
+I[2020-06-16|17:42:27.423] SwitchToConsensus                            module=consensus test=byzantine validator=1
+I[2020-06-16|17:42:27.423] Ignoring updateToState()                     module=consensus validator=1 newHeight=1 oldHeight=1
+I[2020-06-16|17:42:27.423] Starting State service                       module=consensus validator=1 impl=ConsensusState
+I[2020-06-16|17:42:27.424] Starting baseWAL service                     module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal impl=baseWAL
+I[2020-06-16|17:42:27.447] Starting Group service                       module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal impl=Group
+I[2020-06-16|17:42:27.447] Searching for height                         module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal height=1 min=0 max=0
+I[2020-06-16|17:42:27.447] Searching for height                         module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal height=0 min=0 max=0
+I[2020-06-16|17:42:27.451] Found                                        module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal height=0 index=0
+I[2020-06-16|17:42:27.452] Catchup by replaying consensus messages      module=consensus validator=1 height=1
+I[2020-06-16|17:42:27.452] Replay: Done                                 module=consensus validator=1
+D[2020-06-16|17:42:27.452] Received tock                                module=consensus validator=1 timeout=-36.008ms height=1 round=0 step=RoundStepNewHeight
+I[2020-06-16|17:42:27.452] enterNewRound(1/0). Current: 1/0/RoundStepNewHeight module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:27.452] enterPropose(1/0). Current: 1/0/RoundStepNewRound module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:27.452] This node is a validator                     module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:27.452] enterPropose: Not our turn to propose        module=consensus validator=1 height=1 round=0 proposer=0C783C21854225D926170487479093735E396EFC privValidator=MockPV{707E32BB851E2CC13AC083C7F4DB5DEE827C33C5}
+D[2020-06-16|17:42:27.503] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepNewHeight LCR:-1]"
+I[2020-06-16|17:42:27.507] Added good transaction                       module=mempool tx=AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC res=&{CheckTx:} height=0 total=1
+D[2020-06-16|17:42:27.522] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=33 msg="[Proposal Proposal{1/0 (434CD91D5DE2403A8199976F509062C419D7FA3D38D53B711B24DA89BD1AF358:1:3C3DC027BA44, -1) 5EAC68B1512D @ 2020-06-16T15:42:27.507186Z}]"
+I[2020-06-16|17:42:27.523] Received proposal                            module=consensus validator=1 proposal="Proposal{1/0 (434CD91D5DE2403A8199976F509062C419D7FA3D38D53B711B24DA89BD1AF358:1:3C3DC027BA44, -1) 5EAC68B1512D @ 2020-06-16T15:42:27.507186Z}"
+D[2020-06-16|17:42:27.527] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=33 msg="[BlockPart H:1 R:0 P:Part{#0\n  Bytes: 0AA5010A0208...\n  Proof: Proof{\n    Aunts: []\n  }\n}]"
+D[2020-06-16|17:42:27.527] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepPropose LCR:-1]"
+I[2020-06-16|17:42:27.527] Received complete proposal block             module=consensus validator=1 height=1 hash=434CD91D5DE2403A8199976F509062C419D7FA3D38D53B711B24DA89BD1AF358
+I[2020-06-16|17:42:27.527] enterPrevote(1/0). Current: 1/0/RoundStepPropose module=consensus validator=1
+I[2020-06-16|17:42:27.527] enterPrevote: ProposalBlock is valid         module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:27.572] Signed and pushed vote                       module=consensus validator=1 height=1 round=0 vote="Vote{1:707E32BB851E 1/00/PREVOTE_TYPE(Prevote) 434CD91D5DE2 84F9CF63312E @ 2020-06-16T15:42:28.402294Z}" err=null
+D[2020-06-16|17:42:27.611] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PREVOTE_TYPE(Prevote) 434CD91D5DE2 44BD6695AACF @ 2020-06-16T15:42:27.523538Z}]"
+D[2020-06-16|17:42:27.611] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=0
+D[2020-06-16|17:42:27.611] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) 434CD91D5DE2 54E35E784E18 @ 2020-06-16T15:42:27.537549Z}]"
+D[2020-06-16|17:42:27.611] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:27.632] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PREVOTE_TYPE valIndex=1 csHeight=1
+I[2020-06-16|17:42:27.634] Added to prevote                             module=consensus validator=1 vote="Vote{1:707E32BB851E 1/00/PREVOTE_TYPE(Prevote) 434CD91D5DE2 84F9CF63312E @ 2020-06-16T15:42:28.402294Z}" prevotes="VoteSet{H:1 R:0 T:PREVOTE_TYPE +2/3:<nil>(0.25) BA{4:_x__} map[]}"
+D[2020-06-16|17:42:27.635] Attempt to update stats for non-existent peer module=consensus test=byzantine validator=1 peer=
+D[2020-06-16|17:42:27.635] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PREVOTE_TYPE valIndex=0 csHeight=1
+I[2020-06-16|17:42:27.637] Added to prevote                             module=consensus validator=1 vote="Vote{0:0C783C218542 1/00/PREVOTE_TYPE(Prevote) 434CD91D5DE2 44BD6695AACF @ 2020-06-16T15:42:27.523538Z}" prevotes="VoteSet{H:1 R:0 T:PREVOTE_TYPE +2/3:<nil>(0.5) BA{4:xx__} map[]}"
+D[2020-06-16|17:42:27.637] Sending vote message                         module=consensus test=byzantine validator=1 ps="PeerState{\n  Key        060a32d28490bbaebb229b61606e898207b29ff9\n  RoundState PeerRoundState{\n    1/0/RoundStepPropose @2020-06-16 15:42:27.527536 +0000 UTC\n    Proposal 1:3C3DC027BA44 -> BA{1:x}\n    POL      BA{4:____} (round -1)\n    Prevotes   BA{4:x___}\n    Precommits BA{4:x___}\n    LastCommit nil-BitArray (round -1)\n    Catchup    BA{4:____} (round -1)\n  }\n  Stats      peerStateStats{votes: 0, blockParts: 1}\n}" vote="Vote{1:707E32BB851E 1/00/PREVOTE_TYPE(Prevote) 434CD91D5DE2 84F9CF63312E @ 2020-06-16T15:42:28.402294Z}"
+D[2020-06-16|17:42:27.637] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=1
+D[2020-06-16|17:42:27.637] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=1
+D[2020-06-16|17:42:27.638] Picked rs.Prevotes(prs.Round) to send        module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" height=1 round=0
+I[2020-06-16|17:42:27.638] Added to precommit                           module=consensus validator=1 vote="Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) 434CD91D5DE2 54E35E784E18 @ 2020-06-16T15:42:27.537549Z}" precommits="VoteSet{H:1 R:0 T:PRECOMMIT_TYPE +2/3:<nil>(0.25) BA{4:x___} map[]}"
+D[2020-06-16|17:42:27.638] No votes to send, sleeping                   module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" rs.Height=1 prs.Height=1 localPV=BA{4:xx__} peerPV=BA{4:xx__} localPC=BA{4:x___} peerPC=BA{4:x___}
+D[2020-06-16|17:42:27.648] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepPrevote LCR:-1]"
+D[2020-06-16|17:42:27.649] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:3 V:{1/00/PREVOTE_TYPE}]"
+D[2020-06-16|17:42:27.650] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=3
+D[2020-06-16|17:42:27.651] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:2 V:{1/00/PREVOTE_TYPE}]"
+D[2020-06-16|17:42:27.651] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=2
+D[2020-06-16|17:42:27.674] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:1 V:{1/00/PREVOTE_TYPE}]"
+D[2020-06-16|17:42:27.674] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=1
+D[2020-06-16|17:42:27.676] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepPrevoteWait LCR:-1]"
+I[2020-06-16|17:42:27.691] Block{
+  Header{
+    Version:        {10 0}
+    ChainID:        tendermint_test
+    Height:         1
+    Time:           2020-06-16 15:42:27.402294 +0000 UTC
+    LastBlockID:    :0:000000000000
+    LastCommit:     
+    Data:           AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+    Validators:     9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    NextValidators: 9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    App:            
+    Consensus:      048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F
+    Results:        
+    Evidence:       
+    Proposer:       0C783C21854225D926170487479093735E396EFC
+  }#E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+  Data{
+    AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC (8 bytes)
+  }#AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+  EvidenceData{
+    
+  }#
+  Commit{
+    Height:     0
+    Round:      0
+    BlockID:    :0:000000000000
+    Signatures:
+      
+  }#
+I[2020-06-16|17:42:27.708] Executed block                               height=1 validTxs=1 invalidTxs=0
+I[2020-06-16|17:42:27.710] Committed state                              height=1 txs=1 appHash=0000000000000001
+D[2020-06-16|17:42:27.713] No votes to send, sleeping                   module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" rs.Height=1 prs.Height=0 localPV=BA{4:xx__} peerPV=nil-BitArray localPC=BA{4:x___} peerPC=nil-BitArray
+D[2020-06-16|17:42:27.714] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepPrecommit LCR:-1]"
+I[2020-06-16|17:42:27.714] Block{
+  Header{
+    Version:        {10 0}
+    ChainID:        tendermint_test
+    Height:         1
+    Time:           2020-06-16 15:42:27.402294 +0000 UTC
+    LastBlockID:    :0:000000000000
+    LastCommit:     
+    Data:           AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+    Validators:     9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    NextValidators: 9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    App:            
+    Consensus:      048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F
+    Results:        
+    Evidence:       
+    Proposer:       0C783C21854225D926170487479093735E396EFC
+  }#E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+  Data{
+    AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC (8 bytes)
+  }#AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+  EvidenceData{
+    
+  }#
+  Commit{
+    Height:     0
+    Round:      0
+    BlockID:    :0:000000000000
+    Signatures:
+      
+  }#
+D[2020-06-16|17:42:27.733] Invalid tx                                   code=2 log="Invalid nonce. Expected 1, got 0"
+I[2020-06-16|17:42:27.734] Executed block                               height=1 validTxs=0 invalidTxs=1
+I[2020-06-16|17:42:27.734] Committed state                              height=1 txs=1 appHash=0000000000000001
+D[2020-06-16|17:42:27.735] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:0 V:{1/00/PRECOMMIT_TYPE}]"
+D[2020-06-16|17:42:27.735] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:27.735] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:0 V:{1/00/PREVOTE_TYPE}]"
+D[2020-06-16|17:42:27.735] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PREVOTE_TYPE index=0
+D[2020-06-16|17:42:27.736] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[ValidBlockMessage H:1 R:0 BP:1:3105B8EC6912 BA:BA{1:_} IsCommit:false]"
+D[2020-06-16|17:42:27.736] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:2 V:{1/00/PRECOMMIT_TYPE}]"
+D[2020-06-16|17:42:27.736] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PRECOMMIT_TYPE index=2
+D[2020-06-16|17:42:27.738] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:3 V:{1/00/PRECOMMIT_TYPE}]"
+D[2020-06-16|17:42:27.739] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/0 H/R=1/0 type=PRECOMMIT_TYPE index=3
+D[2020-06-16|17:42:27.739] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:0 S:RoundStepPrecommit LCR:-1]"
+D[2020-06-16|17:42:27.739] No votes to send, sleeping                   module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" rs.Height=1 prs.Height=0 localPV=BA{4:xx__} peerPV=nil-BitArray localPC=BA{4:x___} peerPC=nil-BitArray
+D[2020-06-16|17:42:27.746] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}]"
+D[2020-06-16|17:42:27.746] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=0/-1 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:27.746] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepNewHeight LCR:0]"
+D[2020-06-16|17:42:27.746] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=1
+D[2020-06-16|17:42:27.746] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepNewHeight LCR:0]"
+D[2020-06-16|17:42:27.746] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepPropose LCR:0]"
+D[2020-06-16|17:42:27.747] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:27.747] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=3
+D[2020-06-16|17:42:27.747] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=3 csHeight=1
+D[2020-06-16|17:42:27.747] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}]"
+I[2020-06-16|17:42:27.747] Added to precommit                           module=consensus validator=1 vote="Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}" precommits="VoteSet{H:1 R:0 T:PRECOMMIT_TYPE +2/3:<nil>(0.5) BA{4:x__x} map[]}"
+D[2020-06-16|17:42:27.747] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=2
+D[2020-06-16|17:42:27.748] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=2 csHeight=1
+D[2020-06-16|17:42:27.748] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=33 msg="[BlockPart H:1 R:0 P:Part{#0\n  Bytes: 0AC7010A0208...\n  Proof: Proof{\n    Aunts: []\n  }\n}]"
+I[2020-06-16|17:42:27.748] Added to precommit                           module=consensus validator=1 vote="Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}" precommits="VoteSet{H:1 R:0 T:PRECOMMIT_TYPE +2/3:<nil>(0.75) BA{4:x_xx} map[]}"
+D[2020-06-16|17:42:27.748] enterNewRound(1/0): Invalid args. Current step: 1/0/RoundStepPrevote module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:27.748] enterPrecommitWait(1/0). Current: 1/0/RoundStepPrevote module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:27.750] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepPropose LCR:0]"
+D[2020-06-16|17:42:27.750] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:1 S:RoundStepPropose LCR:-1]"
+D[2020-06-16|17:42:27.761] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:27.761] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=2
+D[2020-06-16|17:42:27.761] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=2 csHeight=1
+D[2020-06-16|17:42:27.761] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 DF911BFB5C99 @ 2020-06-16T15:42:27.63198Z}]"
+D[2020-06-16|17:42:27.761] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:27.761] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=1
+D[2020-06-16|17:42:27.762] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:27.762] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=3
+D[2020-06-16|17:42:27.762] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=3 csHeight=1
+D[2020-06-16|17:42:27.762] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=33 msg="[BlockPart H:1 R:0 P:Part{#0\n  Bytes: 0AC7010A0208...\n  Proof: Proof{\n    Aunts: []\n  }\n}]"
+D[2020-06-16|17:42:27.794] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:1 S:RoundStepPrevote LCR:-1]"
+D[2020-06-16|17:42:27.977] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[HasVote VI:0 V:{1/00/PRECOMMIT_TYPE}]"
+D[2020-06-16|17:42:27.977] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=1/1 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:27.978] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[ValidBlockMessage H:1 R:1 BP:1:3105B8EC6912 BA:BA{1:_} IsCommit:false]"
+D[2020-06-16|17:42:27.979] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:1 R:1 S:RoundStepCommit LCR:-1]"
+D[2020-06-16|17:42:27.996] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=32 msg="[VSM23 1/00/PRECOMMIT_TYPE E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912]"
+I[2020-06-16|17:42:27.997] Block{
+  Header{
+    Version:        {10 0}
+    ChainID:        tendermint_test
+    Height:         1
+    Time:           2020-06-16 15:42:27.402294 +0000 UTC
+    LastBlockID:    :0:000000000000
+    LastCommit:     
+    Data:           AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+    Validators:     9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    NextValidators: 9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    App:            
+    Consensus:      048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F
+    Results:        
+    Evidence:       
+    Proposer:       0C783C21854225D926170487479093735E396EFC
+  }#E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+  Data{
+    AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC (8 bytes)
+  }#AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+  EvidenceData{
+    
+  }#
+  Commit{
+    Height:     0
+    Round:      0
+    BlockID:    :0:000000000000
+    Signatures:
+      
+  }#
+D[2020-06-16|17:42:28.001] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=32 msg="[VSM23 1/00/PRECOMMIT_TYPE E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912]"
+D[2020-06-16|17:42:28.009] Invalid tx                                   code=2 log="Invalid nonce. Expected 1, got 0"
+I[2020-06-16|17:42:28.009] Executed block                               height=1 validTxs=0 invalidTxs=1
+I[2020-06-16|17:42:28.009] Committed state                              height=1 txs=1 appHash=0000000000000001
+D[2020-06-16|17:42:28.022] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepNewHeight LCR:0]"
+D[2020-06-16|17:42:28.023] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepPropose LCR:0]"
+D[2020-06-16|17:42:28.024] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}]"
+D[2020-06-16|17:42:28.024] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:28.024] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=1
+I[2020-06-16|17:42:28.025] Added to precommit                           module=consensus validator=1 vote="Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}" precommits="VoteSet{H:1 R:0 T:PRECOMMIT_TYPE +2/3:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912(0.75) BA{4:x_xx} map[1fd10f9f22d99121702a894fd54ea5a35a3dbd55:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912 af6e5df515b7710dca002c36329e208b4686758d:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912]}"
+D[2020-06-16|17:42:28.025] enterNewRound(1/0): Invalid args. Current step: 1/0/RoundStepPrevote module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:28.025] enterPrecommit(1/0). Current: 1/0/RoundStepPrevote module=consensus validator=1 height=1 round=0
+I[2020-06-16|17:42:28.025] enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil. module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:28.031] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 DF911BFB5C99 @ 2020-06-16T15:42:27.63198Z}]"
+I[2020-06-16|17:42:28.039] Signed and pushed vote                       module=consensus validator=1 height=1 round=0 vote="Vote{1:707E32BB851E 1/00/PRECOMMIT_TYPE(Precommit) 000000000000 44C83735E340 @ 2020-06-16T15:42:28.402294Z}" err=null
+I[2020-06-16|17:42:28.040] enterCommit(1/0). Current: 1/0/RoundStepPrecommit module=consensus validator=1 height=1 commitRound=0
+I[2020-06-16|17:42:28.040] Commit is for a block we don't know about. Set ProposalBlock=nil module=consensus validator=1 height=1 commitRound=0 proposal=434CD91D5DE2403A8199976F509062C419D7FA3D38D53B711B24DA89BD1AF358 commit=E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+I[2020-06-16|17:42:28.040] Attempt to finalize failed. We don't have the commit block. module=consensus validator=1 height=1 proposal-block= commit-block=E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+D[2020-06-16|17:42:28.041] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:28.054] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=1 csHeight=1
+I[2020-06-16|17:42:28.055] Added to precommit                           module=consensus validator=1 vote="Vote{1:707E32BB851E 1/00/PRECOMMIT_TYPE(Precommit) 000000000000 44C83735E340 @ 2020-06-16T15:42:28.402294Z}" precommits="VoteSet{H:1 R:0 T:PRECOMMIT_TYPE +2/3:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912(1) BA{4:xxxx} map[1fd10f9f22d99121702a894fd54ea5a35a3dbd55:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912 af6e5df515b7710dca002c36329e208b4686758d:E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912]}"
+D[2020-06-16|17:42:28.056] enterNewRound(1/0): Invalid args. Current step: 1/0/RoundStepCommit module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:28.056] enterPrecommit(1/0): Invalid args. Current step: 1/0/RoundStepCommit module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:28.056] enterCommit(1/0): Invalid args. Current step: 1/0/RoundStepCommit module=consensus validator=1 height=1 commitRound=0
+D[2020-06-16|17:42:28.056] enterNewRound(1/0): Invalid args. Current step: 1/0/RoundStepCommit module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:28.057] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=1
+I[2020-06-16|17:42:28.057] Error attempting to add vote                 module=consensus validator=1 err="existing vote: Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}; new vote: Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 DF911BFB5C99 @ 2020-06-16T15:42:27.63198Z}: non-deterministic signature"
+D[2020-06-16|17:42:28.057] Attempt to update stats for non-existent peer module=consensus test=byzantine validator=1 peer=
+E[2020-06-16|17:42:28.057] Error with msg                               module=consensus validator=1 height=1 round=0 peer=af6e5df515b7710dca002c36329e208b4686758d err="error adding vote" msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 DF911BFB5C99 @ 2020-06-16T15:42:27.63198Z}]"
+D[2020-06-16|17:42:28.066] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}" chId=32 msg="[NewRoundStep H:2 R:0 S:RoundStepPrevote LCR:0]"
+D[2020-06-16|17:42:28.070] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=33 msg="[BlockPart H:1 R:0 P:Part{#0\n  Bytes: 0AC7010A0208...\n  Proof: Proof{\n    Aunts: []\n  }\n}]"
+D[2020-06-16|17:42:28.070] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=33 msg="[BlockPart H:1 R:0 P:Part{#0\n  Bytes: 0AC7010A0208...\n  Proof: Proof{\n    Aunts: []\n  }\n}]"
+I[2020-06-16|17:42:28.070] Received complete proposal block             module=consensus validator=1 height=1 hash=E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+I[2020-06-16|17:42:28.071] Finalizing commit of block with N txs        module=consensus validator=1 height=1 hash=E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872 root= N=1
+I[2020-06-16|17:42:28.071] Block{
+  Header{
+    Version:        {10 0}
+    ChainID:        tendermint_test
+    Height:         1
+    Time:           2020-06-16 15:42:27.402294 +0000 UTC
+    LastBlockID:    :0:000000000000
+    LastCommit:     
+    Data:           AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+    Validators:     9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    NextValidators: 9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    App:            
+    Consensus:      048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F
+    Results:        
+    Evidence:       
+    Proposer:       0C783C21854225D926170487479093735E396EFC
+  }#E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872
+  Data{
+    AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC (8 bytes)
+  }#AEA833068048B82F42271C18E0076A5230CBC7D711C99DE16A5917DB14A3B044
+  EvidenceData{
+    
+  }#
+  Commit{
+    Height:     0
+    Round:      0
+    BlockID:    :0:000000000000
+    Signatures:
+      
+  }#
+}#E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872 module=consensus validator=1
+D[2020-06-16|17:42:28.084] Invalid tx                                   code=2 log="Invalid nonce. Expected 1, got 0"
+I[2020-06-16|17:42:28.084] Executed block                               height=1 validTxs=0 invalidTxs=1
+I[2020-06-16|17:42:28.084] Committed state                              height=1 txs=1 appHash=0000000000000001
+D[2020-06-16|17:42:28.085] Received tock                                module=consensus validator=1 timeout=-34.443ms height=2 round=0 step=RoundStepNewHeight
+I[2020-06-16|17:42:28.085] enterNewRound(2/0). Current: 2/0/RoundStepNewHeight module=consensus validator=1 height=2 round=0
+I[2020-06-16|17:42:28.085] enterPropose(2/0). Current: 2/0/RoundStepNewRound module=consensus validator=1 height=2 round=0
+D[2020-06-16|17:42:28.085] This node is a validator                     module=consensus validator=1 height=2 round=0
+I[2020-06-16|17:42:28.085] enterPropose: Our turn to propose            module=consensus validator=1 height=2 round=0 proposer=707E32BB851E2CC13AC083C7F4DB5DEE827C33C5 privValidator=MockPV{707E32BB851E2CC13AC083C7F4DB5DEE827C33C5}
+I[2020-06-16|17:42:28.091] Stopping gossipDataRoutine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}"
+I[2020-06-16|17:42:28.091] Stopping gossipVotesRoutine for peer         module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}"
+I[2020-06-16|17:42:28.099] Signed proposal                              module=consensus validator=1 height=2 round=0 proposal="Proposal{2/0 (17E05BD9489EA39DEAA6D073CDFAE1CF4480E3064A872FA8C7153F6CBCEEDF8C:1:5243ECF22BB2, -1) D6822B6A7511 @ 2020-06-16T15:42:28.099524Z}"
+D[2020-06-16|17:42:28.101] Signed proposal block: Block{
+  Header{
+    Version:        {10 0}
+    ChainID:        tendermint_test
+    Height:         2
+    Time:           2020-06-16 15:42:28.402294 +0000 UTC
+    LastBlockID:    E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912
+    LastCommit:     E3B00F5F78C728899496C1AF05AB562BE9B01D5B2B5E4D25F48F407BC20650D0
+    Data:           
+    Validators:     9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    NextValidators: 9079DFAFFCFFDB58AD53B08BF70392369CC3D7B4E2CE4CE65CC70BFDDA32A13D
+    App:            0000000000000001
+    Consensus:      048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F
+    Results:        EB66462E817B3FF6C1CD0897AC9456F991AFA6237CCD70A8428BC993426481F5
+    Evidence:       
+    Proposer:       707E32BB851E2CC13AC083C7F4DB5DEE827C33C5
+  }#17E05BD9489EA39DEAA6D073CDFAE1CF4480E3064A872FA8C7153F6CBCEEDF8C
+  Data{
+    
+  }#
+  EvidenceData{
+    
+  }#
+  Commit{
+    Height:     1
+    Round:      0
+    BlockID:    E96725D10612340395E996D2BD238E7C4A7C1E7D2AE96ED8A72E17E92BE9F872:1:3105B8EC6912
+    Signatures:
+      CommitSig{42503D4816B3 by 0C783C218542 on 2 @ 2020-06-16T15:42:27.572605Z}
+      CommitSig{44C83735E340 by 707E32BB851E on 3 @ 2020-06-16T15:42:28.402294Z}
+      CommitSig{8473EDFD3FB9 by 72A7C003EB2B on 2 @ 2020-06-16T15:42:28.402294Z}
+      CommitSig{BA0058BAB6DD by CF3E51FEEF48 on 2 @ 2020-06-16T15:42:28.402294Z}
+  }#E3B00F5F78C728899496C1AF05AB562BE9B01D5B2B5E4D25F48F407BC20650D0
+}#17E05BD9489EA39DEAA6D073CDFAE1CF4480E3064A872FA8C7153F6CBCEEDF8C module=consensus validator=1
+D[2020-06-16|17:42:28.101] Received block part from wrong height        module=consensus validator=1 height=1 round=0
+D[2020-06-16|17:42:28.114] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:28.115] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=2
+D[2020-06-16|17:42:28.115] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:28.115] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=3
+D[2020-06-16|17:42:28.115] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}]"
+D[2020-06-16|17:42:28.115] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:28.116] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:28.116] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=3
+D[2020-06-16|17:42:28.116] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 DF911BFB5C99 @ 2020-06-16T15:42:27.63198Z}]"
+D[2020-06-16|17:42:28.116] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=0
+D[2020-06-16|17:42:28.116] Receive                                      module=consensus test=byzantine validator=1 src="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" chId=34 msg="[Vote Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}]"
+D[2020-06-16|17:42:28.116] setHasVote                                   module=consensus test=byzantine validator=1 peerH/R=2/0 H/R=1/0 type=PRECOMMIT_TYPE index=2
+I[2020-06-16|17:42:28.125] Received proposal                            module=consensus validator=1 proposal="Proposal{2/0 (17E05BD9489EA39DEAA6D073CDFAE1CF4480E3064A872FA8C7153F6CBCEEDF8C:1:5243ECF22BB2, -1) D6822B6A7511 @ 2020-06-16T15:42:28.099524Z}"
+D[2020-06-16|17:42:28.126] Sending proposal                             module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}" height=2 round=0
+D[2020-06-16|17:42:28.126] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=2 csHeight=2
+I[2020-06-16|17:42:28.126] Stopping gossipDataRoutine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}"
+D[2020-06-16|17:42:28.126] Precommit vote came in after commit timeout and has been ignored module=consensus validator=1 vote="Vote{2:72A7C003EB2B 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 8473EDFD3FB9 @ 2020-06-16T15:42:28.402294Z}"
+D[2020-06-16|17:42:28.126] Sending proposal                             module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}" height=2 round=0
+I[2020-06-16|17:42:28.126] Stopping Consensus service                   module=consensus test=byzantine validator=1 impl=ConsensusReactor
+I[2020-06-16|17:42:28.127] Stopping State service                       module=consensus validator=1 impl=ConsensusState
+I[2020-06-16|17:42:28.126] Stopping gossipDataRoutine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}"
+I[2020-06-16|17:42:28.132] Stopping gossipVotesRoutine for peer         module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}"
+I[2020-06-16|17:42:28.132] Stopping gossipVotesRoutine for peer         module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}"
+I[2020-06-16|17:42:28.138] Received complete proposal block             module=consensus validator=1 height=2 hash=17E05BD9489EA39DEAA6D073CDFAE1CF4480E3064A872FA8C7153F6CBCEEDF8C
+I[2020-06-16|17:42:28.138] enterPrevote(2/0). Current: 2/0/RoundStepPropose module=consensus validator=1
+I[2020-06-16|17:42:28.140] enterPrevote: ProposalBlock is valid         module=consensus validator=1 height=2 round=0
+I[2020-06-16|17:42:28.151] Signed and pushed vote                       module=consensus validator=1 height=2 round=0 vote="Vote{1:707E32BB851E 2/00/PREVOTE_TYPE(Prevote) 17E05BD9489E 25A0F55DCB3F @ 2020-06-16T15:42:29.402294Z}" err=null
+D[2020-06-16|17:42:28.152] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=3 csHeight=2
+D[2020-06-16|17:42:28.152] Precommit vote came in after commit timeout and has been ignored module=consensus validator=1 vote="Vote{3:CF3E51FEEF48 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 BA0058BAB6DD @ 2020-06-16T15:42:28.402294Z}"
+D[2020-06-16|17:42:28.152] addVote                                      module=consensus validator=1 voteHeight=1 voteType=PRECOMMIT_TYPE valIndex=0 csHeight=2
+D[2020-06-16|17:42:28.152] Precommit vote came in after commit timeout and has been ignored module=consensus validator=1 vote="Vote{0:0C783C218542 1/00/PRECOMMIT_TYPE(Precommit) E96725D10612 42503D4816B3 @ 2020-06-16T15:42:27.572605Z}"
+I[2020-06-16|17:42:28.152] Stopping baseWAL service                     module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal impl=baseWAL
+I[2020-06-16|17:42:28.163] Stopping Group service                       module=consensus validator=1 wal=/var/folders/07/1963ynbs1vq8by41dcppk98m0000gn/T/-consensus_byzantine_test_1_862648408/data/cs.wal/wal impl=Group
+I[2020-06-16|17:42:28.176] Stopping queryMaj23Routine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 060a32d28490bbaebb229b61606e898207b29ff9 in}"
+I[2020-06-16|17:42:28.216] Stopping queryMaj23Routine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} 1fd10f9f22d99121702a894fd54ea5a35a3dbd55 in}"
+I[2020-06-16|17:42:28.243] Stopping queryMaj23Routine for peer          module=consensus test=byzantine validator=1 peer="Peer{MConn{pipe} af6e5df515b7710dca002c36329e208b4686758d in}"
+--- PASS: TestByzantine (0.84s)
+    byzantine_test.go:212: Byzantine: broadcasting conflicting proposals to 3 peers
+    byzantine_test.go:143: A block has been committed. Healing partition
+PASS
+ok  	github.com/tendermint/tendermint/consensus	1.281s
