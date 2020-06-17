@@ -1515,7 +1515,7 @@ type AmnesiaEvidence struct {
 	Polc ProofOfLockChange
 }
 
-// Height, Time, Address and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
+// Height, Time, Address, and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
 var _ Evidence = &AmnesiaEvidence{}
 var _ Evidence = AmnesiaEvidence{}
 
@@ -1534,13 +1534,29 @@ func (e AmnesiaEvidence) Equal(ev Evidence) bool {
 	return e.PotentialAmnesiaEvidence.Equal(e2.PotentialAmnesiaEvidence)
 }
 
-func (e AmnesiaEvidence) Hash() []byte {
-	return merkle.HashFromByteSlices([][]byte{
-		cdcEncode(e.PotentialAmnesiaEvidence.VoteA),
-		cdcEncode(e.PotentialAmnesiaEvidence.VoteB),
-		cdcEncode(e.Polc),
-	})
-}
+// func (e AmnesiaEvidence) Hash() []byte {
+// 	v1, err := e.PotentialAmnesiaEvidence.VoteA.ToProto().Marshal()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	v2, err := e.PotentialAmnesiaEvidence.VoteB.ToProto().Marshal()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	polc, err := e.Polc.ToProto()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	polcBytes, err := polc.Marshal()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	return tmhash.Sum(append(v1, append(v2, polcBytes...)...))
+// }
 
 func (e AmnesiaEvidence) ValidateBasic() error {
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {

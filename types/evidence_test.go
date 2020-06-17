@@ -350,7 +350,8 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID, defaultVoteTime)
-		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime)
+		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime.Add(1*time.Second))
+		vote3    = makeVote(t, val, chainID, 0, height, 2, 2, blockID, defaultVoteTime)
 	)
 
 	ev := &PotentialAmnesiaEvidence{
@@ -373,6 +374,32 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.True(t, ev.Equal(ev))
 	assert.NoError(t, ev.ValidateBasic())
 	assert.NotEmpty(t, ev.String())
+
+	ev2 := &PotentialAmnesiaEvidence{
+		VoteA:       vote1,
+		VoteB:       vote2,
+		HeightStamp: 5,
+	}
+
+	assert.True(t, ev.Equal(ev2))
+	assert.Equal(t, ev.Hash(), ev2.Hash())
+
+	ev3 := &PotentialAmnesiaEvidence{
+		VoteA: vote2,
+		VoteB: vote1,
+	}
+
+	assert.Error(t, ev3.ValidateBasic())
+
+	ev4 := &PotentialAmnesiaEvidence{
+		VoteA: vote3,
+		VoteB: vote2,
+	}
+
+	assert.NoError(t, ev4.ValidateBasic())
+	assert.NotEqual(t, ev.Hash(), ev4.Hash())
+	assert.False(t, ev.Equal(ev4))
+
 }
 
 func TestProofOfLockChange(t *testing.T) {
