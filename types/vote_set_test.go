@@ -13,62 +13,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// NOTE: privValidators are in order
-func randVoteSet(
-	height int64,
-	round int32,
-	signedMsgType tmproto.SignedMsgType,
-	numValidators int,
-	votingPower int64,
-) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
-}
-
-// Convenience: Return new vote with different validator address/index
-func withValidator(vote *Vote, addr []byte, idx int32) *Vote {
-	vote = vote.Copy()
-	vote.ValidatorAddress = addr
-	vote.ValidatorIndex = idx
-	return vote
-}
-
-// Convenience: Return new vote with different height
-func withHeight(vote *Vote, height int64) *Vote {
-	vote = vote.Copy()
-	vote.Height = height
-	return vote
-}
-
-// Convenience: Return new vote with different round
-func withRound(vote *Vote, round int32) *Vote {
-	vote = vote.Copy()
-	vote.Round = round
-	return vote
-}
-
-// Convenience: Return new vote with different type
-func withType(vote *Vote, signedMsgType byte) *Vote {
-	vote = vote.Copy()
-	vote.Type = tmproto.SignedMsgType(signedMsgType)
-	return vote
-}
-
-// Convenience: Return new vote with different blockHash
-func withBlockHash(vote *Vote, blockHash []byte) *Vote {
-	vote = vote.Copy()
-	vote.BlockID.Hash = blockHash
-	return vote
-}
-
-// Convenience: Return new vote with different blockParts
-func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
-	vote = vote.Copy()
-	vote.BlockID.PartsHeader = blockPartsHeader
-	return vote
-}
-
-func TestVoteSet_AddVote(t *testing.T) {
+func TestVoteSet_AddVote_Good(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
 	val0 := privValidators[0]
@@ -98,6 +43,81 @@ func TestVoteSet_AddVote(t *testing.T) {
 	assert.True(t, voteSet.BitArray().GetIndex(0))
 	blockID, ok = voteSet.TwoThirdsMajority()
 	assert.False(t, ok || !blockID.IsZero(), "there should be no 2/3 majority")
+}
+
+func TestVoteSet_AddVote_Bad(t *testing.T) {
+	height, round := int64(1), int32(0)
+	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
+
+	voteProto := &Vote{
+		ValidatorAddress: nil,
+		ValidatorIndex:   -1,
+		Height:           height,
+		Round:            round,
+		Timestamp:        tmtime.Now(),
+		Type:             tmproto.PrevoteType,
+		BlockID:          BlockID{nil, PartSetHeader{}},
+	}
+
+	// val0 votes for nil.
+	{
+		pubKey, err := privValidators[0].GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, 0)
+		added, err := signAddVote(privValidators[0], vote, voteSet)
+		if !added || err != nil {
+			t.Errorf("expected VoteSet.Add to succeed")
+		}
+	}
+
+	// val0 votes again for some block.
+	{
+		pubKey, err := privValidators[0].GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, 0)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
+		if added || err == nil {
+			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
+		}
+	}
+
+	// val1 votes on another height
+	{
+		pubKey, err := privValidators[1].GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, 1)
+		added, err := signAddVote(privValidators[1], withHeight(vote, height+1), voteSet)
+		if added || err == nil {
+			t.Errorf("expected VoteSet.Add to fail, wrong height")
+		}
+	}
+
+	// val2 votes on another round
+	{
+		pubKey, err := privValidators[2].GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, 2)
+		added, err := signAddVote(privValidators[2], withRound(vote, round+1), voteSet)
+		if added || err == nil {
+			t.Errorf("expected VoteSet.Add to fail, wrong round")
+		}
+	}
+
+	// val3 votes of another type.
+	{
+		pubKey, err := privValidators[3].GetPubKey()
+		require.NoError(t, err)
+		addr := pubKey.Address()
+		vote := withValidator(voteProto, addr, 3)
+		added, err := signAddVote(privValidators[3], withType(vote, byte(tmproto.PrecommitType)), voteSet)
+		if added || err == nil {
+			t.Errorf("expected VoteSet.Add to fail, wrong type")
+		}
+	}
 }
 
 func TestVoteSet_2_3Majority(t *testing.T) {
@@ -150,7 +170,7 @@ func TestVoteSet_2_3Majority(t *testing.T) {
 	}
 }
 
-func Test2_3MajorityRedux(t *testing.T) {
+func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 100, 1)
 
@@ -246,81 +266,6 @@ func Test2_3MajorityRedux(t *testing.T) {
 		blockID, ok = voteSet.TwoThirdsMajority()
 		assert.True(t, ok && blockID.Equals(BlockID{blockHash, blockPartsHeader}),
 			"there should be 2/3 majority")
-	}
-}
-
-func TestVoteSet_BadVotes(t *testing.T) {
-	height, round := int64(1), int32(0)
-	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
-
-	voteProto := &Vote{
-		ValidatorAddress: nil,
-		ValidatorIndex:   -1,
-		Height:           height,
-		Round:            round,
-		Timestamp:        tmtime.Now(),
-		Type:             tmproto.PrevoteType,
-		BlockID:          BlockID{nil, PartSetHeader{}},
-	}
-
-	// val0 votes for nil.
-	{
-		pubKey, err := privValidators[0].GetPubKey()
-		require.NoError(t, err)
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, 0)
-		added, err := signAddVote(privValidators[0], vote, voteSet)
-		if !added || err != nil {
-			t.Errorf("expected VoteSet.Add to succeed")
-		}
-	}
-
-	// val0 votes again for some block.
-	{
-		pubKey, err := privValidators[0].GetPubKey()
-		require.NoError(t, err)
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, 0)
-		added, err := signAddVote(privValidators[0], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
-		if added || err == nil {
-			t.Errorf("expected VoteSet.Add to fail, conflicting vote.")
-		}
-	}
-
-	// val1 votes on another height
-	{
-		pubKey, err := privValidators[1].GetPubKey()
-		require.NoError(t, err)
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, 1)
-		added, err := signAddVote(privValidators[1], withHeight(vote, height+1), voteSet)
-		if added || err == nil {
-			t.Errorf("expected VoteSet.Add to fail, wrong height")
-		}
-	}
-
-	// val2 votes on another round
-	{
-		pubKey, err := privValidators[2].GetPubKey()
-		require.NoError(t, err)
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, 2)
-		added, err := signAddVote(privValidators[2], withRound(vote, round+1), voteSet)
-		if added || err == nil {
-			t.Errorf("expected VoteSet.Add to fail, wrong round")
-		}
-	}
-
-	// val3 votes of another type.
-	{
-		pubKey, err := privValidators[3].GetPubKey()
-		require.NoError(t, err)
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, 3)
-		added, err := signAddVote(privValidators[3], withType(vote, byte(tmproto.PrecommitType)), voteSet)
-		if added || err == nil {
-			t.Errorf("expected VoteSet.Add to fail, wrong type")
-		}
 	}
 }
 
@@ -448,10 +393,9 @@ func TestVoteSet_Conflicts(t *testing.T) {
 	if !voteSet.HasTwoThirdsAny() {
 		t.Errorf("we should have 2/3 if any votes")
 	}
-
 }
 
-func TestMakeCommit(t *testing.T) {
+func TestVoteSet_MakeCommit(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrecommitType, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
@@ -565,4 +509,59 @@ func buildVoteSetForBlock(height int64,
 		_, _ = signAddVote(privValidators[i], withBlockHash(vote, nil), voteSet)
 	}
 	return voteSet, valSet, privValidators
+}
+
+// NOTE: privValidators are in order
+func randVoteSet(
+	height int64,
+	round int32,
+	signedMsgType tmproto.SignedMsgType,
+	numValidators int,
+	votingPower int64,
+) (*VoteSet, *ValidatorSet, []PrivValidator) {
+	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+}
+
+// Convenience: Return new vote with different validator address/index
+func withValidator(vote *Vote, addr []byte, idx int32) *Vote {
+	vote = vote.Copy()
+	vote.ValidatorAddress = addr
+	vote.ValidatorIndex = idx
+	return vote
+}
+
+// Convenience: Return new vote with different height
+func withHeight(vote *Vote, height int64) *Vote {
+	vote = vote.Copy()
+	vote.Height = height
+	return vote
+}
+
+// Convenience: Return new vote with different round
+func withRound(vote *Vote, round int32) *Vote {
+	vote = vote.Copy()
+	vote.Round = round
+	return vote
+}
+
+// Convenience: Return new vote with different type
+func withType(vote *Vote, signedMsgType byte) *Vote {
+	vote = vote.Copy()
+	vote.Type = tmproto.SignedMsgType(signedMsgType)
+	return vote
+}
+
+// Convenience: Return new vote with different blockHash
+func withBlockHash(vote *Vote, blockHash []byte) *Vote {
+	vote = vote.Copy()
+	vote.BlockID.Hash = blockHash
+	return vote
+}
+
+// Convenience: Return new vote with different blockParts
+func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
+	vote = vote.Copy()
+	vote.BlockID.PartsHeader = blockPartsHeader
+	return vote
 }
