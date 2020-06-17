@@ -234,7 +234,7 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
 		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
 	case *tmproto.Evidence_AmnesiaEvidence:
-		return AmensiaEvidenceFromProto(evi.AmnesiaEvidence)
+		return AmnesiaEvidenceFromProto(evi.AmnesiaEvidence)
 	case *tmproto.Evidence_PhantomValidatorEvidence:
 		return PhantomValidatorEvidenceFromProto(evi.PhantomValidatorEvidence)
 	case *tmproto.Evidence_MockEvidence:
@@ -1128,7 +1128,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 //-------------------------------------------
 
 // PotentialAmnesiaEvidence is constructed when a validator votes on two different blocks at different rounds
-// in the same height. PotentialAmnesiaEvidence can then evolve into AmensiaEvidence if the indicted validator
+// in the same height. PotentialAmnesiaEvidence can then evolve into AmnesiaEvidence if the indicted validator
 // is incapable of providing the proof of lock change that validates voting twice in the allotted trial period.
 // Heightstamp is used for each node to keep a track of how much time has passed so as to know when the trial period
 // is finished and is set when the node first receives the evidence.
@@ -1594,7 +1594,7 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 	return nil
 }
 
-// ViolatedConsensus assess on the basis of the AmensiaEvidence whether the validator has violated the
+// ViolatedConsensus assess on the basis of the AmnesiaEvidence whether the validator has violated the
 // Tendermint consensus. Evidence must be validated first (see ValidateBasic).
 // We are only interested in proving that the latter of the votes in terms of time was correctly done.
 func (e AmnesiaEvidence) ViolatedConsensus() (bool, string) {
@@ -1693,7 +1693,7 @@ func AmnesiaEvidenceToProto(evi AmnesiaEvidence) (*tmproto.Evidence, error) {
 	return tp, nil
 }
 
-func AmensiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (AmnesiaEvidence, error) {
+func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (AmnesiaEvidence, error) {
 	if pb == nil {
 		return AmnesiaEvidence{}, errors.New("nil duplicate vote evidence")
 	}
