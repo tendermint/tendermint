@@ -33,10 +33,12 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 	return cbid
 }
 
+// CanonicalizeVote transforms the given PartSetHeader to a CanonicalPartSetHeader.
 func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
 	return tmproto.CanonicalPartSetHeader(psh)
 }
 
+// CanonicalizeVote transforms the given Proposal to a CanonicalProposal.
 func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
 	return tmproto.CanonicalProposal{
 		Type:      tmproto.ProposalType,
@@ -49,6 +51,8 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 	}
 }
 
+// CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
+// not contain ValidatorIndex and ValidatorAddress fields.
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
