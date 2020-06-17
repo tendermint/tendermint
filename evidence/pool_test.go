@@ -342,12 +342,12 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	err = val.SignVote(evidenceChainID, vA)
 	voteA.Signature = vA.Signature
 	require.NoError(t, err)
-	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID, evidenceTime.Add(2*time.Second))
+	voteB := makeVote(height, 1, 0, pubKey.Address(), secondBlockID, evidenceTime.Add(3*time.Second))
 	vB := voteB.ToProto()
 	err = val.SignVote(evidenceChainID, vB)
 	voteB.Signature = vB.Signature
 	require.NoError(t, err)
-	voteC := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(3*time.Second))
+	voteC := makeVote(height, 2, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(2*time.Second))
 	vC := voteC.ToProto()
 	err = val.SignVote(evidenceChainID, vC)
 	voteC.Signature = vC.Signature
@@ -369,6 +369,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	}
 
 	// CASE A
+	pool.logger.Info("CASE A")
 	// we expect the evidence pool to find the polc but log an error as the polc is not valid -> vote was
 	// not from a validator in this set. However, an error isn't thrown because the evidence pool
 	// should still be able to save the regular potential amnesia evidence.
@@ -383,11 +384,13 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.Greater(t, nextHeight, int64(0))
 
 	// CASE B
+	pool.logger.Info("CASE B")
 	// evidence is not ready to be upgraded so we return the height we expect the evidence to be.
 	nextHeight = pool.upgradePotentialAmnesiaEvidence()
 	assert.Equal(t, height+pool.state.ConsensusParams.Evidence.ProofTrialPeriod, nextHeight)
 
 	// CASE C
+	pool.logger.Info("CASE C")
 	// now evidence is ready to be upgraded to amnesia evidence -> we expect -1 to be the next height as their is
 	// no more pending potential amnesia evidence left
 	lastCommit := makeCommit(height+1, pubKey.Address())
@@ -398,13 +401,14 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.Equal(t, int64(-1), pool.nextEvidenceTrialEndedHeight)
 
 	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
+	t.Log(pool.AllPendingEvidence())
 
 	// CASE D
 	pool.logger.Info("CASE D")
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
 	ev2 := types.PotentialAmnesiaEvidence{
-		VoteA: voteB,
-		VoteB: voteC,
+		VoteA: voteC,
+		VoteB: voteB,
 	}
 	err = pool.AddEvidence(ev2)
 	assert.NoError(t, err)
@@ -452,7 +456,6 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
 	assert.True(t, pool.IsOnTrial(newPe))
-	t.Log(pool.AllPendingEvidence())
 
 	// CASE G
 	pool.logger.Info("CASE G")
@@ -466,9 +469,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	err = pool.AddEvidence(aeWithPolc)
 	assert.NoError(t, err)
 	assert.True(t, pool.IsPending(aeWithPolc))
-	assert.False(t, pool.IsPending(ae))
-	t.Log(pool.AllPendingEvidence())
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	t.Log(pool.AllPendingEvidence())
 
 }
 
