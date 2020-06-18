@@ -470,47 +470,37 @@ func TestTxSearch(t *testing.T) {
 
 	// since we're not using an isolated test server, we'll have lingering transactions
 	// from other tests as well
-	result, err := c.TxSearch("tx.height >= 0", true, nil, nil, "asc")
+	result, err := c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, nil, nil, "asc")
 	require.NoError(t, err)
 	txCount := len(result.Txs)
 
-	// // pick out the last tx to have something to search for in tests
-	// find := result.Txs[len(result.Txs)-1]
-	// anotherTxHash := types.Tx("a different tx").Hash()
+	// pick out the last tx to have something to search for in tests
+	fmt.Println(len(result.Txs))
+	find := result.Txs[len(result.Txs)-1]
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		// 	// now we query for the tx.
-		// 	result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
-		// 	require.Nil(t, err)
-		// 	require.Len(t, result.Txs, 1)
-		// 	require.Equal(t, find.Hash, result.Txs[0].Hash)
+		// now we query for the tx.
+		result, err := c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Len(t, result.Txs, 1)
+		require.Equal(t, find.Hash, result.Txs[0].Hash)
 
-		// 	ptx := result.Txs[0]
-		// 	assert.EqualValues(t, find.Height, ptx.Height)
-		// 	assert.EqualValues(t, find.Tx, ptx.Tx)
-		// 	assert.Zero(t, ptx.Index)
-		// 	assert.True(t, ptx.TxResult.IsOK())
-		// 	assert.EqualValues(t, find.Hash, ptx.Hash)
+		// ptx := result.Txs[0]
+		// assert.EqualValues(t, find.Height, ptx.Height)
+		// assert.EqualValues(t, find.Tx, ptx.Tx)
+		// assert.Zero(t, ptx.Index)
+		// assert.True(t, ptx.TxResult.IsOK())
+		// assert.EqualValues(t, find.Hash, ptx.Hash)
 
 		// // time to verify the proof
 		// if assert.EqualValues(t, find.Tx, ptx.Proof.Data) {
 		// 	assert.NoError(t, ptx.Proof.Proof.Verify(ptx.Proof.RootHash, find.Hash))
 		// }
 
-		// 	// query by height
-		// 	result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
-		// 	require.Nil(t, err)
-		// 	require.Len(t, result.Txs, 1)
-
-		// 	// query for non existing tx
-		// 	result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc")
-		// 	require.Nil(t, err)
-		// 	require.Len(t, result.Txs, 0)
-
 		// query using a compositeKey (see kvstore application)
-		result, err := c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
@@ -558,7 +548,6 @@ func TestTxSearch(t *testing.T) {
 			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
 
-		fmt.Println(len(result.Txs))
 		// check pagination
 		perPage = 3
 		var (
