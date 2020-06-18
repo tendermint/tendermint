@@ -22,9 +22,10 @@ type PeerRoundState struct {
 
 	// True if peer has proposal for this round
 	Proposal                   bool                `json:"proposal"`
-	ProposalBlockPartSetHeader types.PartSetHeader `json:"proposal_block_part_set_header"` //
-	ProposalBlockParts         *bits.BitArray      `json:"proposal_block_parts"`           //
-	ProposalPOLRound           int32               `json:"proposal_pol_round"`             // Proposal's POL round. -1 if none.
+	ProposalBlockPartSetHeader types.PartSetHeader `json:"proposal_block_part_set_header"`
+	ProposalBlockParts         *bits.BitArray      `json:"proposal_block_parts"`
+	// Proposal's POL round. -1 if none.
+	ProposalPOLRound int32 `json:"proposal_pol_round"`
 
 	// nil until ProposalPOLMessage received.
 	ProposalPOL     *bits.BitArray `json:"proposal_pol"`
