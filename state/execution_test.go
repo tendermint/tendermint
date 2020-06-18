@@ -42,7 +42,7 @@ func TestApplyBlock(t *testing.T) {
 		mock.Mempool{}, sm.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	_, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
@@ -64,7 +64,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
+	prevBlockID := types.BlockID{Hash: prevHash, PartSetHeader: prevParts}
 
 	var (
 		now        = tmtime.Now()
@@ -126,7 +126,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
+	prevBlockID := types.BlockID{Hash: prevHash, PartSetHeader: prevParts}
 
 	height1, val1 := int64(8), state.Validators.Validators[0].Address
 	height2, val2 := int64(3), state.Validators.Validators[1].Address
@@ -335,7 +335,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
 	pk, err := cryptoenc.PubKeyToProto(pubkey)
@@ -390,7 +390,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	vp, err := cryptoenc.PubKeyToProto(state.Validators.Validators[0].PubKey)
 	require.NoError(t, err)

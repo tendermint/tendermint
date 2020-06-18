@@ -64,7 +64,7 @@ func withBlockHash(vote *Vote, blockHash []byte) *Vote {
 // Convenience: Return new vote with different blockParts
 func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 	vote = vote.Copy()
-	vote.BlockID.PartsHeader = blockPartsHeader
+	vote.BlockID.PartSetHeader = blockPartsHeader
 	return vote
 }
 

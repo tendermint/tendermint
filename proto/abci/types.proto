@@ -323,16 +323,6 @@ message TxResult {
 //----------------------------------------
 // Blockchain Types
 
-message BlockID {
-  bytes         hash         = 1;
-  PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
-}
-
-message PartSetHeader {
-  int32 total = 1;
-  bytes hash  = 2;
-}
-
 // Validator
 message Validator {
   bytes address = 1;
