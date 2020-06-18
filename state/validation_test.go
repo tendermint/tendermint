@@ -372,11 +372,11 @@ func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	err = vals[val.Address.String()].SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
 	require.NoError(t, err)
-	pe := types.PotentialAmnesiaEvidence{
+	pe := &types.PotentialAmnesiaEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
 	}
-	ae := types.AmnesiaEvidence{
+	ae := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
 		Polc:                     types.EmptyPOLC(),
 	}
@@ -421,11 +421,11 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	err = vals[val.Address.String()].SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
 	require.NoError(t, err)
-	pe := types.PotentialAmnesiaEvidence{
+	pe := &types.PotentialAmnesiaEvidence{
 		VoteA: voteB,
 		VoteB: voteA,
 	}
-	ae := types.AmnesiaEvidence{
+	ae := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
 		Polc:                     types.EmptyPOLC(),
 	}
@@ -507,13 +507,13 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	//var ae types.Evidence
-	badAe := types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
+	badAe := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
 			VoteA: voteA,
 			VoteB: voteB,
 		},
-		Polc: types.ProofOfLockChange{
-			Votes:  []types.Vote{*voteC},
+		Polc: &types.ProofOfLockChange{
+			Votes:  []*types.Vote{voteC},
 			PubKey: val.PubKey,
 		},
 	}
@@ -535,21 +535,21 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	voteE.Signature = vE.Signature
 	require.NoError(t, err)
 
-	goodAe := types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
+	goodAe := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
 			VoteA: voteA,
 			VoteB: voteB,
 		},
-		Polc: types.ProofOfLockChange{
-			Votes:  []types.Vote{*voteC, *voteD, *voteE},
+		Polc: &types.ProofOfLockChange{
+			Votes:  []*types.Vote{voteC, voteD, voteE},
 			PubKey: val.PubKey,
 		},
 	}
 	err = sm.VerifyEvidence(stateDB, state, goodAe, nil)
 	assert.NoError(t, err)
 
-	goodAe = types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: types.PotentialAmnesiaEvidence{
+	goodAe = &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
 			VoteA: voteA,
 			VoteB: voteB,
 		},
@@ -585,7 +585,7 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 	err := vals[val.Address.String()].SignVote(chainID, v)
 	vote.Signature = v.Signature
 	require.NoError(t, err)
-	ev := types.LunaticValidatorEvidence{
+	ev := &types.LunaticValidatorEvidence{
 		Header:             h,
 		Vote:               vote,
 		InvalidHeaderField: "ConsensusHash",
@@ -607,7 +607,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	err := vals[val.Address.String()].SignVote(chainID, v)
 	vote.Signature = v.Signature
 	require.NoError(t, err)
-	ev := types.PhantomValidatorEvidence{
+	ev := &types.PhantomValidatorEvidence{
 		Vote:                        vote,
 		LastHeightValidatorWasInSet: 1,
 	}
@@ -625,7 +625,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	err = privVal.SignVote(chainID, v2)
 	vote2.Signature = v2.Signature
 	require.NoError(t, err)
-	ev = types.PhantomValidatorEvidence{
+	ev = &types.PhantomValidatorEvidence{
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 1,
 	}
@@ -636,7 +636,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 		assert.Equal(t, "last time validator was in the set at height 1, min: 2", err.Error())
 	}
 
-	ev = types.PhantomValidatorEvidence{
+	ev = &types.PhantomValidatorEvidence{
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
 	}
@@ -663,7 +663,7 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	stateDB.Set(valKey, bz)
-	ev = types.PhantomValidatorEvidence{
+	ev = &types.PhantomValidatorEvidence{
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
 	}

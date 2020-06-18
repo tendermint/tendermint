@@ -1410,17 +1410,17 @@ func (e *ProofOfLockChange) IsAbsent() bool {
 	return e.Votes == nil && e.PubKey == nil
 }
 
-func (e *ProofOfLockChange) ToProto() *tmproto.ProofOfLockChange {
+func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 	plc := new(tmproto.ProofOfLockChange)
 	vpb := make([]*tmproto.Vote, len(e.Votes))
 
 	// if absent create empty proto polc
 	if e.IsAbsent() {
-		return plc
+		return plc, nil
 	}
 
 	if e.Votes == nil {
-		panic("invalid proof of lock change (no votes), did you forget to validate?")
+		return plc, errors.New("invalid proof of lock change (no votes), did you forget to validate?")
 	}
 	for i, v := range e.Votes {
 		pb := v.ToProto()
@@ -1431,12 +1431,12 @@ func (e *ProofOfLockChange) ToProto() *tmproto.ProofOfLockChange {
 
 	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
 	if err != nil {
-		panic(fmt.Errorf("invalid proof of lock change (err: %w), did you forget to validate?", err))
+		return plc, fmt.Errorf("invalid proof of lock change (err: %w), did you forget to validate?", err)
 	}
 	plc.PubKey = &pk
 	plc.Votes = vpb
 
-	return plc
+	return plc, nil
 }
 
 // AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
@@ -1539,7 +1539,10 @@ func (e *AmnesiaEvidence) String() string {
 func (e *AmnesiaEvidence) ToProto() (*tmproto.AmnesiaEvidence) {
 	paepb := e.PotentialAmnesiaEvidence.ToProto()
 
-	polc := e.Polc.ToProto()
+	polc, err := e.Polc.ToProto()
+	if err != nil {
+		polc, _ = EmptyPOLC().ToProto()
+	}
 	
 	return &tmproto.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: paepb,

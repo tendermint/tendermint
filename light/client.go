@@ -975,7 +975,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 				headerMatched = true
 			case ErrConflictingHeaders: // potential fork
 				c.logger.Error(err.Error(), "witness", e.Witness)
-				c.sendConflictingHeadersEvidence(types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
+				c.sendConflictingHeadersEvidence(&types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
 				lastErrConfHeaders = e
 			case errBadWitness:
 				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
@@ -1188,7 +1188,7 @@ func (c *Client) validateValidatorSet(vals *types.ValidatorSet) error {
 //
 // Evidence needs to be submitted to all full nodes since there's no way to
 // determine which full node is correct (honest).
-func (c *Client) sendConflictingHeadersEvidence(ev types.ConflictingHeadersEvidence) {
+func (c *Client) sendConflictingHeadersEvidence(ev *types.ConflictingHeadersEvidence) {
 	err := c.primary.ReportEvidence(ev)
 	if err != nil {
 		c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)

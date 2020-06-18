@@ -139,7 +139,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 // AddPOLC adds a proof of lock change to the evidence database
 // that may be needed in the future to verify votes
-func (evpool *Pool) AddPOLC(polc types.ProofOfLockChange) error {
+func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 	key := keyPOLC(polc)
 	pbplc, err := polc.ToProto()
 	if err != nil {
@@ -193,9 +193,10 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
+	
 		if evpool.Has(ev) {
-			// if it is an amnesia evidence we have but 
-			if ae, ok := ev.(types.AmnesiaEvidence); !ok && ae.Polc.IsAbsent() {
+			// if it is an amnesia evidence we have but
+			if ae, ok := ev.(*types.AmnesiaEvidence); !ok && ae.Polc.IsAbsent() {
 				continue
 			}
 		}
@@ -217,12 +218,12 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		evpool.logger.Info("Hi")
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
 		// to form AmensiaEvidence else start the trial period for the piece of evidence
-		if pe, ok := ev.(types.PotentialAmnesiaEvidence); ok {
+		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
 			if err := evpool.handleInboundPotentialAmnesiaEvidence(pe); err != nil {
 				return err
 			}
 			continue
-		} else if ae, ok := ev.(types.AmnesiaEvidence); ok {
+		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
 			evpool.logger.Info("Hi")
 			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
 				ae.PotentialAmnesiaEvidence.VoteB.Round {
@@ -234,7 +235,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				// we are going to add this amnesia evidence and check if we already have an amnesia evidence or potential
 				// amnesia evidence that addesses the same case
 				evpool.logger.Info("Hi")
-				aeWithoutPolc := types.AmnesiaEvidence{
+				aeWithoutPolc := &types.AmnesiaEvidence{
 					PotentialAmnesiaEvidence: ae.PotentialAmnesiaEvidence,
 					Polc:                     types.EmptyPOLC(),
 				}
@@ -341,7 +342,7 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 // IsOnTrial checks whether a piece of evidence is in the awaiting bucket.
 // Only Potential Amnesia Evidence is stored here.
 func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
-	if pe, ok := evidence.(types.PotentialAmnesiaEvidence); ok {
+	if pe, ok := evidence.(*types.PotentialAmnesiaEvidence); ok {
 		key := keyAwaitingTrial(pe)
 		ok, err := evpool.evidenceStore.Has(key)
 		if err != nil {
@@ -354,29 +355,29 @@ func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
 
 // RetrievePOLC attempts to find a polc at the given height and round, if not there than exist returns false, all
 // database errors are automatically logged
-func (evpool *Pool) RetrievePOLC(height int64, round int32) (polc types.ProofOfLockChange, err error) {
+func (evpool *Pool) RetrievePOLC(height int64, round int32) (*types.ProofOfLockChange, error) {
 	var pbpolc tmproto.ProofOfLockChange
 	key := keyPOLCFromHeightAndRound(height, round)
 	polcBytes, err := evpool.evidenceStore.Get(key)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve polc", "err", err)
-		return polc, err
+		return nil, err
 	}
 
 	if polcBytes == nil {
-		return polc, err
+		return nil, err
 	}
 
 	err = proto.Unmarshal(polcBytes, &pbpolc)
 	if err != nil {
-		return polc, err
+		return nil, err
 	}
-	plc, err := types.ProofOfLockChangeFromProto(&pbpolc)
+	polc, err := types.ProofOfLockChangeFromProto(&pbpolc)
 	if err != nil {
-		return polc, err
+		return nil, err
 	}
 
-	return *plc, err
+	return polc, err
 }
 
 // EvidenceFront goes to the first evidence in the clist
@@ -608,7 +609,7 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
 		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
 			if pe.Primed(trialPeriod, currentHeight) {
-				ae := types.MakeAmnesiaEvidence(*pe, types.EmptyPOLC())
+				ae := types.MakeAmnesiaEvidence(pe, types.EmptyPOLC())
 				err := evpool.addPendingEvidence(ae)
 				if err != nil {
 					evpool.logger.Error("Unable to add amnesia evidence", "err", err)
@@ -632,11 +633,11 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 	return -1
 }
 
-func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe types.PotentialAmnesiaEvidence) error {
+func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmnesiaEvidence) error {
 	var (
 		height = pe.Height()
 		exists = false
-		polc   types.ProofOfLockChange
+		polc   *types.ProofOfLockChange
 		err    error
 	)
 
@@ -800,11 +801,11 @@ func keyPending(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
 }
 
-func keyAwaitingTrial(evidence types.PotentialAmnesiaEvidence) []byte {
+func keyAwaitingTrial(evidence *types.PotentialAmnesiaEvidence) []byte {
 	return append([]byte{baseKeyAwaitingTrial}, keySuffix(evidence)...)
 }
 
-func keyPOLC(polc types.ProofOfLockChange) []byte {
+func keyPOLC(polc *types.ProofOfLockChange) []byte {
 	return keyPOLCFromHeightAndRound(polc.Height(), polc.Round())
 }
 

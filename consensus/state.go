@@ -70,7 +70,7 @@ type txNotifier interface {
 // interface to the evidence pool
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
-	AddPOLC(types.ProofOfLockChange) error
+	AddPOLC(*types.ProofOfLockChange) error
 }
 
 // State handles execution of the consensus algorithm.

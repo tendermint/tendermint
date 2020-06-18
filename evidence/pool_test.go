@@ -211,10 +211,28 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
 		height       = state.ConsensusParams.Evidence.MaxAgeNumBlocks * 2
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		firstBlockID = types.BlockID{
+			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			PartsHeader: types.PartSetHeader{
+				Total: 1,
+				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			},
+		}
 	)
+	
+	val := types.NewMockPV()
+	voteA := makeVote(height, 0, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
+	vA := voteA.ToProto()
+	err := val.SignVote(evidenceChainID, vA)
+	require.NoError(t, err)
+	voteA.Signature = vA.Signature
+	
 
 	pubKey, _ := types.NewMockPV().GetPubKey()
-	polc := types.NewMockPOLC(1, evidenceTime, pubKey)
+	polc := &types.ProofOfLockChange{
+		Votes: []*types.Vote{voteA},
+		PubKey: pubKey,
+	}
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
@@ -329,14 +347,6 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 
 	pool.SetLogger(log.TestingLogger())
 
-	polc := types.NewMockPOLC(height, evidenceTime, pubKey)
-	err = pool.AddPOLC(polc)
-	require.NoError(t, err)
-
-	polc, err = pool.RetrievePOLC(height, 1)
-	require.NoError(t, err)
-	require.NotEmpty(t, polc)
-
 	voteA := makeVote(height, 0, 0, pubKey.Address(), firstBlockID, evidenceTime)
 	vA := voteA.ToProto()
 	err = val.SignVote(evidenceChainID, vA)
@@ -352,10 +362,21 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	err = val.SignVote(evidenceChainID, vC)
 	voteC.Signature = vC.Signature
 	require.NoError(t, err)
-	ev := types.PotentialAmnesiaEvidence{
+	ev := &types.PotentialAmnesiaEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
 	}
+	
+	polc := &types.ProofOfLockChange{
+		Votes: []*types.Vote{voteA},
+		PubKey: pubKey2,
+	}
+	err = pool.AddPOLC(polc)
+	require.NoError(t, err)
+
+	polc, err = pool.RetrievePOLC(height, 1)
+	require.NoError(t, err)
+	require.NotEmpty(t, polc)
 
 	secondValVote := makeVote(height, 1, 0, pubKey2.Address(), secondBlockID, evidenceTime.Add(1*time.Second))
 	vv2 := secondValVote.ToProto()
@@ -363,8 +384,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	require.NoError(t, err)
 	secondValVote.Signature = vv2.Signature
 
-	validPolc := types.ProofOfLockChange{
-		Votes:  []types.Vote{*secondValVote},
+	validPolc := &types.ProofOfLockChange{
+		Votes:  []*types.Vote{secondValVote},
 		PubKey: pubKey,
 	}
 
@@ -406,13 +427,13 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// CASE D
 	pool.logger.Info("CASE D")
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
-	ev2 := types.PotentialAmnesiaEvidence{
+	ev2 := &types.PotentialAmnesiaEvidence{
 		VoteA: voteC,
 		VoteB: voteB,
 	}
 	err = pool.AddEvidence(ev2)
 	assert.NoError(t, err)
-	expectedAe := types.AmnesiaEvidence{
+	expectedAe := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: ev2,
 		Polc:                     types.EmptyPOLC(),
 	}
@@ -423,7 +444,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// CASE E
 	pool.logger.Info("CASE E")
 	// test for receiving amnesia evidence
-	ae := types.AmnesiaEvidence{
+	ae := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: ev,
 		Polc:                     types.EmptyPOLC(),
 	}
@@ -444,11 +465,11 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	pool.logger.Info("CASE F")
 	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
 	// and start our own trial
-	newPe := types.PotentialAmnesiaEvidence{
+	newPe := &types.PotentialAmnesiaEvidence{
 		VoteA: voteB,
 		VoteB: voteD,
 	}
-	newAe := types.AmnesiaEvidence{
+	newAe := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: newPe,
 		Polc:                     types.EmptyPOLC(),
 	}
@@ -462,7 +483,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// Finally, we receive an amnesia evidence containing a valid polc for an earlier potential amnesia evidence
 	// that we have already upgraded to. We should ad this new amnesia evidence in replace of the prior
 	// amnesia evidence with an empty polc that we have
-	aeWithPolc := types.AmnesiaEvidence{
+	aeWithPolc := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: ev,
 		Polc:                     validPolc,
 	}
