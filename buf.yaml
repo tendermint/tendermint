@@ -7,7 +7,7 @@ lint:
     - MINIMAL
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
-    - PACKAGE_DIRECTORY_MATCH
+    - FILE_LAYOUT
   ignore:
     - gogoproto
 breaking:
