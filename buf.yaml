@@ -1,7 +1,7 @@
 build:
   roots:
     - proto
-    - third_party
+    - third_party/proto
 lint:
   use:
     - MINIMAL
@@ -9,7 +9,7 @@ lint:
     - UNARY_RPC
     - PACKAGE_DIRECTORY_MATCH
   ignore:
-    - proto
+    - gogoproto
 breaking:
   use:
     - FILE

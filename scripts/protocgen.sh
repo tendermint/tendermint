@@ -17,8 +17,6 @@ done
 cp -r ./tendermint/* ./proto/*
 rm -rf tendermint
 
-cp -r ./proto/tendermint/abci/types.pb.go ./abci/types
-rm -rf ./proto/tendermint/abci/types.pb.go
+mv ./proto/tendermint/abci/abci.pb.go ./abci/types
 
-cp -r ./proto/tendermint/rpc/types.pb.go ./rpc/grpc
-rm -rf ./proto/tendermint/rpc/types.pb.go
+mv ./proto/tendermint/rpc/grpc/types.pb.go ./rpc/grpc
