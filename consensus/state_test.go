@@ -311,10 +311,10 @@ func TestStateFullRound2(t *testing.T) {
 
 	// we should be stuck in limbo waiting for more prevotes
 	rs := cs1.GetRoundState()
-	propBlockHash, propPartsHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
+	propBlockHash, propPartSetHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
 
 	// prevote arrives from vs2:
-	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartsHeader, vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vs2)
 	ensurePrevote(voteCh, height, round) // prevote
 
 	ensurePrecommit(voteCh, height, round) //precommit
@@ -324,7 +324,7 @@ func TestStateFullRound2(t *testing.T) {
 	// we should be stuck in limbo waiting for more precommits
 
 	// precommit arrives from vs2:
-	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartsHeader, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs2)
 	ensurePrecommit(voteCh, height, round)
 
 	// wait to finish commit, propose in next height

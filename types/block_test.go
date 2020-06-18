@@ -603,10 +603,10 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 
 	testCases := []struct {
-		testName           string
-		blockIDHash        bytes.HexBytes
-		blockIDPartsHeader PartSetHeader
-		expectErr          bool
+		testName             string
+		blockIDHash          bytes.HexBytes
+		blockIDPartSetHeader PartSetHeader
+		expectErr            bool
 	}{
 		{"Valid BlockID", validBlockID.Hash, validBlockID.PartSetHeader, false},
 		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartSetHeader, true},
@@ -618,7 +618,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			blockID := BlockID{
 				Hash:          tc.blockIDHash,
-				PartSetHeader: tc.blockIDPartsHeader,
+				PartSetHeader: tc.blockIDPartSetHeader,
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})

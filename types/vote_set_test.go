@@ -62,9 +62,9 @@ func withBlockHash(vote *Vote, blockHash []byte) *Vote {
 }
 
 // Convenience: Return new vote with different blockParts
-func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
+func withBlockPartSetHeader(vote *Vote, blockPartSetHeader PartSetHeader) *Vote {
 	vote = vote.Copy()
-	vote.BlockID.PartSetHeader = blockPartsHeader
+	vote.BlockID.PartSetHeader = blockPartSetHeader
 	return vote
 }
 
@@ -184,7 +184,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	blockHash := crypto.CRandBytes(32)
 	blockPartsTotal := uint32(123)
-	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+	blockPartSetHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
 		ValidatorAddress: nil, // NOTE: must fill in
@@ -193,7 +193,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrevoteType,
-		BlockID:          BlockID{blockHash, blockPartsHeader},
+		BlockID:          BlockID{blockHash, blockPartSetHeader},
 	}
 
 	// 66 out of 100 voted for nil.
@@ -234,8 +234,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 		require.NoError(t, err)
 		addr := pubKey.Address()
 		vote := withValidator(voteProto, addr, 67)
-		blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
-		_, err = signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
+		blockPartSetHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+		_, err = signAddVote(privValidators[67], withBlockPartSetHeader(vote, blockPartSetHeader), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -251,8 +251,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 		require.NoError(t, err)
 		addr := pubKey.Address()
 		vote := withValidator(voteProto, addr, 68)
-		blockPartsHeader := PartSetHeader{blockPartsTotal + 1, blockPartsHeader.Hash}
-		_, err = signAddVote(privValidators[68], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
+		blockPartSetHeader := PartSetHeader{blockPartsTotal + 1, blockPartSetHeader.Hash}
+		_, err = signAddVote(privValidators[68], withBlockPartSetHeader(vote, blockPartSetHeader), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
@@ -278,7 +278,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 	}
 
-	// 71st validator voted for the right BlockHash & BlockPartsHeader
+	// 71st validator voted for the right BlockHash & BlockPartSetHeader
 	{
 		pubKey, err := privValidators[70].GetPubKey()
 		require.NoError(t, err)
@@ -289,7 +289,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 			t.Error(err)
 		}
 		blockID, ok = voteSet.TwoThirdsMajority()
-		if !ok || !blockID.Equals(BlockID{blockHash, blockPartsHeader}) {
+		if !ok || !blockID.Equals(BlockID{blockHash, blockPartSetHeader}) {
 			t.Errorf("there should be 2/3 majority")
 		}
 	}
@@ -516,7 +516,7 @@ func TestConflicts(t *testing.T) {
 func TestMakeCommit(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrecommitType, 10, 1)
-	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
+	blockHash, blockPartSetHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
@@ -525,7 +525,7 @@ func TestMakeCommit(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrecommitType,
-		BlockID:          BlockID{blockHash, blockPartsHeader},
+		BlockID:          BlockID{blockHash, blockPartSetHeader},
 	}
 
 	// 6 out of 10 voted for some block.
@@ -550,7 +550,7 @@ func TestMakeCommit(t *testing.T) {
 		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 6)
 		vote = withBlockHash(vote, tmrand.Bytes(32))
-		vote = withBlockPartsHeader(vote, PartSetHeader{123, tmrand.Bytes(32)})
+		vote = withBlockPartSetHeader(vote, PartSetHeader{123, tmrand.Bytes(32)})
 
 		_, err = signAddVote(privValidators[6], vote, voteSet)
 		if err != nil {

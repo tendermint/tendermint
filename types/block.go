@@ -1265,7 +1265,7 @@ func (blockID BlockID) ValidateBasic() error {
 		return fmt.Errorf("wrong Hash")
 	}
 	if err := blockID.PartSetHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong PartsHeader: %v", err)
+		return fmt.Errorf("wrong PartSetHeader: %v", err)
 	}
 	return nil
 }

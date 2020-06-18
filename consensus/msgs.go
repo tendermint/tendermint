@@ -165,7 +165,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}
 	case *tmcons.Message_NewValidBlock:
-		pbPartsHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
+		pbPartSetHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
 		if err != nil {
 			return nil, fmt.Errorf("parts to proto error: %w", err)
 		}
@@ -176,7 +176,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pb = &NewValidBlockMessage{
 			Height:             msg.NewValidBlock.Height,
 			Round:              msg.NewValidBlock.Round,
-			BlockPartSetHeader: *pbPartsHeader,
+			BlockPartSetHeader: *pbPartSetHeader,
 			BlockParts:         pbBits,
 			IsCommit:           msg.NewValidBlock.IsCommit,
 		}
