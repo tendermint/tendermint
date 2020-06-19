@@ -67,7 +67,8 @@ type peers interface {
 // to be setup once during startup.
 type Environment struct {
 	// external, thread safe interfaces
-	ProxyAppQuery proxy.AppConnQuery
+	ProxyAppQuery   proxy.AppConnQuery
+	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
 	StateDB        dbm.DB
