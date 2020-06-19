@@ -24,14 +24,13 @@ const (
 	MaxEvidencePerBlock = 65535
 )
 
-
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *tmproto.ConsensusParams {
 	return &tmproto.ConsensusParams{
 		Block:     DefaultBlockParams(),
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
-    Version: DefaultVersionParams(),
+		Version:   DefaultVersionParams(),
 	}
 }
 
