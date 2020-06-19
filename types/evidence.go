@@ -142,13 +142,13 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 
 	case *AmnesiaEvidence:
 		aepb := evi.ToProto()
-	
+
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_AmnesiaEvidence{
 				AmnesiaEvidence: aepb,
 			},
 		}
-	
+
 		return tp, nil
 
 	case MockEvidence:
@@ -450,8 +450,6 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 	return dve, dve.ValidateBasic()
 }
 
-
-
 // ConflictingHeadersEvidence is primarily used by the light client when it
 // observes two conflicting headers, both having 1/3+ of the voting power of
 // the currently trusted validator set.
@@ -695,7 +693,7 @@ func (ev *ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 	if e2, ok := ev2.(*ConflictingHeadersEvidence); ok {
 		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
 	}
-	
+
 	return false
 }
 
@@ -816,7 +814,7 @@ func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
 		return e.Vote.Height == e2.Vote.Height &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
 	}
-	
+
 	return false
 }
 
@@ -1154,7 +1152,7 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 	if e.VoteA == nil || e.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", e.VoteA, e.VoteB)
 	}
-	
+
 	if err := e.VoteA.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid VoteA: %v", err)
 	}
@@ -1242,7 +1240,7 @@ func (e *PotentialAmnesiaEvidence) ToProto() *tmproto.PotentialAmnesiaEvidence {
 // different rounds because the node received a majority of votes for a different block in the latter round. In cases of
 // amnesia evidence, a suspected node will need ProofOfLockChange to prove that the node did not break protocol.
 type ProofOfLockChange struct {
-	Votes  []*Vote        `json:"votes"`
+	Votes  []*Vote       `json:"votes"`
 	PubKey crypto.PubKey `json:"pubkey"`
 }
 
@@ -1372,7 +1370,7 @@ func (e *ProofOfLockChange) ValidateBasic() error {
 		if vote == nil {
 			return fmt.Errorf("nil vote at index: %d", idx)
 		}
-	
+
 		if err := vote.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid vote#%d: %w", idx, err)
 		}
@@ -1547,14 +1545,14 @@ func (e *AmnesiaEvidence) String() string {
 	return fmt.Sprintf("AmnesiaEvidence{ %v, polc: %v }", e.PotentialAmnesiaEvidence, e.Polc)
 }
 
-func (e *AmnesiaEvidence) ToProto() (*tmproto.AmnesiaEvidence) {
+func (e *AmnesiaEvidence) ToProto() *tmproto.AmnesiaEvidence {
 	paepb := e.PotentialAmnesiaEvidence.ToProto()
 
 	polc, err := e.Polc.ToProto()
 	if err != nil {
 		polc, _ = EmptyPOLC().ToProto()
 	}
-	
+
 	return &tmproto.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: paepb,
 		Polc:                     polc,
@@ -1626,11 +1624,11 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 
 	pae, err := PotentialAmnesiaEvidenceFromProto(pb.PotentialAmnesiaEvidence)
 	if err != nil {
-		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w",err)
+		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w", err)
 	}
 	polc, err := ProofOfLockChangeFromProto(pb.Polc)
 	if err != nil {
-		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w",err)
+		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w", err)
 	}
 
 	tp := &AmnesiaEvidence{
@@ -1642,7 +1640,6 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 }
 
 //--------------------------------------------------------------
-
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence

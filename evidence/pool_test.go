@@ -219,18 +219,17 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 			},
 		}
 	)
-	
+
 	val := types.NewMockPV()
 	voteA := makeVote(1, 1, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
 	vA := voteA.ToProto()
 	err := val.SignVote(evidenceChainID, vA)
 	require.NoError(t, err)
 	voteA.Signature = vA.Signature
-	
 
 	pubKey, _ := types.NewMockPV().GetPubKey()
 	polc := &types.ProofOfLockChange{
-		Votes: []*types.Vote{voteA},
+		Votes:  []*types.Vote{voteA},
 		PubKey: pubKey,
 	}
 
@@ -366,9 +365,9 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		VoteA: voteA,
 		VoteB: voteB,
 	}
-	
+
 	polc := &types.ProofOfLockChange{
-		Votes: []*types.Vote{voteB},
+		Votes:  []*types.Vote{voteB},
 		PubKey: pubKey2,
 	}
 	err = pool.AddPOLC(polc)

@@ -193,7 +193,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	for _, ev := range evList {
-	
+
 		if evpool.Has(ev) {
 			// if it is an amnesia evidence we have but
 			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
@@ -802,7 +802,7 @@ func keyPending(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
 }
 
-func keyAwaitingTrial(evidence *types.PotentialAmnesiaEvidence) []byte {
+func keyAwaitingTrial(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyAwaitingTrial}, keySuffix(evidence)...)
 }
 

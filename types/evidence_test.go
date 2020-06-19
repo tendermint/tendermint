@@ -660,9 +660,9 @@ func TestEvidenceProto(t *testing.T) {
 	}
 
 	tests := []struct {
-		testName string
-		evidence Evidence
-		toProtoErr  bool
+		testName     string
+		evidence     Evidence
+		toProtoErr   bool
 		fromProtoErr bool
 	}{
 		{"DuplicateVoteEvidence empty fail", &DuplicateVoteEvidence{}, false, true},
@@ -689,10 +689,13 @@ func TestEvidenceProto(t *testing.T) {
 		{"PhantomValidatorEvidence nil Vote", &PhantomValidatorEvidence{LastHeightValidatorWasInSet: 2}, false, true},
 		{"PhantomValidatorEvidence success", &PhantomValidatorEvidence{Vote: v2, LastHeightValidatorWasInSet: 2},
 			false, false},
-		{"AmnesiaEvidence nil ProofOfLockChange", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{}, Polc: EmptyPOLC()}, false, true},
-		{"AmnesiaEvidence nil Polc", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v}, Polc: &ProofOfLockChange{}}, false, false},
-		{"AmnesiaEvidence success", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v}, Polc: EmptyPOLC()},
-			false, false},
+		{"AmnesiaEvidence nil ProofOfLockChange", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{},
+			Polc: EmptyPOLC()}, false, true},
+		{"AmnesiaEvidence nil Polc",
+			&AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v},
+				Polc: &ProofOfLockChange{}}, false, false},
+		{"AmnesiaEvidence success", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v},
+			Polc: EmptyPOLC()}, false, false},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -725,9 +728,9 @@ func TestProofOfLockChangeProtoBuf(t *testing.T) {
 	v2 := makeVote(t, val2, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
 
 	testCases := []struct {
-		msg     string
-		polc    *ProofOfLockChange
-		toProtoErr  bool
+		msg          string
+		polc         *ProofOfLockChange
+		toProtoErr   bool
 		fromProtoErr bool
 	}{
 		{"failure, empty key", &ProofOfLockChange{Votes: []*Vote{v, v2}, PubKey: nil}, true, false},
