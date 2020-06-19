@@ -196,7 +196,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	
 		if evpool.Has(ev) {
 			// if it is an amnesia evidence we have but
-			if ae, ok := ev.(*types.AmnesiaEvidence); !ok && ae.Polc.IsAbsent() {
+			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
 				continue
 			}
 		}
@@ -364,8 +364,9 @@ func (evpool *Pool) RetrievePOLC(height int64, round int32) (*types.ProofOfLockC
 		return nil, err
 	}
 
+	// polc doesn't exist
 	if polcBytes == nil {
-		return nil, err
+		return nil, nil
 	}
 
 	err = proto.Unmarshal(polcBytes, &pbpolc)
@@ -650,7 +651,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 			evpool.logger.Error("Failed to retrieve polc for potential amnesia evidence", "err", err, "pae", pe.String())
 			continue
 		}
-		if err == nil && !polc.IsAbsent() {
+		if polc != nil && !polc.IsAbsent() {
 			evpool.logger.Debug("Found polc for potential amnesia evidence", "polc", polc)
 			// we should not need to verify it if both the polc and potential amnesia evidence have already
 			// been verified. We replace the potential amnesia evidence.

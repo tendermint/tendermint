@@ -221,7 +221,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	)
 	
 	val := types.NewMockPV()
-	voteA := makeVote(height, 0, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
+	voteA := makeVote(1, 1, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
 	vA := voteA.ToProto()
 	err := val.SignVote(evidenceChainID, vA)
 	require.NoError(t, err)
@@ -245,10 +245,10 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, polc.Equal(newPolc))
 
-	// should not be able to retrieve
+	// should not be able to retrieve because it doesn't exist
 	emptyPolc, err := pool.RetrievePOLC(2, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
+	assert.Nil(t, emptyPolc)
 
 	lastCommit := makeCommit(height-1, valAddr)
 	block := types.MakeBlock(height, []types.Tx{}, lastCommit, []types.Evidence{})
@@ -261,7 +261,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 
 	emptyPolc, err = pool.RetrievePOLC(1, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, types.ProofOfLockChange{}, emptyPolc)
+	assert.Nil(t, emptyPolc)
 
 }
 
@@ -368,7 +368,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	}
 	
 	polc := &types.ProofOfLockChange{
-		Votes: []*types.Vote{voteA},
+		Votes: []*types.Vote{voteB},
 		PubKey: pubKey2,
 	}
 	err = pool.AddPOLC(polc)
@@ -422,7 +422,6 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.Equal(t, int64(-1), pool.nextEvidenceTrialEndedHeight)
 
 	assert.Equal(t, 1, len(pool.PendingEvidence(1)))
-	t.Log(pool.AllPendingEvidence())
 
 	// CASE D
 	pool.logger.Info("CASE D")

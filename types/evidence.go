@@ -397,6 +397,10 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
+	if dve == nil {
+		return errors.New("empty duplicate vote evidence")
+	}
+
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
@@ -696,6 +700,10 @@ func (ev *ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
 }
 
 func (ev *ConflictingHeadersEvidence) ValidateBasic() error {
+	if ev == nil {
+		return errors.New("empty conflicting headers evidence")
+	}
+
 	if ev.H1 == nil {
 		return errors.New("first header is missing")
 	}
@@ -813,6 +821,9 @@ func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
 }
 
 func (e *PhantomValidatorEvidence) ValidateBasic() error {
+	if e == nil {
+		return errors.New("emoty phantom validator evidence")
+	}
 
 	if e.Vote == nil {
 		return errors.New("empty vote")
