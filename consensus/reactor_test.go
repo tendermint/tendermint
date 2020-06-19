@@ -154,9 +154,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		pubKey, err := privVals[vIdx].GetPubKey()
-		require.NoError(t, err)
-		evpool := newMockEvidencePool(pubKey.Address())
+		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -201,9 +199,9 @@ type mockEvidencePool struct {
 	ev     []types.Evidence
 }
 
-func newMockEvidencePool(val []byte) *mockEvidencePool {
+func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockDuplicateVoteEvidence(1, time.Now().UTC(), "mock-chain-id")},
+		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().UTC(), val, config.ChainID())},
 	}
 }
 
@@ -669,7 +667,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 
 	// we're running many nodes in-process, possibly in in a virtual machine,
 	// and spewing debug messages - making a block could take a while,
-	timeout := time.Second * 300
+	timeout := time.Second * 60
 
 	select {
 	case <-done:
