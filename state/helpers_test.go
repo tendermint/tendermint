@@ -266,7 +266,11 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 }
 
 func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
+	return abci.ResponseEndBlock{
+		ValidatorUpdates: app.ValidatorUpdates,
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Version: &tmproto.VersionParams{
+				AppVersion: 1}}}
 }
 
 func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
@@ -278,7 +282,7 @@ func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 }
 
 func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{}
+	return abci.ResponseCommit{RetainHeight: 1}
 }
 
 func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
