@@ -39,7 +39,6 @@ With this release we are happy to announce the full protobuf migration of the Te
 - We use the generated protobuf types for only on disk and over the wire serialization. This means that these changes should not effect you as user of Tendermint.
 - A few notable changes in the abci:
   - In `ValidatorUpdates` the public key type has been migrated to a protobuf `oneof` type. Since Tendermint only supports ed25519 validator keys this is the only available key in the oneof.
-  - AppStateBytes is protobuf encoded instead of amino encoded <!-- TODO: see if this was even amino encoded before-->
 
 ## v0.33.4
 
