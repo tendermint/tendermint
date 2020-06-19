@@ -26,7 +26,7 @@ message StatusRequest {
   int64 base   = 2;
 }
 
-// StatusResponse is a peer response to infrom their status
+// StatusResponse is a peer response to inform their status
 message StatusResponse {
   int64 height = 1;
   int64 base   = 2;
