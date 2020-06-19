@@ -40,8 +40,8 @@ func TestEvidencePool(t *testing.T) {
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		goodEvidence = types.NewMockEvidence(height, time.Now(), valAddr)
-		badEvidence  = types.NewMockEvidence(1, evidenceTime, valAddr)
+		goodEvidence = types.NewMockDuplicateVoteEvidence(height, evidenceTime, evidenceChainID)
+		badEvidence  = types.NewMockDuplicateVoteEvidence(1, evidenceTime, evidenceChainID)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -81,12 +81,12 @@ func TestEvidencePool(t *testing.T) {
 
 func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		val          = types.NewMockPV()
 		height       = int64(1)
-		stateDB      = initializeValidatorState(valAddr, height)
+		stateDB      = initializeValidatorState(val.PrivKey.PubKey().Address(), height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), val.PrivKey.PubKey().Address())
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
@@ -94,7 +94,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	// evidence not seen yet:
-	evidence := types.NewMockEvidence(height, evidenceTime, valAddr)
+	evidence := types.NewMockDuplicateVoteEvidenceWithValidator(height, evidenceTime, val, evidenceChainID)
 	assert.False(t, pool.IsCommitted(evidence))
 
 	// evidence seen but not yet committed:
@@ -144,7 +144,7 @@ func TestAddEvidence(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockEvidence(tc.evHeight, tc.evTime, valAddr)
+			ev := types.NewMockDuplicateVoteEvidence(tc.evHeight, tc.evTime, evidenceChainID)
 			err := pool.AddEvidence(ev)
 			if tc.expErr {
 				assert.Error(t, err)
@@ -169,7 +169,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// create new block (no need to save it to blockStore)
-	evidence := types.NewMockEvidence(height, time.Now(), valAddr)
+	evidence := types.NewMockDuplicateVoteEvidence(height, time.Now(), evidenceChainID)
 	lastCommit := makeCommit(height, valAddr)
 	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{evidence})
 	// update state (partially)
@@ -266,7 +266,8 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 
 func TestRecoverPendingEvidence(t *testing.T) {
 	var (
-		valAddr         = tmrand.Bytes(crypto.AddressSize)
+		val             = types.NewMockPV()
+		valAddr         = val.PrivKey.PubKey().Address()
 		height          = int64(30)
 		stateDB         = initializeValidatorState(valAddr, height)
 		evidenceDB      = dbm.NewMemDB()
@@ -274,8 +275,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		state           = sm.LoadState(stateDB)
 		blockStore      = initializeBlockStore(blockStoreDB, state, valAddr)
 		evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-		goodEvidence    = types.NewMockEvidence(height, time.Now(), valAddr)
-		expiredEvidence = types.NewMockEvidence(int64(1), evidenceTime, valAddr)
+		goodEvidence    = types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), val, evidenceChainID)
+		expiredEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(int64(1), evidenceTime, val, evidenceChainID)
 	)
 
 	// load good evidence

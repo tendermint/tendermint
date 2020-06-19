@@ -260,7 +260,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// fill the evidence pool with more evidence
 	// than can fit in a block
 	for i := 0; i <= maxEvidence; i++ {
-		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
+		ev := types.NewMockDuplicateVoteEvidence(height, time.Now(), "test-chain")
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}

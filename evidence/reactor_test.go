@@ -117,7 +117,7 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *Pool, valAddr []byte, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockEvidence(int64(i+1), time.Now().UTC(), valAddr)
+		ev := types.NewMockDuplicateVoteEvidence(int64(i+1), time.Now().UTC(), evidenceChainID)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
