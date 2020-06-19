@@ -312,7 +312,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 
 // Time returns time of the latest vote.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return max_time(dve.VoteA.Timestamp, dve.VoteB.Timestamp)
+	return maxTime(dve.VoteA.Timestamp, dve.VoteB.Timestamp)
 }
 
 // Address returns the address of the validator.
@@ -679,7 +679,7 @@ func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
 // Time returns time of the latest header.
 func (ev ConflictingHeadersEvidence) Time() time.Time {
-	return max_time(ev.H1.Time, ev.H2.Time)
+	return maxTime(ev.H1.Time, ev.H2.Time)
 }
 
 func (ev ConflictingHeadersEvidence) Address() []byte {
@@ -959,7 +959,7 @@ func (e LunaticValidatorEvidence) Height() int64 {
 
 // Time returns the maximum between the header's time and vote's time.
 func (e LunaticValidatorEvidence) Time() time.Time {
-	return max_time(e.Header.Time, e.Vote.Timestamp)
+	return maxTime(e.Header.Time, e.Vote.Timestamp)
 }
 
 func (e LunaticValidatorEvidence) Address() []byte {
@@ -1151,7 +1151,7 @@ func (e PotentialAmnesiaEvidence) Height() int64 {
 
 // Time returns time of the latest vote.
 func (e PotentialAmnesiaEvidence) Time() time.Time {
-	return max_time(e.VoteA.Timestamp, e.VoteB.Timestamp)
+	return maxTime(e.VoteA.Timestamp, e.VoteB.Timestamp)
 }
 
 func (e PotentialAmnesiaEvidence) Address() []byte {
@@ -1776,7 +1776,7 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 	}
 }
 
-func max_time(t1 time.Time, t2 time.Time) time.Time {
+func maxTime(t1 time.Time, t2 time.Time) time.Time {
 	if t1.After(t2) {
 		return t1
 	}
