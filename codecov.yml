@@ -22,4 +22,4 @@ ignore:
   - "DOCKER"
   - "scripts"
   - "**/*.pb.go"
-  - "libs/pubsub/queery/query.peg.go"
+  - "libs/pubsub/query/query.peg.go"
