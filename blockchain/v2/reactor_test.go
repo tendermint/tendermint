@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sort"
@@ -8,18 +9,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
+	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	bcproto "github.com/tendermint/tendermint/proto/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -96,7 +98,7 @@ func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
@@ -117,13 +119,15 @@ func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, blocksSynced int) {
+func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
+	return true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) error {
+	return nil
 }
 
 type testReactorParams struct {
@@ -131,7 +135,6 @@ type testReactorParams struct {
 	genDoc      *types.GenesisDoc
 	privVals    []types.PrivValidator
 	startHeight int64
-	bufferSize  int
 	mockA       bool
 }
 
@@ -149,14 +152,14 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		if err != nil {
-			panic(errors.Wrap(err, "error start app"))
+			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
 		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, appl, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -353,7 +356,6 @@ func TestReactorHelperMode(t *testing.T) {
 		genDoc:      genDoc,
 		privVals:    privVals,
 		startHeight: 20,
-		bufferSize:  100,
 		mockA:       true,
 	}
 
@@ -371,10 +373,10 @@ func TestReactorHelperMode(t *testing.T) {
 			name:   "status request",
 			params: params,
 			msgs: []testEvent{
-				{"P1", bcStatusRequestMessage{}},
-				{"P1", bcBlockRequestMessage{Height: 13}},
-				{"P1", bcBlockRequestMessage{Height: 20}},
-				{"P1", bcBlockRequestMessage{Height: 22}},
+				{"P1", bcproto.StatusRequest{}},
+				{"P1", bcproto.BlockRequest{Height: 13}},
+				{"P1", bcproto.BlockRequest{Height: 20}},
+				{"P1", bcproto.BlockRequest{Height: 22}},
 			},
 		},
 	}
@@ -383,25 +385,32 @@ func TestReactorHelperMode(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
-			reactor.Start()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
+			reactor.Start()
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
 				switch ev := step.event.(type) {
-				case bcStatusRequestMessage:
+				case bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+					msg, err := bc.EncodeMsg(&ev)
+					assert.NoError(t, err)
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
-				case bcBlockRequestMessage:
+				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						msg, err := bc.EncodeMsg(&ev)
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						msg, err := bc.EncodeMsg(&ev)
+						assert.NoError(t, err)
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
@@ -481,7 +490,7 @@ func newReactorStore(
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(errors.Wrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	stateDB := dbm.NewMemDB()
@@ -489,7 +498,7 @@ func newReactorStore(
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(errors.Wrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
@@ -525,7 +534,7 @@ func newReactorStore(
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(errors.Wrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

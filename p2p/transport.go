@@ -6,11 +6,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 const (
@@ -288,7 +289,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 				if r := recover(); r != nil {
 					err := ErrRejected{
 						conn:          c,
-						err:           errors.Errorf("recovered from panic: %v", r),
+						err:           fmt.Errorf("recovered from panic: %v", r),
 						isAuthFailure: true,
 					}
 					select {
@@ -525,20 +526,18 @@ func handshake(
 	var (
 		errc = make(chan error, 2)
 
-		peerNodeInfo DefaultNodeInfo
-		ourNodeInfo  = nodeInfo.(DefaultNodeInfo)
+		pbpeerNodeInfo tmp2p.DefaultNodeInfo
+		peerNodeInfo   DefaultNodeInfo
+		ourNodeInfo    = nodeInfo.(DefaultNodeInfo)
 	)
 
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, ourNodeInfo)
+		_, err := protoio.NewDelimitedWriter(c).WriteMsg(ourNodeInfo.ToProto())
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
-			c,
-			&peerNodeInfo,
-			int64(MaxNodeInfoSize()),
-		)
+		protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
+		err := protoReader.ReadMsg(&pbpeerNodeInfo)
 		errc <- err
 	}(errc, c)
 
@@ -547,6 +546,11 @@ func handshake(
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	peerNodeInfo, err := DefaultNodeInfoFromToProto(&pbpeerNodeInfo)
+	if err != nil {
+		return nil, err
 	}
 
 	return peerNodeInfo, c.SetDeadline(time.Time{})

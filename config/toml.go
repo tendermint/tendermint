@@ -72,7 +72,9 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
-##### main base config options #####
+#######################################################################
+###                   Main Base Config Options                      ###
+#######################################################################
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
@@ -141,9 +143,14 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-##### advanced configuration options #####
 
-##### rpc server configuration options #####
+#######################################################################
+###                 Advanced Configuration Options                  ###
+#######################################################################
+
+#######################################################
+###       RPC Server Configuration Options          ###
+#######################################################
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -222,7 +229,9 @@ tls_cert_file = "{{ .RPC.TLSCertFile }}"
 # Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
-##### peer to peer configuration options #####
+#######################################################
+###           P2P Configuration Options             ###
+#######################################################
 [p2p]
 
 # Address to listen for incoming connections
@@ -293,7 +302,9 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
-##### mempool configuration options #####
+#######################################################
+###          Mempool Configurattion Option          ###
+#######################################################
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
@@ -312,19 +323,49 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 cache_size = {{ .Mempool.CacheSize }}
 
 # Maximum size of a single transaction.
-# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
-##### fast sync configuration options #####
+#######################################################
+###         State Sync Configuration Options        ###
+#######################################################
+[statesync]
+# State sync rapidly bootstraps a new node by discovering, fetching, and restoring a state machine
+# snapshot from peers instead of fetching and replaying historical blocks. Requires some peers in
+# the network to take and serve state machine snapshots. State sync is not attempted if the node
+# has any local state (LastBlockHeight > 0). The node will have a truncated block history,
+# starting from the height of the snapshot.
+enable = {{ .StateSync.Enable }}
+
+# RPC servers (comma-separated) for light client verification of the synced state machine and
+# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
+# header hash obtained from a trusted source, and a period during which validators can be trusted.
+#
+# For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
+# weeks) during which they can be financially punished (slashed) for misbehavior.
+rpc_servers = ""
+trust_height = {{ .StateSync.TrustHeight }}
+trust_hash = "{{ .StateSync.TrustHash }}"
+trust_period = "{{ .StateSync.TrustPeriod }}"
+
+# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
+# Will create a new, randomly named directory within, and remove it when done.
+temp_dir = "{{ .StateSync.TempDir }}"
+
+#######################################################
+###       Fast Sync Configuration Connections       ###
+#######################################################
 [fastsync]
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
-#   3) "v2" - refactor of v1 version for better usability
+#   2) "v2" - complete redesign of v0, optimized for testability & readability 
 version = "{{ .FastSync.Version }}"
 
-##### consensus configuration options #####
+#######################################################
+###         Consensus Configuration Options         ###
+#######################################################
 [consensus]
 
 wal_file = "{{ js .Consensus.WalPath }}"
@@ -348,7 +389,9 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
-##### transactions indexer configuration options #####
+#######################################################
+###   Transaction Indexer Configuration Options     ###
+#######################################################
 [tx_index]
 
 # What indexer to use for transactions
@@ -380,7 +423,9 @@ index_keys = "{{ .TxIndex.IndexKeys }}"
 # indexed).
 index_all_keys = {{ .TxIndex.IndexAllKeys }}
 
-##### instrumentation configuration options #####
+#######################################################
+###       Instrumentation Configuration Options     ###
+#######################################################
 [instrumentation]
 
 # When true, Prometheus metrics are served under /metrics on
@@ -476,6 +521,6 @@ var testPrivValidatorKey = `{
 
 var testPrivValidatorState = `{
   "height": "0",
-  "round": "0",
+  "round": 0,
   "step": 0
 }`

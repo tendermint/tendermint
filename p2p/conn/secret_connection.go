@@ -6,15 +6,17 @@ import (
 	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
 	"sync"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -22,7 +24,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/async"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmp2p "github.com/tendermint/tendermint/proto/p2p"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -150,7 +155,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sign the challenge bytes for authentication.
-	locSignature := signChallenge(&challenge, locPrivKey)
+	locSignature, err := signChallenge(&challenge, locPrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
@@ -159,8 +167,8 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
-	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
-		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
+	if _, ok := remPubKey.(ed25519.PubKey); !ok {
+		return nil, fmt.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
@@ -246,7 +254,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	defer pool.Put(frame)
 	_, err = sc.recvAead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("failed to decrypt SecretConnection")
+		return n, fmt.Errorf("failed to decrypt SecretConnection: %w", err)
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption
@@ -296,18 +304,22 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
-			if err1 != nil {
-				return nil, true, err1 // abort
+			lc := *locEphPub
+			_, err = protoio.NewDelimitedWriter(conn).WriteMsg(&gogotypes.BytesValue{Value: lc[:]})
+			if err != nil {
+				return nil, true, err // abort
 			}
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _remEphPub [32]byte
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, true, err2 // abort
+			var bytes gogotypes.BytesValue
+			err = protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
+			if err != nil {
+				return nil, true, err // abort
 			}
+
+			var _remEphPub [32]byte
+			copy(_remEphPub[:], bytes.Value)
 			return _remEphPub, false, nil
 		},
 	)
@@ -377,13 +389,12 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 	return
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature []byte) {
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
 	signature, err := locPrivKey.Sign(challenge[:])
-	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return
+	return signature, nil
 }
 
 type authSigMessage struct {
@@ -396,17 +407,31 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
-			if err1 != nil {
-				return nil, true, err1 // abort
+			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+			if err != nil {
+				return nil, true, err
+			}
+			_, err = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
+			if err != nil {
+				return nil, true, err // abort
 			}
 			return nil, false, nil
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
-			var _recvMsg authSigMessage
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, true, err2 // abort
+			var pba tmp2p.AuthSigMessage
+			err = protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
+			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
+			_recvMsg := authSigMessage{
+				Key: pk,
+				Sig: pba.Sig,
 			}
 			return _recvMsg, false, nil
 		},

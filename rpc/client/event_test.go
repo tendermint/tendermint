@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var waitForEventTimeout = 5 * time.Second
+var waitForEventTimeout = 8 * time.Second
 
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
@@ -97,6 +97,9 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				require.Nil(t, err, "%d: %+v", i, err)
 				defer c.Stop()
 			}
+
+			// wait for the client subscription to get set up
+			time.Sleep(100 * time.Millisecond)
 
 			// make the tx
 			_, _, tx := MakeTxKV()

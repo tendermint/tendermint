@@ -1,9 +1,9 @@
 package async
 
 import (
+	"fmt"
+	"runtime"
 	"sync/atomic"
-
-	"github.com/pkg/errors"
 )
 
 //----------------------------------------
@@ -144,7 +144,10 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 				if pnk := recover(); pnk != nil {
 					atomic.AddInt32(numPanics, 1)
 					// Send panic to taskResultCh.
-					taskResultCh <- TaskResult{nil, errors.Errorf("panic in task %v", pnk)}
+					const size = 64 << 10
+					buf := make([]byte, size)
+					buf = buf[:runtime.Stack(buf, false)]
+					taskResultCh <- TaskResult{nil, fmt.Errorf("panic in task %v : %s", pnk, buf)}
 					// Closing taskResultCh lets trs.Wait() work.
 					close(taskResultCh)
 					// Decrement waitgroup.

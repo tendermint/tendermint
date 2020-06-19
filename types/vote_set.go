@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/libs/bits"
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 const (
@@ -61,8 +61,8 @@ type P2PID string
 type VoteSet struct {
 	chainID       string
 	height        int64
-	round         int
-	signedMsgType SignedMsgType
+	round         int32
+	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
 	mtx           sync.Mutex
@@ -75,7 +75,8 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int32,
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -107,7 +108,7 @@ func (voteSet *VoteSet) GetHeight() int64 {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetRound() int {
+func (voteSet *VoteSet) GetRound() int32 {
 	if voteSet == nil {
 		return -1
 	}
@@ -160,33 +161,34 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 
 	// Ensure that validator index was set
 	if valIndex < 0 {
-		return false, errors.Wrap(ErrVoteInvalidValidatorIndex, "Index < 0")
+		return false, fmt.Errorf("index < 0: %w", ErrVoteInvalidValidatorIndex)
 	} else if len(valAddr) == 0 {
-		return false, errors.Wrap(ErrVoteInvalidValidatorAddress, "Empty address")
+		return false, fmt.Errorf("empty address: %w", ErrVoteInvalidValidatorAddress)
 	}
 
 	// Make sure the step matches.
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.signedMsgType) {
-		return false, errors.Wrapf(ErrVoteUnexpectedStep, "Expected %d/%d/%d, but got %d/%d/%d",
+		return false, fmt.Errorf("expected %d/%d/%d, but got %d/%d/%d: %w",
 			voteSet.height, voteSet.round, voteSet.signedMsgType,
-			vote.Height, vote.Round, vote.Type)
+			vote.Height, vote.Round, vote.Type, ErrVoteUnexpectedStep)
 	}
 
 	// Ensure that signer is a validator.
 	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, errors.Wrapf(ErrVoteInvalidValidatorIndex,
-			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
+		return false, fmt.Errorf(
+			"cannot find validator %d in valSet of size %d: %w",
+			valIndex, voteSet.valSet.Size(), ErrVoteInvalidValidatorIndex)
 	}
 
 	// Ensure that the signer has the right address.
 	if !bytes.Equal(valAddr, lookupAddr) {
-		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
+		return false, fmt.Errorf(
 			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\n"+
-				"Ensure the genesis file is correct across all validators.",
-			valAddr, lookupAddr, valIndex)
+				"Ensure the genesis file is correct across all validators: %w",
+			valAddr, lookupAddr, valIndex, ErrVoteInvalidValidatorAddress)
 	}
 
 	// If we already know of this vote, return false.
@@ -194,12 +196,12 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		if bytes.Equal(existing.Signature, vote.Signature) {
 			return false, nil // duplicate
 		}
-		return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
+		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
 	}
 
 	// Check signature.
 	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
+		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
 	}
 
 	// Add vote and get conflicting vote if any.
@@ -214,7 +216,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey.
-func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok bool) {
+func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok bool) {
 	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
 		return existing, true
 	}
@@ -243,13 +245,13 @@ func (voteSet *VoteSet) addVerifiedVote(
 		// Replace vote if blockKey matches voteSet.maj23.
 		if voteSet.maj23 != nil && voteSet.maj23.Key() == blockKey {
 			voteSet.votes[valIndex] = vote
-			voteSet.votesBitArray.SetIndex(valIndex, true)
+			voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		}
 		// Otherwise don't add it to voteSet.votes
 	} else {
 		// Add to voteSet.votes and incr .sum
 		voteSet.votes[valIndex] = vote
-		voteSet.votesBitArray.SetIndex(valIndex, true)
+		voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		voteSet.sum += votingPower
 	}
 
@@ -364,7 +366,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	if voteSet == nil {
 		return nil
 	}
@@ -400,7 +402,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.signedMsgType != PrecommitType {
+	if voteSet.signedMsgType != tmproto.PrecommitType {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -476,7 +478,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return cdc.MarshalJSON(VoteSetJSON{
+	return tmjson.Marshal(VoteSetJSON{
 		voteSet.voteStrings(),
 		voteSet.bitArrayString(),
 		voteSet.peerMaj23s,
@@ -551,7 +553,7 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Panics if the vote type is not PrecommitType or if
 // there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.signedMsgType != PrecommitType {
+	if voteSet.signedMsgType != tmproto.PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
@@ -598,13 +600,13 @@ func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	valIndex := vote.ValidatorIndex
 	if existing := vs.votes[valIndex]; existing == nil {
-		vs.bitArray.SetIndex(valIndex, true)
+		vs.bitArray.SetIndex(int(valIndex), true)
 		vs.votes[valIndex] = vote
 		vs.sum += votingPower
 	}
 }
 
-func (vs *blockVotes) getByIndex(index int) *Vote {
+func (vs *blockVotes) getByIndex(index int32) *Vote {
 	if vs == nil {
 		return nil
 	}
@@ -616,10 +618,10 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
 	GetHeight() int64
-	GetRound() int
+	GetRound() int32
 	Type() byte
 	Size() int
 	BitArray() *bits.BitArray
-	GetByIndex(int) *Vote
+	GetByIndex(int32) *Vote
 	IsCommit() bool
 }

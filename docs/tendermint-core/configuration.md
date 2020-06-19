@@ -263,6 +263,7 @@ max_tx_bytes = 1048576
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
+#   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "v0"
 
 ##### consensus configuration options #####
@@ -361,7 +362,7 @@ Note after the block H, Tendermint creates something we call a "proof block"
 (only if the application hash changed) H+1. The reason for this is to support
 proofs. If you have a transaction in block H that changes the state to X, the
 new application hash will only be included in block H+1. If after your
-transaction is committed, you want to get a lite-client proof for the new state
+transaction is committed, you want to get a light-client proof for the new state
 (X), you need the new block to be committed in order to do that because the new
 block has the new application hash for the state X. That's why we make a new
 (empty) block if the application hash changes. Otherwise, you won't be able to

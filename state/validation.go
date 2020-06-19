@@ -21,7 +21,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate basic info.
-	if block.Version != state.Version.Consensus {
+	if block.Version.App != state.Version.Consensus.App ||
+		block.Version.Block != state.Version.Consensus.Block {
 		return fmt.Errorf("wrong Block.Header.Version. Expected %v, got %v",
 			state.Version.Consensus,
 			block.Version,
@@ -39,7 +40,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.Height,
 		)
 	}
-
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
@@ -55,9 +55,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.AppHash,
 		)
 	}
-	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
+	hashCP := types.HashConsensusParams(state.ConsensusParams)
+	if !bytes.Equal(block.ConsensusHash, hashCP) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
-			state.ConsensusParams.Hash(),
+			hashCP,
 			block.ConsensusHash,
 		)
 	}
@@ -86,12 +87,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return errors.New("block at height 1 can't have LastCommit signatures")
 		}
 	} else {
-		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
-			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
-		}
-		err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
-		if err != nil {
+		// LastCommit.Signatures length is checked in VerifyCommit.
+		if err := state.LastValidators.VerifyCommit(
+			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
@@ -104,7 +102,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				state.LastBlockTime,
 			)
 		}
-
 		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
 			return fmt.Errorf("invalid block time. Expected %v, got %v",
@@ -123,29 +120,64 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Limit the amount of evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(state.ConsensusParams.Block.MaxBytes)
-	numEvidence := int64(len(block.Evidence.Evidence))
-	if numEvidence > maxNumEvidence {
-		return types.NewErrEvidenceOverflow(maxNumEvidence, numEvidence)
-
+	numEvidence := len(block.Evidence.Evidence)
+	// MaxNumEvidence is capped at uint16, so conversion is always safe.
+	if maxEvidence := int(state.ConsensusParams.Evidence.MaxNum); numEvidence > maxEvidence {
+		return types.NewErrEvidenceOverflow(maxEvidence, numEvidence)
 	}
 
 	// Validate all evidence.
-	for _, ev := range block.Evidence.Evidence {
-		if err := VerifyEvidence(stateDB, state, ev, &block.Header); err != nil {
+	for idx, ev := range block.Evidence.Evidence {
+		// check that no evidence has been submitted more than once
+		for i := idx + 1; i < len(block.Evidence.Evidence); i++ {
+			if ev.Equal(block.Evidence.Evidence[i]) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was submitted twice"))
+			}
+		}
+		if evidencePool != nil {
+			if evidencePool.IsCommitted(ev) {
+				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
+			}
+			if evidencePool.IsPending(ev) {
+				continue
+			}
+		}
+		// if we don't already have amnesia evidence we need to add it to start our own timer unless
+		// a) a valid polc has already been attached
+		// b) the accused node voted back on an earlier round
+		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+			ae.PotentialAmnesiaEvidence.VoteB.Round {
+			if err := evidencePool.AddEvidence(ae); err != nil {
+				return types.NewErrEvidenceInvalid(ev,
+					fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
+			}
+		}
+
+		var header *types.Header
+		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
+			header = evidencePool.Header(ev.Height())
+			if header == nil {
+				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
+			}
+		}
+
+		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
-		if evidencePool != nil && evidencePool.IsCommitted(ev) {
-			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
-		}
+
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize ||
-		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
+	if len(block.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ProposerAddress size %d, got %d",
+			crypto.AddressSize,
+			len(block.ProposerAddress),
+		)
+	}
+	if !state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
 			block.ProposerAddress,
 		)
 	}
@@ -176,8 +208,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-
-	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
+	if ev, ok := evidence.(types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err
 		}
@@ -196,7 +227,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	// For PhantomValidatorEvidence, check evidence.Address was not part of the
 	// validator set at height evidence.Height, but was a validator before OR
 	// after.
-	if phve, ok := evidence.(*types.PhantomValidatorEvidence); ok {
+	if phve, ok := evidence.(types.PhantomValidatorEvidence); ok {
+		// confirm that it hasn't been forged
+
 		_, val = valset.GetByAddress(addr)
 		if val != nil {
 			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
@@ -204,9 +237,9 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 
 		// check if last height validator was in the validator set is within
 		// MaxAgeNumBlocks.
-		if ageNumBlocks > 0 && phve.LastHeightValidatorWasInSet <= ageNumBlocks {
+		if height-phve.LastHeightValidatorWasInSet > evidenceParams.MaxAgeNumBlocks {
 			return fmt.Errorf("last time validator was in the set at height %d, min: %d",
-				phve.LastHeightValidatorWasInSet, ageNumBlocks+1)
+				phve.LastHeightValidatorWasInSet, height-phve.LastHeightValidatorWasInSet)
 		}
 
 		valset, err := LoadValidators(stateDB, phve.LastHeightValidatorWasInSet)
@@ -220,6 +253,16 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			return fmt.Errorf("phantom validator %X not found", addr)
 		}
 	} else {
+		if ae, ok := evidence.(types.AmnesiaEvidence); ok {
+			// check the validator set against the polc to make sure that a majority of valid votes was reached
+			if !ae.Polc.IsAbsent() {
+				err = ae.Polc.ValidateVotes(valset, state.ChainID)
+				if err != nil {
+					return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
+				}
+			}
+		}
+
 		// For all other types, expect evidence.Address to be a validator at height
 		// evidence.Height.
 		_, val = valset.GetByAddress(addr)

@@ -36,7 +36,6 @@ commands:
           name: "Running test"
           command: |
             bash << parameters.script_path >>
-
 jobs:
   setup_dependencies:
     executor: golang
@@ -79,56 +78,6 @@ jobs:
       - run_test:
           script_path: test/persist/test_failure_indices.sh
 
-  test_cover:
-    executor: golang
-    parallelism: 4
-    steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: "Run tests"
-          command: |
-            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
-            export GO111MODULE=on
-            mkdir -p /tmp/logs /tmp/workspace/profiles
-            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
-              id=$(basename "$pkg")
-              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
-            done
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - "profiles/*"
-      - store_artifacts:
-          path: /tmp/logs
-
-  localnet:
-    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace/
-      GOOS: linux
-      GOARCH: amd64
-    parallelism: 1
-    steps:
-      - checkout
-      - run:
-          name: run localnet and exit on failure
-          command: |
-            set -x
-            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
-            make localnet-start &
-            ./scripts/localnet-blocks-test.sh 40 5 10 localhost
-
   test_p2p:
     environment:
       GOBIN: /home/circleci/.go_workspace/bin
@@ -146,31 +95,6 @@ jobs:
       - run: bash test/p2p/circleci.sh << parameters.ipv >>
       - store_artifacts:
           path: /home/circleci/project/test/p2p/logs
-
-  upload_coverage:
-    executor: golang
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: gather
-          command: |
-            echo "mode: atomic" > coverage.txt
-            for prof in $(ls /tmp/workspace/profiles/); do
-              tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
-            done
-      - run:
-          name: upload
-          command: bash .circleci/codecov.sh -f coverage.txt
 
   deploy_docs:
     executor: docs
@@ -276,7 +200,6 @@ jobs:
             export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-
   release_docker:
     machine:
       image: ubuntu-1604:201903-01
@@ -294,7 +217,6 @@ jobs:
             docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
             docker push "tendermint/tendermint"
             docker logout
-
   reproducible_builds:
     executor: golang
     steps:
@@ -370,22 +292,13 @@ workflows:
               only:
                 - docs-staging
       - setup_dependencies
-      - test_cover:
-          requires:
-            - setup_dependencies
       - test_persistence:
-          requires:
-            - setup_dependencies
-      - localnet:
           requires:
             - setup_dependencies
       - test_p2p
       - test_p2p:
           name: test_p2p_ipv6
           ipv: 6
-      - upload_coverage:
-          requires:
-            - test_cover
       - reproducible_builds:
           filters:
             branches:

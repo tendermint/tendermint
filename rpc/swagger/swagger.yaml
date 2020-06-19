@@ -153,6 +153,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /check_tx:
+    get:
+      summary: Checks the transaction without executing it.
+      tags:
+        - Tx
+      operationId: broadcast_tx_commit
+      description: |
+        The transaction won't be added to the mempool.
+
+        Please refer to
+        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          required: true
+          schema:
+            type: string
+            example: "785"
+          description: The transaction
+      responses:
+        200:
+          description: ABCI application's CheckTx response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckTxResponse"
+        500:
+          description: empty error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -440,13 +473,13 @@ paths:
         - unsafe
       description: |
         Dial a peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers
-          in: body
-          name: Array of peers to connect to
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialSeedsPost"
+      requestBody:
+        description: string of possible peers
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialSeedsPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -468,13 +501,13 @@ paths:
         - unsafe
       description: |
         Set a persistent peer, this route in under unsafe, and has to manually enabled to use
-      parameters:
-        - description: string of possible peers, bool argument if they should be added as persistent
-          in: body
-          name: Array of peers to connect to & if they should be persistent
-          required: true
-          schema:
-            $ref: "#/components/schemas/dialPeersPost"
+      requestBody:
+        description: string of possible peers, bool argument if they should be added as persistent
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dialPeersPost"
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
@@ -656,7 +689,7 @@ paths:
           required: false
           schema:
             type: number
-            default: 0
+            default: 1
             example: 1
         - in: query
           name: per_page
@@ -669,7 +702,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators.
+        Get Validators. Validators are sorted by voting power.
       responses:
         200:
           description: Commit results.
@@ -712,6 +745,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
@@ -733,6 +768,8 @@ paths:
         - Info
       description: |
         Get consensus state.
+
+        Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
           description: consensus state results.
@@ -782,9 +819,11 @@ paths:
       parameters:
         - in: query
           name: limit
-          description: Maximum number of unconfirmed transactions to return
+          description: Maximum number of unconfirmed transactions to return (max 100)
+          required: false
           schema:
             type: number
+            default: 30
             example: 1
       tags:
         - Info
@@ -827,6 +866,10 @@ paths:
   /tx_search:
     get:
       summary: Search for transactions
+      description: |
+        Search for transactions w/ their results.
+
+        See /subscribe for the query syntax.
       operationId: tx_search
       parameters:
         - in: query
@@ -870,8 +913,6 @@ paths:
             example: "asc"
       tags:
         - Info
-      description: |
-        Get list of unconfirmed transactions
       responses:
         200:
           description: List of unconfirmed transactions
@@ -1002,11 +1043,11 @@ paths:
       parameters:
         - in: query
           name: evidence
-          description: Amino-encoded JSON evidence
+          description: JSON evidence
           required: true
           schema:
             type: string
-            example: "JSON_EVIDENCE_Amino_encoded"
+            example: "JSON_EVIDENCE_encoded"
       tags:
         - Info
       description: |
@@ -1123,16 +1164,16 @@ components:
         latest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
-          earliest_block_hash:
-            type: string
-            example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
-          earliest_app_hash:
-            type: string
-            example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
-          earliest_block_height:
-            type: string
-            example: "1262196"
-          earliest_block_time:
+        earliest_block_hash:
+          type: string
+          example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+        earliest_app_hash:
+          type: string
+          example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+        earliest_block_height:
+          type: string
+          example: "1262196"
+        earliest_block_time:
             type: string
             example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
@@ -1369,32 +1410,11 @@ components:
           type: string
           example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
       type: object
-    BlockId:
-      required:
-        - "hash"
-        - "parts"
-      properties:
-        hash:
-          type: string
-          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
-        parts:
-          required:
-            - "total"
-            - "hash"
-          properties:
-            total:
-              type: string
-              example: "1"
-            hash:
-              type: string
-              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-          type: object
-      type: object
     BlockMeta:
       type: object
       properties:
         block_id:
-          $ref: "#/components/schemas/BlockId"
+          $ref: "#/components/schemas/BlockID"
         block_size:
           type: number
           example: 1000000
@@ -2936,6 +2956,72 @@ components:
         jsonrpc:
           type: "string"
           example: "2.0"
+    CheckTxResponse:
+      type: object
+      required:
+        - "error"
+        - "result"
+        - "id"
+        - "jsonrpc"
+      properties:
+        error:
+          type: "string"
+          example: ""
+        result:
+          required:
+            - "log"
+            - "data"
+            - "code"
+          properties:
+            code:
+              type: "string"
+              example: "0"
+            data:
+              type: "string"
+              example: ""
+            log:
+              type: "string"
+              example: ""
+            info:
+              type: "string"
+              example: ""
+            gas_wanted:
+              type: "string"
+              example: "1"
+            gas_used:
+              type: "string"
+              example: "0"
+            events:
+              type: "array"
+              x-nullable: true
+              items:
+                type: "object"
+                properties:
+                  type:
+                    type: "string"
+                    example: "app"
+                  attributes:
+                    type: "array"
+                    x-nullable: false
+                    items:
+                      type: "object"
+                      properties:
+                        key:
+                          type: "string"
+                          example: "Y3JlYXRvcg=="
+                        value:
+                          type: "string"
+                          example: "Q29zbW9zaGkgTmV0b3dva28="
+            codespace:
+              type: "string"
+              example: "bank"
+          type: "object"
+        id:
+          type: "number"
+          example: 0
+        jsonrpc:
+          type: "string"
+          example: "2.0"
     BroadcastTxResponse:
       type: object
       required:
@@ -2986,7 +3072,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialSeedsPost:
       type: object
       properties:
@@ -2994,7 +3081,8 @@ components:
           type: array
           items:
             type: "string"
-          example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+          example:
+            ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialResp:
       type: object
       properties:

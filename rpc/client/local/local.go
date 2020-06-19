@@ -2,9 +2,8 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -14,7 +13,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -97,12 +96,16 @@ func (c *Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) 
 	return core.BroadcastTxSync(c.ctx, tx)
 }
 
-func (c *Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *Local) UnconfirmedTxs(limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	return core.UnconfirmedTxs(c.ctx, limit)
 }
 
 func (c *Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return core.NumUnconfirmedTxs(c.ctx)
+}
+
+func (c *Local) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	return core.CheckTx(c.ctx, tx)
 }
 
 func (c *Local) NetInfo() (*ctypes.ResultNetInfo, error) {
@@ -145,6 +148,10 @@ func (c *Local) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return core.Block(c.ctx, height)
 }
 
+func (c *Local) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	return core.BlockByHash(c.ctx, hash)
+}
+
 func (c *Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	return core.BlockResults(c.ctx, height)
 }
@@ -153,7 +160,7 @@ func (c *Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+func (c *Local) Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	return core.Validators(c.ctx, height, page, perPage)
 }
 
@@ -161,7 +168,7 @@ func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(c.ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+func (c *Local) TxSearch(query string, prove bool, page, perPage *int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
@@ -177,7 +184,7 @@ func (c *Local) Subscribe(
 	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
 	outCap := 1
@@ -192,7 +199,7 @@ func (c *Local) Subscribe(
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
@@ -256,7 +263,7 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse query")
+		return fmt.Errorf("failed to parse query: %w", err)
 	}
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
