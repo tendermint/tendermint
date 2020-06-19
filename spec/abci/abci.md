@@ -3,7 +3,7 @@
 ## Overview
 
 The ABCI message types are defined in a [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/proto/abci/types.proto).
 
 ABCI methods are split across four separate ABCI _connections_:
 
