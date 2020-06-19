@@ -150,3 +150,14 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 		Total:      env.Mempool.Size(),
 		TotalBytes: env.Mempool.TxsBytes()}, nil
 }
+
+// CheckTx checks the transaction without executing it. The transaction won't
+// be added to the mempool either.
+// More: https://docs.tendermint.com/master/rpc/#/Tx/check_tx
+func CheckTx(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	res, err := env.ProxyAppMempool.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+}
