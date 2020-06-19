@@ -138,3 +138,14 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(tc.params, tc.updates))
 	}
 }
+
+func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
+	params := makeParams(1, 2, 10, 3, 0, valEd25519)
+
+	assert.EqualValues(t, 0, params.Version.AppVersion)
+
+	updated := UpdateConsensusParams(params,
+		&abci.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
+
+	assert.EqualValues(t, 1, updated.Version.AppVersion)
+}
