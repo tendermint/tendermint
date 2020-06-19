@@ -18,7 +18,6 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmproto "github.com/tendermint/tendermint/proto/types"
 )
 
 func TestValidatorSetBasic(t *testing.T) {
