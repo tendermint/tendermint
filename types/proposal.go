@@ -90,7 +90,12 @@ func (p *Proposal) String() string {
 		CanonicalTime(p.Timestamp))
 }
 
-// ProposalSignBytes returns the Proposal bytes for signing
+// ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
+// for signing.
+//
+// Panics if the marshaling fails.
+//
+// See CanonicalizeProposal
 func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
 	bz, err := protoio.MarshalDelimited(&pb)

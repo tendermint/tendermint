@@ -153,6 +153,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /check_tx:
+    get:
+      summary: Checks the transaction without executing it.
+      tags:
+        - Tx
+      operationId: broadcast_tx_commit
+      description: |
+        The transaction won't be added to the mempool.
+
+        Please refer to
+        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          required: true
+          schema:
+            type: string
+            example: "785"
+          description: The transaction
+      responses:
+        200:
+          description: ABCI application's CheckTx response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckTxResponse"
+        500:
+          description: empty error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -2916,6 +2949,72 @@ components:
                   type: "string"
                   example: "0"
               type: "object"
+          type: "object"
+        id:
+          type: "number"
+          example: 0
+        jsonrpc:
+          type: "string"
+          example: "2.0"
+    CheckTxResponse:
+      type: object
+      required:
+        - "error"
+        - "result"
+        - "id"
+        - "jsonrpc"
+      properties:
+        error:
+          type: "string"
+          example: ""
+        result:
+          required:
+            - "log"
+            - "data"
+            - "code"
+          properties:
+            code:
+              type: "string"
+              example: "0"
+            data:
+              type: "string"
+              example: ""
+            log:
+              type: "string"
+              example: ""
+            info:
+              type: "string"
+              example: ""
+            gas_wanted:
+              type: "string"
+              example: "1"
+            gas_used:
+              type: "string"
+              example: "0"
+            events:
+              type: "array"
+              x-nullable: true
+              items:
+                type: "object"
+                properties:
+                  type:
+                    type: "string"
+                    example: "app"
+                  attributes:
+                    type: "array"
+                    x-nullable: false
+                    items:
+                      type: "object"
+                      properties:
+                        key:
+                          type: "string"
+                          example: "Y3JlYXRvcg=="
+                        value:
+                          type: "string"
+                          example: "Q29zbW9zaGkgTmV0b3dva28="
+            codespace:
+              type: "string"
+              example: "bank"
           type: "object"
         id:
           type: "number"

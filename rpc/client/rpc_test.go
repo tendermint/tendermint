@@ -392,6 +392,20 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 	mempool.Flush()
 }
 
+func TestCheckTx(t *testing.T) {
+	mempool := node.Mempool()
+
+	for _, c := range GetClients() {
+		_, _, tx := MakeTxKV()
+
+		res, err := c.CheckTx(tx)
+		require.NoError(t, err)
+		assert.Equal(t, abci.CodeTypeOK, res.Code)
+
+		assert.Equal(t, 0, mempool.Size(), "mempool must be empty")
+	}
+}
+
 func TestTx(t *testing.T) {
 	// first we broadcast a tx
 	c := getHTTPClient()

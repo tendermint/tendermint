@@ -288,6 +288,15 @@ func (c *baseRPCClient) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error
 	return result, nil
 }
 
+func (c *baseRPCClient) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	result := new(ctypes.ResultCheckTx)
+	_, err := c.caller.Call("check_tx", map[string]interface{}{"tx": tx}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) NetInfo() (*ctypes.ResultNetInfo, error) {
 	result := new(ctypes.ResultNetInfo)
 	_, err := c.caller.Call("net_info", map[string]interface{}{}, result)
