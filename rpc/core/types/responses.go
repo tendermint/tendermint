@@ -174,6 +174,11 @@ type ResultBroadcastTxCommit struct {
 	Height    int64                  `json:"height"`
 }
 
+// ResultCheckTx wraps abci.ResponseCheckTx.
+type ResultCheckTx struct {
+	abci.ResponseCheckTx
+}
+
 // Result of querying for a tx
 type ResultTx struct {
 	Hash     bytes.HexBytes         `json:"hash"`

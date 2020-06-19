@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -60,6 +62,8 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		panic(err)
 	}
 
+	randBytes := tmrand.Bytes(tmhash.Size)
+
 	vote := &types.Vote{
 		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   valIndex,
@@ -67,7 +71,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrecommitType,
-		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
+		BlockID:          types.BlockID{Hash: randBytes, PartsHeader: types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 

@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.proto.blockchain;
+package tendermint.blockchain;
 
 option go_package = "github.com/tendermint/tendermint/proto/blockchain";
 
@@ -17,7 +17,7 @@ message NoBlockResponse {
 
 // BlockResponse returns block to the requested
 message BlockResponse {
-  tendermint.proto.types.Block block = 1;
+  tendermint.types.Block block = 1;
 }
 
 // StatusRequest requests the status of a node (Height & Base)
@@ -26,7 +26,7 @@ message StatusRequest {
   int64 base   = 2;
 }
 
-// StatusResponse is a peer response to infrom their status
+// StatusResponse is a peer response to inform their status
 message StatusResponse {
   int64 height = 1;
   int64 base   = 2;

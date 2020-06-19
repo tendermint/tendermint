@@ -73,10 +73,10 @@ message RequestQuery {
 }
 
 message RequestBeginBlock {
-  bytes                         hash                 = 1;
-  tendermint.proto.types.Header header               = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo                last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence             byzantine_validators = 4 [(gogoproto.nullable) = false];
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -184,14 +184,14 @@ message ResponseInitChain {
 message ResponseQuery {
   uint32 code = 1;
   // bytes data = 2; // use "value" instead.
-  string                                  log       = 3;  // nondeterministic
-  string                                  info      = 4;  // nondeterministic
-  int64                                   index     = 5;
-  bytes                                   key       = 6;
-  bytes                                   value     = 7;
-  tendermint.proto.crypto.merkle.ProofOps proof_ops = 8;
-  int64                                   height    = 9;
-  string                                  codespace = 10;
+  string                            log       = 3;  // nondeterministic
+  string                            info      = 4;  // nondeterministic
+  int64                             index     = 5;
+  bytes                             key       = 6;
+  bytes                             value     = 7;
+  tendermint.crypto.merkle.ProofOps proof_ops = 8;
+  int64                             height    = 9;
+  string                            codespace = 10;
 }
 
 message ResponseBeginBlock {
@@ -277,9 +277,9 @@ message ResponseApplySnapshotChunk {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockParams                            block     = 1;
-  tendermint.proto.types.EvidenceParams  evidence  = 2;
-  tendermint.proto.types.ValidatorParams validator = 3;
+  BlockParams                      block     = 1;
+  tendermint.types.EvidenceParams  evidence  = 2;
+  tendermint.types.ValidatorParams validator = 3;
 }
 
 // BlockParams contains limits on the block size.
@@ -342,8 +342,8 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.proto.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  int64                                  power   = 2;
+  tendermint.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  int64                            power   = 2;
 }
 
 // VoteInfo
