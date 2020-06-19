@@ -144,6 +144,10 @@ func (c *Client) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return c.next.NumUnconfirmedTxs()
 }
 
+func (c *Client) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	return c.next.CheckTx(tx)
+}
+
 func (c *Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return c.next.NetInfo()
 }
