@@ -32,16 +32,17 @@ const evidenceChainID = "test_chain"
 
 func TestEvidencePool(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		val          = types.NewMockPV()
+		valAddr      = val.PrivKey.PubKey().Address()
 		height       = int64(52)
-		stateDB      = initializeValidatorState(valAddr, height)
+		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		goodEvidence = types.NewMockDuplicateVoteEvidence(height, evidenceTime, evidenceChainID)
-		badEvidence  = types.NewMockDuplicateVoteEvidence(1, evidenceTime, evidenceChainID)
+		goodEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(height, evidenceTime, val, evidenceChainID)
+		badEvidence  = types.NewMockDuplicateVoteEvidenceWithValidator(1, evidenceTime, val, evidenceChainID)
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -83,7 +84,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 	var (
 		val          = types.NewMockPV()
 		height       = int64(1)
-		stateDB      = initializeValidatorState(val.PrivKey.PubKey().Address(), height)
+		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), val.PrivKey.PubKey().Address())
@@ -116,9 +117,10 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 
 func TestAddEvidence(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		val          = types.NewMockPV()
+		valAddr      = val.PrivKey.PubKey().Address()
 		height       = int64(30)
-		stateDB      = initializeValidatorState(valAddr, height)
+		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
@@ -156,9 +158,10 @@ func TestAddEvidence(t *testing.T) {
 
 func TestEvidencePoolUpdate(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		val          = types.NewMockPV()
+		valAddr      = val.PrivKey.PubKey().Address()
 		height       = int64(21)
-		stateDB      = initializeValidatorState(valAddr, height)
+		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		state        = sm.LoadState(stateDB)
@@ -185,9 +188,10 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 func TestEvidencePoolNewPool(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
+		val          = types.NewMockPV()
+		valAddr      = val.PrivKey.PubKey().Address()
 		height       = int64(1)
-		stateDB      = initializeValidatorState(valAddr, height)
+		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		state        = sm.LoadState(stateDB)
@@ -203,8 +207,9 @@ func TestEvidencePoolNewPool(t *testing.T) {
 
 func TestAddingAndPruningPOLC(t *testing.T) {
 	var (
-		valAddr      = tmrand.Bytes(crypto.AddressSize)
-		stateDB      = initializeValidatorState(valAddr, 1)
+		val          = types.NewMockPV()
+		valAddr      = val.PrivKey.PubKey().Address()
+		stateDB      = initializeValidatorState(val, 1)
 		evidenceDB   = dbm.NewMemDB()
 		blockStoreDB = dbm.NewMemDB()
 		state        = sm.LoadState(stateDB)
@@ -220,7 +225,6 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		}
 	)
 
-	val := types.NewMockPV()
 	voteA := makeVote(1, 1, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
 	vA := voteA.ToProto()
 	err := val.SignVote(evidenceChainID, vA)
@@ -269,7 +273,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		val             = types.NewMockPV()
 		valAddr         = val.PrivKey.PubKey().Address()
 		height          = int64(30)
-		stateDB         = initializeValidatorState(valAddr, height)
+		stateDB         = initializeValidatorState(val, height)
 		evidenceDB      = dbm.NewMemDB()
 		blockStoreDB    = dbm.NewMemDB()
 		state           = sm.LoadState(stateDB)
@@ -527,10 +531,10 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) d
 	return stateDB
 }
 
-func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
+func initializeValidatorState(privVal types.PrivValidator, height int64) dbm.DB {
 
-	pubKey, _ := types.NewMockPV().GetPubKey()
-	validator := &types.Validator{Address: valAddr, VotingPower: 0, PubKey: pubKey}
+	pubKey, _ := privVal.GetPubKey()
+	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}
 
 	// create validator set and state
 	valSet := &types.ValidatorSet{
