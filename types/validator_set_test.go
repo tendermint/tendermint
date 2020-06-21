@@ -18,7 +18,6 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestValidatorSetBasic(t *testing.T) {
@@ -663,64 +662,69 @@ func TestSafeSubClip(t *testing.T) {
 
 //-------------------------------------------------------------------
 
-func TestValidatorSetVerifyCommit(t *testing.T) {
-	privKey := ed25519.GenPrivKey()
-	pubKey := privKey.PubKey()
-	v1 := NewValidator(pubKey, 1000)
-	vset := NewValidatorSet([]*Validator{v1})
-
-	// good
+func TestValidatorSet_VerifyCommit(t *testing.T) {
 	var (
-		chainID = "mychainID"
-		blockID = makeBlockIDRandom()
-		height  = int64(5)
-	)
-	vote := &Vote{
-		ValidatorAddress: v1.Address,
-		ValidatorIndex:   0,
-		Height:           height,
-		Round:            0,
-		Timestamp:        tmtime.Now(),
-		Type:             tmproto.PrecommitType,
-		BlockID:          blockID,
-	}
+		privKey = ed25519.GenPrivKey()
+		pubKey  = privKey.PubKey()
+		v1      = NewValidator(pubKey, 1000)
+		vset    = NewValidatorSet([]*Validator{v1})
 
+		chainID = "Lalande21185"
+	)
+
+	vote := examplePrecommit()
 	v := vote.ToProto()
 	sig, err := privKey.Sign(VoteSignBytes(chainID, v))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	vote.Signature = sig
-	commit := NewCommit(vote.Height, vote.Round, blockID, []CommitSig{vote.CommitSig()})
 
-	// bad
-	var (
-		badChainID = "notmychainID"
-		badBlockID = BlockID{Hash: []byte("goodbye")}
-		badHeight  = height + 1
-		badCommit  = NewCommit(badHeight, 0, blockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}})
-	)
+	commit := NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote.CommitSig()})
 
-	// test some error cases
-	// TODO: test more cases!
-	cases := []struct {
-		chainID string
-		blockID BlockID
-		height  int64
-		commit  *Commit
+	vote2 := *vote
+	sig2, err := privKey.Sign(VoteSignBytes("EpsilonEridani", v))
+	require.NoError(t, err)
+	vote2.Signature = sig2
+
+	testCases := []struct {
+		description string
+		chainID     string
+		blockID     BlockID
+		height      int64
+		commit      *Commit
+		expErr      bool
 	}{
-		{badChainID, blockID, height, commit},
-		{chainID, badBlockID, height, commit},
-		{chainID, blockID, badHeight, commit},
-		{chainID, blockID, height, badCommit},
+		{"good", chainID, vote.BlockID, vote.Height, commit, false},
+
+		{"wrong signature (#0)", "EpsilonEridani", vote.BlockID, vote.Height, commit, true},
+		{"wrong block ID", chainID, makeBlockIDRandom(), vote.Height, commit, true},
+		{"wrong height", chainID, vote.BlockID, vote.Height - 1, commit, true},
+
+		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true},
+
+		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID,
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true},
+
+		{"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true},
+
+		{"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true},
 	}
 
-	for i, c := range cases {
-		err := vset.VerifyCommit(c.chainID, c.blockID, c.height, c.commit)
-		assert.NotNil(t, err, i)
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			err := vset.VerifyCommit(tc.chainID, tc.blockID, tc.height, tc.commit)
+			if tc.expErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.description)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	// test a good one
-	err = vset.VerifyCommit(chainID, blockID, height, commit)
-	assert.Nil(t, err)
 }
 
 func TestEmptySet(t *testing.T) {
@@ -1407,7 +1411,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 	}
 }
 
-func TestVerifyCommitTrusting(t *testing.T) {
+func TestValidatorSet_VerifyCommitTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
 		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
@@ -1448,7 +1452,7 @@ func TestVerifyCommitTrusting(t *testing.T) {
 	}
 }
 
-func TestVerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
+func TestValidatorSet_VerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
 	var (
 		blockID               = makeBlockIDRandom()
 		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
