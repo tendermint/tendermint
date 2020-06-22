@@ -1,6 +1,6 @@
 # Changelog
 
-## v.0.33.5
+## v0.33.5
 
 Special thanks to external contributors on this release: @tau3, 
 
