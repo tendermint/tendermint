@@ -1517,23 +1517,10 @@ func (cs *State) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
-	// Create a copy of the state for staging and an event cache for txs.
-	stateCopy := cs.state.Copy()
-
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
-	var err error
-	var retainHeight int64
-	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
-		stateCopy,
-		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
-		block)
-	if err != nil {
-		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
-		err := tmos.Kill()
-		if err != nil {
-			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
-		}
+	stateCopy, retainHeight, ok := cs.applyBlock(block, blockParts)
+	if !ok {
 		return
 	}
 
@@ -1565,6 +1552,35 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+}
+
+func (cs *State) applyBlock(block *types.Block, blockParts *types.PartSet) (stateCopy sm.State, retainHeight int64, ok bool) {
+	// Create a copy of the state for staging and an event cache for txs.
+	stateCopy = cs.state.Copy()
+
+	// Release the lock during ApplyBlock, which may take a long time. It's
+	// needed because we want to a) send precommits to other nodes via
+	// gossipVotesRoutine b) respond to RPC during this period.
+	//
+	// Locked in handleMsg.
+	cs.mtx.Unlock()
+	defer cs.mtx.Lock()
+
+	var err error
+	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
+		stateCopy,
+		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
+		block)
+	if err != nil {
+		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
+		killErr := tmos.Kill()
+		if killErr != nil {
+			cs.Logger.Error("Failed to kill this process - please do so manually", "err", killErr)
+		}
+		return sm.State{}, -1, false
+	}
+
+	return stateCopy, retainHeight, true
 }
 
 func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
