@@ -16,6 +16,12 @@ With it, new nodes are able to join the network in a matter of seconds. Read
 [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
 if you want to support it. If you don't, just leave these methods empty. 
 
+`KV.Pair` has been replaced with `abci.EventAttribute`. `Index` field allows
+ABCI applications to dictate which events should be indexed ignoring the
+`tx_index.index_keys` config setting. See
+[\#4877](https://github.com/tendermint/tendermint/issues/4877), where we're
+discussing future direction of indexing.
+
 ### Blockchain Protocol
 
 `Header#LastResultsHash`, which previously was the root hash of a Merkle tree
