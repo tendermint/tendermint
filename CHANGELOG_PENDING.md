@@ -25,7 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
   - [crypto] \4988 Removal of key type multisig
     - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
-  - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`. 
+  - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`.
       - `merkle.Proof` has been renamed to `ProofOps`.
       - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`
       - `SimpleHashFromByteSlices` has been renamed to `HashFromByteSlices`
@@ -110,3 +110,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
 - [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
 - [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)
+- [consensus] \#5035 Fix blocks lagging when consensus reactor handles a message for a long time (@melekes)
