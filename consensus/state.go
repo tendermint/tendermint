@@ -722,6 +722,10 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(mi msgInfo) {
+	// In most cases, the lock is being held during the whole lifetime of this
+	// function. However, when mi is the last precommit needed for 2/3+ and we
+	// enterCommit, we unlock the mutex in applyBlock (see applyBlock for
+	// reasons).
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
