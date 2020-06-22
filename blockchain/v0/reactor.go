@@ -350,8 +350,8 @@ FOR_LOOP:
 			}
 
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
-			firstPartsHeader := firstParts.Header()
-			firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
+			firstPartSetHeader := firstParts.Header()
+			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is

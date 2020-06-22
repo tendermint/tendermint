@@ -737,16 +737,19 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 2 },
-			"blockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
+			func(msg *NewValidBlockMessage) { msg.BlockPartSetHeader.Total = 2 },
+			"blockParts bit array size 1 not equal to BlockPartSetHeader.Total 2",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = bits.NewBitArray(0) },
+			func(msg *NewValidBlockMessage) {
+				msg.BlockPartSetHeader.Total = 0
+				msg.BlockParts = bits.NewBitArray(0)
+			},
 			"empty blockParts",
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
-			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
+			"blockParts bit array size 1602 not equal to BlockPartSetHeader.Total 1",
 		},
 	}
 
@@ -756,7 +759,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			msg := &NewValidBlockMessage{
 				Height: 1,
 				Round:  0,
-				BlockPartsHeader: types.PartSetHeader{
+				BlockPartSetHeader: types.PartSetHeader{
 					Total: 1,
 				},
 				BlockParts: bits.NewBitArray(1),
@@ -881,7 +884,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
 		Hash: bytes.HexBytes{},
-		PartsHeader: types.PartSetHeader{
+		PartSetHeader: types.PartSetHeader{
 			Total: 1,
 			Hash:  []byte{0},
 		},
@@ -928,12 +931,12 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
 				Hash: bytes.HexBytes{},
-				PartsHeader: types.PartSetHeader{
+				PartSetHeader: types.PartSetHeader{
 					Total: 1,
 					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: wrong Hash:"},
+		}, "wrong BlockID: wrong PartSetHeader: wrong Hash:"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

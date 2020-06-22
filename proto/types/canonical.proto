@@ -8,8 +8,8 @@ import "proto/types/types.proto";
 import "google/protobuf/timestamp.proto";
 
 message CanonicalBlockID {
-  bytes                  hash         = 1;
-  CanonicalPartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
+  bytes                  hash            = 1;
+  CanonicalPartSetHeader part_set_header = 2 [(gogoproto.nullable) = false];
 }
 
 message CanonicalPartSetHeader {

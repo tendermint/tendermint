@@ -1242,19 +1242,19 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 
 // BlockID
 type BlockID struct {
-	Hash        tmbytes.HexBytes `json:"hash"`
-	PartsHeader PartSetHeader    `json:"parts"`
+	Hash          tmbytes.HexBytes `json:"hash"`
+	PartSetHeader PartSetHeader    `json:"parts"`
 }
 
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader)
+		blockID.PartSetHeader.Equals(other.PartSetHeader)
 }
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	pbph := blockID.PartsHeader.ToProto()
+	pbph := blockID.PartSetHeader.ToProto()
 	bz, err := pbph.Marshal()
 	if err != nil {
 		panic(err)
@@ -1269,8 +1269,8 @@ func (blockID BlockID) ValidateBasic() error {
 	if err := ValidateHash(blockID.Hash); err != nil {
 		return fmt.Errorf("wrong Hash")
 	}
-	if err := blockID.PartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong PartsHeader: %v", err)
+	if err := blockID.PartSetHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong PartSetHeader: %v", err)
 	}
 	return nil
 }
@@ -1278,19 +1278,19 @@ func (blockID BlockID) ValidateBasic() error {
 // IsZero returns true if this is the BlockID of a nil block.
 func (blockID BlockID) IsZero() bool {
 	return len(blockID.Hash) == 0 &&
-		blockID.PartsHeader.IsZero()
+		blockID.PartSetHeader.IsZero()
 }
 
 // IsComplete returns true if this is a valid BlockID of a non-nil block.
 func (blockID BlockID) IsComplete() bool {
 	return len(blockID.Hash) == tmhash.Size &&
-		blockID.PartsHeader.Total > 0 &&
-		len(blockID.PartsHeader.Hash) == tmhash.Size
+		blockID.PartSetHeader.Total > 0 &&
+		len(blockID.PartSetHeader.Hash) == tmhash.Size
 }
 
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartSetHeader)
 }
 
 // ToProto converts BlockID to protobuf
@@ -1300,8 +1300,8 @@ func (blockID *BlockID) ToProto() tmproto.BlockID {
 	}
 
 	return tmproto.BlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: blockID.PartsHeader.ToProto(),
+		Hash:          blockID.Hash,
+		PartSetHeader: blockID.PartSetHeader.ToProto(),
 	}
 }
 
@@ -1313,12 +1313,12 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	}
 
 	blockID := new(BlockID)
-	ph, err := PartSetHeaderFromProto(&bID.PartsHeader)
+	ph, err := PartSetHeaderFromProto(&bID.PartSetHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	blockID.PartsHeader = *ph
+	blockID.PartSetHeader = *ph
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()

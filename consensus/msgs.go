@@ -36,16 +36,16 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 			},
 		}
 	case *NewValidBlockMessage:
-		pbPartsHeader := msg.BlockPartsHeader.ToProto()
+		pbPartSetHeader := msg.BlockPartSetHeader.ToProto()
 		pbBits := msg.BlockParts.ToProto()
 		pb = tmcons.Message{
 			Sum: &tmcons.Message_NewValidBlock{
 				NewValidBlock: &tmcons.NewValidBlock{
-					Height:           msg.Height,
-					Round:            msg.Round,
-					BlockPartsHeader: pbPartsHeader,
-					BlockParts:       pbBits,
-					IsCommit:         msg.IsCommit,
+					Height:             msg.Height,
+					Round:              msg.Round,
+					BlockPartSetHeader: pbPartSetHeader,
+					BlockParts:         pbBits,
+					IsCommit:           msg.IsCommit,
 				},
 			},
 		}
@@ -165,7 +165,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}
 	case *tmcons.Message_NewValidBlock:
-		pbPartsHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartsHeader)
+		pbPartSetHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
 		if err != nil {
 			return nil, fmt.Errorf("parts to proto error: %w", err)
 		}
@@ -174,11 +174,11 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pbBits.FromProto(msg.NewValidBlock.BlockParts)
 
 		pb = &NewValidBlockMessage{
-			Height:           msg.NewValidBlock.Height,
-			Round:            msg.NewValidBlock.Round,
-			BlockPartsHeader: *pbPartsHeader,
-			BlockParts:       pbBits,
-			IsCommit:         msg.NewValidBlock.IsCommit,
+			Height:             msg.NewValidBlock.Height,
+			Round:              msg.NewValidBlock.Round,
+			BlockPartSetHeader: *pbPartSetHeader,
+			BlockParts:         pbBits,
+			IsCommit:           msg.NewValidBlock.IsCommit,
 		}
 	case *tmcons.Message_Proposal:
 		pbP, err := types.ProposalFromProto(&msg.Proposal.Proposal)

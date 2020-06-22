@@ -300,7 +300,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -308,7 +308,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -613,7 +613,7 @@ func TestEvidenceProto(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -621,7 +621,7 @@ func TestEvidenceProto(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},

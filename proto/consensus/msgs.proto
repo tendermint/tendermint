@@ -21,11 +21,11 @@ message NewRoundStep {
 //i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
 // In case the block is also committed, then IsCommit flag is set to true.
 message NewValidBlock {
-  int64                          height             = 1;
-  int32                          round              = 2;
-  tendermint.types.PartSetHeader block_parts_header = 3 [(gogoproto.nullable) = false];
-  tendermint.libs.bits.BitArray  block_parts        = 4;
-  bool                           is_commit          = 5;
+  int64                          height                = 1;
+  int32                          round                 = 2;
+  tendermint.types.PartSetHeader block_part_set_header = 3 [(gogoproto.nullable) = false];
+  tendermint.libs.bits.BitArray  block_parts           = 4;
+  bool                           is_commit             = 5;
 }
 
 // ProposalMessage is sent when a new block is proposed.

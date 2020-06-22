@@ -83,7 +83,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 	pbb := new(tmproto.Block)
 	buf := []byte{}
-	for i := 0; i < int(blockMeta.BlockID.PartsHeader.Total); i++ {
+	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
@@ -269,7 +269,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
 		batch.Delete(calcBlockCommitKey(h))
 		batch.Delete(calcSeenCommitKey(h))
-		for p := 0; p < int(meta.BlockID.PartsHeader.Total); p++ {
+		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
 			batch.Delete(calcBlockPartKey(h, p))
 		}
 		pruned++
