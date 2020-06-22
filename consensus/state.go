@@ -1554,7 +1554,9 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) applyBlock(block *types.Block, blockParts *types.PartSet) (stateCopy sm.State, retainHeight int64, ok bool) {
+func (cs *State) applyBlock(block *types.Block, blockParts *types.PartSet) (
+	stateCopy sm.State, retainHeight int64, ok bool) {
+
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy = cs.state.Copy()
 
