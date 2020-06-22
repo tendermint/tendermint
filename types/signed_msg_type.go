@@ -1,6 +1,6 @@
 package types
 
-import tmproto "github.com/tendermint/tendermint/proto/types"
+import tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 // IsVoteTypeValid returns true if t is a valid vote type.
 func IsVoteTypeValid(t tmproto.SignedMsgType) bool {

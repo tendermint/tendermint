@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 //-------------------------------------------------------
@@ -71,16 +71,16 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
-func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
-	return abci.BlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
+func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
+	return tmproto.BlockID{
+		Hash:          blockID.Hash,
+		PartSetHeader: TM2PB.PartSetHeader(blockID.PartSetHeader),
 	}
 }
 
-func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
-	return abci.PartSetHeader{
-		Total: int32(header.Total),
+func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
+	return tmproto.PartSetHeader{
+		Total: header.Total,
 		Hash:  header.Hash,
 	}
 }

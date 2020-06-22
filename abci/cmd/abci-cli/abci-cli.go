@@ -22,7 +22,7 @@ import (
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/abci/version"
-	"github.com/tendermint/tendermint/proto/crypto/merkle"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto/merkle"
 )
 
 // client is a global variable so it can be reused by the console

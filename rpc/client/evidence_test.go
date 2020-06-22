@@ -14,7 +14,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/privval"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -52,7 +52,7 @@ func makeEvidences(
 		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
 				Hash:  tmhash.Sum([]byte("partset")),
 			},
@@ -189,8 +189,8 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Commit: types.NewCommit(h1.Height, 1, h1.Commit.BlockID, h1.Commit.Signatures),
 		}
 		h2.Commit.BlockID = types.BlockID{
-			Hash:        h2.Hash(),
-			PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+			Hash:          h2.Hash(),
+			PartSetHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
 		}
 		vote := &types.Vote{
 			ValidatorAddress: pv.Key.Address,

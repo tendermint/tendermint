@@ -43,6 +43,15 @@ Merkle tree built from:
     GasWanted, GasUsed, Events)` responses;
   - `BeginBlock#Events`.
 
+### Protobuf
+
+With this release we are happy to announce the full protobuf migration of the Tendermint repo. This consists of changes that you may need to be aware of:
+
+- All proto files have been moved under one directory, `/proto`. This is in line with the recommended file layout by [buf](https://buf.build), you can read more about it [here](https://buf.build/docs/lint-checkers#file_layout)
+- We use the generated protobuf types for only on disk and over the wire serialization. This means that these changes should not effect you as user of Tendermint.
+- A few notable changes in the abci:
+  - In `ValidatorUpdates` the public key type has been migrated to a protobuf `oneof` type. Since Tendermint only supports ed25519 validator keys this is the only available key in the oneof.
+
 ## v0.33.4
 
 ### Go API

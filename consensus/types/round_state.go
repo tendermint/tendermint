@@ -149,8 +149,8 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	// We must construct BlockID from ProposalBlock and ProposalBlockParts
 	// cs.Proposal is not guaranteed to be set when this function is called
 	blockID := types.BlockID{
-		Hash:        rs.ProposalBlock.Hash(),
-		PartsHeader: rs.ProposalBlockParts.Header(),
+		Hash:          rs.ProposalBlock.Hash(),
+		PartSetHeader: rs.ProposalBlockParts.Header(),
 	}
 
 	return types.EventDataCompleteProposal{

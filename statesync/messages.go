@@ -6,7 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	ssproto "github.com/tendermint/tendermint/proto/statesync"
+	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 )
 
 const (

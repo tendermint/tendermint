@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 type voteData struct {
@@ -294,7 +294,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -302,7 +302,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -607,7 +607,7 @@ func TestEvidenceProto(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -615,7 +615,7 @@ func TestEvidenceProto(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
