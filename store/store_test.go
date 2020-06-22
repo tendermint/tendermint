@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmstore "github.com/tendermint/tendermint/proto/store"
+	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -37,7 +37,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		Signature:        []byte("Signature"),
 	}}
 	return types.NewCommit(height, 0,
-		types.BlockID{Hash: []byte(""), PartsHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
+		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {

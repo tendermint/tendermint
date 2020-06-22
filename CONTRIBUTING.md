@@ -191,6 +191,10 @@ To begin contributing, create a development branch either on github.com/tendermi
 
 Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
 
+Update the `UPGRADING.md` if the change you've made is breaking and the
+instructions should be in place for a user on how he/she can upgrade it's
+software (ABCI application, Tendermint-based blockchain, light client, wallet).
+
 Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.
 
 Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!)
@@ -249,7 +253,10 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - reset the `CHANGELOG_PENDING.md`
-   - bump the appropriate versions in `version.go`
+   - bump Tendermint version in `version.go`
+   - bump P2P and block protocol versions in  `version.go`, if necessary
+   - bump ABCI protocol version in `version.go`, if necessary
+   - make sure all significant breaking changes are covered in `UPGRADING.md`
 4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
 5. merge back to master (don't squash merge!)
 
@@ -260,11 +267,14 @@ Minor releases are done differently from major releases: They are built off of l
 1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
 2. Run integration tests: `make test_integrations`
 3. Prepare the release:
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump the appropriate versions in `version.go`
+   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   - reset the `CHANGELOG_PENDING.md`
+   - bump Tendermint version in `version.go`
+   - bump P2P and block protocol versions in  `version.go`, if necessary
+   - bump ABCI protocol version in `version.go`, if necessary
+   - make sure all significant breaking changes are covered in `UPGRADING.md`
 4. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
