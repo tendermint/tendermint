@@ -54,6 +54,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
   - [proto] \#5025 All proto files have been moved to `/proto` directory. 
     - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
+  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
 
 - Apps
 

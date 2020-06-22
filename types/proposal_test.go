@@ -29,7 +29,7 @@ func init() {
 		Height: 12345,
 		Round:  23456,
 		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
-			PartsHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
+			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}

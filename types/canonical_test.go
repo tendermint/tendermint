@@ -12,13 +12,13 @@ import (
 func TestCanonicalizeBlockID(t *testing.T) {
 	randhash := tmrand.Bytes(tmhash.Size)
 	block1 := tmproto.BlockID{Hash: randhash,
-		PartsHeader: tmproto.PartSetHeader{Total: 5, Hash: randhash}}
+		PartSetHeader: tmproto.PartSetHeader{Total: 5, Hash: randhash}}
 	block2 := tmproto.BlockID{Hash: randhash,
-		PartsHeader: tmproto.PartSetHeader{Total: 10, Hash: randhash}}
+		PartSetHeader: tmproto.PartSetHeader{Total: 10, Hash: randhash}}
 	cblock1 := tmproto.CanonicalBlockID{Hash: randhash,
-		PartsHeader: tmproto.CanonicalPartSetHeader{Total: 5, Hash: randhash}}
+		PartSetHeader: tmproto.CanonicalPartSetHeader{Total: 5, Hash: randhash}}
 	cblock2 := tmproto.CanonicalBlockID{Hash: randhash,
-		PartsHeader: tmproto.CanonicalPartSetHeader{Total: 10, Hash: randhash}}
+		PartSetHeader: tmproto.CanonicalPartSetHeader{Total: 10, Hash: randhash}}
 
 	tests := []struct {
 		name string

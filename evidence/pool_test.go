@@ -303,14 +303,14 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 		//evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
 			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
 				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 			},
 		}
 		secondBlockID = types.BlockID{
 			Hash: []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
 				Hash:  []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
 			},

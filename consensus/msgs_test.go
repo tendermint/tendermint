@@ -23,8 +23,8 @@ func TestMsgToProto(t *testing.T) {
 	}
 	pbPsh := psh.ToProto()
 	bi := types.BlockID{
-		Hash:        tmrand.Bytes(32),
-		PartsHeader: psh,
+		Hash:          tmrand.Bytes(32),
+		PartSetHeader: psh,
 	}
 	pbBi := bi.ToProto()
 	bits := bits.NewBitArray(1)
@@ -90,19 +90,19 @@ func TestMsgToProto(t *testing.T) {
 		}, false},
 
 		{"successful NewValidBlockMessage", &NewValidBlockMessage{
-			Height:           1,
-			Round:            1,
-			BlockPartsHeader: psh,
-			BlockParts:       bits,
-			IsCommit:         false,
+			Height:             1,
+			Round:              1,
+			BlockPartSetHeader: psh,
+			BlockParts:         bits,
+			IsCommit:           false,
 		}, &tmcons.Message{
 			Sum: &tmcons.Message_NewValidBlock{
 				NewValidBlock: &tmcons.NewValidBlock{
-					Height:           1,
-					Round:            1,
-					BlockPartsHeader: pbPsh,
-					BlockParts:       pbBits,
-					IsCommit:         false,
+					Height:             1,
+					Round:              1,
+					BlockPartSetHeader: pbPsh,
+					BlockParts:         pbBits,
+					IsCommit:           false,
 				},
 			},
 		}, false},

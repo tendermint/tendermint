@@ -104,7 +104,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 
 // ValidateBasic performs basic validation.
 func (psh PartSetHeader) ValidateBasic() error {
-	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
+	// Hash can be empty in case of POLBlockID.PartSetHeader in Proposal.
 	if err := ValidateHash(psh.Hash); err != nil {
 		return fmt.Errorf("wrong Hash: %w", err)
 	}

@@ -211,7 +211,7 @@ func (m *StatusRequest) GetBase() int64 {
 	return 0
 }
 
-// StatusResponse is a peer response to infrom their status
+// StatusResponse is a peer response to inform their status
 type StatusResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Base   int64 `protobuf:"varint,2,opt,name=base,proto3" json:"base,omitempty"`

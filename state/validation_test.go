@@ -61,7 +61,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 
-		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartsHeader.Total += 10 }},
+		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
 		{"DataHash wrong", func(block *types.Block) { block.DataHash = wrongHash }},
 
@@ -353,7 +353,7 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 
 var blockID = types.BlockID{
 	Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	PartsHeader: types.PartSetHeader{
+	PartSetHeader: types.PartSetHeader{
 		Total: 1,
 		Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 	},
