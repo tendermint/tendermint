@@ -53,6 +53,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] \#4985 `privval` reactor migration to Protobuf encoding
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
   - [indexer] \#5006 Tx indexer now relies on the application to tell it what to index. There is no longer a way to set which txs to index by the node operator.
+  - [proto] \#5025 All proto files have been moved to `/proto` directory. 
+    - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
+  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
 
 - Apps
 
@@ -88,6 +91,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
 - [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 - [evidence] [#4821](https://github.com/tendermint/tendermint/pull/4821) Amnesia evidence can be detected, verified and committed (@cmwaters)
+- [rpc] \#5017 Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
 
 ### IMPROVEMENTS:
 

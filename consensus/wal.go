@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
-	tmcons "github.com/tendermint/tendermint/proto/consensus"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 

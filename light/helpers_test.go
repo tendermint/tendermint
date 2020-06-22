@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -81,8 +81,8 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 	vset := pkz.ToValidators(1, 1)
 
 	blockID := types.BlockID{
-		Hash:        header.Hash(),
-		PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+		Hash:          header.Hash(),
+		PartSetHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
 	}
 
 	// Fill in the votes we want.
