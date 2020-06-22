@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/libs/service"
-	privvalproto "github.com/tendermint/tendermint/proto/privval"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
 

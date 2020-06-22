@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	tmmerkle "github.com/tendermint/tendermint/proto/crypto/merkle"
+	tmmerkle "github.com/tendermint/tendermint/proto/tendermint/crypto/merkle"
 )
 
 const ProofOpDomino = "test:domino"

@@ -1,0 +1,13 @@
+syntax = "proto3";
+package tendermint.privval;
+
+option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
+
+enum Errors {
+  ERRORS_UNKNOWN             = 0;
+  ERRORS_UNEXPECTED_RESPONSE = 1;
+  ERRORS_NO_CONNECTION       = 2;
+  ERRORS_CONNECTION_TIMEOUT  = 3;
+  ERRORS_READ_TIMEOUT        = 4;
+  ERRORS_WRITE_TIMEOUT       = 5;
+}
