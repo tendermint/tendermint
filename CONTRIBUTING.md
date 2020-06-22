@@ -253,7 +253,9 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - reset the `CHANGELOG_PENDING.md`
-   - bump the appropriate versions in `version.go`
+   - bump Tendermint version in `version.go`
+   - bump P2P and block protocol versions in  `version.go`, if necessary
+   - bump ABCI protocol version in `version.go`, if necessary
 4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
 5. merge back to master (don't squash merge!)
 
@@ -268,7 +270,9 @@ Minor releases are done differently from major releases: They are built off of l
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
    - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
-   - Bump the appropriate versions in `version.go`
+   - bump Tendermint version in `version.go`
+   - bump P2P and block protocol versions in  `version.go`, if necessary
+   - bump ABCI protocol version in `version.go`, if necessary
 4. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
