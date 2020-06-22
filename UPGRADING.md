@@ -8,28 +8,30 @@ a newer version of Tendermint Core.
 This release is not compatible with previous blockchains due to switching from
 amino to proto3 encoding and breaking changes to the header.
 
+### Apps
+
+New ABCI methods (`ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and
+`ApplySnapshotChunk`) were added for the highly anticipated state sync feature.
+With it, new nodes are able to join the network in a matter of seconds. Read
+[the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+if you want to support it. If you don't, just leave these methods empty. 
+
 ### Blockchain Protocol
 
-- `Header#LastResultsHash`, which previously was the root hash of a Merkle tree
-  built from `ResponseDeliverTx(Code, Data)` responses, became the root hash of
-  a Merkle tree built from:
+`Header#LastResultsHash`, which previously was the root hash of a Merkle tree
+built from `ResponseDeliverTx(Code, Data)` responses, became the root hash of a
+Merkle tree built from:
+
   - `BeginBlock#Events`;
-  - root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data, GasWanted, GasUsed, Events)` responses;
+  - root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
+    GasWanted, GasUsed, Events)` responses;
   - `BeginBlock#Events`.
 
-### Events
+### P2P Protocol
 
-- `KV.Pair` has been replaced with `abci.EventAttribute`. This allows
-  applications to indicate if a msg should be indexed at runtime. Previously
-  this was only possible if the node operator decided to index specific or all
-  messages on startup of the node, now the application can indicate which msgs
-  should be indexed.
-
-### Crypto
-
-- `Multsig` & `PubKeyMultisigThreshold` have been moved to the
-  [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk).
-  (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+The default codec is now proto3, not amino. Check out the [TODO]() for
+motivation behind this change. The schema files can be found in the `/proto`
+directory.
 
 ## v0.33.4
 
@@ -43,14 +45,63 @@ When upgrading to version 0.33.4 you will have to fetch the `third_party` direct
 
 ## v0.33.0
 
-This release is not compatible with previous blockchains due to commit becoming signatures only and fields in the header have been removed.
+This release is not compatible with previous blockchains due to commit becoming
+signatures only and fields in the header have been removed.
+
+### Blockchain Protocol
+
+`TotalTxs` and `NumTxs` were removed from the header. `Commit` now consists
+mostly of just signatures.
+
+```go
+type Commit struct {
+	Height     int64
+	Round      int
+	BlockID    BlockID
+	Signatures []CommitSig
+}
+```
+
+```go
+type BlockIDFlag byte
+
+const (
+	// BlockIDFlagAbsent - no vote was received from a validator.
+	BlockIDFlagAbsent BlockIDFlag = 0x01
+	// BlockIDFlagCommit - voted for the Commit.BlockID.
+	BlockIDFlagCommit = 0x02
+	// BlockIDFlagNil - voted for nil.
+	BlockIDFlagNil = 0x03
+)
+
+type CommitSig struct {
+	BlockIDFlag      BlockIDFlag
+	ValidatorAddress Address
+	Timestamp        time.Time
+	Signature        []byte
+}
+```
+
+See [\#63](https://github.com/tendermint/spec/pull/63) for the complete spec
+change.
+
+### P2P Protocol
+
+The secret connection now includes a transcript hashing. If you want to
+implement a handshake (or otherwise have an existing implementation), you'll
+need to make the same changes that were made
+[here](https://github.com/tendermint/tendermint/pull/3668).
 
 ### Config Changes
 
 You will need to generate a new config if you have used a prior version of tendermint.
 
-- Tags have been entirely renamed throughout the codebase to events and there keys are called [compositeKeys](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md).
-- Evidence Params has been changed to include duration.
+Tags have been entirely renamed throughout the codebase to events and there
+keys are called
+[compositeKeys](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md).
+
+Evidence Params has been changed to include duration.
+
   - `consensus_params.evidence.max_age_duration`.
   - Renamed `consensus_params.evidence.max_age` to `max_age_num_blocks`.
 
