@@ -5,22 +5,30 @@ a newer version of Tendermint Core.
 
 ## v0.34.0
 
-This release is not compatible with previous blockchains due to switching from
-amino to proto3 encoding and breaking changes to the header.
+**This release is not compatible with previous blockchains** due to switching
+from amino to proto3 encoding and breaking changes to the header.
 
-### Apps
+### ABCI application changes
 
 New ABCI methods (`ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and
 `ApplySnapshotChunk`) were added for the highly anticipated state sync feature.
 With it, new nodes are able to join the network in a matter of seconds. Read
 [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
-if you want to support it. If you don't, just leave these methods empty. 
+if you want to learn more & support it (with cosmos-sdk you get it
+ automatically). If you don't want to support it, just leave these methods
+ empty.
 
-`KV.Pair` has been replaced with `abci.EventAttribute`. `Index` field allows
-ABCI applications to dictate which events should be indexed ignoring the
-`tx_index.index_keys` config setting. See
+`KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
+field allows ABCI applications to dictate which events should be indexed
+ignoring the `tx_index.index_keys` config setting. See
 [\#4877](https://github.com/tendermint/tendermint/issues/4877), where we're
 discussing future direction of indexing.
+
+### P2P Protocol
+
+The default codec is now proto3, not amino. Check out the [TODO]() for
+motivation behind this change. The schema files can be found in the `/proto`
+directory.
 
 ### Blockchain Protocol
 
@@ -33,21 +41,17 @@ Merkle tree built from:
     GasWanted, GasUsed, Events)` responses;
   - `BeginBlock#Events`.
 
-### P2P Protocol
-
-The default codec is now proto3, not amino. Check out the [TODO]() for
-motivation behind this change. The schema files can be found in the `/proto`
-directory.
-
 ## v0.33.4
 
 ### Go API
 
-- `rpc/client` HTTP and local clients have been moved into `http` and `local` subpackages, and their constructors have been renamed to `New()`.
+- `rpc/client` HTTP and local clients have been moved into `http` and `local`
+  subpackages, and their constructors have been renamed to `New()`.
 
 ### Protobuf Changes
 
-When upgrading to version 0.33.4 you will have to fetch the `third_party` directory along with the updated proto files.
+When upgrading to version 0.33.4 you will have to fetch the `third_party`
+directory along with the updated proto files.
 
 ## v0.33.0
 
