@@ -48,8 +48,8 @@ message Part {
 
 // BlockID
 message BlockID {
-  bytes         hash         = 1;
-  PartSetHeader parts_header = 2 [(gogoproto.nullable) = false];
+  bytes         hash            = 1;
+  PartSetHeader part_set_header = 2 [(gogoproto.nullable) = false];
 }
 
 // --------------------------------

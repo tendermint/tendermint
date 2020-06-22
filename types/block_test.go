@@ -187,7 +187,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) BlockID {
 	copy(psH, partSetHash)
 	return BlockID{
 		Hash: h,
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: partSetSize,
 			Hash:  psH,
 		},
@@ -588,7 +588,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
 		Hash: bytes.HexBytes{},
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 1,
 			Hash:  bytes.HexBytes{},
 		},
@@ -596,29 +596,29 @@ func TestBlockIDValidateBasic(t *testing.T) {
 
 	invalidBlockID := BlockID{
 		Hash: []byte{0},
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 1,
 			Hash:  []byte{0},
 		},
 	}
 
 	testCases := []struct {
-		testName           string
-		blockIDHash        bytes.HexBytes
-		blockIDPartsHeader PartSetHeader
-		expectErr          bool
+		testName             string
+		blockIDHash          bytes.HexBytes
+		blockIDPartSetHeader PartSetHeader
+		expectErr            bool
 	}{
-		{"Valid BlockID", validBlockID.Hash, validBlockID.PartsHeader, false},
-		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartsHeader, true},
-		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartsHeader, true},
+		{"Valid BlockID", validBlockID.Hash, validBlockID.PartSetHeader, false},
+		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartSetHeader, true},
+		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartSetHeader, true},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			blockID := BlockID{
-				Hash:        tc.blockIDHash,
-				PartsHeader: tc.blockIDPartsHeader,
+				Hash:          tc.blockIDHash,
+				PartSetHeader: tc.blockIDPartSetHeader,
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
