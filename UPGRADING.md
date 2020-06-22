@@ -28,7 +28,9 @@ discussing future direction of indexing.
 
 The default codec is now proto3, not amino. Check out the [TODO]() for
 motivation behind this change. The schema files can be found in the `/proto`
-directory.
+directory. In the future we're considering using gRPC for the remote private
+validator and ABCI
+([\#4698](https://github.com/tendermint/tendermint/issues/4698)).
 
 ### Blockchain Protocol
 
