@@ -256,6 +256,7 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
    - bump Tendermint version in `version.go`
    - bump P2P and block protocol versions in  `version.go`, if necessary
    - bump ABCI protocol version in `version.go`, if necessary
+   - make sure all significant breaking changes are covered in `UPGRADING.md`
 4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
 5. merge back to master (don't squash merge!)
 
@@ -266,13 +267,14 @@ Minor releases are done differently from major releases: They are built off of l
 1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
 2. Run integration tests: `make test_integrations`
 3. Prepare the release:
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
+   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   - reset the `CHANGELOG_PENDING.md`
    - bump Tendermint version in `version.go`
    - bump P2P and block protocol versions in  `version.go`, if necessary
    - bump ABCI protocol version in `version.go`, if necessary
+   - make sure all significant breaking changes are covered in `UPGRADING.md`
 4. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
