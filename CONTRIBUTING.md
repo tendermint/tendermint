@@ -191,6 +191,10 @@ To begin contributing, create a development branch either on github.com/tendermi
 
 Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
 
+Update the `UPGRADING.md` if the change you've made is breaking and the
+instructions should be in place for a user on how he/she can upgrade it's
+software (ABCI application, Tendermint-based blockchain, light client, wallet).
+
 Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.
 
 Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!)
