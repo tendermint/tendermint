@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	bcproto "github.com/tendermint/tendermint/proto/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 )
 
 func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
