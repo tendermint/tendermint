@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1026,41 +1025,6 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
 		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
-	}
-}
-
-func TestApplyUpdates(t *testing.T) {
-	initParams := makeConsensusParams(1, 2, 3, 4, 5)
-	const maxAge int64 = 66
-	cases := [...]struct {
-		init     tmproto.ConsensusParams
-		updates  abci.ConsensusParams
-		expected tmproto.ConsensusParams
-	}{
-		0: {initParams, abci.ConsensusParams{}, initParams},
-		1: {initParams, abci.ConsensusParams{}, initParams},
-		2: {initParams,
-			abci.ConsensusParams{
-				Block: &abci.BlockParams{
-					MaxBytes: 44,
-					MaxGas:   55,
-				},
-			},
-			makeConsensusParams(44, 55, 3, 4, 5)},
-		3: {initParams,
-			abci.ConsensusParams{
-				Evidence: &tmproto.EvidenceParams{
-					MaxAgeNumBlocks: maxAge,
-					MaxAgeDuration:  time.Duration(maxAge),
-					MaxNum:          10,
-				},
-			},
-			makeConsensusParams(1, 2, 3, maxAge, 10)},
-	}
-
-	for i, tc := range cases {
-		res := types.UpdateConsensusParams(tc.init, &(tc.updates))
-		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
 }
 
