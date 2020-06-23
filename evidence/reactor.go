@@ -8,8 +8,8 @@ import (
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	ep "github.com/tendermint/tendermint/proto/evidence"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 

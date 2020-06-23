@@ -11,8 +11,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmstate "github.com/tendermint/tendermint/proto/state"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -59,7 +59,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
-		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
+		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, _, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
@@ -186,7 +186,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(
@@ -210,7 +210,7 @@ func makeHeaderPartsResponsesValPowerChange(
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(
@@ -223,7 +223,7 @@ func makeHeaderPartsResponsesParams(
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
-	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
