@@ -89,6 +89,9 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"ConflictingHeadersEvidence", func(blk *Block) {
 			blk.Evidence = EvidenceData{Evidence: []Evidence{&ConflictingHeadersEvidence{}}}
 		}, true},
+		{"PotentialAmnesiaEvidence", func(blk *Block) {
+			blk.Evidence = EvidenceData{Evidence: []Evidence{&PotentialAmnesiaEvidence{}}}
+		}, true},
 	}
 	for i, tc := range testCases {
 		tc := tc
