@@ -12,6 +12,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -212,10 +213,10 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		height       = state.ConsensusParams.Evidence.MaxAgeNumBlocks * 2
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
-			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-			PartsHeader: types.PartSetHeader{
+			Hash:  tmrand.Bytes(tmhash.Size),
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
-				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+				Hash:  tmrand.Bytes(tmhash.Size),
 			},
 		}
 	)
@@ -433,7 +434,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NoError(t, err)
 	expectedAe := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: ev2,
-		Polc:                     types.EmptyPOLC(),
+		Polc:                     types.NewEmptyPOLC(),
 	}
 
 	assert.True(t, pool.IsPending(expectedAe))
@@ -442,10 +443,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// CASE E
 	pool.logger.Info("CASE E")
 	// test for receiving amnesia evidence
-	ae := &types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: ev,
-		Polc:                     types.EmptyPOLC(),
-	}
+	ae := types.NewAmnesiaEvidence(ev, types.NewEmptyPOLC())
 	// we need to run the trial period ourselves so amnesia evidence should not be added, instead
 	// we should extract out the potential amnesia evidence and trying to add that before realising
 	// that we already have it -> no error
@@ -463,14 +461,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	pool.logger.Info("CASE F")
 	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
 	// and start our own trial
-	newPe := &types.PotentialAmnesiaEvidence{
-		VoteA: voteB,
-		VoteB: voteD,
-	}
-	newAe := &types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: newPe,
-		Polc:                     types.EmptyPOLC(),
-	}
+	newPe := types.NewPotentialAmnesiaEvidence(voteB, voteD)
+	newAe := types.NewAmnesiaEvidence(newPe, types.NewEmptyPOLC())
 	err = pool.AddEvidence(newAe)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))

@@ -378,7 +378,7 @@ func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	}
 	ae := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
-		Polc:                     types.EmptyPOLC(),
+		Polc:                     types.NewEmptyPOLC(),
 	}
 
 	evpool := &mocks.EvidencePool{}
@@ -427,7 +427,7 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	}
 	ae := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pe,
-		Polc:                     types.EmptyPOLC(),
+		Polc:                     types.NewEmptyPOLC(),
 	}
 
 	evpool := &mocks.EvidencePool{}
@@ -553,7 +553,7 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 			VoteA: voteA,
 			VoteB: voteB,
 		},
-		Polc: types.EmptyPOLC(),
+		Polc: types.NewEmptyPOLC(),
 	}
 	err = sm.VerifyEvidence(stateDB, state, goodAe, nil)
 	assert.NoError(t, err)

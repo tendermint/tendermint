@@ -461,6 +461,12 @@ type ConflictingHeadersEvidence struct {
 var _ Evidence = &ConflictingHeadersEvidence{}
 var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 
+// NewConflictingHeadersEvidence creates a new instance of the respective evidence
+func NewConflictingHeadersEvidence(h1, h2 *SignedHeader) *ConflictingHeadersEvidence {
+	if h1 == nil || h2 == nil { return nil }
+	return &ConflictingHeadersEvidence{H1: h1, H2: h2}
+}
+
 // Split breaks up evidence into smaller chunks (one per validator except for
 // PotentialAmnesiaEvidence): PhantomValidatorEvidence,
 // LunaticValidatorEvidence, DuplicateVoteEvidence and
@@ -576,21 +582,11 @@ OUTER_LOOP:
 					// immediately slashable.
 					firstVote := ev.H1.Commit.GetVote(int32(i))
 					secondVote := ev.H2.Commit.GetVote(int32(j))
-					var newEv *PotentialAmnesiaEvidence
-					if firstVote.Timestamp.Before(secondVote.Timestamp) {
-						newEv = &PotentialAmnesiaEvidence{
-							VoteA: firstVote,
-							VoteB: secondVote,
-						}
-					} else {
-						newEv = &PotentialAmnesiaEvidence{
-							VoteA: secondVote,
-							VoteB: firstVote,
-						}
-					}
+					newEv := NewPotentialAmnesiaEvidence(firstVote, secondVote)
+
 					// has the validator incorrectly voted for a previous round
 					if newEv.VoteA.Round > newEv.VoteB.Round {
-						evList = append(evList, MakeAmnesiaEvidence(newEv, EmptyPOLC()))
+						evList = append(evList, NewAmnesiaEvidence(newEv, NewEmptyPOLC()))
 					} else {
 						evList = append(evList, newEv)
 					}
@@ -768,6 +764,15 @@ type PhantomValidatorEvidence struct {
 
 var _ Evidence = &PhantomValidatorEvidence{}
 
+// NewPhantomValidatorEvidence creates a new instance of the respective evidence 
+func NewPhantomValidatorEvidence(vote *Vote, lastHeightValidatorWasInSet int64) *PhantomValidatorEvidence {
+	if vote == nil || lastHeightValidatorWasInSet <= 0 { return nil }
+	return &PhantomValidatorEvidence{
+		Vote: vote, 
+		LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
+	}
+}
+
 func (e *PhantomValidatorEvidence) Height() int64 {
 	return e.Vote.Height
 }
@@ -887,6 +892,16 @@ type LunaticValidatorEvidence struct {
 }
 
 var _ Evidence = &LunaticValidatorEvidence{}
+
+// NewLunaticValidatorEvidence creates a new instance of the respective evidence
+func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string) *LunaticValidatorEvidence {
+	if header == nil || vote == nil { return nil }
+	return &LunaticValidatorEvidence{
+		Header: header,
+		Vote: vote,
+		InvalidHeaderField: invalidHeaderField,
+	}
+}
 
 func (e *LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
@@ -1079,6 +1094,16 @@ type PotentialAmnesiaEvidence struct {
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
 
+// NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
+func NewPotentialAmnesiaEvidence(voteA *Vote, voteB *Vote) *PotentialAmnesiaEvidence {
+	if voteA == nil || voteB == nil { return nil }
+
+	if voteA.Timestamp.Before(voteB.Timestamp) {
+		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB}
+	}
+	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA}
+}
+
 func (e *PotentialAmnesiaEvidence) Height() int64 {
 	return e.VoteA.Height
 }
@@ -1249,12 +1274,13 @@ type ProofOfLockChange struct {
 
 // MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
 // that the node has itself not yet voted for in order to process the vote set into a proof of lock change
-func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (*ProofOfLockChange, error) {
-	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+func NewPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (*ProofOfLockChange, error) {
+	polc := newPOLCFromVoteSet(voteSet, pubKey, blockID)
 	return polc, polc.ValidateBasic()
 }
 
-func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
+func newPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
+	if voteSet == nil { return nil }
 	var votes []*Vote
 	valSetSize := voteSet.Size()
 	for valIdx := int32(0); int(valIdx) < valSetSize; valIdx++ {
@@ -1263,6 +1289,12 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 			votes = append(votes, vote)
 		}
 	}
+	return NewPOLC(votes, pubKey)
+}
+
+// NewPOLC creates a POLC
+func NewPOLC(votes []*Vote, pubKey crypto.PubKey) *ProofOfLockChange {
+	if votes == nil || pubKey == nil { return nil }
 	return &ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
@@ -1271,7 +1303,7 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 
 // EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time
 // and the node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
-func EmptyPOLC() *ProofOfLockChange {
+func NewEmptyPOLC() *ProofOfLockChange {
 	return &ProofOfLockChange{
 		nil,
 		nil,
@@ -1461,7 +1493,8 @@ type AmnesiaEvidence struct {
 // Height, Time, Address, and Verify, and Hash functions are all inherited by the PotentialAmnesiaEvidence struct
 var _ Evidence = &AmnesiaEvidence{}
 
-func MakeAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
+func NewAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
+	if pe == nil || proof == nil { return nil }
 	return &AmnesiaEvidence{
 		pe,
 		proof,
@@ -1490,6 +1523,9 @@ func (e *AmnesiaEvidence) Bytes() []byte {
 func (e *AmnesiaEvidence) ValidateBasic() error {
 	if e == nil {
 		return errors.New("empty amnesia evidence")
+	}
+	if e.Polc == nil || e.PotentialAmnesiaEvidence == nil {
+		return errors.New("amnesia evidence is missing either the polc or the potential amneisa evidence")
 	}
 
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
@@ -1553,7 +1589,7 @@ func (e *AmnesiaEvidence) ToProto() *tmproto.AmnesiaEvidence {
 
 	polc, err := e.Polc.ToProto()
 	if err != nil {
-		polc, _ = EmptyPOLC().ToProto()
+		polc, _ = NewEmptyPOLC().ToProto()
 	}
 
 	return &tmproto.AmnesiaEvidence{

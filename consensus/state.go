@@ -1312,7 +1312,7 @@ func (cs *State) savePOLC(round int32, blockID types.BlockID) {
 		cs.Logger.Error("Error on retrieval of pubkey", "err", err)
 		return
 	}
-	polc, err := types.MakePOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey, blockID)
+	polc, err := types.NewPOLCFromVoteSet(cs.Votes.Prevotes(round), pubKey, blockID)
 	if err != nil {
 		cs.Logger.Error("Error on forming POLC", "err", err)
 		return

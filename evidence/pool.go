@@ -233,10 +233,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			} else {
 				// we are going to add this amnesia evidence and check if we already have an amnesia evidence or potential
 				// amnesia evidence that addesses the same case
-				aeWithoutPolc := &types.AmnesiaEvidence{
-					PotentialAmnesiaEvidence: ae.PotentialAmnesiaEvidence,
-					Polc:                     types.EmptyPOLC(),
-				}
+				aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
 				if evpool.IsPending(aeWithoutPolc) {
 					evpool.removePendingEvidence(aeWithoutPolc)
 				} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
@@ -611,7 +608,7 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
 		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
 			if pe.Primed(trialPeriod, currentHeight) {
-				ae := types.MakeAmnesiaEvidence(pe, types.EmptyPOLC())
+				ae := types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC())
 				err := evpool.addPendingEvidence(ae)
 				if err != nil {
 					evpool.logger.Error("Unable to add amnesia evidence", "err", err)
@@ -656,7 +653,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 			evpool.logger.Debug("Found polc for potential amnesia evidence", "polc", polc)
 			// we should not need to verify it if both the polc and potential amnesia evidence have already
 			// been verified. We replace the potential amnesia evidence.
-			ae := types.MakeAmnesiaEvidence(pe, polc)
+			ae := types.NewAmnesiaEvidence(pe, polc)
 			err := evpool.AddEvidence(ae)
 			if err != nil {
 				evpool.logger.Error("Failed to create amnesia evidence from potential amnesia evidence", "err", err)
@@ -675,7 +672,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 	// b) check if amnesia evidence can be made now or if we need to enact the trial period
 	if !exists && pe.Primed(1, pe.HeightStamp) {
 		evpool.logger.Debug("PotentialAmnesiaEvidence can be instantly upgraded")
-		err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pe, types.EmptyPOLC()))
+		err := evpool.AddEvidence(types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC()))
 		if err != nil {
 			return err
 		}
