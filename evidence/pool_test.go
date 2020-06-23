@@ -11,7 +11,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	// "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"

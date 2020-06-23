@@ -216,7 +216,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 
-		evpool.logger.Info("Hi")
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
 		// to form AmensiaEvidence else start the trial period for the piece of evidence
 		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
