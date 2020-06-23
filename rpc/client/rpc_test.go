@@ -464,12 +464,14 @@ func TestTxSearchWithTimeout(t *testing.T) {
 	// Get a client with a time-out of 10 secs.
 	timeoutClient := getHTTPClientWithTimeout(10)
 
+	_, _, tx := MakeTxKV()
+	_, err := timeoutClient.BroadcastTxCommit(tx)
+	require.NoError(t, err)
+
 	// query using a compositeKey (see kvstore application)
 	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 	require.Nil(t, err)
-	if len(result.Txs) == 0 {
-		t.Fatal("expected a lot of transactions")
-	}
+	require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 }
 
 func TestTxSearch(t *testing.T) {
@@ -526,30 +528,22 @@ func TestTxSearch(t *testing.T) {
 		// query using a compositeKey (see kvstore application)
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 		require.Nil(t, err)
-		if len(result.Txs) == 0 {
-			t.Fatal("expected a lot of transactions")
-		}
+		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using an index key
 		result, err = c.TxSearch("app.index_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
-		if len(result.Txs) == 0 {
-			t.Fatal("expected a lot of transactions")
-		}
+		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using an noindex key
 		result, err = c.TxSearch("app.noindex_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
-		if len(result.Txs) != 0 {
-			t.Fatal("expected no transaction")
-		}
+		require.Equal(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using a compositeKey (see kvstore application) and height
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
 		require.Nil(t, err)
-		if len(result.Txs) == 0 {
-			t.Fatal("expected a lot of transactions")
-		}
+		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query a non existing tx with page 1 and txsPerPage 1
 		perPage := 1
@@ -571,7 +565,6 @@ func TestTxSearch(t *testing.T) {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
-
 		// check pagination
 		perPage = 3
 		var (
@@ -579,9 +572,10 @@ func TestTxSearch(t *testing.T) {
 			maxHeight int64
 			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
 		)
+
 		for page := 1; page <= pages; page++ {
 			page := page
-			result, err = c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
+			result, err := c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
 			require.NoError(t, err)
 			if page < pages {
 				require.Len(t, result.Txs, perPage)

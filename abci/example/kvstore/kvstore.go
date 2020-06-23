@@ -99,8 +99,8 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		{
 			Type: "app",
 			Attributes: []types.EventAttribute{
-				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
-				{Key: []byte("key"), Value: key},
+				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
+				{Key: []byte("key"), Value: key, Index: true},
 				{Key: []byte("index_key"), Value: []byte("index is working"), Index: true},
 				{Key: []byte("noindex_key"), Value: []byte("index is working"), Index: false},
 			},
