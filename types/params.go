@@ -30,6 +30,7 @@ func DefaultConsensusParams() *tmproto.ConsensusParams {
 		Block:     DefaultBlockParams(),
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
+		Version:   DefaultVersionParams(),
 	}
 }
 
@@ -57,6 +58,12 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 func DefaultValidatorParams() tmproto.ValidatorParams {
 	return tmproto.ValidatorParams{
 		PubKeyTypes: []string{ABCIPubKeyTypeEd25519},
+	}
+}
+
+func DefaultVersionParams() tmproto.VersionParams {
+	return tmproto.VersionParams{
+		AppVersion: 0,
 	}
 }
 
@@ -181,6 +188,9 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
+	}
+	if params2.Version != nil {
+		res.Version.AppVersion = params2.Version.AppVersion
 	}
 	return res
 }

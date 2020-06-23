@@ -14,6 +14,7 @@ message ConsensusParams {
   BlockParams     block     = 1 [(gogoproto.nullable) = false];
   EvidenceParams  evidence  = 2 [(gogoproto.nullable) = false];
   ValidatorParams validator = 3 [(gogoproto.nullable) = false];
+  VersionParams   version   = 4 [(gogoproto.nullable) = false];
 }
 
 // BlockParams contains limits on the block size.
@@ -62,6 +63,14 @@ message ValidatorParams {
   option (gogoproto.equal)    = true;
 
   repeated string pub_key_types = 1;
+}
+
+// VersionParams contains the ABCI application version.
+message VersionParams {
+  option (gogoproto.populate) = true;
+  option (gogoproto.equal)    = true;
+
+  uint64 app_version = 1;
 }
 
 // HashedParams is a subset of ConsensusParams.

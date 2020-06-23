@@ -46,9 +46,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
-	wrongVersion1.Block++
+	wrongVersion1.Block += 2
 	wrongVersion2 := state.Version.Consensus
-	wrongVersion2.App++
+	wrongVersion2.App += 2
 
 	// Manipulation of any header field causes failure.
 	testCases := []struct {

@@ -281,6 +281,7 @@ message ConsensusParams {
   BlockParams                      block     = 1;
   tendermint.types.EvidenceParams  evidence  = 2;
   tendermint.types.ValidatorParams validator = 3;
+  tendermint.types.VersionParams   version   = 4;
 }
 
 // BlockParams contains limits on the block size.
