@@ -249,7 +249,7 @@ func TestPhantomValidatorEvidence(t *testing.T) {
 		vote    = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
 	)
 
-	ev := NewPhantomValidatorEvidence( vote, header.Height -1)
+	ev := NewPhantomValidatorEvidence(vote, header.Height-1)
 
 	assert.Equal(t, header.Height, ev.Height())
 	assert.Equal(t, defaultVoteTime, ev.Time())
@@ -307,7 +307,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 		},
 	}, height, 1, voteSet2, vals, time.Now())
 	require.NoError(t, err)
-	
+
 	h1 := &SignedHeader{
 		Header: header1,
 		Commit: commit1,
@@ -386,7 +386,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	}
 
 	assert.Error(t, ev3.ValidateBasic())
-	
+
 	ev3 = NewPotentialAmnesiaEvidence(vote2, vote1)
 	assert.True(t, ev3.Equal(ev))
 

@@ -463,7 +463,9 @@ var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 
 // NewConflictingHeadersEvidence creates a new instance of the respective evidence
 func NewConflictingHeadersEvidence(h1, h2 *SignedHeader) *ConflictingHeadersEvidence {
-	if h1 == nil || h2 == nil { return nil }
+	if h1 == nil || h2 == nil {
+		return nil
+	}
 	return &ConflictingHeadersEvidence{H1: h1, H2: h2}
 }
 
@@ -764,11 +766,13 @@ type PhantomValidatorEvidence struct {
 
 var _ Evidence = &PhantomValidatorEvidence{}
 
-// NewPhantomValidatorEvidence creates a new instance of the respective evidence 
+// NewPhantomValidatorEvidence creates a new instance of the respective evidence
 func NewPhantomValidatorEvidence(vote *Vote, lastHeightValidatorWasInSet int64) *PhantomValidatorEvidence {
-	if vote == nil || lastHeightValidatorWasInSet <= 0 { return nil }
+	if vote == nil || lastHeightValidatorWasInSet <= 0 {
+		return nil
+	}
 	return &PhantomValidatorEvidence{
-		Vote: vote, 
+		Vote:                        vote,
 		LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
 	}
 }
@@ -895,10 +899,12 @@ var _ Evidence = &LunaticValidatorEvidence{}
 
 // NewLunaticValidatorEvidence creates a new instance of the respective evidence
 func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string) *LunaticValidatorEvidence {
-	if header == nil || vote == nil { return nil }
+	if header == nil || vote == nil {
+		return nil
+	}
 	return &LunaticValidatorEvidence{
-		Header: header,
-		Vote: vote,
+		Header:             header,
+		Vote:               vote,
 		InvalidHeaderField: invalidHeaderField,
 	}
 }
@@ -1096,7 +1102,9 @@ var _ Evidence = &PotentialAmnesiaEvidence{}
 
 // NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
 func NewPotentialAmnesiaEvidence(voteA *Vote, voteB *Vote) *PotentialAmnesiaEvidence {
-	if voteA == nil || voteB == nil { return nil }
+	if voteA == nil || voteB == nil {
+		return nil
+	}
 
 	if voteA.Timestamp.Before(voteB.Timestamp) {
 		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB}
@@ -1280,7 +1288,9 @@ func NewPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID)
 }
 
 func newPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
-	if voteSet == nil { return nil }
+	if voteSet == nil {
+		return nil
+	}
 	var votes []*Vote
 	valSetSize := voteSet.Size()
 	for valIdx := int32(0); int(valIdx) < valSetSize; valIdx++ {
@@ -1294,7 +1304,9 @@ func newPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID)
 
 // NewPOLC creates a POLC
 func NewPOLC(votes []*Vote, pubKey crypto.PubKey) *ProofOfLockChange {
-	if votes == nil || pubKey == nil { return nil }
+	if votes == nil || pubKey == nil {
+		return nil
+	}
 	return &ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
@@ -1494,7 +1506,9 @@ type AmnesiaEvidence struct {
 var _ Evidence = &AmnesiaEvidence{}
 
 func NewAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
-	if pe == nil || proof == nil { return nil }
+	if pe == nil || proof == nil {
+		return nil
+	}
 	return &AmnesiaEvidence{
 		pe,
 		proof,
@@ -1525,7 +1539,7 @@ func (e *AmnesiaEvidence) ValidateBasic() error {
 		return errors.New("empty amnesia evidence")
 	}
 	if e.Polc == nil || e.PotentialAmnesiaEvidence == nil {
-		return errors.New("amnesia evidence is missing either the polc or the potential amneisa evidence")
+		return errors.New("amnesia evidence is missing either the polc or the potential amnesia evidence")
 	}
 
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {

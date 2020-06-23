@@ -338,11 +338,11 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 // Only Potential Amnesia Evidence is stored here.
 func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
 	pe, ok := evidence.(*types.PotentialAmnesiaEvidence)
-	
+
 	if !ok {
 		return false
 	}
-	
+
 	key := keyAwaitingTrial(pe)
 	ok, err := evpool.evidenceStore.Has(key)
 	if err != nil {

@@ -213,7 +213,7 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		height       = state.ConsensusParams.Evidence.MaxAgeNumBlocks * 2
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
-			Hash:  tmrand.Bytes(tmhash.Size),
+			Hash: tmrand.Bytes(tmhash.Size),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1,
 				Hash:  tmrand.Bytes(tmhash.Size),
