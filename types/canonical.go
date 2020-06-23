@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -25,8 +25,8 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 		cbid = nil
 	} else {
 		cbid = &tmproto.CanonicalBlockID{
-			Hash:        bid.Hash,
-			PartsHeader: CanonicalizePartSetHeader(bid.PartsHeader),
+			Hash:          bid.Hash,
+			PartSetHeader: CanonicalizePartSetHeader(bid.PartSetHeader),
 		}
 	}
 

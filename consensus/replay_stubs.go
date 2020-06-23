@@ -4,7 +4,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
-	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

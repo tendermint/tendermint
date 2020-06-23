@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 type voteData struct {
@@ -80,6 +80,12 @@ func TestDuplicatedVoteEvidence(t *testing.T) {
 
 	assert.True(t, ev.Equal(ev))
 	assert.False(t, ev.Equal(&DuplicateVoteEvidence{}))
+
+	maxTime := ev.VoteB.Timestamp
+	if ev.VoteA.Timestamp.After(ev.VoteB.Timestamp) {
+		maxTime = ev.VoteA.Timestamp
+	}
+	assert.Equal(t, maxTime, ev.Time(), "expected time of the latest vote")
 }
 
 func TestEvidenceList(t *testing.T) {
@@ -152,7 +158,7 @@ func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
 		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
-		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime),
+		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
 	}
 }
 
@@ -223,7 +229,7 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 	}
 
 	assert.Equal(t, header.Height, ev.Height())
-	assert.Equal(t, bTime, ev.Time())
+	assert.Equal(t, defaultVoteTime, ev.Time())
 	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
@@ -294,7 +300,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -302,7 +308,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -330,7 +336,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 	})
 
 	assert.Equal(t, height, ev.Height())
-	// assert.Equal(t, bTime, ev.Time())
+	assert.Equal(t, ev.H2.Time, ev.Time())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
 	assert.NoError(t, ev.VerifyComposite(header1, valSet))
@@ -360,7 +366,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	}
 
 	assert.Equal(t, height, ev.Height())
-	// assert.Equal(t, bTime, ev.Time())
+	assert.Equal(t, vote2.Timestamp, ev.Time())
 	assert.EqualValues(t, vote1.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
@@ -635,7 +641,7 @@ func TestEvidenceProto(t *testing.T) {
 
 	commit1, err := MakeCommit(BlockID{
 		Hash: header1.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},
@@ -643,7 +649,7 @@ func TestEvidenceProto(t *testing.T) {
 	require.NoError(t, err)
 	commit2, err := MakeCommit(BlockID{
 		Hash: header2.Hash(),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 100,
 			Hash:  crypto.CRandBytes(tmhash.Size),
 		},

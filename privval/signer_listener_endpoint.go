@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	privvalproto "github.com/tendermint/tendermint/proto/privval"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.

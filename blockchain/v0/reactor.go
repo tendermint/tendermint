@@ -8,7 +8,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	bcproto "github.com/tendermint/tendermint/proto/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -350,8 +350,8 @@ FOR_LOOP:
 			}
 
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
-			firstPartsHeader := firstParts.Header()
-			firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
+			firstPartSetHeader := firstParts.Header()
+			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is

@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/proto/version"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	memmock "github.com/tendermint/tendermint/mempool/mock"
-	protostate "github.com/tendermint/tendermint/proto/state"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	protostate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
@@ -45,9 +45,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
-	wrongVersion1.Block++
+	wrongVersion1.Block += 2
 	wrongVersion2 := state.Version.Consensus
-	wrongVersion2.App++
+	wrongVersion2.App += 2
 
 	// Manipulation of any header field causes failure.
 	testCases := []struct {
@@ -60,7 +60,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 
-		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartsHeader.Total += 10 }},
+		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
 		{"DataHash wrong", func(block *types.Block) { block.DataHash = wrongHash }},
 
@@ -352,7 +352,7 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 
 var blockID = types.BlockID{
 	Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	PartsHeader: types.PartSetHeader{
+	PartSetHeader: types.PartSetHeader{
 		Total: 1,
 		Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 	},

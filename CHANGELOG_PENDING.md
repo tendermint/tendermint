@@ -25,7 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
   - [crypto] \4988 Removal of key type multisig
     - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
-  - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`. 
+  - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`.
       - `merkle.Proof` has been renamed to `ProofOps`.
       - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`
       - `SimpleHashFromByteSlices` has been renamed to `HashFromByteSlices`
@@ -52,6 +52,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
   - [privval] \#4985 `privval` reactor migration to Protobuf encoding
   - [evidence] \#4949 `evidence` reactor migration to Protobuf encoding
+  - [proto] \#5025 All proto files have been moved to `/proto` directory. 
+    - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
+  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
 
 - Apps
 
@@ -88,6 +91,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p] \#4981 Expose `SaveAs` func on NodeKey (@melekes)
 - [evidence] [#4821](https://github.com/tendermint/tendermint/pull/4821) Amnesia evidence can be detected, verified and committed (@cmwaters)
 - [rpc] \#5017 Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
+- [abci] \#5031 Add `AppVersion` to consensus parameters (@james-ray)
+  ... making it possible to update your ABCI application version via `EndBlock` response
 
 ### IMPROVEMENTS:
 
