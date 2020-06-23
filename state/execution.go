@@ -431,11 +431,13 @@ func updateState(
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
+
+		state.Version.Consensus.App = nextParams.Version.AppVersion
+
 		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1
 	}
 
-	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
 	// NOTE: the AppHash has not been populated.

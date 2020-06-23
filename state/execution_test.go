@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -28,8 +27,7 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	app := kvstore.NewApplication()
-	app.RetainBlocks = 1
+	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
@@ -44,11 +42,12 @@ func TestApplyBlock(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	_, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
+	state, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
+	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
 // TestBeginBlockValidators ensures we send absent validators list.
@@ -402,5 +401,4 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, blockID, block) })
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
-
 }

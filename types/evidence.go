@@ -310,9 +310,9 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
-// Time returns the time the evidence was created.
+// Time returns time of the latest vote.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.VoteA.Timestamp
+	return maxTime(dve.VoteA.Timestamp, dve.VoteB.Timestamp)
 }
 
 // Address returns the address of the validator.
@@ -677,8 +677,10 @@ OUTER_LOOP:
 
 func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
-// XXX: this is not the time of equivocation
-func (ev ConflictingHeadersEvidence) Time() time.Time { return ev.H1.Time }
+// Time returns time of the latest header.
+func (ev ConflictingHeadersEvidence) Time() time.Time {
+	return maxTime(ev.H1.Time, ev.H2.Time)
+}
 
 func (ev ConflictingHeadersEvidence) Address() []byte {
 	panic("use ConflictingHeadersEvidence#Split to split evidence into individual pieces")
@@ -833,6 +835,7 @@ func (e PhantomValidatorEvidence) Height() int64 {
 	return e.Vote.Height
 }
 
+// Time returns the Vote's timestamp.
 func (e PhantomValidatorEvidence) Time() time.Time {
 	return e.Vote.Timestamp
 }
@@ -954,8 +957,9 @@ func (e LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
 }
 
+// Time returns the maximum between the header's time and vote's time.
 func (e LunaticValidatorEvidence) Time() time.Time {
-	return e.Header.Time
+	return maxTime(e.Header.Time, e.Vote.Timestamp)
 }
 
 func (e LunaticValidatorEvidence) Address() []byte {
@@ -1145,8 +1149,9 @@ func (e PotentialAmnesiaEvidence) Height() int64 {
 	return e.VoteA.Height
 }
 
+// Time returns time of the latest vote.
 func (e PotentialAmnesiaEvidence) Time() time.Time {
-	return e.VoteA.Timestamp
+	return maxTime(e.VoteA.Timestamp, e.VoteB.Timestamp)
 }
 
 func (e PotentialAmnesiaEvidence) Address() []byte {
@@ -1340,7 +1345,7 @@ func (e ProofOfLockChange) Height() int64 {
 	return e.Votes[0].Height
 }
 
-// returns the time of the last vote
+// Time returns time of the latest vote.
 func (e ProofOfLockChange) Time() time.Time {
 	latest := e.Votes[0].Timestamp
 	for _, vote := range e.Votes {
@@ -1769,4 +1774,11 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 		Votes:  []Vote{vote},
 		PubKey: pubKey,
 	}
+}
+
+func maxTime(t1 time.Time, t2 time.Time) time.Time {
+	if t1.After(t2) {
+		return t1
+	}
+	return t2
 }
