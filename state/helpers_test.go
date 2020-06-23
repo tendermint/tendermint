@@ -145,26 +145,6 @@ func genValSet(size int) *types.ValidatorSet {
 	return types.NewValidatorSet(vals)
 }
 
-func makeConsensusParams(
-	blockBytes, blockGas int64,
-	blockTimeIotaMs int64,
-	evidenceAge int64,
-	maxNumEvidence uint32,
-) tmproto.ConsensusParams {
-	return tmproto.ConsensusParams{
-		Block: tmproto.BlockParams{
-			MaxBytes:   blockBytes,
-			MaxGas:     blockGas,
-			TimeIotaMs: blockTimeIotaMs,
-		},
-		Evidence: tmproto.EvidenceParams{
-			MaxAgeNumBlocks: evidenceAge,
-			MaxAgeDuration:  time.Duration(evidenceAge),
-			MaxNum:          maxNumEvidence,
-		},
-	}
-}
-
 func makeHeaderPartsResponsesValPubKeyChange(
 	state sm.State,
 	pubkey crypto.PubKey,
