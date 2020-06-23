@@ -161,7 +161,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		evList = []types.Evidence{evidence}
 	)
 
-	evpool.logger.Debug("Attempting to add evidence", "evidence", evidence)
+	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
 
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
@@ -195,7 +195,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	for _, ev := range evList {
 
 		if evpool.Has(ev) {
-			// if it is an amnesia evidence we have but
+			// if it is an amnesia evidence we have but POLC is not absent then
+			// we should still process it
 			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
 				continue
 			}
@@ -215,7 +216,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return fmt.Errorf("failed to verify %v: %w", ev, err)
 		}
 
-		evpool.logger.Info("Hi")
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
 		// to form AmensiaEvidence else start the trial period for the piece of evidence
 		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
@@ -224,7 +224,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 			continue
 		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
-			evpool.logger.Info("Hi")
 			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
 				ae.PotentialAmnesiaEvidence.VoteB.Round {
 				if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
@@ -234,7 +233,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			} else {
 				// we are going to add this amnesia evidence and check if we already have an amnesia evidence or potential
 				// amnesia evidence that addesses the same case
-				evpool.logger.Info("Hi")
 				aeWithoutPolc := &types.AmnesiaEvidence{
 					PotentialAmnesiaEvidence: ae.PotentialAmnesiaEvidence,
 					Polc:                     types.EmptyPOLC(),
@@ -342,15 +340,18 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 // IsOnTrial checks whether a piece of evidence is in the awaiting bucket.
 // Only Potential Amnesia Evidence is stored here.
 func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
-	if pe, ok := evidence.(*types.PotentialAmnesiaEvidence); ok {
-		key := keyAwaitingTrial(pe)
-		ok, err := evpool.evidenceStore.Has(key)
-		if err != nil {
-			evpool.logger.Error("Unable to find evidence on trial", "err", err)
-		}
-		return ok
+	pe, ok := evidence.(*types.PotentialAmnesiaEvidence)
+	
+	if !ok {
+		return false
 	}
-	return false
+	
+	key := keyAwaitingTrial(pe)
+	ok, err := evpool.evidenceStore.Has(key)
+	if err != nil {
+		evpool.logger.Error("Unable to find evidence on trial", "err", err)
+	}
+	return ok
 }
 
 // RetrievePOLC attempts to find a polc at the given height and round, if not there than exist returns false, all
@@ -695,8 +696,8 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 		if err != nil {
 			return err
 		}
-		evpool.logger.Debug("Valid potential amnesia evidence has been added. Starting trial period.",
-			"PotentialAmnesiaEvidence", pe)
+		evpool.logger.Debug("Valid potential amnesia evidence has been added. Starting trial period",
+			"ev", pe)
 		// keep track of when the next pe has finished the trial period
 		if evpool.nextEvidenceTrialEndedHeight == -1 {
 			evpool.nextEvidenceTrialEndedHeight = pe.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod

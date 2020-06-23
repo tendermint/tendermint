@@ -820,7 +820,7 @@ func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
 
 func (e *PhantomValidatorEvidence) ValidateBasic() error {
 	if e == nil {
-		return errors.New("emoty phantom validator evidence")
+		return errors.New("empty phantom validator evidence")
 	}
 
 	if e.Vote == nil {
