@@ -67,15 +67,15 @@ Further details on each of these fields is described below.
 
 ## Version
 
-The `Version` contains the protocol version for the blockchain and the
-application as two `uint64` values:
-
 ```go
 type Version struct {
-    Block   uint64
-    App     uint64
+	Block uint64
+	App   uint64
 }
 ```
+
+The `Version` contains the protocol version for the blockchain and the
+application as two `uint64` values.
 
 ## BlockID
 
@@ -296,11 +296,11 @@ A Header is valid if its corresponding fields are valid.
 ### Version
 
 ```
-block.Version.Block == state.Version.Block
-block.Version.App == state.Version.App
+block.Version.Block == state.Version.Consensus.Block
+block.Version.App == state.Version.Consensus.App
 ```
 
-The block version must match the state version.
+The block version must match consensus version from the state.
 
 ### ChainID
 
@@ -551,18 +551,24 @@ and `ABCIApp` is an ABCI application that can return results and changes to the 
 set (TODO). Execute is defined as:
 
 ```go
-Execute(s State, app ABCIApp, block Block) State {
-    // Fuction ApplyBlock executes block of transactions against the app and returns the new root hash of the app state,
-    // modifications to the validator set and the changes of the consensus parameters.
-    AppHash, ValidatorChanges, ConsensusParamChanges := app.ApplyBlock(block)
+func Execute(s State, app ABCIApp, block Block) State {
+	// Fuction ApplyBlock executes block of transactions against the app and returns the new root hash of the app state,
+	// modifications to the validator set and the changes of the consensus parameters.
+	AppHash, ValidatorChanges, ConsensusParamChanges := app.ApplyBlock(block)
 
-    return State{
-        LastResults: abciResponses.DeliverTxResults,
-        AppHash: AppHash,
-        LastValidators: state.Validators,
-        Validators: state.NextValidators,
-        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges),
-        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges),
-    }
+	nextConsensusParams := UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges)
+	return State{
+		LastResults:     abciResponses.DeliverTxResults,
+		AppHash:         AppHash,
+		LastValidators:  state.Validators,
+		Validators:      state.NextValidators,
+		NextValidators:  UpdateValidators(state.NextValidators, ValidatorChanges),
+		ConsensusParams: nextConsensusParams,
+		Version: {
+			Consensus: {
+				AppVersion: nextConsensusParams.Version.AppVersion,
+			},
+		},
+	}
 }
 ```

@@ -30,6 +30,25 @@ type State struct {
 Note there is a hard-coded limit of 10000 validators. This is inherited from the
 limit on the number of votes in a commit.
 
+### Version
+
+```go
+type Version struct {
+  consensus Consensus
+  software string
+}
+```
+
+The `Consensus` contains the protocol version for the blockchain and the
+application as two `uint64` values:
+
+```go
+type Consensus struct {
+	Block uint64
+	App   uint64
+}
+```
+
 ### Result
 
 ```go
@@ -90,35 +109,40 @@ type ConsensusParams struct {
 	Block
 	Evidence
 	Validator
+	Version
 }
 
 type hashedParams struct {
-    BlockMaxBytes int64
-    BlockMaxGas   int64
+	BlockMaxBytes int64
+	BlockMaxGas   int64
 }
 
 func (params ConsensusParams) Hash() []byte {
-    SHA256(hashedParams{
-        BlockMaxBytes: params.Block.MaxBytes,
-        BlockMaxGas: params.Block.MaxGas,
-    })
+	SHA256(hashedParams{
+		BlockMaxBytes: params.Block.MaxBytes,
+		BlockMaxGas:   params.Block.MaxGas,
+	})
 }
 
 type BlockParams struct {
-	MaxBytes        int64
-	MaxGas          int64
-	TimeIotaMs      int64
+	MaxBytes   int64
+	MaxGas     int64
+	TimeIotaMs int64
 }
 
 type EvidenceParams struct {
-    MaxAgeNumBlocks   int64
-    MaxAgeDuration    time.Duration
-    MaxNum            uint32
-    ProofTrialPeriod  int64
+	MaxAgeNumBlocks  int64
+	MaxAgeDuration   time.Duration
+	MaxNum           uint32
+	ProofTrialPeriod int64
 }
 
 type ValidatorParams struct {
 	PubKeyTypes []string
+}
+
+type VersionParams struct {
+	AppVersion uint64
 }
 ```
 

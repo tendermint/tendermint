@@ -596,7 +596,8 @@ via light client.
   - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
   - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
-  - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
+  - `Validator (ValidatorParams)`: Parameters limiting the types of pubkeys validators can use.
+  - `Version (VersionParams)`: The ABCI application version.
 
 ### BlockParams
 
@@ -630,6 +631,11 @@ via light client.
 - **Fields**:
   - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
     naming as `PubKey.Type`.
+
+### VersionParams
+
+- **Fields**:
+  - `AppVersion (uint64)`: The ABCI application version.
 
 ### Proof
 
