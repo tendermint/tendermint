@@ -30,9 +30,10 @@ x * TestEnterProposeNoValidator - timeout into prevote round
 x * TestEnterPropose - finish propose without timing out (we have the proposal)
 x * TestBadProposal - 2 vals, bad proposal (bad block state hash), should prevote and precommit nil
 FullRoundSuite
-x * TestFullRound1 - 1 val, full successful round
-x * TestFullRoundNil - 1 val, full round of nil
-x * TestFullRound2 - 2 vals, both required for full round
+x * TestStateFullRound1 - 1 val, full successful round
+x * TestStateFullRoundNil - 1 val, full round of nil
+x * TestStateFullRound2 - 2 vals, both required for full round
+x * TestStateFullRound4 - 4 vals, 3 required for full round
 LockSuite
 x * TestLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
 x * TestLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
@@ -325,6 +326,50 @@ func TestStateFullRound2(t *testing.T) {
 
 	// precommit arrives from vs2:
 	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs2)
+	ensurePrecommit(voteCh, height, round)
+
+	// wait to finish commit, propose in next height
+	ensureNewBlock(newBlockCh, height)
+}
+
+// run through propose, prevote, precommit commit with 4 validators
+// call handleMsg on cs1 to test that there are no races during it and
+// applyBlock function, which releases the cs.mtx lock.
+// see https://github.com/tendermint/tendermint/issues/3767
+func TestStateFullRound4(t *testing.T) {
+	cs1, vss := randState(4)
+	height, round := cs1.Height, cs1.Round
+
+	voteCh := subscribeUnBuffered(cs1.eventBus, types.EventQueryVote)
+	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlock)
+
+	// start round and wait for propose and prevote
+	startTestRound(cs1, height, round)
+
+	ensurePrevote(voteCh, height, round) // prevote
+
+	// we should be stuck in limbo waiting for more prevotes
+	rs := cs1.GetRoundState()
+	propBlockHash, propPartsHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
+
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartsHeader, vss[1])
+	ensurePrevote(voteCh, height, round) // prevote
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartsHeader, vss[2])
+	ensurePrevote(voteCh, height, round) // prevote
+
+	ensurePrecommit(voteCh, height, round) //precommit
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, 0, 0, vss[0], propBlockHash, propBlockHash)
+
+	// we should be stuck in limbo waiting for more precommits
+
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartsHeader, vss[1])
+	ensurePrecommit(voteCh, height, round)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartsHeader, vss[2])
+	ensurePrecommit(voteCh, height, round)
+
+	votes := signVotes(tmproto.PrecommitType, propBlockHash, propPartsHeader, vss[3])
+	cs1.handleMsg(msgInfo{Msg: &VoteMessage{votes[0]}})
 	ensurePrecommit(voteCh, height, round)
 
 	// wait to finish commit, propose in next height
