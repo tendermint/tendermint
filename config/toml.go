@@ -397,7 +397,7 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # What indexer to use for transactions
 # 
 # The application will set which txs to index. In some cases a node operator will be able
-# to decide which txs to index based on cofiguartion set in the application.
+# to decide which txs to index based on configuration set in the application.
 #
 # Options:
 #   1) "null"
