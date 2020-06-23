@@ -486,7 +486,7 @@ func TestTxSearch(t *testing.T) {
 
 	// since we're not using an isolated test server, we'll have lingering transactions
 	// from other tests as well
-	result, err := c.TxSearch("app.index_key='index is working'", false, nil, nil, "asc")
+	result, err := c.TxSearch("tx.height >= 0", true, nil, nil, "asc")
 	require.NoError(t, err)
 
 	// pick out the last tx to have something to search for in tests
@@ -495,6 +495,11 @@ func TestTxSearch(t *testing.T) {
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
+
+		// query by height
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Len(t, result.Txs, 1)
 
 		// now we query for the tx.
 		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
@@ -534,6 +539,11 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, len(result.Txs), 0, "expected a lot of transactions")
 
+		// query using a compositeKey (see kvstore application) and height
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
+
 		// query a non existing tx with page 1 and txsPerPage 1
 		perPage := 1
 		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, nil, &perPage, "asc")
@@ -567,7 +577,7 @@ func TestTxSearchPagination(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	result, err := c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
+	result, err := c.TxSearch("tx.height >= 1", false, nil, nil, "asc")
 	require.NoError(t, err)
 	txCount := len(result.Txs)
 
@@ -581,7 +591,7 @@ func TestTxSearchPagination(t *testing.T) {
 
 	for page := 1; page <= pages; page++ {
 		page := page
-		result, err := c.TxSearch("app.creator='Cosmoshi Netowoko'", false, &page, &perPage, "asc")
+		result, err := c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
 		require.NoError(t, err)
 		if page < pages {
 			require.Len(t, result.Txs, perPage)
