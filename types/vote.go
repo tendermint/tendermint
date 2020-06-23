@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -83,14 +82,19 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
-//VoteSignBytes take the chainID & a vote, represented in protobuf, and creates a signature.
-// If any error arises this will panic
+// VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
+// signing.
+//
+// Panics if the marshaling fails.
+//
+// See CanonicalizeVote
 func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	pb := CanonicalizeVote(chainID, vote)
-	bz, err := proto.Marshal(&pb)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 

@@ -11,9 +11,12 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -215,14 +218,15 @@ func TestAddingAndPruningPOLC(t *testing.T) {
 		height       = state.ConsensusParams.Evidence.MaxAgeNumBlocks * 2
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
-			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-			PartsHeader: types.PartSetHeader{
+			Hash: tmrand.Bytes(tmhash.Size),
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
-				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+				Hash:  tmrand.Bytes(tmhash.Size),
 			},
 		}
 	)
 
+	val := types.NewMockPV()
 	voteA := makeVote(1, 1, 0, val.PrivKey.PubKey().Address(), firstBlockID, evidenceTime)
 	vA := voteA.ToProto()
 	err := val.SignVote(evidenceChainID, vA)
@@ -328,14 +332,14 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		//evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
 			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
 				Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 			},
 		}
 		secondBlockID = types.BlockID{
 			Hash: []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1,
 				Hash:  []byte("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
 			},
@@ -436,7 +440,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	assert.NoError(t, err)
 	expectedAe := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: ev2,
-		Polc:                     types.EmptyPOLC(),
+		Polc:                     types.NewEmptyPOLC(),
 	}
 
 	assert.True(t, pool.IsPending(expectedAe))
@@ -445,16 +449,45 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// CASE E
 	pool.logger.Info("CASE E")
 	// test for receiving amnesia evidence
-	ae := &types.AmnesiaEvidence{
-		PotentialAmnesiaEvidence: ev,
-		Polc:                     types.EmptyPOLC(),
-	}
+	ae := types.NewAmnesiaEvidence(ev, types.NewEmptyPOLC())
 	// we need to run the trial period ourselves so amnesia evidence should not be added, instead
 	// we should extract out the potential amnesia evidence and trying to add that before realising
 	// that we already have it -> no error
 	err = pool.AddEvidence(ae)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+
+	voteD := makeVote(height, 2, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(4*time.Second))
+	vD := voteD.ToProto()
+	err = val.SignVote(evidenceChainID, vD)
+	require.NoError(t, err)
+	voteD.Signature = vD.Signature
+
+	// CASE F
+	pool.logger.Info("CASE F")
+	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
+	// and start our own trial
+	newPe := types.NewPotentialAmnesiaEvidence(voteB, voteD)
+	newAe := types.NewAmnesiaEvidence(newPe, types.NewEmptyPOLC())
+	err = pool.AddEvidence(newAe)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	assert.True(t, pool.IsOnTrial(newPe))
+
+	// CASE G
+	pool.logger.Info("CASE G")
+	// Finally, we receive an amnesia evidence containing a valid polc for an earlier potential amnesia evidence
+	// that we have already upgraded to. We should ad this new amnesia evidence in replace of the prior
+	// amnesia evidence with an empty polc that we have
+	aeWithPolc := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: ev,
+		Polc:                     validPolc,
+	}
+	err = pool.AddEvidence(aeWithPolc)
+	assert.NoError(t, err)
+	assert.True(t, pool.IsPending(aeWithPolc))
+	assert.Equal(t, 2, len(pool.AllPendingEvidence()))
+	t.Log(pool.AllPendingEvidence())
 
 	voteD := makeVote(height, 2, 0, pubKey.Address(), firstBlockID, evidenceTime.Add(4*time.Second))
 	vD := voteD.ToProto()

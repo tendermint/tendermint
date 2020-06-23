@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
-	"github.com/tendermint/tendermint/libs/bytes"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -87,17 +86,23 @@ func (p *Proposal) String() string {
 		p.Round,
 		p.BlockID,
 		p.POLRound,
-		bytes.Fingerprint(p.Signature),
+		tmbytes.Fingerprint(p.Signature),
 		CanonicalTime(p.Timestamp))
 }
 
-// ProposalSignBytes returns the Proposal bytes for signing
+// ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
+// for signing.
+//
+// Panics if the marshaling fails.
+//
+// See CanonicalizeProposal
 func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
-	bz, err := proto.Marshal(&pb)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 

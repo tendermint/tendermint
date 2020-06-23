@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
-	tmp2p "github.com/tendermint/tendermint/proto/p2p"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 const (

@@ -13,9 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmproto "github.com/tendermint/tendermint/proto/types"
-	
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -152,6 +150,19 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		}
 
 		return tp, nil
+
+	case MockEvidence:
+		if err := evi.ValidateBasic(); err != nil {
+			return nil, err
+		}
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_AmnesiaEvidence{
+				AmnesiaEvidence: aepb,
+			},
+		}
+
+		return tp, nil
 	default:
 		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
 	}
@@ -231,9 +242,9 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
-// Time returns the time the evidence was created.
+// Time returns time of the latest vote.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.VoteA.Timestamp
+	return maxTime(dve.VoteA.Timestamp, dve.VoteB.Timestamp)
 }
 
 // Address returns the address of the validator.
@@ -413,6 +424,11 @@ type ConflictingHeadersEvidence struct {
 var _ Evidence = &ConflictingHeadersEvidence{}
 var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 
+// NewConflictingHeadersEvidence creates a new instance of the respective evidence
+func NewConflictingHeadersEvidence(h1, h2 *SignedHeader) *ConflictingHeadersEvidence {
+	return &ConflictingHeadersEvidence{H1: h1, H2: h2}
+}
+
 // Split breaks up evidence into smaller chunks (one per validator except for
 // PotentialAmnesiaEvidence): PhantomValidatorEvidence,
 // LunaticValidatorEvidence, DuplicateVoteEvidence and
@@ -528,21 +544,11 @@ OUTER_LOOP:
 					// immediately slashable.
 					firstVote := ev.H1.Commit.GetVote(int32(i))
 					secondVote := ev.H2.Commit.GetVote(int32(j))
-					var newEv *PotentialAmnesiaEvidence
-					if firstVote.Timestamp.Before(secondVote.Timestamp) {
-						newEv = &PotentialAmnesiaEvidence{
-							VoteA: firstVote,
-							VoteB: secondVote,
-						}
-					} else {
-						newEv = &PotentialAmnesiaEvidence{
-							VoteA: secondVote,
-							VoteB: firstVote,
-						}
-					}
+					newEv := NewPotentialAmnesiaEvidence(firstVote, secondVote)
+
 					// has the validator incorrectly voted for a previous round
 					if newEv.VoteA.Round > newEv.VoteB.Round {
-						evList = append(evList, MakeAmnesiaEvidence(newEv, EmptyPOLC()))
+						evList = append(evList, NewAmnesiaEvidence(newEv, NewEmptyPOLC()))
 					} else {
 						evList = append(evList, newEv)
 					}
@@ -565,8 +571,10 @@ OUTER_LOOP:
 
 func (ev *ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
-// XXX: this is not the time of equivocation
-func (ev *ConflictingHeadersEvidence) Time() time.Time { return ev.H1.Time }
+// Time returns time of the latest header.
+func (ev *ConflictingHeadersEvidence) Time() time.Time {
+	return maxTime(ev.H1.Time, ev.H2.Time)
+}
 
 func (ev *ConflictingHeadersEvidence) Address() []byte {
 	panic("use ConflictingHeadersEvidence#Split to split evidence into individual pieces")
@@ -718,6 +726,14 @@ type PhantomValidatorEvidence struct {
 
 var _ Evidence = &PhantomValidatorEvidence{}
 
+// NewPhantomValidatorEvidence creates a new instance of the respective evidence
+func NewPhantomValidatorEvidence(vote *Vote, lastHeightValidatorWasInSet int64) *PhantomValidatorEvidence {
+	return &PhantomValidatorEvidence{
+		Vote:                        vote,
+		LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
+	}
+}
+
 func (e *PhantomValidatorEvidence) Height() int64 {
 	return e.Vote.Height
 }
@@ -772,7 +788,7 @@ func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
 
 func (e *PhantomValidatorEvidence) ValidateBasic() error {
 	if e == nil {
-		return errors.New("emoty phantom validator evidence")
+		return errors.New("empty phantom validator evidence")
 	}
 
 	if e.Vote == nil {
@@ -780,7 +796,7 @@ func (e *PhantomValidatorEvidence) ValidateBasic() error {
 	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid block: %v", err)
+		return fmt.Errorf("invalid vote: %w", err)
 	}
 
 	if !e.Vote.BlockID.IsComplete() {
@@ -838,12 +854,22 @@ type LunaticValidatorEvidence struct {
 
 var _ Evidence = &LunaticValidatorEvidence{}
 
+// NewLunaticValidatorEvidence creates a new instance of the respective evidence
+func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string) *LunaticValidatorEvidence {
+	return &LunaticValidatorEvidence{
+		Header:             header,
+		Vote:               vote,
+		InvalidHeaderField: invalidHeaderField,
+	}
+}
+
 func (e *LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
 }
 
+// Time returns the maximum between the header's time and vote's time.
 func (e *LunaticValidatorEvidence) Time() time.Time {
-	return e.Header.Time
+	return maxTime(e.Header.Time, e.Vote.Timestamp)
 }
 
 func (e *LunaticValidatorEvidence) Address() []byte {
@@ -1028,12 +1054,24 @@ type PotentialAmnesiaEvidence struct {
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
 
+// NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
+func NewPotentialAmnesiaEvidence(voteA *Vote, voteB *Vote) *PotentialAmnesiaEvidence {
+	if voteA == nil || voteB == nil {
+		return nil
+	}
+
+	if voteA.Timestamp.Before(voteB.Timestamp) {
+		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB}
+	}
+	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA}
+}
+
 func (e *PotentialAmnesiaEvidence) Height() int64 {
 	return e.VoteA.Height
 }
 
 func (e *PotentialAmnesiaEvidence) Time() time.Time {
-	return e.VoteA.Timestamp
+	return e.VoteB.Timestamp
 }
 
 func (e *PotentialAmnesiaEvidence) Address() []byte {
@@ -1198,12 +1236,15 @@ type ProofOfLockChange struct {
 
 // MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
 // that the node has itself not yet voted for in order to process the vote set into a proof of lock change
-func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (*ProofOfLockChange, error) {
-	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+func NewPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (*ProofOfLockChange, error) {
+	polc := newPOLCFromVoteSet(voteSet, pubKey, blockID)
 	return polc, polc.ValidateBasic()
 }
 
-func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
+func newPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
+	if voteSet == nil {
+		return nil
+	}
 	var votes []*Vote
 	valSetSize := voteSet.Size()
 	for valIdx := int32(0); int(valIdx) < valSetSize; valIdx++ {
@@ -1212,6 +1253,11 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 			votes = append(votes, vote)
 		}
 	}
+	return NewPOLC(votes, pubKey)
+}
+
+// NewPOLC creates a POLC
+func NewPOLC(votes []*Vote, pubKey crypto.PubKey) *ProofOfLockChange {
 	return &ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
@@ -1220,7 +1266,7 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 
 // EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time
 // and the node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
-func EmptyPOLC() *ProofOfLockChange {
+func NewEmptyPOLC() *ProofOfLockChange {
 	return &ProofOfLockChange{
 		nil,
 		nil,
@@ -1231,7 +1277,7 @@ func (e *ProofOfLockChange) Height() int64 {
 	return e.Votes[0].Height
 }
 
-// returns the time of the last vote
+// Time returns time of the latest vote.
 func (e *ProofOfLockChange) Time() time.Time {
 	latest := e.Votes[0].Timestamp
 	for _, vote := range e.Votes {
@@ -1410,7 +1456,7 @@ type AmnesiaEvidence struct {
 // Height, Time, Address, and Verify, and Hash functions are all inherited by the PotentialAmnesiaEvidence struct
 var _ Evidence = &AmnesiaEvidence{}
 
-func MakeAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
+func NewAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
 	return &AmnesiaEvidence{
 		pe,
 		proof,
@@ -1439,6 +1485,9 @@ func (e *AmnesiaEvidence) Bytes() []byte {
 func (e *AmnesiaEvidence) ValidateBasic() error {
 	if e == nil {
 		return errors.New("empty amnesia evidence")
+	}
+	if e.Polc == nil || e.PotentialAmnesiaEvidence == nil {
+		return errors.New("amnesia evidence is missing either the polc or the potential amnesia evidence")
 	}
 
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
@@ -1502,7 +1551,7 @@ func (e *AmnesiaEvidence) ToProto() *tmproto.AmnesiaEvidence {
 
 	polc, err := e.Polc.ToProto()
 	if err != nil {
-		polc, _ = EmptyPOLC().ToProto()
+		polc, _ = NewEmptyPOLC().ToProto()
 	}
 
 	return &tmproto.AmnesiaEvidence{
@@ -1626,6 +1675,41 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
+//--------------------------------------------------
+
+// EvidenceList is a list of Evidence. Evidences is not a word.
+type EvidenceList []Evidence
+
+// Hash returns the simple merkle root hash of the EvidenceList.
+func (evl EvidenceList) Hash() []byte {
+	// These allocations are required because Evidence is not of type Bytes, and
+	// golang slices can't be typed cast. This shouldn't be a performance problem since
+	// the Evidence size is capped.
+	evidenceBzs := make([][]byte, len(evl))
+	for i := 0; i < len(evl); i++ {
+		evidenceBzs[i] = evl[i].Bytes()
+	}
+	return merkle.HashFromByteSlices(evidenceBzs)
+}
+
+func (evl EvidenceList) String() string {
+	s := ""
+	for _, e := range evl {
+		s += fmt.Sprintf("%s\t\t", e)
+	}
+	return s
+}
+
+// Has returns true if the evidence is in the EvidenceList.
+func (evl EvidenceList) Has(evidence Evidence) bool {
+	for _, ev := range evl {
+		if ev.Equal(evidence) {
+			return true
+		}
+	}
+	return false
+}
+
 //-------------------------------------------- MOCKING --------------------------------------
 
 // unstable - use only for testing
@@ -1691,4 +1775,11 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 		Votes:  []*Vote{&vote},
 		PubKey: pubKey,
 	}
+}
+
+func maxTime(t1 time.Time, t2 time.Time) time.Time {
+	if t1.After(t2) {
+		return t1
+	}
+	return t2
 }

@@ -9,31 +9,28 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/crypto/sr25519"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 //-------------------------------------------------------
 // Use strings to distinguish types in ABCI messages
 
 const (
-	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-	ABCIEvidenceTypeMock          = "mock/evidence"
+	ABCIEvidenceTypeDuplicateVote    = "duplicate/vote"
+	ABCIEvidenceTypePhantom          = "phantom"
+	ABCIEvidenceTypeLunatic          = "lunatic"
+	ABCIEvidenceTypePotentialAmnesia = "potential_amnesia"
+	ABCIEvidenceTypeMock             = "mock/evidence"
 )
 
 const (
-	ABCIPubKeyTypeEd25519   = "ed25519"
-	ABCIPubKeyTypeSr25519   = "sr25519"
-	ABCIPubKeyTypeSecp256k1 = "secp256k1"
+	ABCIPubKeyTypeEd25519 = "ed25519"
 )
 
 // TODO: Make non-global by allowing for registration of more pubkey types
 
 var ABCIPubKeyTypesToNames = map[string]string{
-	ABCIPubKeyTypeEd25519:   ed25519.PubKeyName,
-	ABCIPubKeyTypeSr25519:   sr25519.PubKeyName,
-	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyName,
+	ABCIPubKeyTypeEd25519: ed25519.PubKeyName,
 }
 
 //-------------------------------------------------------
@@ -74,16 +71,16 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
-func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
-	return abci.BlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
+func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
+	return tmproto.BlockID{
+		Hash:          blockID.Hash,
+		PartSetHeader: TM2PB.PartSetHeader(blockID.PartSetHeader),
 	}
 }
 
-func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
-	return abci.PartSetHeader{
-		Total: int32(header.Total),
+func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
+	return tmproto.PartSetHeader{
+		Total: header.Total,
 		Hash:  header.Hash,
 	}
 }
@@ -137,11 +134,11 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
 	case *PhantomValidatorEvidence:
-		evType = "phantom"
+		evType = ABCIEvidenceTypePhantom
 	case *LunaticValidatorEvidence:
-		evType = "lunatic"
+		evType = ABCIEvidenceTypeLunatic
 	case *PotentialAmnesiaEvidence:
-		evType = "potential_amnesia"
+		evType = ABCIEvidenceTypePotentialAmnesia
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}

@@ -11,7 +11,7 @@ import (
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -161,7 +161,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		evList = []types.Evidence{evidence}
 	)
 
-	evpool.logger.Debug("Attempting to add evidence", "evidence", evidence)
+	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
 
 	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
 	if err != nil {
@@ -195,7 +195,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	for _, ev := range evList {
 
 		if evpool.Has(ev) {
-			// if it is an amnesia evidence we have but
+			// if it is an amnesia evidence we have but POLC is not absent then
+			// we should still process it
 			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
 				continue
 			}
@@ -224,7 +225,6 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 			continue
 		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
-			evpool.logger.Info("Hi")
 			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
 				ae.PotentialAmnesiaEvidence.VoteB.Round {
 				if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
@@ -234,11 +234,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			} else {
 				// we are going to add this amnesia evidence and check if we already have an amnesia evidence or potential
 				// amnesia evidence that addesses the same case
-				evpool.logger.Info("Hi")
-				aeWithoutPolc := &types.AmnesiaEvidence{
-					PotentialAmnesiaEvidence: ae.PotentialAmnesiaEvidence,
-					Polc:                     types.EmptyPOLC(),
-				}
+				aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
 				if evpool.IsPending(aeWithoutPolc) {
 					evpool.removePendingEvidence(aeWithoutPolc)
 				} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
@@ -342,15 +338,18 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 // IsOnTrial checks whether a piece of evidence is in the awaiting bucket.
 // Only Potential Amnesia Evidence is stored here.
 func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
-	if pe, ok := evidence.(*types.PotentialAmnesiaEvidence); ok {
-		key := keyAwaitingTrial(pe)
-		ok, err := evpool.evidenceStore.Has(key)
-		if err != nil {
-			evpool.logger.Error("Unable to find evidence on trial", "err", err)
-		}
-		return ok
+	pe, ok := evidence.(*types.PotentialAmnesiaEvidence)
+
+	if !ok {
+		return false
 	}
-	return false
+
+	key := keyAwaitingTrial(pe)
+	ok, err := evpool.evidenceStore.Has(key)
+	if err != nil {
+		evpool.logger.Error("Unable to find evidence on trial", "err", err)
+	}
+	return ok
 }
 
 // RetrievePOLC attempts to find a polc at the given height and round, if not there than exist returns false, all
@@ -610,7 +609,7 @@ func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
 		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
 		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
 			if pe.Primed(trialPeriod, currentHeight) {
-				ae := types.MakeAmnesiaEvidence(pe, types.EmptyPOLC())
+				ae := types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC())
 				err := evpool.addPendingEvidence(ae)
 				if err != nil {
 					evpool.logger.Error("Unable to add amnesia evidence", "err", err)
@@ -655,7 +654,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 			evpool.logger.Debug("Found polc for potential amnesia evidence", "polc", polc)
 			// we should not need to verify it if both the polc and potential amnesia evidence have already
 			// been verified. We replace the potential amnesia evidence.
-			ae := types.MakeAmnesiaEvidence(pe, polc)
+			ae := types.NewAmnesiaEvidence(pe, polc)
 			err := evpool.AddEvidence(ae)
 			if err != nil {
 				evpool.logger.Error("Failed to create amnesia evidence from potential amnesia evidence", "err", err)
@@ -674,7 +673,7 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 	// b) check if amnesia evidence can be made now or if we need to enact the trial period
 	if !exists && pe.Primed(1, pe.HeightStamp) {
 		evpool.logger.Debug("PotentialAmnesiaEvidence can be instantly upgraded")
-		err := evpool.AddEvidence(types.MakeAmnesiaEvidence(pe, types.EmptyPOLC()))
+		err := evpool.AddEvidence(types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC()))
 		if err != nil {
 			return err
 		}
@@ -695,8 +694,8 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 		if err != nil {
 			return err
 		}
-		evpool.logger.Debug("Valid potential amnesia evidence has been added. Starting trial period.",
-			"PotentialAmnesiaEvidence", pe)
+		evpool.logger.Debug("Valid potential amnesia evidence has been added. Starting trial period",
+			"ev", pe)
 		// keep track of when the next pe has finished the trial period
 		if evpool.nextEvidenceTrialEndedHeight == -1 {
 			evpool.nextEvidenceTrialEndedHeight = pe.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod

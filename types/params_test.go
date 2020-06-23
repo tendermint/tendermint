@@ -9,12 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 var (
-	valEd25519   = []string{ABCIPubKeyTypeEd25519}
-	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
+	valEd25519 = []string{ABCIPubKeyTypeEd25519}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -129,13 +128,24 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxNum:          50,
 				},
 				Validator: &tmproto.ValidatorParams{
-					PubKeyTypes: valSecp256k1,
+					PubKeyTypes: valEd25519,
 				},
 			},
-			makeParams(100, 200, 10, 300, 50, valSecp256k1),
+			makeParams(100, 200, 10, 300, 50, valEd25519),
 		},
 	}
 	for _, tc := range testCases {
 		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(tc.params, tc.updates))
 	}
+}
+
+func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
+	params := makeParams(1, 2, 10, 3, 0, valEd25519)
+
+	assert.EqualValues(t, 0, params.Version.AppVersion)
+
+	updated := UpdateConsensusParams(params,
+		&abci.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
+
+	assert.EqualValues(t, 1, updated.Version.AppVersion)
 }
