@@ -541,14 +541,14 @@ func TestTxSearch(t *testing.T) {
 		require.Len(t, result.Txs, 0)
 
 		// check sorting
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
+		result, err = c.TxSearch("tx.height >= 1", false, nil, nil, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
 
-		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "desc")
+		result, err = c.TxSearch("tx.height >= 1", false, nil, nil, "desc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)

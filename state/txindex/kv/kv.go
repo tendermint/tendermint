@@ -127,6 +127,10 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Se
 			if attr.GetIndex() {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
+
+			if attr.GetIndex() && fmt.Sprintf("%s.%s", event.Type, string(attr.Key)) == "tx.height" {
+				store.Set(keyForHeight(result), hash)
+			}
 		}
 	}
 }

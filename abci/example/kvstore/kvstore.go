@@ -105,6 +105,11 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 				{Key: []byte("noindex_key"), Value: []byte("index is working"), Index: false},
 			},
 		},
+		{Type: "tx",
+			Attributes: []types.EventAttribute{
+				{Key: []byte("height"), Index: true},
+			},
+		},
 	}
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
