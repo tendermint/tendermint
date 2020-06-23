@@ -496,11 +496,6 @@ func TestTxSearch(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
-		require.Nil(t, err)
-		require.Len(t, result.Txs, 1)
-
 		// now we query for the tx.
 		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
 		require.Nil(t, err)
@@ -518,6 +513,11 @@ func TestTxSearch(t *testing.T) {
 		if assert.EqualValues(t, find.Tx, ptx.Proof.Data) {
 			assert.NoError(t, ptx.Proof.Proof.Verify(ptx.Proof.RootHash, find.Hash))
 		}
+
+		// query by height
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc")
