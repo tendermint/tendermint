@@ -471,7 +471,6 @@ func TestTxSearchWithTimeout(t *testing.T) {
 	// query using a compositeKey (see kvstore application)
 	result, err := timeoutClient.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 	require.Nil(t, err)
-	fmt.Println(len(result.Txs))
 	require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 }
 
