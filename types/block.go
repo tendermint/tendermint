@@ -89,6 +89,17 @@ func (b *Block) ValidateBasic() error {
 
 	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
 	for i, ev := range b.Evidence.Evidence {
+		switch ev.(type) {
+		case *ConflictingHeadersEvidence, ConflictingHeadersEvidence:
+			// ConflictingHeadersEvidence must be broken up in pieces and never
+			// committed as a single piece.
+			return fmt.Errorf("found ConflictingHeadersEvidence (#%d)", i)
+		case *PotentialAmnesiaEvidence, PotentialAmnesiaEvidence:
+			// PotentialAmnesiaEvidence does not contribute to anything on its own, so
+			// reject it as well.
+			return fmt.Errorf("found PotentialAmnesiaEvidence (#%d)", i)
+		}
+
 		if err := ev.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
