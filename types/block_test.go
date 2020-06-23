@@ -95,6 +95,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		tc := tc
+		i := i
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
 			block.ProposerAddress = valSet.GetProposer().Address
