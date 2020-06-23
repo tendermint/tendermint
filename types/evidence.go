@@ -92,26 +92,17 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		pbevi := evi.ToProto()
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
-				DuplicateVoteEvidence: &pbevi,
+				DuplicateVoteEvidence: pbevi,
 			},
 		}
 		return tp, nil
-	case ConflictingHeadersEvidence:
-		pbevi := evi.ToProto()
 
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
-				ConflictingHeadersEvidence: &pbevi,
-			},
-		}
-
-		return tp, nil
 	case *ConflictingHeadersEvidence:
 		pbevi := evi.ToProto()
 
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_ConflictingHeadersEvidence{
-				ConflictingHeadersEvidence: &pbevi,
+				ConflictingHeadersEvidence: pbevi,
 			},
 		}
 
@@ -121,66 +112,44 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
-				LunaticValidatorEvidence: &pbevi,
+				LunaticValidatorEvidence: pbevi,
 			},
 		}
 
 		return tp, nil
-	case LunaticValidatorEvidence:
-		pbevi := evi.ToProto()
 
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
-				LunaticValidatorEvidence: &pbevi,
-			},
-		}
-
-		return tp, nil
 	case *PhantomValidatorEvidence:
 		pbevi := evi.ToProto()
 
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PhantomValidatorEvidence{
-				PhantomValidatorEvidence: &pbevi,
+				PhantomValidatorEvidence: pbevi,
 			},
 		}
 
 		return tp, nil
-	case PhantomValidatorEvidence:
-		pbevi := evi.ToProto()
 
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_PhantomValidatorEvidence{
-				PhantomValidatorEvidence: &pbevi,
-			},
-		}
-
-		return tp, nil
 	case *PotentialAmnesiaEvidence:
 		pbevi := evi.ToProto()
 
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
-				PotentialAmnesiaEvidence: &pbevi,
+				PotentialAmnesiaEvidence: pbevi,
 			},
 		}
 
 		return tp, nil
-	case PotentialAmnesiaEvidence:
-		pbevi := evi.ToProto()
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_PotentialAmnesiaEvidence{
-				PotentialAmnesiaEvidence: &pbevi,
-			},
-		}
-		return tp, nil
-
-	case AmnesiaEvidence:
-		return AmnesiaEvidenceToProto(evi)
 
 	case *AmnesiaEvidence:
-		return AmnesiaEvidenceToProto(*evi)
+		aepb := evi.ToProto()
+
+		tp := &tmproto.Evidence{
+			Sum: &tmproto.Evidence_AmnesiaEvidence{
+				AmnesiaEvidence: aepb,
+			},
+		}
+
+		return tp, nil
 
 	case MockEvidence:
 		if err := evi.ValidateBasic(); err != nil {
@@ -234,7 +203,7 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
 		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
 	case *tmproto.Evidence_AmnesiaEvidence:
-		return AmensiaEvidenceFromProto(evi.AmnesiaEvidence)
+		return AmnesiaEvidenceFromProto(evi.AmnesiaEvidence)
 	case *tmproto.Evidence_PhantomValidatorEvidence:
 		return PhantomValidatorEvidenceFromProto(evi.PhantomValidatorEvidence)
 	case *tmproto.Evidence_MockEvidence:
@@ -428,6 +397,10 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
+	if dve == nil {
+		return errors.New("empty duplicate vote evidence")
+	}
+
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
@@ -444,14 +417,14 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (dve DuplicateVoteEvidence) ToProto() tmproto.DuplicateVoteEvidence {
+func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
 	}
-	return tp
+	return &tp
 }
 
 func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*DuplicateVoteEvidence, error) {
@@ -477,43 +450,6 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 	return dve, dve.ValidateBasic()
 }
 
-//-------------------------------------------
-
-// EvidenceList is a list of Evidence. Evidences is not a word.
-type EvidenceList []Evidence
-
-// Hash returns the simple merkle root hash of the EvidenceList.
-func (evl EvidenceList) Hash() []byte {
-	// These allocations are required because Evidence is not of type Bytes, and
-	// golang slices can't be typed cast. This shouldn't be a performance problem since
-	// the Evidence size is capped.
-	evidenceBzs := make([][]byte, len(evl))
-	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Bytes()
-	}
-	return merkle.HashFromByteSlices(evidenceBzs)
-}
-
-func (evl EvidenceList) String() string {
-	s := ""
-	for _, e := range evl {
-		s += fmt.Sprintf("%s\t\t", e)
-	}
-	return s
-}
-
-// Has returns true if the evidence is in the EvidenceList.
-func (evl EvidenceList) Has(evidence Evidence) bool {
-	for _, ev := range evl {
-		if ev.Equal(evidence) {
-			return true
-		}
-	}
-	return false
-}
-
-//-------------------------------------------
-
 // ConflictingHeadersEvidence is primarily used by the light client when it
 // observes two conflicting headers, both having 1/3+ of the voting power of
 // the currently trusted validator set.
@@ -522,10 +458,15 @@ type ConflictingHeadersEvidence struct {
 	H2 *SignedHeader `json:"h_2"`
 }
 
-var _ Evidence = ConflictingHeadersEvidence{}
-var _ CompositeEvidence = ConflictingHeadersEvidence{}
+var _ Evidence = &ConflictingHeadersEvidence{}
+var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 
-// Split breaks up eviddence into smaller chunks (one per validator except for
+// NewConflictingHeadersEvidence creates a new instance of the respective evidence
+func NewConflictingHeadersEvidence(h1, h2 *SignedHeader) *ConflictingHeadersEvidence {
+	return &ConflictingHeadersEvidence{H1: h1, H2: h2}
+}
+
+// Split breaks up evidence into smaller chunks (one per validator except for
 // PotentialAmnesiaEvidence): PhantomValidatorEvidence,
 // LunaticValidatorEvidence, DuplicateVoteEvidence and
 // PotentialAmnesiaEvidence.
@@ -533,7 +474,7 @@ var _ CompositeEvidence = ConflictingHeadersEvidence{}
 // committedHeader - header at height H1.Height == H2.Height
 // valSet					 - validator set at height H1.Height == H2.Height
 // valToLastHeight - map between active validators and respective last heights
-func (ev ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet,
+func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet,
 	valToLastHeight map[string]int64) []Evidence {
 
 	evList := make([]Evidence, 0)
@@ -640,21 +581,11 @@ OUTER_LOOP:
 					// immediately slashable.
 					firstVote := ev.H1.Commit.GetVote(int32(i))
 					secondVote := ev.H2.Commit.GetVote(int32(j))
-					var newEv PotentialAmnesiaEvidence
-					if firstVote.Timestamp.Before(secondVote.Timestamp) {
-						newEv = PotentialAmnesiaEvidence{
-							VoteA: firstVote,
-							VoteB: secondVote,
-						}
-					} else {
-						newEv = PotentialAmnesiaEvidence{
-							VoteA: secondVote,
-							VoteB: firstVote,
-						}
-					}
+					newEv := NewPotentialAmnesiaEvidence(firstVote, secondVote)
+
 					// has the validator incorrectly voted for a previous round
 					if newEv.VoteA.Round > newEv.VoteB.Round {
-						evList = append(evList, MakeAmnesiaEvidence(newEv, EmptyPOLC()))
+						evList = append(evList, NewAmnesiaEvidence(newEv, NewEmptyPOLC()))
 					} else {
 						evList = append(evList, newEv)
 					}
@@ -675,18 +606,18 @@ OUTER_LOOP:
 	return evList
 }
 
-func (ev ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
+func (ev *ConflictingHeadersEvidence) Height() int64 { return ev.H1.Height }
 
 // Time returns time of the latest header.
-func (ev ConflictingHeadersEvidence) Time() time.Time {
+func (ev *ConflictingHeadersEvidence) Time() time.Time {
 	return maxTime(ev.H1.Time, ev.H2.Time)
 }
 
-func (ev ConflictingHeadersEvidence) Address() []byte {
+func (ev *ConflictingHeadersEvidence) Address() []byte {
 	panic("use ConflictingHeadersEvidence#Split to split evidence into individual pieces")
 }
 
-func (ev ConflictingHeadersEvidence) Bytes() []byte {
+func (ev *ConflictingHeadersEvidence) Bytes() []byte {
 	pbe := ev.ToProto()
 
 	bz, err := pbe.Marshal()
@@ -697,20 +628,20 @@ func (ev ConflictingHeadersEvidence) Bytes() []byte {
 	return bz
 }
 
-func (ev ConflictingHeadersEvidence) Hash() []byte {
+func (ev *ConflictingHeadersEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size*2)
 	copy(bz[:tmhash.Size-1], ev.H1.Hash().Bytes())
 	copy(bz[tmhash.Size:], ev.H2.Hash().Bytes())
 	return tmhash.Sum(bz)
 }
 
-func (ev ConflictingHeadersEvidence) Verify(chainID string, _ crypto.PubKey) error {
+func (ev *ConflictingHeadersEvidence) Verify(chainID string, _ crypto.PubKey) error {
 	panic("use ConflictingHeadersEvidence#VerifyComposite to verify composite evidence")
 }
 
 // VerifyComposite verifies that both headers belong to the same chain, same
 // height and signed by 1/3+ of validators at height H1.Height == H2.Height.
-func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error {
+func (ev *ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error {
 	var alternativeHeader *SignedHeader
 	switch {
 	case bytes.Equal(committedHeader.Hash(), ev.H1.Hash()):
@@ -755,18 +686,19 @@ func (ev ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, va
 	return nil
 }
 
-func (ev ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
-	switch e2 := ev2.(type) {
-	case ConflictingHeadersEvidence:
+func (ev *ConflictingHeadersEvidence) Equal(ev2 Evidence) bool {
+	if e2, ok := ev2.(*ConflictingHeadersEvidence); ok {
 		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
-	case *ConflictingHeadersEvidence:
-		return bytes.Equal(ev.H1.Hash(), e2.H1.Hash()) && bytes.Equal(ev.H2.Hash(), e2.H2.Hash())
-	default:
-		return false
 	}
+
+	return false
 }
 
-func (ev ConflictingHeadersEvidence) ValidateBasic() error {
+func (ev *ConflictingHeadersEvidence) ValidateBasic() error {
+	if ev == nil {
+		return errors.New("empty conflicting headers evidence")
+	}
+
 	if ev.H1 == nil {
 		return errors.New("first header is missing")
 	}
@@ -784,37 +716,37 @@ func (ev ConflictingHeadersEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (ev ConflictingHeadersEvidence) String() string {
+func (ev *ConflictingHeadersEvidence) String() string {
 	return fmt.Sprintf("ConflictingHeadersEvidence{H1: %d#%X, H2: %d#%X}",
 		ev.H1.Height, ev.H1.Hash(),
 		ev.H2.Height, ev.H2.Hash())
 }
 
-func (ev ConflictingHeadersEvidence) ToProto() tmproto.ConflictingHeadersEvidence {
+func (ev *ConflictingHeadersEvidence) ToProto() *tmproto.ConflictingHeadersEvidence {
 	pbh1 := ev.H1.ToProto()
 	pbh2 := ev.H2.ToProto()
 
-	tp := tmproto.ConflictingHeadersEvidence{
+	tp := &tmproto.ConflictingHeadersEvidence{
 		H1: pbh1,
 		H2: pbh2,
 	}
 	return tp
 }
 
-func ConflictingHeadersEvidenceFromProto(pb *tmproto.ConflictingHeadersEvidence) (ConflictingHeadersEvidence, error) {
+func ConflictingHeadersEvidenceFromProto(pb *tmproto.ConflictingHeadersEvidence) (*ConflictingHeadersEvidence, error) {
 	if pb == nil {
-		return ConflictingHeadersEvidence{}, errors.New("nil ConflictingHeadersEvidence")
+		return &ConflictingHeadersEvidence{}, errors.New("nil ConflictingHeadersEvidence")
 	}
 	h1, err := SignedHeaderFromProto(pb.H1)
 	if err != nil {
-		return ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
+		return &ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
 	}
 	h2, err := SignedHeaderFromProto(pb.H2)
 	if err != nil {
-		return ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
+		return &ConflictingHeadersEvidence{}, fmt.Errorf("from proto err: %w", err)
 	}
 
-	tp := ConflictingHeadersEvidence{
+	tp := &ConflictingHeadersEvidence{
 		H1: h1,
 		H2: h2,
 	}
@@ -829,22 +761,29 @@ type PhantomValidatorEvidence struct {
 	LastHeightValidatorWasInSet int64 `json:"last_height_validator_was_in_set"`
 }
 
-var _ Evidence = PhantomValidatorEvidence{}
+var _ Evidence = &PhantomValidatorEvidence{}
 
-func (e PhantomValidatorEvidence) Height() int64 {
+// NewPhantomValidatorEvidence creates a new instance of the respective evidence
+func NewPhantomValidatorEvidence(vote *Vote, lastHeightValidatorWasInSet int64) *PhantomValidatorEvidence {
+	return &PhantomValidatorEvidence{
+		Vote:                        vote,
+		LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
+	}
+}
+
+func (e *PhantomValidatorEvidence) Height() int64 {
 	return e.Vote.Height
 }
 
-// Time returns the Vote's timestamp.
-func (e PhantomValidatorEvidence) Time() time.Time {
+func (e *PhantomValidatorEvidence) Time() time.Time {
 	return e.Vote.Timestamp
 }
 
-func (e PhantomValidatorEvidence) Address() []byte {
+func (e *PhantomValidatorEvidence) Address() []byte {
 	return e.Vote.ValidatorAddress
 }
 
-func (e PhantomValidatorEvidence) Hash() []byte {
+func (e *PhantomValidatorEvidence) Hash() []byte {
 	pbe := e.ToProto()
 
 	bz, err := pbe.Marshal()
@@ -854,7 +793,7 @@ func (e PhantomValidatorEvidence) Hash() []byte {
 	return tmhash.Sum(bz)
 }
 
-func (e PhantomValidatorEvidence) Bytes() []byte {
+func (e *PhantomValidatorEvidence) Bytes() []byte {
 	pbe := e.ToProto()
 
 	bz, err := pbe.Marshal()
@@ -865,7 +804,7 @@ func (e PhantomValidatorEvidence) Bytes() []byte {
 	return bz
 }
 
-func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e *PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 
 	v := e.Vote.ToProto()
 	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
@@ -875,27 +814,26 @@ func (e PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	return nil
 }
 
-func (e PhantomValidatorEvidence) Equal(ev Evidence) bool {
-	switch e2 := ev.(type) {
-	case PhantomValidatorEvidence:
+func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
+	if e2, ok := ev.(*PhantomValidatorEvidence); ok {
 		return e.Vote.Height == e2.Vote.Height &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	case *PhantomValidatorEvidence:
-		return e.Vote.Height == e2.Vote.Height &&
-			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	default:
-		return false
 	}
+
+	return false
 }
 
-func (e PhantomValidatorEvidence) ValidateBasic() error {
+func (e *PhantomValidatorEvidence) ValidateBasic() error {
+	if e == nil {
+		return errors.New("empty phantom validator evidence")
+	}
 
 	if e.Vote == nil {
 		return errors.New("empty vote")
 	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid signature: %v", err)
+		return fmt.Errorf("invalid vote: %w", err)
 	}
 
 	if !e.Vote.BlockID.IsComplete() {
@@ -909,15 +847,15 @@ func (e PhantomValidatorEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (e PhantomValidatorEvidence) String() string {
+func (e *PhantomValidatorEvidence) String() string {
 	return fmt.Sprintf("PhantomValidatorEvidence{%X voted at height %d}",
 		e.Vote.ValidatorAddress, e.Vote.Height)
 }
 
-func (e PhantomValidatorEvidence) ToProto() tmproto.PhantomValidatorEvidence {
+func (e *PhantomValidatorEvidence) ToProto() *tmproto.PhantomValidatorEvidence {
 	vpb := e.Vote.ToProto()
 
-	tp := tmproto.PhantomValidatorEvidence{
+	tp := &tmproto.PhantomValidatorEvidence{
 		Vote:                        vpb,
 		LastHeightValidatorWasInSet: e.LastHeightValidatorWasInSet,
 	}
@@ -925,17 +863,17 @@ func (e PhantomValidatorEvidence) ToProto() tmproto.PhantomValidatorEvidence {
 	return tp
 }
 
-func PhantomValidatorEvidenceFromProto(pb *tmproto.PhantomValidatorEvidence) (PhantomValidatorEvidence, error) {
+func PhantomValidatorEvidenceFromProto(pb *tmproto.PhantomValidatorEvidence) (*PhantomValidatorEvidence, error) {
 	if pb == nil {
-		return PhantomValidatorEvidence{}, errors.New("nil PhantomValidatorEvidence")
+		return nil, errors.New("nil PhantomValidatorEvidence")
 	}
 
 	vpb, err := VoteFromProto(pb.Vote)
 	if err != nil {
-		return PhantomValidatorEvidence{}, err
+		return nil, err
 	}
 
-	tp := PhantomValidatorEvidence{
+	tp := &PhantomValidatorEvidence{
 		Vote:                        vpb,
 		LastHeightValidatorWasInSet: pb.LastHeightValidatorWasInSet,
 	}
@@ -951,29 +889,38 @@ type LunaticValidatorEvidence struct {
 	InvalidHeaderField string  `json:"invalid_header_field"`
 }
 
-var _ Evidence = LunaticValidatorEvidence{}
+var _ Evidence = &LunaticValidatorEvidence{}
 
-func (e LunaticValidatorEvidence) Height() int64 {
+// NewLunaticValidatorEvidence creates a new instance of the respective evidence
+func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string) *LunaticValidatorEvidence {
+	return &LunaticValidatorEvidence{
+		Header:             header,
+		Vote:               vote,
+		InvalidHeaderField: invalidHeaderField,
+	}
+}
+
+func (e *LunaticValidatorEvidence) Height() int64 {
 	return e.Header.Height
 }
 
 // Time returns the maximum between the header's time and vote's time.
-func (e LunaticValidatorEvidence) Time() time.Time {
+func (e *LunaticValidatorEvidence) Time() time.Time {
 	return maxTime(e.Header.Time, e.Vote.Timestamp)
 }
 
-func (e LunaticValidatorEvidence) Address() []byte {
+func (e *LunaticValidatorEvidence) Address() []byte {
 	return e.Vote.ValidatorAddress
 }
 
-func (e LunaticValidatorEvidence) Hash() []byte {
+func (e *LunaticValidatorEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+crypto.AddressSize)
 	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
 	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
 	return tmhash.Sum(bz)
 }
 
-func (e LunaticValidatorEvidence) Bytes() []byte {
+func (e *LunaticValidatorEvidence) Bytes() []byte {
 	pbe := e.ToProto()
 
 	bz, err := pbe.Marshal()
@@ -984,7 +931,7 @@ func (e LunaticValidatorEvidence) Bytes() []byte {
 	return bz
 }
 
-func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e *LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// chainID must be the same
 	if chainID != e.Header.ChainID {
 		return fmt.Errorf("chainID do not match: %s vs %s",
@@ -1001,20 +948,19 @@ func (e LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	return nil
 }
 
-func (e LunaticValidatorEvidence) Equal(ev Evidence) bool {
-	switch e2 := ev.(type) {
-	case LunaticValidatorEvidence:
+func (e *LunaticValidatorEvidence) Equal(ev Evidence) bool {
+	if e2, ok := ev.(*LunaticValidatorEvidence); ok {
 		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
 			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	case *LunaticValidatorEvidence:
-		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
-			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	default:
-		return false
 	}
+	return false
 }
 
-func (e LunaticValidatorEvidence) ValidateBasic() error {
+func (e *LunaticValidatorEvidence) ValidateBasic() error {
+	if e == nil {
+		return errors.New("empty lunatic validator evidence")
+	}
+
 	if e.Header == nil {
 		return errors.New("empty header")
 	}
@@ -1050,12 +996,12 @@ func (e LunaticValidatorEvidence) ValidateBasic() error {
 	}
 }
 
-func (e LunaticValidatorEvidence) String() string {
+func (e *LunaticValidatorEvidence) String() string {
 	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
 		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
 }
 
-func (e LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
+func (e *LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
 	matchErr := func(field string) error {
 		return fmt.Errorf("%s matches committed hash", field)
 	}
@@ -1092,11 +1038,11 @@ func (e LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
 	return nil
 }
 
-func (e LunaticValidatorEvidence) ToProto() tmproto.LunaticValidatorEvidence {
+func (e *LunaticValidatorEvidence) ToProto() *tmproto.LunaticValidatorEvidence {
 	h := e.Header.ToProto()
 	v := e.Vote.ToProto()
 
-	tp := tmproto.LunaticValidatorEvidence{
+	tp := &tmproto.LunaticValidatorEvidence{
 		Header:             h,
 		Vote:               v,
 		InvalidHeaderField: e.InvalidHeaderField,
@@ -1132,7 +1078,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 //-------------------------------------------
 
 // PotentialAmnesiaEvidence is constructed when a validator votes on two different blocks at different rounds
-// in the same height. PotentialAmnesiaEvidence can then evolve into AmensiaEvidence if the indicted validator
+// in the same height. PotentialAmnesiaEvidence can then evolve into AmnesiaEvidence if the indicted validator
 // is incapable of providing the proof of lock change that validates voting twice in the allotted trial period.
 // Heightstamp is used for each node to keep a track of how much time has passed so as to know when the trial period
 // is finished and is set when the node first receives the evidence.
@@ -1143,33 +1089,48 @@ type PotentialAmnesiaEvidence struct {
 	HeightStamp int64
 }
 
-var _ Evidence = PotentialAmnesiaEvidence{}
+var _ Evidence = &PotentialAmnesiaEvidence{}
 
-func (e PotentialAmnesiaEvidence) Height() int64 {
+// NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
+func NewPotentialAmnesiaEvidence(voteA *Vote, voteB *Vote) *PotentialAmnesiaEvidence {
+	if voteA == nil || voteB == nil {
+		return nil
+	}
+
+	if voteA.Timestamp.Before(voteB.Timestamp) {
+		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB}
+	}
+	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA}
+}
+
+func (e *PotentialAmnesiaEvidence) Height() int64 {
 	return e.VoteA.Height
 }
 
-// Time returns time of the latest vote.
-func (e PotentialAmnesiaEvidence) Time() time.Time {
-	return maxTime(e.VoteA.Timestamp, e.VoteB.Timestamp)
+func (e *PotentialAmnesiaEvidence) Time() time.Time {
+	return e.VoteB.Timestamp
 }
 
-func (e PotentialAmnesiaEvidence) Address() []byte {
+func (e *PotentialAmnesiaEvidence) Address() []byte {
 	return e.VoteA.ValidatorAddress
 }
 
-func (e PotentialAmnesiaEvidence) Hash() []byte {
-	pbe := e.ToProto()
-
-	bz, err := pbe.Marshal()
+// NOTE: Heightstamp must not be included in hash
+func (e *PotentialAmnesiaEvidence) Hash() []byte {
+	v1, err := e.VoteA.ToProto().Marshal()
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("trying to hash potential amnesia evidence, err: %w", err))
 	}
 
-	return tmhash.Sum(bz)
+	v2, err := e.VoteB.ToProto().Marshal()
+	if err != nil {
+		panic(fmt.Errorf("trying to hash potential amnesia evidence, err: %w", err))
+	}
+
+	return tmhash.Sum(append(v1, v2...))
 }
 
-func (e PotentialAmnesiaEvidence) Bytes() []byte {
+func (e *PotentialAmnesiaEvidence) Bytes() []byte {
 	pbe := e.ToProto()
 
 	bz, err := pbe.Marshal()
@@ -1180,7 +1141,7 @@ func (e PotentialAmnesiaEvidence) Bytes() []byte {
 	return bz
 }
 
-func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// pubkey must match address (this should already be true, sanity check)
 	addr := e.VoteA.ValidatorAddress
 	if !bytes.Equal(pubKey.Address(), addr) {
@@ -1202,23 +1163,23 @@ func (e PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	return nil
 }
 
-func (e PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
-	switch e2 := ev.(type) {
-	case PotentialAmnesiaEvidence:
+func (e *PotentialAmnesiaEvidence) Equal(ev Evidence) bool {
+	if e2, ok := ev.(*PotentialAmnesiaEvidence); ok {
 		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round &&
 			bytes.Equal(e.Address(), e2.Address())
-	case *PotentialAmnesiaEvidence:
-		return e.Height() == e2.Height() && e.VoteA.Round == e2.VoteA.Round && e.VoteB.Round == e2.VoteB.Round &&
-			bytes.Equal(e.Address(), e2.Address())
-	default:
-		return false
 	}
+	return false
 }
 
-func (e PotentialAmnesiaEvidence) ValidateBasic() error {
+func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
+	if e == nil {
+		return errors.New("empty potential amnesia evidence")
+	}
+
 	if e.VoteA == nil || e.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", e.VoteA, e.VoteB)
 	}
+
 	if err := e.VoteA.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid VoteA: %v", err)
 	}
@@ -1268,14 +1229,14 @@ func (e PotentialAmnesiaEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (e PotentialAmnesiaEvidence) String() string {
+func (e *PotentialAmnesiaEvidence) String() string {
 	return fmt.Sprintf("PotentialAmnesiaEvidence{VoteA: %v, VoteB: %v}", e.VoteA, e.VoteB)
 }
 
 // Primed finds whether the PotentialAmnesiaEvidence is ready to be upgraded to Amnesia Evidence. It is decided if
 // either the prosecuted node voted in the past or if the allocated trial period has expired without a proof of lock
 // change having been provided.
-func (e PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool {
+func (e *PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool {
 	// voted in the past can be instantly punishable
 	if e.VoteA.Round > e.VoteB.Round {
 		return true
@@ -1287,11 +1248,11 @@ func (e PotentialAmnesiaEvidence) Primed(trialPeriod, currentHeight int64) bool 
 	return false
 }
 
-func (e PotentialAmnesiaEvidence) ToProto() tmproto.PotentialAmnesiaEvidence {
+func (e *PotentialAmnesiaEvidence) ToProto() *tmproto.PotentialAmnesiaEvidence {
 	voteB := e.VoteB.ToProto()
 	voteA := e.VoteA.ToProto()
 
-	tp := tmproto.PotentialAmnesiaEvidence{
+	tp := &tmproto.PotentialAmnesiaEvidence{
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: e.HeightStamp,
@@ -1306,27 +1267,35 @@ func (e PotentialAmnesiaEvidence) ToProto() tmproto.PotentialAmnesiaEvidence {
 // different rounds because the node received a majority of votes for a different block in the latter round. In cases of
 // amnesia evidence, a suspected node will need ProofOfLockChange to prove that the node did not break protocol.
 type ProofOfLockChange struct {
-	Votes  []Vote        `json:"votes"`
+	Votes  []*Vote       `json:"votes"`
 	PubKey crypto.PubKey `json:"pubkey"`
 }
 
 // MakePOLCFromVoteSet can be used when a majority of prevotes or precommits for a block is seen
 // that the node has itself not yet voted for in order to process the vote set into a proof of lock change
-func MakePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (ProofOfLockChange, error) {
-	polc := makePOLCFromVoteSet(voteSet, pubKey, blockID)
+func NewPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) (*ProofOfLockChange, error) {
+	polc := newPOLCFromVoteSet(voteSet, pubKey, blockID)
 	return polc, polc.ValidateBasic()
 }
 
-func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) ProofOfLockChange {
-	var votes []Vote
+func newPOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID) *ProofOfLockChange {
+	if voteSet == nil {
+		return nil
+	}
+	var votes []*Vote
 	valSetSize := voteSet.Size()
 	for valIdx := int32(0); int(valIdx) < valSetSize; valIdx++ {
 		vote := voteSet.GetByIndex(valIdx)
 		if vote != nil && vote.BlockID.Equals(blockID) {
-			votes = append(votes, *vote)
+			votes = append(votes, vote)
 		}
 	}
-	return ProofOfLockChange{
+	return NewPOLC(votes, pubKey)
+}
+
+// NewPOLC creates a POLC
+func NewPOLC(votes []*Vote, pubKey crypto.PubKey) *ProofOfLockChange {
+	return &ProofOfLockChange{
 		Votes:  votes,
 		PubKey: pubKey,
 	}
@@ -1334,19 +1303,19 @@ func makePOLCFromVoteSet(voteSet *VoteSet, pubKey crypto.PubKey, blockID BlockID
 
 // EmptyPOLC returns an empty polc. This is used when no polc has been provided in the allocated trial period time
 // and the node now needs to move to upgrading to AmnesiaEvidence and hence uses an empty polc
-func EmptyPOLC() ProofOfLockChange {
-	return ProofOfLockChange{
+func NewEmptyPOLC() *ProofOfLockChange {
+	return &ProofOfLockChange{
 		nil,
 		nil,
 	}
 }
 
-func (e ProofOfLockChange) Height() int64 {
+func (e *ProofOfLockChange) Height() int64 {
 	return e.Votes[0].Height
 }
 
 // Time returns time of the latest vote.
-func (e ProofOfLockChange) Time() time.Time {
+func (e *ProofOfLockChange) Time() time.Time {
 	latest := e.Votes[0].Timestamp
 	for _, vote := range e.Votes {
 		if vote.Timestamp.After(latest) {
@@ -1356,21 +1325,21 @@ func (e ProofOfLockChange) Time() time.Time {
 	return latest
 }
 
-func (e ProofOfLockChange) Round() int32 {
+func (e *ProofOfLockChange) Round() int32 {
 	return e.Votes[0].Round
 }
 
-func (e ProofOfLockChange) Address() []byte {
+func (e *ProofOfLockChange) Address() []byte {
 	return e.PubKey.Address()
 }
 
-func (e ProofOfLockChange) BlockID() BlockID {
+func (e *ProofOfLockChange) BlockID() BlockID {
 	return e.Votes[0].BlockID
 }
 
 // ValidateVotes checks the polc against the validator set of that height. The function makes sure that the polc
 // contains a majority of votes and that each
-func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) error {
+func (e *ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) error {
 	if e.IsAbsent() {
 		return errors.New("polc is empty")
 	}
@@ -1403,12 +1372,16 @@ func (e ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) e
 	return nil
 }
 
-func (e ProofOfLockChange) Equal(e2 ProofOfLockChange) bool {
+func (e *ProofOfLockChange) Equal(e2 *ProofOfLockChange) bool {
 	return bytes.Equal(e.Address(), e2.Address()) && e.Height() == e2.Height() &&
 		e.Round() == e2.Round()
 }
 
-func (e ProofOfLockChange) ValidateBasic() error {
+func (e *ProofOfLockChange) ValidateBasic() error {
+	if e == nil {
+		return errors.New("empty proof of lock change")
+	}
+
 	// first check if the polc is absent / empty
 	if e.IsAbsent() {
 		return nil
@@ -1418,7 +1391,7 @@ func (e ProofOfLockChange) ValidateBasic() error {
 		return errors.New("missing public key")
 	}
 	// validate basic doesn't count the number of votes and their voting power, this is to be done by VerifyEvidence
-	if e.Votes == nil {
+	if e.Votes == nil || len(e.Votes) == 0 {
 		return errors.New("missing votes")
 	}
 	// height, round and vote type must be the same for all votes
@@ -1429,6 +1402,10 @@ func (e ProofOfLockChange) ValidateBasic() error {
 	}
 	voteType := e.Votes[0].Type
 	for idx, vote := range e.Votes {
+		if vote == nil {
+			return fmt.Errorf("nil vote at index: %d", idx)
+		}
+
 		if err := vote.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid vote#%d: %w", idx, err)
 		}
@@ -1464,7 +1441,7 @@ func (e ProofOfLockChange) ValidateBasic() error {
 	return nil
 }
 
-func (e ProofOfLockChange) String() string {
+func (e *ProofOfLockChange) String() string {
 	if e.IsAbsent() {
 		return "Empty ProofOfLockChange"
 	}
@@ -1473,14 +1450,11 @@ func (e ProofOfLockChange) String() string {
 }
 
 // IsAbsent checks if the polc is empty
-func (e ProofOfLockChange) IsAbsent() bool {
+func (e *ProofOfLockChange) IsAbsent() bool {
 	return e.Votes == nil && e.PubKey == nil
 }
 
 func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
-	if e == nil {
-		return nil, errors.New("nil proof of lock change")
-	}
 	plc := new(tmproto.ProofOfLockChange)
 	vpb := make([]*tmproto.Vote, len(e.Votes))
 
@@ -1490,7 +1464,7 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 	}
 
 	if e.Votes == nil {
-		return nil, errors.New("polc is not absent but has no votes")
+		return plc, errors.New("invalid proof of lock change (no votes), did you forget to validate?")
 	}
 	for i, v := range e.Votes {
 		pb := v.ToProto()
@@ -1501,7 +1475,7 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 
 	pk, err := cryptoenc.PubKeyToProto(e.PubKey)
 	if err != nil {
-		return nil, err
+		return plc, fmt.Errorf("invalid proof of lock change (err: %w), did you forget to validate?", err)
 	}
 	plc.PubKey = &pk
 	plc.Votes = vpb
@@ -1512,30 +1486,47 @@ func (e *ProofOfLockChange) ToProto() (*tmproto.ProofOfLockChange, error) {
 // AmnesiaEvidence is the progression of PotentialAmnesiaEvidence and is used to prove an infringement of the
 // Tendermint consensus when a validator incorrectly sends a vote in a later round without correctly changing the lock
 type AmnesiaEvidence struct {
-	PotentialAmnesiaEvidence
-	Polc ProofOfLockChange
+	*PotentialAmnesiaEvidence
+	Polc *ProofOfLockChange
 }
 
-// Height, Time, Address and Verify functions are all inherited by the PotentialAmnesiaEvidence struct
+// Height, Time, Address, and Verify, and Hash functions are all inherited by the PotentialAmnesiaEvidence struct
 var _ Evidence = &AmnesiaEvidence{}
-var _ Evidence = AmnesiaEvidence{}
 
-func MakeAmnesiaEvidence(pe PotentialAmnesiaEvidence, proof ProofOfLockChange) AmnesiaEvidence {
-	return AmnesiaEvidence{
+func NewAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
+	return &AmnesiaEvidence{
 		pe,
 		proof,
 	}
 }
 
-func (e AmnesiaEvidence) Equal(ev Evidence) bool {
-	e2, ok := ev.(AmnesiaEvidence)
-	if !ok {
-		return false
+// Note: Amnesia evidence with or without a polc are considered the same
+func (e *AmnesiaEvidence) Equal(ev Evidence) bool {
+	if e2, ok := ev.(*AmnesiaEvidence); ok {
+		return e.PotentialAmnesiaEvidence.Equal(e2.PotentialAmnesiaEvidence)
 	}
-	return e.PotentialAmnesiaEvidence.Equal(e2.PotentialAmnesiaEvidence)
+	return false
 }
 
-func (e AmnesiaEvidence) ValidateBasic() error {
+func (e *AmnesiaEvidence) Bytes() []byte {
+	pbe := e.ToProto()
+
+	bz, err := pbe.Marshal()
+	if err != nil {
+		panic(fmt.Errorf("converting amnesia evidence to bytes, err: %w", err))
+	}
+
+	return bz
+}
+
+func (e *AmnesiaEvidence) ValidateBasic() error {
+	if e == nil {
+		return errors.New("empty amnesia evidence")
+	}
+	if e.Polc == nil || e.PotentialAmnesiaEvidence == nil {
+		return errors.New("amnesia evidence is missing either the polc or the potential amnesia evidence")
+	}
+
 	if err := e.PotentialAmnesiaEvidence.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid potential amnesia evidence: %w", err)
 	}
@@ -1571,10 +1562,10 @@ func (e AmnesiaEvidence) ValidateBasic() error {
 	return nil
 }
 
-// ViolatedConsensus assess on the basis of the AmensiaEvidence whether the validator has violated the
+// ViolatedConsensus assess on the basis of the AmnesiaEvidence whether the validator has violated the
 // Tendermint consensus. Evidence must be validated first (see ValidateBasic).
 // We are only interested in proving that the latter of the votes in terms of time was correctly done.
-func (e AmnesiaEvidence) ViolatedConsensus() (bool, string) {
+func (e *AmnesiaEvidence) ViolatedConsensus() (bool, string) {
 	// a validator having voted cannot go back and vote on an earlier round
 	if e.PotentialAmnesiaEvidence.VoteA.Round > e.PotentialAmnesiaEvidence.VoteB.Round {
 		return true, "validator went back and voted on a previous round"
@@ -1588,8 +1579,22 @@ func (e AmnesiaEvidence) ViolatedConsensus() (bool, string) {
 	return false, ""
 }
 
-func (e AmnesiaEvidence) String() string {
+func (e *AmnesiaEvidence) String() string {
 	return fmt.Sprintf("AmnesiaEvidence{ %v, polc: %v }", e.PotentialAmnesiaEvidence, e.Polc)
+}
+
+func (e *AmnesiaEvidence) ToProto() *tmproto.AmnesiaEvidence {
+	paepb := e.PotentialAmnesiaEvidence.ToProto()
+
+	polc, err := e.Polc.ToProto()
+	if err != nil {
+		polc, _ = NewEmptyPOLC().ToProto()
+	}
+
+	return &tmproto.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: paepb,
+		Polc:                     polc,
+	}
 }
 
 func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChange, error) {
@@ -1608,17 +1613,17 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 		return nil, errors.New("proofOfLockChange: is not absent but has no votes")
 	}
 
-	vpb := make([]Vote, len(pb.Votes))
+	vpb := make([]*Vote, len(pb.Votes))
 	for i, v := range pb.Votes {
 		vi, err := VoteFromProto(v)
 		if err != nil {
 			return nil, err
 		}
-		vpb[i] = *vi
+		vpb[i] = vi
 	}
 
 	if pb.PubKey == nil {
-		return nil, errors.New("proofOfLockChange: is not abest but has nil PubKey")
+		return nil, errors.New("proofOfLockChange: is not absent but has nil PubKey")
 	}
 	pk, err := cryptoenc.PubKeyFromProto(*pb.PubKey)
 	if err != nil {
@@ -1628,7 +1633,7 @@ func ProofOfLockChangeFromProto(pb *tmproto.ProofOfLockChange) (*ProofOfLockChan
 	plc.PubKey = pk
 	plc.Votes = vpb
 
-	return plc, nil
+	return plc, plc.ValidateBasic()
 }
 
 func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*PotentialAmnesiaEvidence, error) {
@@ -1650,49 +1655,64 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 	return &tp, tp.ValidateBasic()
 }
 
-func AmnesiaEvidenceToProto(evi AmnesiaEvidence) (*tmproto.Evidence, error) {
-	paepb := evi.PotentialAmnesiaEvidence.ToProto()
-
-	polc, err := evi.Polc.ToProto()
-	if err != nil {
-		return nil, err
-	}
-
-	tp := &tmproto.Evidence{
-		Sum: &tmproto.Evidence_AmnesiaEvidence{
-			AmnesiaEvidence: &tmproto.AmnesiaEvidence{
-				PotentialAmnesiaEvidence: &paepb,
-				Polc:                     polc,
-			},
-		},
-	}
-
-	return tp, nil
-}
-
-func AmensiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (AmnesiaEvidence, error) {
+func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, error) {
 	if pb == nil {
-		return AmnesiaEvidence{}, errors.New("nil duplicate vote evidence")
+		return nil, errors.New("nil amnesia evidence")
 	}
 
 	pae, err := PotentialAmnesiaEvidenceFromProto(pb.PotentialAmnesiaEvidence)
 	if err != nil {
-		return AmnesiaEvidence{}, err
+		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w", err)
 	}
 	polc, err := ProofOfLockChangeFromProto(pb.Polc)
 	if err != nil {
-		return AmnesiaEvidence{}, err
+		return nil, fmt.Errorf("decoding to amnesia evidence, err: %w", err)
 	}
 
-	tp := AmnesiaEvidence{
-		PotentialAmnesiaEvidence: *pae,
-		Polc:                     *polc,
+	tp := &AmnesiaEvidence{
+		PotentialAmnesiaEvidence: pae,
+		Polc:                     polc,
 	}
 
 	return tp, tp.ValidateBasic()
 }
 
-//-----------------------------------------------------------------
+//--------------------------------------------------------------
+
+// EvidenceList is a list of Evidence. Evidences is not a word.
+type EvidenceList []Evidence
+
+// Hash returns the simple merkle root hash of the EvidenceList.
+func (evl EvidenceList) Hash() []byte {
+	// These allocations are required because Evidence is not of type Bytes, and
+	// golang slices can't be typed cast. This shouldn't be a performance problem since
+	// the Evidence size is capped.
+	evidenceBzs := make([][]byte, len(evl))
+	for i := 0; i < len(evl); i++ {
+		evidenceBzs[i] = evl[i].Bytes()
+	}
+	return merkle.HashFromByteSlices(evidenceBzs)
+}
+
+func (evl EvidenceList) String() string {
+	s := ""
+	for _, e := range evl {
+		s += fmt.Sprintf("%s\t\t", e)
+	}
+	return s
+}
+
+// Has returns true if the evidence is in the EvidenceList.
+func (evl EvidenceList) Has(evidence Evidence) bool {
+	for _, ev := range evl {
+		if ev.Equal(evidence) {
+			return true
+		}
+	}
+	return false
+}
+
+//--------------------------------------------------
 
 // UNSTABLE
 type MockRandomEvidence struct {
@@ -1771,7 +1791,7 @@ func NewMockPOLC(height int64, time time.Time, pubKey crypto.PubKey) ProofOfLock
 	vote.Signature = v.Signature
 
 	return ProofOfLockChange{
-		Votes:  []Vote{vote},
+		Votes:  []*Vote{&vote},
 		PubKey: pubKey,
 	}
 }

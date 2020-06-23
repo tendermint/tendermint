@@ -1083,7 +1083,7 @@ func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
 	}
 
 	// Check evidence was sent to both full nodes.
-	ev := types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
+	ev := &types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
 	assert.True(t, fullNode2.HasEvidence(ev))
 	assert.True(t, fullNode.HasEvidence(ev))
 }
