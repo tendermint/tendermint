@@ -488,6 +488,7 @@ func TestTxSearch(t *testing.T) {
 	// from other tests as well
 	result, err := c.TxSearch("tx.height >= 0", true, nil, nil, "asc")
 	require.NoError(t, err)
+	txCount := len(result.Txs)
 
 	// pick out the last tx to have something to search for in tests
 	find := result.Txs[len(result.Txs)-1]
@@ -564,51 +565,35 @@ func TestTxSearch(t *testing.T) {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.GreaterOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
-	}
-}
+		// check pagination
+		perPage = 3
+		var (
+			seen      = map[int64]bool{}
+			maxHeight int64
+			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
+		)
 
-func TestTxSearchPagination(t *testing.T) {
-	c := getHTTPClient()
-
-	// first we broadcast a few txs
-	for i := 0; i < 10; i++ {
-		_, _, tx := MakeTxKV()
-		_, err := c.BroadcastTxCommit(tx)
-		require.NoError(t, err)
-	}
-
-	result, err := c.TxSearch("tx.height >= 1", false, nil, nil, "asc")
-	require.NoError(t, err)
-	txCount := len(result.Txs)
-
-	// check pagination
-	perPage := 3
-	var (
-		seen      = map[int64]bool{}
-		maxHeight int64
-		pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
-	)
-
-	for page := 1; page <= pages; page++ {
-		page := page
-		result, err := c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
-		require.NoError(t, err)
-		if page < pages {
-			require.Len(t, result.Txs, perPage)
-		} else {
-			require.LessOrEqual(t, len(result.Txs), perPage)
+		for page := 1; page <= pages; page++ {
+			page := page
+			result, err := c.TxSearch("tx.height >= 1", false, &page, &perPage, "asc")
+			require.NoError(t, err)
+			if page < pages {
+				require.Len(t, result.Txs, perPage)
+			} else {
+				require.LessOrEqual(t, len(result.Txs), perPage)
+			}
+			require.Equal(t, txCount, result.TotalCount)
+			for _, tx := range result.Txs {
+				require.False(t, seen[tx.Height],
+					"Found duplicate height %v in page %v", tx.Height, page)
+				require.Greater(t, tx.Height, maxHeight,
+					"Found decreasing height %v (max seen %v) in page %v", tx.Height, maxHeight, page)
+				seen[tx.Height] = true
+				maxHeight = tx.Height
+			}
 		}
-		require.Equal(t, txCount, result.TotalCount)
-		for _, tx := range result.Txs {
-			require.False(t, seen[tx.Height],
-				"Found duplicate height %v in page %v", tx.Height, page)
-			require.Greater(t, tx.Height, maxHeight,
-				"Found decreasing height %v (max seen %v) in page %v", tx.Height, maxHeight, page)
-			seen[tx.Height] = true
-			maxHeight = tx.Height
-		}
+		require.Len(t, seen, txCount)
 	}
-	require.Len(t, seen, txCount)
 }
 
 func TestBatchedJSONRPCCalls(t *testing.T) {
