@@ -833,7 +833,7 @@ func (e *PhantomValidatorEvidence) ValidateBasic() error {
 	}
 
 	if err := e.Vote.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid vote: %W", err)
+		return fmt.Errorf("invalid vote: %w", err)
 	}
 
 	if !e.Vote.BlockID.IsComplete() {
