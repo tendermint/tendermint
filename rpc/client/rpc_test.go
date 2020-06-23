@@ -492,6 +492,7 @@ func TestTxSearch(t *testing.T) {
 
 	// pick out the last tx to have something to search for in tests
 	find := result.Txs[len(result.Txs)-1]
+	anotherTxHash := types.Tx("a different tx").Hash()
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
@@ -513,6 +514,11 @@ func TestTxSearch(t *testing.T) {
 		if assert.EqualValues(t, find.Tx, ptx.Proof.Data) {
 			assert.NoError(t, ptx.Proof.Proof.Verify(ptx.Proof.RootHash, find.Hash))
 		}
+
+		// query for non existing tx
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
