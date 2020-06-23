@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -142,19 +143,6 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 
 	case *AmnesiaEvidence:
 		aepb := evi.ToProto()
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_AmnesiaEvidence{
-				AmnesiaEvidence: aepb,
-			},
-		}
-
-		return tp, nil
-
-	case MockEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
 
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_AmnesiaEvidence{
@@ -1640,41 +1628,6 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 	return tp, tp.ValidateBasic()
 }
 
-//--------------------------------------------------------------
-
-// EvidenceList is a list of Evidence. Evidences is not a word.
-type EvidenceList []Evidence
-
-// Hash returns the simple merkle root hash of the EvidenceList.
-func (evl EvidenceList) Hash() []byte {
-	// These allocations are required because Evidence is not of type Bytes, and
-	// golang slices can't be typed cast. This shouldn't be a performance problem since
-	// the Evidence size is capped.
-	evidenceBzs := make([][]byte, len(evl))
-	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Bytes()
-	}
-	return merkle.HashFromByteSlices(evidenceBzs)
-}
-
-func (evl EvidenceList) String() string {
-	s := ""
-	for _, e := range evl {
-		s += fmt.Sprintf("%s\t\t", e)
-	}
-	return s
-}
-
-// Has returns true if the evidence is in the EvidenceList.
-func (evl EvidenceList) Has(evidence Evidence) bool {
-	for _, ev := range evl {
-		if ev.Equal(evidence) {
-			return true
-		}
-	}
-	return false
-}
-
 //--------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
@@ -1715,12 +1668,13 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) * DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
 	val := NewMockPV()
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
-func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time, pv PrivValidator, chainID string) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
+	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey()
 	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vA := voteA.ToProto()
@@ -1731,9 +1685,8 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time, pv 
 	_ = pv.SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
 	return NewDuplicateVoteEvidence(voteA, voteB)
-	
-}
 
+}
 
 func makeMockVote(height int64, round, index int32, addr Address,
 	blockID BlockID, time time.Time) *Vote {
@@ -1751,7 +1704,7 @@ func makeMockVote(height int64, round, index int32, addr Address,
 func randBlockID() BlockID {
 	return BlockID{
 		Hash: tmrand.Bytes(tmhash.Size),
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 1,
 			Hash:  tmrand.Bytes(tmhash.Size),
 		},

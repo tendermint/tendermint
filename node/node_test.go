@@ -218,8 +218,6 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
-	const minEvSize = 12
-
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -327,7 +325,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	privVals:= make([]types.PrivValidator, nVals)
+	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		privVal := types.NewMockPV()

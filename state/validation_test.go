@@ -237,7 +237,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
 			for i := uint32(0); i <= maxNumEvidence; i++ {
-				evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[proposerAddr.String()], chainID))
+				evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+					privVals[proposerAddr.String()], chainID))
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
@@ -254,7 +255,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
 			// make different evidence for each validator
 			_, val := state.Validators.GetByIndex(i)
-			evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[val.Address.String()], chainID))
+			evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+				privVals[val.Address.String()], chainID))
 		}
 
 		var err error
@@ -276,8 +278,10 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	state, stateDB, privVals := makeState(2, int(height))
 	_, val := state.Validators.GetByIndex(0)
 	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val2.Address.String()], chainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ev).Return(false)
@@ -305,8 +309,10 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	state, stateDB, privVals := makeState(2, int(height))
 	_, val := state.Validators.GetByIndex(0)
 	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val2.Address.String()], chainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ev).Return(false)
@@ -334,8 +340,10 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	state, stateDB, privVals := makeState(2, int(height))
 	_, val := state.Validators.GetByIndex(0)
 	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime, privVals[val2.Address.String()], chainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
