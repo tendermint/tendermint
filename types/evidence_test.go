@@ -665,6 +665,7 @@ func TestEvidenceProto(t *testing.T) {
 		toProtoErr   bool
 		fromProtoErr bool
 	}{
+        {"nil fail", nil, true, true},
 		{"DuplicateVoteEvidence empty fail", &DuplicateVoteEvidence{}, false, true},
 		{"DuplicateVoteEvidence nil voteB", &DuplicateVoteEvidence{VoteA: v, VoteB: nil}, false, true},
 		{"DuplicateVoteEvidence nil voteA", &DuplicateVoteEvidence{VoteA: nil, VoteB: v}, false, true},
