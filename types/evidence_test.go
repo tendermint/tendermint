@@ -356,7 +356,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID, defaultVoteTime)
-		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime.Add(1 * time.Minute))
+		vote2    = makeVote(t, val, chainID, 0, height, 1, 2, blockID2, defaultVoteTime.Add(1*time.Minute))
 	)
 
 	ev := &PotentialAmnesiaEvidence{
