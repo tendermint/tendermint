@@ -61,18 +61,7 @@ indexing for all txs. Application's can notify Tendermint to index a specific tx
   }
 ```
 
-- To Index by height the application must set the key as `tx.height`. This will mimic the same logic as previously in Tendermint but the application must also specify if the height should be indexed.
-
-```go
-[]types.Event{
-		{
-			Type: "tx",
-			Attributes: []types.EventAttribute{
-				{Key: []byte("height"), Index: true},
-			},
-		},
-  }
-```
+- Indexing by `height` & `hash` is defaulted to always on.
 
 ### Protobuf
 

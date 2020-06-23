@@ -74,11 +74,14 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		// index tx by events
 		txi.indexEvents(result, hash, storeBatch)
 
-		// index tx by hash
+		// index by height (always)
+		storeBatch.Set(keyForHeight(result), hash)
+
 		rawBytes, err := proto.Marshal(result)
 		if err != nil {
 			return err
 		}
+		// index by hash (always)
 		storeBatch.Set(hash, rawBytes)
 	}
 
@@ -99,19 +102,22 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	// index tx by events
 	txi.indexEvents(result, hash, b)
 
-	// index tx by hash
+	// index by height (always)
+	b.Set(keyForHeight(result), hash)
+
 	rawBytes, err := proto.Marshal(result)
 	if err != nil {
 		return err
 	}
-
+	// index by hash (always)
 	b.Set(hash, rawBytes)
+
 	b.WriteSync()
 
 	return nil
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -123,16 +129,15 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Se
 				continue
 			}
 
+			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			if attr.GetIndex() {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
-
-			if attr.GetIndex() && fmt.Sprintf("%s.%s", event.Type, string(attr.Key)) == "tx.height" {
-				store.Set(keyForHeight(result), hash)
-			}
 		}
 	}
+
+	return nil
 }
 
 // Search performs a search using the given query.
