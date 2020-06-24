@@ -17,18 +17,15 @@ import (
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
+// EmptyNetAddress defines the string representation of an empty NetAddress
+const EmptyNetAddress = "<nil-NetAddress>"
+
 // NetAddress defines information about a peer on the network
 // including its ID, IP address, and port.
 type NetAddress struct {
 	ID   ID     `json:"id"`
 	IP   net.IP `json:"ip"`
 	Port uint16 `json:"port"`
-
-	// TODO:
-	// Name string `json:"name"` // optional DNS name
-
-	// memoize .String()
-	str string
 }
 
 // IDAddressString returns id@hostPort. It strips the leading
@@ -213,16 +210,15 @@ func (na *NetAddress) Same(other interface{}) bool {
 // String representation: <ID>@<IP>:<PORT>
 func (na *NetAddress) String() string {
 	if na == nil {
-		return "<nil-NetAddress>"
+		return EmptyNetAddress
 	}
-	if na.str == "" {
-		addrStr := na.DialString()
-		if na.ID != "" {
-			addrStr = IDAddressString(na.ID, addrStr)
-		}
-		na.str = addrStr
+
+	addrStr := na.DialString()
+	if na.ID != "" {
+		addrStr = IDAddressString(na.ID, addrStr)
 	}
-	return na.str
+
+	return addrStr
 }
 
 func (na *NetAddress) DialString() string {
