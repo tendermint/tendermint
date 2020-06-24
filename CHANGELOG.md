@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.0
+
+**2020-06-24**
+
 ### Breaking Changes
 
 - [\#99](https://github.com/tendermint/tm-db/pull/99) Keys can no longer be `nil` or empty, and values can no longer be `nil` (@erikgrinaker)
