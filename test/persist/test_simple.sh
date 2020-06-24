@@ -11,7 +11,7 @@ function start_procs(){
     echo "Starting persistent kvstore and tendermint"
     abci-cli kvstore --persist $TMHOME/kvstore &> "kvstore_${name}.log" &
     PID_DUMMY=$!
-    tendermint node &> tendermint_${name}.log &
+    tendermint node --double_sign_check_height 0 &> tendermint_${name}.log &
     PID_TENDERMINT=$!
     sleep 5
 }

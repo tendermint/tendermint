@@ -37,6 +37,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"genesis_hash",
 		[]byte{},
 		"Optional SHA-256 hash of the genesis file")
+	cmd.Flags().Int64("double_sign_check_height", config.Consensus.DoubleSignCheckHeight,
+		"How many blocks looks back to check existence of the node's "+
+			"consensus votes when before joining consensus (disable when 0)")
 
 	// abci flags
 	cmd.Flags().String(

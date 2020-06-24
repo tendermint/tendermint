@@ -378,6 +378,13 @@ timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
 timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
 timeout_commit = "{{ .Consensus.TimeoutCommit }}"
 
+# How many blocks looks back to check existence of the node's consensus votes when before joining consensus
+# When the risk reduction method is on, restarting a validator node will panic
+# because the node itself voted on consensus with the same consensus key.
+# So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
+# - 0 disable.
+double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}
+
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 

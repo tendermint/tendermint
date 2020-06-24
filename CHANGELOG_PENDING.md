@@ -94,6 +94,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#5017 Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
 - [abci] \#5031 Add `AppVersion` to consensus parameters (@james-ray)
   ... making it possible to update your ABCI application version via `EndBlock` response
+- [config] Add `--double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
 
 ### IMPROVEMENTS:
 
