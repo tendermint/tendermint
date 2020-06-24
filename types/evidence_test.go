@@ -201,14 +201,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	}
 }
 
-func TestMockGoodEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
+func TestMockEvidenceValidateBasic(t *testing.T) {
+	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
 	assert.Nil(t, goodEvidence.ValidateBasic())
-}
-
-func TestMockBadEvidenceValidateBasic(t *testing.T) {
-	badEvidence := NewMockEvidence(int64(1), time.Now(), []byte{1})
-	assert.Nil(t, badEvidence.ValidateBasic())
 }
 
 func TestLunaticValidatorEvidence(t *testing.T) {

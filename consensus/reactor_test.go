@@ -154,9 +154,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		pubKey, err := privVals[vIdx].GetPubKey()
-		require.NoError(t, err)
-		evpool := newMockEvidencePool(pubKey.Address())
+		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -201,9 +199,9 @@ type mockEvidencePool struct {
 	ev     []types.Evidence
 }
 
-func newMockEvidencePool(val []byte) *mockEvidencePool {
+func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), val)},
+		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().UTC(), val, config.ChainID())},
 	}
 }
 

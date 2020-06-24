@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -238,7 +237,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
 			for i := uint32(0); i <= maxNumEvidence; i++ {
-				evidence = append(evidence, types.NewMockEvidence(height, time.Now(), proposerAddr))
+				evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+					privVals[proposerAddr.String()], chainID))
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
@@ -254,8 +254,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 		// precisely the amount of allowed evidence
 		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
 			// make different evidence for each validator
-			addr, _ := state.Validators.GetByIndex(i)
-			evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
+			_, val := state.Validators.GetByIndex(i)
+			evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+				privVals[val.Address.String()], chainID))
 		}
 
 		var err error
@@ -274,14 +275,17 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(2, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsPending", ev).Return(false)
+	evpool.On("IsPending", ev2).Return(false)
 	evpool.On("IsCommitted", ev).Return(false)
 	evpool.On("IsCommitted", ev2).Return(true)
 
@@ -302,16 +306,19 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 
 func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(2, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ev).Return(false)
 	evpool.On("IsPending", ev2).Return(true)
-	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsCommitted", ev).Return(false)
+	evpool.On("IsCommitted", ev2).Return(false)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -330,11 +337,13 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 
 func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(1, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -454,8 +463,7 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 func TestVerifyEvidenceWrongAddress(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := makeState(1, int(height))
-	randomAddr := []byte("wrong address")
-	ev := types.NewMockEvidence(height, defaultTestTime, randomAddr)
+	ev := types.NewMockDuplicateVoteEvidence(height, defaultTestTime, chainID)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -467,7 +475,7 @@ func TestVerifyEvidenceWrongAddress(t *testing.T) {
 	block.Evidence.Evidence = []types.Evidence{ev}
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
-	errMsg := "Invalid evidence: address 77726F6E672061646472657373 was not a validator at height 1"
+	errMsg := "Invalid evidence: address "
 	if assert.Error(t, err) {
 		assert.Equal(t, err.Error()[:len(errMsg)], errMsg)
 	}
@@ -477,8 +485,7 @@ func TestVerifyEvidenceExpiredEvidence(t *testing.T) {
 	var height int64 = 4
 	state, stateDB, _ := makeState(1, int(height))
 	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
-	addr, _ := state.Validators.GetByIndex(0)
-	ev := types.NewMockEvidence(1, defaultTestTime, addr)
+	ev := types.NewMockDuplicateVoteEvidence(1, defaultTestTime, chainID)
 	err := sm.VerifyEvidence(stateDB, state, ev, nil)
 	errMsg := "evidence from height 1 (created at: 2019-01-01 00:00:00 +0000 UTC) is too old"
 	if assert.Error(t, err) {
