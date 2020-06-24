@@ -710,13 +710,12 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	// polc should be in the evpool for round 1
 	polc, err := evpool.RetrievePOLC(height, round)
 	assert.NoError(t, err)
+	assert.NotNil(t, polc)
 	assert.False(t, polc.IsAbsent())
-	t.Log(polc.Address())
 	// but not for round 0
 	polc, err = evpool.RetrievePOLC(height, round-1)
-	assert.Error(t, err)
-	assert.True(t, polc.IsAbsent())
-
+	assert.NoError(t, err)
+	assert.Nil(t, polc)
 }
 
 // 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
@@ -820,6 +819,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	// polc should be in the evpool for round 1
 	polc, err := evpool.RetrievePOLC(height, round)
 	assert.NoError(t, err)
+	assert.NotNil(t, polc)
 	assert.False(t, polc.IsAbsent())
 
 	incrementRound(vs2, vs3, vs4)

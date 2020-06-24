@@ -121,7 +121,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := makeState(2, 12)
+	state, stateDB, privVals := makeState(2, 12)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -129,8 +129,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	height1, val1 := int64(8), state.Validators.Validators[0].Address
 	height2, val2 := int64(3), state.Validators.Validators[1].Address
-	ev1 := types.NewMockEvidence(height1, time.Now(), val1)
-	ev2 := types.NewMockEvidence(height2, time.Now(), val2)
+	ev1 := types.NewMockDuplicateVoteEvidenceWithValidator(height1, time.Now(), privVals[val1.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height2, time.Now(), privVals[val2.String()], chainID)
 
 	now := tmtime.Now()
 	valSet := state.Validators
