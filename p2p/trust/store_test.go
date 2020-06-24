@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -17,12 +18,11 @@ import (
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	dir, err := ioutil.TempDir("", "trust_test")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(dir)
 
-	historyDB := dbm.NewDB("trusthistory", "goleveldb", dir)
+	historyDB, err := dbm.NewDB("trusthistory", "goleveldb", dir)
+	require.NoError(t, err)
 
 	// 0 peers saved
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
@@ -79,7 +79,8 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 }
 
 func TestTrustMetricStoreConfig(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	config := MetricConfig{
 		ProportionalWeight: 0.5,
@@ -101,7 +102,8 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 }
 
 func TestTrustMetricStoreLookup(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
@@ -121,7 +123,8 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 }
 
 func TestTrustMetricStorePeerScore(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
