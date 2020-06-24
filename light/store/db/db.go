@@ -70,18 +70,22 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 	defer s.mtx.Unlock()
 
 	b := s.db.NewBatch()
-	b.Set(s.shKey(sh.Height), shBz)
-	b.Set(s.vsKey(sh.Height), valSetBz)
-	b.Set(sizeKey, marshalSize(s.size+1))
-
-	err = b.WriteSync()
-	b.Close()
-
-	if err == nil {
-		s.size++
+	defer b.Close()
+	if err = b.Set(s.shKey(sh.Height), shBz); err != nil {
+		return err
 	}
+	if err = b.Set(s.vsKey(sh.Height), valSetBz); err != nil {
+		return err
+	}
+	if err = b.Set(sizeKey, marshalSize(s.size+1)); err != nil {
+		return err
+	}
+	if err = b.WriteSync(); err != nil {
+		return err
+	}
+	s.size++
 
-	return err
+	return nil
 }
 
 // DeleteSignedHeaderAndValidatorSet deletes SignedHeader and ValidatorSet from
@@ -97,18 +101,22 @@ func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 	defer s.mtx.Unlock()
 
 	b := s.db.NewBatch()
-	b.Delete(s.shKey(height))
-	b.Delete(s.vsKey(height))
-	b.Set(sizeKey, marshalSize(s.size-1))
-
-	err := b.WriteSync()
-	b.Close()
-
-	if err == nil {
-		s.size--
+	defer b.Close()
+	if err := b.Delete(s.shKey(height)); err != nil {
+		return err
 	}
+	if err := b.Delete(s.vsKey(height)); err != nil {
+		return err
+	}
+	if err := b.Set(sizeKey, marshalSize(s.size-1)); err != nil {
+		return err
+	}
+	if err := b.WriteSync(); err != nil {
+		return err
+	}
+	s.size--
 
-	return err
+	return nil
 }
 
 // SignedHeader loads SignedHeader at the given height.
@@ -282,8 +290,12 @@ func (s *dbs) Prune(size uint16) error {
 		key := itr.Key()
 		_, height, ok := parseShKey(key)
 		if ok {
-			b.Delete(s.shKey(height))
-			b.Delete(s.vsKey(height))
+			if err = b.Delete(s.shKey(height)); err != nil {
+				panic(err)
+			}
+			if err = b.Delete(s.vsKey(height)); err != nil {
+				panic(err)
+			}
 		}
 		itr.Next()
 		numToPrune--
