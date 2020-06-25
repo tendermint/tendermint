@@ -399,6 +399,7 @@ func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 // SetLogger sets the Logger.
 func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
+	evpool.logger.Info("Starting evidence pool logger")
 }
 
 // Header gets the header from the block store at a specified height.

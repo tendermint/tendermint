@@ -3,21 +3,120 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/types"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
 //----------------------------------------------
 // byzantine failures
+
+// Byzantine node sends two different prevotes (nil and blockID) to the same validator
+func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
+	nValidators := 4
+	testName := "consensus_byzantine_test"
+	tickerFunc := newMockTickerFunc(true)
+	appFunc := newCounter
+
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	css := make([]*State, nValidators)
+	logger := consensusLogger().With("test", "byzantine")
+	for i := 0; i < nValidators; i++ {
+		stateDB := dbm.NewMemDB() // each state needs its own db
+		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		defer os.RemoveAll(thisConfig.RootDir)
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		app := appFunc()
+		vals := types.TM2PB.ValidatorUpdates(state.Validators)
+		app.InitChain(abci.RequestInitChain{Validators: vals})
+
+		blockDB := dbm.NewMemDB()
+		blockStore := store.NewBlockStore(blockDB)
+
+		// one for mempool, one for consensus
+		mtx := new(sync.Mutex)
+		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+		// Make Mempool
+		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		if thisConfig.Consensus.WaitForTxs() {
+			mempool.EnableTxsAvailable()
+		}
+
+		// Make a full instance of the evidence pool
+		evidenceDB := dbm.NewMemDB()
+		evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+		require.NoError(t, err)
+		evpool.SetLogger(logger.With("validator", i))
+
+		// Make State
+		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+		// set private validator
+		pv := privVals[i]
+		cs.SetPrivValidator(pv)
+
+		eventBus := types.NewEventBus()
+		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+		eventBus.Start()
+		cs.SetEventBus(eventBus)
+
+		cs.SetTimeoutTicker(tickerFunc())
+		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
+		
+		// create byzantine validator (we don't want the byantine validator to propose the first block)
+		if i == 1 {
+			// cs.evpool.AddEvidence(types.NewMockDuplicateVoteEvidence())
+			cs.doPrevote = func(height int64, round int32) {
+				logger.Info("sending two votes")
+				cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			}
+		}
+
+		css[i] = cs
+	}
+
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	// wait till everyone makes the first new block with no evidence
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
+		assert.True(t, len(block.Evidence.Evidence) == 0)
+	}, css)
+
+	// second block should have evidence
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
+		assert.True(t, len(block.Evidence.Evidence) > 0)
+	}, css)
+}
 
 // 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
 // byzantine validator sends conflicting proposals into A and B,
