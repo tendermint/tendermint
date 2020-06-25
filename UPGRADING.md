@@ -80,9 +80,19 @@ Various parameters have been added to the consensus parameters.
 
 ### Crypto
 
-Starting with Keys. All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
+#### Keys
+
+All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
 
 The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+
+#### Merkle
+
+From the merkle package `SimpleHashFromMap()` and `SimpleProofsFromMap()` were removed along with all the prefixes of `Simple`. If you are looking for `SimpleProof` it has been renamed to `Proof` within the merkle pkg. Previously there were protobuf messages located in the merkle pkg, these have since been moved to the `/proto` directory. The protobuf message `Proof` that contained multiple ProofOp's has been renamed to `ProofOps`. This change effects the ABCI type `ResponseQuery`, the field that was named Proof is now named `ProofOps`.
+
+### Libs
+
+The Bech32 pkg has been migrated to a new home, you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
 
 
 ## v0.33.4
