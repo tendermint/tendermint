@@ -7,20 +7,16 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
-	_ "github.com/gogo/protobuf/types"
-	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	keys "github.com/tendermint/tendermint/proto/tendermint/crypto/keys"
 	io "io"
 	math "math"
 	math_bits "math/bits"
-	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
-var _ = time.Kitchen
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -194,135 +190,6 @@ func (m *AmnesiaEvidence) GetPolc() *ProofOfLockChange {
 	return nil
 }
 
-// MockEvidence is used for testing pruposes
-type MockEvidence struct {
-	EvidenceHeight  int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
-	EvidenceTime    time.Time `protobuf:"bytes,2,opt,name=evidence_time,json=evidenceTime,proto3,stdtime" json:"evidence_time"`
-	EvidenceAddress []byte    `protobuf:"bytes,3,opt,name=evidence_address,json=evidenceAddress,proto3" json:"evidence_address,omitempty"`
-}
-
-func (m *MockEvidence) Reset()         { *m = MockEvidence{} }
-func (m *MockEvidence) String() string { return proto.CompactTextString(m) }
-func (*MockEvidence) ProtoMessage()    {}
-func (*MockEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{3}
-}
-func (m *MockEvidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MockEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MockEvidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MockEvidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MockEvidence.Merge(m, src)
-}
-func (m *MockEvidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *MockEvidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_MockEvidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MockEvidence proto.InternalMessageInfo
-
-func (m *MockEvidence) GetEvidenceHeight() int64 {
-	if m != nil {
-		return m.EvidenceHeight
-	}
-	return 0
-}
-
-func (m *MockEvidence) GetEvidenceTime() time.Time {
-	if m != nil {
-		return m.EvidenceTime
-	}
-	return time.Time{}
-}
-
-func (m *MockEvidence) GetEvidenceAddress() []byte {
-	if m != nil {
-		return m.EvidenceAddress
-	}
-	return nil
-}
-
-type MockRandomEvidence struct {
-	EvidenceHeight  int64     `protobuf:"varint,1,opt,name=evidence_height,json=evidenceHeight,proto3" json:"evidence_height,omitempty"`
-	EvidenceTime    time.Time `protobuf:"bytes,2,opt,name=evidence_time,json=evidenceTime,proto3,stdtime" json:"evidence_time"`
-	EvidenceAddress []byte    `protobuf:"bytes,3,opt,name=evidence_address,json=evidenceAddress,proto3" json:"evidence_address,omitempty"`
-	RandBytes       []byte    `protobuf:"bytes,4,opt,name=rand_bytes,json=randBytes,proto3" json:"rand_bytes,omitempty"`
-}
-
-func (m *MockRandomEvidence) Reset()         { *m = MockRandomEvidence{} }
-func (m *MockRandomEvidence) String() string { return proto.CompactTextString(m) }
-func (*MockRandomEvidence) ProtoMessage()    {}
-func (*MockRandomEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{4}
-}
-func (m *MockRandomEvidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MockRandomEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MockRandomEvidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MockRandomEvidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MockRandomEvidence.Merge(m, src)
-}
-func (m *MockRandomEvidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *MockRandomEvidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_MockRandomEvidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MockRandomEvidence proto.InternalMessageInfo
-
-func (m *MockRandomEvidence) GetEvidenceHeight() int64 {
-	if m != nil {
-		return m.EvidenceHeight
-	}
-	return 0
-}
-
-func (m *MockRandomEvidence) GetEvidenceTime() time.Time {
-	if m != nil {
-		return m.EvidenceTime
-	}
-	return time.Time{}
-}
-
-func (m *MockRandomEvidence) GetEvidenceAddress() []byte {
-	if m != nil {
-		return m.EvidenceAddress
-	}
-	return nil
-}
-
-func (m *MockRandomEvidence) GetRandBytes() []byte {
-	if m != nil {
-		return m.RandBytes
-	}
-	return nil
-}
-
 type ConflictingHeadersEvidence struct {
 	H1 *SignedHeader `protobuf:"bytes,1,opt,name=h1,proto3" json:"h1,omitempty"`
 	H2 *SignedHeader `protobuf:"bytes,2,opt,name=h2,proto3" json:"h2,omitempty"`
@@ -332,7 +199,7 @@ func (m *ConflictingHeadersEvidence) Reset()         { *m = ConflictingHeadersEv
 func (m *ConflictingHeadersEvidence) String() string { return proto.CompactTextString(m) }
 func (*ConflictingHeadersEvidence) ProtoMessage()    {}
 func (*ConflictingHeadersEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{5}
+	return fileDescriptor_6825fabc78e0a168, []int{3}
 }
 func (m *ConflictingHeadersEvidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -385,7 +252,7 @@ func (m *LunaticValidatorEvidence) Reset()         { *m = LunaticValidatorEviden
 func (m *LunaticValidatorEvidence) String() string { return proto.CompactTextString(m) }
 func (*LunaticValidatorEvidence) ProtoMessage()    {}
 func (*LunaticValidatorEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{6}
+	return fileDescriptor_6825fabc78e0a168, []int{4}
 }
 func (m *LunaticValidatorEvidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -444,7 +311,7 @@ func (m *PhantomValidatorEvidence) Reset()         { *m = PhantomValidatorEviden
 func (m *PhantomValidatorEvidence) String() string { return proto.CompactTextString(m) }
 func (*PhantomValidatorEvidence) ProtoMessage()    {}
 func (*PhantomValidatorEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{7}
+	return fileDescriptor_6825fabc78e0a168, []int{5}
 }
 func (m *PhantomValidatorEvidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -495,8 +362,6 @@ type Evidence struct {
 	//	*Evidence_PotentialAmnesiaEvidence
 	//	*Evidence_AmnesiaEvidence
 	//	*Evidence_PhantomValidatorEvidence
-	//	*Evidence_MockEvidence
-	//	*Evidence_MockRandomEvidence
 	Sum isEvidence_Sum `protobuf_oneof:"sum"`
 }
 
@@ -504,7 +369,7 @@ func (m *Evidence) Reset()         { *m = Evidence{} }
 func (m *Evidence) String() string { return proto.CompactTextString(m) }
 func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{8}
+	return fileDescriptor_6825fabc78e0a168, []int{6}
 }
 func (m *Evidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -557,12 +422,6 @@ type Evidence_AmnesiaEvidence struct {
 type Evidence_PhantomValidatorEvidence struct {
 	PhantomValidatorEvidence *PhantomValidatorEvidence `protobuf:"bytes,6,opt,name=phantom_validator_evidence,json=phantomValidatorEvidence,proto3,oneof" json:"phantom_validator_evidence,omitempty"`
 }
-type Evidence_MockEvidence struct {
-	MockEvidence *MockEvidence `protobuf:"bytes,7,opt,name=mock_evidence,json=mockEvidence,proto3,oneof" json:"mock_evidence,omitempty"`
-}
-type Evidence_MockRandomEvidence struct {
-	MockRandomEvidence *MockRandomEvidence `protobuf:"bytes,8,opt,name=mock_random_evidence,json=mockRandomEvidence,proto3,oneof" json:"mock_random_evidence,omitempty"`
-}
 
 func (*Evidence_DuplicateVoteEvidence) isEvidence_Sum()      {}
 func (*Evidence_ConflictingHeadersEvidence) isEvidence_Sum() {}
@@ -570,8 +429,6 @@ func (*Evidence_LunaticValidatorEvidence) isEvidence_Sum()   {}
 func (*Evidence_PotentialAmnesiaEvidence) isEvidence_Sum()   {}
 func (*Evidence_AmnesiaEvidence) isEvidence_Sum()            {}
 func (*Evidence_PhantomValidatorEvidence) isEvidence_Sum()   {}
-func (*Evidence_MockEvidence) isEvidence_Sum()               {}
-func (*Evidence_MockRandomEvidence) isEvidence_Sum()         {}
 
 func (m *Evidence) GetSum() isEvidence_Sum {
 	if m != nil {
@@ -622,20 +479,6 @@ func (m *Evidence) GetPhantomValidatorEvidence() *PhantomValidatorEvidence {
 	return nil
 }
 
-func (m *Evidence) GetMockEvidence() *MockEvidence {
-	if x, ok := m.GetSum().(*Evidence_MockEvidence); ok {
-		return x.MockEvidence
-	}
-	return nil
-}
-
-func (m *Evidence) GetMockRandomEvidence() *MockRandomEvidence {
-	if x, ok := m.GetSum().(*Evidence_MockRandomEvidence); ok {
-		return x.MockRandomEvidence
-	}
-	return nil
-}
-
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Evidence) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -645,8 +488,6 @@ func (*Evidence) XXX_OneofWrappers() []interface{} {
 		(*Evidence_PotentialAmnesiaEvidence)(nil),
 		(*Evidence_AmnesiaEvidence)(nil),
 		(*Evidence_PhantomValidatorEvidence)(nil),
-		(*Evidence_MockEvidence)(nil),
-		(*Evidence_MockRandomEvidence)(nil),
 	}
 }
 
@@ -660,7 +501,7 @@ func (m *EvidenceData) Reset()         { *m = EvidenceData{} }
 func (m *EvidenceData) String() string { return proto.CompactTextString(m) }
 func (*EvidenceData) ProtoMessage()    {}
 func (*EvidenceData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{9}
+	return fileDescriptor_6825fabc78e0a168, []int{7}
 }
 func (m *EvidenceData) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -712,7 +553,7 @@ func (m *ProofOfLockChange) Reset()         { *m = ProofOfLockChange{} }
 func (m *ProofOfLockChange) String() string { return proto.CompactTextString(m) }
 func (*ProofOfLockChange) ProtoMessage()    {}
 func (*ProofOfLockChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{10}
+	return fileDescriptor_6825fabc78e0a168, []int{8}
 }
 func (m *ProofOfLockChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -759,8 +600,6 @@ func init() {
 	proto.RegisterType((*DuplicateVoteEvidence)(nil), "tendermint.types.DuplicateVoteEvidence")
 	proto.RegisterType((*PotentialAmnesiaEvidence)(nil), "tendermint.types.PotentialAmnesiaEvidence")
 	proto.RegisterType((*AmnesiaEvidence)(nil), "tendermint.types.AmnesiaEvidence")
-	proto.RegisterType((*MockEvidence)(nil), "tendermint.types.MockEvidence")
-	proto.RegisterType((*MockRandomEvidence)(nil), "tendermint.types.MockRandomEvidence")
 	proto.RegisterType((*ConflictingHeadersEvidence)(nil), "tendermint.types.ConflictingHeadersEvidence")
 	proto.RegisterType((*LunaticValidatorEvidence)(nil), "tendermint.types.LunaticValidatorEvidence")
 	proto.RegisterType((*PhantomValidatorEvidence)(nil), "tendermint.types.PhantomValidatorEvidence")
@@ -772,65 +611,53 @@ func init() {
 func init() { proto.RegisterFile("tendermint/types/evidence.proto", fileDescriptor_6825fabc78e0a168) }
 
 var fileDescriptor_6825fabc78e0a168 = []byte{
-	// 915 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0x41, 0x8f, 0xdb, 0x44,
-	0x18, 0xb5, 0x37, 0xd9, 0x74, 0xfb, 0x35, 0x65, 0x17, 0x6b, 0x0b, 0x56, 0x28, 0xd9, 0xad, 0x41,
-	0x6a, 0xa9, 0x8a, 0xd3, 0x2e, 0x87, 0x4a, 0x88, 0xcb, 0xa6, 0x5d, 0x94, 0xaa, 0x05, 0xca, 0x2c,
-	0x2a, 0x88, 0x8b, 0x99, 0xd8, 0x13, 0x7b, 0x1a, 0xdb, 0x63, 0xd9, 0xe3, 0xa0, 0x48, 0xf0, 0x13,
-	0x90, 0x7a, 0xef, 0x3f, 0x40, 0xe2, 0xc6, 0x8f, 0xe8, 0xb1, 0xe2, 0xc4, 0x09, 0xd0, 0xee, 0x1f,
-	0x41, 0x33, 0x1e, 0x3b, 0xd9, 0x38, 0xde, 0x85, 0x0b, 0x12, 0x97, 0xc8, 0xf9, 0xe6, 0xcd, 0xf7,
-	0xde, 0x8c, 0xdf, 0x3c, 0x0f, 0xec, 0x71, 0x12, 0x7b, 0x24, 0x8d, 0x68, 0xcc, 0x07, 0x7c, 0x9e,
-	0x90, 0x6c, 0x40, 0x66, 0xd4, 0x23, 0xb1, 0x4b, 0xec, 0x24, 0x65, 0x9c, 0x19, 0x3b, 0x0b, 0x80,
-	0x2d, 0x01, 0xbd, 0x5d, 0x9f, 0xf9, 0x4c, 0x0e, 0x0e, 0xc4, 0x53, 0x81, 0xeb, 0xed, 0xf9, 0x8c,
-	0xf9, 0x21, 0x19, 0xc8, 0x7f, 0xe3, 0x7c, 0x32, 0xe0, 0x34, 0x22, 0x19, 0xc7, 0x51, 0xa2, 0x00,
-	0xd7, 0x6b, 0x4c, 0xf2, 0x57, 0x8d, 0x5a, 0x4b, 0xa3, 0x6e, 0x3a, 0x4f, 0x38, 0x1b, 0x4c, 0xc9,
-	0xfc, 0x0c, 0xc6, 0xca, 0xe1, 0xda, 0xc3, 0x3c, 0x09, 0xa9, 0x8b, 0x39, 0x79, 0xc6, 0x38, 0x39,
-	0x52, 0x4a, 0x8d, 0x0f, 0xa1, 0x33, 0x63, 0x9c, 0x38, 0xd8, 0xd4, 0xf7, 0xf5, 0x5b, 0x57, 0x0e,
-	0xde, 0xb2, 0x57, 0x45, 0xdb, 0x02, 0x8f, 0x36, 0x05, 0xea, 0xb0, 0x82, 0x8f, 0xcd, 0x8d, 0x8b,
-	0xe1, 0x43, 0xeb, 0xa5, 0x0e, 0xe6, 0x53, 0xc6, 0x49, 0xcc, 0x29, 0x0e, 0x0f, 0xa3, 0x98, 0x64,
-	0x14, 0xff, 0x37, 0xd4, 0xc6, 0x0d, 0xe8, 0x06, 0x84, 0xfa, 0x01, 0x77, 0xe4, 0x4e, 0x9a, 0xad,
-	0x7d, 0xfd, 0x56, 0x0b, 0x5d, 0x29, 0x6a, 0xc7, 0xa2, 0x64, 0xfd, 0xaa, 0xc3, 0xf6, 0xaa, 0xa8,
-	0x00, 0x7a, 0x49, 0x29, 0xd8, 0xc1, 0xc5, 0xa0, 0x53, 0xbe, 0x57, 0x25, 0xf4, 0x76, 0x9d, 0xb9,
-	0x69, 0x91, 0xc8, 0x4c, 0x9a, 0x96, 0x7f, 0x1f, 0xda, 0x09, 0x0b, 0x5d, 0xb5, 0x9a, 0xf7, 0xd6,
-	0xf4, 0x4c, 0x19, 0x9b, 0x7c, 0x31, 0x79, 0xc2, 0xdc, 0xe9, 0x83, 0x00, 0xc7, 0x3e, 0x41, 0x72,
-	0x82, 0xf5, 0x8b, 0x0e, 0xdd, 0xcf, 0x98, 0x3b, 0xad, 0x3a, 0xdd, 0x84, 0xed, 0x52, 0xa1, 0x53,
-	0xac, 0x4f, 0x0a, 0x6d, 0xa1, 0x37, 0xca, 0xf2, 0x48, 0x56, 0x8d, 0x47, 0x70, 0xb5, 0x02, 0x0a,
-	0x8f, 0x29, 0xee, 0x9e, 0x5d, 0x18, 0xd0, 0x2e, 0x0d, 0x68, 0x7f, 0x55, 0x1a, 0x70, 0xb8, 0xf5,
-	0xea, 0x8f, 0x3d, 0xed, 0xc5, 0x9f, 0x7b, 0x3a, 0xea, 0x96, 0x53, 0xc5, 0xa0, 0xf1, 0x01, 0xec,
-	0x54, 0xad, 0xb0, 0xe7, 0xa5, 0x24, 0xcb, 0xe4, 0x16, 0x77, 0x51, 0xa5, 0xe5, 0xb0, 0x28, 0x5b,
-	0xbf, 0xe9, 0x60, 0x08, 0xbd, 0x08, 0xc7, 0x1e, 0x8b, 0xfe, 0x27, 0xaa, 0x8d, 0x77, 0x01, 0x52,
-	0x1c, 0x7b, 0xce, 0x78, 0xce, 0x49, 0x66, 0xb6, 0x25, 0xe8, 0xb2, 0xa8, 0x0c, 0x45, 0xc1, 0xfa,
-	0x01, 0x7a, 0x0f, 0x58, 0x3c, 0x09, 0xa9, 0xcb, 0x69, 0xec, 0x8f, 0x08, 0xf6, 0x48, 0x9a, 0x55,
-	0x6b, 0xb3, 0x61, 0x23, 0xb8, 0xa7, 0xdc, 0xd2, 0xaf, 0xbf, 0xd9, 0x63, 0xea, 0xc7, 0xc4, 0x2b,
-	0x26, 0xa1, 0x8d, 0xe0, 0x9e, 0xc4, 0x1f, 0xa8, 0x75, 0x5d, 0x8c, 0x3f, 0xb0, 0x7e, 0xd6, 0xc1,
-	0x7c, 0x92, 0xc7, 0x98, 0x53, 0xf7, 0x19, 0x0e, 0xa9, 0x87, 0x39, 0x4b, 0x2b, 0xf2, 0xbb, 0xd0,
-	0x09, 0x24, 0x54, 0x09, 0x30, 0xeb, 0x0d, 0x55, 0x2b, 0x85, 0x33, 0x6e, 0x43, 0x5b, 0x1c, 0x9a,
-	0x0b, 0x0e, 0x96, 0xc4, 0x18, 0x77, 0x61, 0x97, 0xc6, 0x33, 0x41, 0xea, 0x14, 0xb3, 0x9d, 0x09,
-	0x25, 0xa1, 0x27, 0xb7, 0xf1, 0x32, 0x32, 0xd4, 0x58, 0x41, 0xf0, 0xa9, 0x18, 0xb1, 0x7e, 0x12,
-	0x21, 0x10, 0xe0, 0x98, 0xb3, 0xa8, 0x2e, 0xb6, 0xa4, 0xd6, 0xff, 0x01, 0xf5, 0x11, 0xec, 0x87,
-	0x38, 0xe3, 0xca, 0x2d, 0xce, 0xac, 0x6c, 0xe6, 0x7c, 0x8f, 0x33, 0x87, 0xc6, 0x4e, 0x46, 0xb8,
-	0x5c, 0x42, 0x0b, 0xbd, 0x23, 0x70, 0x85, 0x7d, 0x2a, 0xca, 0xaf, 0x71, 0xf6, 0x28, 0x3e, 0x26,
-	0xdc, 0x7a, 0xd9, 0x81, 0xad, 0x8a, 0x1f, 0xc3, 0xdb, 0x5e, 0x19, 0x8c, 0x8e, 0xcc, 0x97, 0x95,
-	0xc3, 0x7e, 0xb3, 0x2e, 0x69, 0x6d, 0x92, 0x8e, 0x34, 0x74, 0xcd, 0x5b, 0x1b, 0xb1, 0x09, 0x5c,
-	0x77, 0x17, 0x56, 0x51, 0xbb, 0x96, 0x2d, 0x78, 0x8a, 0x5d, 0xbf, 0x53, 0xe7, 0x69, 0x36, 0xd8,
-	0x48, 0x43, 0x3d, 0xb7, 0xd9, 0x7e, 0xcf, 0xa1, 0x17, 0x16, 0xee, 0x58, 0xda, 0xa4, 0x8a, 0xaf,
-	0xd5, 0x14, 0x62, 0x4d, 0x8e, 0x1a, 0x69, 0xc8, 0x0c, 0x9b, 0xdc, 0xf6, 0xfc, 0xdc, 0xc0, 0x6c,
-	0xff, 0xdb, 0xc0, 0x14, 0x5c, 0x8d, 0x91, 0xf9, 0x39, 0xec, 0xd4, 0x18, 0x36, 0x25, 0xc3, 0x8d,
-	0x3a, 0x43, 0xbd, 0xf1, 0x36, 0x5e, 0xe9, 0x27, 0xb4, 0x17, 0xc6, 0x5c, 0xb7, 0x4f, 0x9d, 0x46,
-	0xed, 0x0d, 0x66, 0x96, 0xda, 0x9b, 0x8c, 0x7e, 0x04, 0x57, 0x23, 0xe6, 0x4e, 0x17, 0xed, 0x2f,
-	0x35, 0x9d, 0xf6, 0xe5, 0x6c, 0x1f, 0x69, 0xa8, 0x1b, 0x2d, 0x67, 0xfd, 0x37, 0xb0, 0x2b, 0xdb,
-	0xa4, 0x32, 0x4c, 0x17, 0xdd, 0xb6, 0x64, 0xb7, 0xf7, 0xd7, 0x77, 0x3b, 0x9b, 0xbc, 0x23, 0x0d,
-	0x19, 0x51, 0xad, 0x3a, 0xdc, 0x84, 0x56, 0x96, 0x47, 0xd6, 0x77, 0xd0, 0x2d, 0x4b, 0x0f, 0x31,
-	0xc7, 0xc6, 0x27, 0xb0, 0xb5, 0x74, 0x22, 0x5a, 0x32, 0x78, 0x6b, 0x24, 0x55, 0x93, 0xb6, 0x08,
-	0x5e, 0x54, 0xcd, 0x30, 0x0c, 0x68, 0x07, 0x38, 0x0b, 0xa4, 0xc7, 0xbb, 0x48, 0x3e, 0x5b, 0x3f,
-	0xc2, 0x9b, 0xb5, 0x4f, 0x9b, 0x71, 0x07, 0xe4, 0x77, 0x3b, 0x53, 0x1c, 0xe7, 0x7e, 0xdc, 0x33,
-	0xe3, 0x63, 0xb8, 0x94, 0xe4, 0x63, 0x67, 0x4a, 0xe6, 0xea, 0xf4, 0x9c, 0x79, 0xff, 0xc5, 0x25,
-	0xc8, 0x16, 0x97, 0x20, 0xfb, 0x69, 0x3e, 0x0e, 0xa9, 0xfb, 0x98, 0xcc, 0x51, 0x27, 0xc9, 0xc7,
-	0x8f, 0xc9, 0x7c, 0xf8, 0xe5, 0xab, 0x93, 0xbe, 0xfe, 0xfa, 0xa4, 0xaf, 0xff, 0x75, 0xd2, 0xd7,
-	0x5f, 0x9c, 0xf6, 0xb5, 0xd7, 0xa7, 0x7d, 0xed, 0xf7, 0xd3, 0xbe, 0xf6, 0xed, 0x7d, 0x9f, 0xf2,
-	0x20, 0x1f, 0xdb, 0x2e, 0x8b, 0x06, 0xcb, 0x37, 0xae, 0xc5, 0x63, 0x71, 0x75, 0x5b, 0xbd, 0x8d,
-	0x8d, 0x3b, 0xb2, 0xfe, 0xd1, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x30, 0x98, 0x2f, 0x5c, 0x12,
-	0x0a, 0x00, 0x00,
+	// 733 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0x4f, 0x6f, 0xd3, 0x30,
+	0x1c, 0x6d, 0xd6, 0xae, 0x8c, 0xdf, 0x26, 0x6d, 0x44, 0x1b, 0x44, 0x65, 0xea, 0xb6, 0x70, 0x60,
+	0x9a, 0x46, 0xba, 0x95, 0xc3, 0x24, 0xc4, 0x65, 0xff, 0x50, 0xd1, 0x26, 0x18, 0x99, 0x34, 0x24,
+	0x2e, 0xc1, 0x4d, 0xdc, 0xc4, 0x5b, 0x6a, 0x47, 0x8d, 0x53, 0x54, 0x09, 0x3e, 0x02, 0x12, 0x77,
+	0xbe, 0x01, 0x67, 0x3e, 0xc4, 0x8e, 0x3b, 0x72, 0x42, 0x68, 0xfb, 0x16, 0x9c, 0x50, 0x1c, 0x37,
+	0xed, 0x9a, 0x66, 0x83, 0x0b, 0x97, 0x28, 0xf2, 0xef, 0xf9, 0xbd, 0x67, 0xfb, 0xfd, 0x6c, 0x58,
+	0xe2, 0x98, 0x3a, 0xb8, 0xd3, 0x26, 0x94, 0xd7, 0x78, 0x2f, 0xc0, 0x61, 0x0d, 0x77, 0x89, 0x83,
+	0xa9, 0x8d, 0x8d, 0xa0, 0xc3, 0x38, 0x53, 0xe7, 0x06, 0x00, 0x43, 0x00, 0x2a, 0xf3, 0x2e, 0x73,
+	0x99, 0x28, 0xd6, 0xe2, 0xbf, 0x04, 0x57, 0x59, 0xcc, 0x10, 0x89, 0xaf, 0xac, 0xea, 0x43, 0x55,
+	0xbb, 0xd3, 0x0b, 0x38, 0xab, 0x9d, 0xe1, 0xde, 0x35, 0x8c, 0x1e, 0xc1, 0xc2, 0x5e, 0x14, 0xf8,
+	0xc4, 0x46, 0x1c, 0x9f, 0x30, 0x8e, 0xf7, 0xa5, 0x11, 0xf5, 0x09, 0x94, 0xbb, 0x8c, 0x63, 0x0b,
+	0x69, 0xca, 0xb2, 0xb2, 0x3a, 0x5d, 0xbf, 0x6f, 0x8c, 0x7a, 0x32, 0x62, 0xbc, 0x39, 0x19, 0xa3,
+	0xb6, 0x53, 0x78, 0x53, 0x9b, 0xb8, 0x1d, 0xbe, 0xa3, 0x7f, 0x55, 0x40, 0x3b, 0x62, 0x1c, 0x53,
+	0x4e, 0x90, 0xbf, 0xdd, 0xa6, 0x38, 0x24, 0xe8, 0xff, 0x48, 0xab, 0x2b, 0x30, 0xe3, 0x61, 0xe2,
+	0x7a, 0xdc, 0x0a, 0x39, 0x6a, 0x07, 0x5a, 0x71, 0x59, 0x59, 0x2d, 0x9a, 0xd3, 0xc9, 0xd8, 0x71,
+	0x3c, 0xa4, 0x7f, 0x57, 0x60, 0x76, 0xd4, 0x94, 0x07, 0x95, 0xa0, 0x6f, 0xd8, 0x42, 0x49, 0xd1,
+	0xea, 0x1f, 0x9b, 0x34, 0xba, 0x96, 0x55, 0xce, 0x5b, 0xa4, 0xa9, 0x05, 0x79, 0xcb, 0xdf, 0x82,
+	0x52, 0xc0, 0x7c, 0x5b, 0xae, 0xe6, 0xd1, 0x18, 0xce, 0x0e, 0x63, 0xad, 0xd7, 0xad, 0x43, 0x66,
+	0x9f, 0xed, 0x7a, 0x88, 0xba, 0xd8, 0x14, 0x13, 0xf4, 0x8f, 0x50, 0xd9, 0x65, 0xb4, 0xe5, 0x13,
+	0x9b, 0x13, 0xea, 0x36, 0x30, 0x72, 0x70, 0x27, 0x4c, 0x69, 0x0d, 0x98, 0xf0, 0x36, 0xa5, 0xd1,
+	0x6a, 0x96, 0xf4, 0x98, 0xb8, 0x14, 0x3b, 0xc9, 0x24, 0x73, 0xc2, 0xdb, 0x14, 0xf8, 0xba, 0x34,
+	0x71, 0x3b, 0xbe, 0xae, 0x7f, 0x53, 0x40, 0x3b, 0x8c, 0x28, 0xe2, 0xc4, 0x3e, 0x41, 0x3e, 0x71,
+	0x10, 0x67, 0x9d, 0x54, 0x7c, 0x03, 0xca, 0x9e, 0x80, 0x4a, 0x03, 0x5a, 0x96, 0x50, 0x52, 0x49,
+	0x9c, 0xba, 0x06, 0xa5, 0xf8, 0xbc, 0x6e, 0x39, 0x53, 0x81, 0x51, 0x37, 0x60, 0x9e, 0xd0, 0x6e,
+	0x2c, 0x6a, 0x25, 0xb3, 0xad, 0x16, 0xc1, 0xbe, 0x23, 0x8e, 0xf6, 0xae, 0xa9, 0xca, 0x5a, 0x22,
+	0xf0, 0x22, 0xae, 0xe8, 0x9f, 0xe3, 0xfc, 0x79, 0x88, 0x72, 0xd6, 0xce, 0x9a, 0xed, 0x4b, 0x2b,
+	0x7f, 0x21, 0xbd, 0x0f, 0xcb, 0x3e, 0x0a, 0xb9, 0x25, 0x23, 0xd5, 0xed, 0x93, 0x59, 0x1f, 0x50,
+	0x68, 0x11, 0x6a, 0x85, 0x98, 0x8b, 0x25, 0x14, 0xcd, 0x87, 0x31, 0xae, 0x21, 0x60, 0xa9, 0xe4,
+	0x5b, 0x14, 0xbe, 0xa4, 0xc7, 0x98, 0xeb, 0xbf, 0x4b, 0x30, 0x95, 0xea, 0x23, 0x78, 0xe0, 0xf4,
+	0x7b, 0xd2, 0x12, 0xd1, 0x1e, 0xc9, 0xd9, 0xe3, 0xac, 0xa5, 0xb1, 0x4d, 0xdc, 0x28, 0x98, 0x0b,
+	0xce, 0xd8, 0xee, 0x0e, 0x60, 0xd1, 0x1e, 0x44, 0x45, 0xee, 0x5a, 0x38, 0xd0, 0x49, 0x76, 0x7d,
+	0x3d, 0xab, 0x93, 0x1f, 0xb0, 0x46, 0xc1, 0xac, 0xd8, 0xf9, 0xf1, 0x3b, 0x85, 0x8a, 0x9f, 0xa4,
+	0x63, 0x68, 0x93, 0x52, 0xbd, 0x62, 0x5e, 0xff, 0xe4, 0x25, 0xaa, 0x51, 0x30, 0x35, 0x3f, 0x2f,
+	0x6d, 0xa7, 0x37, 0xf6, 0x6a, 0xe9, 0x5f, 0x7b, 0x35, 0xd6, 0xca, 0xed, 0xd6, 0x57, 0x30, 0x97,
+	0x51, 0x98, 0x14, 0x0a, 0x2b, 0x59, 0x85, 0x2c, 0xf1, 0x2c, 0x1a, 0xe1, 0x8b, 0xbd, 0x27, 0xc1,
+	0x1c, 0xb7, 0x4f, 0xe5, 0x5c, 0xef, 0x39, 0x61, 0x16, 0xde, 0x73, 0x6a, 0x3b, 0x93, 0x50, 0x0c,
+	0xa3, 0xb6, 0xfe, 0x1e, 0x66, 0xfa, 0x43, 0x7b, 0x88, 0x23, 0xf5, 0x39, 0x4c, 0x0d, 0x05, 0xae,
+	0xb8, 0x3a, 0x5d, 0xaf, 0x64, 0x05, 0x53, 0x92, 0xd2, 0xf9, 0xcf, 0xa5, 0x82, 0x99, 0xce, 0x50,
+	0x55, 0x28, 0x79, 0x28, 0xf4, 0x44, 0x84, 0x66, 0x4c, 0xf1, 0xaf, 0x7f, 0x82, 0x7b, 0x99, 0x4b,
+	0x4b, 0x5d, 0x07, 0x71, 0x23, 0x87, 0x52, 0xe3, 0xc6, 0x6b, 0x3b, 0x54, 0x9f, 0xc1, 0x9d, 0x20,
+	0x6a, 0x5a, 0x67, 0xb8, 0x27, 0xc3, 0x79, 0x6d, 0x7b, 0x93, 0xe7, 0xcd, 0x88, 0x9f, 0x37, 0xe3,
+	0x28, 0x6a, 0xfa, 0xc4, 0x3e, 0xc0, 0x3d, 0xb3, 0x1c, 0x44, 0xcd, 0x03, 0xdc, 0xdb, 0x79, 0x73,
+	0x7e, 0x59, 0x55, 0x2e, 0x2e, 0xab, 0xca, 0xaf, 0xcb, 0xaa, 0xf2, 0xe5, 0xaa, 0x5a, 0xb8, 0xb8,
+	0xaa, 0x16, 0x7e, 0x5c, 0x55, 0x0b, 0xef, 0xb6, 0x5c, 0xc2, 0xbd, 0xa8, 0x69, 0xd8, 0xac, 0x5d,
+	0x1b, 0x7e, 0x4b, 0x07, 0xbf, 0xc9, 0x9b, 0x3b, 0xfa, 0xce, 0x36, 0xcb, 0x62, 0xfc, 0xe9, 0x9f,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0xbb, 0x3e, 0xd5, 0x42, 0xcb, 0x07, 0x00, 0x00,
 }
 
 func (m *DuplicateVoteEvidence) Marshal() (dAtA []byte, err error) {
@@ -975,99 +802,6 @@ func (m *AmnesiaEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		}
 		i--
 		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MockEvidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MockEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MockEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.EvidenceAddress) > 0 {
-		i -= len(m.EvidenceAddress)
-		copy(dAtA[i:], m.EvidenceAddress)
-		i = encodeVarintEvidence(dAtA, i, uint64(len(m.EvidenceAddress)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	n7, err7 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.EvidenceTime, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime):])
-	if err7 != nil {
-		return 0, err7
-	}
-	i -= n7
-	i = encodeVarintEvidence(dAtA, i, uint64(n7))
-	i--
-	dAtA[i] = 0x12
-	if m.EvidenceHeight != 0 {
-		i = encodeVarintEvidence(dAtA, i, uint64(m.EvidenceHeight))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MockRandomEvidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MockRandomEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MockRandomEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.RandBytes) > 0 {
-		i -= len(m.RandBytes)
-		copy(dAtA[i:], m.RandBytes)
-		i = encodeVarintEvidence(dAtA, i, uint64(len(m.RandBytes)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.EvidenceAddress) > 0 {
-		i -= len(m.EvidenceAddress)
-		copy(dAtA[i:], m.EvidenceAddress)
-		i = encodeVarintEvidence(dAtA, i, uint64(len(m.EvidenceAddress)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	n8, err8 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.EvidenceTime, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime):])
-	if err8 != nil {
-		return 0, err8
-	}
-	i -= n8
-	i = encodeVarintEvidence(dAtA, i, uint64(n8))
-	i--
-	dAtA[i] = 0x12
-	if m.EvidenceHeight != 0 {
-		i = encodeVarintEvidence(dAtA, i, uint64(m.EvidenceHeight))
-		i--
-		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -1371,48 +1105,6 @@ func (m *Evidence_PhantomValidatorEvidence) MarshalToSizedBuffer(dAtA []byte) (i
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Evidence_MockEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence_MockEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.MockEvidence != nil {
-		{
-			size, err := m.MockEvidence.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvidence(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Evidence_MockRandomEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence_MockRandomEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.MockRandomEvidence != nil {
-		{
-			size, err := m.MockRandomEvidence.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvidence(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x42
-	}
-	return len(dAtA) - i, nil
-}
 func (m *EvidenceData) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -1571,46 +1263,6 @@ func (m *AmnesiaEvidence) Size() (n int) {
 	return n
 }
 
-func (m *MockEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.EvidenceHeight != 0 {
-		n += 1 + sovEvidence(uint64(m.EvidenceHeight))
-	}
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime)
-	n += 1 + l + sovEvidence(uint64(l))
-	l = len(m.EvidenceAddress)
-	if l > 0 {
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	return n
-}
-
-func (m *MockRandomEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.EvidenceHeight != 0 {
-		n += 1 + sovEvidence(uint64(m.EvidenceHeight))
-	}
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.EvidenceTime)
-	n += 1 + l + sovEvidence(uint64(l))
-	l = len(m.EvidenceAddress)
-	if l > 0 {
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	l = len(m.RandBytes)
-	if l > 0 {
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	return n
-}
-
 func (m *ConflictingHeadersEvidence) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1745,30 +1397,6 @@ func (m *Evidence_PhantomValidatorEvidence) Size() (n int) {
 	_ = l
 	if m.PhantomValidatorEvidence != nil {
 		l = m.PhantomValidatorEvidence.Size()
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	return n
-}
-func (m *Evidence_MockEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.MockEvidence != nil {
-		l = m.MockEvidence.Size()
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	return n
-}
-func (m *Evidence_MockRandomEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.MockRandomEvidence != nil {
-		l = m.MockRandomEvidence.Size()
 		n += 1 + l + sovEvidence(uint64(l))
 	}
 	return n
@@ -2185,318 +1813,6 @@ func (m *AmnesiaEvidence) Unmarshal(dAtA []byte) error {
 			}
 			if err := m.Polc.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvidence(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MockEvidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvidence
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MockEvidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MockEvidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceHeight", wireType)
-			}
-			m.EvidenceHeight = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.EvidenceHeight |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceTime", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.EvidenceTime, dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceAddress", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EvidenceAddress = append(m.EvidenceAddress[:0], dAtA[iNdEx:postIndex]...)
-			if m.EvidenceAddress == nil {
-				m.EvidenceAddress = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvidence(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MockRandomEvidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvidence
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MockRandomEvidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MockRandomEvidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceHeight", wireType)
-			}
-			m.EvidenceHeight = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.EvidenceHeight |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceTime", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.EvidenceTime, dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceAddress", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EvidenceAddress = append(m.EvidenceAddress[:0], dAtA[iNdEx:postIndex]...)
-			if m.EvidenceAddress == nil {
-				m.EvidenceAddress = []byte{}
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RandBytes", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RandBytes = append(m.RandBytes[:0], dAtA[iNdEx:postIndex]...)
-			if m.RandBytes == nil {
-				m.RandBytes = []byte{}
 			}
 			iNdEx = postIndex
 		default:
@@ -3151,76 +2467,6 @@ func (m *Evidence) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Sum = &Evidence_PhantomValidatorEvidence{v}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MockEvidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &MockEvidence{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Evidence_MockEvidence{v}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MockRandomEvidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &MockRandomEvidence{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Evidence_MockRandomEvidence{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

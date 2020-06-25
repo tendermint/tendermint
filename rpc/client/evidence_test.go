@@ -212,7 +212,7 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 		t.Logf("h1 AppHash: %X", h1.AppHash)
 		t.Logf("h2 AppHash: %X", h2.AppHash)
 
-		ev := types.ConflictingHeadersEvidence{
+		ev := &types.ConflictingHeadersEvidence{
 			H1: &h1.SignedHeader,
 			H2: h2,
 		}
