@@ -110,6 +110,10 @@ func (c Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) 
 	return core.BroadcastTxSync(&rpctypes.Context{}, tx)
 }
 
+func (c Client) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	return core.CheckTx(&rpctypes.Context{}, tx)
+}
+
 func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo(&rpctypes.Context{})
 }

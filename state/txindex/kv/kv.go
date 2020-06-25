@@ -14,7 +14,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	tmstring "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
@@ -27,31 +26,13 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store                dbm.DB
-	compositeKeysToIndex []string
-	indexAllEvents       bool
+	store dbm.DB
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
-	txi := &TxIndex{store: store, compositeKeysToIndex: make([]string, 0), indexAllEvents: false}
-	for _, o := range options {
-		o(txi)
-	}
-	return txi
-}
-
-// IndexEvents is an option for setting which composite keys to index.
-func IndexEvents(compositeKeys []string) func(*TxIndex) {
-	return func(txi *TxIndex) {
-		txi.compositeKeysToIndex = compositeKeys
-	}
-}
-
-// IndexAllEvents is an option for indexing all events.
-func IndexAllEvents() func(*TxIndex) {
-	return func(txi *TxIndex) {
-		txi.indexAllEvents = true
+func NewTxIndex(store dbm.DB) *TxIndex {
+	return &TxIndex{
+		store: store,
 	}
 }
 
@@ -93,16 +74,14 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		// index tx by events
 		txi.indexEvents(result, hash, storeBatch)
 
-		// index tx by height
-		if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
-			storeBatch.Set(keyForHeight(result), hash)
-		}
+		// index by height (always)
+		storeBatch.Set(keyForHeight(result), hash)
 
-		// index tx by hash
 		rawBytes, err := proto.Marshal(result)
 		if err != nil {
 			return err
 		}
+		// index by hash (always)
 		storeBatch.Set(hash, rawBytes)
 	}
 
@@ -123,24 +102,22 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	// index tx by events
 	txi.indexEvents(result, hash, b)
 
-	// index tx by height
-	if txi.indexAllEvents || tmstring.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
-		b.Set(keyForHeight(result), hash)
-	}
+	// index by height (always)
+	b.Set(keyForHeight(result), hash)
 
-	// index tx by hash
 	rawBytes, err := proto.Marshal(result)
 	if err != nil {
 		return err
 	}
-
+	// index by hash (always)
 	b.Set(hash, rawBytes)
+
 	b.WriteSync()
 
 	return nil
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -152,12 +129,15 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Se
 				continue
 			}
 
+			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if txi.indexAllEvents || tmstring.StringInSlice(compositeTag, txi.compositeKeysToIndex) || attr.GetIndex() {
+			if attr.GetIndex() {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
 		}
 	}
+
+	return nil
 }
 
 // Search performs a search using the given query.

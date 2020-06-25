@@ -1,15 +1,15 @@
 build:
   roots:
-    - .
+    - proto
+    - third_party/proto
 lint:
   use:
     - MINIMAL
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
-  except:
-    - PACKAGE_DIRECTORY_MATCH
+    - FILE_LAYOUT
   ignore:
-    - third_party
+    - gogoproto
 breaking:
   use:
     - FILE

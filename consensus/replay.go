@@ -70,7 +70,7 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 		case *ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
-				p.BlockID.PartsHeader, "pol", p.POLRound, "peer", peerID)
+				p.BlockID.PartSetHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
 			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
@@ -253,10 +253,9 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		"protocol-version", res.AppVersion,
 	)
 
-	// Set AppVersion on the state.
-	if h.initialState.Version.Consensus.App != res.AppVersion {
+	// Only set the version if we're starting from zero.
+	if h.initialState.LastBlockHeight == 0 {
 		h.initialState.Version.Consensus.App = res.AppVersion
-		sm.SaveState(h.stateDB, h.initialState)
 	}
 
 	// Replay blocks up to the latest in the blockstore.
@@ -331,6 +330,7 @@ func (h *Handshaker) ReplayBlocks(
 
 			if res.ConsensusParams != nil {
 				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
+				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
 			sm.SaveState(h.stateDB, state)
 		}

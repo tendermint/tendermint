@@ -706,9 +706,9 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
-		poppedTxHash := popped.Value.([sha256.Size]byte) //nolint:staticcheck // SA5011: possible nil pointer dereference
-		delete(cache.cacheMap, poppedTxHash)
 		if popped != nil {
+			poppedTxHash := popped.Value.([sha256.Size]byte)
+			delete(cache.cacheMap, poppedTxHash)
 			cache.list.Remove(popped)
 		}
 	}

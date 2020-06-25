@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -222,7 +222,7 @@ func (th *TestHarness) TestSignProposal() error {
 		POLRound: -1,
 		BlockID: types.BlockID{
 			Hash: hash,
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Hash:  hash,
 				Total: 1000000,
 			},
@@ -269,7 +269,7 @@ func (th *TestHarness) TestSignVote() error {
 			Round:  0,
 			BlockID: types.BlockID{
 				Hash: hash,
-				PartsHeader: types.PartSetHeader{
+				PartSetHeader: types.PartSetHeader{
 					Hash:  hash,
 					Total: 1000000,
 				},

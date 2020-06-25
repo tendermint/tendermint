@@ -29,7 +29,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -154,9 +154,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		pubKey, err := privVals[vIdx].GetPubKey()
-		require.NoError(t, err)
-		evpool := newMockEvidencePool(pubKey.Address())
+		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -201,9 +199,9 @@ type mockEvidencePool struct {
 	ev     []types.Evidence
 }
 
-func newMockEvidencePool(val []byte) *mockEvidencePool {
+func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockEvidence(1, time.Now().UTC(), val)},
+		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().UTC(), val, config.ChainID())},
 	}
 }
 
@@ -234,8 +232,8 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	}
 	return false
 }
-func (m *mockEvidencePool) AddPOLC(types.ProofOfLockChange) error { return nil }
-func (m *mockEvidencePool) Header(int64) *types.Header            { return nil }
+func (m *mockEvidencePool) AddPOLC(*types.ProofOfLockChange) error { return nil }
+func (m *mockEvidencePool) Header(int64) *types.Header             { return nil }
 
 //------------------------------------
 
@@ -737,16 +735,19 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 2 },
-			"blockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
+			func(msg *NewValidBlockMessage) { msg.BlockPartSetHeader.Total = 2 },
+			"blockParts bit array size 1 not equal to BlockPartSetHeader.Total 2",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = bits.NewBitArray(0) },
+			func(msg *NewValidBlockMessage) {
+				msg.BlockPartSetHeader.Total = 0
+				msg.BlockParts = bits.NewBitArray(0)
+			},
 			"empty blockParts",
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
-			"blockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
+			"blockParts bit array size 1602 not equal to BlockPartSetHeader.Total 1",
 		},
 	}
 
@@ -756,7 +757,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			msg := &NewValidBlockMessage{
 				Height: 1,
 				Round:  0,
-				BlockPartsHeader: types.PartSetHeader{
+				BlockPartSetHeader: types.PartSetHeader{
 					Total: 1,
 				},
 				BlockParts: bits.NewBitArray(1),
@@ -881,7 +882,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	validBlockID := types.BlockID{}
 	invalidBlockID := types.BlockID{
 		Hash: bytes.HexBytes{},
-		PartsHeader: types.PartSetHeader{
+		PartSetHeader: types.PartSetHeader{
 			Total: 1,
 			Hash:  []byte{0},
 		},
@@ -928,12 +929,12 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{
 				Hash: bytes.HexBytes{},
-				PartsHeader: types.PartSetHeader{
+				PartSetHeader: types.PartSetHeader{
 					Total: 1,
 					Hash:  []byte{0},
 				},
 			}
-		}, "wrong BlockID: wrong PartsHeader: wrong Hash:"},
+		}, "wrong BlockID: wrong PartSetHeader: wrong Hash:"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}

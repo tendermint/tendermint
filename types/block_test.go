@@ -21,8 +21,8 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmproto "github.com/tendermint/tendermint/proto/types"
-	"github.com/tendermint/tendermint/proto/version"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -36,11 +36,11 @@ func TestBlockAddEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, txs, commit, evList)
@@ -60,7 +60,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	testCases := []struct {
@@ -85,6 +85,12 @@ func TestBlockValidateBasic(t *testing.T) {
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
+		}, true},
+		{"ConflictingHeadersEvidence", func(blk *Block) {
+			blk.Evidence = EvidenceData{Evidence: []Evidence{&ConflictingHeadersEvidence{}}}
+		}, true},
+		{"PotentialAmnesiaEvidence", func(blk *Block) {
+			blk.Evidence = EvidenceData{Evidence: []Evidence{&PotentialAmnesiaEvidence{}}}
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -119,16 +125,16 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.EqualValues(t, 3, partSet.Total())
+	assert.EqualValues(t, 4, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -140,7 +146,7 @@ func TestBlockHashesTo(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockEvidence(h, time.Now(), valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
@@ -187,7 +193,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) BlockID {
 	copy(psH, partSetHash)
 	return BlockID{
 		Hash: h,
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: partSetSize,
 			Hash:  psH,
 		},
@@ -588,7 +594,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
 		Hash: bytes.HexBytes{},
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 1,
 			Hash:  bytes.HexBytes{},
 		},
@@ -596,29 +602,29 @@ func TestBlockIDValidateBasic(t *testing.T) {
 
 	invalidBlockID := BlockID{
 		Hash: []byte{0},
-		PartsHeader: PartSetHeader{
+		PartSetHeader: PartSetHeader{
 			Total: 1,
 			Hash:  []byte{0},
 		},
 	}
 
 	testCases := []struct {
-		testName           string
-		blockIDHash        bytes.HexBytes
-		blockIDPartsHeader PartSetHeader
-		expectErr          bool
+		testName             string
+		blockIDHash          bytes.HexBytes
+		blockIDPartSetHeader PartSetHeader
+		expectErr            bool
 	}{
-		{"Valid BlockID", validBlockID.Hash, validBlockID.PartsHeader, false},
-		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartsHeader, true},
-		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartsHeader, true},
+		{"Valid BlockID", validBlockID.Hash, validBlockID.PartSetHeader, false},
+		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartSetHeader, true},
+		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartSetHeader, true},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			blockID := BlockID{
-				Hash:        tc.blockIDHash,
-				PartsHeader: tc.blockIDPartsHeader,
+				Hash:          tc.blockIDHash,
+				PartSetHeader: tc.blockIDPartSetHeader,
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -633,7 +639,7 @@ func TestBlockProtoBuf(t *testing.T) {
 
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
-	evi := NewMockEvidence(b2.Height, time.Now(), tmrand.Bytes(32))
+	evi := NewMockDuplicateVoteEvidence(h, time.Now(), "block-test-chain")
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 

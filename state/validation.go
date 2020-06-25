@@ -142,15 +142,16 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				continue
 			}
 		}
-		// if we don't already have amnesia evidence we need to add it to start our own timer unless
+		// if we don't already have amnesia evidence we need to add it to start our own trial period unless
 		// a) a valid polc has already been attached
 		// b) the accused node voted back on an earlier round
-		if ae, ok := ev.(types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+		if ae, ok := ev.(*types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
 			ae.PotentialAmnesiaEvidence.VoteB.Round {
-			if err := evidencePool.AddEvidence(ae); err != nil {
+			if err := evidencePool.AddEvidence(ae.PotentialAmnesiaEvidence); err != nil {
 				return types.NewErrEvidenceInvalid(ev,
 					fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
 			}
+			return types.NewErrEvidenceInvalid(ev, errors.New("amnesia evidence is new and hasn't undergone trial period yet"))
 		}
 
 		var header *types.Header
@@ -208,7 +209,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-	if ev, ok := evidence.(types.LunaticValidatorEvidence); ok {
+	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
 		if err := ev.VerifyHeader(committedHeader); err != nil {
 			return err
 		}
@@ -227,7 +228,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	// For PhantomValidatorEvidence, check evidence.Address was not part of the
 	// validator set at height evidence.Height, but was a validator before OR
 	// after.
-	if phve, ok := evidence.(types.PhantomValidatorEvidence); ok {
+	if phve, ok := evidence.(*types.PhantomValidatorEvidence); ok {
 		// confirm that it hasn't been forged
 
 		_, val = valset.GetByAddress(addr)
@@ -253,7 +254,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 			return fmt.Errorf("phantom validator %X not found", addr)
 		}
 	} else {
-		if ae, ok := evidence.(types.AmnesiaEvidence); ok {
+		if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
 			// check the validator set against the polc to make sure that a majority of valid votes was reached
 			if !ae.Polc.IsAbsent() {
 				err = ae.Polc.ValidateVotes(valset, state.ChainID)

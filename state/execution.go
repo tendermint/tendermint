@@ -12,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
-	tmstate "github.com/tendermint/tendermint/proto/state"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -431,11 +431,13 @@ func updateState(
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
+
+		state.Version.Consensus.App = nextParams.Version.AppVersion
+
 		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1
 	}
 
-	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
 	// NOTE: the AppHash has not been populated.

@@ -4,7 +4,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
-	tmstate "github.com/tendermint/tendermint/proto/state"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -56,7 +56,7 @@ func (emptyEvidencePool) AddEvidence(types.Evidence) error        { return nil }
 func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
 func (emptyEvidencePool) IsCommitted(types.Evidence) bool         { return false }
 func (emptyEvidencePool) IsPending(types.Evidence) bool           { return false }
-func (emptyEvidencePool) AddPOLC(types.ProofOfLockChange) error   { return nil }
+func (emptyEvidencePool) AddPOLC(*types.ProofOfLockChange) error  { return nil }
 func (emptyEvidencePool) Header(int64) *types.Header              { return nil }
 
 //-----------------------------------------------------------------------------

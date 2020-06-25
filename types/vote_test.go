@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/protoio"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 func examplePrevote() *Vote {
@@ -37,7 +37,7 @@ func exampleVote(t byte) *Vote {
 		Timestamp: stamp,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartsHeader: PartSetHeader{
+			PartSetHeader: PartSetHeader{
 				Total: 1000000,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
@@ -232,7 +232,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Type:             tmproto.PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartsHeader: PartSetHeader{
+			PartSetHeader: PartSetHeader{
 				Total: math.MaxInt32,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},

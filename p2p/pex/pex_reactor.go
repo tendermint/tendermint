@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
-	tmp2p "github.com/tendermint/tendermint/proto/p2p"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 type Peer = p2p.Peer
