@@ -39,8 +39,8 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
-	logger := consensusLogger().With("test", "byzantine")
 	for i := 0; i < nValidators; i++ {
+		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
@@ -69,12 +69,12 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 		evidenceDB := dbm.NewMemDB()
 		evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
 		require.NoError(t, err)
-		evpool.SetLogger(logger.With("validator", i))
+		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+		cs.SetLogger(cs.Logger)
 		// set private validator
 		pv := privVals[i]
 		cs.SetPrivValidator(pv)
@@ -85,23 +85,38 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
-		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
-		
-		// create byzantine validator (we don't want the byantine validator to propose the first block)
-		if i == 1 {
-			// cs.evpool.AddEvidence(types.NewMockDuplicateVoteEvidence())
-			cs.doPrevote = func(height int64, round int32) {
-				logger.Info("sending two votes")
-				cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
-				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-			}
-		}
+		cs.SetLogger(logger)
 
 		css[i] = cs
 	}
 
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+	
+	// create byzantine validator (seconds val i.e. doesn't propose in first round)
+	bcs := css[1]
+	
+	css[1].doPrevote = func(height int64, round int32) {
+		bcs.Logger.Info("Sending two votes")
+		// bcs.mtx.Lock()
+		prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
+		require.NoError(t, err)
+		prevote2, err := bcs.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		require.NoError(t, err)
+		// bcs.mtx.Unlock()
+		peerList := reactors[1].Switch.Peers().List()
+		bcs.Logger.Info("Getting peer list", "peers", peerList)
+		// send two votes to all peers
+		for i, peer := range peerList {
+			if i < len(peerList)/2 {
+				bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
+				peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote1}))
+			} else {
+				bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
+				peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote2}))
+			}
+		}
+	}
 
 	// wait till everyone makes the first new block with no evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {

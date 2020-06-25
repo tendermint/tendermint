@@ -1806,7 +1806,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 					vote.Type)
 				return added, err
 			}
-			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			evpoolErr := cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			if evpoolErr != nil { cs.Logger.Debug("Error adding evidence to evpool", "err", err)}
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {
 			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)
