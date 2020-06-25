@@ -80,6 +80,10 @@ Various parameters have been added to the consensus parameters.
 
 ### Crypto
 
+Starting with Keys. All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
+
+The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+
 
 ## v0.33.4
 

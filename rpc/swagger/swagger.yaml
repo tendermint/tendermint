@@ -1174,8 +1174,8 @@ components:
           type: string
           example: "1262196"
         earliest_block_time:
-            type: string
-            example: "2019-08-01T11:52:22.818762194Z"
+          type: string
+          example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
           example: false
@@ -1335,8 +1335,8 @@ components:
             - "hash"
           properties:
             total:
-              type: string
-              example: "1"
+              type: number
+              example: 1
             hash:
               type: string
               example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
@@ -1462,8 +1462,8 @@ components:
           type: string
           example: "1262085"
         round:
-          type: string
-          example: "0"
+          type: number
+          example: 0
         block_id:
           $ref: "#/components/schemas/BlockID"
         timestamp:
@@ -1473,8 +1473,8 @@ components:
           type: string
           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
         validator_index:
-          type: string
-          example: "0"
+          type: number
+          example: 0
         signature:
           type: string
           example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
@@ -1803,8 +1803,8 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: "string"
-                              example: "1"
+                              type: number
+                              example: 1
                             hash:
                               type: "string"
                               example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
@@ -1849,8 +1849,8 @@ components:
                       type: "string"
                       example: "1311801"
                     round:
-                      type: "string"
-                      example: "0"
+                      type: number
+                      example: 0
                     block_id:
                       required:
                         - "hash"
@@ -1865,8 +1865,8 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: "string"
-                              example: "1"
+                              type: number
+                              example: 1
                             hash:
                               type: "string"
                               example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
@@ -2102,8 +2102,8 @@ components:
                   type: "string"
                   example: "1311801"
                 round:
-                  type: "string"
-                  example: "0"
+                  type: number
+                  example: 0
                 step:
                   type: "number"
                   example: 3
@@ -2349,16 +2349,16 @@ components:
                               - "hash"
                             properties:
                               total:
-                                type: "string"
-                                example: "0"
+                                type: number
+                                example: 0
                               hash:
                                 type: "string"
                                 example: ""
                             type: "object"
                           proposal_pol_round:
                             x-nullable: true
-                            type: "string"
-                            example: "-1"
+                            type: number
+                            example: -1
                           proposal_pol:
                             x-nullable: true
                             type: "string"

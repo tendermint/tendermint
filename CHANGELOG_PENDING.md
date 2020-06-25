@@ -40,11 +40,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto] \#5025 All proto files have been moved to `/proto` directory.
     - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
   - [state] \#4679 `TxResult` is a Protobuf type defined in `abci` types directory
-  - [types] \#4382  `SignedMsgType` has moved to a Protobuf enum types
-  - [types] \#4382 `Total` has been changed from a `int` to a `uint32`
-  - [types] \#4582 Vote: `ValidatorIndex` & `Round` are now int32
-  - [types] \#4582 Proposal: `POLRound` & `Round` are now int32
-  - [types] \#4582 Block: `Round` is now int32
+  - [types] \#4939  `SignedMsgType` has moved to a Protobuf enum types
+  - [types] \#4939 `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32`
+  - [types] \#4939 Vote: `ValidatorIndex` & `Round` are now int32
+  - [types] \#4939 Proposal: `POLRound` & `Round` are now int32
+  - [types] \#4939 Block: `Round` is now int32
   - [types] \#4962 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types
   - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
   - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
