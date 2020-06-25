@@ -2175,8 +2175,8 @@ components:
                       type: "object"
                   type: "object"
                 locked_round:
-                  type: "string"
-                  example: "-1"
+                  type: number
+                  example: -1
                 valid_round:
                   type: "string"
                   example: "-1"
@@ -2210,8 +2210,8 @@ components:
                         type: "string"
                         example: "BA{100:____________________________________________________________________________________________________} 0/170220253 = 0.00"
                 commit_round:
-                  type: "string"
-                  example: "-1"
+                  type: number
+                  example: -1
                 last_commit:
                   x-nullable: true
                   required:
@@ -2373,16 +2373,16 @@ components:
                             example: "____________________________________________________________________________________________________"
                           last_commit_round:
                             x-nullable: true
-                            type: "string"
-                            example: "0"
+                            type: number
+                            example: 0
                           last_commit:
                             x-nullable: true
                             type: "string"
                             example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           catchup_commit_round:
-                            type: "string"
+                            type: number
                             x-nullable: true
-                            example: "-1"
+                            example: -1
                           catchup_commit:
                             x-nullable: true
                             type: "string"
