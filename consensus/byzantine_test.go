@@ -23,9 +23,8 @@ import (
 // byzantine validator sends conflicting proposals into A and B,
 // and prevotes/precommits on both of them.
 // B sees a commit, A doesn't.
-// Byzantine validator refuses to prevote.
 // Heal partition and ensure A sees the commit
-func TestByzantine(t *testing.T) {
+func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	app := newCounter()
@@ -54,6 +53,7 @@ func TestByzantine(t *testing.T) {
 	reactors := make([]p2p.Reactor, N)
 	for i := 0; i < N; i++ {
 	
+		// enable txs so we can create different proposals
 		assertMempool(css[i].txNotifier).EnableTxsAvailable()
 		// make first val byzantine
 		if i == 0 {
@@ -65,6 +65,8 @@ func TestByzantine(t *testing.T) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
 			}(int32(i))
+			// We are setting the prevote function to do nothing because the prevoting
+			// and precommitting are done alongside the proposal.
 			css[i].doPrevote = func(height int64, round int32) {}
 		}
 
@@ -191,6 +193,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 
 	proposal1.Signature = p1.Signature
 	
+	// some new transactions come in (this ensures that the proposals are different)
 	deliverTxsRange(cs, 0, 1)
 
 	// Create a new proposal block from state/txs from the mempool.
