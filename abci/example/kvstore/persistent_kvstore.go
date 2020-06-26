@@ -132,6 +132,8 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
 				Power:  0,
 			})
+			app.logger.Info("Removed val because of the equivocation",
+				"val", fmt.Sprintf("%X", ev.Validator.Address))
 		}
 	}
 
