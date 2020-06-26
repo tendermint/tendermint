@@ -125,7 +125,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	// reset valset changes
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
-  // Remove validators who committed equivocation from the set.
+	// Remove validators who committed equivocation from the set.
 	for _, ev := range req.ByzantineValidators {
 		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
 			app.updateValidator(types.ValidatorUpdate{
