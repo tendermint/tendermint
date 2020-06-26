@@ -128,11 +128,17 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	// Remove validators who committed equivocation from the set.
 	for _, ev := range req.ByzantineValidators {
 		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
+			if _, ok := app.valAddrToPubKeyMap[string(ev.Validator.Address)]; !ok {
+				app.logger.Error("Wanted to punish val, but can't find it",
+					"val", fmt.Sprintf("%X", ev.Validator.Address))
+				continue
+			}
+
 			app.updateValidator(types.ValidatorUpdate{
 				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
-				Power:  0,
+				Power:  ev.Validator.Power - 1,
 			})
-			app.logger.Info("Removed val because of the equivocation",
+			app.logger.Info("Decreased val power by 1 because of the equivocation",
 				"val", fmt.Sprintf("%X", ev.Validator.Address))
 		}
 	}
