@@ -39,6 +39,8 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
+	evidenceReactors := make([]*evidence.Reactor, nValidators)
+	evidencePool := make([]*evidence.Pool, nValidators)
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -70,6 +72,9 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 		evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
+		evReactor := evidence.NewReactor(evpool)
+		evidenceReactors[i] = evReactor
+		evidencePool[i] = evpool
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -93,43 +98,77 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 	
-	// create byzantine validator (seconds val i.e. doesn't propose in first round)
-	bcs := css[1]
+	for i := 0; i < nValidators; i++ {
+		evidenceReactors[i].SetEventBus(eventBuses[i])
+	}
 	
-	css[1].doPrevote = func(height int64, round int32) {
-		bcs.Logger.Info("Sending two votes")
-		// bcs.mtx.Lock()
-		prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
-		require.NoError(t, err)
-		prevote2, err := bcs.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-		require.NoError(t, err)
-		// bcs.mtx.Unlock()
-		peerList := reactors[1].Switch.Peers().List()
-		bcs.Logger.Info("Getting peer list", "peers", peerList)
-		// send two votes to all peers
-		for i, peer := range peerList {
-			if i < len(peerList)/2 {
-				bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-				peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote1}))
-			} else {
-				bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-				peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote2}))
+	p2p.MakeConnectedSwitches(config.P2P, nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("EVIDENCE", evidenceReactors[i])
+		return s
+	}, p2p.Connect2Switches)
+	
+	stopEvidenceReactors := func() {
+		for i := 0; i < nValidators; i++ {
+			evidenceReactors[i].Stop()
+		}
+	}
+	defer stopEvidenceReactors()
+	
+	// create byzantine validator
+	bcs := css[0]
+	
+	bcs.doPrevote = func(height int64, round int32) {
+		// allow first round to happen normally so that byzantine validator is no longer proposer
+		if height == 2 {
+			bcs.Logger.Info("Sending two votes")
+			// bcs.mtx.Lock()
+			prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
+			require.NoError(t, err)
+			prevote2, err := bcs.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			require.NoError(t, err)
+			// bcs.mtx.Unlock()
+			peerList := reactors[1].Switch.Peers().List()
+			bcs.Logger.Info("Getting peer list", "peers", peerList)
+			// send two votes to all peers
+			for i, peer := range peerList {
+				if i < len(peerList)/2 {
+					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote1}))
+				} else {
+					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote2}))
+				}
 			}
+		} else {
+			bcs.Logger.Info("Behaving normally")
+			bcs.defaultDoPrevote(height, round)
 		}
 	}
 
-	// wait till everyone makes the first new block with no evidence
+	// This stuff at the moment is just for debugging.
+	// The assertions that need to be made is that
+	// Equivocation is committed in the second height and at least some nodes notice it
+	// Evidence is submitted and committed at the third height
+	// All evidence pools are empty by the fourth height
 	timeoutWaitGroup(t, nValidators, func(j int) {
 		msg := <-blocksSubs[j].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
+		t.Log("first round:", "pool", j, "evidence", evidencePool[j].AllPendingEvidence())
 		assert.True(t, len(block.Evidence.Evidence) == 0)
 	}, css)
-
-	// second block should have evidence
+	
 	timeoutWaitGroup(t, nValidators, func(j int) {
 		msg := <-blocksSubs[j].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
-		assert.True(t, len(block.Evidence.Evidence) > 0)
+		t.Log("second round:", "pool", j, "evidence", evidencePool[j].AllPendingEvidence())
+		assert.True(t, len(block.Evidence.Evidence) == 0)
+	}, css)
+	
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
+		t.Log("third round:", "pool", j, "evidence", evidencePool[j].AllPendingEvidence())
+		assert.True(t, len(block.Evidence.Evidence) == 0)
 	}, css)
 }
 
