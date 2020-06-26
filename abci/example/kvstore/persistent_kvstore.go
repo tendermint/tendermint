@@ -128,18 +128,18 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
 		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
-			if _, ok := app.valAddrToPubKeyMap[string(ev.Validator.Address)]; !ok {
+			addr := string(ev.Validator.Address)
+			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
+				app.updateValidator(types.ValidatorUpdate{
+					PubKey: pubKey,
+					Power:  ev.Validator.Power - 1,
+				})
+				app.logger.Info("Decreased val power by 1 because of the equivocation",
+					"val", addr)
+			} else {
 				app.logger.Error("Wanted to punish val, but can't find it",
-					"val", fmt.Sprintf("%X", ev.Validator.Address))
-				continue
+					"val", addr)
 			}
-
-			app.updateValidator(types.ValidatorUpdate{
-				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
-				Power:  ev.Validator.Power - 1,
-			})
-			app.logger.Info("Decreased val power by 1 because of the equivocation",
-				"val", fmt.Sprintf("%X", ev.Validator.Address))
 		}
 	}
 
