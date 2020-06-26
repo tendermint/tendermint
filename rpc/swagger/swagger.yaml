@@ -1,7 +1,53 @@
 openapi: 3.0.0
 info:
-  title: RPC client for Tendermint
-  description: A REST interface for state queries, transaction generation and broadcasting.
+  title: Tendermint RPC
+  description: |
+    Tendermint supports the following RPC protocols:
+
+    * URI over HTTP
+    * JSONRPC over HTTP
+    * JSONRPC over websockets
+
+    ## Configuration
+
+    RPC can be configured by tuning parameters under `[rpc]` table in the
+    `$TMHOME/config/config.toml` file or by using the `--rpc.X` command-line
+    flags.
+
+    Default rpc listen address is `tcp://0.0.0.0:26657`.
+    To set another address, set the `laddr` config parameter to desired value.
+    CORS (Cross-Origin Resource Sharing) can be enabled by setting
+    `cors_allowed_origins`, `cors_allowed_methods`, `cors_allowed_headers`
+    config parameters.
+
+    ## Arguments
+
+    Arguments which expect strings or byte arrays may be passed as quoted
+    strings, like `"abc"` or as `0x`-prefixed strings, like `0x616263`.
+
+    ## URI/HTTP
+
+    A REST like interface.
+
+        curl localhost:26657/block?height=5
+
+    ## JSONRPC/HTTP
+
+    JSONRPC requests can be POST'd to the root RPC endpoint via HTTP.
+
+        curl --header "Content-Type: application/json" --request POST --data '{"method": "block", "params": ["5"], "id": 1}' localhost:26657
+
+    ## JSONRPC/websockets
+
+    JSONRPC requests can be also made via websocket.
+    The websocket endpoint is at `/websocket`, e.g. `localhost:26657/websocket`.
+    Asynchronous RPC functions like event `subscribe` and `unsubscribe` are
+    only available via websockets.
+
+    Example using https://github.com/hashrocket/ws:
+
+        ws ws://localhost:26657/websocket
+        > { "jsonrpc": "2.0", "method": "subscribe", "params": ["tm.event='NewBlock'"], "id": 1 }
   version: "Master"
   license:
     name: Apache 2.0
@@ -309,6 +355,9 @@ paths:
            }
         }()
         ```
+
+        NOTE: if you're not reading events fast enough, Tendermint might
+        terminate the subscription.
       parameters:
         - in: query
           name: query
@@ -1174,8 +1223,8 @@ components:
           type: string
           example: "1262196"
         earliest_block_time:
-            type: string
-            example: "2019-08-01T11:52:22.818762194Z"
+          type: string
+          example: "2019-08-01T11:52:22.818762194Z"
         catching_up:
           type: boolean
           example: false
@@ -1335,8 +1384,8 @@ components:
             - "hash"
           properties:
             total:
-              type: string
-              example: "1"
+              type: number
+              example: 1
             hash:
               type: string
               example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
@@ -1462,8 +1511,8 @@ components:
           type: string
           example: "1262085"
         round:
-          type: string
-          example: "0"
+          type: number
+          example: 0
         block_id:
           $ref: "#/components/schemas/BlockID"
         timestamp:
@@ -1473,8 +1522,8 @@ components:
           type: string
           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
         validator_index:
-          type: string
-          example: "0"
+          type: number
+          example: 0
         signature:
           type: string
           example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
@@ -1803,8 +1852,8 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: "string"
-                              example: "1"
+                              type: number
+                              example: 1
                             hash:
                               type: "string"
                               example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
@@ -1849,8 +1898,8 @@ components:
                       type: "string"
                       example: "1311801"
                     round:
-                      type: "string"
-                      example: "0"
+                      type: number
+                      example: 0
                     block_id:
                       required:
                         - "hash"
@@ -1865,8 +1914,8 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: "string"
-                              example: "1"
+                              type: number
+                              example: 1
                             hash:
                               type: "string"
                               example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
@@ -2102,8 +2151,8 @@ components:
                   type: "string"
                   example: "1311801"
                 round:
-                  type: "string"
-                  example: "0"
+                  type: number
+                  example: 0
                 step:
                   type: "number"
                   example: 3
@@ -2175,8 +2224,8 @@ components:
                       type: "object"
                   type: "object"
                 locked_round:
-                  type: "string"
-                  example: "-1"
+                  type: number
+                  example: -1
                 valid_round:
                   type: "string"
                   example: "-1"
@@ -2210,8 +2259,8 @@ components:
                         type: "string"
                         example: "BA{100:____________________________________________________________________________________________________} 0/170220253 = 0.00"
                 commit_round:
-                  type: "string"
-                  example: "-1"
+                  type: number
+                  example: -1
                 last_commit:
                   x-nullable: true
                   required:
@@ -2349,16 +2398,16 @@ components:
                               - "hash"
                             properties:
                               total:
-                                type: "string"
-                                example: "0"
+                                type: number
+                                example: 0
                               hash:
                                 type: "string"
                                 example: ""
                             type: "object"
                           proposal_pol_round:
                             x-nullable: true
-                            type: "string"
-                            example: "-1"
+                            type: number
+                            example: -1
                           proposal_pol:
                             x-nullable: true
                             type: "string"
@@ -2373,16 +2422,16 @@ components:
                             example: "____________________________________________________________________________________________________"
                           last_commit_round:
                             x-nullable: true
-                            type: "string"
-                            example: "0"
+                            type: number
+                            example: 0
                           last_commit:
                             x-nullable: true
                             type: "string"
                             example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           catchup_commit_round:
-                            type: "string"
+                            type: number
                             x-nullable: true
-                            example: "-1"
+                            example: -1
                           catchup_commit:
                             x-nullable: true
                             type: "string"
