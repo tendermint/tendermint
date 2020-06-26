@@ -125,15 +125,12 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	// reset valset changes
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
+  // Remove validators who committed equivocation from the set.
 	for _, ev := range req.ByzantineValidators {
 		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
-			// decrease voting power by 1
-			if ev.TotalVotingPower == 0 {
-				continue
-			}
 			app.updateValidator(types.ValidatorUpdate{
 				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
-				Power:  ev.TotalVotingPower - 1,
+				Power:  0,
 			})
 		}
 	}
