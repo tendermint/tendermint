@@ -28,7 +28,7 @@ module.exports = {
             },
             {
               title: "RPC",
-              path: "/master/rpc/",
+              path: "https://docs.tendermint.com/master/rpc/",
               static: true
             }
           ]
