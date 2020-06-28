@@ -366,13 +366,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	bs.mtx.Unlock()
 
-	// Save new BlockStoreState descriptor
+	// Save new BlockStoreState descriptor. This also flushes the database.
 	bs.saveState()
-
-	// Flush
-	if err := bs.db.SetSync(nil, nil); err != nil {
-		panic(err)
-	}
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
