@@ -283,7 +283,7 @@ func (s *dbs) Prune(size uint16) error {
 		append(s.shKey(1<<63-1), byte(0x00)),
 	)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer itr.Close()
 
@@ -296,10 +296,10 @@ func (s *dbs) Prune(size uint16) error {
 		_, height, ok := parseShKey(key)
 		if ok {
 			if err = b.Delete(s.shKey(height)); err != nil {
-				panic(err)
+				return err
 			}
 			if err = b.Delete(s.vsKey(height)); err != nil {
-				panic(err)
+				return err
 			}
 		}
 		itr.Next()
