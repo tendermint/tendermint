@@ -201,7 +201,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 		itr.Next()
 	}
 
-	return -1, nil
+	return -1, itr.Error()
 }
 
 // FirstSignedHeaderHeight returns the first SignedHeader height stored.
@@ -226,7 +226,7 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 		itr.Next()
 	}
 
-	return -1, nil
+	return -1, itr.Error()
 }
 
 // SignedHeaderBefore iterates over headers until it finds a header before
@@ -255,6 +255,9 @@ func (s *dbs) SignedHeaderBefore(height int64) (*types.SignedHeader, error) {
 		}
 		itr.Next()
 	}
+	if err = itr.Error(); err != nil {
+		return nil, err
+	}
 
 	return nil, store.ErrSignedHeaderNotFound
 }
@@ -282,8 +285,10 @@ func (s *dbs) Prune(size uint16) error {
 	if err != nil {
 		panic(err)
 	}
+	defer itr.Close()
 
 	b := s.db.NewBatch()
+	defer b.Close()
 
 	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
@@ -301,11 +306,11 @@ func (s *dbs) Prune(size uint16) error {
 		numToPrune--
 		pruned++
 	}
-
-	itr.Close()
+	if err = itr.Error(); err != nil {
+		return err
+	}
 
 	err = b.WriteSync()
-	b.Close()
 	if err != nil {
 		return err
 	}
