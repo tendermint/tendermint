@@ -45,12 +45,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
-      # Cache bin
-      - uses: actions/cache@v1
-        with:
-          path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
-        if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
     runs-on: ubuntu-latest
@@ -75,11 +69,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v1
-        with:
-          path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
@@ -110,11 +99,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v1
-        with:
-          path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
-        if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
         if: "env.GIT_DIFF != ''"
@@ -142,11 +126,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v1
-        with:
-          path: ~/go/bin
-          key: ${{ runner.os }}-${{ github.head_ref }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
