@@ -278,9 +278,9 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
 		message = TxMessage{
 			Tx: types.Tx(i.Tx.GetTx()),
 		}
+		return message, nil
 	}
-
-	return message, nil
+	return message, fmt.Errorf("msg type: %T is not supported", msg)
 }
 
 //-------------------------------------
