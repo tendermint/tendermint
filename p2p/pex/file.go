@@ -55,7 +55,7 @@ func (a *addrBook) loadFromFile(filePath string) bool {
 	if err != nil {
 		panic(fmt.Sprintf("Error opening file %s: %v", filePath, err))
 	}
-	defer r.Close() // nolint: errcheck
+	defer r.Close()
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)

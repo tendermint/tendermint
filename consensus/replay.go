@@ -128,7 +128,7 @@ func (cs *State) catchupReplay(csHeight int64) error {
 	if !found {
 		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
 	}
-	defer gr.Close() // nolint: errcheck
+	defer gr.Close()
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
