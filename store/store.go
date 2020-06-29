@@ -14,6 +14,7 @@ import (
 )
 
 /*
+
 BlockStore is a simple low level store for blocks.
 
 There are three types of information stored:
