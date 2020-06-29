@@ -265,12 +265,22 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		if meta == nil { // assume already deleted
 			continue
 		}
-		batch.Delete(calcBlockMetaKey(h))
-		batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
-		batch.Delete(calcBlockCommitKey(h))
-		batch.Delete(calcSeenCommitKey(h))
+		if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
+			return 0, err
+		}
+		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
+			return 0, err
+		}
+		if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
+			return 0, err
+		}
+		if err := batch.Delete(calcSeenCommitKey(h)); err != nil {
+			return 0, err
+		}
 		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
-			batch.Delete(calcBlockPartKey(h, p))
+			if err := batch.Delete(calcBlockPartKey(h, p)); err != nil {
+				return 0, err
+			}
 		}
 		pruned++
 
@@ -320,8 +330,12 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("nil blockmeta")
 	}
 	metaBytes := mustEncode(pbm)
-	bs.db.Set(calcBlockMetaKey(height), metaBytes)
-	bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height)))
+	if err := bs.db.Set(calcBlockMetaKey(height), metaBytes); err != nil {
+		panic(err)
+	}
+	if err := bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+		panic(err)
+	}
 
 	// Save block parts
 	for i := 0; i < int(blockParts.Total()); i++ {
@@ -332,13 +346,17 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// Save block commit (duplicate and separate from the Block)
 	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
-	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
+	if err := bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes); err != nil {
+		panic(err)
+	}
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
+	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
+		panic(err)
+	}
 
 	// Done!
 	bs.mtx.Lock()
@@ -348,11 +366,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	bs.mtx.Unlock()
 
-	// Save new BlockStoreState descriptor
+	// Save new BlockStoreState descriptor. This also flushes the database.
 	bs.saveState()
-
-	// Flush
-	bs.db.SetSync(nil, nil)
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
@@ -361,7 +376,9 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
 	}
 	partBytes := mustEncode(pbp)
-	bs.db.Set(calcBlockPartKey(height, index), partBytes)
+	if err := bs.db.Set(calcBlockPartKey(height, index), partBytes); err != nil {
+		panic(err)
+	}
 }
 
 func (bs *BlockStore) saveState() {
@@ -416,7 +433,9 @@ func SaveBlockStoreState(bsj *tmstore.BlockStoreState, db dbm.DB) {
 	if err != nil {
 		panic(fmt.Sprintf("Could not marshal state bytes: %v", err))
 	}
-	db.SetSync(blockStoreKey, bytes)
+	if err := db.SetSync(blockStoreKey, bytes); err != nil {
+		panic(err)
+	}
 }
 
 // LoadBlockStoreState returns the BlockStoreState as loaded from disk.
