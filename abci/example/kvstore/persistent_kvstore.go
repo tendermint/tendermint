@@ -189,6 +189,9 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 			validators = append(validators, *validator)
 		}
 	}
+	if err = itr.Error(); err != nil {
+		panic(err)
+	}
 	return
 }
 
@@ -259,7 +262,9 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
-		app.app.state.db.Delete(key)
+		if err = app.app.state.db.Delete(key); err != nil {
+			panic(err)
+		}
 		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
 	} else {
 		// add or update validator
@@ -269,7 +274,9 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		app.app.state.db.Set(key, value.Bytes())
+		if err = app.app.state.db.Set(key, value.Bytes()); err != nil {
+			panic(err)
+		}
 		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
 	}
 
