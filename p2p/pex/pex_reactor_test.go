@@ -507,13 +507,13 @@ func TestPEXReactorDialPeer(t *testing.T) {
 
 	// 1st unsuccessful attempt
 	err := pexR.dialPeer(addr)
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	assert.Equal(t, 1, pexR.AttemptsToDial(addr))
 
 	// 2nd unsuccessful attempt
 	err = pexR.dialPeer(addr)
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	// must be skipped because it is too early
 	assert.Equal(t, 1, pexR.AttemptsToDial(addr))
@@ -523,7 +523,7 @@ func TestPEXReactorDialPeer(t *testing.T) {
 
 		// 3rd attempt
 		err = pexR.dialPeer(addr)
-		require.NoError(t, err)
+		require.Error(t, err)
 
 		assert.Equal(t, 2, pexR.AttemptsToDial(addr))
 	}
