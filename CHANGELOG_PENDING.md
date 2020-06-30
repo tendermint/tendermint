@@ -22,6 +22,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#4679 Migrate state module to Protobuf encoding
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [store] \#4778 Migrate store module to Protobuf encoding
+  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
+  - [types] \#4939 `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32`
+  - [types] \#4939 Vote: `ValidatorIndex` & `Round` are now int32
+  - [types] \#4939 Proposal: `POLRound` & `Round` are now int32
+  - [types] \#4939 Block: `Round` is now int32
 
 - Apps
 
@@ -67,14 +72,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4939  `SignedMsgType` has moved to a Protobuf enum types
   - [types] \#4962 `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types
   - [types] \#4852 Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes`
-  - [types] \#4939 `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32`
-  - [types] \#4939 Vote: `ValidatorIndex` & `Round` are now int32
-  - [types] \#4939 Proposal: `POLRound` & `Round` are now int32
-  - [types] \#4939 Block: `Round` is now int32
   - [types] \#4798 Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
   - [types] \#4845 Remove `ABCIResult`
-  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
-
+  
 - Blockchain Protocol
 
   - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
@@ -82,6 +82,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence
   - [state] \#4845 Include BeginBlock#Events, EndBlock#Events, DeliverTx#Events, GasWanted and GasUsed into `LastResultsHash` (@melekes)
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+  - [types] \#5029 Rename all values from `PartsHeader` to `PartSetHeader` to have consistency
+  - [types] \#4939 `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32`
+  - [types] \#4939 Vote: `ValidatorIndex` & `Round` are now int32
+  - [types] \#4939 Proposal: `POLRound` & `Round` are now int32
+  - [types] \#4939 Block: `Round` is now int32
 
 ### FEATURES:
 
