@@ -10,7 +10,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
-  
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now int32
   - [consensus] \#4582 HeightVoteSet: `round` is now int32
   - [evidence] \#4725 Remove `Pubkey` from DuplicateVoteEvidence

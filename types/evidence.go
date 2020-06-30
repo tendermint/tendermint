@@ -627,7 +627,7 @@ func (ev *ConflictingHeadersEvidence) VerifyComposite(committedHeader *Header, v
 
 	// Header must be signed by at least 1/3+ of voting power of currently
 	// trusted validator set.
-	if err := valSet.VerifyCommitTrusting(
+	if err := valSet.VerifyCommitLightTrusting(
 		alternativeHeader.ChainID,
 		alternativeHeader.Commit,
 		tmmath.Fraction{Numerator: 1, Denominator: 3}); err != nil {
