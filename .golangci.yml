@@ -40,7 +40,7 @@ linters:
     # - gocognit
     - nolintlint
   disable:
-    # - errcheck
+    - errcheck
 
 issues:
   exclude-rules:
