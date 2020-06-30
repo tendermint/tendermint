@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -231,7 +231,14 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// ensure peer hasn't already sent us this tx
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			msg := gogotypes.BytesValue{Value: []byte(memTx.tx)}
+			msg := protomem.Message{
+				Sum: &protomem.Message_Tx{
+					Tx: &protomem.Tx{
+						Tx: []byte(memTx.tx),
+					},
+				},
+			}
+
 			bz, err := msg.Marshal()
 			if err != nil {
 				panic(err)
@@ -259,15 +266,21 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // Messages
 
 func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
-	msg := gogotypes.BytesValue{}
+	msg := protomem.Message{}
 	err := msg.Unmarshal(bz)
 	if err != nil {
 		return TxMessage{}, err
 	}
-	txMsg := TxMessage{
-		Tx: types.Tx(msg.Value),
+
+	var message TxMessage
+
+	if i, ok := msg.Sum.(*protomem.Message_Tx); ok {
+		message = TxMessage{
+			Tx: types.Tx(i.Tx.GetTx()),
+		}
+		return message, nil
 	}
-	return txMsg, err
+	return message, fmt.Errorf("msg type: %T is not supported", msg)
 }
 
 //-------------------------------------
