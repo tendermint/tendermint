@@ -178,7 +178,9 @@ func init() {
 	proto.RegisterType((*PrivateKey)(nil), "tendermint.crypto.keys.PrivateKey")
 }
 
-func init() { proto.RegisterFile("tendermint/crypto/keys/types.proto", fileDescriptor_6e4a90a3275dcf41) }
+func init() {
+	proto.RegisterFile("tendermint/crypto/keys/types.proto", fileDescriptor_6e4a90a3275dcf41)
+}
 
 var fileDescriptor_6e4a90a3275dcf41 = []byte{
 	// 205 bytes of a gzipped FileDescriptorProto
