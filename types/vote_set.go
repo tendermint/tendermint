@@ -547,9 +547,11 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
-// MakeCommit constructs a Commit from the VoteSet.
-// Panics if the vote type is not PrecommitType or if
-// there's no +2/3 votes for a single block.
+// MakeCommit constructs a Commit from the VoteSet. It only includes precommits
+// for the block, which has 2/3+ majority, and nil.
+//
+// Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
+// a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.signedMsgType != PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
@@ -565,7 +567,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	// For every validator, get the precommit
 	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
-		commitSigs[i] = v.CommitSig()
+		commitSig := v.CommitSig()
+		// if block ID exists but doesn't match, exclude sig
+		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
+			commitSig = NewCommitSigAbsent()
+		}
+		commitSigs[i] = commitSig
 	}
 
 	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
