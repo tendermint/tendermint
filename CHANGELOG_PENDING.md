@@ -19,6 +19,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
   - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number.
+  - [state] \#4679 Migrate state module to Protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [store] \#4778 Migrate store module to Protobuf encoding
 
 - Apps
 
@@ -30,13 +33,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [blockchain] \#4637 Migrate blockchain reactor(s) to Protobuf encoding
   - [evidence] \#4949 Migrate evidence reactor to Protobuf encoding
   - [mempool] \#4940 Migrate mempool from to Protobuf encoding
-  - [light] \#4964 Migrate light reactor migration to Protobuf encoding
+  - [light] \#4964 Migrate light module migration to Protobuf encoding
   - [p2p/pex] \#4973 Migrate `p2p/pex` reactor to Protobuf encoding
-  - [privval] \#4985 Migrate `privval` reactor to Protobuf encoding
+  - [privval] \#4985 Migrate `privval` module to Protobuf encoding
   - [statesync] \#4943 Migrate statesync reactor to Protobuf encoding
-  - [state] \#4679 Migrate state reactor to Protobuf encoding
-    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
-  - [store] \#4778 Migrate store module to Protobuf encoding
 
 - Go API
 
