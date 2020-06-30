@@ -627,6 +627,12 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 }
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
+//
+// It checks all the signatures! While it's safe to exit as soon as we have
+// 2/3+ signatures, doing so would impact incentivization logic in the ABCI
+// application that depends on the LastCommitInfo sent in BeginBlock, which
+// includes which validators signed. For instance, Gaia incentivizes proposers
+// with a bonus for including more than +2/3 of the signatures.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	height int64, commit *Commit) error {
 
@@ -661,6 +667,58 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		// It's OK that the BlockID doesn't match.  We include stray
 		// signatures (~votes for nil) to measure validator availability.
 		// }
+	}
+
+	if got, needed := talliedVotingPower, votingPowerNeeded; got <= needed {
+		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
+	}
+
+	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// LIGHT CLIENT VERIFICATION METHODS
+///////////////////////////////////////////////////////////////////////////////
+
+// VerifyCommitLight verifies +2/3 of the set had signed the given commit.
+//
+// This method is primarily used by the light client and does not check all the
+// signatures.
+func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
+	height int64, commit *Commit) error {
+
+	if vals.Size() != len(commit.Signatures) {
+		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
+	}
+
+	// Validate Height and BlockID.
+	if height != commit.Height {
+		return NewErrInvalidCommitHeight(height, commit.Height)
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
+			blockID, commit.BlockID)
+	}
+
+	talliedVotingPower := int64(0)
+	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
+	for idx, commitSig := range commit.Signatures {
+		// No need to verify absent or nil votes.
+		if !commitSig.ForBlock() {
+			continue
+		}
+
+		// The vals and commit have a 1-to-1 correspondance.
+		// This means we don't need the validator address or to do any lookup.
+		val := vals.Validators[idx]
+
+		// Validate signature.
+		voteSignBytes := commit.VoteSignBytes(chainID, idx)
+		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+		}
+
+		talliedVotingPower += val.VotingPower
 
 		// return as soon as +2/3 of the signatures are verified
 		if talliedVotingPower > votingPowerNeeded {
@@ -668,7 +726,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		}
 	}
 
-	// talliedVotingPower <= needed, thus return error
 	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
@@ -748,14 +805,17 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	return nil
 }
 
-// VerifyCommitTrusting verifies that trustLevel ([1/3, 1]) of the validator
-// set signed this commit.
+// VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
+// this commit.
+//
+// This method is primarily used by the light client and does not check all the
+// signatures.
 //
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
 //
 // Panics if trustLevel is invalid.
-func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
+func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, blockID BlockID,
 	height int64, commit *Commit, trustLevel tmmath.Fraction) error {
 
 	// sanity check
@@ -781,8 +841,9 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	votingPowerNeeded := totalVotingPowerMulByNumerator / trustLevel.Denominator
 
 	for idx, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue // OK, some signatures can be absent.
+		// No need to verify absent or nil votes.
+		if !commitSig.ForBlock() {
+			continue
 		}
 
 		// We don't know the validators that committed this block, so we have to
@@ -803,14 +864,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 				return errors.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
-			// Good!
-			if blockID.Equals(commitSig.BlockID(commit.BlockID)) {
-				talliedVotingPower += val.VotingPower
-			}
-			// else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// signatures (~votes for nil) to measure validator availability.
-			// }
+			talliedVotingPower += val.VotingPower
 
 			if talliedVotingPower > votingPowerNeeded {
 				return nil
