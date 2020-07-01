@@ -20,7 +20,7 @@ this by setting the `TMHOME` environment variable.
 
 Initialize the root directory by running:
 
-```
+```sh
 tendermint init
 ```
 
@@ -29,9 +29,9 @@ genesis file (`genesis.json`) containing the associated public key, in
 `$TMHOME/config`. This is all that's necessary to run a local testnet
 with one validator.
 
-For more elaborate initialization, see the tesnet command:
+For more elaborate initialization, see the testnet command:
 
-```
+```sh
 tendermint testnet --help
 ```
 
@@ -44,8 +44,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 #### Fields
 
 - `genesis_time`: Official time of blockchain start.
-- `chain_id`: ID of the blockchain. This must be unique for
-  every blockchain. If your testnet blockchains do not have unique
+- `chain_id`: ID of the blockchain. **This must be unique for
+  every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
 - `consensus_params`
   - `block`
@@ -64,6 +64,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   not match, Tendermint will panic.
 - `app_state`: The application state (e.g. initial distribution
   of tokens).
+
+**WARNING: ChainID must be unique to every blockchain. Reusing old chainID can cause issues**
 
 #### Sample genesis.json
 
@@ -140,19 +142,19 @@ You can find out what flags are supported by running `tendermint node --help`.
 To send a transaction, use `curl` to make requests to the Tendermint RPC
 server, for example:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
 ```
 
 We can see the chain's status at the `/status` end-point:
 
-```
+```sh
 curl http://localhost:26657/status | json_pp
 ```
 
 and the `latest_app_hash` in particular:
 
-```
+```sh
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
@@ -177,7 +179,7 @@ With `GET`:
 
 To send a UTF8 string byte array, quote the value of the tx pramater:
 
-```
+```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 ```
 
@@ -186,13 +188,13 @@ which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 Note the URL must be wrapped with single quoes, else bash will ignore
 the double quotes. To avoid the single quotes, escape the double quotes:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 ```
 
 Using a special character:
 
-```
+```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 ```
 
@@ -200,7 +202,7 @@ sends a 4 byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
 
 To send as raw hex, omit quotes AND prefix the hex string with `0x`:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
 ```
 
@@ -208,7 +210,7 @@ which sends a 4 byte transaction: \[01 02 03 04\].
 
 With `POST` (using `json`), the raw hex must be `base64` encoded:
 
-```
+```sh
 curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
 ```
 
@@ -225,7 +227,7 @@ afford to lose all blockchain data!
 
 To reset a blockchain, stop the node and run:
 
-```
+```sh
 tendermint unsafe_reset_all
 ```
 
@@ -255,13 +257,13 @@ To configure Tendermint to not produce empty blocks unless there are
 transactions or the app hash changes, run Tendermint with this
 additional flag:
 
-```
+```sh
 tendermint node --consensus.create_empty_blocks=false
 ```
 
 or set the configuration via the `config.toml` file:
 
-```
+```toml
 [consensus]
 create_empty_blocks = false
 ```
@@ -272,13 +274,13 @@ empty blocks requires the config option to be set to `false`.
 The block interval setting allows for a delay (in time.Duration format [ParseDuration](https://golang.org/pkg/time/#ParseDuration)) between the
 creation of each new empty block. It can be set with this additional flag:
 
-```
+```sh
 --consensus.create_empty_blocks_interval="5s"
 ```
 
 or set the configuration via the `config.toml` file:
 
-```
+```toml
 [consensus]
 create_empty_blocks_interval = "5s"
 ```
@@ -298,7 +300,7 @@ eventually included in a block.
 Since there are multiple phases to processing a transaction, we offer
 multiple endpoints to broadcast a transaction:
 
-```
+```md
 /broadcast_tx_async
 /broadcast_tx_sync
 /broadcast_tx_commit
@@ -430,14 +432,14 @@ persistent connections with.
 
 For example,
 
-```
+```sh
 tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 ```
 
 Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
-```
+```sh
 curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
 ```
 
@@ -450,7 +452,7 @@ maintain a persistent connection with each, you can use the
 `config.toml` or the `/dial_peers` RPC endpoint to do it without
 stopping Tendermint core instance.
 
-```
+```sh
 tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
 
 curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
@@ -473,7 +475,7 @@ before starting the network. For instance, we could make a new
 
 We can generate a new `priv_validator_key.json` with the command:
 
-```
+```sh
 tendermint gen_validator
 ```
 
