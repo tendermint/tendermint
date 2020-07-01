@@ -50,7 +50,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 | Requirement | Notes            |
 | ----------- | ---------------- |
-| Go version  | Go1.13 or higher |
+| Go version  | Go1.14 or higher |
 
 ## Documentation
 
