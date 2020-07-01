@@ -178,7 +178,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
-	uncontiguousPartSet.AddPart(part2)
+	_, err := uncontiguousPartSet.AddPart(part2)
+	require.Error(t, err)
 
 	header1 := types.Header{
 		Height:          1,
@@ -303,7 +304,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			bBlockMeta := bs.LoadBlockMeta(tuple.block.Height)
 
 			if tuple.eraseSeenCommitInDB {
-				db.Delete(calcSeenCommitKey(tuple.block.Height))
+				err := db.Delete(calcSeenCommitKey(tuple.block.Height))
+				require.NoError(t, err)
 			}
 			if tuple.corruptSeenCommitInDB {
 				err := db.Set(calcSeenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
@@ -313,7 +315,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 			commitHeight := tuple.block.Height - 1
 			if tuple.eraseCommitInDB {
-				db.Delete(calcBlockCommitKey(commitHeight))
+				err := db.Delete(calcBlockCommitKey(commitHeight))
+				require.NoError(t, err)
 			}
 			if tuple.corruptCommitInDB {
 				err := db.Set(calcBlockCommitKey(commitHeight), []byte("foo-bogus"))

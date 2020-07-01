@@ -38,5 +38,8 @@ func main() {
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	rpcserver.Serve(listener, mux, logger, config)
+
+	if err = rpcserver.Serve(listener, mux, logger, config); err != nil {
+		tmos.Exit(err.Error())
+	}
 }

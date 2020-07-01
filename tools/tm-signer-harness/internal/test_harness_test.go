@@ -161,7 +161,7 @@ func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.
 	ss := signerServerMaker(th)
 	require.NoError(t, ss.Start())
 	assert.True(t, ss.IsRunning())
-	defer ss.Stop()
+	defer ss.Stop() //nolint:errcheck // ignore for tests
 
 	<-donec
 	assert.Equal(t, expectedExitCode, th.exitCode)
