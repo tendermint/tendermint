@@ -291,7 +291,7 @@ func (c *MConnection) FlushStop() {
 		// Now we can close the connection
 	}
 
-	c.conn.Close() // nolint: errcheck
+	c.conn.Close()
 
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.
@@ -307,7 +307,7 @@ func (c *MConnection) OnStop() {
 		return
 	}
 
-	c.conn.Close() // nolint: errcheck
+	c.conn.Close()
 
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.

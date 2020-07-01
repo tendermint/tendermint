@@ -177,7 +177,7 @@ func (c *Client) Call(method string, params map[string]interface{}, result inter
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	defer httpResponse.Body.Close() // nolint: errcheck
+	defer httpResponse.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
@@ -221,7 +221,7 @@ func (c *Client) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, e
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	defer httpResponse.Body.Close() // nolint: errcheck
+	defer httpResponse.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {

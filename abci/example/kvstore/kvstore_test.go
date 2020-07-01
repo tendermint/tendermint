@@ -241,7 +241,9 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err = server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 
@@ -263,7 +265,9 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, s
 	client := abcicli.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err := server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 	return client, server, nil
@@ -274,8 +278,8 @@ func TestClientServer(t *testing.T) {
 	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
 	require.NoError(t, err)
-	defer server.Stop()
-	defer client.Stop()
+	defer server.Stop() //nolint:errcheck // ignore for tests
+	defer client.Stop() //nolint:errcheck // ignore for tests
 
 	runClientTests(t, client)
 
@@ -283,8 +287,8 @@ func TestClientServer(t *testing.T) {
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
 	require.NoError(t, err)
-	defer gserver.Stop()
-	defer gclient.Stop()
+	defer gserver.Stop() //nolint:errcheck // ignore for tests
+	defer gclient.Stop() //nolint:errcheck // ignore for tests
 
 	runClientTests(t, gclient)
 }

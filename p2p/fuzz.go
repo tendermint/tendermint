@@ -123,7 +123,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 		case r < fc.config.ProbDropRW+fc.config.ProbDropConn:
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
-			fc.Close() // nolint: errcheck, gas
+			fc.Close()
 			return true
 		case r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep:
 			time.Sleep(fc.randomDuration())

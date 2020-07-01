@@ -59,7 +59,7 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, fmt.Errorf("post form failed: %w", err)
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
