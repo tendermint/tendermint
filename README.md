@@ -37,7 +37,7 @@ However, we are still making breaking changes to the protocol and the APIs and h
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production,
-please [contact us](mailto:partners@tendermint.com) and [join the chat](https://riot.im/app/#/room/#tendermint:matrix.org).
+please [contact us](mailto:partners@tendermint.com) and [join the chat](https://discord.gg/AzefAFd).
 
 ## Security
 
