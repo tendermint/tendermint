@@ -79,7 +79,7 @@ The index will be added if the `Index` field of attribute is set to true. In abo
 
 You can query the transaction results by calling `/tx_search` RPC endpoint:
 
-```shell
+```bash
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
