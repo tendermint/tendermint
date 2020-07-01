@@ -125,16 +125,21 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	// reset valset changes
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
+	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
 		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
-			// decrease voting power by 1
-			if ev.TotalVotingPower == 0 {
-				continue
+			addr := string(ev.Validator.Address)
+			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
+				app.updateValidator(types.ValidatorUpdate{
+					PubKey: pubKey,
+					Power:  ev.Validator.Power - 1,
+				})
+				app.logger.Info("Decreased val power by 1 because of the equivocation",
+					"val", addr)
+			} else {
+				app.logger.Error("Wanted to punish val, but can't find it",
+					"val", addr)
 			}
-			app.updateValidator(types.ValidatorUpdate{
-				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
-				Power:  ev.TotalVotingPower - 1,
-			})
 		}
 	}
 
@@ -183,6 +188,9 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 			}
 			validators = append(validators, *validator)
 		}
+	}
+	if err = itr.Error(); err != nil {
+		panic(err)
 	}
 	return
 }
@@ -254,7 +262,9 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
-		app.app.state.db.Delete(key)
+		if err = app.app.state.db.Delete(key); err != nil {
+			panic(err)
+		}
 		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
 	} else {
 		// add or update validator
@@ -264,7 +274,9 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		app.app.state.db.Set(key, value.Bytes())
+		if err = app.app.state.db.Set(key, value.Bytes()); err != nil {
+			panic(err)
+		}
 		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
 	}
 

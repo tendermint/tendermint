@@ -205,10 +205,16 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 				if err != nil {
 					return err
 				}
-				batch.Set(calcValidatorsKey(h), bz)
+				err = batch.Set(calcValidatorsKey(h), bz)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
-			batch.Delete(calcValidatorsKey(h))
+			err = batch.Delete(calcValidatorsKey(h))
+			if err != nil {
+				return err
+			}
 		}
 
 		if keepParams[h] {
@@ -223,13 +229,22 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 				if err != nil {
 					return err
 				}
-				batch.Set(calcConsensusParamsKey(h), bz)
+				err = batch.Set(calcConsensusParamsKey(h), bz)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
-			batch.Delete(calcConsensusParamsKey(h))
+			err = batch.Delete(calcConsensusParamsKey(h))
+			if err != nil {
+				return err
+			}
 		}
 
-		batch.Delete(calcABCIResponsesKey(h))
+		err = batch.Delete(calcABCIResponsesKey(h))
+		if err != nil {
+			return err
+		}
 		pruned++
 
 		// avoid batches growing too large by flushing to database regularly
@@ -332,7 +347,10 @@ func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIRespo
 	if err != nil {
 		panic(err)
 	}
-	db.SetSync(calcABCIResponsesKey(height), bz)
+	err = db.SetSync(calcABCIResponsesKey(height), bz)
+	if err != nil {
+		panic(err)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -434,7 +452,10 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 		panic(err)
 	}
 
-	db.Set(calcValidatorsKey(height), bz)
+	err = db.Set(calcValidatorsKey(height), bz)
+	if err != nil {
+		panic(err)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -505,5 +526,8 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 		panic(err)
 	}
 
-	db.Set(calcConsensusParamsKey(nextHeight), bz)
+	err = db.Set(calcConsensusParamsKey(nextHeight), bz)
+	if err != nil {
+		panic(err)
+	}
 }

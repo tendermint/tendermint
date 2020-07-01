@@ -49,7 +49,10 @@ func saveState(state State) {
 	if err != nil {
 		panic(err)
 	}
-	state.db.Set(stateKey, stateBytes)
+	err = state.db.Set(stateKey, stateBytes)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func prefixKey(key []byte) []byte {
@@ -92,7 +95,10 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		key, value = req.Tx, req.Tx
 	}
 
-	app.state.db.Set(prefixKey(key), value)
+	err := app.state.db.Set(prefixKey(key), value)
+	if err != nil {
+		panic(err)
+	}
 	app.state.Size++
 
 	events := []types.Event{

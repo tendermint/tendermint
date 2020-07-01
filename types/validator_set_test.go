@@ -1482,8 +1482,8 @@ func TestSafeMul(t *testing.T) {
 		5: {-2, 3, -6, false},
 		6: {math.MaxInt64, 1, math.MaxInt64, false},
 		7: {math.MaxInt64 / 2, 2, math.MaxInt64 - 1, false},
-		8: {math.MaxInt64 / 2, 3, -1, true},
-		9: {math.MaxInt64, 2, -1, true},
+		8: {math.MaxInt64 / 2, 3, 0, true},
+		9: {math.MaxInt64, 2, 0, true},
 	}
 
 	for i, tc := range testCases {

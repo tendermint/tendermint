@@ -112,13 +112,15 @@ func (mem *CListMempool) SetLogger(l log.Logger) {
 }
 
 // WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran before CheckTx.
+// false. This is ran before CheckTx. Only applies to the first created block.
+// After that, Update overwrites the existing value.
 func WithPreCheck(f PreCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.preCheck = f }
 }
 
 // WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran after CheckTx.
+// false. This is ran after CheckTx. Only applies to the first created block.
+// After that, Update overwrites the existing value.
 func WithPostCheck(f PostCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.postCheck = f }
 }

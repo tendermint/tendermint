@@ -139,9 +139,6 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 		evType = ABCIEvidenceTypeLunatic
 	case *PotentialAmnesiaEvidence:
 		evType = ABCIEvidenceTypePotentialAmnesia
-	case MockEvidence:
-		// XXX: not great to have test types in production paths ...
-		evType = ABCIEvidenceTypeMock
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}

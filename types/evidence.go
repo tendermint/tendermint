@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -150,39 +151,6 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		}
 
 		return tp, nil
-
-	case MockEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_MockEvidence{
-				MockEvidence: &tmproto.MockEvidence{
-					EvidenceHeight:  evi.Height(),
-					EvidenceTime:    evi.Time(),
-					EvidenceAddress: evi.Address(),
-				},
-			},
-		}
-
-		return tp, nil
-	case MockRandomEvidence:
-		if err := evi.ValidateBasic(); err != nil {
-			return nil, err
-		}
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_MockRandomEvidence{
-				MockRandomEvidence: &tmproto.MockRandomEvidence{
-					EvidenceHeight:  evi.Height(),
-					EvidenceTime:    evi.Time(),
-					EvidenceAddress: evi.Address(),
-					RandBytes:       evi.randBytes,
-				},
-			},
-		}
-		return tp, nil
 	default:
 		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
 	}
@@ -206,23 +174,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 		return AmnesiaEvidenceFromProto(evi.AmnesiaEvidence)
 	case *tmproto.Evidence_PhantomValidatorEvidence:
 		return PhantomValidatorEvidenceFromProto(evi.PhantomValidatorEvidence)
-	case *tmproto.Evidence_MockEvidence:
-		me := MockEvidence{
-			EvidenceHeight:  evi.MockEvidence.GetEvidenceHeight(),
-			EvidenceAddress: evi.MockEvidence.GetEvidenceAddress(),
-			EvidenceTime:    evi.MockEvidence.GetEvidenceTime(),
-		}
-		return me, me.ValidateBasic()
-	case *tmproto.Evidence_MockRandomEvidence:
-		mre := MockRandomEvidence{
-			MockEvidence: MockEvidence{
-				EvidenceHeight:  evi.MockRandomEvidence.GetEvidenceHeight(),
-				EvidenceAddress: evi.MockRandomEvidence.GetEvidenceAddress(),
-				EvidenceTime:    evi.MockRandomEvidence.GetEvidenceTime(),
-			},
-			randBytes: evi.MockRandomEvidence.RandBytes,
-		}
-		return mre, mre.ValidateBasic()
 	default:
 		return nil, errors.New("evidence is not recognized")
 	}
@@ -1677,7 +1628,7 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 	return tp, tp.ValidateBasic()
 }
 
-//--------------------------------------------------------------
+//--------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
@@ -1712,69 +1663,52 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
-//--------------------------------------------------
+//-------------------------------------------- MOCKING --------------------------------------
 
-// UNSTABLE
-type MockRandomEvidence struct {
-	MockEvidence
-	randBytes []byte
+// unstable - use only for testing
+
+// assumes the round to be 0 and the validator index to be 0
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+	val := NewMockPV()
+	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
-var _ Evidence = &MockRandomEvidence{}
+func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
+	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
+	pubKey, _ := pv.GetPubKey()
+	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	vA := voteA.ToProto()
+	_ = pv.SignVote(chainID, vA)
+	voteA.Signature = vA.Signature
+	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	vB := voteB.ToProto()
+	_ = pv.SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
+	return NewDuplicateVoteEvidence(voteA, voteB)
 
-// UNSTABLE
-func NewMockRandomEvidence(height int64, eTime time.Time, address []byte, randBytes []byte) MockRandomEvidence {
-	return MockRandomEvidence{
-		MockEvidence{
-			EvidenceHeight:  height,
-			EvidenceTime:    eTime,
-			EvidenceAddress: address}, randBytes,
+}
+
+func makeMockVote(height int64, round, index int32, addr Address,
+	blockID BlockID, time time.Time) *Vote {
+	return &Vote{
+		Type:             tmproto.SignedMsgType(2),
+		Height:           height,
+		Round:            round,
+		BlockID:          blockID,
+		Timestamp:        time,
+		ValidatorAddress: addr,
+		ValidatorIndex:   index,
 	}
 }
 
-func (e MockRandomEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
-}
-
-func (e MockRandomEvidence) Equal(ev Evidence) bool { return false }
-
-// UNSTABLE
-type MockEvidence struct {
-	EvidenceHeight  int64
-	EvidenceTime    time.Time
-	EvidenceAddress []byte
-}
-
-var _ Evidence = &MockEvidence{}
-
-// UNSTABLE
-func NewMockEvidence(height int64, eTime time.Time, address []byte) MockEvidence {
-	return MockEvidence{
-		EvidenceHeight:  height,
-		EvidenceTime:    eTime,
-		EvidenceAddress: address,
+func randBlockID() BlockID {
+	return BlockID{
+		Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: PartSetHeader{
+			Total: 1,
+			Hash:  tmrand.Bytes(tmhash.Size),
+		},
 	}
-}
-
-func (e MockEvidence) Height() int64   { return e.EvidenceHeight }
-func (e MockEvidence) Time() time.Time { return e.EvidenceTime }
-func (e MockEvidence) Address() []byte { return e.EvidenceAddress }
-func (e MockEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x-%s",
-		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
-}
-func (e MockEvidence) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d-%x-%s",
-		e.EvidenceHeight, e.EvidenceAddress, e.EvidenceTime))
-}
-func (e MockEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
-func (e MockEvidence) Equal(ev Evidence) bool {
-	return e.EvidenceHeight == ev.Height() &&
-		bytes.Equal(e.EvidenceAddress, ev.Address())
-}
-func (e MockEvidence) ValidateBasic() error { return nil }
-func (e MockEvidence) String() string {
-	return fmt.Sprintf("Evidence: %d/%s/%s", e.EvidenceHeight, e.Time(), e.EvidenceAddress)
 }
 
 // mock polc - fails validate basic, not stable

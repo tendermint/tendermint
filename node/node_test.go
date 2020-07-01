@@ -218,8 +218,6 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
-	const minEvSize = 12
-
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -231,7 +229,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
 	var height int64 = 1
-	state, stateDB := state(1, height)
+	state, stateDB, privVals := state(1, height)
 	maxBytes := 16384
 	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
@@ -260,7 +258,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// fill the evidence pool with more evidence
 	// than can fit in a block
 	for i := 0; i <= maxEvidence; i++ {
-		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		err := evidencePool.AddEvidence(ev)
 		require.NoError(t, err)
 	}
@@ -326,14 +324,15 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB) {
+func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
-		secret := []byte(fmt.Sprintf("test%d", i))
-		pk := ed25519.GenPrivKeyFromSecret(secret)
+		privVal := types.NewMockPV()
+		privVals[i] = privVal
 		vals[i] = types.GenesisValidator{
-			Address: pk.PubKey().Address(),
-			PubKey:  pk.PubKey(),
+			Address: privVal.PrivKey.PubKey().Address(),
+			PubKey:  privVal.PrivKey.PubKey(),
 			Power:   1000,
 			Name:    fmt.Sprintf("test%d", i),
 		}
@@ -353,5 +352,5 @@ func state(nVals int, height int64) (sm.State, dbm.DB) {
 		s.LastValidators = s.Validators.Copy()
 		sm.SaveState(stateDB, s)
 	}
-	return s, stateDB
+	return s, stateDB, privVals
 }

@@ -988,22 +988,14 @@ func safeMul(a, b int64) (int64, bool) {
 		absOfB = -b
 	}
 
-	var (
-		c        = a
-		overflow bool
-	)
-
-	for absOfB > 1 {
-		c, overflow = safeAdd(c, a)
-		if overflow {
-			return c, true
-		}
-		absOfB--
+	absOfA := a
+	if a < 0 {
+		absOfA = -a
 	}
 
-	if (b < 0 && a > 0) || (b < 0 && a < 0) {
-		return -c, false
+	if absOfA > math.MaxInt64/absOfB {
+		return 0, true
 	}
 
-	return c, false
+	return a * b, false
 }

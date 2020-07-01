@@ -72,21 +72,29 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		hash := types.Tx(result.Tx).Hash()
 
 		// index tx by events
-		txi.indexEvents(result, hash, storeBatch)
+		err := txi.indexEvents(result, hash, storeBatch)
+		if err != nil {
+			return err
+		}
 
 		// index by height (always)
-		storeBatch.Set(keyForHeight(result), hash)
+		err = storeBatch.Set(keyForHeight(result), hash)
+		if err != nil {
+			return err
+		}
 
 		rawBytes, err := proto.Marshal(result)
 		if err != nil {
 			return err
 		}
 		// index by hash (always)
-		storeBatch.Set(hash, rawBytes)
+		err = storeBatch.Set(hash, rawBytes)
+		if err != nil {
+			return err
+		}
 	}
 
-	storeBatch.WriteSync()
-	return nil
+	return storeBatch.WriteSync()
 }
 
 // Index indexes a single transaction using the given list of events. Each key
@@ -100,24 +108,31 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	hash := types.Tx(result.Tx).Hash()
 
 	// index tx by events
-	txi.indexEvents(result, hash, b)
+	err := txi.indexEvents(result, hash, b)
+	if err != nil {
+		return err
+	}
 
 	// index by height (always)
-	b.Set(keyForHeight(result), hash)
+	err = b.Set(keyForHeight(result), hash)
+	if err != nil {
+		return err
+	}
 
 	rawBytes, err := proto.Marshal(result)
 	if err != nil {
 		return err
 	}
 	// index by hash (always)
-	b.Set(hash, rawBytes)
+	err = b.Set(hash, rawBytes)
+	if err != nil {
+		return err
+	}
 
-	b.WriteSync()
-
-	return nil
+	return b.WriteSync()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.SetDeleter) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Batch) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -132,7 +147,10 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Se
 			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			if attr.GetIndex() {
-				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

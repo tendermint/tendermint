@@ -19,10 +19,7 @@ if you want to learn more & support it (with cosmos-sdk you get it
  empty.
 
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
-field allows ABCI applications to dictate which events should be indexed
-ignoring the `tx_index.index_keys` config setting. See
-[\#4877](https://github.com/tendermint/tendermint/issues/4877), where we're
-discussing future direction of indexing.
+field allows ABCI applications to dictate which events should be indexed.
 
 ### P2P Protocol
 
@@ -69,6 +66,36 @@ With this release we are happy to announce the full protobuf migration of the Te
 - We use the generated protobuf types for only on disk and over the wire serialization. This means that these changes should not effect you as user of Tendermint.
 - A few notable changes in the abci:
   - In `ValidatorUpdates` the public key type has been migrated to a protobuf `oneof` type. Since Tendermint only supports ed25519 validator keys this is the only available key in the oneof.
+
+### Consensus Params
+
+Various parameters have been added to the consensus parameters.
+
+#### Version Params (New)
+
+- `AppVersion` - this contains the ABCI application version
+
+#### Evidence Params
+
+- `MaxNum` - cap the total amount of evidence by a absolute number (Default: 50)
+- `ProofTrialPeriod` - duration (blocks) in which a node has to provide proof of correctly executing a lock change in the event of amnesia evidence (Default: 50000, half MaxAgeNumBlocks)
+
+### Crypto
+
+#### Keys
+
+All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
+
+The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+
+#### Merkle
+
+From the merkle package `SimpleHashFromMap()` and `SimpleProofsFromMap()` were removed along with all the prefixes of `Simple`. If you are looking for `SimpleProof` it has been renamed to `Proof` within the merkle pkg. Previously there were protobuf messages located in the merkle pkg, these have since been moved to the `/proto` directory. The protobuf message `Proof` that contained multiple ProofOp's has been renamed to `ProofOps`. This change effects the ABCI type `ResponseQuery`, the field that was named Proof is now named `ProofOps`.
+
+### Libs
+
+The Bech32 pkg has been migrated to a new home, you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
+
 
 ## v0.33.4
 

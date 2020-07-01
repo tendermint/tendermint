@@ -119,10 +119,10 @@ func TestNewBlockStore(t *testing.T) {
 		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
 	}
 
-	err = db.Set(blockStoreKey, nil)
+	err = db.Set(blockStoreKey, []byte{})
 	require.NoError(t, err)
 	bs = NewBlockStore(db)
-	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
+	assert.Equal(t, bs.Height(), int64(0), "expecting empty bytes to be unmarshaled alright")
 }
 
 func freshBlockStore() (*BlockStore, dbm.DB) {
