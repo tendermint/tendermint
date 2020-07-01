@@ -12,14 +12,14 @@ Fetch the latest version from the key server to see if any key was revoked in
 the meantime.
 To fetch the latest version of all pgp keys in your gpg homedir,
 
-```sh
+```bash
 gpg --refresh-keys
 ```
 
 To fetch keys of Gitian builders and active core developers, feed the list of
 fingerprints of the primary keys into gpg:
 
-```sh
+```bash
 while read fingerprint keyholder_name; \
 do gpg --keyserver hkp://subset.pool.sks-keyservers.net \
 --recv-keys ${fingerprint}; done < ./keys.txt

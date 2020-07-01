@@ -38,14 +38,14 @@ Go](https://golang.org/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```sh
+```bash
 $ go version
 go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
 
-```sh
+```bash
 $ echo $GOPATH
 /Users/melekes/go
 ```
@@ -54,7 +54,7 @@ $ echo $GOPATH
 
 We'll start by creating a new Go project.
 
-```sh
+```bash
 $ mkdir kvstore
 $ cd kvstore
 ```
@@ -75,7 +75,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```sh
+```bash
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -568,7 +568,7 @@ os.Exit(0)
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
-```sh
+```bash
 $ go mod init github.com/me/example
 $ go build
 ```
@@ -581,7 +581,7 @@ Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/master/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
-```sh
+```bash
 $ rm -rf /tmp/example
 $ TMHOME="/tmp/example" tendermint init
 
@@ -592,7 +592,7 @@ I[2019-07-16|18:40:36.482] Generated genesis file                       module=m
 
 We are ready to start our application:
 
-```sh
+```bash
 $ ./example -config "/tmp/example/config/config.toml"
 
 badger 2019/07/16 18:42:25 INFO: All 0 tables opened in 0s
@@ -605,7 +605,7 @@ I[2019-07-16|18:42:26.865] Committed state                              module=s
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
