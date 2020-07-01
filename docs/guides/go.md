@@ -43,7 +43,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.13.1 darwin/amd64
+go version go1.14.x darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
