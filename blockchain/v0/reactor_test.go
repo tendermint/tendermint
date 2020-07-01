@@ -199,7 +199,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
 		err := otherChain.reactor.Stop()
-		require.NoError(t, err)
+		require.Error(t, err)
 		err = otherChain.app.Stop()
 		require.NoError(t, err)
 	}()
