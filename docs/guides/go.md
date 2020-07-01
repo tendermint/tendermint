@@ -41,14 +41,14 @@ Go](https://golang.org/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```sh
+```bash
 $ go version
 go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
 
-```sh
+```bash
 $ echo $GOPATH
 /Users/melekes/go
 ```
@@ -57,7 +57,7 @@ $ echo $GOPATH
 
 We'll start by creating a new Go project.
 
-```sh
+```bash
 $ mkdir kvstore
 $ cd kvstore
 ```
@@ -78,7 +78,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```sh
+```bash
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -425,7 +425,7 @@ os.Exit(0)
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
-```sh
+```bash
 $ export GO111MODULE=on
 $ go mod init github.com/me/example
 $ go build
@@ -439,7 +439,7 @@ Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/master/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
-```sh
+```bash
 $ rm -rf /tmp/example
 $ TMHOME="/tmp/example" tendermint init
 
@@ -454,7 +454,7 @@ Feel free to explore the generated files, which can be found at
 
 We are ready to start our application:
 
-```sh
+```bash
 $ rm example.sock
 $ ./example
 
@@ -467,7 +467,7 @@ I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABC
 Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
-```sh
+```bash
 $ TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
 
 I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
@@ -491,7 +491,7 @@ I[2019-07-16|18:26:20.330] Accepted a new connection
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",

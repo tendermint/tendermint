@@ -93,11 +93,11 @@ module.exports = {
           children: [
             {
               title: "Cosmos SDK",
-              url: "https://cosmos.network/docs"
+              url: "https://docs.cosmos.network"
             },
             {
               title: "Cosmos Hub",
-              url: "https://hub.cosmos.network/"
+              url: "https://hub.cosmos.network"
             }
           ]
         },

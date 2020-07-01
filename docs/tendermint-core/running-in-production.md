@@ -124,7 +124,7 @@ If, after skimming through the logs, things are not clear still, the next thing
 to try is querying the `/status` RPC endpoint. It provides the necessary info:
 whenever the node is syncing or not, what height it is on, etc.
 
-```sh
+```bash
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
@@ -132,7 +132,7 @@ curl http(s)://{ip}:{rpcPort}/status
 state (proposer, latest validators, peers states). From it, you should be able
 to figure out why, for example, the network had halted.
 
-```sh
+```bash
 curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 

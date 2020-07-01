@@ -106,7 +106,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 To run a Tendermint node, use:
 
-```sh
+```bash
 tendermint node
 ```
 
@@ -115,7 +115,7 @@ By default, Tendermint will try to connect to an ABCI application on
 another window. If you don't, kill Tendermint and run an in-process version of
 the `kvstore` app:
 
-```sh
+```bash
 tendermint node --proxy_app=kvstore
 ```
 
@@ -129,7 +129,7 @@ in-process with Tendermint if it's written in Go. If your app is not written in
 Go, run it in another process, and use the `--proxy_app` flag to specify the
 address of the socket it is listening on, for instance:
 
-```sh
+```bash
 tendermint node --proxy_app=/var/run/abci.sock
 ```
 
