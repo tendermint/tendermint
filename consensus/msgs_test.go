@@ -1,9 +1,11 @@
 package consensus
 
 import (
+	"math"
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -312,8 +314,50 @@ func TestWALMsgProto(t *testing.T) {
 }
 
 func TestConsMsgsVectors(t *testing.T) {
-	// Types that are valid to be assigned to Sum:
-	//	*Message_NewRoundStep
+
+	testCases := []struct {
+		testName string
+		cMsg     proto.Message
+		expBytes []byte
+	}{
+		{"NewRoundStep", &tmcons.Message{Sum: &tmcons.Message_NewRoundStep{NewRoundStep: &tmcons.NewRoundStep{
+			Height:                1,
+			Round:                 1,
+			Step:                  1,
+			SecondsSinceStartTime: 1,
+			LastCommitRound:       1,
+		}}}, []byte{0xa, 0xa, 0x8, 0x1, 0x10, 0x1, 0x18, 0x1, 0x20, 0x1, 0x28, 0x1}},
+		{"NewRoundStep Max", &tmcons.Message{Sum: &tmcons.Message_NewRoundStep{NewRoundStep: &tmcons.NewRoundStep{
+			Height:                math.MaxInt64,
+			Round:                 math.MaxInt32,
+			Step:                  math.MaxUint32,
+			SecondsSinceStartTime: math.MaxInt64,
+			LastCommitRound:       math.MaxInt32,
+		}}}, []byte{0xa, 0x26, 0x8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x10, 0xff,
+			0xff, 0xff, 0xff, 0x7, 0x18, 0xff, 0xff, 0xff, 0xff, 0xf, 0x20, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0x7f, 0x28, 0xff, 0xff, 0xff, 0xff, 0x7}},
+
+		// 	{"Proposal", &tmcons.Message{Sum: &tmcons.Message_NewRoundStep{NewRoundStep: &tmcons.NewRoundStep{
+		// 		Height:                math.MaxInt64,
+		// 		Round:                 math.MaxInt32,
+		// 		Step:                  math.MaxUint32,
+		// 		SecondsSinceStartTime: math.MaxInt64,
+		// 		LastCommitRound:       math.MaxInt32,
+		// 	}}}, []byte{}},
+		// }
+		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
+			ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
+			[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
+		// {"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
+		// 	ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
+		// 	[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
+		// {"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
+		// 	ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
+		// 	[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
+		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_HasVote{
+			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
+			[]byte{0x3a, 0x8, 0x8, 0x1, 0x10, 0x1, 0x18, 0x1, 0x20, 0x1}},
+	}
 	//	*Message_NewValidBlock
 	//	*Message_Proposal
 	//	*Message_ProposalPol
@@ -322,4 +366,14 @@ func TestConsMsgsVectors(t *testing.T) {
 	//	*Message_HasVote
 	//	*Message_VoteSetMaj23
 	//	*Message_VoteSetBits
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			bz, err := proto.Marshal(tc.cMsg)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expBytes, bz)
+		})
+	}
 }
