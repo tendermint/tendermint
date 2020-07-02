@@ -149,18 +149,25 @@ func Test_Concurrency(t *testing.T) {
 		go func(i int64) {
 			defer wg.Done()
 
-			dbStore.SaveSignedHeaderAndValidatorSet(
+			err := dbStore.SaveSignedHeaderAndValidatorSet(
 				&types.SignedHeader{Header: &types.Header{Height: i}}, vals)
+			require.NoError(t, err)
 
-			dbStore.SignedHeader(i)
-			dbStore.ValidatorSet(i)
-			dbStore.LastSignedHeaderHeight()
-			dbStore.FirstSignedHeaderHeight()
+			_, err = dbStore.SignedHeader(i)
+			require.NoError(t, err)
+			_, err = dbStore.ValidatorSet(i)
+			require.NoError(t, err)
+			_, err = dbStore.LastSignedHeaderHeight()
+			require.NoError(t, err)
+			_, err = dbStore.FirstSignedHeaderHeight()
+			require.NoError(t, err)
 
-			dbStore.Prune(2)
+			err = dbStore.Prune(2)
+			require.NoError(t, err)
 			_ = dbStore.Size()
 
-			dbStore.DeleteSignedHeaderAndValidatorSet(1)
+			err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
+			require.NoError(t, err)
 		}(int64(i))
 	}
 

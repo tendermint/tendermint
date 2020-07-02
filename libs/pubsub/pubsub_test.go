@@ -25,7 +25,11 @@ func TestSubscribe(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
@@ -66,7 +70,11 @@ func TestSubscribeWithCapacity(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	assert.Panics(t, func() {
@@ -89,7 +97,11 @@ func TestSubscribeUnbuffered(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.SubscribeUnbuffered(ctx, clientID, query.Empty{})
@@ -120,7 +132,11 @@ func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
@@ -138,7 +154,11 @@ func TestDifferentClients(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription1, err := s.Subscribe(ctx, "client-1", query.MustParse("tm.events.type='NewBlock'"))
@@ -178,7 +198,11 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
 	require.NoError(t, s.Start())
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	testCases := []struct {
 		query    string
@@ -229,7 +253,11 @@ func TestClientSubscribesTwice(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	q := query.MustParse("tm.events.type='NewBlock'")
@@ -254,7 +282,11 @@ func TestUnsubscribe(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
@@ -274,7 +306,11 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	_, err = s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
@@ -293,7 +329,11 @@ func TestResubscribe(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	_, err = s.Subscribe(ctx, clientID, query.Empty{})
@@ -313,7 +353,11 @@ func TestUnsubscribeAll(t *testing.T) {
 	s.SetLogger(log.TestingLogger())
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription1, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
@@ -365,7 +409,12 @@ func benchmarkNClients(n int, b *testing.B) {
 	s := pubsub.NewServer()
 	err := s.Start()
 	require.NoError(b, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+
+	b.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	for i := 0; i < n; i++ {
@@ -405,7 +454,11 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	s := pubsub.NewServer()
 	err := s.Start()
 	require.NoError(b, err)
-	defer s.Stop() //nolint:errcheck // ignore for tests
+	b.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	q := query.MustParse("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = 1")

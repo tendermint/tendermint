@@ -216,12 +216,13 @@ func TestSyncer_SyncAny_ABORT(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	syncer.AddSnapshot(simplePeer("id"), s)
+	_, err := syncer.AddSnapshot(simplePeer("id"), s)
+	require.NoError(t, err)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err := syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0)
 	assert.Equal(t, errAbort, err)
 	connSnapshot.AssertExpectations(t)
 }
@@ -233,9 +234,12 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	syncer.AddSnapshot(simplePeer("id"), s22)
-	syncer.AddSnapshot(simplePeer("id"), s12)
-	syncer.AddSnapshot(simplePeer("id"), s11)
+	_, err := syncer.AddSnapshot(simplePeer("id"), s22)
+	require.NoError(t, err)
+	_, err = syncer.AddSnapshot(simplePeer("id"), s12)
+	require.NoError(t, err)
+	_, err = syncer.AddSnapshot(simplePeer("id"), s11)
+	require.NoError(t, err)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s22), AppHash: []byte("app_hash"),
@@ -249,7 +253,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err := syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0)
 	assert.Equal(t, errNoSnapshots, err)
 	connSnapshot.AssertExpectations(t)
 }
@@ -261,9 +265,12 @@ func TestSyncer_SyncAny_REJECT_FORMAT(t *testing.T) {
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	syncer.AddSnapshot(simplePeer("id"), s22)
-	syncer.AddSnapshot(simplePeer("id"), s12)
-	syncer.AddSnapshot(simplePeer("id"), s11)
+	_, err := syncer.AddSnapshot(simplePeer("id"), s22)
+	require.NoError(t, err)
+	_, err = syncer.AddSnapshot(simplePeer("id"), s12)
+	require.NoError(t, err)
+	_, err = syncer.AddSnapshot(simplePeer("id"), s11)
+	require.NoError(t, err)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s22), AppHash: []byte("app_hash"),
@@ -273,7 +280,7 @@ func TestSyncer_SyncAny_REJECT_FORMAT(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err := syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0)
 	assert.Equal(t, errAbort, err)
 	connSnapshot.AssertExpectations(t)
 }
@@ -321,12 +328,13 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	syncer.AddSnapshot(simplePeer("id"), s)
+	_, err := syncer.AddSnapshot(simplePeer("id"), s)
+	require.NoError(t, err)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
 
-	_, _, err := syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0)
 	assert.True(t, errors.Is(err, errBoom))
 	connSnapshot.AssertExpectations(t)
 }
@@ -399,7 +407,8 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
-			chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: body})
+			require.NoError(t, err)
+			_, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: body})
 			require.NoError(t, err)
 
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
@@ -477,7 +486,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			// check the queue contents, and finally close the queue to end the goroutine.
 			// We don't really care about the result of applyChunks, since it has separate test.
 			go func() {
-				syncer.applyChunks(chunks)
+				syncer.applyChunks(chunks) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)
@@ -518,12 +527,18 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			s1 := &snapshot{Height: 1, Format: 1, Chunks: 3}
 			s2 := &snapshot{Height: 2, Format: 1, Chunks: 3}
-			syncer.AddSnapshot(peerA, s1)
-			syncer.AddSnapshot(peerA, s2)
-			syncer.AddSnapshot(peerB, s1)
-			syncer.AddSnapshot(peerB, s2)
-			syncer.AddSnapshot(peerC, s1)
-			syncer.AddSnapshot(peerC, s2)
+			_, err := syncer.AddSnapshot(peerA, s1)
+			require.NoError(t, err)
+			_, err = syncer.AddSnapshot(peerA, s2)
+			require.NoError(t, err)
+			_, err = syncer.AddSnapshot(peerB, s1)
+			require.NoError(t, err)
+			_, err = syncer.AddSnapshot(peerB, s2)
+			require.NoError(t, err)
+			_, err = syncer.AddSnapshot(peerC, s1)
+			require.NoError(t, err)
+			_, err = syncer.AddSnapshot(peerC, s2)
+			require.NoError(t, err)
 
 			chunks, err := newChunkQueue(s1, "")
 			require.NoError(t, err)
@@ -562,7 +577,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// However, it will block on e.g. retry result, so we spawn a goroutine that will
 			// be shut down when the chunk queue closes.
 			go func() {
-				syncer.applyChunks(chunks)
+				syncer.applyChunks(chunks) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)

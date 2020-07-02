@@ -56,7 +56,11 @@ func testStream(t *testing.T, app types.Application) {
 	if err := server.Start(); err != nil {
 		require.NoError(t, err, "Error starting socket server")
 	}
-	defer server.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
@@ -64,7 +68,11 @@ func testStream(t *testing.T, app types.Application) {
 	if err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	defer client.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	done := make(chan struct{})
 	counter := 0
@@ -132,14 +140,24 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
-	defer server.Stop() //nolint:errcheck // ignore for tests
+
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// Connect to the socket
 	conn, err := grpc.Dial(socket, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 	if err != nil {
 		t.Fatalf("Error dialing GRPC server: %v", err.Error())
 	}
-	defer conn.Close()
+
+	t.Cleanup(func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	client := types.NewABCIApplicationClient(conn)
 

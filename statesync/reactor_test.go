@@ -63,7 +63,11 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			r := NewReactor(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
-			defer r.Stop()
+			t.Cleanup(func() {
+				if err := r.Stop(); err != nil {
+					t.Error(err)
+				}
+			})
 
 			r.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
 			time.Sleep(100 * time.Millisecond)
@@ -136,7 +140,11 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			r := NewReactor(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
-			defer r.Stop()
+			t.Cleanup(func() {
+				if err := r.Stop(); err != nil {
+					t.Error(err)
+				}
+			})
 
 			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 			time.Sleep(100 * time.Millisecond)
