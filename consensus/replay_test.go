@@ -83,7 +83,11 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
-	defer cs.Stop()
+	t.Cleanup(func() {
+		if err := cs.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -195,7 +199,8 @@ LOOP:
 			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
-			cs.Stop()
+			err = cs.Stop()
+			require.NoError(t, err)
 			cancel()
 
 			// if we reached the required height, exit
@@ -682,7 +687,11 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		wal.SetLogger(log.TestingLogger())
 		err = wal.Start()
 		require.NoError(t, err)
-		defer wal.Stop()
+		t.Cleanup(func() {
+			if err := wal.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
 
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
@@ -728,7 +737,11 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
-	defer proxyApp.Stop()
+	t.Cleanup(func() {
+		if err := proxyApp.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 	err := handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
@@ -781,7 +794,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -830,7 +843,7 @@ func buildTMStateFromChain(
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck //ignore
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -893,11 +906,16 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
-		defer proxyApp.Stop()
+		t.Cleanup(func() {
+			if err := proxyApp.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			h.Handshake(proxyApp)
+			err = h.Handshake(proxyApp)
+			require.Error(t, err)
 		})
 	}
 
@@ -911,11 +929,16 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
-		defer proxyApp.Stop()
+		t.Cleanup(func() {
+			if err := proxyApp.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			h.Handshake(proxyApp)
+			err = h.Handshake(proxyApp)
+			require.Error(t, err)
 		})
 	}
 }
@@ -1204,7 +1227,11 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
-	defer proxyApp.Stop()
+	t.Cleanup(func() {
+		if err := proxyApp.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
