@@ -310,3 +310,16 @@ func TestWALMsgProto(t *testing.T) {
 		})
 	}
 }
+
+func TestConsMsgsVectors(t *testing.T) {
+	// Types that are valid to be assigned to Sum:
+	//	*Message_NewRoundStep
+	//	*Message_NewValidBlock
+	//	*Message_Proposal
+	//	*Message_ProposalPol
+	//	*Message_BlockPart
+	//	*Message_Vote
+	//	*Message_HasVote
+	//	*Message_VoteSetMaj23
+	//	*Message_VoteSetBits
+}
