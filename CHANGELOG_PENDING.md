@@ -81,6 +81,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
   - [store] \#4778 Migrate store module to Protobuf encoding
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+  - [mempool] Add RemoveTxByKey() exported function for custom mempool cleaning (@p4u)
 
 ### FEATURES:
 
