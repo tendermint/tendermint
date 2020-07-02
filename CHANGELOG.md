@@ -2,7 +2,7 @@
 
 ## v0.33.6
 
-*July 1, 2020*
+*July 2, 2020*
 
 This security release fixes:
 
@@ -10,29 +10,31 @@ This security release fixes:
 
 Tendermint 0.33.0 and above allow block proposers to include signatures for the
 wrong block. This may happen naturally if you start a network, have it run for
-some time and restart it (**without changing chainID**). Correct block
-proposers will accidentally include signatures for the wrong block if they see
-these signatures, and then commits won't validate, making all proposed blocks
-invalid. A malicious validator (even with a minimal amount of stake) can use
-this vulnerability to completely halt the network. 
+some time and restart it **without changing the chainID**. (It is a 
+[misconfiguration](https://docs.tendermint.com/master/tendermint-core/using-tendermint.html) 
+to reuse chainIDs.) Correct block proposers will accidentally include signatures 
+for the wrong block if they see these signatures, and then commits won't validate, 
+making all proposed blocks invalid. A malicious validator (even with a minimal 
+amount of stake) can use this vulnerability to completely halt the network. 
 
-Tendermint 0.33.6 checks all the signatures are for the block with 2/3+
+Tendermint 0.33.6 checks all the signatures are for the block with +2/3
 majority before creating a commit.
 
 ### False Witness
 
 Tendermint 0.33.1 and above are no longer fully verifying commit signatures
-during block execution - they stop after 2/3+. This means proposers can propose
+during block execution - they stop after +2/3. This means proposers can propose
 blocks that contain valid +2/3 signatures and then the rest of the signatures
 can be whatever they want. They can claim that all the other validators signed
 just by including a CommitSig with arbitrary signature data. While this doesn't
 seem to impact safety of Tendermint per se, it means that Commits may contain a
 lot of invalid data.
 
-_This is already true of blocks, since they can include invalid txs filled
-with garbage, but in that case the application knows they they are invalid and
-can punish the proposer. But since applications dont verify commit signatures
-directly (they trust tendermint to do that), they won't be able to detect it._
+_This was already true of blocks, since they could include invalid txs filled
+with garbage, but in that case the application knew that they are invalid and
+could punish the proposer. But since applications didn't--and don't--
+verify commit signatures directly (they trust Tendermint to do that), 
+they won't be able to detect it._
 
 This can impact incentivization logic in the application that depends on the
 LastCommitInfo sent in BeginBlock, which includes which validators signed. For
@@ -43,12 +45,12 @@ their signatures. There may be other tricks that can be played because of this.
 
 Tendermint 0.33.6 verifies all the signatures during block execution.
 
-_the light client does not check nil votes and exits as soon as 2/3+ of the
-signatures are checked_
+_Please note that the light client does not check nil votes and exits as soon 
+as 2/3+ of the signatures are checked._
 
-**All clients are recommended to upgrade**
+**All clients are recommended to upgrade.**
 
-Special thanks to @njmurarka for reporting this.
+Special thanks to @njmurarka at Bluzelle Networks for reporting this.
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
