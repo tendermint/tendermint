@@ -337,35 +337,36 @@ func TestConsMsgsVectors(t *testing.T) {
 			0xff, 0xff, 0xff, 0x7, 0x18, 0xff, 0xff, 0xff, 0xff, 0xf, 0x20, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0x7f, 0x28, 0xff, 0xff, 0xff, 0xff, 0x7}},
 
-		// 	{"Proposal", &tmcons.Message{Sum: &tmcons.Message_NewRoundStep{NewRoundStep: &tmcons.NewRoundStep{
-		// 		Height:                math.MaxInt64,
-		// 		Round:                 math.MaxInt32,
-		// 		Step:                  math.MaxUint32,
-		// 		SecondsSinceStartTime: math.MaxInt64,
-		// 		LastCommitRound:       math.MaxInt32,
-		// 	}}}, []byte{}},
-		// }
+		{"NewValidBlock", &tmcons.Message{Sum: &tmcons.Message_NewValidBlock{
+			NewValidBlock: &tmcons.NewValidBlock{Height: 1, Round: 1}}},
+			[]byte{0x12, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}}, //todo add parsetheader & bitarray
+		{"Proposal", &tmcons.Message{Sum: &tmcons.Message_Proposal{Proposal: &tmcons.Proposal{}}},
+			[]byte{0x1a, 0x13, 0xa, 0x11, 0x2a, 0x2, 0x12, 0x0, 0x32, 0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3,
+				0x98, 0xfe, 0xff, 0xff, 0xff, 0x1}},
 		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
 			ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
 			[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
-		// {"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
-		// 	ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
-		// 	[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
-		// {"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
-		// 	ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
-		// 	[]byte{0x22, 0x6, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x0}},
-		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_HasVote{
+		{"BlockPart", &tmcons.Message{Sum: &tmcons.Message_BlockPart{
+			BlockPart: &tmcons.BlockPart{Height: 1, Round: 1}}}, // todo add part
+			[]byte{0x2a, 0x8, 0x8, 0x1, 0x10, 0x1, 0x1a, 0x2, 0x1a, 0x0}},
+		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
+			Vote: &tmcons.Vote{}}},
+			[]byte{0x32, 0x0}},
+		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
 			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
 			[]byte{0x3a, 0x8, 0x8, 0x1, 0x10, 0x1, 0x18, 0x1, 0x20, 0x1}},
+		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
+			HasVote: &tmcons.HasVote{Height: math.MaxInt64, Round: math.MaxInt32,
+				Type: tmproto.PrevoteType, Index: math.MaxInt32}}},
+			[]byte{0x3a, 0x18, 0x8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0x7f, 0x10, 0xff, 0xff, 0xff, 0xff, 0x7, 0x18, 0x1, 0x20, 0xff, 0xff, 0xff, 0xff, 0x7}},
+		{"VoteSetMaj23", &tmcons.Message{Sum: &tmcons.Message_VoteSetMaj23{
+			VoteSetMaj23: &tmcons.VoteSetMaj23{Height: 1, Round: 1, Type: tmproto.PrevoteType}}}, //todo:add blockid
+			[]byte{0x42, 0xa, 0x8, 0x1, 0x10, 0x1, 0x18, 0x1, 0x22, 0x2, 0x12, 0x0}},
+		{"VoteSetBits", &tmcons.Message{Sum: &tmcons.Message_VoteSetBits{
+			VoteSetBits: &tmcons.VoteSetBits{Height: 1, Round: 1, Type: tmproto.PrevoteType}}}, //todo:add blockid & votebitarray
+			[]byte{0x4a, 0xc, 0x8, 0x1, 0x10, 0x1, 0x18, 0x1, 0x22, 0x2, 0x12, 0x0, 0x2a, 0x0}},
 	}
-	//	*Message_NewValidBlock
-	//	*Message_Proposal
-	//	*Message_ProposalPol
-	//	*Message_BlockPart
-	//	*Message_Vote
-	//	*Message_HasVote
-	//	*Message_VoteSetMaj23
-	//	*Message_VoteSetBits
 
 	for _, tc := range testCases {
 		tc := tc
