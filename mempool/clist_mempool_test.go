@@ -528,6 +528,16 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	mempool.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
+
+	// 7. Test RemoveTxByKey function
+	err = mempool.CheckTx([]byte{0x06}, nil, TxInfo{})
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, mempool.TxsBytes())
+	mempool.RemoveTxByKey(TxKey([]byte{0x07}), true)
+	assert.EqualValues(t, 1, mempool.TxsBytes())
+	mempool.RemoveTxByKey(TxKey([]byte{0x06}), true)
+	assert.EqualValues(t, 0, mempool.TxsBytes())
+
 }
 
 // This will non-deterministically catch some concurrency failures like
