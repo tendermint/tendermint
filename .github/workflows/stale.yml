@@ -1,0 +1,15 @@
+name: "Close stale pull requests"
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: "Message to comment on stale PRs. If none provided, will not mark PRs stale"
+          days-before-stale: 20
+          exempt-pr-labels: "S:wip"
