@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
+	tmlog "github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -105,11 +107,45 @@ func (app *multiAppConn) OnStart() error {
 	app.consensusConnClient = c
 	app.consensusConn = NewAppConnConsensus(c)
 
+	// Kill Tendermint if the ABCI application crashes.
+	go app.killTMOnClientError()
+
 	return nil
 }
 
 func (app *multiAppConn) OnStop() {
 	app.stopAllClients()
+}
+
+func (app *multiAppConn) killTMOnClientError() {
+	killFn := func(conn string, err error, logger tmlog.Logger) {
+		logger.Error(
+			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
+			"err", err)
+		killErr := tmos.Kill()
+		if killErr != nil {
+			logger.Error("Failed to kill this process - please do so manually", "err", killErr)
+		}
+	}
+
+	select {
+	case <-app.consensusConnClient.Quit():
+		if err := app.consensusConnClient.Error(); err != nil {
+			killFn("consensus", err, app.Logger)
+		}
+	case <-app.mempoolConnClient.Quit():
+		if err := app.mempoolConnClient.Error(); err != nil {
+			killFn("mempool", err, app.Logger)
+		}
+	case <-app.queryConnClient.Quit():
+		if err := app.queryConnClient.Error(); err != nil {
+			killFn("query", err, app.Logger)
+		}
+	case <-app.snapshotConnClient.Quit():
+		if err := app.snapshotConnClient.Error(); err != nil {
+			killFn("snapshot", err, app.Logger)
+		}
+	}
 }
 
 func (app *multiAppConn) stopAllClients() {
