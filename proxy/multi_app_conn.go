@@ -35,10 +35,15 @@ func NewAppConns(clientCreator ClientCreator) AppConns {
 type multiAppConn struct {
 	service.BaseService
 
-	mempoolConn   AppConnMempool
 	consensusConn AppConnConsensus
+	mempoolConn   AppConnMempool
 	queryConn     AppConnQuery
 	snapshotConn  AppConnSnapshot
+
+	consensusConnClient abcicli.Client
+	mempoolConnClient   abcicli.Client
+	queryConnClient     abcicli.Client
+	snapshotConnClient  abcicli.Client
 
 	clientCreator ClientCreator
 }
@@ -73,27 +78,53 @@ func (app *multiAppConn) OnStart() error {
 	if err != nil {
 		return err
 	}
+	app.queryConnClient = c
 	app.queryConn = NewAppConnQuery(c)
 
 	c, err = app.abciClientFor("snapshot")
 	if err != nil {
+		app.stopAllClients()
 		return err
 	}
+	app.snapshotConnClient = c
 	app.snapshotConn = NewAppConnSnapshot(c)
 
 	c, err = app.abciClientFor("mempool")
 	if err != nil {
+		app.stopAllClients()
 		return err
 	}
+	app.mempoolConnClient = c
 	app.mempoolConn = NewAppConnMempool(c)
 
 	c, err = app.abciClientFor("consensus")
 	if err != nil {
+		app.stopAllClients()
 		return err
 	}
+	app.consensusConnClient = c
 	app.consensusConn = NewAppConnConsensus(c)
 
 	return nil
+}
+
+func (app *multiAppConn) OnStop() {
+	app.stopAllClients()
+}
+
+func (app *multiAppConn) stopAllClients() {
+	if app.consensusConnClient != nil {
+		app.consensusConnClient.Stop()
+	}
+	if app.mempoolConnClient != nil {
+		app.mempoolConnClient.Stop()
+	}
+	if app.queryConnClient != nil {
+		app.queryConnClient.Stop()
+	}
+	if app.snapshotConnClient != nil {
+		app.snapshotConnClient.Stop()
+	}
 }
 
 func (app *multiAppConn) abciClientFor(conn string) (abcicli.Client, error) {
