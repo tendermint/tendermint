@@ -29,6 +29,25 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [p2p/pex] \#4973 Migrate `p2p/pex` reactor to Protobuf encoding
   - [statesync] \#4943 Migrate state sync reactor to Protobuf encoding
 
+- Blockchain Protocol
+
+  - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
+    - Add `max_num` to consensus evidence parameters (default: 50 items).
+  - [evidence] \#4725 Remove `Pubkey` from `DuplicateVoteEvidence`
+  - [state] \#4845 Include `BeginBlock#Events`, `EndBlock#Events`, `DeliverTx#Events`, `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+
+- On-disk serialization
+
+  - [state] \#4679 Migrate state module to Protobuf encoding
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [store] \#4778 Migrate store module to Protobuf encoding
+
+- Light client, private validator
+
+  - [light] \#4964 Migrate light module migration to Protobuf encoding
+  - [privval] \#4985 Migrate `privval` module to Protobuf encoding
+
 - Go API
 
   - [light] \#4946 Rename `lite2` pkg to `light`. Remove `lite` implementation.
@@ -68,25 +87,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4939 Block: `Round` is now `int32`
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now `int32`
   - [consensus] \#4582 HeightVoteSet: `round` is now `int32`
-  
-- Blockchain Protocol
-
-  - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
-    - Add `max_num` to consensus evidence parameters (default: 50 items).
-  - [evidence] \#4725 Remove `Pubkey` from `DuplicateVoteEvidence`
-  - [state] \#4845 Include `BeginBlock#Events`, `EndBlock#Events`, `DeliverTx#Events`, `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
-  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
-
-- On-disk serialization
-
-  - [state] \#4679 Migrate state module to Protobuf encoding
-    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
-  - [store] \#4778 Migrate store module to Protobuf encoding
-
-- Light client, private validator
-
-  - [light] \#4964 Migrate light module migration to Protobuf encoding
-  - [privval] \#4985 Migrate `privval` module to Protobuf encoding
 
 ### FEATURES:
 
