@@ -31,9 +31,9 @@ const (
 var (
 	// P2PProtocol versions all p2p behaviour and msgs.
 	// This includes proposer selection.
-	P2PProtocol uint64 = 8
+	P2PProtocol uint64 = 9
 
 	// BlockProtocol versions all block data structures and processing.
 	// This includes validity of blocks and state updates.
-	BlockProtocol uint64 = 11
+	BlockProtocol uint64 = 12
 )
