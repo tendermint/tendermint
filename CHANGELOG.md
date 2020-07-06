@@ -1,5 +1,126 @@
 # Changelog
 
+## v0.33.6
+
+*July 2, 2020*
+
+This security release fixes:
+
+### Denial of service
+
+Tendermint 0.33.0 and above allow block proposers to include signatures for the
+wrong block. This may happen naturally if you start a network, have it run for
+some time and restart it **without changing the chainID**. (It is a
+[misconfiguration](https://docs.tendermint.com/master/tendermint-core/using-tendermint.html)
+to reuse chainIDs.) Correct block proposers will accidentally include signatures
+for the wrong block if they see these signatures, and then commits won't validate,
+making all proposed blocks invalid. A malicious validator (even with a minimal
+amount of stake) can use this vulnerability to completely halt the network.
+
+Tendermint 0.33.6 checks all the signatures are for the block with +2/3
+majority before creating a commit.
+
+### False Witness
+
+Tendermint 0.33.1 and above are no longer fully verifying commit signatures
+during block execution - they stop after +2/3. This means proposers can propose
+blocks that contain valid +2/3 signatures and then the rest of the signatures
+can be whatever they want. They can claim that all the other validators signed
+just by including a CommitSig with arbitrary signature data. While this doesn't
+seem to impact safety of Tendermint per se, it means that Commits may contain a
+lot of invalid data.
+
+_This was already true of blocks, since they could include invalid txs filled
+with garbage, but in that case the application knew that they are invalid and
+could punish the proposer. But since applications didn't--and don't--
+verify commit signatures directly (they trust Tendermint to do that),
+they won't be able to detect it._
+
+This can impact incentivization logic in the application that depends on the
+LastCommitInfo sent in BeginBlock, which includes which validators signed. For
+instance, Gaia incentivizes proposers with a bonus for including more than +2/3
+of the signatures. But a proposer can now claim that bonus just by including
+arbitrary data for the final -1/3 of validators without actually waiting for
+their signatures. There may be other tricks that can be played because of this.
+
+Tendermint 0.33.6 verifies all the signatures during block execution.
+
+_Please note that the light client does not check nil votes and exits as soon
+as 2/3+ of the signatures are checked._
+
+**All clients are recommended to upgrade.**
+
+Special thanks to @njmurarka at Bluzelle Networks for reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [consensus] Do not allow signatures for a wrong block in commits (@ebuchman)
+- [consensus] Verify all the signatures during block execution (@melekes) 
+
+**Please note that the fix for the False Witness issue renames the `VerifyCommitTrusting`
+function to `VerifyCommitLightTrusting`. If you were relying on the light client, you may
+need to update your code.**
+
+## v0.33.5
+
+Special thanks to external contributors on this release: @tau3, 
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+
+  - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
+  - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
+  - [node] [\#4832](https://github.com/tendermint/tendermint/pull/4832) `ConfigureRPC` returns an error (@melekes)
+  - [rpc] [\#4836](https://github.com/tendermint/tendermint/pull/4836) Overhaul `lib` folder (@melekes)
+    Move lib/ folder to jsonrpc/.
+    Rename:
+      rpc package -> jsonrpc package
+      rpcclient package -> client package
+      rpcserver package -> server package
+      JSONRPCClient to Client
+      JSONRPCRequestBatch to RequestBatch
+      JSONRPCCaller to Caller
+      StartHTTPServer to Serve
+      StartHTTPAndTLSServer to ServeTLS
+      NewURIClient to NewURI
+      NewJSONRPCClient to New
+      NewJSONRPCClientWithHTTPClient to NewWithHTTPClient
+      NewWSClient to NewWS
+    Unexpose ResponseWriterWrapper
+    Remove unused http_params.go
+
+
+### FEATURES:
+
+- [pex] [\#4439](https://github.com/tendermint/tendermint/pull/4439) Use highwayhash for pex buckets (@tau3)
+
+### IMPROVEMENTS:
+
+- [abci/server] [\#4719](https://github.com/tendermint/tendermint/pull/4719) Print panic & stack trace to STDERR if logger is not set (@melekes)
+- [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement `Header#ValidateBasic` (@alexanderbez)
+- [buildsystem] [\#4378](https://github.com/tendermint/tendermint/pull/4738) Replace build_c and install_c with TENDERMINT_BUILD_OPTIONS parsing. The following options are available:
+  - nostrip: don't strip debugging symbols nor DWARF tables.
+  - cleveldb: use cleveldb as db backend instead of goleveldb.
+  - race: pass -race to go build and enable data race detection.
+- [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
+- [rpc/core] [\#4844](https://github.com/tendermint/tendermint/pull/4844) Do not lock consensus state in `/validators`, `/consensus_params` and `/status` (@melekes)
+
+### BUG FIXES:
+
+- [blockchain/v2] [\#4761](https://github.com/tendermint/tendermint/pull/4761) Fix excessive CPU usage caused by spinning on closed channels (@erikgrinaker)
+- [blockchain/v2] Respect `fast_sync` option (@erikgrinaker)
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
+- [rpc] [\#4805](https://github.com/tendermint/tendermint/issues/4805) Attempt to handle panics during panic recovery (@erikgrinaker)
+- [types] [\#4764](https://github.com/tendermint/tendermint/pull/4764) Return an error if voting power overflows in `VerifyCommitTrusting` (@melekes)
+- [privval] [\#4812](https://github.com/tendermint/tendermint/pull/4812) Retry `GetPubKey/SignVote/SignProposal` a few times before returning an error (@melekes)
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
+
 ## v0.33.4
 
 - Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
@@ -337,6 +458,14 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [p2p] [\#4140](https://github.com/tendermint/tendermint/issues/4140) `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
+
+## v0.32.12
+
+*May 19, 2020*
+
+### BUG FIXES
+
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
 
 ## v0.32.11
 

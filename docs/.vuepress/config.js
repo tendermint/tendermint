@@ -1,6 +1,6 @@
 module.exports = {
   theme: "cosmos",
-  title: "Tendermint",
+  title: "Tendermint Core",
   // locales: {
   //   "/": {
   //     lang: "en-US"
@@ -11,11 +11,30 @@ module.exports = {
   // },
   base: process.env.VUEPRESS_BASE,
   themeConfig: {
+    repo: "tendermint/tendermint",
     docsRepo: "tendermint/tendermint",
-    editLinks: true,
     docsDir: "docs",
-    logo: "/logo.svg",
+    editLinks: true,
     label: "core",
+    sidebar: {
+      auto: true,
+      nav: [
+        {
+          title: "Resources",
+          children: [
+            {
+              title: "Developer Sessions",
+              path: "/DEV_SESSIONS.html"
+            },
+            {
+              title: "RPC",
+              path: "https://docs.tendermint.com/master/rpc/",
+              static: true
+            }
+          ]
+        }
+      ]
+    },
     gutter: {
       title: "Help & Support",
       editLink: true,
@@ -32,7 +51,9 @@ module.exports = {
       }
     },
     footer: {
-      questionsText: "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
+      question: {
+        text: "Chat with Tendermint developers in <a href='https://discord.gg/cr7N47p' target='_blank'>Discord</a> or reach out on the <a href='https://forum.cosmos.network/c/tendermint' target='_blank'>Tendermint Forum</a> to learn more."
+      },
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
@@ -72,11 +93,11 @@ module.exports = {
           children: [
             {
               title: "Cosmos SDK",
-              url: "https://cosmos.network/docs"
+              url: "https://docs.cosmos.network"
             },
             {
               title: "Cosmos Hub",
-              url: "https://hub.cosmos.network/"
+              url: "https://hub.cosmos.network"
             }
           ]
         },
@@ -111,23 +132,7 @@ module.exports = {
           ]
         }
       ]
-    },
-    sidebar: [
-      {
-        title: "Resources",
-        children: [
-          {
-            title: "Developer Sessions",
-            path: "/DEV_SESSIONS.html"
-          },
-          {
-            title: "RPC",
-            path: "/master/rpc/",
-            static: true
-          }
-        ]
-      }
-    ]
+    }
   },
   plugins: [
     [

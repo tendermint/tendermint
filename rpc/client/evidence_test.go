@@ -11,8 +11,10 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -23,10 +25,14 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	chainID string) *types.DuplicateVoteEvidence {
 
 	var err error
-	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+	v := vote.ToProto()
+	v2 := vote2.ToProto()
+
+	vote.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.Signature, err = val.Key.PrivKey.Sign(vote2.SignBytes(chainID))
+	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2)
@@ -42,11 +48,11 @@ func makeEvidences(
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
-		Type:             types.PrevoteType,
+		Type:             tmproto.PrevoteType,
 		Timestamp:        time.Now().UTC(),
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
-			PartsHeader: types.PartSetHeader{
+			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
 				Hash:  tmhash.Sum([]byte("partset")),
 			},
@@ -90,7 +96,7 @@ func makeEvidences(
 	// different type
 	{
 		v := vote2
-		v.Type = types.PrecommitType
+		v.Type = tmproto.PrecommitType
 		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
 	}
 
@@ -121,10 +127,11 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 		status, err := c.Status()
 		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+		require.NoError(t, err)
 
-		ed25519pub := pv.Key.PubKey.(ed25519.PubKeyEd25519)
-		rawpub := ed25519pub[:]
+		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
+		rawpub := ed25519pub.Bytes()
 		result2, err := c.ABCIQuery("/val", rawpub)
 		require.NoError(t, err)
 		qres := result2.Response
@@ -134,7 +141,10 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
+		require.NoError(t, err)
+
+		require.EqualValues(t, rawpub, pk.Bytes(), "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
@@ -179,8 +189,8 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Commit: types.NewCommit(h1.Height, 1, h1.Commit.BlockID, h1.Commit.Signatures),
 		}
 		h2.Commit.BlockID = types.BlockID{
-			Hash:        h2.Hash(),
-			PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+			Hash:          h2.Hash(),
+			PartSetHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
 		}
 		vote := &types.Vote{
 			ValidatorAddress: pv.Key.Address,
@@ -188,17 +198,21 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 			Height:           h2.Height,
 			Round:            h2.Commit.Round,
 			Timestamp:        h2.Time,
-			Type:             types.PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          h2.Commit.BlockID,
 		}
-		signBytes, err := pv.Key.PrivKey.Sign(vote.SignBytes(chainID))
+
+		v := vote.ToProto()
+		signBytes, err := pv.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
 		require.NoError(t, err)
+		vote.Signature = v.Signature
+
 		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h2.Time)
 
 		t.Logf("h1 AppHash: %X", h1.AppHash)
 		t.Logf("h2 AppHash: %X", h2.AppHash)
 
-		ev := types.ConflictingHeadersEvidence{
+		ev := &types.ConflictingHeadersEvidence{
 			H1: &h1.SignedHeader,
 			H2: h2,
 		}

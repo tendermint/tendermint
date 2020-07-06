@@ -56,7 +56,7 @@ func testStream(t *testing.T, app types.Application) {
 	if err := server.Start(); err != nil {
 		require.NoError(t, err, "Error starting socket server")
 	}
-	defer server.Stop()
+	defer server.Stop() //nolint:errcheck // ignore for tests
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
@@ -64,7 +64,7 @@ func testStream(t *testing.T, app types.Application) {
 	if err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	defer client.Stop()
+	defer client.Stop() //nolint:errcheck // ignore for tests
 
 	done := make(chan struct{})
 	counter := 0
@@ -132,7 +132,7 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
-	defer server.Stop()
+	defer server.Stop() //nolint:errcheck // ignore for tests
 
 	// Connect to the socket
 	conn, err := grpc.Dial(socket, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))

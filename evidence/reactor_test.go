@@ -112,10 +112,10 @@ func _waitForEvidence(
 	wg.Done()
 }
 
-func sendEvidence(t *testing.T, evpool *Pool, valAddr []byte, n int) types.EvidenceList {
+func sendEvidence(t *testing.T, evpool *Pool, val types.PrivValidator, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockEvidence(int64(i+1), time.Now().UTC(), valAddr)
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1), time.Now().UTC(), val, evidenceChainID)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -134,11 +134,11 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// create statedb for everyone
 	stateDBs := make([]dbm.DB, N)
-	valAddr := []byte("myval")
+	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
 	for i := 0; i < N; i++ {
-		stateDBs[i] = initializeValidatorState(valAddr, height)
+		stateDBs[i] = initializeValidatorState(val, height)
 	}
 
 	// make reactors from statedb
@@ -154,7 +154,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, reactors[0].evpool, valAddr, numEvidence)
+	evList := sendEvidence(t, reactors[0].evpool, val, numEvidence)
 	waitForEvidence(t, evList, reactors)
 }
 
@@ -169,13 +169,13 @@ func (ps peerState) GetHeight() int64 {
 func TestReactorSelectiveBroadcast(t *testing.T) {
 	config := cfg.TestConfig()
 
-	valAddr := []byte("myval")
+	val := types.NewMockPV()
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(valAddr, height1)
-	stateDB2 := initializeValidatorState(valAddr, height2)
+	stateDB1 := initializeValidatorState(val, height1)
+	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
 	reactors := makeAndConnectReactors(config, []dbm.DB{stateDB1, stateDB2})
@@ -194,7 +194,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, reactors[0].evpool, valAddr, numEvidence)
+	evList := sendEvidence(t, reactors[0].evpool, val, numEvidence)
 
 	// only ones less than the peers height should make it through
 	waitForEvidence(t, evList[:numEvidence/2], reactors[1:2])
@@ -202,32 +202,4 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()
 	assert.Equal(t, 1, len(peers))
-}
-func TestListMessageValidationBasic(t *testing.T) {
-
-	testCases := []struct {
-		testName          string
-		malleateEvListMsg func(*ListMessage)
-		expectErr         bool
-	}{
-		{"Good ListMessage", func(evList *ListMessage) {}, false},
-		{"Invalid ListMessage", func(evList *ListMessage) {
-			evList.Evidence = append(evList.Evidence,
-				&types.DuplicateVoteEvidence{})
-		}, true},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			evListMsg := &ListMessage{}
-			n := 3
-			valAddr := []byte("myval")
-			evListMsg.Evidence = make([]types.Evidence, n)
-			for i := 0; i < n; i++ {
-				evListMsg.Evidence[i] = types.NewMockEvidence(int64(i+1), time.Now(), valAddr)
-			}
-			tc.malleateEvListMsg(evListMsg)
-			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -29,7 +27,6 @@ func TestWebsocketManagerHandler(t *testing.T) {
 
 	// check basic functionality works
 	req, err := types.MapToRequest(
-		amino.NewCodec(),
 		types.JSONRPCStringID("TestWebsocketManager"),
 		"c",
 		map[string]interface{}{"s": "a", "i": 10},
@@ -49,7 +46,7 @@ func newWSServer() *httptest.Server {
 	funcMap := map[string]*RPCFunc{
 		"c": NewWSRPCFunc(func(ctx *types.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
-	wm := NewWebsocketManager(funcMap, amino.NewCodec())
+	wm := NewWebsocketManager(funcMap)
 	wm.SetLogger(log.TestingLogger())
 
 	mux := http.NewServeMux()

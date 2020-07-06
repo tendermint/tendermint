@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // Volatile state for each Validator
@@ -107,13 +107,21 @@ func ValidatorListString(vals []*Validator) string {
 // as its redundant with the pubkey. This also excludes ProposerPriority
 // which changes every round.
 func (v *Validator) Bytes() []byte {
-	return cdcEncode(struct {
-		PubKey      crypto.PubKey
-		VotingPower int64
-	}{
-		v.PubKey,
-		v.VotingPower,
-	})
+	pk, err := ce.PubKeyToProto(v.PubKey)
+	if err != nil {
+		panic(err)
+	}
+
+	pbv := tmproto.SimpleValidator{
+		PubKey:      &pk,
+		VotingPower: v.VotingPower,
+	}
+
+	bz, err := pbv.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // ToProto converts Valiator to protobuf

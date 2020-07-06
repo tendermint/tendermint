@@ -4,13 +4,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	memmock "github.com/tendermint/tendermint/mempool/mock"
+	protostate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
@@ -24,7 +29,7 @@ var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
 	blockExec := sm.NewBlockExecutor(
@@ -39,9 +44,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
-	wrongVersion1.Block++
+	wrongVersion1.Block += 2
 	wrongVersion2 := state.Version.Consensus
-	wrongVersion2.App++
+	wrongVersion2.App += 2
 
 	// Manipulation of any header field causes failure.
 	testCases := []struct {
@@ -54,7 +59,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 
-		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartsHeader.Total += 10 }},
+		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
 		{"DataHash wrong", func(block *types.Block) { block.DataHash = wrongHash }},
 
@@ -94,7 +99,7 @@ func TestValidateBlockHeader(t *testing.T) {
 func TestValidateBlockCommit(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
 	blockExec := sm.NewBlockExecutor(
@@ -185,13 +190,19 @@ func TestValidateBlockCommit(t *testing.T) {
 			Height:           height,
 			Round:            0,
 			Timestamp:        tmtime.Now(),
-			Type:             types.PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 		}
-		err = badPrivVal.SignVote(chainID, goodVote)
+
+		g := goodVote.ToProto()
+		b := badVote.ToProto()
+
+		err = badPrivVal.SignVote(chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, badVote)
+		err = badPrivVal.SignVote(chainID, b)
 		require.NoError(t, err, "height %d", height)
+
+		goodVote.Signature, badVote.Signature = g.Signature, b.Signature
 
 		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
@@ -201,7 +212,7 @@ func TestValidateBlockCommit(t *testing.T) {
 func TestValidateBlockEvidence(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
 	state.ConsensusParams.Evidence.MaxNum = 3
@@ -226,7 +237,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 			evidence := make([]types.Evidence, 0)
 			// one more than the maximum allowed evidence
 			for i := uint32(0); i <= maxNumEvidence; i++ {
-				evidence = append(evidence, types.NewMockEvidence(height, time.Now(), proposerAddr))
+				evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+					privVals[proposerAddr.String()], chainID))
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
@@ -240,10 +252,11 @@ func TestValidateBlockEvidence(t *testing.T) {
 		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
 		// precisely the amount of allowed evidence
-		for i := uint32(0); i < maxNumEvidence; i++ {
+		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
 			// make different evidence for each validator
-			addr, _ := state.Validators.GetByIndex(int(i))
-			evidence = append(evidence, types.NewMockEvidence(height, time.Now(), addr))
+			_, val := state.Validators.GetByIndex(i)
+			evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+				privVals[val.Address.String()], chainID))
 		}
 
 		var err error
@@ -262,14 +275,17 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(2, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("IsPending", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsPending", ev).Return(false)
+	evpool.On("IsPending", ev2).Return(false)
 	evpool.On("IsCommitted", ev).Return(false)
 	evpool.On("IsCommitted", ev2).Return(true)
 
@@ -284,22 +300,25 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
-	require.Error(t, err)
-	require.IsType(t, err, &types.ErrEvidenceInvalid{})
+	assert.Error(t, err)
+	assert.IsType(t, err, &types.ErrEvidenceInvalid{})
 }
 
 func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(2, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ev).Return(false)
 	evpool.On("IsPending", ev2).Return(true)
-	evpool.On("IsCommitted", mock.AnythingOfType("types.MockEvidence")).Return(false)
+	evpool.On("IsCommitted", ev).Return(false)
+	evpool.On("IsCommitted", ev2).Return(false)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -313,16 +332,18 @@ func TestValidateAlreadyPendingEvidence(t *testing.T) {
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := makeState(1, int(height))
-	addr, _ := state.Validators.GetByIndex(0)
-	addr2, _ := state.Validators.GetByIndex(1)
-	ev := types.NewMockEvidence(height, defaultTestTime, addr)
-	ev2 := types.NewMockEvidence(height, defaultTestTime, addr2)
+	state, stateDB, privVals := makeState(2, int(height))
+	_, val := state.Validators.GetByIndex(0)
+	_, val2 := state.Validators.GetByIndex(1)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val.Address.String()], chainID)
+	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
+		privVals[val2.Address.String()], chainID)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -335,5 +356,342 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	block.EvidenceHash = block.Evidence.Hash()
 	err := blockExec.ValidateBlock(state, block)
 
-	require.Error(t, err)
+	assert.Error(t, err)
+}
+
+var blockID = types.BlockID{
+	Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+	PartSetHeader: types.PartSetHeader{
+		Total: 1,
+		Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+	},
+}
+
+func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, vals := makeState(1, int(height))
+	addr, val := state.Validators.GetByIndex(0)
+	voteA := makeVote(height, 1, 0, addr, blockID)
+	vA := voteA.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, vA)
+	voteA.Signature = vA.Signature
+	require.NoError(t, err)
+	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
+	vB := voteB.ToProto()
+	err = vals[val.Address.String()].SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
+	require.NoError(t, err)
+	pe := &types.PotentialAmnesiaEvidence{
+		VoteA: voteA,
+		VoteB: voteB,
+	}
+	ae := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: pe,
+		Polc:                     types.NewEmptyPOLC(),
+	}
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", ae).Return(false)
+	evpool.On("IsCommitted", ae).Return(false)
+	evpool.On("AddEvidence", ae).Return(nil)
+	evpool.On("AddEvidence", pe).Return(nil)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		evpool)
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{ae}
+	block.EvidenceHash = block.Evidence.Hash()
+	err = blockExec.ValidateBlock(state, block)
+	// if we don't have this evidence and it is has an empty polc then we expect to
+	// start our own trial period first
+	errMsg := "Invalid evidence: amnesia evidence is new and hasn't undergone trial period yet."
+	if assert.Error(t, err) {
+		assert.Equal(t, errMsg, err.Error()[:len(errMsg)])
+	}
+}
+
+// Amnesia Evidence can be directly approved without needing to undergo the trial period
+func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, vals := makeState(1, int(height))
+	addr, val := state.Validators.GetByIndex(0)
+	voteA := makeVote(height, 1, 0, addr, blockID)
+	voteA.Timestamp = time.Now().Add(1 * time.Minute)
+	vA := voteA.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, vA)
+	require.NoError(t, err)
+	voteA.Signature = vA.Signature
+	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
+	vB := voteB.ToProto()
+	err = vals[val.Address.String()].SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
+	require.NoError(t, err)
+	pe := &types.PotentialAmnesiaEvidence{
+		VoteA: voteB,
+		VoteB: voteA,
+	}
+	ae := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: pe,
+		Polc:                     types.NewEmptyPOLC(),
+	}
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("IsPending", ae).Return(false)
+	evpool.On("IsCommitted", ae).Return(false)
+	evpool.On("AddEvidence", ae).Return(nil)
+	evpool.On("AddEvidence", pe).Return(nil)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		evpool)
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{ae}
+	block.EvidenceHash = block.Evidence.Hash()
+	err = blockExec.ValidateBlock(state, block)
+	// No error because this type of amnesia evidence is punishable
+	// without the need of a trial period
+	assert.NoError(t, err)
+}
+
+func TestVerifyEvidenceWrongAddress(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, _ := makeState(1, int(height))
+	ev := types.NewMockDuplicateVoteEvidence(height, defaultTestTime, chainID)
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB, log.TestingLogger(),
+		nil,
+		nil,
+		sm.MockEvidencePool{})
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{ev}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+	errMsg := "Invalid evidence: address "
+	if assert.Error(t, err) {
+		assert.Equal(t, err.Error()[:len(errMsg)], errMsg)
+	}
+}
+
+func TestVerifyEvidenceExpiredEvidence(t *testing.T) {
+	var height int64 = 4
+	state, stateDB, _ := makeState(1, int(height))
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
+	ev := types.NewMockDuplicateVoteEvidence(1, defaultTestTime, chainID)
+	err := sm.VerifyEvidence(stateDB, state, ev, nil)
+	errMsg := "evidence from height 1 (created at: 2019-01-01 00:00:00 +0000 UTC) is too old"
+	if assert.Error(t, err) {
+		assert.Equal(t, err.Error()[:len(errMsg)], errMsg)
+	}
+}
+
+func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB, vals := makeState(4, int(height))
+	addr, val := state.Validators.GetByIndex(0)
+	addr2, val2 := state.Validators.GetByIndex(1)
+	voteA := makeVote(height, 1, 0, addr, types.BlockID{})
+	vA := voteA.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, vA)
+	voteA.Signature = vA.Signature
+	require.NoError(t, err)
+	voteB := makeVote(height, 2, 0, addr, blockID)
+	vB := voteB.ToProto()
+	err = vals[val.Address.String()].SignVote(chainID, vB)
+	voteB.Signature = vB.Signature
+	require.NoError(t, err)
+	voteC := makeVote(height, 2, 1, addr2, blockID)
+	vC := voteC.ToProto()
+	err = vals[val2.Address.String()].SignVote(chainID, vC)
+	voteC.Signature = vC.Signature
+	require.NoError(t, err)
+	//var ae types.Evidence
+	badAe := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
+			VoteA: voteA,
+			VoteB: voteB,
+		},
+		Polc: &types.ProofOfLockChange{
+			Votes:  []*types.Vote{voteC},
+			PubKey: val.PubKey,
+		},
+	}
+	err = sm.VerifyEvidence(stateDB, state, badAe, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, err.Error(), "amnesia evidence contains invalid polc, err: "+
+			"invalid commit -- insufficient voting power: got 1000, needed more than 2667")
+	}
+	addr3, val3 := state.Validators.GetByIndex(2)
+	voteD := makeVote(height, 2, 2, addr3, blockID)
+	vD := voteD.ToProto()
+	err = vals[val3.Address.String()].SignVote(chainID, vD)
+	require.NoError(t, err)
+	voteD.Signature = vD.Signature
+	addr4, val4 := state.Validators.GetByIndex(3)
+	voteE := makeVote(height, 2, 3, addr4, blockID)
+	vE := voteE.ToProto()
+	err = vals[val4.Address.String()].SignVote(chainID, vE)
+	voteE.Signature = vE.Signature
+	require.NoError(t, err)
+
+	goodAe := &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
+			VoteA: voteA,
+			VoteB: voteB,
+		},
+		Polc: &types.ProofOfLockChange{
+			Votes:  []*types.Vote{voteC, voteD, voteE},
+			PubKey: val.PubKey,
+		},
+	}
+	err = sm.VerifyEvidence(stateDB, state, goodAe, nil)
+	assert.NoError(t, err)
+
+	goodAe = &types.AmnesiaEvidence{
+		PotentialAmnesiaEvidence: &types.PotentialAmnesiaEvidence{
+			VoteA: voteA,
+			VoteB: voteB,
+		},
+		Polc: types.NewEmptyPOLC(),
+	}
+	err = sm.VerifyEvidence(stateDB, state, goodAe, nil)
+	assert.NoError(t, err)
+
+}
+
+func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
+	state, stateDB, vals := makeState(4, 4)
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
+	addr, val := state.Validators.GetByIndex(0)
+	h := &types.Header{
+		Version:            version.Consensus{Block: 1, App: 2},
+		ChainID:            chainID,
+		Height:             3,
+		Time:               defaultTestTime,
+		LastBlockID:        blockID,
+		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
+		DataHash:           tmhash.Sum([]byte("data_hash")),
+		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
+		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
+		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
+		AppHash:            tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
+		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+	}
+	vote := makeVote(3, 1, 0, addr, blockID)
+	v := vote.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, v)
+	vote.Signature = v.Signature
+	require.NoError(t, err)
+	ev := &types.LunaticValidatorEvidence{
+		Header:             h,
+		Vote:               vote,
+		InvalidHeaderField: "ConsensusHash",
+	}
+	err = ev.ValidateBasic()
+	require.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, h)
+	if assert.Error(t, err) {
+		assert.Equal(t, "ConsensusHash matches committed hash", err.Error())
+	}
+}
+
+func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
+	state, stateDB, vals := makeState(4, 4)
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
+	addr, val := state.Validators.GetByIndex(0)
+	vote := makeVote(3, 1, 0, addr, blockID)
+	v := vote.ToProto()
+	err := vals[val.Address.String()].SignVote(chainID, v)
+	vote.Signature = v.Signature
+	require.NoError(t, err)
+	ev := &types.PhantomValidatorEvidence{
+		Vote:                        vote,
+		LastHeightValidatorWasInSet: 1,
+	}
+	err = ev.ValidateBasic()
+	require.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, "address 576585A00DD4D58318255611D8AAC60E8E77CB32 was a validator at height 3", err.Error())
+	}
+
+	privVal := types.NewMockPV()
+	pubKey, _ := privVal.GetPubKey()
+	vote2 := makeVote(3, 1, 0, pubKey.Address(), blockID)
+	v2 := vote2.ToProto()
+	err = privVal.SignVote(chainID, v2)
+	vote2.Signature = v2.Signature
+	require.NoError(t, err)
+	ev = &types.PhantomValidatorEvidence{
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 1,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, "last time validator was in the set at height 1, min: 2", err.Error())
+	}
+
+	ev = &types.PhantomValidatorEvidence{
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 2,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	errMsg := "phantom validator"
+	if assert.Error(t, err) {
+		assert.Equal(t, errMsg, err.Error()[:len(errMsg)])
+	}
+
+	vals2, err := sm.LoadValidators(stateDB, 2)
+	require.NoError(t, err)
+	vals2.Validators = append(vals2.Validators, types.NewValidator(pubKey, 1000))
+	valKey := []byte("validatorsKey:2")
+	protoVals, err := vals2.ToProto()
+	require.NoError(t, err)
+	valInfo := &protostate.ValidatorsInfo{
+		LastHeightChanged: 2,
+		ValidatorSet:      protoVals,
+	}
+
+	bz, err := valInfo.Marshal()
+	require.NoError(t, err)
+
+	err = stateDB.Set(valKey, bz)
+	require.NoError(t, err)
+	ev = &types.PhantomValidatorEvidence{
+		Vote:                        vote2,
+		LastHeightValidatorWasInSet: 2,
+	}
+	err = ev.ValidateBasic()
+	assert.NoError(t, err)
+	err = sm.VerifyEvidence(stateDB, state, ev, nil)
+	if !assert.NoError(t, err) {
+		t.Log(err)
+	}
+
+}
+
+func makeVote(height int64, round, index int32, addr bytes.HexBytes, blockID types.BlockID) *types.Vote {
+	return &types.Vote{
+		Type:             tmproto.SignedMsgType(2),
+		Height:           height,
+		Round:            round,
+		BlockID:          blockID,
+		Timestamp:        time.Now(),
+		ValidatorAddress: addr,
+		ValidatorIndex:   index,
+	}
 }

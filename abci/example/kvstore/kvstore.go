@@ -17,7 +17,7 @@ var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
 
-	ProtocolVersion version.Protocol = 0x1
+	ProtocolVersion uint64 = 0x1
 )
 
 type State struct {
@@ -49,7 +49,10 @@ func saveState(state State) {
 	if err != nil {
 		panic(err)
 	}
-	state.db.Set(stateKey, stateBytes)
+	err = state.db.Set(stateKey, stateBytes)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func prefixKey(key []byte) []byte {
@@ -76,7 +79,7 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 	return types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:          version.ABCIVersion,
-		AppVersion:       ProtocolVersion.Uint64(),
+		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.AppHash,
 	}
@@ -92,15 +95,18 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		key, value = req.Tx, req.Tx
 	}
 
-	app.state.db.Set(prefixKey(key), value)
+	err := app.state.db.Set(prefixKey(key), value)
+	if err != nil {
+		panic(err)
+	}
 	app.state.Size++
 
 	events := []types.Event{
 		{
 			Type: "app",
 			Attributes: []types.EventAttribute{
-				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
-				{Key: []byte("key"), Value: key},
+				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
+				{Key: []byte("key"), Value: key, Index: true},
 				{Key: []byte("index_key"), Value: []byte("index is working"), Index: true},
 				{Key: []byte("noindex_key"), Value: []byte("index is working"), Index: false},
 			},

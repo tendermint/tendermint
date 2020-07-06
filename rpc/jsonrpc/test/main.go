@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"os"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -28,18 +26,20 @@ type Result struct {
 func main() {
 	var (
 		mux    = http.NewServeMux()
-		cdc    = amino.NewCodec()
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	)
 
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {})
 
-	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
+	rpcserver.RegisterRPCFuncs(mux, routes, logger)
 	config := rpcserver.DefaultConfig()
 	listener, err := rpcserver.Listen("tcp://127.0.0.1:8008", config)
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	rpcserver.Serve(listener, mux, logger, config)
+
+	if err = rpcserver.Serve(listener, mux, logger, config); err != nil {
+		tmos.Exit(err.Error())
+	}
 }

@@ -1,7 +1,6 @@
 package conn
 
 import (
-	"bytes"
 	"net"
 	"testing"
 	"time"
@@ -10,9 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const maxPingPongPacketSize = 1024 // bytes
@@ -43,23 +43,23 @@ func createMConnectionWithCallbacks(
 
 func TestMConnectionSendFlushStop(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close() // nolint: errcheck
-	defer client.Close() // nolint: errcheck
+	defer server.Close()
+	defer client.Close()
 
 	clientConn := createTestMConnection(client)
 	err := clientConn.Start()
 	require.Nil(t, err)
-	defer clientConn.Stop()
+	defer clientConn.Stop() // nolint:errcheck // ignore for tests
 
 	msg := []byte("abc")
 	assert.True(t, clientConn.Send(0x01, msg))
 
-	aminoMsgLength := 14
+	msgLength := 14
 
 	// start the reader in a new routine, so we can flush
 	errCh := make(chan error)
 	go func() {
-		msgB := make([]byte, aminoMsgLength)
+		msgB := make([]byte, msgLength)
 		_, err := server.Read(msgB)
 		if err != nil {
 			t.Error(err)
@@ -81,13 +81,13 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 
 func TestMConnectionSend(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close() // nolint: errcheck
-	defer client.Close() // nolint: errcheck
+	defer server.Close()
+	defer client.Close()
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	msg := []byte("Ant-Man")
 	assert.True(t, mconn.Send(0x01, msg))
@@ -112,8 +112,8 @@ func TestMConnectionSend(t *testing.T) {
 
 func TestMConnectionReceive(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close() // nolint: errcheck
-	defer client.Close() // nolint: errcheck
+	defer server.Close()
+	defer client.Close()
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -126,12 +126,12 @@ func TestMConnectionReceive(t *testing.T) {
 	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn1.Start()
 	require.Nil(t, err)
-	defer mconn1.Stop()
+	defer mconn1.Stop() // nolint:errcheck // ignore for tests
 
 	mconn2 := createTestMConnection(server)
 	err = mconn2.Start()
 	require.Nil(t, err)
-	defer mconn2.Stop()
+	defer mconn2.Stop() // nolint:errcheck // ignore for tests
 
 	msg := []byte("Cyclops")
 	assert.True(t, mconn2.Send(0x01, msg))
@@ -148,13 +148,13 @@ func TestMConnectionReceive(t *testing.T) {
 
 func TestMConnectionStatus(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close() // nolint: errcheck
-	defer client.Close() // nolint: errcheck
+	defer server.Close()
+	defer client.Close()
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	status := mconn.Status()
 	assert.NotNil(t, status)
@@ -177,14 +177,14 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-		assert.Nil(t, err)
+		var pkt tmp2p.Packet
+		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
+		require.NoError(t, err)
 		serverGotPing <- struct{}{}
 	}()
 	<-serverGotPing
@@ -216,29 +216,31 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	// sending 3 pongs in a row (abuse)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-	require.Nil(t, err)
+	protoWriter := protoio.NewDelimitedWriter(server)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
-		var (
-			packet Packet
-			err    error
-		)
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &packet, maxPingPongPacketSize)
-		require.Nil(t, err)
+		var packet tmp2p.Packet
+		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
+		require.NoError(t, err)
 		serverGotPing <- struct{}{}
+
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-		require.Nil(t, err)
+		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+		require.NoError(t, err)
 	}()
 	<-serverGotPing
 
@@ -269,23 +271,31 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	var pkt PacketPong
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
-	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-	require.Nil(t, err)
+	protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+	protoWriter := protoio.NewDelimitedWriter(server)
+	var pkt tmp2p.Packet
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
+	require.NoError(t, err)
+
+	err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
+	require.NoError(t, err)
+
+	err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
+	require.NoError(t, err)
+
+	err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
 
 	assert.True(t, mconn.IsRunning())
 }
@@ -310,28 +320,35 @@ func TestMConnectionPingPongs(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	serverGotPing := make(chan struct{})
 	go func() {
+		protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+		protoWriter := protoio.NewDelimitedWriter(server)
+		var pkt tmp2p.PacketPing
+
 		// read ping
-		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-		require.Nil(t, err)
+		err = protoReader.ReadMsg(&pkt)
+		require.NoError(t, err)
 		serverGotPing <- struct{}{}
+
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-		require.Nil(t, err)
+		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+		require.NoError(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
-		require.Nil(t, err)
+		err = protoReader.ReadMsg(&pkt)
+		require.NoError(t, err)
+		serverGotPing <- struct{}{}
+
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
-		require.Nil(t, err)
+		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+		require.NoError(t, err)
 	}()
+	<-serverGotPing
 	<-serverGotPing
 
 	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
@@ -347,8 +364,8 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close() // nolint: errcheck
-	defer client.Close() // nolint: errcheck
+	defer server.Close()
+	defer client.Close()
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -361,7 +378,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	if err := client.Close(); err != nil {
 		t.Error(err)
@@ -420,18 +437,14 @@ func expectSend(ch chan struct{}) bool {
 func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop()
-	defer mconnServer.Stop()
+	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
+	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
 
 	client := mconnClient.conn
 
-	// send badly encoded msgPacket
-	bz := cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{})
-	bz[4] += 0x01 // Invalid prefix bytes.
-
 	// Write it.
-	_, err := client.Write(bz)
-	assert.Nil(t, err)
+	_, err := client.Write([]byte{1, 2, 3, 4, 5})
+	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
 
@@ -457,54 +470,48 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	chOnRcv := make(chan struct{})
 
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop()
-	defer mconnServer.Stop()
+	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
+	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
 
 	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
 		chOnRcv <- struct{}{}
 	}
 
 	client := mconnClient.conn
+	protoWriter := protoio.NewDelimitedWriter(client)
 
 	// send msg thats just right
-	var err error
-	var buf = new(bytes.Buffer)
-	var packet = PacketMsg{
+	var packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
+		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
-	assert.Nil(t, err)
-	_, err = client.Write(buf.Bytes())
-	assert.Nil(t, err)
+
+	_, err := protoWriter.WriteMsg(mustWrapPacket(&packet))
+	require.NoError(t, err)
 	assert.True(t, expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
-	buf = new(bytes.Buffer)
-	packet = PacketMsg{
+	packet = tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
+		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
-	assert.Nil(t, err)
-	_, err = client.Write(buf.Bytes())
-	assert.NotNil(t, err)
+
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&packet))
+	require.Error(t, err)
 	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 
 func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop()
-	defer mconnServer.Stop()
+	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
+	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
 
 	// send msg with unknown msg type
-	err := amino.EncodeUvarint(mconnClient.conn, 4)
-	assert.Nil(t, err)
-	_, err = mconnClient.conn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
-	assert.Nil(t, err)
+	_, err := protoio.NewDelimitedWriter(mconnClient.conn).WriteMsg(&types.Header{ChainID: "x"})
+	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "unknown msg type")
 }
 
@@ -516,7 +523,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop()
+	defer mconn.Stop() // nolint:errcheck // ignore for tests
 
 	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)

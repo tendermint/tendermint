@@ -21,6 +21,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v1
@@ -37,16 +38,24 @@ jobs:
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
-      # Cache bin
+      - uses: actions/cache@v1
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+        if: "env.GIT_DIFF != ''"
+      # Cache binaries for use by other jobs
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-${{ github.sha }}-tm-binary
         if: "env.GIT_DIFF != ''"
 
   test_abci_apps:
     runs-on: ubuntu-latest
     needs: Build
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v1
@@ -62,8 +71,15 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+        if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-${{ github.sha }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
@@ -73,6 +89,7 @@ jobs:
   test_abci_cli:
     runs-on: ubuntu-latest
     needs: Build
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v1
@@ -88,8 +105,15 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+        if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-${{ github.sha }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - run: abci/tests/test_cli/test.sh
         shell: bash
@@ -98,6 +122,7 @@ jobs:
   test_apps:
     runs-on: ubuntu-latest
     needs: Build
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v1
@@ -113,8 +138,15 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/cache@v1
         with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+        if: "env.GIT_DIFF != ''"
+      - uses: actions/cache@v1
+        with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
+          key: ${{ runner.os }}-${{ github.sha }}-tm-binary
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh

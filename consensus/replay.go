@@ -6,20 +6,15 @@ import (
 	"hash/crc32"
 	"io"
 	"reflect"
-
-	//"strconv"
-	//"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -75,7 +70,7 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 		case *ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
-				p.BlockID.PartsHeader, "pol", p.POLRound, "peer", peerID)
+				p.BlockID.PartSetHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
 			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
@@ -133,7 +128,7 @@ func (cs *State) catchupReplay(csHeight int64) error {
 	if !found {
 		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
 	}
-	defer gr.Close() // nolint: errcheck
+	defer gr.Close()
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
@@ -258,10 +253,9 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		"protocol-version", res.AppVersion,
 	)
 
-	// Set AppVersion on the state.
-	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
-		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
-		sm.SaveState(h.stateDB, h.initialState)
+	// Only set the version if we're starting from zero.
+	if h.initialState.LastBlockHeight == 0 {
+		h.initialState.Version.Consensus.App = res.AppVersion
 	}
 
 	// Replay blocks up to the latest in the blockstore.
@@ -335,7 +329,8 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
+				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
+				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
 			sm.SaveState(h.stateDB, state)
 		}

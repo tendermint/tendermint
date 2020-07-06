@@ -20,6 +20,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// TxKeySize is the size of the transaction key index
+const TxKeySize = sha256.Size
+
 //--------------------------------------------------------------------------------
 
 // CListMempool is an ordered in-memory pool for transactions before they are
@@ -112,13 +115,15 @@ func (mem *CListMempool) SetLogger(l log.Logger) {
 }
 
 // WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran before CheckTx.
+// false. This is ran before CheckTx. Only applies to the first created block.
+// After that, Update overwrites the existing value.
 func WithPreCheck(f PreCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.preCheck = f }
 }
 
 // WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran after CheckTx.
+// false. This is ran after CheckTx. Only applies to the first created block.
+// After that, Update overwrites the existing value.
 func WithPostCheck(f PostCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.postCheck = f }
 }
@@ -234,7 +239,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return err
 	}
 
-	// The size of the corresponding amino-encoded TxMessage
+	// The size of the corresponding TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
 	if txSize > mem.config.MaxTxBytes {
@@ -253,7 +258,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		// Note it's possible a tx is still in the cache but no longer in the mempool
 		// (eg. after committing a block, txs are removed from mempool but not cache),
 		// so we only record the sender for txs still in the mempool.
-		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
 			memTx.senders.LoadOrStore(txInfo.SenderID, true)
 			// TODO: consider punishing peer for dups,
@@ -349,7 +354,7 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
-	mem.txsMap.Store(txKey(memTx.tx), e)
+	mem.txsMap.Store(TxKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 }
@@ -360,11 +365,21 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
-	mem.txsMap.Delete(txKey(tx))
+	mem.txsMap.Delete(TxKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
 	if removeFromCache {
 		mem.cache.Remove(tx)
+	}
+}
+
+// RemoveTxByKey removes a transaction from the mempool by its TxKey index.
+func (mem *CListMempool) RemoveTxByKey(txKey [TxKeySize]byte, removeFromCache bool) {
+	if e, ok := mem.txsMap.Load(txKey); ok {
+		memTx := e.(*clist.CElement).Value.(*mempoolTx)
+		if memTx != nil {
+			mem.removeTx(memTx.tx, e.(*clist.CElement), removeFromCache)
+		}
 	}
 }
 
@@ -518,11 +533,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
-		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
-		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
+		if maxBytes > -1 && totalBytes+int64(len(memTx.tx)) > maxBytes {
 			return txs
 		}
-		totalBytes += int64(len(memTx.tx)) + aminoOverhead
+		totalBytes += int64(len(memTx.tx))
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which
@@ -592,7 +606,7 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
-		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
 			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}
@@ -669,7 +683,7 @@ type txCache interface {
 type mapTxCache struct {
 	mtx      sync.Mutex
 	size     int
-	cacheMap map[[sha256.Size]byte]*list.Element
+	cacheMap map[[TxKeySize]byte]*list.Element
 	list     *list.List
 }
 
@@ -679,7 +693,7 @@ var _ txCache = (*mapTxCache)(nil)
 func newMapTxCache(cacheSize int) *mapTxCache {
 	return &mapTxCache{
 		size:     cacheSize,
-		cacheMap: make(map[[sha256.Size]byte]*list.Element, cacheSize),
+		cacheMap: make(map[[TxKeySize]byte]*list.Element, cacheSize),
 		list:     list.New(),
 	}
 }
@@ -687,7 +701,7 @@ func newMapTxCache(cacheSize int) *mapTxCache {
 // Reset resets the cache to an empty state.
 func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
-	cache.cacheMap = make(map[[sha256.Size]byte]*list.Element, cache.size)
+	cache.cacheMap = make(map[[TxKeySize]byte]*list.Element, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
@@ -699,7 +713,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	defer cache.mtx.Unlock()
 
 	// Use the tx hash in the cache
-	txHash := txKey(tx)
+	txHash := TxKey(tx)
 	if moved, exists := cache.cacheMap[txHash]; exists {
 		cache.list.MoveToBack(moved)
 		return false
@@ -707,9 +721,9 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
-		poppedTxHash := popped.Value.([sha256.Size]byte) //nolint:staticcheck // SA5011: possible nil pointer dereference
-		delete(cache.cacheMap, poppedTxHash)
 		if popped != nil {
+			poppedTxHash := popped.Value.([TxKeySize]byte)
+			delete(cache.cacheMap, poppedTxHash)
 			cache.list.Remove(popped)
 		}
 	}
@@ -721,7 +735,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 // Remove removes the given tx from the cache.
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
-	txHash := txKey(tx)
+	txHash := TxKey(tx)
 	popped := cache.cacheMap[txHash]
 	delete(cache.cacheMap, txHash)
 	if popped != nil {
@@ -741,8 +755,8 @@ func (nopTxCache) Remove(types.Tx)    {}
 
 //--------------------------------------------------------------------------------
 
-// txKey is the fixed length array sha256 hash used as the key in maps.
-func txKey(tx types.Tx) [sha256.Size]byte {
+// TxKey is the fixed length array hash used as the key in maps.
+func TxKey(tx types.Tx) [TxKeySize]byte {
 	return sha256.Sum256(tx)
 }
 

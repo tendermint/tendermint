@@ -8,9 +8,8 @@ import (
 	"sync"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -138,11 +137,8 @@ func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error
 	if err != nil {
 		return nil, err
 	}
-	cdc := rc.Codec()
-	ctypes.RegisterAmino(cdc)
-	rc.SetCodec(cdc)
 
-	wsEvents, err := newWSEvents(cdc, remote, wsEndpoint)
+	wsEvents, err := newWSEvents(remote, wsEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +207,7 @@ func (c *baseRPCClient) Status() (*ctypes.ResultStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -220,6 +217,7 @@ func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -238,6 +236,7 @@ func (c *baseRPCClient) ABCIQueryWithOptions(
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -267,9 +266,13 @@ func (c *baseRPCClient) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBr
 	return result, nil
 }
 
-func (c *baseRPCClient) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *baseRPCClient) UnconfirmedTxs(limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	result := new(ctypes.ResultUnconfirmedTxs)
-	_, err := c.caller.Call("unconfirmed_txs", map[string]interface{}{"limit": limit}, result)
+	params := make(map[string]interface{})
+	if limit != nil {
+		params["limit"] = limit
+	}
+	_, err := c.caller.Call("unconfirmed_txs", params, result)
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +282,15 @@ func (c *baseRPCClient) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs,
 func (c *baseRPCClient) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	result := new(ctypes.ResultUnconfirmedTxs)
 	_, err := c.caller.Call("num_unconfirmed_txs", map[string]interface{}{}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	result := new(ctypes.ResultCheckTx)
+	_, err := c.caller.Call("check_tx", map[string]interface{}{"tx": tx}, result)
 	if err != nil {
 		return nil, err
 	}
@@ -367,6 +379,18 @@ func (c *baseRPCClient) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return result, nil
 }
 
+func (c *baseRPCClient) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+	result := new(ctypes.ResultBlock)
+	params := map[string]interface{}{
+		"hash": hash,
+	}
+	_, err := c.caller.Call("block_by_hash", params, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
 	result := new(ctypes.ResultBlockResults)
 	params := make(map[string]interface{})
@@ -406,15 +430,19 @@ func (c *baseRPCClient) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return result, nil
 }
 
-func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, orderBy string) (
+func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage *int, orderBy string) (
 	*ctypes.ResultTxSearch, error) {
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
 		"query":    query,
 		"prove":    prove,
-		"page":     page,
-		"per_page": perPage,
 		"order_by": orderBy,
+	}
+	if page != nil {
+		params["page"] = page
+	}
+	if perPage != nil {
+		params["per_page"] = perPage
 	}
 	_, err := c.caller.Call("tx_search", params, result)
 	if err != nil {
@@ -423,11 +451,14 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int, or
 	return result, nil
 }
 
-func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
+func (c *baseRPCClient) Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	params := map[string]interface{}{
-		"page":     page,
-		"per_page": perPage,
+	params := make(map[string]interface{})
+	if page != nil {
+		params["page"] = page
+	}
+	if perPage != nil {
+		params["per_page"] = perPage
 	}
 	if height != nil {
 		params["height"] = height
@@ -456,7 +487,6 @@ var errNotRunning = errors.New("client is not running. Use .Start() method to st
 // WSEvents is a wrapper around WSClient, which implements EventsClient.
 type WSEvents struct {
 	service.BaseService
-	cdc      *amino.Codec
 	remote   string
 	endpoint string
 	ws       *jsonrpcclient.WSClient
@@ -465,9 +495,8 @@ type WSEvents struct {
 	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
 }
 
-func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
+func newWSEvents(remote, endpoint string) (*WSEvents, error) {
 	w := &WSEvents{
-		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
@@ -482,7 +511,6 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) (*WSEvents, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.ws.SetCodec(w.cdc)
 	w.ws.SetLogger(w.Logger)
 
 	return w, nil
@@ -622,7 +650,7 @@ func (w *WSEvents) eventListener() {
 			}
 
 			result := new(ctypes.ResultEvent)
-			err := w.cdc.UnmarshalJSON(resp.Result, result)
+			err := tmjson.Unmarshal(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue

@@ -96,6 +96,11 @@ connection has `MaxPacketMsgPayloadSize`, which is the maximum packet
 size and bounded send & receive queues. One can impose restrictions on
 send & receive rate per connection (`SendRate`, `RecvRate`).
 
+The number of open P2P connections can become quite large, and hit the operating system's open
+file limit (since TCP connections are considered files on UNIX-based systems). Nodes should be
+given a sizeable open file limit, e.g. 8192, via `ulimit -n 8192` or other deployment-specific
+mechanisms.
+
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
@@ -119,7 +124,7 @@ If, after skimming through the logs, things are not clear still, the next thing
 to try is querying the `/status` RPC endpoint. It provides the necessary info:
 whenever the node is syncing or not, what height it is on, etc.
 
-```sh
+```bash
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
@@ -127,7 +132,7 @@ curl http(s)://{ip}:{rpcPort}/status
 state (proposer, latest validators, peers states). From it, you should be able
 to figure out why, for example, the network had halted.
 
-```sh
+```bash
 curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 
@@ -370,6 +375,8 @@ If you want to accept greater number of connections, you will need to increase
 these limits.
 
 [Sysctls to tune the system to be able to open more connections](https://github.com/satori-com/tcpkali/blob/master/doc/tcpkali.man.md#sysctls-to-tune-the-system-to-be-able-to-open-more-connections)
+
+The process file limits must also be increased, e.g. via `ulimit -n 8192`.
 
 ...for N connections, such as 50k:
 

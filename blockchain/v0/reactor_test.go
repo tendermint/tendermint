@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -110,7 +111,7 @@ func newBlockchainReactor(
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
@@ -146,8 +147,10 @@ func TestNoBlockResponse(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 
@@ -195,8 +198,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
-		otherChain.reactor.Stop()
-		otherChain.app.Stop()
+		err := otherChain.reactor.Stop()
+		require.Error(t, err)
+		err = otherChain.app.Stop()
+		require.NoError(t, err)
 	}()
 
 	reactorPairs := make([]BlockchainReactorPair, 4)
@@ -214,8 +219,11 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 
@@ -261,86 +269,6 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
-}
-
-func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName      string
-		requestHeight int64
-		expectErr     bool
-	}{
-		{"Valid Request Message", 0, false},
-		{"Valid Request Message", 1, false},
-		{"Invalid Request Message", -1, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			request := bcBlockRequestMessage{Height: tc.requestHeight}
-			assert.Equal(t, tc.expectErr, request.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
-
-func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName          string
-		nonResponseHeight int64
-		expectErr         bool
-	}{
-		{"Valid Non-Response Message", 0, false},
-		{"Valid Non-Response Message", 1, false},
-		{"Invalid Non-Response Message", -1, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			nonResponse := bcNoBlockResponseMessage{Height: tc.nonResponseHeight}
-			assert.Equal(t, tc.expectErr, nonResponse.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
-
-func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName      string
-		requestHeight int64
-		expectErr     bool
-	}{
-		{"Valid Request Message", 0, false},
-		{"Valid Request Message", 1, false},
-		{"Invalid Request Message", -1, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			request := bcStatusRequestMessage{Height: tc.requestHeight}
-			assert.Equal(t, tc.expectErr, request.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
-
-func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName       string
-		responseHeight int64
-		expectErr      bool
-	}{
-		{"Valid Response Message", 0, false},
-		{"Valid Response Message", 1, false},
-		{"Invalid Response Message", -1, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			response := bcStatusResponseMessage{Height: tc.responseHeight}
-			assert.Equal(t, tc.expectErr, response.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
 }
 
 //----------------------------------------------

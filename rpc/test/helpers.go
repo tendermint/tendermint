@@ -41,7 +41,6 @@ func waitForRPC() {
 	if err != nil {
 		panic(err)
 	}
-	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
 		_, err := client.Call("status", map[string]interface{}{}, result)
@@ -100,7 +99,6 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexKeys = "app.creator,tx.height" // see kvstore application
 	return c
 }
 
