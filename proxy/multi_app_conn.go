@@ -9,6 +9,13 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+const (
+	connConsensus = "consensus"
+	connMempool   = "mempool"
+	connQuery     = "query"
+	connSnapshot  = "snapshot"
+)
+
 // AppConns is the Tendermint's interface to the application that consists of
 // multiple connections.
 type AppConns interface {
@@ -76,14 +83,14 @@ func (app *multiAppConn) Snapshot() AppConnSnapshot {
 }
 
 func (app *multiAppConn) OnStart() error {
-	c, err := app.abciClientFor("query")
+	c, err := app.abciClientFor(connQuery)
 	if err != nil {
 		return err
 	}
 	app.queryConnClient = c
 	app.queryConn = NewAppConnQuery(c)
 
-	c, err = app.abciClientFor("snapshot")
+	c, err = app.abciClientFor(connSnapshot)
 	if err != nil {
 		app.stopAllClients()
 		return err
@@ -91,7 +98,7 @@ func (app *multiAppConn) OnStart() error {
 	app.snapshotConnClient = c
 	app.snapshotConn = NewAppConnSnapshot(c)
 
-	c, err = app.abciClientFor("mempool")
+	c, err = app.abciClientFor(connMempool)
 	if err != nil {
 		app.stopAllClients()
 		return err
@@ -99,7 +106,7 @@ func (app *multiAppConn) OnStart() error {
 	app.mempoolConnClient = c
 	app.mempoolConn = NewAppConnMempool(c)
 
-	c, err = app.abciClientFor("consensus")
+	c, err = app.abciClientFor(connConsensus)
 	if err != nil {
 		app.stopAllClients()
 		return err
@@ -131,19 +138,19 @@ func (app *multiAppConn) killTMOnClientError() {
 	select {
 	case <-app.consensusConnClient.Quit():
 		if err := app.consensusConnClient.Error(); err != nil {
-			killFn("consensus", err, app.Logger)
+			killFn(connConsensus, err, app.Logger)
 		}
 	case <-app.mempoolConnClient.Quit():
 		if err := app.mempoolConnClient.Error(); err != nil {
-			killFn("mempool", err, app.Logger)
+			killFn(connMempool, err, app.Logger)
 		}
 	case <-app.queryConnClient.Quit():
 		if err := app.queryConnClient.Error(); err != nil {
-			killFn("query", err, app.Logger)
+			killFn(connQuery, err, app.Logger)
 		}
 	case <-app.snapshotConnClient.Quit():
 		if err := app.snapshotConnClient.Error(); err != nil {
-			killFn("snapshot", err, app.Logger)
+			killFn(connSnapshot, err, app.Logger)
 		}
 	}
 }

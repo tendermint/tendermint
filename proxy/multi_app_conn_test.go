@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
 	"github.com/tendermint/tendermint/proxy/mocks"
@@ -20,20 +21,23 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientCreatorMock := &mocks.ClientCreator{}
 
 	clientMock := &abcimocks.Client{}
-	clientMock.On("SetLogger", mock.Anything).Return()
-	clientMock.On("Start").Return(nil)
-	clientMock.On("Stop").Return(nil)
-	clientMock.On("Quit").Return(quitCh)
+	clientMock.On("SetLogger", mock.Anything).Return().Times(4)
+	clientMock.On("Start").Return(nil).Times(4)
+	clientMock.On("Stop").Return(nil).Times(4)
+	clientMock.On("Quit").Return(quitCh).Times(4)
 
 	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
 
 	appConns := NewAppConns(clientCreatorMock)
 
-	appConns.Start()
-	clientMock.AssertCalled(t, "Start")
+	err := appConns.Start()
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
 
 	appConns.Stop()
-	clientMock.AssertCalled(t, "Stop")
+
+	clientMock.AssertExpectations(t)
 }
 
 // Upon failure, we call tmos.Kill
@@ -61,11 +65,12 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
 
-	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
+	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil)
 
 	appConns := NewAppConns(clientCreatorMock)
 
-	appConns.Start()
+	err := appConns.Start()
+	require.NoError(t, err)
 	defer appConns.Stop()
 
 	// simulate failure
