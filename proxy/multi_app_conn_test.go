@@ -48,7 +48,7 @@ func TestAppConns_Failure(t *testing.T) {
 	}()
 
 	quitCh := make(chan struct{})
-	var recvQuitCh <-chan struct{}
+	var recvQuitCh <-chan struct{} // nolint:gosimple
 	recvQuitCh = quitCh
 
 	clientCreatorMock := &mocks.ClientCreator{}
