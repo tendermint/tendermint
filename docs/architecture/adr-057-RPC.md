@@ -16,10 +16,10 @@ JSON-RPC is a JSON-based RPC protocol. Tendermint has implemented its own varian
 
 **Pros:**
 
-- Simple
+- Easy to use & implement (by default)
 - Well-known and well-understood by users and integrators
 - Integrates reasonably well with web infrastructure (proxies, API gateways, service meshes, caches, etc)
-- - human readable encoding (by default)
+- human readable encoding (by default)
 
 **Cons:**
 
