@@ -50,5 +50,5 @@ RUN /usr/bin/tendermint init && \
       $TMHOME/config/genesis.json
 
 # Expose the data directory as a volume since there's mutable state in there
-VOLUME [ $TMHOME ]
+VOLUME [ "$TMHOME" ]
 
