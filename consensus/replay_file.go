@@ -66,7 +66,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	}
 
 	pb := newPlayback(file, fp, cs, cs.state.Copy())
-	defer pb.fp.Close() // nolint: errcheck
+	defer pb.fp.Close()
 
 	var nextN int // apply N msgs in a row
 	var msg *TimedWALMessage

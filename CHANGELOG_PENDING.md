@@ -1,4 +1,4 @@
-## v0.33.6
+## v0.33.7
 
 \*\*
 
@@ -117,6 +117,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - `abci.EventAttribute` replaces `KV.Pair`
 - [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add `ValidateBasic` to validator and validator set (@cmwaters)
 - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
+- [mempool] Add RemoveTxByKey() exported function for custom mempool cleaning (@p4u)
 
 ### BUG FIXES:
 

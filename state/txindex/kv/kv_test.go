@@ -327,7 +327,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	require.NoError(b, err)
-	defer os.RemoveAll(dir) // nolint: errcheck
+	defer os.RemoveAll(dir)
 
 	store, err := db.NewDB("tx_index", "goleveldb", dir)
 	require.NoError(b, err)

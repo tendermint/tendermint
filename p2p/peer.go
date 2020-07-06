@@ -320,7 +320,7 @@ func (p *peer) CloseConn() error {
 
 // CloseConn closes the underlying connection
 func (pc *peerConn) CloseConn() {
-	pc.conn.Close() // nolint: errcheck
+	pc.conn.Close()
 }
 
 // RemoteAddr returns peer's remote network address.

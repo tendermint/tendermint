@@ -32,7 +32,7 @@ func TestApplyBlock(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 
@@ -57,7 +57,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
 
@@ -119,7 +119,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(2, 12)
 
@@ -308,7 +308,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 
@@ -323,7 +323,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	defer eventBus.Stop() //nolint:errcheck // ignore for tests
+
 	blockExec.SetEventBus(eventBus)
 
 	updatesSub, err := eventBus.Subscribe(
@@ -377,7 +378,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	blockExec := sm.NewBlockExecutor(

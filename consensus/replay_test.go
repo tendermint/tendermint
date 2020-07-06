@@ -1002,7 +1002,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	if !found {
 		return nil, nil, fmt.Errorf("wal does not contain height %d", height)
 	}
-	defer gr.Close() // nolint: errcheck
+	defer gr.Close()
 
 	// log.Notice("Build a blockchain by reading from the WAL")
 

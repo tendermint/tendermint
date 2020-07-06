@@ -662,7 +662,9 @@ func TestSafeSubClip(t *testing.T) {
 
 //-------------------------------------------------------------------
 
-func TestValidatorSet_VerifyCommit(t *testing.T) {
+// Check VerifyCommit, VerifyCommitLight and VerifyCommitLightTrusting basic
+// verification.
+func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	var (
 		privKey = ed25519.GenPrivKey()
 		pubKey  = privKey.PubKey()
@@ -673,6 +675,7 @@ func TestValidatorSet_VerifyCommit(t *testing.T) {
 	)
 
 	vote := examplePrecommit()
+	vote.ValidatorAddress = pubKey.Address()
 	v := vote.ToProto()
 	sig, err := privKey.Sign(VoteSignBytes(chainID, v))
 	require.NoError(t, err)
@@ -718,13 +721,94 @@ func TestValidatorSet_VerifyCommit(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			err := vset.VerifyCommit(tc.chainID, tc.blockID, tc.height, tc.commit)
 			if tc.expErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tc.description)
+				if assert.Error(t, err, "VerifyCommit") {
+					assert.Contains(t, err.Error(), tc.description, "VerifyCommit")
+				}
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, err, "VerifyCommit")
+			}
+
+			err = vset.VerifyCommitLight(tc.chainID, tc.blockID, tc.height, tc.commit)
+			if tc.expErr {
+				if assert.Error(t, err, "VerifyCommitLight") {
+					assert.Contains(t, err.Error(), tc.description, "VerifyCommitLight")
+				}
+			} else {
+				assert.NoError(t, err, "VerifyCommitLight")
 			}
 		})
 	}
+}
+
+func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
+	var (
+		chainID = "test_chain_id"
+		h       = int64(3)
+		blockID = makeBlockIDRandom()
+	)
+
+	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
+	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	require.NoError(t, err)
+
+	// malleate 4th signature
+	vote := voteSet.GetByIndex(3)
+	v := vote.ToProto()
+	err = vals[3].SignVote("CentaurusA", v)
+	require.NoError(t, err)
+	vote.Signature = v.Signature
+	commit.Signatures[3] = vote.CommitSig()
+
+	err = valSet.VerifyCommit(chainID, blockID, h, commit)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "wrong signature (#3)")
+	}
+}
+
+func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSigned(t *testing.T) {
+	var (
+		chainID = "test_chain_id"
+		h       = int64(3)
+		blockID = makeBlockIDRandom()
+	)
+
+	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
+	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	require.NoError(t, err)
+
+	// malleate 4th signature (3 signatures are enough for 2/3+)
+	vote := voteSet.GetByIndex(3)
+	v := vote.ToProto()
+	err = vals[3].SignVote("CentaurusA", v)
+	require.NoError(t, err)
+	vote.Signature = v.Signature
+	commit.Signatures[3] = vote.CommitSig()
+
+	err = valSet.VerifyCommitLight(chainID, blockID, h, commit)
+	assert.NoError(t, err)
+}
+
+func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotingPowerSigned(t *testing.T) {
+	var (
+		chainID = "test_chain_id"
+		h       = int64(3)
+		blockID = makeBlockIDRandom()
+	)
+
+	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
+	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	require.NoError(t, err)
+
+	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
+	vote := voteSet.GetByIndex(2)
+	v := vote.ToProto()
+	err = vals[2].SignVote("CentaurusA", v)
+	require.NoError(t, err)
+	vote.Signature = v.Signature
+	commit.Signatures[2] = vote.CommitSig()
+
+	err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
+	assert.NoError(t, err)
 }
 
 func TestEmptySet(t *testing.T) {
@@ -1411,7 +1495,7 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 	}
 }
 
-func TestValidatorSet_VerifyCommitTrusting(t *testing.T) {
+func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
 		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
@@ -1442,7 +1526,7 @@ func TestValidatorSet_VerifyCommitTrusting(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err = tc.valSet.VerifyCommitTrusting("test_chain_id", commit,
+		err = tc.valSet.VerifyCommitLightTrusting("test_chain_id", commit,
 			tmmath.Fraction{Numerator: 1, Denominator: 3})
 		if tc.err {
 			assert.Error(t, err)
@@ -1452,7 +1536,7 @@ func TestValidatorSet_VerifyCommitTrusting(t *testing.T) {
 	}
 }
 
-func TestValidatorSet_VerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
+func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
 	var (
 		blockID               = makeBlockIDRandom()
 		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
@@ -1460,7 +1544,7 @@ func TestValidatorSet_VerifyCommitTrustingErrorsOnOverflow(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = valSet.VerifyCommitTrusting("test_chain_id", commit,
+	err = valSet.VerifyCommitLightTrusting("test_chain_id", commit,
 		tmmath.Fraction{Numerator: 25, Denominator: 55})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "int64 overflow")
