@@ -9,7 +9,7 @@ state, the node' status, the WAL, and even the stack trace of the process
 before exit. These files can be useful to examine when debugging a faulty
 Tendermint process.
 
-```sh
+```bash
 tendermint debug kill <pid> </path/to/out.zip> --home=</path/to/app.d>
 ```
 
@@ -36,7 +36,7 @@ compressed archives at a regular interval. These archives contain the goroutine
 and heap profiles in addition to the consensus state, network info, node
 status, and even the WAL.
 
-```sh
+```bash
 tendermint debug dump </path/to/out> --home=</path/to/app.d>
 ```
 

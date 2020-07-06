@@ -96,6 +96,27 @@ From the merkle package `SimpleHashFromMap()` and `SimpleProofsFromMap()` were r
 
 The Bech32 pkg has been migrated to a new home, you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32)
 
+### CLI
+
+`tendermint lite` has been renamed `tendermint light` and has a slightly different API.
+
+Check out [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
+
+### Light client
+
+The old `lite` package is removed in favor of the new `light` package. Check
+out [this
+article](https://medium.com/tendermint/everything-you-need-to-know-about-the-tendermint-light-client-f80d03856f98)
+if you want to learn why the rewrite was needed and what comprise the new light
+  client.
+
+Doc: https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc
+
+`Verifier` was broken up in two pieces: core verification logic (pure `VerifyX`
+functions) and `Client` object, which represents the complete light client.
+
+RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
+`/proxy` directory.
 
 ## v0.33.4
 

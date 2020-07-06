@@ -56,7 +56,8 @@ func TestNodeStartStop(t *testing.T) {
 
 	// stop the node
 	go func() {
-		n.Stop()
+		err = n.Stop()
+		require.NoError(t, err)
 	}()
 
 	select {
@@ -104,7 +105,7 @@ func TestNodeDelayedStart(t *testing.T) {
 
 	err = n.Start()
 	require.NoError(t, err)
-	defer n.Stop()
+	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
@@ -155,7 +156,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 			panic(err)
 		}
 	}()
-	defer signerServer.Stop()
+	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -199,7 +200,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		err := pvsc.Start()
 		require.NoError(t, err)
 	}()
-	defer pvsc.Stop()
+	defer pvsc.Stop() //nolint:errcheck // ignore for tests
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -224,7 +225,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	logger := log.TestingLogger()
 
@@ -315,7 +316,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	err = n.Start()
 	require.NoError(t, err)
-	defer n.Stop()
+	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))

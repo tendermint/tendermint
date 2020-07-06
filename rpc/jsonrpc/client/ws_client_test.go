@@ -34,7 +34,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
 	for {
 		messageType, in, err := conn.ReadMessage()
 		if err != nil {
@@ -72,7 +72,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	defer s.Close()
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop()
+	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	wg.Add(1)
 	go callWgDoneOnResult(t, c, &wg)
@@ -104,7 +104,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop()
+	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	wg.Add(2)
 	go callWgDoneOnResult(t, c, &wg)
@@ -132,7 +132,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop()
+	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	go func() {
 		for {
@@ -181,14 +181,15 @@ func TestNotBlockingOnStop(t *testing.T) {
 	timeout := 2 * time.Second
 	s := httptest.NewServer(&myHandler{})
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	c.Call(context.Background(), "a", make(map[string]interface{}))
+	c.Call(context.Background(), "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
 	passCh := make(chan struct{})
 	go func() {
 		// Unless we have a non-blocking write to ResponsesCh from readRoutine
 		// this blocks forever ont the waitgroup
-		c.Stop()
+		err := c.Stop()
+		require.NoError(t, err)
 		passCh <- struct{}{}
 	}()
 	select {

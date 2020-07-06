@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -146,8 +147,10 @@ func TestNoBlockResponse(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 
@@ -195,8 +198,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
-		otherChain.reactor.Stop()
-		otherChain.app.Stop()
+		err := otherChain.reactor.Stop()
+		require.Error(t, err)
+		err = otherChain.app.Stop()
+		require.NoError(t, err)
 	}()
 
 	reactorPairs := make([]BlockchainReactorPair, 4)
@@ -214,8 +219,11 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 

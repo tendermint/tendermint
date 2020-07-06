@@ -31,7 +31,8 @@ func TestTxFilter(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
+		stateDB, err := dbm.NewDB("state", "memdb", os.TempDir())
+		require.NoError(t, err)
 		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 

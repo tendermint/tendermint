@@ -40,7 +40,7 @@ Please refer to [the Oracle's guide for installing JDK](https://www.oracle.com/t
 
 Verify that you have installed Java successfully:
 
-```sh
+```bash
 $ java -version
 java version "1.8.0_162"
 Java(TM) SE Runtime Environment (build 1.8.0_162-b12)
@@ -52,7 +52,7 @@ In my case it is Java SE Development Kit 8.
 
 Make sure you have `$JAVA_HOME` environment variable set:
 
-```sh
+```bash
 $ echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk1.8.0_162.jdk/Contents/Home
 ```
@@ -63,7 +63,7 @@ For Gradle installation, please refer to [their official guide](https://gradle.o
 
 We'll start by creating a new Gradle project.
 
-```sh
+```bash
 $ export KVSTORE_HOME=~/kvstore
 $ mkdir $KVSTORE_HOME
 $ cd $KVSTORE_HOME
@@ -71,13 +71,13 @@ $ cd $KVSTORE_HOME
 
 Inside the example directory run:
 
-```sh
+```bash
 gradle init --dsl groovy --package io.example --project-name example --type kotlin-application
 ```
 
 This will create a new project for you. The tree of files should look like:
 
-```sh
+```bash
 $ tree
 .
 |-- build.gradle
@@ -105,7 +105,7 @@ $ tree
 
 When run, this should print "Hello world." to the standard output.
 
-```sh
+```bash
 $ ./gradlew run
 > Task :run
 Hello world.
@@ -166,7 +166,7 @@ Now we should be ready to compile the `*.proto` files.
 
 Copy the necessary `.proto` files to your project:
 
-```sh
+```bash
 mkdir -p \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle \
@@ -195,13 +195,13 @@ dependencies {
 
 To generate all protobuf-type classes run:
 
-```sh
+```bash
 ./gradlew generateProto
 ```
 
 To verify that everything went smoothly, you can inspect the `build/generated/` directory:
 
-```sh
+```bash
 $ tree build/generated/
 build/generated/
 `-- source
@@ -508,7 +508,7 @@ To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core.
 
-```sh
+```bash
 $ rm -rf /tmp/example
 $ cd $GOPATH/src/github.com/tendermint/tendermint
 $ make install
@@ -525,7 +525,7 @@ Feel free to explore the generated files, which can be found at
 
 We are ready to start our application:
 
-```sh
+```bash
 ./gradlew run
 
 gRPC server started, listening on 26658
@@ -534,7 +534,7 @@ gRPC server started, listening on 26658
 Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
-```sh
+```bash
 $ TMHOME="/tmp/example" tendermint node --abci grpc --proxy_app tcp://127.0.0.1:26658
 
 I[2019-07-28|15:44:53.632] Version info                                 module=main software=0.32.1 block=10 p2p=7
@@ -546,7 +546,7 @@ I[2019-07-28|15:44:54.814] Committed state                              module=s
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
@@ -565,7 +565,7 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",

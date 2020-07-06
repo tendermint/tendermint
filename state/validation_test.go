@@ -29,7 +29,7 @@ var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
 	blockExec := sm.NewBlockExecutor(
@@ -99,7 +99,7 @@ func TestValidateBlockHeader(t *testing.T) {
 func TestValidateBlockCommit(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
 	blockExec := sm.NewBlockExecutor(
@@ -212,7 +212,7 @@ func TestValidateBlockCommit(t *testing.T) {
 func TestValidateBlockEvidence(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
 	state.ConsensusParams.Evidence.MaxNum = 3
@@ -669,7 +669,8 @@ func TestVerifyEvidenceWithPhantomValidatorEvidence(t *testing.T) {
 	bz, err := valInfo.Marshal()
 	require.NoError(t, err)
 
-	stateDB.Set(valKey, bz)
+	err = stateDB.Set(valKey, bz)
+	require.NoError(t, err)
 	ev = &types.PhantomValidatorEvidence{
 		Vote:                        vote2,
 		LastHeightValidatorWasInSet: 2,
