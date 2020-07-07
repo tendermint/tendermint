@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ ! -d "$TMHOME/config" ] && [ "$@" != "init" ]; then
+if [ ! -d "$TMHOME/config" ]; then
 	echo "Running tendermint init to create (default) configuration for docker run."
 	tendermint init &&
 		sed -i \
