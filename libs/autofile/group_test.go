@@ -116,7 +116,11 @@ func TestRotateFile(t *testing.T) {
 	// relative paths are resolved at Group creation
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(origDir)
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	dir, err := ioutil.TempDir("", "rotate_test")
 	require.NoError(t, err)
@@ -173,8 +177,10 @@ func TestWrite(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	written := []byte("Medusa")
-	g.Write(written)
-	g.FlushAndSync()
+	_, err := g.Write(written)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	read := make([]byte, len(written))
 	gr, err := g.NewReader(0)
@@ -194,12 +200,16 @@ func TestGroupReaderRead(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
-	g.Write(professor)
-	g.FlushAndSync()
+	_, err := g.Write(professor)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
-	g.Write(frankenstein)
-	g.FlushAndSync()
+	_, err = g.Write(frankenstein)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	totalWrittenLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalWrittenLength)
@@ -223,13 +233,17 @@ func TestGroupReaderRead2(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
-	g.Write(professor)
-	g.FlushAndSync()
+	_, err := g.Write(professor)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
 	frankensteinPart := []byte("Frankenstein")
-	g.Write(frankensteinPart) // note writing only a part
-	g.FlushAndSync()
+	_, err = g.Write(frankensteinPart) // note writing only a part
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	totalLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalLength)
@@ -264,8 +278,10 @@ func TestMaxIndex(t *testing.T) {
 
 	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 
-	g.WriteLine("Line 1")
-	g.FlushAndSync()
+	err := g.WriteLine("Line 1")
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 
 	assert.Equal(t, 1, g.MaxIndex(), "MaxIndex should point to the last file")

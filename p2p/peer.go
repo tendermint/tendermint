@@ -200,6 +200,7 @@ func (p *peer) FlushStop() {
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
+	//nolint:errcheck // accepting silent error here as panic may introduce node panics
 	p.mconn.Stop() // stop everything and close the conn
 }
 
