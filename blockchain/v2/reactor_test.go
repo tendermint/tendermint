@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -387,7 +388,8 @@ func TestReactorHelperMode(t *testing.T) {
 			reactor := newTestReactor(params)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
-			reactor.Start()
+			err := reactor.Start()
+			require.NoError(t, err)
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
@@ -415,7 +417,8 @@ func TestReactorHelperMode(t *testing.T) {
 					}
 				}
 			}
-			reactor.Stop()
+			err = reactor.Stop()
+			require.NoError(t, err)
 		})
 	}
 }
