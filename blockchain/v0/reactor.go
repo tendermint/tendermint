@@ -128,9 +128,9 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 
 // OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
-        if bcR.fastSync {
+	if bcR.fastSync {
 		bcR.pool.Stop()
-        }
+	}
 }
 
 // GetChannels implements Reactor
