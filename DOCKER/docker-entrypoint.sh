@@ -18,4 +18,4 @@ if [ ! -d "$TMHOME/config" ]; then
 			"$TMHOME/config/genesis.json"
 fi
 
-exec "$@"
+exec tendermint "$@"

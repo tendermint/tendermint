@@ -37,10 +37,10 @@ COPY $BINARY /usr/bin/tendermint
 # CMD to add parameters to `tendermint node`.
 ENV PROXY_APP=kvstore MONIKER=dockernode CHAIN_ID=dockerchain
 
-COPY ./docker-entrypoint.sh /
+COPY ./docker-entrypoint.sh /usr/local/bin/
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["tendermint", "node"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node"]
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME [ "$TMHOME" ]
