@@ -145,7 +145,7 @@ pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
 Changelog entries should be formatted as follows:
 
-```
+```md
 - [module] \#xxx Some description about the change (@contributor)
 ```
 
@@ -153,7 +153,7 @@ Here, `module` is the part of the code that changed (typically a
 top-level Go package), `xxx` is the pull-request number, and `contributor`
 is the author/s of the change.
 
-It's also acceptable for `xxx` to refer to the relevent issue number, but pull-request
+It's also acceptable for `xxx` to refer to the relevant issue number, but pull-request
 numbers are preferred.
 Note this means pull-requests should be opened first so the changelog can then
 be updated with the pull-request's number.
@@ -170,7 +170,7 @@ Breaking changes are further subdivided according to the APIs/users they impact.
 Any change that effects multiple APIs/users should be recorded multiply - for
 instance, a change to the `Blockchain Protocol` that removes a field from the
 header should also be recorded under `CLI/RPC/Config` since the field will be
-removed from the header in rpc responses as well.
+removed from the header in RPC responses as well.
 
 ## Branching Model and Release
 
@@ -187,7 +187,7 @@ easy to reference the pull request where a change was introduced.
 
 The latest state of development is on `master`, which must never fail `make test`. _Never_ force push `master`, unless fixing broken git history (which we rarely do anyways).
 
-To begin contributing, create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`).
+To begin contributing, create a development branch either on `github.com/tendermint/tendermint`, or your fork (using `git remote add origin`).
 
 Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
 

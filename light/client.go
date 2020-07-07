@@ -387,7 +387,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// Ensure that +2/3 of validators signed correctly.
-	err = vals.VerifyCommit(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
+	err = vals.VerifyCommitLight(c.chainID, h.Commit.BlockID, h.Height, h.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
@@ -1020,9 +1020,9 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 	}
 
 	if !bytes.Equal(h.Hash(), altH.Hash()) {
-		// FIXME: call bisection instead of VerifyCommitTrusting
+		// FIXME: call bisection instead of VerifyCommitLightTrusting
 		// https://github.com/tendermint/tendermint/issues/4934
-		if err = c.latestTrustedVals.VerifyCommitTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
+		if err = c.latestTrustedVals.VerifyCommitLightTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
 			errc <- errBadWitness{err, invalidHeader, witnessIndex}
 			return
 		}

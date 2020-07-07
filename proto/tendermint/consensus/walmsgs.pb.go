@@ -369,9 +369,7 @@ func init() {
 	proto.RegisterType((*TimedWALMessage)(nil), "tendermint.consensus.TimedWALMessage")
 }
 
-func init() {
-	proto.RegisterFile("tendermint/consensus/walmsgs.proto", fileDescriptor_ba295fe8d98f7e98)
-}
+func init() { proto.RegisterFile("tendermint/consensus/walmsgs.proto", fileDescriptor_ba295fe8d98f7e98) }
 
 var fileDescriptor_ba295fe8d98f7e98 = []byte{
 	// 542 bytes of a gzipped FileDescriptorProto
