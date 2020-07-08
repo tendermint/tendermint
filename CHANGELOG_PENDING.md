@@ -20,6 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0.
   - [abci] \#4989 `Proof` within `ResponseQuery` has been renamed to `ProofOps`
+  - [abci] `CheckTxType` Protobuf enum names are now uppercase, to follow Protobuf style guide
 
 - P2P Protocol
 

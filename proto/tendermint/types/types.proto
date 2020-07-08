@@ -152,5 +152,5 @@ message BlockMeta {
 message TxProof {
   bytes                          root_hash = 1;
   bytes                          data      = 2;
-  tendermint.crypto.merkle.Proof Proof     = 3;
+  tendermint.crypto.merkle.Proof proof     = 3;
 }
