@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
@@ -1472,11 +1471,7 @@ func (cs *State) finalizeCommit(height int64) {
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
 		block)
 	if err != nil {
-		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
-		err := tmos.Kill()
-		if err != nil {
-			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
-		}
+		cs.Logger.Error("Error on ApplyBlock", "err", err)
 		return
 	}
 
