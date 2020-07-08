@@ -948,8 +948,8 @@ func (e *LunaticValidatorEvidence) ValidateBasic() error {
 
 	if !bytes.Equal(e.Header.Hash(), e.Vote.BlockID.Hash) {
 		return fmt.Errorf("vote was not for header: %X != %X",
-			e.Header.Hash(),
 			e.Vote.BlockID.Hash,
+			e.Header.Hash(),
 		)
 	}
 
