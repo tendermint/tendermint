@@ -250,27 +250,21 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 	assert.Error(t, ev.Verify(header.ChainID, pubKey2))
 	assert.Error(t, ev.VerifyHeader(header))
 
-	var invalidLunaticEvidence []*LunaticValidatorEvidence
-
 	invalidVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, invalidBlockID, defaultVoteTime)
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(header, invalidVote, "AppHash"))
+	invalidHeightVote := makeVote(t, val, header.ChainID, 0, header.Height+1, 0, 2, blockID, defaultVoteTime)
+	emptyBlockVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, BlockID{}, defaultVoteTime)
 
-	invalidVote = makeVote(t, val, header.ChainID, 0, header.Height+1, 0, 2, blockID, defaultVoteTime)
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(header, invalidVote, "AppHash"))
-
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(nil, invalidVote, "AppHash"))
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(header, nil, "AppHash"))
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(header, invalidVote, "other"))
-
-	invalidVote = makeVote(t, val, header.ChainID, 0, header.Height+1, 0, 2, BlockID{}, defaultVoteTime)
-	invalidLunaticEvidence = append(invalidLunaticEvidence, NewLunaticValidatorEvidence(header, invalidVote, "AppHash"))
+	invalidLunaticEvidence := []*LunaticValidatorEvidence{
+		NewLunaticValidatorEvidence(header, invalidVote, "AppHash"),
+		NewLunaticValidatorEvidence(header, invalidHeightVote, "AppHash"),
+		NewLunaticValidatorEvidence(nil, vote, "AppHash"),
+		NewLunaticValidatorEvidence(header, nil, "AppHash"),
+		NewLunaticValidatorEvidence(header, vote, "other"),
+		NewLunaticValidatorEvidence(header, emptyBlockVote, "AppHash"),
+	}
 
 	for idx, ev := range invalidLunaticEvidence {
-		err := ev.ValidateBasic()
-		assert.Error(t, err)
-		if err == nil {
-			t.Errorf("test no. %d failed", idx+1)
-		}
+		assert.Error(t, ev.ValidateBasic(), "#%d", idx)
 	}
 
 }
