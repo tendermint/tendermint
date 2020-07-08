@@ -1529,11 +1529,7 @@ func (cs *State) finalizeCommit(height int64) {
 		types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()},
 		block)
 	if err != nil {
-		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
-		err := tmos.Kill()
-		if err != nil {
-			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
-		}
+		cs.Logger.Error("Error on ApplyBlock", "err", err)
 		return
 	}
 
