@@ -712,6 +712,9 @@ func evMapKey(ev types.Evidence) string {
 }
 
 func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
+
 	// Update current validators & add new ones.
 	for _, val := range state.Validators.Validators {
 		evpool.valToLastHeight[string(val.Address)] = blockHeight
