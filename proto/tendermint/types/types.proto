@@ -6,8 +6,8 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "tendermint/libs/bits/types.proto";
-import "tendermint/crypto/merkle/types.proto";
-import "tendermint/version/version.proto";
+import "tendermint/crypto/proof.proto";
+import "tendermint/version/types.proto";
 
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
@@ -41,9 +41,9 @@ message PartSetHeader {
 }
 
 message Part {
-  uint32                         index = 1;
-  bytes                          bytes = 2;
-  tendermint.crypto.merkle.Proof proof = 3 [(gogoproto.nullable) = false];
+  uint32                  index = 1;
+  bytes                   bytes = 2;
+  tendermint.crypto.Proof proof = 3 [(gogoproto.nullable) = false];
 }
 
 // BlockID
@@ -150,7 +150,7 @@ message BlockMeta {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 message TxProof {
-  bytes                          root_hash = 1;
-  bytes                          data      = 2;
-  tendermint.crypto.merkle.Proof proof     = 3;
+  bytes                   root_hash = 1;
+  bytes                   data      = 2;
+  tendermint.crypto.Proof proof     = 3;
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmmerkle "github.com/tendermint/tendermint/proto/tendermint/crypto/merkle"
+	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const ProofOpValue = "simple:v"
@@ -37,11 +37,11 @@ func NewValueOp(key []byte, proof *Proof) ValueOp {
 	}
 }
 
-func ValueOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
+func ValueOpDecoder(pop tmcrypto.ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpValue {
 		return nil, fmt.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpValue)
 	}
-	var pbop tmmerkle.ValueOp // a bit strange as we'll discard this, but it works.
+	var pbop tmcrypto.ValueOp // a bit strange as we'll discard this, but it works.
 	err := pbop.Unmarshal(pop.Data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ProofOp.Data into ValueOp: %w", err)
@@ -54,8 +54,8 @@ func ValueOpDecoder(pop tmmerkle.ProofOp) (ProofOperator, error) {
 	return NewValueOp(pop.Key, sp), nil
 }
 
-func (op ValueOp) ProofOp() tmmerkle.ProofOp {
-	pbval := tmmerkle.ValueOp{
+func (op ValueOp) ProofOp() tmcrypto.ProofOp {
+	pbval := tmcrypto.ValueOp{
 		Key:   op.key,
 		Proof: op.Proof.ToProto(),
 	}
@@ -63,7 +63,7 @@ func (op ValueOp) ProofOp() tmmerkle.ProofOp {
 	if err != nil {
 		panic(err)
 	}
-	return tmmerkle.ProofOp{
+	return tmcrypto.ProofOp{
 		Type: ProofOpValue,
 		Key:  op.key,
 		Data: bz,

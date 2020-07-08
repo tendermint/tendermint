@@ -1,13 +1,13 @@
 syntax = "proto3";
-package tendermint.abci.types;
+package tendermint.abci;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
-import "tendermint/crypto/merkle/types.proto";
+import "tendermint/crypto/proof.proto";
 import "tendermint/types/types.proto";
-import "tendermint/crypto/keys/types.proto";
+import "tendermint/crypto/keys.proto";
 import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
@@ -185,14 +185,14 @@ message ResponseInitChain {
 message ResponseQuery {
   uint32 code = 1;
   // bytes data = 2; // use "value" instead.
-  string                            log       = 3;  // nondeterministic
-  string                            info      = 4;  // nondeterministic
-  int64                             index     = 5;
-  bytes                             key       = 6;
-  bytes                             value     = 7;
-  tendermint.crypto.merkle.ProofOps proof_ops = 8;
-  int64                             height    = 9;
-  string                            codespace = 10;
+  string                     log       = 3;  // nondeterministic
+  string                     info      = 4;  // nondeterministic
+  int64                      index     = 5;
+  bytes                      key       = 6;
+  bytes                      value     = 7;
+  tendermint.crypto.ProofOps proof_ops = 8;
+  int64                      height    = 9;
+  string                     codespace = 10;
 }
 
 message ResponseBeginBlock {
@@ -336,8 +336,8 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.crypto.keys.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  int64                            power   = 2;
+  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  int64                       power   = 2;
 }
 
 // VoteInfo
