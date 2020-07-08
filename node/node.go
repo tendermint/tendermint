@@ -1301,7 +1301,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
 	b, err := tmjson.Marshal(genDoc)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+		return fmt.Errorf("failed to save genesis doc due to marshaling error: %w", err)
 	}
 	if err := db.SetSync(genesisDocKey, b); err != nil {
 		return err

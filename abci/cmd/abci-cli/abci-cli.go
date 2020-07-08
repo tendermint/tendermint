@@ -643,7 +643,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		if err := srv.Stop(); err != nil {
-			panic(err)
+			logger.Error("Error while stopping server", "err", err)
 		}
 	})
 
@@ -677,7 +677,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	tmos.TrapSignal(logger, func() {
 		// Cleanup
 		if err := srv.Stop(); err != nil {
-			panic(err)
+			logger.Error("Error while stopping server", "err", err)
 		}
 	})
 
