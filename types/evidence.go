@@ -941,10 +941,19 @@ func (e *LunaticValidatorEvidence) ValidateBasic() error {
 
 	switch e.InvalidHeaderField {
 	case "ValidatorsHash", "NextValidatorsHash", "ConsensusHash", "AppHash", "LastResultsHash":
-		return nil
+		break
 	default:
 		return errors.New("unknown invalid header field")
 	}
+
+	if !bytes.Equal(e.Header.Hash(), e.Vote.BlockID.Hash) {
+		return fmt.Errorf("vote was not for header: %X != %X",
+			e.Vote.BlockID.Hash,
+			e.Header.Hash(),
+		)
+	}
+
+	return nil
 }
 
 func (e *LunaticValidatorEvidence) String() string {

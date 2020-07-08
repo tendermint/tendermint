@@ -208,32 +208,65 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 
 func TestLunaticValidatorEvidence(t *testing.T) {
 	var (
-		blockID  = makeBlockIDRandom()
-		header   = makeHeaderRandom()
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		val      = NewMockPV()
-		vote     = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
+		invalidBlockID = makeBlockIDRandom()
+		header         = makeHeaderRandom()
+		altHeader      = makeHeaderRandom()
+		bTime, _       = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+		val            = NewMockPV()
 	)
 
 	header.Time = bTime
 
+	blockID := BlockID{
+		Hash: header.Hash(),
+		PartSetHeader: PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	}
+
+	vote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
+
 	ev := NewLunaticValidatorEvidence(header, vote, "AppHash")
 
+	//happy path
 	assert.Equal(t, header.Height, ev.Height())
 	assert.Equal(t, defaultVoteTime, ev.Time())
 	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
+	assert.True(t, ev.Equal(ev))
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
 	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
+	assert.NoError(t, ev.ValidateBasic())
+	assert.NotEmpty(t, ev.String())
+	assert.NoError(t, ev.VerifyHeader(altHeader))
+
+	// invalid evidence
 	assert.Error(t, ev.Verify("other", pubKey))
 	privKey2 := ed25519.GenPrivKey()
 	pubKey2 := privKey2.PubKey()
-	assert.Error(t, ev.Verify("other", pubKey2))
-	assert.True(t, ev.Equal(ev))
-	assert.NoError(t, ev.ValidateBasic())
-	assert.NotEmpty(t, ev.String())
+	assert.Error(t, ev.Verify(header.ChainID, pubKey2))
+	assert.Error(t, ev.VerifyHeader(header))
+
+	invalidVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, invalidBlockID, defaultVoteTime)
+	invalidHeightVote := makeVote(t, val, header.ChainID, 0, header.Height+1, 0, 2, blockID, defaultVoteTime)
+	emptyBlockVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, BlockID{}, defaultVoteTime)
+
+	invalidLunaticEvidence := []*LunaticValidatorEvidence{
+		NewLunaticValidatorEvidence(header, invalidVote, "AppHash"),
+		NewLunaticValidatorEvidence(header, invalidHeightVote, "AppHash"),
+		NewLunaticValidatorEvidence(nil, vote, "AppHash"),
+		NewLunaticValidatorEvidence(header, nil, "AppHash"),
+		NewLunaticValidatorEvidence(header, vote, "other"),
+		NewLunaticValidatorEvidence(header, emptyBlockVote, "AppHash"),
+	}
+
+	for idx, ev := range invalidLunaticEvidence {
+		assert.Error(t, ev.ValidateBasic(), "#%d", idx)
+	}
+
 }
 
 func TestPhantomValidatorEvidence(t *testing.T) {
