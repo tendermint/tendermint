@@ -214,7 +214,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 	assert.Equal(t, errNoSnapshots, err)
 }
 
-func TestSyncer_SyncAny_ABORT(t *testing.T) {
+func TestSyncer_SyncAny_abort(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -256,7 +256,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	connSnapshot.AssertExpectations(t)
 }
 
-func TestSyncer_SyncAny_REJECT_FORMAT(t *testing.T) {
+func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	// s22 is tried first, which reject s22 and s12, then s11 will abort.
@@ -342,13 +342,14 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		err       error
 		expectErr error
 	}{
-		"accept":         {abci.ResponseOfferSnapshot_ACCEPT, nil, nil},
-		"abort":          {abci.ResponseOfferSnapshot_ABORT, nil, errAbort},
-		"reject":         {abci.ResponseOfferSnapshot_REJECT, nil, errRejectSnapshot},
-		"reject_format":  {abci.ResponseOfferSnapshot_REJECT_FORMAT, nil, errRejectFormat},
-		"reject_sender":  {abci.ResponseOfferSnapshot_REJECT_SENDER, nil, errRejectSender},
-		"error":          {0, boom, boom},
-		"unknown result": {9, nil, unknownErr},
+		"accept":           {abci.ResponseOfferSnapshot_ACCEPT, nil, nil},
+		"abort":            {abci.ResponseOfferSnapshot_ABORT, nil, errAbort},
+		"reject":           {abci.ResponseOfferSnapshot_REJECT, nil, errRejectSnapshot},
+		"reject_format":    {abci.ResponseOfferSnapshot_REJECT_FORMAT, nil, errRejectFormat},
+		"reject_sender":    {abci.ResponseOfferSnapshot_REJECT_SENDER, nil, errRejectSender},
+		"unknown":          {abci.ResponseOfferSnapshot_UNKNOWN, nil, unknownErr},
+		"error":            {0, boom, boom},
+		"unknown non-zero": {9, nil, unknownErr},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -382,13 +383,14 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 		err       error
 		expectErr error
 	}{
-		"accept":          {abci.ResponseApplySnapshotChunk_ACCEPT, nil, nil},
-		"abort":           {abci.ResponseApplySnapshotChunk_ABORT, nil, errAbort},
-		"retry":           {abci.ResponseApplySnapshotChunk_RETRY, nil, nil},
-		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT, nil, errRetrySnapshot},
-		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT, nil, errRejectSnapshot},
-		"error":           {0, boom, boom},
-		"unknown result":  {9, nil, unknownErr},
+		"accept":           {abci.ResponseApplySnapshotChunk_ACCEPT, nil, nil},
+		"abort":            {abci.ResponseApplySnapshotChunk_ABORT, nil, errAbort},
+		"retry":            {abci.ResponseApplySnapshotChunk_RETRY, nil, nil},
+		"retry_snapshot":   {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT, nil, errRetrySnapshot},
+		"reject_snapshot":  {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT, nil, errRejectSnapshot},
+		"unknown":          {abci.ResponseApplySnapshotChunk_UNKNOWN, nil, unknownErr},
+		"error":            {0, boom, boom},
+		"unknown non-zero": {9, nil, unknownErr},
 	}
 	for name, tc := range testcases {
 		tc := tc
