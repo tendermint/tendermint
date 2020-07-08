@@ -193,24 +193,25 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	// Must be executed concurrently to uncover the data race.
 	// 1. RemoveListener
 	go func() {
+		defer close(done1)
 		for i := 0; i < roundCount; i++ {
 			evsw.RemoveListener("listener")
 		}
-		close(done1)
 	}()
 
 	// 2. AddListenerForEvent
 	go func() {
+		defer close(done2)
 		for i := 0; i < roundCount; i++ {
 			index := i
-			err = evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
+			// we explicitly ignore errors here, since the listener will sometimes be removed
+			// (that's what we're testing)
+			_ = evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
 				func(data EventData) {
 					t.Errorf("should not run callback for %d.\n", index)
 					stopInputEvent = true
 				})
-			require.NoError(t, err)
 		}
-		close(done2)
 	}()
 
 	<-done1
