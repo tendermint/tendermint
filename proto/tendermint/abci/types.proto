@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.abci.types;
+package tendermint.abci;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
