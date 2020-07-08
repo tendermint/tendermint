@@ -587,7 +587,13 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
-	vote := makeVote(3, 1, 0, addr, blockID)
+	vote := makeVote(3, 1, 0, addr, types.BlockID{
+		Hash: h.Hash(),
+		PartSetHeader: types.PartSetHeader{
+			Total: 100,
+			Hash:  crypto.CRandBytes(tmhash.Size),
+		},
+	})
 	v := vote.ToProto()
 	err := vals[val.Address.String()].SignVote(chainID, v)
 	vote.Signature = v.Signature
