@@ -167,7 +167,9 @@ func Test_Concurrency(t *testing.T) {
 			_ = dbStore.Size()
 
 			err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err)
+			}
 		}(int64(i))
 	}
 
