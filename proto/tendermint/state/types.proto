@@ -8,7 +8,7 @@ import "tendermint/abci/types.proto";
 import "tendermint/types/types.proto";
 import "tendermint/types/validator.proto";
 import "tendermint/types/params.proto";
-import "tendermint/version/version.proto";
+import "tendermint/version/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // ABCIResponses retains the responses
