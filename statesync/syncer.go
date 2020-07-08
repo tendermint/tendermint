@@ -303,7 +303,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	case abci.ResponseOfferSnapshot_REJECT_SENDER:
 		return errRejectSender
 	default:
-		return fmt.Errorf("invalid ResponseOfferSnapshot result %v", resp.Result)
+		return fmt.Errorf("unknown ResponseOfferSnapshot result %v", resp.Result)
 	}
 }
 

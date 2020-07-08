@@ -20,6 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
   - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0.
   - [abci] \#4989 `Proof` within `ResponseQuery` has been renamed to `ProofOps`
+  - [abci] `CheckTxType` Protobuf enum names are now uppercase, to follow Protobuf style guide
 
 - P2P Protocol
 
@@ -124,3 +125,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
 - [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
+- [proxy] \#5078 Fix a bug, where TM does not exit when ABCI app crashes (@melekes)
