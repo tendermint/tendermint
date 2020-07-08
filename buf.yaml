@@ -4,10 +4,9 @@ build:
     - third_party/proto
 lint:
   use:
-    - MINIMAL
+    - BASIC
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
-    - FILE_LAYOUT
   ignore:
     - gogoproto
 breaking:
