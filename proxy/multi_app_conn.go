@@ -1,43 +1,58 @@
 package proxy
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	tmlog "github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-//-----------------------------
+const (
+	connConsensus = "consensus"
+	connMempool   = "mempool"
+	connQuery     = "query"
+)
 
-// Tendermint's interface to the application consists of multiple connections
+// AppConns is the Tendermint's interface to the application that consists of
+// multiple connections.
 type AppConns interface {
 	service.Service
 
+	// Mempool connection
 	Mempool() AppConnMempool
+	// Consensus connection
 	Consensus() AppConnConsensus
+	// Query connection
 	Query() AppConnQuery
 }
 
+// NewAppConns calls NewMultiAppConn.
 func NewAppConns(clientCreator ClientCreator) AppConns {
 	return NewMultiAppConn(clientCreator)
 }
 
-//-----------------------------
-// multiAppConn implements AppConns
-
-// a multiAppConn is made of a few appConns (mempool, consensus, query)
-// and manages their underlying abci clients
+// multiAppConn implements AppConns.
+//
+// A multiAppConn is made of a few appConns and manages their underlying abci
+// clients.
 // TODO: on app restart, clients must reboot together
 type multiAppConn struct {
 	service.BaseService
 
-	mempoolConn   AppConnMempool
 	consensusConn AppConnConsensus
+	mempoolConn   AppConnMempool
 	queryConn     AppConnQuery
+
+	consensusConnClient abcicli.Client
+	mempoolConnClient   abcicli.Client
+	queryConnClient     abcicli.Client
 
 	clientCreator ClientCreator
 }
 
-// Make all necessary abci connections to the application
+// NewMultiAppConn makes all necessary abci connections to the application.
 func NewMultiAppConn(clientCreator ClientCreator) AppConns {
 	multiAppConn := &multiAppConn{
 		clientCreator: clientCreator,
@@ -46,54 +61,99 @@ func NewMultiAppConn(clientCreator ClientCreator) AppConns {
 	return multiAppConn
 }
 
-// Returns the mempool connection
 func (app *multiAppConn) Mempool() AppConnMempool {
 	return app.mempoolConn
 }
 
-// Returns the consensus Connection
 func (app *multiAppConn) Consensus() AppConnConsensus {
 	return app.consensusConn
 }
 
-// Returns the query Connection
 func (app *multiAppConn) Query() AppConnQuery {
 	return app.queryConn
 }
 
 func (app *multiAppConn) OnStart() error {
-	// query connection
-	querycli, err := app.clientCreator.NewABCIClient()
+	c, err := app.abciClientFor(connQuery)
 	if err != nil {
-		return errors.Wrap(err, "Error creating ABCI client (query connection)")
+		return err
 	}
-	querycli.SetLogger(app.Logger.With("module", "abci-client", "connection", "query"))
-	if err := querycli.Start(); err != nil {
-		return errors.Wrap(err, "Error starting ABCI client (query connection)")
-	}
-	app.queryConn = NewAppConnQuery(querycli)
+	app.queryConnClient = c
+	app.queryConn = NewAppConnQuery(c)
 
-	// mempool connection
-	memcli, err := app.clientCreator.NewABCIClient()
+	c, err = app.abciClientFor(connMempool)
 	if err != nil {
-		return errors.Wrap(err, "Error creating ABCI client (mempool connection)")
+		app.stopAllClients()
+		return err
 	}
-	memcli.SetLogger(app.Logger.With("module", "abci-client", "connection", "mempool"))
-	if err := memcli.Start(); err != nil {
-		return errors.Wrap(err, "Error starting ABCI client (mempool connection)")
-	}
-	app.mempoolConn = NewAppConnMempool(memcli)
+	app.mempoolConnClient = c
+	app.mempoolConn = NewAppConnMempool(c)
 
-	// consensus connection
-	concli, err := app.clientCreator.NewABCIClient()
+	c, err = app.abciClientFor(connConsensus)
 	if err != nil {
-		return errors.Wrap(err, "Error creating ABCI client (consensus connection)")
+		app.stopAllClients()
+		return err
 	}
-	concli.SetLogger(app.Logger.With("module", "abci-client", "connection", "consensus"))
-	if err := concli.Start(); err != nil {
-		return errors.Wrap(err, "Error starting ABCI client (consensus connection)")
-	}
-	app.consensusConn = NewAppConnConsensus(concli)
+	app.consensusConnClient = c
+	app.consensusConn = NewAppConnConsensus(c)
+
+	// Kill Tendermint if the ABCI application crashes.
+	go app.killTMOnClientError()
 
 	return nil
+}
+
+func (app *multiAppConn) OnStop() {
+	app.stopAllClients()
+}
+
+func (app *multiAppConn) killTMOnClientError() {
+	killFn := func(conn string, err error, logger tmlog.Logger) {
+		logger.Error(
+			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
+			"err", err)
+		killErr := tmos.Kill()
+		if killErr != nil {
+			logger.Error("Failed to kill this process - please do so manually", "err", killErr)
+		}
+	}
+
+	select {
+	case <-app.consensusConnClient.Quit():
+		if err := app.consensusConnClient.Error(); err != nil {
+			killFn(connConsensus, err, app.Logger)
+		}
+	case <-app.mempoolConnClient.Quit():
+		if err := app.mempoolConnClient.Error(); err != nil {
+			killFn(connMempool, err, app.Logger)
+		}
+	case <-app.queryConnClient.Quit():
+		if err := app.queryConnClient.Error(); err != nil {
+			killFn(connQuery, err, app.Logger)
+		}
+	}
+}
+
+func (app *multiAppConn) stopAllClients() {
+	if app.consensusConnClient != nil {
+		app.consensusConnClient.Stop()
+	}
+	if app.mempoolConnClient != nil {
+		app.mempoolConnClient.Stop()
+	}
+	if app.queryConnClient != nil {
+		app.queryConnClient.Stop()
+	}
+}
+
+func (app *multiAppConn) abciClientFor(conn string) (abcicli.Client, error) {
+	c, err := app.clientCreator.NewABCIClient()
+	if err != nil {
+		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)
+	}
+	c.SetLogger(app.Logger.With("module", "abci-client", "connection", conn))
+	if err := c.Start(); err != nil {
+		return nil, fmt.Errorf("error starting ABCI client (%s connection): %w", conn, err)
+	}
+	return c, nil
 }
