@@ -4,7 +4,7 @@ package tendermint.consensus;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/consensus";
 
 import "gogoproto/gogo.proto";
-import "tendermint/consensus/msgs.proto";
+import "tendermint/consensus/types.proto";
 import "tendermint/types/events.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";

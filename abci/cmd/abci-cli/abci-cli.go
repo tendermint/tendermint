@@ -22,7 +22,7 @@ import (
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/abci/version"
-	"github.com/tendermint/tendermint/proto/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 // client is a global variable so it can be reused by the console
@@ -101,7 +101,7 @@ type queryResponse struct {
 	Key      []byte
 	Value    []byte
 	Height   int64
-	ProofOps *merkle.ProofOps
+	ProofOps *crypto.ProofOps
 }
 
 func Execute() error {
