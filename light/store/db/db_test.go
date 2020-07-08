@@ -9,6 +9,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -150,20 +152,31 @@ func Test_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			err := dbStore.SaveSignedHeaderAndValidatorSet(
-				&types.SignedHeader{Header: &types.Header{Height: i}}, vals)
+				&types.SignedHeader{Header: &types.Header{Height: i,
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
 			require.NoError(t, err)
 
 			_, err = dbStore.SignedHeader(i)
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err)
+			}
 			_, err = dbStore.ValidatorSet(i)
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err) // could not find validator set
+			}
 			_, err = dbStore.LastSignedHeaderHeight()
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err)
+			}
 			_, err = dbStore.FirstSignedHeaderHeight()
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err)
+			}
 
 			err = dbStore.Prune(2)
-			require.NoError(t, err)
+			if err != nil {
+				t.Log(err)
+			}
 			_ = dbStore.Size()
 
 			err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
