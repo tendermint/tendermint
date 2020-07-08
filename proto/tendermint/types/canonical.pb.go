@@ -179,7 +179,7 @@ func (m *CanonicalProposal) GetType() SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
-	return SIGNED_MSG_TYPE_UNKNOWN
+	return UnknownType
 }
 
 func (m *CanonicalProposal) GetHeight() int64 {
@@ -270,7 +270,7 @@ func (m *CanonicalVote) GetType() SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
-	return SIGNED_MSG_TYPE_UNKNOWN
+	return UnknownType
 }
 
 func (m *CanonicalVote) GetHeight() int64 {
