@@ -189,6 +189,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	newState, lastCommit, err := syncer.SyncAny(0)
 	require.NoError(t, err)
 
+	time.Sleep(50 * time.Millisecond) // wait for peers to receive requests
+
 	chunkRequestsMtx.Lock()
 	assert.Equal(t, map[uint32]int{0: 1, 1: 2, 2: 1}, chunkRequests)
 	chunkRequestsMtx.Unlock()
