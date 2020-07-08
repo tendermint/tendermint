@@ -70,7 +70,7 @@ func main() {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
 			if err := group.Stop(); err != nil {
-				fmt.Printf("logjack stopped with error %v\n", headPath)
+				fmt.Fprintf(os.Stderr, "logjack stopped with error %v\n", headPath)
 				os.Exit(1)
 			}
 			if err == io.EOF {
@@ -82,11 +82,11 @@ func main() {
 		}
 		_, err = group.Write(buf[:n])
 		if err != nil {
-			fmt.Printf("logjack failed write with error %v\n", headPath)
+			fmt.Fprintf(os.Stderr, "logjack failed write with error %v\n", headPath)
 			os.Exit(1)
 		}
 		if err := group.FlushAndSync(); err != nil {
-			fmt.Printf("logjack flushsync fail with error %v\n", headPath)
+			fmt.Fprintf(os.Stderr, "logjack flushsync fail with error %v\n", headPath)
 			os.Exit(1)
 		}
 	}
