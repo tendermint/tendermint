@@ -24,7 +24,7 @@ message TimeoutInfo {
   uint32 step   = 4;
 }
 
-// EndHeightMessage marks the end of the given height inside WAL.
+// EndHeight marks the end of the given height inside WAL.
 // @internal used by scripts/wal2json util.
 message EndHeight {
   int64 height = 1;

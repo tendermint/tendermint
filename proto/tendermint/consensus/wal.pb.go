@@ -151,7 +151,7 @@ func (m *TimeoutInfo) GetStep() uint32 {
 	return 0
 }
 
-// EndHeightMessage marks the end of the given height inside WAL.
+// EndHeight marks the end of the given height inside WAL.
 // @internal used by scripts/wal2json util.
 type EndHeight struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
