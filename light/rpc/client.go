@@ -421,14 +421,14 @@ func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultVa
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.BlockHeight)
+	h, err := c.updateLightClientIfNeededTo(res.BlockHeight - 1)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify validators.
 	if res.Count <= res.Total {
-		if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.ValidatorsHash; !bytes.Equal(rH, tH) {
+		if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.NextValidatorsHash; !bytes.Equal(rH, tH) {
 			return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
 				rH, tH)
 		}
