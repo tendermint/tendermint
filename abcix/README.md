@@ -17,13 +17,13 @@ Similar to ABCI, ABCIx provides the methods in the following ABCIx [_connections
 where
 - `CheckTx` will return an extra field `Priority (int64)` to indicate how to order the tx in mempool.
 - `CreateBlock` allows the application to iterate the transactions from mempool by the order and select the ones to be included in the block.
-- `DeliverBlock` behaves similar to the combination of `ABCI.BeginBlock`, a list of `ABCI.DeliverBlock`, `ABCI.EndBlock`, and `ABCI.Commit` methods.
 - `CheckBlock` will be called after a proposed block is received and before the node votes for the block.  `CheckBlock` will return `Code` to determine whether the block is valid or not.  For example, 
   - The block contains invalid transactions; or
   - The block's app hash does not match the app hash determined by application;
   - The block's result hash does not match the results emitted by application;
   - The block's gas usage exceeds the gas limit.
   If the block is invalid, TendermintX will not vote for the block in the following `pre-vote` phase.
+- `DeliverBlock` behaves similar to the combination of `ABCI.BeginBlock`, a list of `ABCI.DeliverBlock`, `ABCI.EndBlock`, and `ABCI.Commit` methods.  Note that a block may be delivered without being checked.
 - The rest of ABCIx methods should behave the same as those of ABCI.
 
 
@@ -65,7 +65,7 @@ where
   - Output of ABCI.EndBlock.
   - Output of ABCI.Commit.
 - **Note**
-  - ABCIx will compare the hash of the returned `Tags` with `LastResultHash` in header (`LastResultHash` will be renamed to `ResultHash` in TendermintX).  If the comparison fails, TendermintX will stop working.
+  - ABCIx will compare the hash of the returned `Tags` with `LastResultHash` in header (`LastResultHash` will be renamed to `ResultHash` in TendermintX).  If the comparison fails, the BFT consensus is broken and TendermintX will stop working.
   
 ### `CheckBlock`
 - **Input**
@@ -84,3 +84,10 @@ where
   - If `Code` is non-zero, the block is treated as invalid.
   - ABCIx will compare the hash of the returned `Tags` with `LastResultHash` in header (`LastResultHash` will be renamed to `ResultHash` in TendermintX).  If the comparison fails, TendermintX will treat the block as invalid.
   
+## ABCI Adaptor
+ABCI adaptor implements ABCIx and translates all ABCIx methods to ABCI methods.  Basically, ABCI adaptor implements the ABCIx methods as:
+
+- **CheckTx**: call and return ABCI.CheckTx with Priority 0.
+- **CreateBlock**: iterate and include txs from mempool until maxGas or maxBytes limits is reached.  Do not execute any txs.  Return AppHash and Tags of the previous block that are stored in the application DB.
+- **CheckBlock**: compare whether header.AppHash equals to the AppHash of the previous block stored in the application.  Return the Tags of the previous block stored in the application DB.
+- **DeliverBlock**: call ABCI.DeliverBlock. Store ABCI.DeliverBlock.Data and ABCI.DeliverBlock.Tags in application DB.  Return the Tags of the previous block stored in the applicaiton DB.
