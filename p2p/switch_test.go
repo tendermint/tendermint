@@ -227,6 +227,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 			SwitchPeerFilters(filters...),
 		)
 	)
+	sw.Start()
 	t.Cleanup(func() {
 		if err := sw.Stop(); err != nil {
 			t.Error(err)
@@ -276,9 +277,10 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 			SwitchPeerFilters(filters...),
 		)
 	)
+	sw.Start()
 	t.Cleanup(func() {
 		if err := sw.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
