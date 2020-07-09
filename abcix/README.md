@@ -4,7 +4,7 @@
 ABCIx is an extension of [ABCI](https://github.com/tendermint/tendermint/tree/master/abci) that offers:
 - **greater flexibility in block production**: when creating a new block, instead of including the transactions from the mempool in an FIFO manner, ABCIx allows the application to decide which transactions from the mempool will be included and the order; and
 - **greater security**: when creating a block, ABCIx allows the application to detect conflicting transactions and remove them from the mempool.  This ensures that all transactions in a block are valid, while ABCI allows invalid transactions in a block and defers to the application to handle such transactions; and
-- **more applications**:  for example, one application is to use TendermintX+ABCIx to serve as a finality gadget of another chain (such as PoW chain).
+- **more applications**:  for example, one application is to use TendermintX+ABCIx to serve as a finality gadget of another chain (such as PoW chain); and
 - **backward compatible with ABCI**: ABCIx can easily support existing ABCI applications by using ABCI adaptor, which is an ABCIx application and provides ABCI to the underly ABCI applications.
 
 Similar to ABCI, ABCIx provides the methods in the following ABCIx [_connections_](https://github.com/tendermint/spec/edit/master/spec/abci/abci.md):
@@ -46,7 +46,7 @@ where
   - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously.
   - `MempoolIterator (interface{})`: Iterator to iterate all txs in the mempool.  It provides a function `Next(maxBytes int64, maxGas int64) []byte`, which returns a tx ordered by priority with size <= maxBytes and GasWanted <= maxGas or nil if no such tx is found.
- - **Output**
+- **Output**
   - `TxList ([][]byte)`: A list of txs will be included in the block.
   - `InvalidTxList ([][]byte)`: A list of txs should be removed from mempool.
   - `AppHash ([]byte)`: App hash after executing the transactions.
