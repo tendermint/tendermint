@@ -340,7 +340,7 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 
 	// Verify block results.
 	results := types.NewResults(res.TxsResults)
-	if rH, tH := results.Hash(), trustedHeader.LastResultsHash; !bytes.Equal(rH, tH) {
+	if rH, tH := results.Hash(), trustedHeader.LastResultsHash; len(rH) != 0 && !bytes.Equal(rH, tH) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
 			rH, tH)
 	}
