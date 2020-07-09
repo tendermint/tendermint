@@ -26,6 +26,8 @@ Go 1.13+
 
 - **[RocksDB](https://github.com/tecbot/gorocksdb) [experimental]:** A [Go wrapper](https://github.com/tecbot/gorocksdb) around [RocksDB](https://rocksdb.org). Similarly to LevelDB (above) it uses LSM-trees for on-disk storage, but is optimized for fast storage media such as SSDs and memory. Supports atomic transactions, but not full ACID transactions.
 
+- **[BadgerDB](https://github.com/dgraph-io/badger) [experimental]:** A key-value database written as a pure-Go alternative to others like LevelDB and RocksDB. Makes use of multiple goroutines for performance, and includes advanced features such as transactions, write batches, compression, and more.
+
 ## Meta-databases
 
 - **PrefixDB [stable]:** A database which wraps another database and uses a static prefix for all keys. This allows multiple logical databases to be stored in a common underlying databases by using different namespaces. Used by the Cosmos SDK to give different modules their own namespaced database in a single application database.

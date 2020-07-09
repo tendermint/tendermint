@@ -300,6 +300,22 @@ func testDBIterator(t *testing.T, backend BackendType) {
 	require.NoError(t, err)
 	verifyIterator(t, ritr,
 		[]int64(nil), "reverse iterator from 2 (ex) to 4")
+
+	// Ensure that the iterators don't panic with an empty database.
+	dir2, err := ioutil.TempDir("", "tm-db-test")
+	require.NoError(t, err)
+	db2, err := NewDB(name, backend, dir2)
+	require.NoError(t, err)
+	defer cleanupDBDir(dir2, name)
+
+	itr, err = db2.Iterator(nil, nil)
+	require.NoError(t, err)
+	verifyIterator(t, itr, nil, "forward iterator with empty db")
+
+	ritr, err = db2.ReverseIterator(nil, nil)
+	require.NoError(t, err)
+	verifyIterator(t, ritr, nil, "reverse iterator with empty db")
+
 }
 
 func verifyIterator(t *testing.T, itr Iterator, expected []int64, msg string) {
