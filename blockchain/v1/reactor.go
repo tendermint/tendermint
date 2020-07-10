@@ -480,10 +480,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{
-		Base:   bcR.store.Base(),
-		Height: bcR.store.Height(),
-	})
+	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
 		panic(err)
 	}
