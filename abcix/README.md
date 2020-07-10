@@ -5,7 +5,7 @@ ABCIx is an extension of [ABCI](https://github.com/tendermint/tendermint/tree/ma
 - **greater flexibility in block production**: when creating a new block, instead of including the transactions from the mempool in an FIFO manner, ABCIx allows the application to decide which transactions from the mempool will be included and the order; and
 - **greater security**: when creating a block, ABCIx allows the application to detect conflicting transactions and remove them from the mempool.  This ensures that all transactions in a block are valid, while ABCI allows invalid transactions in a block and defers to the application to handle such transactions; and
 - **more applications**:  for example, one application is to use TendermintX+ABCIx to serve as a finality gadget of another chain (such as PoW chain); and
-- **backward compatible with ABCI**: ABCIx can easily support existing ABCI applications by using ABCI adaptor, which is an ABCIx application and provides ABCI to the underly ABCI applications.
+- **backward compatible with ABCI**: ABCIx can easily support existing ABCI applications by using ABCI adapter, which is an ABCIx application and provides ABCI to the underly ABCI applications.
 
 Similar to ABCI, ABCIx provides the methods in the following ABCIx [_connections_](https://github.com/tendermint/spec/edit/master/spec/abci/abci.md):
 
@@ -16,8 +16,8 @@ Similar to ABCI, ABCIx provides the methods in the following ABCIx [_connections
 
 where
 - `CheckTx` will return an extra field `Priority (int64)` to indicate how to order the tx in mempool.
-- `CreateBlock` allows the application to iterate the transactions from mempool by the order and select the ones to be included in the block.
-- `CheckBlock` will be called after a proposed block is received and before the node votes for the block.  `CheckBlock` will return `Code` to determine whether the block is valid or not.  For example, 
+- `CreateBlock` allows the application to iterate the transactions from mempool ordered by priority and select the ones to be included in the block.
+- `CheckBlock` will be called after a proposed block is received and before the nodes votes for the block.  `CheckBlock` will return `Code` to determine whether the block is valid or not.  For example, 
   - The block contains invalid transactions; or
   - The block's app hash does not match the app hash determined by application;
   - The block's result hash does not match the results emitted by application;
@@ -84,10 +84,10 @@ where
   - If `Code` is non-zero, the block is treated as invalid.
   - ABCIx will compare the hash of the returned `Tags` with `LastResultHash` in header (`LastResultHash` will be renamed to `ResultHash` in TendermintX).  If the comparison fails, TendermintX will treat the block as invalid.
   
-## ABCI Adaptor
-ABCI adaptor implements ABCIx and translates all ABCIx methods to ABCI methods.  Basically, ABCI adaptor implements the ABCIx methods as:
+## ABCI Adapter
+ABCI adapter implements ABCIx and translates all ABCIx methods to ABCI methods.  Basically, ABCI adaptor implements the ABCIx methods as:
 
 - **CheckTx**: call and return ABCI.CheckTx with Priority 0.
-- **CreateBlock**: iterate and include txs from mempool until maxGas or maxBytes limits is reached.  Do not execute any txs.  Return AppHash and Tags of the previous block that are stored in the application DB.
+- **CreateBlock**: iterate and include txs from mempool until maxGas or maxBytes limits is reached without executing any txs.  Return AppHash and Tags of the previous block that are stored in the application DB.
 - **CheckBlock**: compare whether header.AppHash equals to the AppHash of the previous block stored in the application.  Return the Tags of the previous block stored in the application DB.
 - **DeliverBlock**: call ABCI.DeliverBlock. Store ABCI.DeliverBlock.Data and ABCI.DeliverBlock.Tags in application DB.  Return the Tags of the previous block stored in the applicaiton DB.
