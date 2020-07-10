@@ -457,16 +457,19 @@ func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultVa
 		return nil, err
 	}
 
-	// Verify validators.
-	if res.Count <= res.Total {
+	var tH tmbytes.HexBytes
+	switch res.BlockHeight {
+	case 1:
 		// if it's the first block we need to validate with the current validator hash as opposed to the
 		// next validator hash
-		if res.BlockHeight == 1 {
-			if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.ValidatorsHash; !bytes.Equal(rH, tH) {
-				return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
-					rH, tH)
-			}
-		} else if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.NextValidatorsHash; !bytes.Equal(rH, tH) {
+		tH = h.ValidatorsHash
+	default:
+		tH = h.NextValidatorsHash
+	}
+
+	// Verify validators.
+	if res.Count <= res.Total {
+		if rH := types.NewValidatorSet(res.Validators).Hash(); !bytes.Equal(rH, tH) {
 			return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
 				rH, tH)
 		}
