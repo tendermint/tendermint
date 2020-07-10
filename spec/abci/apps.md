@@ -491,7 +491,7 @@ This happens if we crashed after the app finished Commit but before Tendermint s
 
 A new node joining the network can simply join consensus at the genesis height and replay all
 historical blocks until it is caught up. However, for large chains this can take a significant
-amount of time, often on the order of weeks or months.
+amount of time, often on the order of days or weeks.
 
 State sync is an alternative mechanism for bootstrapping a new node, where it fetches a snapshot
 of the state machine at a given height and restores it. Depending on the application, this can
