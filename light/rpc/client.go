@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	service "github.com/tendermint/tendermint/libs/service"
@@ -338,11 +341,32 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 		return nil, err
 	}
 
-	// Verify block results.
+	// proto-encode BeginBlock events
+	bbeBytes, err := proto.Marshal(&abci.ResponseBeginBlock{
+		Events: res.BeginBlockEvents,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
 	results := types.NewResults(res.TxsResults)
-	if rH, tH := results.Hash(), trustedHeader.LastResultsHash; !bytes.Equal(rH, tH) {
+
+	// proto-encode EndBlock events.
+	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
+		Events: res.EndBlockEvents,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Build a Merkle tree out of the above 3 binary slices.
+	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+
+	// Verify block results.
+	if !bytes.Equal(rH, trustedHeader.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
-			rH, tH)
+			rH, trustedHeader.LastResultsHash)
 	}
 
 	return res, nil
@@ -420,15 +444,32 @@ func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultVa
 		return nil, errNegOrZeroHeight
 	}
 
+	updateHeight := res.BlockHeight - 1
+
+	// updateHeight can't be zero which happens when we are looking for the validators of the first block
+	if updateHeight == 0 {
+		updateHeight = 1
+	}
+
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.BlockHeight)
+	h, err := c.updateLightClientIfNeededTo(updateHeight)
 	if err != nil {
 		return nil, err
 	}
 
+	var tH tmbytes.HexBytes
+	switch res.BlockHeight {
+	case 1:
+		// if it's the first block we need to validate with the current validator hash as opposed to the
+		// next validator hash
+		tH = h.ValidatorsHash
+	default:
+		tH = h.NextValidatorsHash
+	}
+
 	// Verify validators.
 	if res.Count <= res.Total {
-		if rH, tH := types.NewValidatorSet(res.Validators).Hash(), h.ValidatorsHash; !bytes.Equal(rH, tH) {
+		if rH := types.NewValidatorSet(res.Validators).Hash(); !bytes.Equal(rH, tH) {
 			return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
 				rH, tH)
 		}
