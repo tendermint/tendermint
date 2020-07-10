@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/gogo/protobuf/proto"
-	
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
