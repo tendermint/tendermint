@@ -4,20 +4,20 @@ order: 5
 
 # Subscribing to events via Websocket
 
-Tendermint emits different events, to which you can subscribe to via
+Tendermint emits different events, which you can subscribe to via
 [Websocket](https://en.wikipedia.org/wiki/WebSocket). This can be useful
 for third-party applications (for analysis) or for inspecting state.
 
 [List of events](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 
-To open a websocket connection with a node, you can use a cli tool such as 
+To connect to a node via websocket from the CLI, you can use a tool such as
 [wscat](https://github.com/websockets/wscat) and run:
 
 ```
 wscat ws://127.0.0.1:26657/websocket
 ```
 
-You can then subscribe to any of the events above by calling the `subscribe` RPC
+You can subscribe to any of the events above by calling the `subscribe` RPC
 method via Websocket along with a valid query.
 
 ```
