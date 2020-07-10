@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -12,7 +13,7 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/broadcast_evidence
 func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	if ev == nil {
-		return nil, fmt.Errorf("no evidence was provided")
+		return nil, errors.New("no evidence was provided")
 	}
 
 	if err := ev.ValidateBasic(); err != nil {
