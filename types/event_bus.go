@@ -156,6 +156,10 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
+func (b *EventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
+	return b.Publish(EventNewEvidence, evidence)
+}
+
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
 	return b.Publish(EventVote, data)
 }
@@ -246,6 +250,10 @@ func (NopEventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 }
 
 func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
 	return nil
 }
 

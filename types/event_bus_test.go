@@ -259,6 +259,40 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventNewEvidence(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+
+	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+
+	query := "tm.event='NewEvidence'"
+	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		msg := <-evSub.Out()
+		edt := msg.Data().(EventDataNewEvidence)
+		assert.Equal(t, ev, edt.Evidence)
+		assert.Equal(t, int64(4), edt.Height)
+		close(done)
+	}()
+
+	err = eventBus.PublishEventNewEvidence(EventDataNewEvidence{
+		Evidence: ev,
+		Height:   4,
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+}
+
 func TestEventBusPublish(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()

@@ -481,6 +481,15 @@ func fireEvents(
 		ResultEndBlock:   *abciResponses.EndBlock,
 	})
 
+	if len(block.Evidence.Evidence) != 0 {
+		for _, ev := range block.Evidence.Evidence {
+			eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
+				Evidence: ev,
+				Height:   block.Height,
+			})
+		}
+	}
+
 	for i, tx := range block.Data.Txs {
 		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
 			Height: block.Height,
