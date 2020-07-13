@@ -669,7 +669,7 @@ func (c *MConnection) stopPongTimer() {
 func (c *MConnection) maxPacketMsgSize() int {
 	bz, err := proto.Marshal(mustWrapPacket(&tmp2p.PacketMsg{
 		ChannelID: 0x01,
-		EOF:       1,
+		EOF:       true,
 		Data:      make([]byte, c.config.MaxPacketMsgPayloadSize),
 	}))
 	if err != nil {
@@ -826,11 +826,11 @@ func (ch *Channel) nextPacketMsg() tmp2p.PacketMsg {
 	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Data = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
-		packet.EOF = 0x01
+		packet.EOF = true
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
-		packet.EOF = 0x00
+		packet.EOF = false
 		ch.sending = ch.sending[tmmath.MinInt(maxSize, len(ch.sending)):]
 	}
 	return packet
@@ -855,7 +855,7 @@ func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)
 	}
 	ch.recving = append(ch.recving, packet.Data...)
-	if packet.EOF == 0x01 {
+	if packet.EOF {
 		msgBytes := ch.recving
 
 		// clear the slice without re-allocating.

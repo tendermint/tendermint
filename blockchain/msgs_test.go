@@ -52,23 +52,8 @@ func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
 }
 
 func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName      string
-		requestHeight int64
-		expectErr     bool
-	}{
-		{"Valid Request Message", 0, false},
-		{"Valid Request Message", 1, false},
-		{"Invalid Request Message", -1, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			request := bcproto.StatusRequest{Height: tc.requestHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&request) != nil, "Validate Basic had an unexpected result")
-		})
-	}
+	request := bcproto.StatusRequest{}
+	assert.NoError(t, ValidateMsg(&request))
 }
 
 func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
@@ -124,12 +109,8 @@ func TestBlockchainMessageVectors(t *testing.T) {
 			NoBlockResponse: &bcproto.NoBlockResponse{Height: math.MaxInt64}}},
 			[]byte{0x12, 0xa, 0x8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
 		{"StatusRequestMessage", &bcproto.Message{Sum: &bcproto.Message_StatusRequest{
-			StatusRequest: &bcproto.StatusRequest{Height: 1, Base: 2}}},
-			[]byte{0x22, 0x4, 0x8, 0x1, 0x10, 0x2}},
-		{"StatusRequestMessage", &bcproto.Message{Sum: &bcproto.Message_StatusRequest{
-			StatusRequest: &bcproto.StatusRequest{Height: math.MaxInt64, Base: math.MaxInt64}}},
-			[]byte{0x22, 0x14, 0x8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
-				0x10, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
+			StatusRequest: &bcproto.StatusRequest{}}},
+			[]byte{0x22, 0x0}},
 		{"StatusResponseMessage", &bcproto.Message{Sum: &bcproto.Message_StatusResponse{
 			StatusResponse: &bcproto.StatusResponse{Height: 1, Base: 2}}},
 			[]byte{0x2a, 0x4, 0x8, 0x1, 0x10, 0x2}},

@@ -102,15 +102,7 @@ func ValidateMsg(pb proto.Message) error {
 			return fmt.Errorf("base %v cannot be greater than height %v", msg.Base, msg.Height)
 		}
 	case *bcproto.StatusRequest:
-		if msg.Base < 0 {
-			return errors.New("negative Base")
-		}
-		if msg.Height < 0 {
-			return errors.New("negative Height")
-		}
-		if msg.Base > msg.Height {
-			return fmt.Errorf("base %v cannot be greater than height %v", msg.Base, msg.Height)
-		}
+		return nil
 	default:
 		return fmt.Errorf("unknown message type %T", msg)
 	}
