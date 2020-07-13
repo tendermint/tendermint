@@ -101,6 +101,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#4979 Support EXISTS operator in `/tx_search` query (@melekes)
 - [rpc] \#5017 Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
 - [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
+- [rpc] [\#5108](https://github.com/tendermint/tendermint/pull/5108) Subscribe using the websocket for new evidence events (@cmwaters)
 
 ### IMPROVEMENTS:
 
