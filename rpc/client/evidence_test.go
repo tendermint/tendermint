@@ -222,3 +222,10 @@ func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
 		assert.Equal(t, ev.Hash(), result.Hash, "expected result hash to match evidence hash")
 	}
 }
+
+func TestBroadcastEmptyEvidence(t *testing.T) {
+	for _, c := range GetClients() {
+		_, err := c.BroadcastEvidence(nil)
+		assert.Error(t, err)
+	}
+}
