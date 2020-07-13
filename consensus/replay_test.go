@@ -901,8 +901,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			err = h.Handshake(proxyApp)
-			require.Error(t, err)
+			if err = h.Handshake(proxyApp); err != nil {
+				t.Log(err)
+			}
 		})
 	}
 
@@ -920,8 +921,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			err = h.Handshake(proxyApp)
-			require.Error(t, err)
+			if err = h.Handshake(proxyApp); err != nil {
+				t.Log(err)
+			}
 		})
 	}
 }
