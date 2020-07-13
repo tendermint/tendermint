@@ -18,6 +18,7 @@ const (
 	// All of this data can be fetched through the rpc.
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
+	EventNewEvidence         = "NewEvidence"
 	EventTx                  = "Tx"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
 
@@ -49,6 +50,7 @@ type TMEventData interface {
 func init() {
 	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
 	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
+	tmjson.RegisterType(EventDataNewEvidence{}, "tendermint/event/NewEvidence")
 	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
 	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
 	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
@@ -74,6 +76,12 @@ type EventDataNewBlockHeader struct {
 	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+}
+
+type EventDataNewEvidence struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height"`
 }
 
 // All txs fire EventDataTx
@@ -139,6 +147,7 @@ var (
 	EventQueryLock                = QueryForEvent(EventLock)
 	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
 	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
 	EventQueryPolka               = QueryForEvent(EventPolka)
@@ -164,6 +173,7 @@ func QueryForEvent(eventType string) tmpubsub.Query {
 type BlockEventPublisher interface {
 	PublishEventNewBlock(block EventDataNewBlock) error
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
+	PublishEventNewEvidence(evidence EventDataNewEvidence) error
 	PublishEventTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
 }
