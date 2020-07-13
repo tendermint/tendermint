@@ -80,12 +80,12 @@ func TestHangingSyncCalls(t *testing.T) {
 	s, c := setupClientServer(t, app)
 	t.Cleanup(func() {
 		if err := s.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 	t.Cleanup(func() {
 		if err := c.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
