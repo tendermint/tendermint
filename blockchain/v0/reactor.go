@@ -410,10 +410,7 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{
-		Base:   bcR.store.Base(),
-		Height: bcR.store.Height(),
-	})
+	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to proto", "err", err)
 		return fmt.Errorf("could not convert msg to proto: %w", err)

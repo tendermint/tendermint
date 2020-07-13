@@ -314,7 +314,7 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 		case <-doProcessBlockCh:
 			r.processor.send(rProcessBlock{})
 		case <-doStatusCh:
-			r.io.broadcastStatusRequest(r.store.Base(), r.SyncHeight())
+			r.io.broadcastStatusRequest()
 
 		// Events from peers. Closing the channel signals event loop termination.
 		case event, ok := <-events:

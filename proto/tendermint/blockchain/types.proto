@@ -20,13 +20,11 @@ message BlockResponse {
   tendermint.types.Block block = 1;
 }
 
-// StatusRequest requests the status of a node (Height & Base)
+// StatusRequest requests the status of a peer.
 message StatusRequest {
-  int64 height = 1;
-  int64 base   = 2;
 }
 
-// StatusResponse is a peer response to inform their status
+// StatusResponse is a peer response to inform their status.
 message StatusResponse {
   int64 height = 1;
   int64 base   = 2;

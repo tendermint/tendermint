@@ -99,7 +99,7 @@ func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(base, height int64, peerID p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
@@ -127,7 +127,7 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool
 	return true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) error {
+func (sio *mockSwitchIo) broadcastStatusRequest() error {
 	return nil
 }
 
