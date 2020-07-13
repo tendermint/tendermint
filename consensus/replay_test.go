@@ -83,6 +83,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
+	defer cs.Stop()
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -97,12 +98,6 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	case <-time.After(120 * time.Second):
 		t.Fatal("Timed out waiting for new block (see trace above)")
 	}
-
-	t.Cleanup(func() {
-		if err := cs.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 }
 
 func sendTxs(ctx context.Context, cs *State) {
@@ -688,18 +683,13 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		wal.SetLogger(log.TestingLogger())
 		err = wal.Start()
 		require.NoError(t, err)
-
+		defer wal.Stop()
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey()
 		require.NoError(t, err)
 		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
-		t.Cleanup(func() {
-			if err := wal.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
 	}
 	store.chain = chain
 	store.commits = commits
@@ -740,6 +730,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
 
+	defer proxyApp.Stop()
+
 	err := handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
@@ -761,12 +753,6 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 			res.LastBlockAppHash,
 			latestAppHash)
 	}
-
-	t.Cleanup(func() {
-		if err := proxyApp.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	expectedBlocksToSync := numBlocks - nBlocks
 	if nBlocks == numBlocks && mode > 0 {
@@ -910,17 +896,12 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
+		defer proxyApp.Stop()
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
 			err = h.Handshake(proxyApp)
 			require.Error(t, err)
-		})
-
-		t.Cleanup(func() {
-			if err := proxyApp.Stop(); err != nil {
-				t.Error(err)
-			}
 		})
 	}
 
@@ -934,17 +915,12 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
+		defer proxyApp.Stop()
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
 			err = h.Handshake(proxyApp)
 			require.Error(t, err)
-		})
-
-		t.Cleanup(func() {
-			if err := proxyApp.Stop(); err != nil {
-				t.Error(err)
-			}
 		})
 	}
 }
@@ -1233,15 +1209,10 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
+	defer proxyApp.Stop()
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
-
-	t.Cleanup(func() {
-		if err := proxyApp.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 	// reload the state, check the validator set was updated
 	state = sm.LoadState(stateDB)
 
