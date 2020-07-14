@@ -17,7 +17,11 @@ func TestUnsafeDialSeeds(t *testing.T) {
 		func(n int, sw *p2p.Switch) *p2p.Switch { return sw })
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	env.Logger = log.TestingLogger()
 	env.P2PPeers = sw
@@ -47,7 +51,11 @@ func TestUnsafeDialPeers(t *testing.T) {
 		func(n int, sw *p2p.Switch) *p2p.Switch { return sw })
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	env.Logger = log.TestingLogger()
 	env.P2PPeers = sw

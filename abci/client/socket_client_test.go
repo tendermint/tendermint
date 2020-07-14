@@ -43,14 +43,23 @@ func TestProperSyncCalls(t *testing.T) {
 	app := slowApp{}
 
 	s, c := setupClientServer(t, app)
-	defer s.Stop()
-	defer c.Stop()
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := c.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
 		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		c.FlushSync()
+		err := c.FlushSync()
+		require.NoError(t, err)
 		res := reqres.Response.GetBeginBlock()
 		require.NotNil(t, res)
 		resp <- c.Error()
@@ -69,8 +78,16 @@ func TestHangingSyncCalls(t *testing.T) {
 	app := slowApp{}
 
 	s, c := setupClientServer(t, app)
-	defer s.Stop()
-	defer c.Stop()
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := c.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 
 	resp := make(chan error, 1)
 	go func() {
@@ -81,7 +98,8 @@ func TestHangingSyncCalls(t *testing.T) {
 		// no response yet from server
 		time.Sleep(20 * time.Millisecond)
 		// kill the server, so the connections break
-		s.Stop()
+		err := s.Stop()
+		require.NoError(t, err)
 
 		// wait for the response from BeginBlock
 		reqres.Wait()

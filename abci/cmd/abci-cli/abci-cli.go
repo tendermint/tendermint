@@ -642,7 +642,9 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
 		// Cleanup
-		srv.Stop()
+		if err := srv.Stop(); err != nil {
+			logger.Error("Error while stopping server", "err", err)
+		}
 	})
 
 	// Run forever.
@@ -674,7 +676,9 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
 		// Cleanup
-		srv.Stop()
+		if err := srv.Stop(); err != nil {
+			logger.Error("Error while stopping server", "err", err)
+		}
 	})
 
 	// Run forever.

@@ -187,10 +187,14 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		txResult2.Index,
 	))
 
-	b.Set(depKey, hash2)
-	b.Set(keyForHeight(txResult2), hash2)
-	b.Set(hash2, rawBytes)
-	b.Write()
+	err = b.Set(depKey, hash2)
+	require.NoError(t, err)
+	err = b.Set(keyForHeight(txResult2), hash2)
+	require.NoError(t, err)
+	err = b.Set(hash2, rawBytes)
+	require.NoError(t, err)
+	err = b.Write()
+	require.NoError(t, err)
 
 	testCases := []struct {
 		q       string

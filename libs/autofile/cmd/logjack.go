@@ -59,8 +59,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = group.Start()
-	if err != nil {
+	if err = group.Start(); err != nil {
 		fmt.Printf("logjack couldn't start with file %v\n", headPath)
 		os.Exit(1)
 	}
@@ -69,16 +68,26 @@ func main() {
 	buf := make([]byte, readBufferSize)
 	for {
 		n, err := os.Stdin.Read(buf)
-		group.Write(buf[:n])
-		group.FlushAndSync()
 		if err != nil {
-			group.Stop()
+			if err := group.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "logjack stopped with error %v\n", headPath)
+				os.Exit(1)
+			}
 			if err == io.EOF {
 				os.Exit(0)
 			} else {
 				fmt.Println("logjack errored")
 				os.Exit(1)
 			}
+		}
+		_, err = group.Write(buf[:n])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "logjack failed write with error %v\n", headPath)
+			os.Exit(1)
+		}
+		if err := group.FlushAndSync(); err != nil {
+			fmt.Fprintf(os.Stderr, "logjack flushsync fail with error %v\n", headPath)
+			os.Exit(1)
 		}
 	}
 }

@@ -9,6 +9,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -149,18 +151,38 @@ func Test_Concurrency(t *testing.T) {
 		go func(i int64) {
 			defer wg.Done()
 
-			dbStore.SaveSignedHeaderAndValidatorSet(
-				&types.SignedHeader{Header: &types.Header{Height: i}}, vals)
+			err := dbStore.SaveSignedHeaderAndValidatorSet(
+				&types.SignedHeader{Header: &types.Header{Height: i,
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
+			require.NoError(t, err)
 
-			dbStore.SignedHeader(i)
-			dbStore.ValidatorSet(i)
-			dbStore.LastSignedHeaderHeight()
-			dbStore.FirstSignedHeaderHeight()
+			_, err = dbStore.SignedHeader(i)
+			if err != nil {
+				t.Log(err)
+			}
+			_, err = dbStore.ValidatorSet(i)
+			if err != nil {
+				t.Log(err) // could not find validator set
+			}
+			_, err = dbStore.LastSignedHeaderHeight()
+			if err != nil {
+				t.Log(err)
+			}
+			_, err = dbStore.FirstSignedHeaderHeight()
+			if err != nil {
+				t.Log(err)
+			}
 
-			dbStore.Prune(2)
+			err = dbStore.Prune(2)
+			if err != nil {
+				t.Log(err)
+			}
 			_ = dbStore.Size()
 
-			dbStore.DeleteSignedHeaderAndValidatorSet(1)
+			err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
+			if err != nil {
+				t.Log(err)
+			}
 		}(int64(i))
 	}
 

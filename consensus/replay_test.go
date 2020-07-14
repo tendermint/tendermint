@@ -195,7 +195,7 @@ LOOP:
 			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
-			cs.Stop()
+			cs.Stop() // Logging this error causes failure
 			cancel()
 
 			// if we reached the required height, exit
@@ -683,12 +683,12 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		err = wal.Start()
 		require.NoError(t, err)
 		defer wal.Stop()
-
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey()
 		require.NoError(t, err)
 		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
+
 	}
 	store.chain = chain
 	store.commits = commits
@@ -728,7 +728,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
+
 	defer proxyApp.Stop()
+
 	err := handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
@@ -781,7 +783,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -830,7 +832,7 @@ func buildTMStateFromChain(
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck //ignore
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -897,7 +899,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			h.Handshake(proxyApp)
+			if err = h.Handshake(proxyApp); err != nil {
+				t.Log(err)
+			}
 		})
 	}
 
@@ -915,7 +919,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 		assert.Panics(t, func() {
 			h := NewHandshaker(stateDB, state, store, genDoc)
-			h.Handshake(proxyApp)
+			if err = h.Handshake(proxyApp); err != nil {
+				t.Log(err)
+			}
 		})
 	}
 }
@@ -1208,7 +1214,6 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
-
 	// reload the state, check the validator set was updated
 	state = sm.LoadState(stateDB)
 

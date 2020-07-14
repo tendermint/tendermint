@@ -35,7 +35,8 @@ func TestAddrBookPickAddress(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 1)
 	addrSrc := randAddrs[0]
-	book.AddAddress(addrSrc.addr, addrSrc.src)
+	err := book.AddAddress(addrSrc.addr, addrSrc.src)
+	require.NoError(t, err)
 
 	// pick an address when we only have new address
 	addr = book.PickAddress(0)
@@ -68,7 +69,8 @@ func TestAddrBookSaveLoad(t *testing.T) {
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.Start()
+	err := book.Start()
+	require.NoError(t, err)
 
 	assert.True(t, book.Empty())
 
@@ -76,7 +78,8 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	randAddrs := randNetAddressPairs(t, 100)
 
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		err := book.AddAddress(addrSrc.addr, addrSrc.src)
+		require.NoError(t, err)
 	}
 
 	assert.Equal(t, 100, book.Size())
@@ -84,7 +87,8 @@ func TestAddrBookSaveLoad(t *testing.T) {
 
 	book = NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	book.Start()
+	err = book.Start()
+	require.NoError(t, err)
 
 	assert.Equal(t, 100, book.Size())
 }
@@ -100,7 +104,8 @@ func TestAddrBookLookup(t *testing.T) {
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
-		book.AddAddress(addr, src)
+		err := book.AddAddress(addr, src)
+		require.NoError(t, err)
 
 		ka := book.HasAddress(addr)
 		assert.True(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
@@ -116,7 +121,8 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		err := book.AddAddress(addrSrc.addr, addrSrc.src)
+		require.NoError(t, err)
 	}
 
 	// Attempt all addresses.
@@ -161,9 +167,12 @@ func TestAddrBookHandlesDuplicates(t *testing.T) {
 
 	differentSrc := randIPv4Address(t)
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
-		book.AddAddress(addrSrc.addr, addrSrc.src)  // duplicate
-		book.AddAddress(addrSrc.addr, differentSrc) // different src
+		err := book.AddAddress(addrSrc.addr, addrSrc.src)
+		require.NoError(t, err)
+		err = book.AddAddress(addrSrc.addr, addrSrc.src) // duplicate
+		require.NoError(t, err)
+		err = book.AddAddress(addrSrc.addr, differentSrc) // different src
+		require.NoError(t, err)
 	}
 
 	assert.Equal(t, 100, book.Size())
@@ -209,7 +218,8 @@ func TestAddrBookRemoveAddress(t *testing.T) {
 	book.SetLogger(log.TestingLogger())
 
 	addr := randIPv4Address(t)
-	book.AddAddress(addr, addr)
+	err := book.AddAddress(addr, addr)
+	require.NoError(t, err)
 	assert.Equal(t, 1, book.Size())
 
 	book.RemoveAddress(addr)
@@ -260,7 +270,8 @@ func TestAddrBookGetSelection(t *testing.T) {
 
 	// 2) add one address
 	addr := randIPv4Address(t)
-	book.AddAddress(addr, addr)
+	err := book.AddAddress(addr, addr)
+	require.NoError(t, err)
 
 	assert.Equal(t, 1, len(book.GetSelection()))
 	assert.Equal(t, addr, book.GetSelection()[0])
@@ -268,7 +279,8 @@ func TestAddrBookGetSelection(t *testing.T) {
 	// 3) add a bunch of addresses
 	randAddrs := randNetAddressPairs(t, 100)
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		err := book.AddAddress(addrSrc.addr, addrSrc.src)
+		require.NoError(t, err)
 	}
 
 	// check there is no duplicates
@@ -301,7 +313,8 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 
 	// 2) add one address
 	addr := randIPv4Address(t)
-	book.AddAddress(addr, addr)
+	err := book.AddAddress(addr, addr)
+	require.NoError(t, err)
 
 	selection = book.GetSelectionWithBias(biasTowardsNewAddrs)
 	assert.Equal(t, 1, len(selection))
@@ -310,7 +323,8 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	// 3) add a bunch of addresses
 	randAddrs := randNetAddressPairs(t, 100)
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		err := book.AddAddress(addrSrc.addr, addrSrc.src)
+		require.NoError(t, err)
 	}
 
 	// check there is no duplicates
@@ -376,7 +390,8 @@ func TestAddrBookHasAddress(t *testing.T) {
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	addr := randIPv4Address(t)
-	book.AddAddress(addr, addr)
+	err := book.AddAddress(addr, addr)
+	require.NoError(t, err)
 
 	assert.True(t, book.HasAddress(addr))
 
@@ -442,7 +457,8 @@ func TestAddrBookEmpty(t *testing.T) {
 	require.True(t, book.Empty())
 
 	// Check that book with address is not empty
-	book.AddAddress(randIPv4Address(t), randIPv4Address(t))
+	err := book.AddAddress(randIPv4Address(t), randIPv4Address(t))
+	require.NoError(t, err)
 	require.False(t, book.Empty())
 }
 
@@ -675,13 +691,15 @@ func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *add
 
 	randAddrs := randNetAddressPairs(t, nOld)
 	for _, addr := range randAddrs {
-		book.AddAddress(addr.addr, addr.src)
+		err := book.AddAddress(addr.addr, addr.src)
+		require.NoError(t, err)
 		book.MarkGood(addr.addr.ID)
 	}
 
 	randAddrs = randNetAddressPairs(t, nNew)
 	for _, addr := range randAddrs {
-		book.AddAddress(addr.addr, addr.src)
+		err := book.AddAddress(addr.addr, addr.src)
+		require.NoError(t, err)
 	}
 
 	return
