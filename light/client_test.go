@@ -395,7 +395,6 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 	// verify using bisection the header between the two trusted headers
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
-
 }
 
 func TestClient_Cleanup(t *testing.T) {
