@@ -21,21 +21,21 @@ import "gogoproto/gogo.proto";
 
 message Request {
   oneof value {
-    RequestEcho               echo                 = 2;
-    RequestFlush              flush                = 3;
-    RequestInfo               info                 = 4;
-    RequestSetOption          set_option           = 5;
-    RequestInitChain          init_chain           = 6;
-    RequestQuery              query                = 7;
-    RequestBeginBlock         begin_block          = 8;
-    RequestCheckTx            check_tx             = 9;
-    RequestDeliverTx          deliver_tx           = 19;
-    RequestEndBlock           end_block            = 11;
-    RequestCommit             commit               = 12;
-    RequestListSnapshots      list_snapshots       = 13;
-    RequestOfferSnapshot      offer_snapshot       = 14;
-    RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
-    RequestApplySnapshotChunk apply_snapshot_chunk = 16;
+    RequestEcho               echo                 = 1;
+    RequestFlush              flush                = 2;
+    RequestInfo               info                 = 3;
+    RequestSetOption          set_option           = 4;
+    RequestInitChain          init_chain           = 5;
+    RequestQuery              query                = 6;
+    RequestBeginBlock         begin_block          = 7;
+    RequestCheckTx            check_tx             = 8;
+    RequestDeliverTx          deliver_tx           = 9;
+    RequestEndBlock           end_block            = 10;
+    RequestCommit             commit               = 11;
+    RequestListSnapshots      list_snapshots       = 12;
+    RequestOfferSnapshot      offer_snapshot       = 13;
+    RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
+    RequestApplySnapshotChunk apply_snapshot_chunk = 15;
   }
 }
 
