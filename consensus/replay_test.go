@@ -195,9 +195,7 @@ LOOP:
 			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
-			if err = cs.Stop(); err != nil {
-				t.Log(err)
-			}
+			cs.Stop() // Logging this error causes failure
 			cancel()
 
 			// if we reached the required height, exit
