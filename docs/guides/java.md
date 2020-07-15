@@ -168,17 +168,29 @@ Copy the necessary `.proto` files to your project:
 
 ```bash
 mkdir -p \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/kv \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs \
   $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto
 
-cp $GOPATH/src/github.com/tendermint/tendermint/abci/types/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types/types.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/crypto/merkle/merkle.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle/merkle.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/libs/kv/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/kv/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/version.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/version.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/params.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/params.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
