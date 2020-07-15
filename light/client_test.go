@@ -922,21 +922,6 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	}
 }
 
-func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
-	_, err := light.NewClient(
-		chainID,
-		trustOptions,
-		fullNode,
-		[]provider.Provider{deadNode, deadNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
-	}
-}
-
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
