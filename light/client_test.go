@@ -202,6 +202,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				light.SequentialVerification(),
+				light.Logger(log.TestingLogger()),
 			)
 
 			if tc.initErr {
@@ -325,6 +326,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				light.SkippingVerification(light.DefaultTrustLevel),
+				light.Logger(log.TestingLogger()),
 			)
 			if tc.initErr {
 				require.Error(t, err)

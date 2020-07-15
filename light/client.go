@@ -924,9 +924,7 @@ func (c *Client) signedHeaderAndValSetFromPrimary(height int64) (*types.SignedHe
 func (c *Client) signedHeaderAndValSetFromWitness(height int64,
 	witness provider.Provider) (*types.SignedHeader, *types.ValidatorSet, *errBadWitness) {
 
-	c.providerMutex.Lock()
 	h, err := witness.SignedHeader(height)
-	c.providerMutex.Unlock()
 	if err != nil {
 		return nil, nil, &errBadWitness{err, noResponse, -1}
 	}
@@ -935,9 +933,7 @@ func (c *Client) signedHeaderAndValSetFromWitness(height int64,
 		return nil, nil, &errBadWitness{err, invalidHeader, -1}
 	}
 
-	c.providerMutex.Lock()
 	vals, err := witness.ValidatorSet(height)
-	c.providerMutex.Unlock()
 	if err != nil {
 		return nil, nil, &errBadWitness{err, noResponse, -1}
 	}
