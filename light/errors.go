@@ -56,6 +56,25 @@ func (e ErrConflictingHeaders) Error() string {
 		e.H2.Hash(), e.Witness)
 }
 
+// ErrVerificationFailed means either sequential or skipping verification has
+// failed to verify from header #1 to header #2 due to some reason.
+type ErrVerificationFailed struct {
+	From   int64
+	To     int64
+	Reason error
+}
+
+// Unwrap returns underlying reason.
+func (e ErrVerificationFailed) Unwrap() error {
+	return e.Reason
+}
+
+func (e ErrVerificationFailed) Error() string {
+	return fmt.Sprintf(
+		"verify from #%d to #%d failed: %v",
+		e.From, e.To, e.Reason)
+}
+
 // errNoWitnesses means that there are not enough witnesses connected to
 // continue running the light client.
 type errNoWitnesses struct{}
