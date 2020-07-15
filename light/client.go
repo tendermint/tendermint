@@ -348,8 +348,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 }
 
 // initializeWithTrustOptions fetches the weakly-trusted header and vals from
-// primary provider. The header is cross-checked with witnesses for additional
-// security.
+// primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
 	h, err := c.signedHeaderFromPrimary(options.Height)
@@ -366,11 +365,6 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 
 	if !bytes.Equal(h.Hash(), options.Hash) {
 		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
-	}
-
-	err = c.compareNewHeaderWithWitnesses(h)
-	if err != nil {
-		return err
 	}
 
 	// 2) Fetch and verify the vals.
@@ -493,7 +487,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 	}
 
 	// Request the header and the vals.
-	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
+	newHeader, newVals, err := c.signedHeaderAndValSetFromPrimary(height)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +555,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		case sequential:
 			err = c.sequence(c.latestTrustedHeader, newHeader, newVals, now)
 		case skipping:
-			err = c.bisection(c.latestTrustedHeader, c.latestTrustedVals, newHeader, newVals, now)
+			err = c.bisectionAgainstPrimary(c.latestTrustedHeader, c.latestTrustedVals, newHeader, newVals, now)
 		default:
 			panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 		}
@@ -600,7 +594,7 @@ func (c *Client) verifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 				if err != nil {
 					return fmt.Errorf("can't get validator set at height %d: %w", closestHeader.Height, err)
 				}
-				err = c.bisection(closestHeader, closestValidatorSet, newHeader, newVals, now)
+				err = c.bisectionAgainstPrimary(closestHeader, closestValidatorSet, newHeader, newVals, now)
 			}
 		}
 	}
@@ -634,7 +628,7 @@ func (c *Client) sequence(
 		if height == newHeader.Height { // last header
 			interimHeader, interimVals = newHeader, newVals
 		} else { // intermediate headers
-			interimHeader, interimVals, err = c.fetchHeaderAndValsAtHeight(height)
+			interimHeader, interimVals, err = c.signedHeaderAndValSetFromPrimary(height)
 			if err != nil {
 				return err
 			}
@@ -659,7 +653,8 @@ func (c *Client) sequence(
 				replaceErr := c.replacePrimaryProvider()
 				if replaceErr != nil {
 					c.logger.Error("Can't replace primary", "err", replaceErr)
-					return fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
+					// return original error
+					return err
 				}
 				// attempt to verify header again
 				height--
@@ -677,11 +672,14 @@ func (c *Client) sequence(
 }
 
 // see VerifyHeader
-// Bisection finds the middle header between a trusted and new header, reiterating the action until it
-// verifies a header. A cache of headers requested by the primary is kept such that when a
-// verification is made, and the light client tries again to verify the new header in the middle,
-// the light client does not need to ask for all the same headers again.
+//
+// Bisection finds the middle header between a trusted and new header,
+// reiterating the action until it verifies a header. A cache of headers
+// requested from source is kept such that when a verification is made, and the
+// light client tries again to verify the new header in the middle, the light
+// client does not need to ask for all the same headers again.
 func (c *Client) bisection(
+	source provider.Provider,
 	initiallyTrustedHeader *types.SignedHeader,
 	initiallyTrustedVals *types.ValidatorSet,
 	newHeader *types.SignedHeader,
@@ -714,15 +712,6 @@ func (c *Client) bisection(
 		case nil:
 			// Have we verified the last header
 			if depth == 0 {
-				// Compare header with the witnesses to ensure it's not a fork.
-				// More witnesses we have, more chance to notice one.
-				//
-				// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
-				// (primary or one of the witnesses).
-				if err := c.compareNewHeaderWithWitnesses(newHeader); err != nil {
-					c.logger.Error("Failed to compare new header with witnesses", "err", err)
-					return err
-				}
 				return nil
 			}
 			// If not, update the lower bound to the previous upper bound
@@ -737,7 +726,7 @@ func (c *Client) bisection(
 			if depth == len(headerCache)-1 {
 				pivotHeight := trustedHeader.Height + (headerCache[depth].sh.Height-trustedHeader.
 					Height)*bisectionNumerator/bisectionDenominator
-				interimHeader, interimVals, err := c.fetchHeaderAndValsAtHeight(pivotHeight)
+				interimHeader, interimVals, err := c.signedHeaderAndValSetFrom(pivotHeight, source)
 				if err != nil {
 					return err
 				}
@@ -745,33 +734,75 @@ func (c *Client) bisection(
 			}
 			depth++
 
-		case ErrInvalidHeader:
-			c.logger.Error("primary sent invalid header -> replacing", "err", err)
-			replaceErr := c.replacePrimaryProvider()
-			if replaceErr != nil {
-				c.logger.Error("Can't replace primary", "err", replaceErr)
-				// return original error
-				return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
-					trustedHeader.Height, headerCache[depth].sh.Height, err)
-			}
-			newProviderHeader, newProviderVals, err := c.fetchHeaderAndValsAtHeight(newHeader.Height)
-			if err != nil {
-				return err
-			}
-			if !bytes.Equal(newProviderHeader.Hash(), newHeader.Hash()) || !bytes.Equal(newProviderVals.Hash(), newVals.Hash()) {
-				err := fmt.Errorf("replacement provider has a different header: %X and/or vals: %X at height: %d"+
-					"to the one being verified", newProviderHeader.Hash(), newProviderVals.Hash(), newHeader.Height)
-				return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
-					trustedHeader.Height, headerCache[depth].sh.Height, err)
-			}
-			// attempt to verify the header again
-			return c.bisection(initiallyTrustedHeader, initiallyTrustedVals, newHeader, newVals, now)
-
 		default:
 			return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
 				trustedHeader.Height, headerCache[depth].sh.Height, err)
 		}
 	}
+}
+
+// bisectionAgainstPrimary does bisection plus it compares new header with
+// witnesses and replaces primary if it does not respond after
+// MaxRetryAttempts.
+func (c *Client) bisectionAgainstPrimary(
+	initiallyTrustedHeader *types.SignedHeader,
+	initiallyTrustedVals *types.ValidatorSet,
+	newHeader *types.SignedHeader,
+	newVals *types.ValidatorSet,
+	now time.Time) error {
+
+	err := c.bisection(c.primary, initiallyTrustedHeader, initiallyTrustedVals, newHeader, newVals, now)
+
+	switch errors.Unwrap(err).(type) {
+	case ErrInvalidHeader:
+		c.logger.Error("primary sent invalid header -> replacing", "err", err)
+		replaceErr := c.replacePrimaryProvider()
+		if replaceErr != nil {
+			c.logger.Error("Can't replace primary", "err", replaceErr)
+			// return original error
+			return err
+		}
+
+		replacementHeader, replacementVals, fErr := c.signedHeaderAndValSetFromPrimary(newHeader.Height)
+		if fErr != nil {
+			c.logger.Error("Can't fetch header/vals from primary", "err", fErr)
+			// return original error
+			return err
+		}
+
+		if !bytes.Equal(replacementHeader.Hash(), newHeader.Hash()) ||
+			!bytes.Equal(replacementVals.Hash(), newVals.Hash()) {
+			c.logger.Error("Replacement provider has a different header/vals",
+				"newHash", newHeader.Hash(),
+				"newVals", newVals.Hash(),
+				"replHash", replacementHeader.Hash(),
+				"replVals", replacementVals.Hash())
+			// return original error
+			return err
+		}
+
+		// attempt to verify the header again
+		return c.bisectionAgainstPrimary(
+			initiallyTrustedHeader,
+			initiallyTrustedVals,
+			replacementHeader,
+			replacementVals,
+			now,
+		)
+	case nil:
+		// Compare header with the witnesses to ensure it's not a fork.
+		// More witnesses we have, more chance to notice one.
+		//
+		// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
+		// (primary or one of the witnesses).
+		if cmpErr := c.compareNewHeaderWithWitnesses(newHeader, now); cmpErr != nil {
+			return cmpErr
+		}
+	default:
+		return err
+	}
+
+	return nil
 }
 
 // LastTrustedHeight returns a last trusted height. -1 and nil are returned if
@@ -879,18 +910,58 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 	return nil
 }
 
-// fetch header and validators for the given height (0 - latest) from primary
-// provider.
-func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
+// 0 - latest header
+// Note it swaps the primary with a witness if primary is not responding after
+// MaxRetryAttempts.
+func (c *Client) signedHeaderAndValSetFromPrimary(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
 	h, err := c.signedHeaderFromPrimary(height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to obtain the header #%d: %w", height, err)
+		return nil, nil, fmt.Errorf("can't fetch header: %w", err)
 	}
 	vals, err := c.validatorSetFromPrimary(height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to obtain the vals #%d: %w", height, err)
+		return nil, nil, fmt.Errorf("can't fetch vals: %w", err)
 	}
 	return h, vals, nil
+}
+
+// 0 - latest header
+// Note it does not do retries nor swapping.
+func (c *Client) signedHeaderAndValSetFromWitness(height int64,
+	witness provider.Provider) (*types.SignedHeader, *types.ValidatorSet, *errBadWitness) {
+
+	h, err := witness.SignedHeader(height)
+	if err != nil {
+		return nil, nil, &errBadWitness{err, noResponse, -1}
+	}
+	err = c.validateHeader(h, height)
+	if err != nil {
+		return nil, nil, &errBadWitness{err, invalidHeader, -1}
+	}
+
+	vals, err := witness.ValidatorSet(height)
+	if err != nil {
+		return nil, nil, &errBadWitness{err, noResponse, -1}
+	}
+	err = c.validateValidatorSet(vals)
+	if err != nil {
+		return nil, nil, &errBadWitness{err, invalidValidatorSet, -1}
+	}
+
+	return h, vals, nil
+}
+
+func (c *Client) signedHeaderAndValSetFrom(height int64,
+	source provider.Provider) (*types.SignedHeader, *types.ValidatorSet, error) {
+
+	c.providerMutex.Lock()
+	sourceIsPrimary := (c.primary == source)
+	c.providerMutex.Unlock()
+
+	if sourceIsPrimary {
+		return c.signedHeaderAndValSetFromPrimary(height)
+	}
+	return c.signedHeaderAndValSetFromWitness(height, source)
 }
 
 // backwards verification (see VerifyHeaderBackwards func in the spec) verifies
@@ -944,7 +1015,7 @@ func (c *Client) backwards(
 }
 
 // compare header with all witnesses provided.
-func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
+func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader, now time.Time) error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
@@ -961,7 +1032,7 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 		// launch one goroutine per witness
 		errc := make(chan error, len(c.witnesses))
 		for i, witness := range c.witnesses {
-			go c.compareNewHeaderWithWitness(errc, h, witness, i)
+			go c.compareNewHeaderWithWitness(errc, h, witness, i, now)
 		}
 
 		witnessesToRemove := make([]int, 0)
@@ -973,14 +1044,15 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 			switch e := err.(type) {
 			case nil: // at least one header matched
 				headerMatched = true
-			case ErrConflictingHeaders: // potential fork
-				c.logger.Error(err.Error(), "witness", e.Witness)
+			case ErrConflictingHeaders: // fork detected
+				c.logger.Info("FORK DETECTED", "witness", e.Witness, "err", err)
 				c.sendConflictingHeadersEvidence(&types.ConflictingHeadersEvidence{H1: h, H2: e.H2})
 				lastErrConfHeaders = e
 			case errBadWitness:
-				c.logger.Error(err.Error(), "witness", c.witnesses[e.WitnessIndex])
-				// if witness sent us invalid header, remove it
-				if e.Code == invalidHeader {
+				c.logger.Info("Bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
+				// if witness sent us invalid header / vals, remove it
+				if e.Code == invalidHeader || e.Code == invalidValidatorSet {
+					c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
 					witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				}
 			}
@@ -1006,27 +1078,20 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader) error {
 }
 
 func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
-	witness provider.Provider, witnessIndex int) {
+	witness provider.Provider, witnessIndex int, now time.Time) {
 
-	altH, err := witness.SignedHeader(h.Height)
+	altH, altVals, err := c.signedHeaderAndValSetFromWitness(h.Height, witness)
 	if err != nil {
-		errc <- errBadWitness{err, noResponse, witnessIndex}
-		return
-	}
-
-	if err = altH.ValidateBasic(c.chainID); err != nil {
-		errc <- errBadWitness{err, invalidHeader, witnessIndex}
+		err.WitnessIndex = witnessIndex
+		errc <- err
 		return
 	}
 
 	if !bytes.Equal(h.Hash(), altH.Hash()) {
-		// FIXME: call bisection instead of VerifyCommitLightTrusting
-		// https://github.com/tendermint/tendermint/issues/4934
-		if err = c.latestTrustedVals.VerifyCommitLightTrusting(c.chainID, altH.Commit, c.trustLevel); err != nil {
-			errc <- errBadWitness{err, invalidHeader, witnessIndex}
+		if bsErr := c.bisection(witness, c.latestTrustedHeader, c.latestTrustedVals, altH, altVals, now); bsErr != nil {
+			errc <- errBadWitness{bsErr, invalidHeader, witnessIndex}
 			return
 		}
-
 		errc <- ErrConflictingHeaders{H1: h, Primary: c.primary, H2: altH, Witness: witness}
 	}
 
@@ -1060,7 +1125,7 @@ func (c *Client) Update(now time.Time) (*types.SignedHeader, error) {
 		return nil, nil
 	}
 
-	latestHeader, latestVals, err := c.fetchHeaderAndValsAtHeight(0)
+	latestHeader, latestVals, err := c.signedHeaderAndValSetFromPrimary(0)
 	if err != nil {
 		return nil, err
 	}
@@ -1134,10 +1199,14 @@ func (c *Client) validateHeader(h *types.SignedHeader, expectedHeight int64) err
 	if h == nil {
 		return errors.New("nil header")
 	}
+	err := h.ValidateBasic(c.chainID)
+	if err != nil {
+		return err
+	}
 	if expectedHeight > 0 && h.Height != expectedHeight {
 		return errors.New("height mismatch")
 	}
-	return h.ValidateBasic(c.chainID)
+	return nil
 }
 
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider

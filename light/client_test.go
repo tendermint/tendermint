@@ -202,6 +202,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				light.SequentialVerification(),
+				light.Logger(log.TestingLogger()),
 			)
 
 			if tc.initErr {
@@ -325,6 +326,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				)},
 				dbs.New(dbm.NewMemDB(), chainID),
 				light.SkippingVerification(light.DefaultTrustLevel),
+				light.Logger(log.TestingLogger()),
 			)
 			if tc.initErr {
 				require.Error(t, err)
@@ -395,7 +397,6 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 	// verify using bisection the header between the two trusted headers
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
-
 }
 
 func TestClient_Cleanup(t *testing.T) {
@@ -923,21 +924,6 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	}
 }
 
-func TestNewClientErrorsIfAllWitnessesUnavailable(t *testing.T) {
-	_, err := light.NewClient(
-		chainID,
-		trustOptions,
-		fullNode,
-		[]provider.Provider{deadNode, deadNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "awaiting response from all witnesses exceeded dropout time")
-	}
-}
-
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
@@ -987,18 +973,13 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// header should still be verified
 	assert.EqualValues(t, 2, h.Height)
 
-	// remaining withness doesn't have header -> error
+	// remaining witnesses doesn't have header -> error
 	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
 	if assert.Error(t, err) {
 		assert.Equal(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
 	}
-	assert.EqualValues(t, 0, len(c.Witnesses()))
-
-	// no witnesses left, will not be allowed to verify a header
-	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
-	if assert.Error(t, err) {
-		assert.Equal(t, "no witnesses connected. please reset light client", err.Error())
-	}
+	// witness does not have a header -> left in the list
+	assert.EqualValues(t, 1, len(c.Witnesses()))
 }
 
 func TestClientTrustedValidatorSet(t *testing.T) {
