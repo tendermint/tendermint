@@ -55,7 +55,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
   - [crypto] \#4940 All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data.
   - [crypto] \4988 Removal of key type multisig
-    - The key has been moved to the Cosmos-SDK (https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+    - The key has been moved to the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
   - [crypto] \#4989 Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`.
     - `merkle.Proof` has been renamed to `ProofOps`.
     - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`

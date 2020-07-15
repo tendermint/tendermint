@@ -228,7 +228,8 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	if *update {
 		t.Logf("Updating golden test vector file %s", goldenFilepath)
 		data := createGoldenTestVectors(t)
-		tmos.WriteFile(goldenFilepath, []byte(data), 0644)
+		err := tmos.WriteFile(goldenFilepath, []byte(data), 0644)
+		require.NoError(t, err)
 	}
 	f, err := os.Open(goldenFilepath)
 	if err != nil {
@@ -263,7 +264,7 @@ func TestNilPubkey(t *testing.T) {
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = privKeyWithNilPubKey{ed25519.GenPrivKey()}
 
-	go MakeSecretConnection(fooConn, fooPrvKey)
+	go MakeSecretConnection(fooConn, fooPrvKey) //nolint:errcheck // ignore for tests
 
 	_, err := MakeSecretConnection(barConn, barPrvKey)
 	require.Error(t, err)
@@ -277,7 +278,7 @@ func TestNonEd25519Pubkey(t *testing.T) {
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = secp256k1.GenPrivKey()
 
-	go MakeSecretConnection(fooConn, fooPrvKey)
+	go MakeSecretConnection(fooConn, fooPrvKey) //nolint:errcheck // ignore for tests
 
 	_, err := MakeSecretConnection(barConn, barPrvKey)
 	require.Error(t, err)

@@ -141,7 +141,9 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 // StopTendermint stops a test tendermint server, waits until it's stopped and
 // cleans up test/config files.
 func StopTendermint(node *nm.Node) {
-	node.Stop()
+	if err := node.Stop(); err != nil {
+		node.Logger.Error("Error when tryint to stop node", "err", err)
+	}
 	node.Wait()
 	os.RemoveAll(node.Config().RootDir)
 }

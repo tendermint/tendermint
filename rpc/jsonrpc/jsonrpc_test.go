@@ -287,7 +287,8 @@ func TestServersAndClientsBasic(t *testing.T) {
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using WS client", addr)
 		testWithWSClient(t, cl3)
-		cl3.Stop()
+		err = cl3.Stop()
+		require.NoError(t, err)
 	}
 }
 
@@ -317,7 +318,11 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()
 	require.Nil(t, err)
-	defer cl.Stop()
+	t.Cleanup(func() {
+		if err := cl.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	val := testVal
 	params := map[string]interface{}{
@@ -343,7 +348,11 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()
 	require.Nil(t, err)
-	defer cl.Stop()
+	t.Cleanup(func() {
+		if err := cl.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	val := testVal
 	params := []interface{}{val}
@@ -369,7 +378,11 @@ func TestWSClientPingPong(t *testing.T) {
 	cl.SetLogger(log.TestingLogger())
 	err = cl.Start()
 	require.Nil(t, err)
-	defer cl.Stop()
+	t.Cleanup(func() {
+		if err := cl.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	time.Sleep(6 * time.Second)
 }

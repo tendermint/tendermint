@@ -437,8 +437,6 @@ func expectSend(ch chan struct{}) bool {
 func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
-	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
 
 	client := mconnClient.conn
 
@@ -446,13 +444,23 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	_, err := client.Write([]byte{1, 2, 3, 4, 5})
 	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
+
+	t.Cleanup(func() {
+		if err := mconnClient.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+
+	t.Cleanup(func() {
+		if err := mconnServer.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop()
-	defer mconnServer.Stop()
 
 	msg := []byte("Ant-Man")
 
@@ -463,6 +471,18 @@ func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
 	// should cause an error
 	assert.True(t, mconnClient.Send(0x02, msg))
 	assert.True(t, expectSend(chOnErr), "unknown channel")
+
+	t.Cleanup(func() {
+		if err := mconnClient.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+
+	t.Cleanup(func() {
+		if err := mconnServer.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 }
 
 func TestMConnectionReadErrorLongMessage(t *testing.T) {
@@ -528,7 +548,8 @@ func TestMConnectionTrySend(t *testing.T) {
 	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)
 	assert.True(t, mconn.TrySend(0x01, msg))
-	server.Read(make([]byte, len(msg)))
+	_, err = server.Read(make([]byte, len(msg)))
+	require.NoError(t, err)
 	assert.True(t, mconn.CanSend(0x01))
 	assert.True(t, mconn.TrySend(0x01, msg))
 	assert.False(t, mconn.CanSend(0x01))

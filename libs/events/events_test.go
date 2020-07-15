@@ -17,7 +17,11 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	messages := make(chan EventData)
 	err = evsw.AddListenerForEvent("listener", "event",
@@ -40,7 +44,11 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
@@ -70,7 +78,11 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -118,7 +130,12 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -185,7 +202,11 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	done1 := make(chan struct{})
 	done2 := make(chan struct{})
@@ -231,7 +252,11 @@ func TestAddAndRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -278,7 +303,11 @@ func TestRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	count := 10
 	sum1, sum2 := 0, 0
@@ -335,7 +364,11 @@ func TestRemoveListenersAsync(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	require.NoError(t, err)
-	defer evsw.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() {
+		if err := evsw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)

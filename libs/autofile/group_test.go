@@ -53,7 +53,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 		err := g.WriteLine(tmrand.Str(999))
 		require.NoError(t, err, "Error appending to head")
 	}
-	g.FlushAndSync()
+	err := g.FlushAndSync()
+	require.NoError(t, err)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Even calling checkHeadSizeLimit manually won't rotate it.
@@ -61,9 +62,10 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
-	err := g.WriteLine(tmrand.Str(999))
+	err = g.WriteLine(tmrand.Str(999))
 	require.NoError(t, err, "Error appending to head")
-	g.FlushAndSync()
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	// Calling checkHeadSizeLimit this time rolls it.
 	g.checkHeadSizeLimit()
@@ -72,7 +74,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	// Write 1000 more bytes.
 	err = g.WriteLine(tmrand.Str(999))
 	require.NoError(t, err, "Error appending to head")
-	g.FlushAndSync()
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	// Calling checkHeadSizeLimit does nothing.
 	g.checkHeadSizeLimit()
@@ -83,7 +86,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 		err = g.WriteLine(tmrand.Str(999))
 		require.NoError(t, err, "Error appending to head")
 	}
-	g.FlushAndSync()
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
 
 	// Calling checkHeadSizeLimit rolls it again.
@@ -93,7 +97,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	// Write 1000 more bytes.
 	_, err = g.Head.Write([]byte(tmrand.Str(999) + "\n"))
 	require.NoError(t, err, "Error appending to head")
-	g.FlushAndSync()
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Calling checkHeadSizeLimit does nothing.
@@ -111,7 +116,11 @@ func TestRotateFile(t *testing.T) {
 	// relative paths are resolved at Group creation
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(origDir)
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	dir, err := ioutil.TempDir("", "rotate_test")
 	require.NoError(t, err)
@@ -123,15 +132,23 @@ func TestRotateFile(t *testing.T) {
 	require.True(t, filepath.IsAbs(g.Dir))
 
 	// Create and rotate files
-	g.WriteLine("Line 1")
-	g.WriteLine("Line 2")
-	g.WriteLine("Line 3")
-	g.FlushAndSync()
+	err = g.WriteLine("Line 1")
+	require.NoError(t, err)
+	err = g.WriteLine("Line 2")
+	require.NoError(t, err)
+	err = g.WriteLine("Line 3")
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
-	g.WriteLine("Line 4")
-	g.WriteLine("Line 5")
-	g.WriteLine("Line 6")
-	g.FlushAndSync()
+	err = g.WriteLine("Line 4")
+	require.NoError(t, err)
+	err = g.WriteLine("Line 5")
+	require.NoError(t, err)
+	err = g.WriteLine("Line 6")
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	// Read g.Head.Path+"000"
 	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
@@ -160,8 +177,10 @@ func TestWrite(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	written := []byte("Medusa")
-	g.Write(written)
-	g.FlushAndSync()
+	_, err := g.Write(written)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	read := make([]byte, len(written))
 	gr, err := g.NewReader(0)
@@ -181,12 +200,16 @@ func TestGroupReaderRead(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
-	g.Write(professor)
-	g.FlushAndSync()
+	_, err := g.Write(professor)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
-	g.Write(frankenstein)
-	g.FlushAndSync()
+	_, err = g.Write(frankenstein)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	totalWrittenLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalWrittenLength)
@@ -210,13 +233,17 @@ func TestGroupReaderRead2(t *testing.T) {
 	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
-	g.Write(professor)
-	g.FlushAndSync()
+	_, err := g.Write(professor)
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
 	frankensteinPart := []byte("Frankenstein")
-	g.Write(frankensteinPart) // note writing only a part
-	g.FlushAndSync()
+	_, err = g.Write(frankensteinPart) // note writing only a part
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 
 	totalLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalLength)
@@ -251,8 +278,10 @@ func TestMaxIndex(t *testing.T) {
 
 	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 
-	g.WriteLine("Line 1")
-	g.FlushAndSync()
+	err := g.WriteLine("Line 1")
+	require.NoError(t, err)
+	err = g.FlushAndSync()
+	require.NoError(t, err)
 	g.RotateFile()
 
 	assert.Equal(t, 1, g.MaxIndex(), "MaxIndex should point to the last file")

@@ -22,7 +22,9 @@ func TestSIGHUP(t *testing.T) {
 	// First, create a temporary directory and move into it
 	dir, err := ioutil.TempDir("", "sighup_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
 	err = os.Chdir(dir)
 	require.NoError(t, err)
 
@@ -50,7 +52,8 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send SIGHUP to self.
-	syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
+	err = syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
+	require.NoError(t, err)
 
 	// Wait a bit... signals are not handled synchronously.
 	time.Sleep(time.Millisecond * 10)
