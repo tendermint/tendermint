@@ -2,7 +2,7 @@
 order: 9
 ---
 
-# Light Client Protocol
+# Light Client
 
 Light clients are an important part of the complete blockchain system for most
 applications. Tendermint provides unique speed and security properties for
@@ -21,7 +21,7 @@ proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a9909
 
 ## Properties
 
-- You get the full collateralized security benefits of Tendermint; No
+- You get the full collateralized security benefits of Tendermint; no
   need to wait for confirmations.
 - You get the full speed benefits of Tendermint; transactions
   commit instantly.
@@ -46,13 +46,20 @@ $ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed
 }
 ```
 
-## HTTP proxy
+## Running a light client as an HTTP proxy server
 
 Tendermint comes with a built-in `tendermint light` command, which can be used
 to run a light client proxy server, verifying Tendermint rpc. All calls that
 can be tracked back to a block header by a proof will be verified before
 passing them back to the caller. Other than that, it will present the same
 interface as a full Tendermint node.
+
+You can start the light client proxy server by running `tendermint light <chainID>`, 
+with a variety of flags to specify the primary node,  the witness nodes (which cross-check
+the information provided by the primary), the hash and height of the trusted header, 
+and more.
+
+For example: 
 
 ```bash
 $ tendermint light supernova -p tcp://233.123.0.140:26657 \
