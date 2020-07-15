@@ -1193,10 +1193,14 @@ func (c *Client) validateHeader(h *types.SignedHeader, expectedHeight int64) err
 	if h == nil {
 		return errors.New("nil header")
 	}
+	err := h.ValidateBasic(c.chainID)
+	if err != nil {
+		return err
+	}
 	if expectedHeight > 0 && h.Height != expectedHeight {
 		return errors.New("height mismatch")
 	}
-	return h.ValidateBasic(c.chainID)
+	return nil
 }
 
 // validatorSetFromPrimary retrieves the ValidatorSet from the primary provider
