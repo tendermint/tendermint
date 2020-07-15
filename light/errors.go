@@ -83,7 +83,7 @@ type errBadWitness struct {
 func (e errBadWitness) Error() string {
 	switch e.Code {
 	case noResponse:
-		return fmt.Sprintf("failed to get a header from witness: %v", e.Reason)
+		return fmt.Sprintf("failed to get a header/vals from witness: %v", e.Reason)
 	case invalidHeader:
 		return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
 	case invalidValidatorSet:

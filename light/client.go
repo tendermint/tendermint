@@ -348,8 +348,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 }
 
 // initializeWithTrustOptions fetches the weakly-trusted header and vals from
-// primary provider. The header is cross-checked with witnesses for additional
-// security.
+// primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
 	h, err := c.signedHeaderFromPrimary(options.Height)
@@ -783,7 +782,7 @@ func (c *Client) bisectionAgainstPrimary(
 		}
 
 		// attempt to verify the header again
-		return c.bisection(c.primary, initiallyTrustedHeader, initiallyTrustedVals, replacementHeader, replacementVals, now)
+		return c.bisectionAgainstPrimary(initiallyTrustedHeader, initiallyTrustedVals, replacementHeader, replacementVals, now)
 	case nil:
 		// Compare header with the witnesses to ensure it's not a fork.
 		// More witnesses we have, more chance to notice one.
@@ -923,28 +922,28 @@ func (c *Client) signedHeaderAndValSetFromPrimary(height int64) (*types.SignedHe
 // 0 - latest header
 // Note it does not do retries nor swapping.
 func (c *Client) signedHeaderAndValSetFromWitness(height int64,
-	witness provider.Provider) (*types.SignedHeader, *types.ValidatorSet, error) {
+	witness provider.Provider) (*types.SignedHeader, *types.ValidatorSet, *errBadWitness) {
 
 	c.providerMutex.Lock()
 	h, err := witness.SignedHeader(height)
 	c.providerMutex.Unlock()
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't fetch header: %w", err)
+		return nil, nil, &errBadWitness{err, noResponse, -1}
 	}
 	err = c.validateHeader(h, height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid header: %w", err)
+		return nil, nil, &errBadWitness{err, invalidHeader, -1}
 	}
 
 	c.providerMutex.Lock()
 	vals, err := witness.ValidatorSet(height)
 	c.providerMutex.Unlock()
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't fetch vals: %w", err)
+		return nil, nil, &errBadWitness{err, noResponse, -1}
 	}
 	err = c.validateValidatorSet(vals)
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid vals: %w", err)
+		return nil, nil, &errBadWitness{err, invalidValidatorSet, -1}
 	}
 
 	return h, vals, nil
@@ -1079,41 +1078,18 @@ func (c *Client) compareNewHeaderWithWitnesses(h *types.SignedHeader, now time.T
 func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int, now time.Time) {
 
-	altH, err := witness.SignedHeader(h.Height)
+	altH, altVals, err := c.signedHeaderAndValSetFromWitness(h.Height, witness)
 	if err != nil {
-		errc <- errBadWitness{err, noResponse, witnessIndex}
-		return
-	}
-	if err = altH.ValidateBasic(c.chainID); err != nil {
-		errc <- errBadWitness{err, invalidHeader, witnessIndex}
-		return
-	}
-
-	altVals, err := witness.ValidatorSet(h.Height)
-	if err != nil {
-		errc <- errBadWitness{err, noResponse, witnessIndex}
-		return
-	}
-	if err = altVals.ValidateBasic(); err != nil {
-		errc <- errBadWitness{err, invalidValidatorSet, witnessIndex}
-		return
-	}
-
-	if !bytes.Equal(altH.ValidatorsHash, altVals.Hash()) {
-		err := fmt.Errorf("expected header's validators (%X) to match those that were supplied (%X)",
-			altH.ValidatorsHash,
-			altVals.Hash(),
-		)
-		errc <- errBadWitness{err, invalidValidatorSet, witnessIndex}
+		err.WitnessIndex = witnessIndex
+		errc <- err
 		return
 	}
 
 	if !bytes.Equal(h.Hash(), altH.Hash()) {
-		if err = c.bisection(witness, c.latestTrustedHeader, c.latestTrustedVals, altH, altVals, now); err != nil {
-			errc <- errBadWitness{err, invalidHeader, witnessIndex}
+		if bsErr := c.bisection(witness, c.latestTrustedHeader, c.latestTrustedVals, altH, altVals, now); bsErr != nil {
+			errc <- errBadWitness{bsErr, invalidHeader, witnessIndex}
 			return
 		}
-
 		errc <- ErrConflictingHeaders{H1: h, Primary: c.primary, H2: altH, Witness: witness}
 	}
 
