@@ -973,18 +973,13 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// header should still be verified
 	assert.EqualValues(t, 2, h.Height)
 
-	// remaining withness doesn't have header -> error
+	// remaining witnesses doesn't have header -> error
 	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
 	if assert.Error(t, err) {
 		assert.Equal(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
 	}
-	assert.EqualValues(t, 0, len(c.Witnesses()))
-
-	// no witnesses left, will not be allowed to verify a header
-	_, err = c.VerifyHeaderAtHeight(3, bTime.Add(2*time.Hour))
-	if assert.Error(t, err) {
-		assert.Equal(t, "no witnesses connected. please reset light client", err.Error())
-	}
+	// witness does not have a header -> left in the list
+	assert.EqualValues(t, 1, len(c.Witnesses()))
 }
 
 func TestClientTrustedValidatorSet(t *testing.T) {
