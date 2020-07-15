@@ -782,7 +782,13 @@ func (c *Client) bisectionAgainstPrimary(
 		}
 
 		// attempt to verify the header again
-		return c.bisectionAgainstPrimary(initiallyTrustedHeader, initiallyTrustedVals, replacementHeader, replacementVals, now)
+		return c.bisectionAgainstPrimary(
+			initiallyTrustedHeader,
+			initiallyTrustedVals,
+			replacementHeader,
+			replacementVals,
+			now,
+		)
 	case nil:
 		// Compare header with the witnesses to ensure it's not a fork.
 		// More witnesses we have, more chance to notice one.
