@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
 	"github.com/tendermint/tendermint/types"
@@ -121,7 +121,7 @@ type Client struct {
 	maxClockDrift    time.Duration
 
 	// Mutex for locking during changes of the light clients providers
-	providerMutex sync.Mutex
+	providerMutex tmsync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
 	// See Witnesses option

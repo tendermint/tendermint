@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -17,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 )
@@ -38,7 +38,7 @@ const (
 
 // Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 
 	Header     `json:"header"`
 	Data       `json:"data"`

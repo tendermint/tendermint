@@ -1,18 +1,19 @@
 package timer
 
 import (
-	"sync"
 	"testing"
 	"time"
 
 	// make govet noshadow happy...
 
 	asrt "github.com/stretchr/testify/assert"
+
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 type thCounter struct {
 	input chan struct{}
-	mtx   sync.Mutex
+	mtx   tmsync.Mutex
 	count int
 }
 

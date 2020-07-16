@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"sync"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -42,7 +42,7 @@ func (s *snapshot) Key() snapshotKey {
 type snapshotPool struct {
 	stateProvider StateProvider
 
-	sync.Mutex
+	tmsync.Mutex
 	snapshots     map[snapshotKey]*snapshot
 	snapshotPeers map[snapshotKey]map[p2p.ID]p2p.Peer
 

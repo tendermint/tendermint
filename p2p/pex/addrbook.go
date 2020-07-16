@@ -19,6 +19,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -86,7 +87,7 @@ type addrBook struct {
 	service.BaseService
 
 	// accessed concurrently
-	mtx        sync.Mutex
+	mtx        tmsync.Mutex
 	rand       *tmrand.Rand
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
