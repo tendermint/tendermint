@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
