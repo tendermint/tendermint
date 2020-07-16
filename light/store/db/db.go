@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"sync"
 
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -23,7 +23,7 @@ type dbs struct {
 	db     dbm.DB
 	prefix string
 
-	mtx  sync.RWMutex
+	mtx  tmsync.RWMutex
 	size uint16
 }
 

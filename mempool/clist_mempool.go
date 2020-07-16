@@ -44,7 +44,7 @@ type CListMempool struct {
 
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
-	updateMtx sync.RWMutex
+	updateMtx tmsync.RWMutex
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 

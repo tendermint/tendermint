@@ -3,9 +3,9 @@ package statesync
 import (
 	"errors"
 	"sort"
-	"sync"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
@@ -33,7 +33,7 @@ type Reactor struct {
 
 	// This will only be set when a state sync is in progress. It is used to feed received
 	// snapshots and chunks into the sync.
-	mtx    sync.RWMutex
+	mtx    tmsync.RWMutex
 	syncer *syncer
 }
 
