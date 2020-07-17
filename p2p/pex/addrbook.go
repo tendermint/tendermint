@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/minio/highwayhash"
+
 	"github.com/tendermint/tendermint/crypto"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
