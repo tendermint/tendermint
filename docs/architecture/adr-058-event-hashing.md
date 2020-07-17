@@ -9,23 +9,21 @@
 Before [PR#4845](https://github.com/tendermint/tendermint/pull/4845),
 `Header#LastResultsHash` was a root of the Merkle tree built from `DeliverTx`
 results. Only `Code`, `Data` fields were included because `Info` and `Log`
-fields are non-deterministic. `GasWanted` and `GasUsed` fields appeared later.
+fields are non-deterministic.
 
 At some point, we've added events to `ResponseBeginBlock`, `ResponseEndBlock`,
 and `ResponseDeliverTx` to give applications a way to attach some additional
-information.
+information to blocks / transactions.
 
 Many applications seem to have started using them since.
 
 However, before [PR#4845](https://github.com/tendermint/tendermint/pull/4845)
-there was no way to prove that certain events were a part of the result.
-
-Hence, [PR#4845](https://github.com/tendermint/tendermint/pull/4845) was
-opened.
+there was no way to prove that certain events were a part of the result. Hence,
+[PR#4845](https://github.com/tendermint/tendermint/pull/4845) was opened.
 
 While it's certainly good to be able to prove something, introducing new events
 or removing such becomes difficult because it breaks the `LastResultsHash`. And
-that is certainly bad for applications, which haven't matured enough.
+that is undoubtedly bad for applications, which haven't matured enough.
 
 ## Decision
 
