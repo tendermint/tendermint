@@ -299,19 +299,22 @@ message LastCommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
-// EventAttribute represents an event to the indexing service.
-message EventAttribute {
-  bytes key   = 1;
-  bytes value = 2;
-  bool  index = 3;
-}
-
+// Event allows application developers to attach additional information to
+// ResponseBeginBlock, ResponseEndBlock, ResponseCheckTx and ResponseDeliverTx.
+// Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;
   repeated EventAttribute attributes = 2 [
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "attributes,omitempty"
   ];
+}
+
+// EventAttribute is a single key-value pair, associated with an event.
+message EventAttribute {
+  bytes key   = 1;
+  bytes value = 2;
+  bool  index = 3;  // nondeterministic
 }
 
 // TxResult contains results of executing the transaction.
