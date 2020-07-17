@@ -982,7 +982,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	assert.EqualValues(t, 1, len(c.Witnesses()))
 }
 
-func TestClientTrustedValidatorSet(t *testing.T) {
+func TestClient_TrustedValidatorSet(t *testing.T) {
 	noValSetNode := mockp.New(
 		chainID,
 		headerSet,
@@ -997,7 +997,15 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 
 	badValSetNode := mockp.New(
 		chainID,
-		headerSet,
+		map[int64]*types.SignedHeader{
+			1: h1,
+			// 3/3 signed, but validator set at height 2 below is invalid -> witness
+			// should be removed.
+			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
+				0, len(keys), types.BlockID{Hash: h1.Hash()}),
+			3: h3,
+		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
 			2: differentVals,
@@ -1009,7 +1017,7 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 		chainID,
 		trustOptions,
 		noValSetNode,
-		[]provider.Provider{badValSetNode, fullNode, fullNode},
+		[]provider.Provider{fullNode, badValSetNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 	)
@@ -1017,11 +1025,8 @@ func TestClientTrustedValidatorSet(t *testing.T) {
 	assert.Equal(t, 2, len(c.Witnesses()))
 
 	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
-	assert.Error(t, err)
-	assert.Equal(t, 1, len(c.Witnesses()))
-
-	_, err = c.VerifyHeaderAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(c.Witnesses()))
 
 	valSet, height, err := c.TrustedValidatorSet(0)
 	assert.NoError(t, err)
