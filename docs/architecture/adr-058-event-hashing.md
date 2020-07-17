@@ -7,11 +7,11 @@
 ## Context
 
 Before [PR#4845](https://github.com/tendermint/tendermint/pull/4845),
-`Header#LastResultsHash` were a root of the Merkle tree built from `DeliverTx`
+`Header#LastResultsHash` was a root of the Merkle tree built from `DeliverTx`
 results. Only `Code`, `Data` fields were included because `Info` and `Log`
 fields are non-deterministic. `GasWanted` and `GasUsed` fields appeared later.
 
-At some point, we've added events to `ResponseBeginBlock`, `ResponseEndBlock`
+At some point, we've added events to `ResponseBeginBlock`, `ResponseEndBlock`,
 and `ResponseDeliverTx` to give applications a way to attach some additional
 information.
 
