@@ -14,9 +14,13 @@ type, only the key-value pairs defined in `EndBlock` are used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events) documentation.
+details on `Events`, see the
+[ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
+documentation.
 
-An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
+An Event has a composite key associated with it. A `compositeKey` is
+constructed by its type and key separated by a dot.
+
 For example:
 
 ```json
@@ -45,13 +49,15 @@ By default, Tendermint will index all transactions by their respective
 hashes using an embedded simple indexer. Note, we are planning to add
 more options in the future (e.g., PostgreSQL indexer).
 
+You can turn off indexing completely by setting `tx_index` to `null`.
+
 ## Adding Events
 
-
-Applications are free to define which events to index. Tendermint does not expose functionality to define
-which events to index and which to ignore. In your application's `DeliverTx` method, add the `Events` field with pairs of
-UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient": "Alice",
-"transfer.balance": "100").
+Applications are free to define which events to index. Tendermint does not
+expose functionality to define which events to index and which to ignore. In
+your application's `DeliverTx` method, add the `Events` field with pairs of
+UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient":
+"Alice", "transfer.balance": "100").
 
 Example:
 
@@ -73,7 +79,9 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-The index will be added if the `Index` field of attribute is set to true. In above example, all events will be indexed.
+The transaction will be indexed (if the indexer is not `null`) with a certain
+attribute if the attribute's `Index` field is set to `true`. In the above
+example, all attributes will be used.
 
 ## Querying Transactions
 
