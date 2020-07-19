@@ -37,4 +37,5 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 
 - [p2p][\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
+- [p2p][\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)
