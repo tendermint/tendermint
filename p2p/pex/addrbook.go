@@ -609,8 +609,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	ka := a.addrLookup[addr.ID]
 	if ka != nil {
-		// If its already old and the addr is the same, ignore it.
-		if ka.isOld() && ka.Addr.Equals(addr) {
+		// If its already old and the address ID's are the same, ignore it.
+		// Thereby avoiding issues with a node on the network attempting to change
+		// the IP of a known node ID. (Which could yield an eclipse attack on the node)
+		if ka.isOld() && ka.Addr.ID == addr.ID {
 			return nil
 		}
 		// Already in max new buckets.
