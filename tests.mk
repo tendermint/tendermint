@@ -103,7 +103,7 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	@go test -p 1 $(PACKAGES)
+	@go test -p 1 $(PACKAGES) -tags deadlock
 .PHONY: test
 
 test_race:
@@ -113,5 +113,5 @@ test_race:
 
 test_deadlock:
 	@echo "--> Running go test --deadlock"
-	@go test -p 1 -v  $(PACKAGES) --tags deadlock 
+	@go test -p 1 -v  $(PACKAGES) -tags deadlock 
 .PHONY: test_race
