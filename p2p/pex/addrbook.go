@@ -688,11 +688,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if err != nil {
 		return err
 	}
-	err = a.addToNewBucket(ka, bucket)
-  if err != nil {
-		return err
-	}
-	return nil
+	return a.addToNewBucket(ka, bucket)
 }
 
 func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress {
