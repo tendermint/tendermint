@@ -630,7 +630,7 @@ func (c *Client) sequence(
 		} else { // intermediate headers
 			interimHeader, interimVals, err = c.signedHeaderAndValSetFromPrimary(height)
 			if err != nil {
-				return err
+				return ErrVerificationFailed{From: trustedHeader.Height, To: height, Reason: err}
 			}
 		}
 
@@ -644,11 +644,18 @@ func (c *Client) sequence(
 		err = VerifyAdjacent(c.chainID, trustedHeader, interimHeader, interimVals,
 			c.trustingPeriod, now, c.maxClockDrift)
 		if err != nil {
-			err := fmt.Errorf("verify adjacent from #%d to #%d failed: %w",
-				trustedHeader.Height, interimHeader.Height, err)
+			err := ErrVerificationFailed{From: trustedHeader.Height, To: interimHeader.Height, Reason: err}
 
 			switch errors.Unwrap(err).(type) {
 			case ErrInvalidHeader:
+				// If the target header is invalid, return immediately.
+				if err.To == newHeader.Height {
+					c.logger.Debug("Target header is invalid", "err", err)
+					return err
+				}
+
+				// If some intermediate header is invalid, replace the primary and try
+				// again.
 				c.logger.Error("primary sent invalid header -> replacing", "err", err)
 				replaceErr := c.replacePrimaryProvider()
 				if replaceErr != nil {
@@ -656,8 +663,28 @@ func (c *Client) sequence(
 					// return original error
 					return err
 				}
+
+				replacementHeader, replacementVals, fErr := c.signedHeaderAndValSetFromPrimary(newHeader.Height)
+				if fErr != nil {
+					c.logger.Error("Can't fetch header/vals from primary", "err", fErr)
+					// return original error
+					return err
+				}
+
+				if !bytes.Equal(replacementHeader.Hash(), newHeader.Hash()) ||
+					!bytes.Equal(replacementVals.Hash(), newVals.Hash()) {
+					c.logger.Error("Replacement provider has a different header/vals",
+						"newHash", newHeader.Hash(),
+						"newVals", newVals.Hash(),
+						"replHash", replacementHeader.Hash(),
+						"replVals", replacementVals.Hash())
+					// return original error
+					return err
+				}
+
 				// attempt to verify header again
 				height--
+
 				continue
 			default:
 				return err
@@ -728,15 +755,14 @@ func (c *Client) bisection(
 					Height)*bisectionNumerator/bisectionDenominator
 				interimHeader, interimVals, err := c.signedHeaderAndValSetFrom(pivotHeight, source)
 				if err != nil {
-					return err
+					return ErrVerificationFailed{From: trustedHeader.Height, To: pivotHeight, Reason: err}
 				}
 				headerCache = append(headerCache, headerSet{interimHeader, interimVals})
 			}
 			depth++
 
 		default:
-			return fmt.Errorf("verify non adjacent from #%d to #%d failed: %w",
-				trustedHeader.Height, headerCache[depth].sh.Height, err)
+			return ErrVerificationFailed{From: trustedHeader.Height, To: headerCache[depth].sh.Height, Reason: err}
 		}
 	}
 }
@@ -755,6 +781,15 @@ func (c *Client) bisectionAgainstPrimary(
 
 	switch errors.Unwrap(err).(type) {
 	case ErrInvalidHeader:
+		// If the target header is invalid, return immediately.
+		invalidHeaderHeight := err.(ErrVerificationFailed).To
+		if invalidHeaderHeight == newHeader.Height {
+			c.logger.Debug("Target header is invalid", "err", err)
+			return err
+		}
+
+		// If some intermediate header is invalid, replace the primary and try
+		// again.
 		c.logger.Error("primary sent invalid header -> replacing", "err", err)
 		replaceErr := c.replacePrimaryProvider()
 		if replaceErr != nil {
