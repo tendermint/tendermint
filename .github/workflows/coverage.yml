@@ -52,7 +52,7 @@ jobs:
         if: "env.GIT_DIFF != ''"
       - name: test & coverage report creation
         run: |
-          cat xaa.txt | xargs go test -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic -tags deadlock
+          cat xaa.txt | xargs go test -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
       - uses: codecov/codecov-action@v1.0.7
         with:
@@ -78,7 +78,7 @@ jobs:
         if: "env.GIT_DIFF != ''"
       - name: test & coverage report creation
         run: |
-          cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic -tags deadlock
+          cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
       - uses: codecov/codecov-action@v1.0.7
         with:
@@ -104,7 +104,7 @@ jobs:
         if: "env.GIT_DIFF != ''"
       - name: test & coverage report creation
         run: |
-          cat xac.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic -tags deadlock
+          cat xac.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
       - uses: codecov/codecov-action@v1.0.7
         with:
@@ -130,7 +130,7 @@ jobs:
         if: "env.GIT_DIFF != ''"
       - name: test & coverage report creation
         run: |
-          cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic -tags deadlock
+          cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
       - uses: codecov/codecov-action@v1.0.7
         with:
