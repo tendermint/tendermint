@@ -9,7 +9,6 @@ import (
 	"net"
 	"reflect"
 	"runtime/debug"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/libs/timer"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
@@ -101,7 +101,7 @@ type MConnection struct {
 
 	// used to ensure FlushStop and OnStop
 	// are safe to call concurrently.
-	stopMtx sync.Mutex
+	stopMtx tmsync.Mutex
 
 	flushTimer *timer.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer  *time.Ticker         // send pings periodically

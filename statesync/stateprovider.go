@@ -3,12 +3,12 @@ package statesync
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light"
 	lightprovider "github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
@@ -35,10 +35,10 @@ type StateProvider interface {
 
 // lightClientStateProvider is a state provider using the light client.
 type lightClientStateProvider struct {
-	sync.Mutex // light.Client is not concurrency-safe
-	lc         *light.Client
-	version    tmstate.Version
-	providers  map[lightprovider.Provider]string
+	tmsync.Mutex // light.Client is not concurrency-safe
+	lc           *light.Client
+	version      tmstate.Version
+	providers    map[lightprovider.Provider]string
 }
 
 // NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.

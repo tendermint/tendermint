@@ -11,7 +11,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"sync"
 	"time"
 
 	gogotypes "github.com/gogo/protobuf/types"
@@ -27,6 +26,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/async"
 	"github.com/tendermint/tendermint/libs/protoio"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -76,11 +76,11 @@ type SecretConnection struct {
 	// are independent, so we can use two mtxs.
 	// All .Read are covered by recvMtx,
 	// all .Write are covered by sendMtx.
-	recvMtx    sync.Mutex
+	recvMtx    tmsync.Mutex
 	recvBuffer []byte
 	recvNonce  *[aeadNonceSize]byte
 
-	sendMtx   sync.Mutex
+	sendMtx   tmsync.Mutex
 	sendNonce *[aeadNonceSize]byte
 }
 

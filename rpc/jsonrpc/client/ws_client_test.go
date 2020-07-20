@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
-
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -21,7 +21,7 @@ var wsCallTimeout = 5 * time.Second
 
 type myHandler struct {
 	closeConnAfterRead bool
-	mtx                sync.RWMutex
+	mtx                tmsync.RWMutex
 }
 
 var upgrader = websocket.Upgrader{

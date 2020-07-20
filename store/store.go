@@ -3,11 +3,11 @@ package store
 import (
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -33,7 +33,7 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 type BlockStore struct {
 	db dbm.DB
 
-	mtx    sync.RWMutex
+	mtx    tmsync.RWMutex
 	base   int64
 	height int64
 }

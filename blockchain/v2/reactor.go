@@ -3,12 +3,12 @@ package v2
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/state"
@@ -37,7 +37,7 @@ type BlockchainReactor struct {
 	processor   *Routine
 	logger      log.Logger
 
-	mtx           sync.RWMutex
+	mtx           tmsync.RWMutex
 	maxPeerHeight int64
 	syncHeight    int64
 	events        chan Event // non-nil during a fast sync

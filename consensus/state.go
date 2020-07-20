@@ -8,7 +8,6 @@ import (
 	"os"
 	"reflect"
 	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -22,6 +21,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -98,7 +98,7 @@ type State struct {
 	evpool evidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx tmsync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 

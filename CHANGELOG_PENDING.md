@@ -15,6 +15,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
   - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
+  - [rpc] \#5137 The json tags of `gasWanted` & `gasUsed` in `ResponseCheckTx` & `ResponseDeliverTx` have been made snake_case. (`gas_wanted` & `gas_used`)
 
 - Apps
 
@@ -117,6 +118,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
 - [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
   - `abci.EventAttribute` replaces `KV.Pair`
+- [libs] \#5126 Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking
 - [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add `ValidateBasic` to validator and validator set (@cmwaters)
 - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
 - [mempool] Add RemoveTxByKey() exported function for custom mempool cleaning (@p4u)

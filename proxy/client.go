@@ -2,12 +2,12 @@ package proxy
 
 import (
 	"fmt"
-	"sync"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // ClientCreator creates new ABCI clients.
@@ -20,7 +20,7 @@ type ClientCreator interface {
 // local proxy uses a mutex on an in-proc app
 
 type localClientCreator struct {
-	mtx *sync.Mutex
+	mtx *tmsync.Mutex
 	app types.Application
 }
 
@@ -28,7 +28,7 @@ type localClientCreator struct {
 // which will be running locally.
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
-		mtx: new(sync.Mutex),
+		mtx: new(tmsync.Mutex),
 		app: app,
 	}
 }

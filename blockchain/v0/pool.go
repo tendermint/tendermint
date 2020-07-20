@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -64,7 +63,7 @@ type BlockPool struct {
 	service.BaseService
 	startTime time.Time
 
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 	// block requests
 	requesters map[int64]*bpRequester
 	height     int64 // the lowest key in requesters.
@@ -510,7 +509,7 @@ type bpRequester struct {
 	gotBlockCh chan struct{}
 	redoCh     chan p2p.ID //redo may send multitime, add peerId to identify repeat
 
-	mtx    sync.Mutex
+	mtx    tmsync.Mutex
 	peerID p2p.ID
 	block  *types.Block
 }

@@ -14,6 +14,7 @@ import (
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -56,7 +57,7 @@ type WSClient struct { // nolint: maligned
 
 	wg sync.WaitGroup
 
-	mtx            sync.RWMutex
+	mtx            tmsync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
 	nextReqID      int
