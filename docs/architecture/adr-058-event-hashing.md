@@ -43,6 +43,29 @@ are to be hashed in the header.
 }
 ```
 
+Initially the list is empty. The ABCI application can change it via `InitChain`
+or `EndBlock`.
+
+Example:
+
+```go
+func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+    //...
+    events := []abci.Event{
+        {
+            Type: "transfer",
+            Attributes: []abci.EventAttribute{
+                {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+            },
+        },
+    }
+    return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+}
+```
+
+For "transfer" event to be hashed, the `LastResultsEvents` must contain a
+string "transfer".
+
 ## Status
 
 Proposed
