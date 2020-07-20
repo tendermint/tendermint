@@ -3,11 +3,11 @@ package privval
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
@@ -26,7 +26,7 @@ type SignerListenerEndpoint struct {
 	timeoutAccept time.Duration
 	pingTimer     *time.Ticker
 
-	instanceMtx sync.Mutex // Ensures instance public methods access, i.e. SendRequest
+	instanceMtx tmsync.Mutex // Ensures instance public methods access, i.e. SendRequest
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.

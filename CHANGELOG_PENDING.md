@@ -117,6 +117,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
 - [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
   - `abci.EventAttribute` replaces `KV.Pair`
+- [libs] \#5126 Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking
 - [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add `ValidateBasic` to validator and validator set (@cmwaters)
 - [rpc] \#4968 JSON encoding is now handled by `libs/json`, not Amino
 - [mempool] Add RemoveTxByKey() exported function for custom mempool cleaning (@p4u)

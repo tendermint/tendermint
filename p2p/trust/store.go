@@ -6,12 +6,12 @@ package trust
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 const defaultStorePeriodicSaveInterval = 1 * time.Minute
@@ -26,7 +26,7 @@ type MetricStore struct {
 	peerMetrics map[string]*Metric
 
 	// Mutex that protects the map and history data file
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 
 	// The db where peer trust metric history data will be stored
 	db dbm.DB

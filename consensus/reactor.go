@@ -14,6 +14,7 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -42,7 +43,7 @@ type Reactor struct {
 
 	conS *State
 
-	mtx      sync.RWMutex
+	mtx      tmsync.RWMutex
 	waitSync bool
 	eventBus *types.EventBus
 

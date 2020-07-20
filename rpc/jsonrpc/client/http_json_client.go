@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -99,7 +99,7 @@ type Client struct {
 
 	client *http.Client
 
-	mtx       sync.Mutex
+	mtx       tmsync.Mutex
 	nextReqID int
 }
 
@@ -260,7 +260,7 @@ type jsonRPCBufferedRequest struct {
 type RequestBatch struct {
 	client *Client
 
-	mtx      sync.Mutex
+	mtx      tmsync.Mutex
 	requests []*jsonRPCBufferedRequest
 }
 

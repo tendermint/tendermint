@@ -2,7 +2,6 @@ package statesync
 
 import (
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -140,7 +140,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
 
 	chunkRequests := make(map[uint32]int)
-	chunkRequestsMtx := sync.Mutex{}
+	chunkRequestsMtx := tmsync.Mutex{}
 	onChunkRequest := func(args mock.Arguments) {
 		pb, err := decodeMsg(args[1].([]byte))
 		require.NoError(t, err)

@@ -8,13 +8,14 @@ package flowrate
 
 import (
 	"math"
-	"sync"
 	"time"
+
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // Monitor monitors and limits the transfer rate of a data stream.
 type Monitor struct {
-	mu      sync.Mutex    // Mutex guarding access to all internal fields
+	mu      tmsync.Mutex  // Mutex guarding access to all internal fields
 	active  bool          // Flag indicating an active transfer
 	start   time.Duration // Transfer start time (clock() value)
 	bytes   int64         // Total number of bytes transferred
