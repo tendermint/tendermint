@@ -84,7 +84,12 @@ Proposed
 
 ### Neutral
 
+-
+
 ## References
+
+- [ADR 021](./adr-021-abci-events.md)
+- [Indexing transactions](../app-dev/indexing-transactions.md)
 
 ## Appendix A. Alternative proposals
 
