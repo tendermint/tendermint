@@ -22,13 +22,26 @@ there was no way to prove that certain events were a part of the result. Hence,
 [PR#4845](https://github.com/tendermint/tendermint/pull/4845) was opened.
 
 While it's certainly good to be able to prove something, introducing new events
-or removing such becomes difficult because it breaks the `LastResultsHash`. And
-that is undoubtedly bad for applications, which haven't matured enough.
+or removing such becomes difficult because it breaks the `LastResultsHash`. It
+means that every time you add, remove or update an event, you'll need a
+hard-fork. And that is undoubtedly bad for applications, which are evolving and
+don't have a stable events set.
 
 ## Decision
 
-As a middle ground approach, we can add the `Block#LastResultsEvents` consensus
-parameter that is a list of all events that are to be hashed in the header.
+As a middle ground approach, the proposal is to add the
+`Block#LastResultsEvents` consensus parameter that is a list of all events that
+are to be hashed in the header.
+
+```
+@ proto/tendermint/abci/types.proto:295 @ message BlockParams {
+  int64 max_bytes = 1;
+  // Note: must be greater or equal to -1
+  int64 max_gas = 2;
+  // List of events, which will be hashed into the LastResultsHash
+  repeated string last_results_events = 3;
+}
+```
 
 ## Status
 
