@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -20,13 +21,33 @@ func TestGenesisBad(t *testing.T) {
 		[]byte(`{}`),    // empty
 		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // invalid validator
 		// missing pub_key type
-		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`,
+		),
 		// missing chain_id
-		[]byte(`{"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"validators":[` +
+				`{"pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 		// too big chain_id
-		[]byte(`{"chain_id": "Lorem ipsum dolor sit amet, consectetuer adipiscing", "validators": [{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"chain_id": "Lorem ipsum dolor sit amet, consectetuer adipiscing", "validators": [` +
+				`{"pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 		// wrong address
-		[]byte(`{"chain_id":"mychain", "validators":[{"address": "A", "pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"chain_id":"mychain", "validators":[` +
+				`{"address": "A", "pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 	}
 
 	for _, testCase := range testCases {
@@ -37,7 +58,13 @@ func TestGenesisBad(t *testing.T) {
 
 func TestGenesisGood(t *testing.T) {
 	// test a good one by raw json
-	genDocBytes := []byte(`{"genesis_time":"0001-01-01T00:00:00Z","chain_id":"test-chain-QDKdJr","consensus_params":null,"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}],"app_hash":"","app_state":{"account_owner": "Bob"}}`)
+	genDocBytes := []byte(
+		`{"genesis_time":"0001-01-01T00:00:00Z","chain_id":"test-chain-QDKdJr","consensus_params":null,"validators":[` +
+			`{"pub_key":{` +
+			`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+			`},"power":"10","name":""}` +
+			`],"app_hash":"","app_state":{"account_owner": "Bob"}}`,
+	)
 	_, err := GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for good genDoc json")
 
@@ -47,7 +74,7 @@ func TestGenesisGood(t *testing.T) {
 		ChainID:    "abc",
 		Validators: []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 	}
-	genDocBytes, err = cdc.MarshalJSON(baseGenDoc)
+	genDocBytes, err = tmjson.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 
 	// test base gendoc and check consensus params were filled
@@ -59,14 +86,14 @@ func TestGenesisGood(t *testing.T) {
 	assert.NotNil(t, genDoc.Validators[0].Address, "expected validator's address to be filled in")
 
 	// create json with consensus params filled
-	genDocBytes, err = cdc.MarshalJSON(genDoc)
+	genDocBytes, err = tmjson.Marshal(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
 	genDoc.ConsensusParams.Block.MaxBytes = 0
-	genDocBytes, err = cdc.MarshalJSON(genDoc)
+	genDocBytes, err = tmjson.Marshal(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 	_, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")

@@ -1,14 +1,14 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestIsConnTimeoutForNonTimeoutErrors(t *testing.T) {
-	assert.False(t, IsConnTimeout(cmn.ErrorWrap(ErrDialRetryMax, "max retries exceeded")))
-	assert.False(t, IsConnTimeout(fmt.Errorf("completely irrelevant error")))
+	assert.False(t, IsConnTimeout(fmt.Errorf("max retries exceeded: %w", ErrDialRetryMax)))
+	assert.False(t, IsConnTimeout(errors.New("completely irrelevant error")))
 }

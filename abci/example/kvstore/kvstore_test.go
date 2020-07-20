@@ -1,7 +1,6 @@
 package kvstore
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sort"
@@ -9,13 +8,19 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+)
+
+const (
+	testKey   = "abc"
+	testValue = "def"
 )
 
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -25,6 +30,11 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	// repeating tx doesn't raise error
 	ar = app.DeliverTx(req)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	app.Commit()
+
+	info := app.Info(types.RequestInfo{})
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery := app.Query(types.RequestQuery{
@@ -32,7 +42,9 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Data: []byte(key),
 	})
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery = app.Query(types.RequestQuery{
@@ -41,17 +53,19 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Prove: true,
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }
 
 func TestKVStoreKV(t *testing.T) {
-	kvstore := NewKVStoreApplication()
-	key := "abc"
+	kvstore := NewApplication()
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testKVStore(t, kvstore, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testKVStore(t, kvstore, tx, key, value)
 }
@@ -62,12 +76,12 @@ func TestPersistentKVStoreKV(t *testing.T) {
 		t.Fatal(err)
 	}
 	kvstore := NewPersistentKVStoreApplication(dir)
-	key := "abc"
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testKVStore(t, kvstore, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testKVStore(t, kvstore, tx, key, value)
 }
@@ -89,8 +103,8 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := types.Header{
-		Height: int64(height),
+	header := tmproto.Header{
+		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
 	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
@@ -148,7 +162,7 @@ func TestValUpdates(t *testing.T) {
 
 	makeApplyBlock(t, kvstore, 2, diff, tx1, tx2, tx3)
 
-	vals1 = append(vals[:nInit-2], vals[nInit+1])
+	vals1 = append(vals[:nInit-2], vals[nInit+1]) // nolint: gocritic
 	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
@@ -170,11 +184,16 @@ func TestValUpdates(t *testing.T) {
 
 }
 
-func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff []types.ValidatorUpdate, txs ...[]byte) {
+func makeApplyBlock(
+	t *testing.T,
+	kvstore types.Application,
+	heightInt int,
+	diff []types.ValidatorUpdate,
+	txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 
@@ -200,14 +219,14 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	sort.Sort(types.ValidatorUpdates(vals2))
 	for i, v1 := range vals1 {
 		v2 := vals2[i]
-		if !bytes.Equal(v1.PubKey.Data, v2.PubKey.Data) ||
+		if !v1.PubKey.Equal(v2.PubKey) ||
 			v1.Power != v2.Power {
 			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
 		}
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -222,14 +241,16 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err = server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -244,7 +265,9 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 	client := abcicli.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err := server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 	return client, server, nil
@@ -252,32 +275,49 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 
 func TestClientServer(t *testing.T) {
 	// set up socket app
-	kvstore := NewKVStoreApplication()
+	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
-	defer server.Stop()
-	defer client.Stop()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	runClientTests(t, client)
 
 	// set up grpc app
-	kvstore = NewKVStoreApplication()
+	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Nil(t, err)
-	defer gserver.Stop()
-	defer gclient.Stop()
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := gserver.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := gclient.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	runClientTests(t, gclient)
 }
 
 func runClientTests(t *testing.T, client abcicli.Client) {
 	// run some tests....
-	key := "abc"
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testClient(t, client, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testClient(t, client, tx, key, value)
 }
@@ -290,6 +330,13 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	ar, err = app.DeliverTxSync(types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
+	// commit
+	_, err = app.CommitSync()
+	require.NoError(t, err)
+
+	info, err := app.InfoSync(types.RequestInfo{})
+	require.NoError(t, err)
+	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
 	resQuery, err := app.QuerySync(types.RequestQuery{
@@ -298,7 +345,9 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
 	resQuery, err = app.QuerySync(types.RequestQuery{
@@ -308,5 +357,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	})
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
+	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
+	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 }

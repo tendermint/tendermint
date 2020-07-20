@@ -3,19 +3,18 @@ package internal
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 	"pub_key": {
 		"type": "tendermint/PubKeyEd25519",
 		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-	},
+		},
 	"priv_key": {
 		"type": "tendermint/PrivKeyEd25519",
 		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
@@ -33,7 +32,7 @@ const (
 
 	stateFileContents = `{
 	"height": "0",
-	"round": "0",
+	"round": 0,
 	"step": 0
 }`
 
@@ -47,7 +46,10 @@ const (
 			"time_iota_ms": "1000"
 		},
 		"evidence": {
-			"max_age": "100000"
+			"max_age_num_blocks": "100000",
+			"max_age_duration": "172800000000000",
+			"max_num": 50,
+			"proof_trial_period": "50000"
 		},
 		"validator": {
 			"pub_key_types": [
@@ -85,8 +87,8 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, false)
 		},
 		NoError,
 	)
@@ -95,8 +97,8 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, ed25519.GenPrivKey(), false, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, ed25519.GenPrivKey(), false, false)
 		},
 		ErrTestPublicKeyFailed,
 	)
@@ -105,8 +107,8 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, true, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, true, false)
 		},
 		ErrTestSignProposalFailed,
 	)
@@ -115,28 +117,36 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 func TestRemoteSignerVoteSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, true)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, true)
 		},
 		ErrTestSignVoteFailed,
 	)
 }
 
-func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.SignerServiceEndpoint {
-	return privval.NewSignerServiceEndpoint(
+func newMockSignerServer(
+	t *testing.T,
+	th *TestHarness,
+	privKey crypto.PrivKey,
+	breakProposalSigning bool,
+	breakVoteSigning bool,
+) *privval.SignerServer {
+	mockPV := types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning)
+
+	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		th.logger,
-		th.chainID,
-		types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning),
 		privval.DialTCPFn(
 			th.addr,
 			time.Duration(defaultConnDeadline)*time.Millisecond,
 			ed25519.GenPrivKey(),
 		),
 	)
+
+	return privval.NewSignerServer(dialerEndpoint, th.chainID, mockPV)
 }
 
 // For running relatively standard tests.
-func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServiceEndpoint, expectedExitCode int) {
+func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.SignerServer, expectedExitCode int) {
 	cfg := makeConfig(t, 100, 3)
 	defer cleanup(cfg)
 
@@ -148,10 +158,10 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServ
 		th.Run()
 	}()
 
-	rs := rsMaker(th)
-	require.NoError(t, rs.Start())
-	assert.True(t, rs.IsRunning())
-	defer rs.Stop()
+	ss := signerServerMaker(th)
+	require.NoError(t, ss.Start())
+	assert.True(t, ss.IsRunning())
+	defer ss.Stop() //nolint:errcheck // ignore for tests
 
 	<-donec
 	assert.Equal(t, expectedExitCode, th.exitCode)
@@ -159,7 +169,7 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServ
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	return TestHarnessConfig{
-		BindAddr:         testFreeTCPAddr(t),
+		BindAddr:         privval.GetFreeLocalhostAddrPort(),
 		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
 		StateFile:        makeTempFile("tm-testharness-statefile", stateFileContents),
 		GenesisFile:      makeTempFile("tm-testharness-genesisfile", genesisFileContents),
@@ -190,13 +200,4 @@ func makeTempFile(name, content string) string {
 		panic(err)
 	}
 	return tempFile.Name()
-}
-
-// testFreeTCPAddr claims a free port so we don't block on listener being ready.
-func testFreeTCPAddr(t *testing.T) string {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
 }

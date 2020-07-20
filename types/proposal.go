@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
-	ErrInvalidBlockPartSignature = errors.New("Error invalid block part signature")
-	ErrInvalidBlockPartHash      = errors.New("Error invalid block part hash")
+	ErrInvalidBlockPartSignature = errors.New("error invalid block part signature")
+	ErrInvalidBlockPartHash      = errors.New("error invalid block part hash")
 )
 
 // Proposal defines a block proposal for the consensus.
@@ -21,10 +23,10 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type      SignedMsgType
+	Type      tmproto.SignedMsgType
 	Height    int64     `json:"height"`
-	Round     int       `json:"round"`
-	POLRound  int       `json:"pol_round"` // -1 if null.
+	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
 	Signature []byte    `json:"signature"`
@@ -32,9 +34,9 @@ type Proposal struct {
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int, polRound int, blockID BlockID) *Proposal {
+func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
 	return &Proposal{
-		Type:      ProposalType,
+		Type:      tmproto.ProposalType,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
@@ -45,33 +47,34 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
-	if p.Type != ProposalType {
-		return errors.New("Invalid Type")
+	if p.Type != tmproto.ProposalType {
+		return errors.New("invalid Type")
 	}
 	if p.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if p.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if p.POLRound < -1 {
-		return errors.New("Negative POLRound (exception: -1)")
+		return errors.New("negative POLRound (exception: -1)")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {
-		return fmt.Errorf("Expected a complete, non-empty BlockID, got: %v", p.BlockID)
+		return fmt.Errorf("expected a complete, non-empty BlockID, got: %v", p.BlockID)
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if len(p.Signature) == 0 {
-		return errors.New("Signature is missing")
+		return errors.New("signature is missing")
 	}
+
 	if len(p.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }
@@ -83,15 +86,65 @@ func (p *Proposal) String() string {
 		p.Round,
 		p.BlockID,
 		p.POLRound,
-		cmn.Fingerprint(p.Signature),
+		tmbytes.Fingerprint(p.Signature),
 		CanonicalTime(p.Timestamp))
 }
 
-// SignBytes returns the Proposal bytes for signing
-func (p *Proposal) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeProposal(chainID, p))
+// ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
+// for signing.
+//
+// Panics if the marshaling fails.
+//
+// See CanonicalizeProposal
+func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
+	pb := CanonicalizeProposal(chainID, p)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
+}
+
+// ToProto converts Proposal to protobuf
+func (p *Proposal) ToProto() *tmproto.Proposal {
+	if p == nil {
+		return &tmproto.Proposal{}
+	}
+	pb := new(tmproto.Proposal)
+
+	pb.BlockID = p.BlockID.ToProto()
+	pb.Type = p.Type
+	pb.Height = p.Height
+	pb.Round = p.Round
+	pb.PolRound = p.POLRound
+	pb.Timestamp = p.Timestamp
+	pb.Signature = p.Signature
+
+	return pb
+}
+
+// FromProto sets a protobuf Proposal to the given pointer.
+// It returns an error if the proposal is invalid.
+func ProposalFromProto(pp *tmproto.Proposal) (*Proposal, error) {
+	if pp == nil {
+		return nil, errors.New("nil proposal")
+	}
+
+	p := new(Proposal)
+
+	blockID, err := BlockIDFromProto(&pp.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	p.BlockID = *blockID
+	p.Type = pp.Type
+	p.Height = pp.Height
+	p.Round = pp.Round
+	p.POLRound = pp.PolRound
+	p.Timestamp = pp.Timestamp
+	p.Signature = pp.Signature
+
+	return p, p.ValidateBasic()
 }

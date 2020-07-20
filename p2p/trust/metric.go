@@ -5,10 +5,10 @@ package trust
 
 import (
 	"math"
-	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 //---------------------------------------------------------------------------------------
@@ -30,13 +30,13 @@ type MetricHistoryJSON struct {
 	History      []float64 `json:"history"`
 }
 
-// TrustMetric - keeps track of peer reliability
+// Metric - keeps track of peer reliability
 // See tendermint/docs/architecture/adr-006-trust-metric.md for details
-type TrustMetric struct {
-	cmn.BaseService
+type Metric struct {
+	service.BaseService
 
 	// Mutex that protects the metric from concurrent access
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 
 	// Determines the percentage given to current behavior
 	proportionalWeight float64
@@ -83,14 +83,14 @@ type TrustMetric struct {
 
 // NewMetric returns a trust metric with the default configuration.
 // Use Start to begin tracking the quality of peer behavior over time
-func NewMetric() *TrustMetric {
+func NewMetric() *Metric {
 	return NewMetricWithConfig(DefaultConfig())
 }
 
 // NewMetricWithConfig returns a trust metric with a custom configuration.
 // Use Start to begin tracking the quality of peer behavior over time
-func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
-	tm := new(TrustMetric)
+func NewMetricWithConfig(tmc MetricConfig) *Metric {
+	tm := new(Metric)
 	config := customConfig(tmc)
 
 	// Setup using the configuration values
@@ -104,12 +104,12 @@ func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	// This metric has a perfect history so far
 	tm.historyValue = 1.0
 
-	tm.BaseService = *cmn.NewBaseService(nil, "TrustMetric", tm)
+	tm.BaseService = *service.NewBaseService(nil, "Metric", tm)
 	return tm
 }
 
 // OnStart implements Service
-func (tm *TrustMetric) OnStart() error {
+func (tm *Metric) OnStart() error {
 	if err := tm.BaseService.OnStart(); err != nil {
 		return err
 	}
@@ -119,10 +119,10 @@ func (tm *TrustMetric) OnStart() error {
 
 // OnStop implements Service
 // Nothing to do since the goroutine shuts down by itself via BaseService.Quit()
-func (tm *TrustMetric) OnStop() {}
+func (tm *Metric) OnStop() {}
 
 // Returns a snapshot of the trust metric history data
-func (tm *TrustMetric) HistoryJSON() MetricHistoryJSON {
+func (tm *Metric) HistoryJSON() MetricHistoryJSON {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -135,7 +135,7 @@ func (tm *TrustMetric) HistoryJSON() MetricHistoryJSON {
 // Instantiates a trust metric by loading the history data for a single peer.
 // This is called only once and only right after creation, which is why the
 // lock is not held while accessing the trust metric struct members
-func (tm *TrustMetric) Init(hist MetricHistoryJSON) {
+func (tm *Metric) Init(hist MetricHistoryJSON) {
 	// Restore the number of time intervals we have previously tracked
 	if hist.NumIntervals > tm.maxIntervals {
 		hist.NumIntervals = tm.maxIntervals
@@ -164,7 +164,7 @@ func (tm *TrustMetric) Init(hist MetricHistoryJSON) {
 
 // Pause tells the metric to pause recording data over time intervals.
 // All method calls that indicate events will unpause the metric
-func (tm *TrustMetric) Pause() {
+func (tm *Metric) Pause() {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -173,7 +173,7 @@ func (tm *TrustMetric) Pause() {
 }
 
 // BadEvents indicates that an undesirable event(s) took place
-func (tm *TrustMetric) BadEvents(num int) {
+func (tm *Metric) BadEvents(num int) {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -182,7 +182,7 @@ func (tm *TrustMetric) BadEvents(num int) {
 }
 
 // GoodEvents indicates that a desirable event(s) took place
-func (tm *TrustMetric) GoodEvents(num int) {
+func (tm *Metric) GoodEvents(num int) {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -191,7 +191,7 @@ func (tm *TrustMetric) GoodEvents(num int) {
 }
 
 // TrustValue gets the dependable trust value; always between 0 and 1
-func (tm *TrustMetric) TrustValue() float64 {
+func (tm *Metric) TrustValue() float64 {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -199,14 +199,14 @@ func (tm *TrustMetric) TrustValue() float64 {
 }
 
 // TrustScore gets a score based on the trust value always between 0 and 100
-func (tm *TrustMetric) TrustScore() int {
+func (tm *Metric) TrustScore() int {
 	score := tm.TrustValue() * 100
 
 	return int(math.Floor(score))
 }
 
 // NextTimeInterval saves current time interval data and prepares for the following interval
-func (tm *TrustMetric) NextTimeInterval() {
+func (tm *Metric) NextTimeInterval() {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -245,9 +245,9 @@ func (tm *TrustMetric) NextTimeInterval() {
 }
 
 // SetTicker allows a TestTicker to be provided that will manually control
-// the passing of time from the perspective of the TrustMetric.
+// the passing of time from the perspective of the Metric.
 // The ticker must be set before Start is called on the metric
-func (tm *TrustMetric) SetTicker(ticker MetricTicker) {
+func (tm *Metric) SetTicker(ticker MetricTicker) {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
@@ -255,7 +255,7 @@ func (tm *TrustMetric) SetTicker(ticker MetricTicker) {
 }
 
 // Copy returns a new trust metric with members containing the same values
-func (tm *TrustMetric) Copy() *TrustMetric {
+func (tm *Metric) Copy() *Metric {
 	if tm == nil {
 		return nil
 	}
@@ -263,7 +263,7 @@ func (tm *TrustMetric) Copy() *TrustMetric {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
-	return &TrustMetric{
+	return &Metric{
 		proportionalWeight: tm.proportionalWeight,
 		integralWeight:     tm.integralWeight,
 		numIntervals:       tm.numIntervals,
@@ -285,7 +285,7 @@ func (tm *TrustMetric) Copy() *TrustMetric {
 /* Private methods */
 
 // This method is for a goroutine that handles all requests on the metric
-func (tm *TrustMetric) processRequests() {
+func (tm *Metric) processRequests() {
 	t := tm.testTicker
 	if t == nil {
 		// No test ticker was provided, so we create a normal ticker
@@ -308,7 +308,7 @@ loop:
 
 // Wakes the trust metric up if it is currently paused
 // This method needs to be called with the mutex locked
-func (tm *TrustMetric) unpause() {
+func (tm *Metric) unpause() {
 	// Check if this is the first experience with
 	// what we are tracking since being paused
 	if tm.paused {
@@ -320,7 +320,7 @@ func (tm *TrustMetric) unpause() {
 }
 
 // Calculates the trust value for the request processing
-func (tm *TrustMetric) calcTrustValue() float64 {
+func (tm *Metric) calcTrustValue() float64 {
 	weightedP := tm.proportionalWeight * tm.proportionalValue()
 	weightedI := tm.integralWeight * tm.historyValue
 	weightedD := tm.weightedDerivative()
@@ -334,7 +334,7 @@ func (tm *TrustMetric) calcTrustValue() float64 {
 }
 
 // Calculates the current score for good/bad experiences
-func (tm *TrustMetric) proportionalValue() float64 {
+func (tm *Metric) proportionalValue() float64 {
 	value := 1.0
 
 	total := tm.good + tm.bad
@@ -345,7 +345,7 @@ func (tm *TrustMetric) proportionalValue() float64 {
 }
 
 // Strengthens the derivative component when the change is negative
-func (tm *TrustMetric) weightedDerivative() float64 {
+func (tm *Metric) weightedDerivative() float64 {
 	var weight float64 = defaultDerivativeGamma1
 
 	d := tm.derivativeValue()
@@ -356,12 +356,12 @@ func (tm *TrustMetric) weightedDerivative() float64 {
 }
 
 // Calculates the derivative component
-func (tm *TrustMetric) derivativeValue() float64 {
+func (tm *Metric) derivativeValue() float64 {
 	return tm.proportionalValue() - tm.historyValue
 }
 
 // Calculates the integral (history) component of the trust value
-func (tm *TrustMetric) calcHistoryValue() float64 {
+func (tm *Metric) calcHistoryValue() float64 {
 	var hv float64
 
 	for i := 0; i < tm.numIntervals; i++ {
@@ -372,7 +372,7 @@ func (tm *TrustMetric) calcHistoryValue() float64 {
 }
 
 // Retrieves the actual history data value that represents the requested time interval
-func (tm *TrustMetric) fadedMemoryValue(interval int) float64 {
+func (tm *Metric) fadedMemoryValue(interval int) float64 {
 	first := tm.historySize - 1
 
 	if interval == 0 {
@@ -387,7 +387,7 @@ func (tm *TrustMetric) fadedMemoryValue(interval int) float64 {
 // Performs the update for our Faded Memories process, which allows the
 // trust metric tracking window to be large while maintaining a small
 // number of history data values
-func (tm *TrustMetric) updateFadedMemory() {
+func (tm *Metric) updateFadedMemory() {
 	if tm.historySize < 2 {
 		return
 	}

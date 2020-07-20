@@ -5,17 +5,20 @@ import (
 	"net"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
+
+//go:generate mockery -case underscore -name Peer
 
 const metricsTickerDuration = 10 * time.Second
 
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
-	cmn.Service
+	service.Service
 	FlushStop()
 
 	ID() ID               // peer's cryptographic ID
@@ -97,7 +100,7 @@ func (pc peerConn) RemoteIP() net.IP {
 //
 // Before using a peer, you will need to perform a handshake on connection.
 type peer struct {
-	cmn.BaseService
+	service.BaseService
 
 	// raw peerConn and the multiplex connection
 	peerConn
@@ -110,7 +113,7 @@ type peer struct {
 	channels []byte
 
 	// User data
-	Data *cmn.CMap
+	Data *cmap.CMap
 
 	metrics       *Metrics
 	metricsTicker *time.Ticker
@@ -131,7 +134,7 @@ func newPeer(
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
 		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
-		Data:          cmn.NewCMap(),
+		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
@@ -144,7 +147,7 @@ func newPeer(
 		onPeerError,
 		mConfig,
 	)
-	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	p.BaseService = *service.NewBaseService(nil, "Peer", p)
 	for _, option := range options {
 		option(p)
 	}
@@ -162,7 +165,7 @@ func (p *peer) String() string {
 }
 
 //---------------------------------------------------
-// Implements cmn.Service
+// Implements service.Service
 
 // SetLogger implements BaseService.
 func (p *peer) SetLogger(l log.Logger) {
@@ -197,7 +200,9 @@ func (p *peer) FlushStop() {
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	p.mconn.Stop() // stop everything and close the conn
+	if err := p.mconn.Stop(); err != nil { // stop everything and close the conn
+		p.Logger.Error("Error while stopping peer", "err", err)
+	}
 }
 
 //---------------------------------------------------
@@ -317,7 +322,7 @@ func (p *peer) CloseConn() error {
 
 // CloseConn closes the underlying connection
 func (pc *peerConn) CloseConn() {
-	pc.conn.Close() // nolint: errcheck
+	pc.conn.Close()
 }
 
 // RemoteAddr returns peer's remote network address.

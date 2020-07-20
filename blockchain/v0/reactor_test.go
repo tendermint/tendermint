@@ -1,26 +1,27 @@
 package v0
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/store"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var config *cfg.Config
@@ -50,7 +51,11 @@ type BlockchainReactorPair struct {
 	app     proxy.AppConns
 }
 
-func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator, maxBlockHeight int64) BlockchainReactorPair {
+func newBlockchainReactor(
+	logger log.Logger,
+	genDoc *types.GenesisDoc,
+	privVals []types.PrivValidator,
+	maxBlockHeight int64) BlockchainReactorPair {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -60,7 +65,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error start app"))
+		panic(fmt.Errorf("error start app: %w", err))
 	}
 
 	blockDB := dbm.NewMemDB()
@@ -69,7 +74,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	// Make the BlockchainReactor itself.
@@ -83,27 +88,34 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote, err := types.MakeVote(lastBlock.Header.Height, lastBlockMeta.BlockID, state.Validators, privVals[0], lastBlock.Header.ChainID)
+			vote, err := types.MakeVote(
+				lastBlock.Header.Height,
+				lastBlockMeta.BlockID,
+				state.Validators,
+				privVals[0],
+				lastBlock.Header.ChainID,
+				time.Now(),
+			)
 			if err != nil {
 				panic(err)
 			}
-			voteCommitSig := vote.CommitSig()
-			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{voteCommitSig})
+			lastCommit = types.NewCommit(vote.Height, vote.Round,
+				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(cmn.ErrorWrap(err, "error apply block"))
+			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
@@ -135,8 +147,10 @@ func TestNoBlockResponse(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 
@@ -184,8 +198,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
-		otherChain.reactor.Stop()
-		otherChain.app.Stop()
+		err := otherChain.reactor.Stop()
+		require.Error(t, err)
+		err = otherChain.app.Stop()
+		require.NoError(t, err)
 	}()
 
 	reactorPairs := make([]BlockchainReactorPair, 4)
@@ -203,23 +219,32 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	defer func() {
 		for _, r := range reactorPairs {
-			r.reactor.Stop()
-			r.app.Stop()
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+
+			err = r.app.Stop()
+			require.NoError(t, err)
 		}
 	}()
 
 	for {
-		if reactorPairs[3].reactor.pool.IsCaughtUp() {
+		time.Sleep(1 * time.Second)
+		caughtUp := true
+		for _, r := range reactorPairs {
+			if !r.reactor.pool.IsCaughtUp() {
+				caughtUp = false
+			}
+		}
+		if caughtUp {
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
 	//at this time, reactors[0-3] is the newest
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
-	//mark reactorPairs[3] is an invalid peer
+	// Mark reactorPairs[3] as an invalid peer. Fiddling with .store without a mutex is a data
+	// race, but can't be easily avoided.
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
 	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)

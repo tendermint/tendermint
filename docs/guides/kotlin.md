@@ -1,3 +1,7 @@
+<!---
+order: 4
+--->
+
 # Creating an application in Kotlin
 
 ## Guide Assumptions
@@ -22,9 +26,9 @@ If you use Golang, you can run your app and Tendermint Core in the same process 
 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written this way.
 Please refer to [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide for details.
 
-If you choose another language, like we did in this guide, you have to write a separate app using
-either plain socket or gRPC. This guide will show you how to build external applicationg
-using RPC server.
+If you choose another language, like we did in this guide, you have to write a separate app,
+which will communicate with Tendermint Core via a socket (UNIX or TCP) or gRPC.
+This guide will show you how to build external application using RPC server.
 
 Having a separate application might give you better security guarantees as two
 processes would be communicating via established binary protocol. Tendermint
@@ -34,9 +38,9 @@ Core will not have access to application's state.
 
 Please refer to [the Oracle's guide for installing JDK](https://www.oracle.com/technetwork/java/javase/downloads/index.html).
 
-Verify that you have installed Java successully:
+Verify that you have installed Java successfully:
 
-```sh
+```bash
 $ java -version
 java version "1.8.0_162"
 Java(TM) SE Runtime Environment (build 1.8.0_162-b12)
@@ -48,7 +52,7 @@ In my case it is Java SE Development Kit 8.
 
 Make sure you have `$JAVA_HOME` environment variable set:
 
-```sh
+```bash
 $ echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk1.8.0_162.jdk/Contents/Home
 ```
@@ -59,18 +63,21 @@ For Gradle installation, please refer to [their official guide](https://gradle.o
 
 We'll start by creating a new Gradle project.
 
-```sh
+```bash
 $ export KVSTORE_HOME=~/kvstore
 $ mkdir $KVSTORE_HOME
 $ cd $KVSTORE_HOME
 ```
 
 Inside the example directory run:
-```sh
+
+```bash
 gradle init --dsl groovy --package io.example --project-name example --type kotlin-application
 ```
-That Gradle command will create project structure for you:
-```sh
+
+This will create a new project for you. The tree of files should look like:
+
+```bash
 $ tree
 .
 |-- build.gradle
@@ -98,7 +105,7 @@ $ tree
 
 When run, this should print "Hello world." to the standard output.
 
-```sh
+```bash
 $ ./gradlew run
 > Task :run
 Hello world.
@@ -108,13 +115,14 @@ Hello world.
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
 ### 1.3.1 Compile .proto files
 
-Add folowing to the top of `build.gradle`:
+Add the following piece to the top of the `build.gradle`:
+
 ```groovy
 buildscript {
     repositories {
@@ -126,14 +134,16 @@ buildscript {
 }
 ```
 
-Enable protobuf plugin in `plugins` section of `build.gradle`:
+Enable the protobuf plugin in the `plugins` section of the `build.gradle`:
+
 ```groovy
 plugins {
     id 'com.google.protobuf' version '0.8.8'
 }
 ```
 
-Add following to `build.gradle`:
+Add the following code to `build.gradle`:
+
 ```groovy
 protobuf {
     protoc {
@@ -152,28 +162,41 @@ protobuf {
 }
 ```
 
-Now your project is ready to compile `*.proto` files.
+Now we should be ready to compile the `*.proto` files.
 
+Copy the necessary `.proto` files to your project:
 
-Copy necessary .proto files to your project:
-```sh
+```bash
 mkdir -p \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle \
-  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/common \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto \
+  $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs \
   $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto
 
-cp $GOPATH/src/github.com/tendermint/tendermint/abci/types/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types/types.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/crypto/merkle/merkle.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/crypto/merkle/merkle.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/libs/common/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/libs/common/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/version.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/version.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/params.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/params.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
 
-Add dependency to `build.gradle`:
+Add these dependencies to `build.gradle`:
+
 ```groovy
 dependencies {
     implementation 'io.grpc:grpc-protobuf:1.22.1'
@@ -183,11 +206,14 @@ dependencies {
 ```
 
 To generate all protobuf-type classes run:
-```sh
+
+```bash
 ./gradlew generateProto
 ```
-It will produce java classes to `build/generated/`:
-```sh
+
+To verify that everything went smoothly, you can inspect the `build/generated/` directory:
+
+```bash
 $ tree build/generated/
 build/generated/
 `-- source
@@ -211,11 +237,11 @@ build/generated/
 
 ### 1.3.2 Implementing ABCI
 
-As you can see there is a generated file `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java`.
-which contains an abstract class `ABCIApplicationImplBase`. This class fully describes the ABCI interface.
-All you need is implement this interface.
+The resulting `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java` file
+contains the abstract class `ABCIApplicationImplBase`, which is an interface we'll need to implement.
 
-Create file `$KVSTORE_HOME/src/main/kotlin/io/example/KVStoreApp.kt` with following context:
+Create `$KVSTORE_HOME/src/main/kotlin/io/example/KVStoreApp.kt` file with the following content:
+
 ```kotlin
 package io.example
 
@@ -224,7 +250,7 @@ import types.ABCIApplicationGrpc
 import types.Types.*
 
 class KVStoreApp : ABCIApplicationGrpc.ABCIApplicationImplBase() {
-    
+
     // methods implementation
 
 }
@@ -288,15 +314,16 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [JetBrains Xodus](https://github.com/JetBrains/xodus), which is a transactional schema-less embedded high-performance database written in Java.
 
 `build.gradle`:
+
 ```groovy
 dependencies {
-    implementation "org.jetbrains.xodus:xodus-environment:1.3.91"
+    implementation 'org.jetbrains.xodus:xodus-environment:1.3.91'
 }
 ```
 
@@ -316,14 +343,21 @@ class KVStoreApp(
     private var store: Store? = null
 
     ...
+
+    private fun getPersistedValue(k: ByteArray): ByteArray? {
+        return env.computeInReadonlyTransaction { txn ->
+            val store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn)
+            store.get(txn, ArrayByteIterable(k))?.bytesUnsafe
+        }
+    }
 }
 ```
 
 ### 1.3.4 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered  asynchronously, but the
+`EndBlock` in the end. `DeliverTx` are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```kotlin
@@ -335,7 +369,8 @@ override fun beginBlock(req: RequestBeginBlock, responseObserver: StreamObserver
     responseObserver.onCompleted()
 }
 ```
-Here we start new transaction, which will store block's transactions, and open corresponding store.
+
+Here we begin a new transaction, which will accumulate the block's transactions and open the corresponding store.
 
 ```kotlin
 override fun deliverTx(req: RequestDeliverTx, responseObserver: StreamObserver<ResponseDeliverTx>) {
@@ -355,10 +390,10 @@ override fun deliverTx(req: RequestDeliverTx, responseObserver: StreamObserver<R
 ```
 
 If the transaction is badly formatted or the same key=value already exist, we
-again return the non-zero code. Otherwise, we add it to the storage.
+again return the non-zero code. Otherwise, we add it to the store.
 
 In the current design, a block can include incorrect transactions (those who
-passed CheckTx, but failed DeliverTx or transactions included by the proposer
+passed `CheckTx`, but failed `DeliverTx` or transactions included by the proposer
 directly). This is done for performance reasons.
 
 Note we can't commit transactions inside the `DeliverTx` because in such case
@@ -387,7 +422,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -408,17 +443,10 @@ override fun query(req: RequestQuery, responseObserver: StreamObserver<ResponseQ
     responseObserver.onNext(builder.build())
     responseObserver.onCompleted()
 }
-
-private fun getPersistedValue(k: ByteArray): ByteArray? {
-    return env.computeInReadonlyTransaction { txn ->
-        val store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn)
-        store.get(txn, ArrayByteIterable(k))?.bytesUnsafe
-    }
-}
 ```
 
 The complete specification can be found
-[here](https://tendermint.com/docs/spec/abci/).
+[here](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
@@ -440,10 +468,11 @@ fun main() {
 ```
 
 It is the entry point of the application.
-Here we create special object `Environment` which knows where to store state of the application.
-Then we create and srart gRPC server to handle Tendermint's requests.
+Here we create a special object `Environment`, which knows where to store the application state.
+Then we create and start the gRPC server to handle Tendermint Core requests.
 
-Create file `$KVSTORE_HOME/src/main/kotlin/io/example/GrpcServer.kt`:
+Create `$KVSTORE_HOME/src/main/kotlin/io/example/GrpcServer.kt` file with the following content:
+
 ```kotlin
 package io.example
 
@@ -491,7 +520,7 @@ To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core.
 
-```sh
+```bash
 $ rm -rf /tmp/example
 $ cd $GOPATH/src/github.com/tendermint/tendermint
 $ make install
@@ -504,11 +533,11 @@ I[2019-07-16|18:20:36.482] Generated genesis file                       module=m
 
 Feel free to explore the generated files, which can be found at
 `/tmp/example/config` directory. Documentation on the config can be found
-[here](https://tendermint.com/docs/tendermint-core/configuration.html).
+[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
-```sh
+```bash
 ./gradlew run
 
 gRPC server started, listening on 26658
@@ -517,7 +546,7 @@ gRPC server started, listening on 26658
 Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
-```sh
+```bash
 $ TMHOME="/tmp/example" tendermint node --abci grpc --proxy_app tcp://127.0.0.1:26658
 
 I[2019-07-28|15:44:53.632] Version info                                 module=main software=0.32.1 block=10 p2p=7
@@ -529,7 +558,7 @@ I[2019-07-28|15:44:54.814] Committed state                              module=s
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
@@ -548,7 +577,7 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",
@@ -570,6 +599,6 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://tendermint.com/docs/).
+deeper, read [the docs](https://docs.tendermint.com/master/).
 
 The full source code of this example project can be found [here](https://github.com/climber73/tendermint-abci-grpc-kotlin).

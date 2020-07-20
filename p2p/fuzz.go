@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"net"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // FuzzedConnection wraps any net.Conn and depending on the mode either delays
@@ -14,7 +14,7 @@ import (
 type FuzzedConnection struct {
 	conn net.Conn
 
-	mtx    sync.Mutex
+	mtx    tmsync.Mutex
 	start  <-chan time.Time
 	active bool
 
@@ -103,7 +103,7 @@ func (fc *FuzzedConnection) SetWriteDeadline(t time.Time) error {
 
 func (fc *FuzzedConnection) randomDuration() time.Duration {
 	maxDelayMillis := int(fc.config.MaxDelay.Nanoseconds() / 1000)
-	return time.Millisecond * time.Duration(cmn.RandInt()%maxDelayMillis) // nolint: gas
+	return time.Millisecond * time.Duration(tmrand.Int()%maxDelayMillis) // nolint: gas
 }
 
 // implements the fuzz (delay, kill conn)
@@ -116,15 +116,16 @@ func (fc *FuzzedConnection) fuzz() bool {
 	switch fc.config.Mode {
 	case config.FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
-		r := cmn.RandFloat64()
-		if r <= fc.config.ProbDropRW {
+		r := tmrand.Float64()
+		switch {
+		case r <= fc.config.ProbDropRW:
 			return true
-		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn {
+		case r < fc.config.ProbDropRW+fc.config.ProbDropConn:
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
-			fc.Close() // nolint: errcheck, gas
+			fc.Close()
 			return true
-		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep {
+		case r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep:
 			time.Sleep(fc.randomDuration())
 		}
 	case config.FuzzModeDelay:

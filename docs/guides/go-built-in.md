@@ -1,3 +1,7 @@
+<!---
+order: 2
+--->
+
 # Creating a built-in application in Go
 
 ## Guide assumptions
@@ -34,14 +38,14 @@ Go](https://golang.org/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```sh
+```bash
 $ go version
-go version go1.12.7 darwin/amd64
+go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
 
-```sh
+```bash
 $ echo $GOPATH
 /Users/melekes/go
 ```
@@ -50,9 +54,9 @@ $ echo $GOPATH
 
 We'll start by creating a new Go project.
 
-```sh
-$ mkdir -p $GOPATH/src/github.com/me/kvstore
-$ cd $GOPATH/src/github.com/me/kvstore
+```bash
+$ mkdir kvstore
+$ cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -71,7 +75,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```sh
+```bash
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -80,7 +84,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -147,6 +151,8 @@ When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
 
 ```go
+import "bytes"
+
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
@@ -196,7 +202,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -221,7 +227,7 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 When Tendermint Core has decided on the block, it's transfered to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered  asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
 responses are expected to come in order.
 
 ```
@@ -282,7 +288,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -315,7 +321,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://tendermint.com/docs/spec/abci/).
+[here](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
@@ -325,6 +331,7 @@ Put the following code into the "main.go" file:
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -333,7 +340,6 @@ import (
 	"syscall"
 
 	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -387,13 +393,13 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	config.RootDir = filepath.Dir(filepath.Dir(configFile))
 	viper.SetConfigFile(configFile)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Wrap(err, "viper failed to read config file")
+		return nil, fmt.Errorf("viper failed to read config file: %w", err)
 	}
 	if err := viper.Unmarshal(config); err != nil {
-		return nil, errors.Wrap(err, "viper failed to unmarshal config")
+		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 	}
 	if err := config.ValidateBasic(); err != nil {
-		return nil, errors.Wrap(err, "config is invalid")
+		return nil, fmt.Errorf("config is invalid: %w", err)
 	}
 
 	// create logger
@@ -401,7 +407,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	var err error
 	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse log level")
+		return nil, fmt.Errorf("failed to parse log level: %w", err)
 	}
 
 	// read private validator
@@ -413,7 +419,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 	// read node key
 	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load node's key")
+		return nil, fmt.Errorf("failed to load node's key: %w", err)
 	}
 
 	// create node
@@ -427,7 +433,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new Tendermint node")
+		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 	}
 
 	return node, nil
@@ -446,6 +452,13 @@ if err != nil {
 }
 defer db.Close()
 app := NewKVStoreApplication(db)
+```
+
+For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
+This can be avoided by setting the truncate option to true, like this:
+
+```go
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
 Then we use it to create a Tendermint Core `Node` instance:
@@ -472,7 +485,7 @@ node, err := nm.NewNode(
 	nm.DefaultMetricsProvider(config.Instrumentation),
 	logger)
 if err != nil {
-	return nil, errors.Wrap(err, "failed to create new Tendermint node")
+	return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 }
 ```
 
@@ -490,13 +503,13 @@ config := cfg.DefaultConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
-	return nil, errors.Wrap(err, "viper failed to read config file")
+	return nil, fmt.Errorf("viper failed to read config file: %w", err)
 }
 if err := viper.Unmarshal(config); err != nil {
-	return nil, errors.Wrap(err, "viper failed to unmarshal config")
+	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 }
 if err := config.ValidateBasic(); err != nil {
-	return nil, errors.Wrap(err, "config is invalid")
+	return nil, fmt.Errorf("config is invalid: %w", err)
 }
 ```
 
@@ -517,7 +530,7 @@ pv := privval.LoadFilePV(
 ```go
 nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to load node's key")
+	return nil, fmt.Errorf("failed to load node's key: %w", err)
 }
 ```
 
@@ -530,7 +543,7 @@ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 var err error
 logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 if err != nil {
-	return nil, errors.Wrap(err, "failed to parse log level")
+	return nil, fmt.Errorf("failed to parse log level: %w", err)
 }
 ```
 
@@ -555,8 +568,7 @@ os.Exit(0)
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
-```sh
-$ export GO111MODULE=on
+```bash
 $ go mod init github.com/me/example
 $ go build
 ```
@@ -565,12 +577,12 @@ This should build the binary.
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
-Tendermint Core.
+Tendermint Core. Please refer to [the official
+guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
-```sh
+```bash
 $ rm -rf /tmp/example
-$ cd $GOPATH/src/github.com/tendermint/tendermint
-$ make install
 $ TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
@@ -580,7 +592,7 @@ I[2019-07-16|18:40:36.482] Generated genesis file                       module=m
 
 We are ready to start our application:
 
-```sh
+```bash
 $ ./example -config "/tmp/example/config/config.toml"
 
 badger 2019/07/16 18:42:25 INFO: All 0 tables opened in 0s
@@ -593,7 +605,7 @@ I[2019-07-16|18:42:26.865] Committed state                              module=s
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
@@ -636,4 +648,4 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://tendermint.com/docs/).
+deeper, read [the docs](https://docs.tendermint.com/master/).

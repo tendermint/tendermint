@@ -1,3 +1,7 @@
+---
+order: 11
+---
+
 # Metrics
 
 Tendermint can report and serve the Prometheus metrics, which in their turn can
@@ -14,34 +18,37 @@ Listen address can be changed in the config file (see
 
 The following metrics are available:
 
-| **Name**                                | **Type**  | **Since** | **Tags**       | **Description**                                                 |
-|-----------------------------------------|-----------|-----------|----------------|-----------------------------------------------------------------|
-| consensus\_height                       | Gauge     | 0.21.0    |                | Height of the chain                                             |
-| consensus\_validators                   | Gauge     | 0.21.0    |                | Number of validators                                            |
-| consensus\_validators\_power            | Gauge     | 0.21.0    |                | Total voting power of all validators                            |
-| consensus\_missing\_validators          | Gauge     | 0.21.0    |                | Number of validators who did not sign                           |
-| consensus\_missing\_validators\_power   | Gauge     | 0.21.0    |                | Total voting power of the missing validators                    |
-| consensus\_byzantine\_validators        | Gauge     | 0.21.0    |                | Number of validators who tried to double sign                   |
-| consensus\_byzantine\_validators\_power | Gauge     | 0.21.0    |                | Total voting power of the byzantine validators                  |
-| consensus\_block\_interval\_seconds     | Histogram | 0.21.0    |                | Time between this and last block (Block.Header.Time) in seconds |
-| consensus\_rounds                       | Gauge     | 0.21.0    |                | Number of rounds                                                |
-| consensus\_num\_txs                     | Gauge     | 0.21.0    |                | Number of transactions                                          |
-| consensus\_block\_parts                 | counter   | on dev    | peer\_id       | number of blockparts transmitted by peer                        |
-| consensus\_latest\_block\_height        | gauge     | on dev    |                | /status sync\_info number                                       |
-| consensus\_fast\_syncing                | gauge     | on dev    |                | either 0 (not fast syncing) or 1 (syncing)                      |
-| consensus\_total\_txs                   | Gauge     | 0.21.0    |                | Total number of transactions committed                          |
-| consensus\_block\_size\_bytes           | Gauge     | 0.21.0    |                | Block size in bytes                                             |
-| p2p\_peers                              | Gauge     | 0.21.0    |                | Number of peers node's connected to                             |
-| p2p\_peer\_receive\_bytes\_total        | counter   | on dev    | peer\_id, chID | number of bytes per channel received from a given peer          |
-| p2p\_peer\_send\_bytes\_total           | counter   | on dev    | peer\_id, chID | number of bytes per channel sent to a given peer                |
-| p2p\_peer\_pending\_send\_bytes         | gauge     | on dev    | peer\_id       | number of pending bytes to be sent to a given peer              |
-| p2p\_num\_txs                           | gauge     | on dev    | peer\_id       | number of transactions submitted by each peer\_id               |
-| p2p\_pending\_send\_bytes               | gauge     | on dev    | peer\_id       | amount of data pending to be sent to peer                       |
-| mempool\_size                           | Gauge     | 0.21.0    |                | Number of uncommitted transactions                              |
-| mempool\_tx\_size\_bytes                | histogram | on dev    |                | transaction sizes in bytes                                      |
-| mempool\_failed\_txs                    | counter   | on dev    |                | number of failed transactions                                   |
-| mempool\_recheck\_times                 | counter   | on dev    |                | number of transactions rechecked in the mempool                 |
-| state\_block\_processing\_time          | histogram | on dev    |                | time between BeginBlock and EndBlock in ms                      |
+| **Name**                               | **Type**  | **Since** | **Tags**      | **Description**                                                        |
+| -------------------------------------- | --------- | --------- | ------------- | ---------------------------------------------------------------------- |
+| consensus_height                       | Gauge     | 0.21.0    |               | Height of the chain                                                    |
+| consensus_validators                   | Gauge     | 0.21.0    |               | Number of validators                                                   |
+| consensus_validators_power             | Gauge     | 0.21.0    |               | Total voting power of all validators                                   |
+| consensus_validator_power              | Gauge     | 0.33.0    |               | Voting power of the node if in the validator set                       |
+| consensus_validator_last_signed_height | Gauge     | 0.33.0    |               | Last height the node signed a block, if the node is a validator        |
+| consensus_validator_missed_blocks      | Gauge     | 0.33.0    |               | Total amount of blocks missed for the node, if the node is a validator |
+| consensus_missing_validators           | Gauge     | 0.21.0    |               | Number of validators who did not sign                                  |
+| consensus_missing_validators_power     | Gauge     | 0.21.0    |               | Total voting power of the missing validators                           |
+| consensus_byzantine_validators         | Gauge     | 0.21.0    |               | Number of validators who tried to double sign                          |
+| consensus_byzantine_validators_power   | Gauge     | 0.21.0    |               | Total voting power of the byzantine validators                         |
+| consensus_block_interval_seconds       | Histogram | 0.21.0    |               | Time between this and last block (Block.Header.Time) in seconds        |
+| consensus_rounds                       | Gauge     | 0.21.0    |               | Number of rounds                                                       |
+| consensus_num_txs                      | Gauge     | 0.21.0    |               | Number of transactions                                                 |
+| consensus_total_txs                    | Gauge     | 0.21.0    |               | Total number of transactions committed                                 |
+| consensus_block_parts                  | counter   | 0.25.0    | peer_id       | number of blockparts transmitted by peer                               |
+| consensus_latest_block_height          | gauge     | 0.25.0    |               | /status sync_info number                                               |
+| consensus_fast_syncing                 | gauge     | 0.25.0    |               | either 0 (not fast syncing) or 1 (syncing)                             |
+| consensus_block_size_bytes             | Gauge     | 0.21.0    |               | Block size in bytes                                                    |
+| p2p_peers                              | Gauge     | 0.21.0    |               | Number of peers node's connected to                                    |
+| p2p_peer_receive_bytes_total           | counter   | 0.25.0    | peer_id, chID | number of bytes per channel received from a given peer                 |
+| p2p_peer_send_bytes_total              | counter   | 0.25.0    | peer_id, chID | number of bytes per channel sent to a given peer                       |
+| p2p_peer_pending_send_bytes            | gauge     | 0.25.0    | peer_id       | number of pending bytes to be sent to a given peer                     |
+| p2p_num_txs                            | gauge     | 0.25.0    | peer_id       | number of transactions submitted by each peer_id                       |
+| p2p_pending_send_bytes                 | gauge     | 0.25.0    | peer_id       | amount of data pending to be sent to peer                              |
+| mempool_size                           | Gauge     | 0.21.0    |               | Number of uncommitted transactions                                     |
+| mempool_tx_size_bytes                  | histogram | 0.25.0    |               | transaction sizes in bytes                                             |
+| mempool_failed_txs                     | counter   | 0.25.0    |               | number of failed transactions                                          |
+| mempool_recheck_times                  | counter   | 0.25.0    |               | number of transactions rechecked in the mempool                        |
+| state_block_processing_time            | histogram | 0.25.0    |               | time between BeginBlock and EndBlock in ms                             |
 
 ## Useful queries
 

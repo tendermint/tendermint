@@ -43,11 +43,11 @@ func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 	bHistogram := map[bh.PeerBehaviour]int{}
 
 	for _, behaviour := range a {
-		aHistogram[behaviour] += 1
+		aHistogram[behaviour]++
 	}
 
 	for _, behaviour := range b {
-		bHistogram[behaviour] += 1
+		bHistogram[behaviour]++
 	}
 
 	if len(aHistogram) != len(bHistogram) {
@@ -108,13 +108,13 @@ func TestEqualPeerBehaviours(t *testing.T) {
 
 	for _, test := range equals {
 		if !equalBehaviours(test.left, test.right) {
-			t.Errorf("Expected %#v and %#v to be equal", test.left, test.right)
+			t.Errorf("expected %#v and %#v to be equal", test.left, test.right)
 		}
 	}
 
 	for _, test := range unequals {
 		if equalBehaviours(test.left, test.right) {
-			t.Errorf("Expected %#v and %#v to be unequal", test.left, test.right)
+			t.Errorf("expected %#v and %#v to be unequal", test.left, test.right)
 		}
 	}
 }
@@ -131,9 +131,24 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 		}{
 			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},
 			{"2", []bh.PeerBehaviour{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
-			{"3", []bh.PeerBehaviour{bh.BlockPart("3", ""), bh.ConsensusVote("3", ""), bh.BlockPart("3", ""), bh.ConsensusVote("3", "")}},
-			{"4", []bh.PeerBehaviour{bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", "")}},
-			{"5", []bh.PeerBehaviour{bh.BlockPart("5", ""), bh.ConsensusVote("5", ""), bh.BlockPart("5", ""), bh.ConsensusVote("5", "")}},
+			{
+				"3",
+				[]bh.PeerBehaviour{bh.BlockPart("3", ""),
+					bh.ConsensusVote("3", ""),
+					bh.BlockPart("3", ""),
+					bh.ConsensusVote("3", "")}},
+			{
+				"4",
+				[]bh.PeerBehaviour{bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", "")}},
+			{
+				"5",
+				[]bh.PeerBehaviour{bh.BlockPart("5", ""),
+					bh.ConsensusVote("5", ""),
+					bh.BlockPart("5", ""),
+					bh.ConsensusVote("5", "")}},
 		}
 	)
 
@@ -179,7 +194,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	for _, items := range behaviourScript {
 		reported := pr.GetBehaviours(items.peerID)
 		if !equalBehaviours(reported, items.behaviours) {
-			t.Errorf("Expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",
+			t.Errorf("expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",
 				items.peerID, items.behaviours, reported)
 		}
 	}

@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
+
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -140,7 +142,7 @@ func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlo
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(int64(height), txs, nil, nil),
+			block:  types.MakeBlock(height, txs, nil, nil),
 			length: 100},
 		wantState:     expected,
 		wantNewBlocks: append(prevBlocks, height),
@@ -157,7 +159,7 @@ func sBlockRespEvErrored(current, expected string,
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(int64(height), txs, nil, nil),
+			block:  types.MakeBlock(height, txs, nil, nil),
 			length: 100},
 		wantState:        expected,
 		wantErr:          wantErr,
@@ -211,6 +213,7 @@ type testFields struct {
 
 func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor
 			testBcR := newTestReactor(tt.startingHeight)
@@ -220,6 +223,7 @@ func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 			}
 
 			for _, step := range tt.steps {
+				step := step
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 
 				var heightBefore int64
@@ -733,7 +737,7 @@ func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPee
 			continue
 		}
 		if randomPeerHeights {
-			peerHeights[i] = int64(cmn.MaxInt(cmn.RandIntn(int(numBlocks)), int(startingHeight)+1))
+			peerHeights[i] = int64(tmmath.MaxInt(tmrand.Intn(int(numBlocks)), int(startingHeight)+1))
 		} else {
 			peerHeights[i] = numBlocks
 		}
@@ -769,7 +773,7 @@ forLoop:
 	for i := 0; i < int(numBlocks); i++ {
 
 		// Add the makeRequestEv step periodically.
-		if i%int(maxRequestsPerPeer) == 0 {
+		if i%maxRequestsPerPeer == 0 {
 			testSteps = append(
 				testSteps,
 				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
@@ -786,7 +790,7 @@ forLoop:
 		numBlocksReceived++
 
 		// Add the processedBlockEv step periodically.
-		if numBlocksReceived >= int(maxRequestsPerPeer) || height >= numBlocks {
+		if numBlocksReceived >= maxRequestsPerPeer || height >= numBlocks {
 			for j := int(height) - numBlocksReceived; j < int(height); j++ {
 				if j >= int(numBlocks) {
 					// This is the last block that is processed, we should be in "finished" state.
@@ -823,19 +827,19 @@ const (
 
 func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 	// Generate a starting height for fast sync.
-	startingHeight := int64(cmn.RandIntn(maxStartingHeightTest) + 1)
+	startingHeight := int64(tmrand.Intn(maxStartingHeightTest) + 1)
 
 	// Generate the number of requests per peer.
-	maxRequestsPerPeer := cmn.RandIntn(maxRequestsPerPeerTest) + 1
+	maxRequestsPerPeer := tmrand.Intn(maxRequestsPerPeerTest) + 1
 
 	// Generate the maximum number of total pending requests, >= maxRequestsPerPeer.
-	maxPendingRequests := cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer)) + maxRequestsPerPeer
+	maxPendingRequests := tmrand.Intn(maxTotalPendingRequestsTest-maxRequestsPerPeer) + maxRequestsPerPeer
 
 	// Generate the number of blocks to be synced.
-	numBlocks := int64(cmn.RandIntn(maxNumBlocksInChainTest)) + startingHeight
+	numBlocks := int64(tmrand.Intn(maxNumBlocksInChainTest)) + startingHeight
 
 	// Generate a number of peers.
-	numPeers := cmn.RandIntn(maxNumPeersTest) + 1
+	numPeers := tmrand.Intn(maxNumPeersTest) + 1
 
 	return makeCorrectTransitionSequence(startingHeight, numBlocks, numPeers, true, maxRequestsPerPeer, maxPendingRequests)
 }
@@ -862,6 +866,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor
 			testBcR := newTestReactor(tt.startingHeight)
@@ -871,6 +876,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 			}
 
 			for _, step := range tt.steps {
+				step := step
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 
 				oldNumStatusRequests := testBcR.numStatusRequests

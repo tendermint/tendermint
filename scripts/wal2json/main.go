@@ -12,18 +12,9 @@ import (
 	"io"
 	"os"
 
-	amino "github.com/tendermint/go-amino"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	cs.RegisterConsensusMessages(cdc)
-	cs.RegisterWALMessages(cdc)
-	types.RegisterBlockAmino(cdc)
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -46,7 +37,7 @@ func main() {
 			panic(fmt.Errorf("failed to decode msg: %v", err))
 		}
 
-		json, err := cdc.MarshalJSON(msg)
+		json, err := tmjson.Marshal(msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to marshal msg: %v", err))
 		}
@@ -56,8 +47,8 @@ func main() {
 			_, err = os.Stdout.Write([]byte("\n"))
 		}
 		if err == nil {
-			if end, ok := msg.Msg.(cs.EndHeightMessage); ok {
-				_, err = os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", end.Height))) // nolint: errcheck, gas
+			if endMsg, ok := msg.Msg.(cs.EndHeightMessage); ok {
+				_, err = os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", endMsg.Height)))
 			}
 		}
 		if err != nil {

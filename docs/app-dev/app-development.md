@@ -1,9 +1,13 @@
+---
+order: 4
+---
+
 # Application Development Guide
 
 ## XXX
 
 This page is undergoing deprecation. All content is being moved to the new [home
-of the ABCI specification](../spec/abci/README.md).
+of the ABCI specification](https://github.com/tendermint/spec/tree/master/spec/abci).
 
 ## ABCI Design
 
@@ -183,7 +187,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	events := []types.Event{
 		{
 			Type: "app",
-			Attributes: []cmn.KVPair{
+			Attributes: []kv.Pair{
 				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
 				{Key: []byte("key"), Value: key},
 			},
@@ -294,7 +298,6 @@ ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
     Header header = req.getHeader();
     byte[] prevAppHash = header.getAppHash().toByteArray();
     long prevHeight = header.getHeight();
-    long numTxs = header.getNumTxs();
 
     // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
 
@@ -313,7 +316,7 @@ field can be left empty. Tendermint core will take care of updating the
 validator set. Note the change in voting power must be strictly less than 1/3
 per block if you want a light client to be able to prove the transition
 externally. See the [light client
-docs](https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators)
+docs](https://godoc.org/github.com/tendermint/tendermint/light#hdr-How_We_Track_Validators)
 for details on how it tracks validators.
 
 In go:

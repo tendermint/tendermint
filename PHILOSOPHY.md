@@ -88,11 +88,11 @@ non-concurrent logic, then the performance is good enough.  If they are used in
 the context of concurrent logic, then it will still perform correctly.
 
 Examples of this design principle can be seen in the types.ValidatorSet struct,
-and the cmn.Rand struct.  It's one single struct declaration that can be used
+and the rand.Rand struct.  It's one single struct declaration that can be used
 in both concurrent and non-concurrent logic, and due to its well encapsulation,
 it's easy to get the usage of the mutex right.
 
-#### example: cmn.Rand:
+#### example: rand.Rand:
 
 `The default Source is safe for concurrent use by multiple goroutines, but
 Sources created by NewSource are not`.  The reason why the default
@@ -101,14 +101,14 @@ package-level source is safe for concurrent use is because it is protected (see
 
 But we shouldn't rely on the global source, we should be creating our own
 Rand/Source instances and using them, especially for determinism in testing.
-So it is reasonable to have cmn.Rand be protected by a mutex.  Whether we want
+So it is reasonable to have rand.Rand be protected by a mutex.  Whether we want
 our own implementation of Rand is another question, but the answer there is
 also in the affirmative.  Sometimes you want to know where Rand is being used
 in your code, so it becomes a simple matter of dropping in a log statement to
 inject inspectability into Rand usage.  Also, it is nice to be able to extend
 the functionality of Rand with custom methods.  For these reasons, and for the
 reasons which is outlined in this design philosophy document, we should
-continue to use the cmn.Rand object, with mutex protection.
+continue to use the rand.Rand object, with mutex protection.
 
 Another key aspect of good encapsulation is the choice of exposed vs unexposed
 methods.  It should be clear to the reader of the code, which methods are

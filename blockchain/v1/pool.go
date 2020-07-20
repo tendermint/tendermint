@@ -66,9 +66,9 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 	pool.MaxPeerHeight = newMax
 }
 
-// UpdatePeer adds a new peer or updates an existing peer with a new height.
+// UpdatePeer adds a new peer or updates an existing peer with a new base and height.
 // If a peer is short it is not added.
-func (pool *BlockPool) UpdatePeer(peerID p2p.ID, height int64) error {
+func (pool *BlockPool) UpdatePeer(peerID p2p.ID, base int64, height int64) error {
 
 	peer := pool.peers[peerID]
 
@@ -79,10 +79,10 @@ func (pool *BlockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 			return errPeerTooShort
 		}
 		// Add new peer.
-		peer = NewBpPeer(peerID, height, pool.toBcR.sendPeerError, nil)
+		peer = NewBpPeer(peerID, base, height, pool.toBcR.sendPeerError, nil)
 		peer.SetLogger(pool.logger.With("peer", peerID))
 		pool.peers[peerID] = peer
-		pool.logger.Info("added peer", "peerID", peerID, "height", height, "num_peers", len(pool.peers))
+		pool.logger.Info("added peer", "peerID", peerID, "base", base, "height", height, "num_peers", len(pool.peers))
 	} else {
 		// Check if peer is lowering its height. This is not allowed.
 		if height < peer.Height {
@@ -90,6 +90,7 @@ func (pool *BlockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 			return errPeerLowersItsHeight
 		}
 		// Update existing peer.
+		peer.Base = base
 		peer.Height = height
 	}
 
@@ -191,7 +192,7 @@ func (pool *BlockPool) makeRequestBatch(maxNumRequests int) []int {
 	// - FSM timed out on waiting to advance the block execution due to missing blocks at h or h+1
 	// Determine the number of requests needed by subtracting the number of requests already made from the maximum
 	// allowed
-	numNeeded := int(maxNumRequests) - len(pool.blocks)
+	numNeeded := maxNumRequests - len(pool.blocks)
 	for len(pool.plannedRequests) < numNeeded {
 		if pool.nextRequestHeight > pool.MaxPeerHeight {
 			break
@@ -213,7 +214,7 @@ func (pool *BlockPool) sendRequest(height int64) bool {
 		if peer.NumPendingBlockRequests >= maxRequestsPerPeer {
 			continue
 		}
-		if peer.Height < height {
+		if peer.Base > height || peer.Height < height {
 			continue
 		}
 

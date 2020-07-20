@@ -110,7 +110,7 @@ via concrete implementation of this interface
 ## <a name="EventSwitch">type</a> [EventSwitch](/src/target/events.go?s=560:771#L29)
 ``` go
 type EventSwitch interface {
-    cmn.Service
+    service.Service
     Fireable
 
     AddListenerForEvent(listenerID, event string, cb EventCallback)

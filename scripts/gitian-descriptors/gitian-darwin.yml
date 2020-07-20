@@ -23,23 +23,18 @@ remotes:
 - "url": "https://github.com/tendermint/tendermint.git"
   "dir": "tendermint"
 files:
-- "golang-debian-1.12.5-1.tar.gz"
+- "go1.13.3.linux-amd64.tar.gz"
 script: |
   set -e -o pipefail
 
-  GO_SRC_RELEASE=golang-debian-1.12.5-1
+  GO_SRC_RELEASE=go1.13.3.linux-amd64
   GO_SRC_TARBALL="${GO_SRC_RELEASE}.tar.gz"
   # Compile go and configure the environment
   export TAR_OPTIONS="--mtime="$REFERENCE_DATE\\\ $REFERENCE_TIME""
   export BUILD_DIR=`pwd`
   tar xf "${GO_SRC_TARBALL}"
   rm -f "${GO_SRC_TARBALL}"
-  [ -d "${GO_SRC_RELEASE}/" ]
-  mv "${GO_SRC_RELEASE}/" go/
-  pushd go/
-  QUILT_PATCHES=debian/patches quilt push -a
-  fakeroot debian/rules build RUN_TESTS=false GOCACHE=/tmp/go-cache
-  popd
+  [ -d go/ ]
 
   export GOOS=darwin
   export GOROOT=${BUILD_DIR}/go
@@ -89,6 +84,7 @@ script: |
     # Build tendermint binary
     pushd ${distsrc}
     GOARCH=${arch} GOROOT_FINAL=${GOROOT} go build -a \
+      -trimpath \
       -gcflags=all=-trimpath=${GOPATH} \
       -asmflags=all=-trimpath=${GOPATH} \
       -mod=readonly -tags "tendermint" \

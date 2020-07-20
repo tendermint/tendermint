@@ -1,0 +1,32 @@
+syntax = "proto3";
+package tendermint.rpc.grpc;
+option  go_package = "github.com/tendermint/tendermint/rpc/grpc;coregrpc";
+
+import "tendermint/abci/types.proto";
+
+//----------------------------------------
+// Request types
+
+message RequestPing {}
+
+message RequestBroadcastTx {
+  bytes tx = 1;
+}
+
+//----------------------------------------
+// Response types
+
+message ResponsePing {}
+
+message ResponseBroadcastTx {
+  tendermint.abci.ResponseCheckTx   check_tx   = 1;
+  tendermint.abci.ResponseDeliverTx deliver_tx = 2;
+}
+
+//----------------------------------------
+// Service Definition
+
+service BroadcastAPI {
+  rpc Ping(RequestPing) returns (ResponsePing);
+  rpc BroadcastTx(RequestBroadcastTx) returns (ResponseBroadcastTx);
+}

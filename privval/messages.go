@@ -1,61 +1,40 @@
 package privval
 
 import (
-	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
+	"fmt"
+
+	"github.com/gogo/protobuf/proto"
+
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
-// RemoteSignerMsg is sent between SignerServiceEndpoint and the SignerServiceEndpoint client.
-type RemoteSignerMsg interface{}
+// TODO: Add ChainIDRequest
 
-func RegisterRemoteSignerMsg(cdc *amino.Codec) {
-	cdc.RegisterInterface((*RemoteSignerMsg)(nil), nil)
-	cdc.RegisterConcrete(&PubKeyRequest{}, "tendermint/remotesigner/PubKeyRequest", nil)
-	cdc.RegisterConcrete(&PubKeyResponse{}, "tendermint/remotesigner/PubKeyResponse", nil)
-	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/remotesigner/SignVoteRequest", nil)
-	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/remotesigner/SignedVoteResponse", nil)
-	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/remotesigner/SignProposalRequest", nil)
-	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/remotesigner/SignedProposalResponse", nil)
-	cdc.RegisterConcrete(&PingRequest{}, "tendermint/remotesigner/PingRequest", nil)
-	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)
-}
+func mustWrapMsg(pb proto.Message) privvalproto.Message {
+	msg := privvalproto.Message{}
 
-// PubKeyRequest requests the consensus public key from the remote signer.
-type PubKeyRequest struct{}
+	switch pb := pb.(type) {
+	case *privvalproto.Message:
+		msg = *pb
+	case *privvalproto.PubKeyRequest:
+		msg.Sum = &privvalproto.Message_PubKeyRequest{PubKeyRequest: pb}
+	case *privvalproto.PubKeyResponse:
+		msg.Sum = &privvalproto.Message_PubKeyResponse{PubKeyResponse: pb}
+	case *privvalproto.SignVoteRequest:
+		msg.Sum = &privvalproto.Message_SignVoteRequest{SignVoteRequest: pb}
+	case *privvalproto.SignedVoteResponse:
+		msg.Sum = &privvalproto.Message_SignedVoteResponse{SignedVoteResponse: pb}
+	case *privvalproto.SignedProposalResponse:
+		msg.Sum = &privvalproto.Message_SignedProposalResponse{SignedProposalResponse: pb}
+	case *privvalproto.SignProposalRequest:
+		msg.Sum = &privvalproto.Message_SignProposalRequest{SignProposalRequest: pb}
+	case *privvalproto.PingRequest:
+		msg.Sum = &privvalproto.Message_PingRequest{}
+	case *privvalproto.PingResponse:
+		msg.Sum = &privvalproto.Message_PingResponse{}
+	default:
+		panic(fmt.Errorf("unknown message type %T", msg))
+	}
 
-// PubKeyResponse is a PrivValidatorSocket message containing the public key.
-type PubKeyResponse struct {
-	PubKey crypto.PubKey
-	Error  *RemoteSignerError
-}
-
-// SignVoteRequest is a PrivValidatorSocket message containing a vote.
-type SignVoteRequest struct {
-	Vote *types.Vote
-}
-
-// SignedVoteResponse is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
-type SignedVoteResponse struct {
-	Vote  *types.Vote
-	Error *RemoteSignerError
-}
-
-// SignProposalRequest is a PrivValidatorSocket message containing a Proposal.
-type SignProposalRequest struct {
-	Proposal *types.Proposal
-}
-
-// SignedProposalResponse is a PrivValidatorSocket message containing a proposal response
-type SignedProposalResponse struct {
-	Proposal *types.Proposal
-	Error    *RemoteSignerError
-}
-
-// PingRequest is a PrivValidatorSocket message to keep the connection alive.
-type PingRequest struct {
-}
-
-// PingRequest is a PrivValidatorSocket response to keep the connection alive.
-type PingResponse struct {
+	return msg
 }

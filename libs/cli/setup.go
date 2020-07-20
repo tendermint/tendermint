@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -89,7 +89,10 @@ func (e Executor) Execute() error {
 	err := e.Command.Execute()
 	if err != nil {
 		if viper.GetBool(TraceFlag) {
-			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
+			const size = 64 << 10
+			buf := make([]byte, size)
+			buf = buf[:runtime.Stack(buf, false)]
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n%s\n", err, buf)
 		} else {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
@@ -151,7 +154,7 @@ func validateOutput(cmd *cobra.Command, args []string) error {
 	switch output {
 	case "text", "json":
 	default:
-		return errors.Errorf("Unsupported output format: %s", output)
+		return fmt.Errorf("unsupported output format: %s", output)
 	}
 	return nil
 }

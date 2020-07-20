@@ -3,9 +3,10 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
-ID=$3
-N=$4
-PROXY_APP=$5
+IPV=$3
+ID=$4
+N=$5
+PROXY_APP=$6
 
 ###############################################################
 # this runs on each peer:
@@ -23,14 +24,14 @@ set +e # circle sigh :(
 	set -e
 
 	# restart peer - should have an empty blockchain
-	PERSISTENT_PEERS="$(test/p2p/ip_plus_id.sh 1 $DOCKER_IMAGE):26656"
+	PERSISTENT_PEERS="$(test/p2p/address.sh $IPV 1 26656 $DOCKER_IMAGE)"
 	for j in `seq 2 $N`; do
-		PERSISTENT_PEERS="$PERSISTENT_PEERS,$(test/p2p/ip_plus_id.sh $j $DOCKER_IMAGE):26656"
+		PERSISTENT_PEERS="$PERSISTENT_PEERS,$(test/p2p/address.sh $IPV $j 26656 $DOCKER_IMAGE)"
 	done
-	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
+	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
 
 	# wait for peer to sync and check the app hash
-	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME fs_$ID "test/p2p/fast_sync/check_peer.sh $ID"
+	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV fs_$ID "test/p2p/fast_sync/check_peer.sh $IPV $ID"
 
 	echo ""
 	echo "PASS"

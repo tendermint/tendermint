@@ -1,0 +1,19 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Tendermint Core Documentation",
+  "main": "index.js",
+  "dependencies": {
+    "vuepress-theme-cosmos": "^1.0.168"
+  },
+  "scripts": {
+    "preserve": "./pre.sh",
+    "serve": "trap 'exit 0' SIGINT; vuepress dev --no-cache",
+    "postserve": "./post.sh",
+    "prebuild": "./pre.sh",
+    "build": "trap 'exit 0' SIGINT; vuepress build --no-cache",
+    "postbuild": "./post.sh"
+  },
+  "author": "",
+  "license": "ISC"
+}

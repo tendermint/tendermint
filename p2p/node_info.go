@@ -1,10 +1,13 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -43,9 +46,9 @@ type nodeInfoTransport interface {
 
 // ProtocolVersion contains the protocol versions for the software.
 type ProtocolVersion struct {
-	P2P   version.Protocol `json:"p2p"`
-	Block version.Protocol `json:"block"`
-	App   version.Protocol `json:"app"`
+	P2P   uint64 `json:"p2p"`
+	Block uint64 `json:"block"`
+	App   uint64 `json:"app"`
 }
 
 // defaultProtocolVersion populates the Block and P2P versions using
@@ -57,7 +60,7 @@ var defaultProtocolVersion = NewProtocolVersion(
 )
 
 // NewProtocolVersion returns a fully populated ProtocolVersion.
-func NewProtocolVersion(p2p, block, app version.Protocol) ProtocolVersion {
+func NewProtocolVersion(p2p, block, app uint64) ProtocolVersion {
 	return ProtocolVersion{
 		P2P:   p2p,
 		Block: block,
@@ -77,14 +80,14 @@ type DefaultNodeInfo struct {
 
 	// Authenticate
 	// TODO: replace with NetAddress
-	ID_        ID     `json:"id"`          // authenticated identifier
-	ListenAddr string `json:"listen_addr"` // accepting incoming
+	DefaultNodeID ID     `json:"id"`          // authenticated identifier
+	ListenAddr    string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network  string       `json:"network"`  // network/chain ID
-	Version  string       `json:"version"`  // major.minor.revision
-	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
+	Network  string         `json:"network"`  // network/chain ID
+	Version  string         `json:"version"`  // major.minor.revision
+	Channels bytes.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string               `json:"moniker"` // arbitrary moniker
@@ -99,7 +102,7 @@ type DefaultNodeInfoOther struct {
 
 // ID returns the node's peer ID.
 func (info DefaultNodeInfo) ID() ID {
-	return info.ID_
+	return info.DefaultNodeID
 }
 
 // Validate checks the self-reported DefaultNodeInfo is safe.
@@ -129,7 +132,7 @@ func (info DefaultNodeInfo) Validate() error {
 
 	// Validate Version
 	if len(info.Version) > 0 &&
-		(!cmn.IsASCIIText(info.Version) || cmn.ASCIITrim(info.Version) == "") {
+		(!tmstrings.IsASCIIText(info.Version) || tmstrings.ASCIITrim(info.Version) == "") {
 
 		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v", info.Version)
 	}
@@ -148,7 +151,7 @@ func (info DefaultNodeInfo) Validate() error {
 	}
 
 	// Validate Moniker.
-	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
+	if !tmstrings.IsASCIIText(info.Moniker) || tmstrings.ASCIITrim(info.Moniker) == "" {
 		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
 
@@ -162,7 +165,7 @@ func (info DefaultNodeInfo) Validate() error {
 	}
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress
-	if len(rpcAddr) > 0 && (!cmn.IsASCIIText(rpcAddr) || cmn.ASCIITrim(rpcAddr) == "") {
+	if len(rpcAddr) > 0 && (!tmstrings.IsASCIIText(rpcAddr) || tmstrings.ASCIITrim(rpcAddr) == "") {
 		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
 	}
 
@@ -172,20 +175,20 @@ func (info DefaultNodeInfo) Validate() error {
 // CompatibleWith checks if two DefaultNodeInfo are compatible with eachother.
 // CONTRACT: two nodes are compatible if the Block version and network match
 // and they have at least one channel in common.
-func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
-	other, ok := other_.(DefaultNodeInfo)
+func (info DefaultNodeInfo) CompatibleWith(otherInfo NodeInfo) error {
+	other, ok := otherInfo.(DefaultNodeInfo)
 	if !ok {
-		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(other_))
+		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(otherInfo))
 	}
 
 	if info.ProtocolVersion.Block != other.ProtocolVersion.Block {
-		return fmt.Errorf("Peer is on a different Block version. Got %v, expected %v",
+		return fmt.Errorf("peer is on a different Block version. Got %v, expected %v",
 			other.ProtocolVersion.Block, info.ProtocolVersion.Block)
 	}
 
 	// nodes must be on the same network
 	if info.Network != other.Network {
-		return fmt.Errorf("Peer is on a different network. Got %v, expected %v", other.Network, info.Network)
+		return fmt.Errorf("peer is on a different network. Got %v, expected %v", other.Network, info.Network)
 	}
 
 	// if we have no channels, we're just testing
@@ -205,7 +208,7 @@ OUTER_LOOP:
 		}
 	}
 	if !found {
-		return fmt.Errorf("Peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
+		return fmt.Errorf("peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
 	}
 	return nil
 }
@@ -219,30 +222,50 @@ func (info DefaultNodeInfo) NetAddress() (*NetAddress, error) {
 	return NewNetAddressString(idAddr)
 }
 
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
+func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
 
-// Size returns the size of the amino encoding, in bytes.
-func (info *DefaultNodeInfo) Size() int {
-	bs, _ := info.Marshal()
-	return len(bs)
-}
-
-// Marshal returns the amino encoding.
-func (info *DefaultNodeInfo) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(info)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
-	bs, err := info.Marshal()
-	if err != nil {
-		return -1, err
+	dni := new(tmp2p.DefaultNodeInfo)
+	dni.ProtocolVersion = tmp2p.ProtocolVersion{
+		P2P:   info.ProtocolVersion.P2P,
+		Block: info.ProtocolVersion.Block,
+		App:   info.ProtocolVersion.App,
 	}
-	return copy(data, bs), nil
+
+	dni.DefaultNodeID = string(info.DefaultNodeID)
+	dni.ListenAddr = info.ListenAddr
+	dni.Network = info.Network
+	dni.Version = info.Version
+	dni.Channels = info.Channels
+	dni.Moniker = info.Moniker
+	dni.Other = tmp2p.DefaultNodeInfoOther{
+		TxIndex:    info.Other.TxIndex,
+		RPCAddress: info.Other.RPCAddress,
+	}
+
+	return dni
 }
 
-// Unmarshal deserializes from amino encoded form.
-func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, info)
+func DefaultNodeInfoFromToProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, error) {
+	if pb == nil {
+		return DefaultNodeInfo{}, errors.New("nil node info")
+	}
+	dni := DefaultNodeInfo{
+		ProtocolVersion: ProtocolVersion{
+			P2P:   pb.ProtocolVersion.P2P,
+			Block: pb.ProtocolVersion.Block,
+			App:   pb.ProtocolVersion.App,
+		},
+		DefaultNodeID: ID(pb.DefaultNodeID),
+		ListenAddr:    pb.ListenAddr,
+		Network:       pb.Network,
+		Version:       pb.Version,
+		Channels:      pb.Channels,
+		Moniker:       pb.Moniker,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    pb.Other.TxIndex,
+			RPCAddress: pb.Other.RPCAddress,
+		},
+	}
+
+	return dni, nil
 }

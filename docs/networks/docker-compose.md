@@ -1,3 +1,7 @@
+---
+order: 2
+---
+
 # Docker Compose
 
 With Docker Compose, you can spin up local testnets with a single command.

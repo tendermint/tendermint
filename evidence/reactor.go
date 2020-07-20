@@ -2,14 +2,15 @@ package evidence
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -22,89 +23,83 @@ const (
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 )
 
-// EvidenceReactor handles evpool evidence broadcasting amongst peers.
-type EvidenceReactor struct {
+// Reactor handles evpool evidence broadcasting amongst peers.
+type Reactor struct {
 	p2p.BaseReactor
-	evpool   *EvidencePool
+	evpool   *Pool
 	eventBus *types.EventBus
 }
 
-// NewEvidenceReactor returns a new EvidenceReactor with the given config and evpool.
-func NewEvidenceReactor(evpool *EvidencePool) *EvidenceReactor {
-	evR := &EvidenceReactor{
+// NewReactor returns a new Reactor with the given config and evpool.
+func NewReactor(evpool *Pool) *Reactor {
+	evR := &Reactor{
 		evpool: evpool,
 	}
-	evR.BaseReactor = *p2p.NewBaseReactor("EvidenceReactor", evR)
+	evR.BaseReactor = *p2p.NewBaseReactor("Evidence", evR)
 	return evR
 }
 
 // SetLogger sets the Logger on the reactor and the underlying Evidence.
-func (evR *EvidenceReactor) SetLogger(l log.Logger) {
+func (evR *Reactor) SetLogger(l log.Logger) {
 	evR.Logger = l
 	evR.evpool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
-func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
+func (evR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:       EvidenceChannel,
-			Priority: 5,
+			ID:                  EvidenceChannel,
+			Priority:            5,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
 
 // AddPeer implements Reactor.
-func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
+func (evR *Reactor) AddPeer(peer p2p.Peer) {
 	go evR.broadcastEvidenceRoutine(peer)
 }
 
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
-func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
+func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	evis, err := decodeMsg(msgBytes)
 	if err != nil {
-		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err, "bytes", msgBytes)
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
 
-	if err = msg.ValidateBasic(); err != nil {
-		evR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		evR.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
-	switch msg := msg.(type) {
-	case *EvidenceListMessage:
-		for _, ev := range msg.Evidence {
-			err := evR.evpool.AddEvidence(ev)
-			if err != nil {
-				evR.Logger.Info("Evidence is not valid", "evidence", msg.Evidence, "err", err)
-				// punish peer
-				evR.Switch.StopPeerForError(src, err)
-			}
+	for _, ev := range evis {
+		err := evR.evpool.AddEvidence(ev)
+		switch err.(type) {
+		case ErrInvalidEvidence:
+			evR.Logger.Error("Evidence is not valid", "evidence", evis, "err", err)
+			// punish peer
+			evR.Switch.StopPeerForError(src, err)
+			return
+		case nil:
+		default:
+			evR.Logger.Error("Evidence has not been added", "evidence", evis, "err", err)
+			return
 		}
-	default:
-		evR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
-// SetEventSwitch implements events.Eventable.
-func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
+// SetEventBus implements events.Eventable.
+func (evR *Reactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
 
 // Modeled after the mempool routine.
 // - Evidence accumulates in a clist.
-// - Each peer has a routien that iterates through the clist,
+// - Each peer has a routine that iterates through the clist,
 // sending available evidence to the peer.
 // - If we're waiting for new evidence and the list is not empty,
 // start iterating from the beginning again.
-func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
+func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 	var next *clist.CElement
 	for {
 		// This happens because the CElement we were looking at got garbage
@@ -124,9 +119,14 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		}
 
 		ev := next.Value.(types.Evidence)
-		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
-		if msg != nil {
-			success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+		evis, retry := evR.checkSendEvidenceMessage(peer, ev)
+		if len(evis) > 0 {
+			msgBytes, err := encodeMsg(evis)
+			if err != nil {
+				panic(err)
+			}
+
+			success := peer.Send(EvidenceChannel, msgBytes)
 			retry = !success
 		}
 
@@ -154,7 +154,11 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 
 // Returns the message to send the peer, or nil if the evidence is invalid for the peer.
 // If message is nil, return true if we should sleep and try again.
-func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
+func (evR Reactor) checkSendEvidenceMessage(
+	peer p2p.Peer,
+	ev types.Evidence,
+) (evis []types.Evidence, retry bool) {
+
 	// make sure the peer is up to date
 	evHeight := ev.Height()
 	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
@@ -169,22 +173,39 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAge := evR.evpool.State().ConsensusParams.Evidence.MaxAge
-	peerHeight := peerState.GetHeight()
-	if peerHeight < evHeight {
-		// peer is behind. sleep while he catches up
+	// and
+	// lastBlockTime - maxDuration < evidenceTime
+	var (
+		peerHeight = peerState.GetHeight()
+
+		params = evR.evpool.State().ConsensusParams.Evidence
+
+		ageDuration  = evR.evpool.State().LastBlockTime.Sub(ev.Time())
+		ageNumBlocks = peerHeight - evHeight
+	)
+
+	if peerHeight < evHeight { // peer is behind. sleep while he catches up
 		return nil, true
-	} else if peerHeight > evHeight+maxAge {
-		// evidence is too old, skip
-		// NOTE: if evidence is too old for an honest peer,
-		// then we're behind and either it already got committed or it never will!
-		evR.Logger.Info("Not sending peer old evidence", "peerHeight", peerHeight, "evHeight", evHeight, "maxAge", maxAge, "peer", peer)
+	} else if ageNumBlocks > params.MaxAgeNumBlocks &&
+		ageDuration > params.MaxAgeDuration { // evidence is too old, skip
+
+		// NOTE: if evidence is too old for an honest peer, then we're behind and
+		// either it already got committed or it never will!
+		evR.Logger.Info("Not sending peer old evidence",
+			"peerHeight", peerHeight,
+			"evHeight", evHeight,
+			"maxAgeNumBlocks", params.MaxAgeNumBlocks,
+			"lastBlockTime", evR.evpool.State().LastBlockTime,
+			"evTime", ev.Time(),
+			"maxAgeDuration", params.MaxAgeDuration,
+			"peer", peer,
+		)
+
 		return nil, false
 	}
 
 	// send evidence
-	msg = &EvidenceListMessage{[]types.Evidence{ev}}
-	return msg, false
+	return []types.Evidence{ev}, false
 }
 
 // PeerState describes the state of a peer.
@@ -192,46 +213,45 @@ type PeerState interface {
 	GetHeight() int64
 }
 
-//-----------------------------------------------------------------------------
-// Messages
-
-// EvidenceMessage is a message sent or received by the EvidenceReactor.
-type EvidenceMessage interface {
-	ValidateBasic() error
-}
-
-func RegisterEvidenceMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*EvidenceMessage)(nil), nil)
-	cdc.RegisterConcrete(&EvidenceListMessage{},
-		"tendermint/evidence/EvidenceListMessage", nil)
-}
-
-func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
-	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+// encodemsg takes a array of evidence
+// returns the byte encoding of the List Message
+func encodeMsg(evis []types.Evidence) ([]byte, error) {
+	evi := make([]*tmproto.Evidence, len(evis))
+	for i := 0; i < len(evis); i++ {
+		ev, err := types.EvidenceToProto(evis[i])
+		if err != nil {
+			return nil, err
+		}
+		evi[i] = ev
 	}
-	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	return
+
+	epl := ep.List{
+		Evidence: evi,
+	}
+
+	return proto.Marshal(&epl)
 }
 
-//-------------------------------------
+// decodemsg takes an array of bytes
+// returns an array of evidence
+func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
+	lm := ep.List{}
+	proto.Unmarshal(bz, &lm)
 
-// EvidenceListMessage contains a list of evidence.
-type EvidenceListMessage struct {
-	Evidence []types.Evidence
-}
+	evis = make([]types.Evidence, len(lm.Evidence))
+	for i := 0; i < len(lm.Evidence); i++ {
+		ev, err := types.EvidenceFromProto(lm.Evidence[i])
+		if err != nil {
+			return nil, err
+		}
+		evis[i] = ev
+	}
 
-// ValidateBasic performs basic validation.
-func (m *EvidenceListMessage) ValidateBasic() error {
-	for i, ev := range m.Evidence {
+	for i, ev := range evis {
 		if err := ev.ValidateBasic(); err != nil {
-			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+			return nil, fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
 	}
-	return nil
-}
 
-// String returns a string representation of the EvidenceListMessage.
-func (m *EvidenceListMessage) String() string {
-	return fmt.Sprintf("[EvidenceListMessage %v]", m.Evidence)
+	return evis, nil
 }

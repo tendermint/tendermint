@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const defaultCapacity = 0
@@ -31,7 +31,7 @@ type Subscription interface {
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
 type EventBus struct {
-	cmn.BaseService
+	service.BaseService
 	pubsub *tmpubsub.Server
 }
 
@@ -45,7 +45,7 @@ func NewEventBusWithBufferCapacity(cap int) *EventBus {
 	// capacity could be exposed later if needed
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
 	b := &EventBus{pubsub: pubsub}
-	b.BaseService = *cmn.NewBaseService(nil, "EventBus", b)
+	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
 	return b
 }
 
@@ -70,13 +70,22 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {
+func (b *EventBus) Subscribe(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+	outCapacity ...int,
+) (Subscription, error) {
 	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
 // This method can be used for a local consensus explorer and synchronous
 // testing. Do not use for for public facing / untrusted subscriptions!
-func (b *EventBus) SubscribeUnbuffered(ctx context.Context, subscriber string, query tmpubsub.Query) (Subscription, error) {
+func (b *EventBus) SubscribeUnbuffered(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+) (Subscription, error) {
 	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
 
@@ -147,6 +156,10 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
+func (b *EventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
+	return b.Publish(EventNewEvidence, evidence)
+}
+
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
 	return b.Publish(EventVote, data)
 }
@@ -155,8 +168,8 @@ func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
 	return b.Publish(EventValidBlock, data)
 }
 
-// PublishEventTx publishes tx event with tags from Result. Note it will add
-// predefined tags (EventTypeKey, TxHashKey). Existing tags with the same names
+// PublishEventTx publishes tx event with events from Result. Note it will add
+// predefined keys (EventTypeKey, TxHashKey). Existing events with the same keys
 // will be overwritten.
 func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
@@ -164,9 +177,9 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 
 	events := b.validateAndStringifyEvents(data.Result.Events, b.Logger.With("tx", data.Tx))
 
-	// add predefined tags
+	// add predefined compositeKeys
 	events[EventTypeKey] = append(events[EventTypeKey], EventTx)
-	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", data.Tx.Hash()))
+	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", Tx(data.Tx).Hash()))
 	events[TxHeightKey] = append(events[TxHeightKey], fmt.Sprintf("%d", data.Height))
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
@@ -215,7 +228,12 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 //-----------------------------------------------------------------------------
 type NopEventBus struct{}
 
-func (NopEventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+func (NopEventBus) Subscribe(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+	out chan<- interface{},
+) error {
 	return nil
 }
 
@@ -232,6 +250,10 @@ func (NopEventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 }
 
 func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
 	return nil
 }
 

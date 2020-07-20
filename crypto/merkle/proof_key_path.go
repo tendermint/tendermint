@@ -2,11 +2,10 @@ package merkle
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 /*
@@ -18,7 +17,7 @@ import (
 	/32:)
 
 	For example, for a Cosmos-SDK application where the first two proof layers
-	are SimpleValueOps, and the third proof layer is an IAVLValueOp, the keys
+	are ValueOps, and the third proof layer is an IAVLValueOp, the keys
 	might look like:
 
 	0: []byte("App")
@@ -87,7 +86,7 @@ func (pth KeyPath) String() string {
 // Each key must use a known encoding.
 func KeyPathToKeys(path string) (keys [][]byte, err error) {
 	if path == "" || path[0] != '/' {
-		return nil, cmn.NewError("key path string must start with a forward slash '/'")
+		return nil, errors.New("key path string must start with a forward slash '/'")
 	}
 	parts := strings.Split(path[1:], "/")
 	keys = make([][]byte, len(parts))
@@ -96,13 +95,13 @@ func KeyPathToKeys(path string) (keys [][]byte, err error) {
 			hexPart := part[2:]
 			key, err := hex.DecodeString(hexPart)
 			if err != nil {
-				return nil, cmn.ErrorWrap(err, "decoding hex-encoded part #%d: /%s", i, part)
+				return nil, fmt.Errorf("decoding hex-encoded part #%d: /%s: %w", i, part, err)
 			}
 			keys[i] = key
 		} else {
 			key, err := url.PathUnescape(part)
 			if err != nil {
-				return nil, cmn.ErrorWrap(err, "decoding url-encoded part #%d: /%s", i, part)
+				return nil, fmt.Errorf("decoding url-encoded part #%d: /%s: %w", i, part, err)
 			}
 			keys[i] = []byte(key) // TODO Test this with random bytes, I'm not sure that it works for arbitrary bytes...
 		}

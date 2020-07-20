@@ -22,7 +22,7 @@ func ValidateTime(t time.Time) error {
 		oneYear = 8766 * time.Hour
 	)
 	if t.Before(now.Add(-oneYear)) || t.After(now.Add(oneYear)) {
-		return fmt.Errorf("Time drifted too much. Expected: -1 < %v < 1 year", now)
+		return fmt.Errorf("time drifted too much. Expected: -1 < %v < 1 year", now)
 	}
 	return nil
 }
@@ -31,7 +31,7 @@ func ValidateTime(t time.Time) error {
 // size != tmhash.Size.
 func ValidateHash(h []byte) error {
 	if len(h) > 0 && len(h) != tmhash.Size {
-		return fmt.Errorf("Expected size to be %d bytes, got %d bytes",
+		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
 			tmhash.Size,
 			len(h),
 		)

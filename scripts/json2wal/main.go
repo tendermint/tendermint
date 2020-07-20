@@ -14,18 +14,10 @@ import (
 	"os"
 	"strings"
 
-	amino "github.com/tendermint/go-amino"
 	cs "github.com/tendermint/tendermint/consensus"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/types"
 )
-
-var cdc = amino.NewCodec()
-
-func init() {
-	cs.RegisterConsensusMessages(cdc)
-	cs.RegisterWALMessages(cdc)
-	types.RegisterBlockAmino(cdc)
-}
 
 func main() {
 	if len(os.Args) < 3 {
@@ -48,23 +40,23 @@ func main() {
 	// the length of tendermint/wal/MsgInfo in the wal.json may exceed the defaultBufSize(4096) of bufio
 	// because of the byte array in BlockPart
 	// leading to unmarshal error: unexpected end of JSON input
-	br := bufio.NewReaderSize(f, 2*types.BlockPartSizeBytes)
+	br := bufio.NewReaderSize(f, int(2*types.BlockPartSizeBytes))
 	dec := cs.NewWALEncoder(walFile)
 
 	for {
-		msgJson, _, err := br.ReadLine()
+		msgJSON, _, err := br.ReadLine()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			panic(fmt.Errorf("failed to read file: %v", err))
 		}
 		// ignore the ENDHEIGHT in json.File
-		if strings.HasPrefix(string(msgJson), "ENDHEIGHT") {
+		if strings.HasPrefix(string(msgJSON), "ENDHEIGHT") {
 			continue
 		}
 
 		var msg cs.TimedWALMessage
-		err = cdc.UnmarshalJSON(msgJson, &msg)
+		err = tmjson.Unmarshal(msgJSON, &msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}

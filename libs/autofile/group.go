@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -14,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -53,7 +52,7 @@ The Group can also be used to binary-search for some line,
 assuming that marker lines are written occasionally.
 */
 type Group struct {
-	cmn.BaseService
+	service.BaseService
 
 	ID                 string
 	Head               *AutoFile // The head AutoFile to write to
@@ -78,14 +77,17 @@ type Group struct {
 
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
-func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
-	dir := path.Dir(headPath)
+func OpenGroup(headPath string, groupOptions ...func(*Group)) (*Group, error) {
+	dir, err := filepath.Abs(filepath.Dir(headPath))
+	if err != nil {
+		return nil, err
+	}
 	head, err := OpenAutoFile(headPath)
 	if err != nil {
 		return nil, err
 	}
 
-	g = &Group{
+	g := &Group{
 		ID:                 "group:" + head.ID,
 		Head:               head,
 		headBuf:            bufio.NewWriterSize(head, 4096*10),
@@ -102,12 +104,12 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 		option(g)
 	}
 
-	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
+	g.BaseService = *service.NewBaseService(nil, "Group", g)
 
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
 	g.maxIndex = gInfo.MaxIndex
-	return
+	return g, nil
 }
 
 // GroupCheckDuration allows you to overwrite default groupCheckDuration.
@@ -131,7 +133,7 @@ func GroupTotalSizeLimit(limit int64) func(*Group) {
 	}
 }
 
-// OnStart implements cmn.Service by starting the goroutine that checks file
+// OnStart implements service.Service by starting the goroutine that checks file
 // and group limits.
 func (g *Group) OnStart() error {
 	g.ticker = time.NewTicker(g.groupCheckDuration)
@@ -139,7 +141,7 @@ func (g *Group) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service by stopping the goroutine described above.
+// OnStop implements service.Service by stopping the goroutine described above.
 // NOTE: g.Head must be closed separately using Close.
 func (g *Group) OnStop() {
 	g.ticker.Stop()
@@ -472,7 +474,8 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 	for {
 		nn, err = gr.curReader.Read(p[n:])
 		n += nn
-		if err == io.EOF {
+		switch {
+		case err == io.EOF:
 			if n >= lenP {
 				return n, nil
 			}
@@ -480,9 +483,9 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
 				return n, err1
 			}
-		} else if err != nil {
+		case err != nil:
 			return n, err
-		} else if nn == 0 { // empty file
+		case nn == 0: // empty file
 			return n, err
 		}
 	}

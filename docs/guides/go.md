@@ -1,3 +1,7 @@
+<!---
+order: 1
+--->
+
 # Creating an application in Go
 
 ## Guide Assumptions
@@ -37,14 +41,14 @@ Go](https://golang.org/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```sh
+```bash
 $ go version
-go version go1.12.7 darwin/amd64
+go version go1.14.x darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
 
-```sh
+```bash
 $ echo $GOPATH
 /Users/melekes/go
 ```
@@ -53,9 +57,9 @@ $ echo $GOPATH
 
 We'll start by creating a new Go project.
 
-```sh
-$ mkdir -p $GOPATH/src/github.com/me/kvstore
-$ cd $GOPATH/src/github.com/me/kvstore
+```bash
+$ mkdir kvstore
+$ cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -74,7 +78,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```sh
+```bash
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -83,7 +87,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -150,6 +154,8 @@ When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
 
 ```go
+import "bytes"
+
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
@@ -199,7 +205,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -222,9 +228,9 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered  asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```
@@ -285,7 +291,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/lite2)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -318,7 +324,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://tendermint.com/docs/spec/abci/).
+[here](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
@@ -388,6 +394,13 @@ defer db.Close()
 app := NewKVStoreApplication(db)
 ```
 
+For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
+This can be avoided by setting the truncate option to true, like this:
+
+```go
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
+```
+
 Then we start the ABCI server and add some signal handling to gracefully stop
 it upon receiving SIGTERM or Ctrl-C. Tendermint Core will act as a client,
 which connects to our server and send us transactions and other messages.
@@ -412,7 +425,7 @@ os.Exit(0)
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
-```sh
+```bash
 $ export GO111MODULE=on
 $ go mod init github.com/me/example
 $ go build
@@ -422,12 +435,12 @@ This should build the binary.
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
-Tendermint Core.
+Tendermint Core. Please refer to [the official
+guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
-```sh
+```bash
 $ rm -rf /tmp/example
-$ cd $GOPATH/src/github.com/tendermint/tendermint
-$ make install
 $ TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
@@ -437,11 +450,11 @@ I[2019-07-16|18:20:36.482] Generated genesis file                       module=m
 
 Feel free to explore the generated files, which can be found at
 `/tmp/example/config` directory. Documentation on the config can be found
-[here](https://tendermint.com/docs/tendermint-core/configuration.html).
+[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
-```sh
+```bash
 $ rm example.sock
 $ ./example
 
@@ -454,7 +467,7 @@ I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABC
 Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
-```sh
+```bash
 $ TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
 
 I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
@@ -478,7 +491,7 @@ I[2019-07-16|18:26:20.330] Accepted a new connection
 
 Now open another tab in your terminal and try sending a transaction:
 
-```sh
+```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
@@ -520,4 +533,4 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://tendermint.com/docs/).
+deeper, read [the docs](https://docs.tendermint.com/master/).

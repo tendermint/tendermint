@@ -1,13 +1,25 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 )
 
+type EndpointTimeoutError struct{}
+
+// Implement the net.Error interface.
+func (e EndpointTimeoutError) Error() string   { return "endpoint connection timed out" }
+func (e EndpointTimeoutError) Timeout() bool   { return true }
+func (e EndpointTimeoutError) Temporary() bool { return true }
+
 // Socket errors.
 var (
-	ErrUnexpectedResponse = fmt.Errorf("received unexpected response")
-	ErrConnTimeout        = fmt.Errorf("remote signer timed out")
+	ErrUnexpectedResponse = errors.New("received unexpected response")
+	ErrNoConnection       = errors.New("endpoint is not connected")
+	ErrConnectionTimeout  = EndpointTimeoutError{}
+
+	ErrReadTimeout  = errors.New("endpoint read timed out")
+	ErrWriteTimeout = errors.New("endpoint write timed out")
 )
 
 // RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
@@ -18,5 +30,5 @@ type RemoteSignerError struct {
 }
 
 func (e *RemoteSignerError) Error() string {
-	return fmt.Sprintf("signerServiceEndpoint returned error #%d: %s", e.Code, e.Description)
+	return fmt.Sprintf("signerEndpoint returned error #%d: %s", e.Code, e.Description)
 }

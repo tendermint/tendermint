@@ -3,8 +3,9 @@
 package secp256k1
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +15,7 @@ func TestPrivKeySecp256k1SignVerify(t *testing.T) {
 	priv := GenPrivKey()
 	tests := []struct {
 		name             string
-		privKey          PrivKeySecp256k1
+		privKey          PrivKey
 		wantSignErr      bool
 		wantVerifyPasses bool
 	}{

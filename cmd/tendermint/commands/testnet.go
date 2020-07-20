@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -51,13 +52,19 @@ func init() {
 		"Prefix the directory name for each node with (node results in node0, node1, ...)")
 
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
-		"Update config of each node with the list of persistent peers build using either hostname-prefix or starting-ip-address")
+		"Update config of each node with the list of persistent peers build using either"+
+			" hostname-prefix or"+
+			" starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
 		"Hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
-		"Hostname suffix (\".xyz.com\" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
+		"Hostname suffix ("+
+			"\".xyz.com\""+
+			" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
-		"Starting IP address (\"192.168.0.1\" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
+		"Starting IP address ("+
+			"\"192.168.0.1\""+
+			" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
 		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
@@ -130,11 +137,15 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pvKeyFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorKey)
 		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
-
 		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
+
+		pubKey, err := pv.GetPubKey()
+		if err != nil {
+			return fmt.Errorf("can't get pubkey: %w", err)
+		}
 		genVals[i] = types.GenesisValidator{
-			Address: pv.GetPubKey().Address(),
-			PubKey:  pv.GetPubKey(),
+			Address: pubKey.Address(),
+			PubKey:  pubKey,
 			Power:   1,
 			Name:    nodeDirName,
 		}
@@ -161,7 +172,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 	// Generate genesis doc from generated validators
 	genDoc := &types.GenesisDoc{
-		ChainID:         "chain-" + cmn.RandStr(6),
+		ChainID:         "chain-" + tmrand.Str(6),
 		ConsensusParams: types.DefaultConsensusParams(),
 		GenesisTime:     tmtime.Now(),
 		Validators:      genVals,
@@ -255,5 +266,5 @@ func moniker(i int) string {
 }
 
 func randomMoniker() string {
-	return cmn.HexBytes(cmn.RandBytes(8)).String()
+	return bytes.HexBytes(tmrand.Bytes(8)).String()
 }

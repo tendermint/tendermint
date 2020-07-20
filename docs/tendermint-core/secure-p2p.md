@@ -1,3 +1,7 @@
+---
+order: 12
+---
+
 # Secure P2P
 
 The Tendermint p2p protocol uses an authenticated encryption scheme
@@ -63,7 +67,7 @@ Authenticated encryption is enabled by default.
 
 ## Specification
 
-The full p2p specification can be found [here](https://github.com/tendermint/tendermint/tree/master/docs/spec/p2p).
+The full p2p specification can be found [here](https://docs.tendermint.com/master/spec/p2p/).
 
 ## Additional Reading
 

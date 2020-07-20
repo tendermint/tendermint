@@ -3,9 +3,8 @@ set -e
 
 # These tests spawn the counter app and server by execing the ABCI_APP command and run some simple client tests against it
 
-export GO111MODULE=on
-
 # Get the directory of where this script is.
+export PATH="$GOBIN:$PATH"
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"

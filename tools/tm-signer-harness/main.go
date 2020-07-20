@@ -61,7 +61,10 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 	}
 
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
-	runCmd.IntVar(&flagAcceptRetries, "accept-retries", defaultAcceptRetries, "The number of attempts to listen for incoming connections")
+	runCmd.IntVar(&flagAcceptRetries,
+		"accept-retries",
+		defaultAcceptRetries,
+		"The number of attempts to listen for incoming connections")
 	runCmd.StringVar(&flagBindAddr, "addr", defaultBindAddr, "Bind to this address for the testing")
 	runCmd.StringVar(&flagTMHome, "tmhome", defaultTMHome, "Path to the Tendermint home directory")
 	runCmd.Usage = func() {
@@ -76,7 +79,10 @@ Flags:`)
 	}
 
 	extractKeyCmd = flag.NewFlagSet("extract_key", flag.ExitOnError)
-	extractKeyCmd.StringVar(&flagKeyOutputPath, "output", defaultExtractKeyOutput, "Path to which signing key should be written")
+	extractKeyCmd.StringVar(&flagKeyOutputPath,
+		"output",
+		defaultExtractKeyOutput,
+		"Path to which signing key should be written")
 	extractKeyCmd.StringVar(&flagTMHome, "tmhome", defaultTMHome, "Path to the Tendermint home directory")
 	extractKeyCmd.Usage = func() {
 		fmt.Println(`Extracts a signing key from a local Tendermint instance for use in the remote
@@ -129,8 +135,8 @@ func extractKey(tmhome, outputPath string) {
 	keyFile := filepath.Join(internal.ExpandPath(tmhome), "config", "priv_validator_key.json")
 	stateFile := filepath.Join(internal.ExpandPath(tmhome), "data", "priv_validator_state.json")
 	fpv := privval.LoadFilePV(keyFile, stateFile)
-	pkb := [64]byte(fpv.Key.PrivKey.(ed25519.PrivKeyEd25519))
-	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0644); err != nil {
+	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
+	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)
 		os.Exit(1)
 	}

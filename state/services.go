@@ -12,41 +12,48 @@ import (
 //------------------------------------------------------
 // blockstore
 
-// BlockStoreRPC is the block store interface used by the RPC.
-type BlockStoreRPC interface {
+// BlockStore defines the interface used by the ConsensusState.
+type BlockStore interface {
+	Base() int64
 	Height() int64
+	Size() int64
 
 	LoadBlockMeta(height int64) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
+
+	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+
+	PruneBlocks(height int64) (uint64, error)
+
+	LoadBlockByHash(hash []byte) *types.Block
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit
 	LoadSeenCommit(height int64) *types.Commit
 }
 
-// BlockStore defines the BlockStore interface used by the ConsensusState.
-type BlockStore interface {
-	BlockStoreRPC
-	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-}
-
-//-----------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // evidence pool
+
+//go:generate mockery -case underscore -name EvidencePool
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
 // Get/Set/Commit
 type EvidencePool interface {
-	PendingEvidence(int64) []types.Evidence
+	PendingEvidence(uint32) []types.Evidence
 	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
-	// IsCommitted indicates if this evidence was already marked committed in another block.
 	IsCommitted(types.Evidence) bool
+	IsPending(types.Evidence) bool
+	Header(int64) *types.Header
 }
 
 // MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
 type MockEvidencePool struct{}
 
-func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
-func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
-func (m MockEvidencePool) Update(*types.Block, State)             {}
-func (m MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }
+func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
+func (me MockEvidencePool) AddEvidence(types.Evidence) error        { return nil }
+func (me MockEvidencePool) Update(*types.Block, State)              {}
+func (me MockEvidencePool) IsCommitted(types.Evidence) bool         { return false }
+func (me MockEvidencePool) IsPending(types.Evidence) bool           { return false }
+func (me MockEvidencePool) Header(int64) *types.Header              { return nil }

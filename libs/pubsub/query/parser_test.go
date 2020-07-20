@@ -77,6 +77,11 @@ func TestParser(t *testing.T) {
 		{"account.balance >>= 400", false},
 		{"account.balance=33.22.1", false},
 
+		{"slashing.amount EXISTS", true},
+		{"slashing.amount EXISTS AND account.balance=100", true},
+		{"account.balance=100 AND slashing.amount EXISTS", true},
+		{"slashing EXISTS", true},
+
 		{"hash='136E18F7E4C348B780CF873A0BF43922E5BAFA63'", true},
 		{"hash=136E18F7E4C348B780CF873A0BF43922E5BAFA63", false},
 	}

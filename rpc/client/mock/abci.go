@@ -2,7 +2,7 @@ package mock
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -26,11 +26,14 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{Response: a.App.Info(proxy.RequestInfo)}, nil
 }
 
-func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return a.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQueryWithOptions(
+	path string,
+	data bytes.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{
 		Data:   data,
 		Path:   path,
@@ -58,18 +61,30 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }() // nolint: errcheck
+		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }()
 	}
-	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
+	return &ctypes.ResultBroadcastTx{
+		Code:      c.Code,
+		Data:      c.Data,
+		Log:       c.Log,
+		Codespace: c.Codespace,
+		Hash:      tx.Hash(),
+	}, nil
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }() // nolint: errcheck
+		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }()
 	}
-	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
+	return &ctypes.ResultBroadcastTx{
+		Code:      c.Code,
+		Data:      c.Data,
+		Log:       c.Log,
+		Codespace: c.Codespace,
+		Hash:      tx.Hash(),
+	}, nil
 }
 
 // ABCIMock will send all abci related request to the named app,
@@ -90,11 +105,14 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{Response: res.(abci.ResponseInfo)}, nil
 }
 
-func (m ABCIMock) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return m.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (m ABCIMock) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQueryWithOptions(
+	path string,
+	data bytes.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Prove})
 	if err != nil {
 		return nil, err
@@ -143,7 +161,7 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 
 type QueryArgs struct {
 	Path   string
-	Data   cmn.HexBytes
+	Data   bytes.HexBytes
 	Height int64
 	Prove  bool
 }
@@ -162,11 +180,14 @@ func (r *ABCIRecorder) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return r.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (r *ABCIRecorder) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQueryWithOptions(
+	path string,
+	data bytes.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	res, err := r.Client.ABCIQueryWithOptions(path, data, opts)
 	r.addCall(Call{
 		Name:     "abci_query",

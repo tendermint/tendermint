@@ -4,174 +4,45 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+)
+
+const (
+	// Buffer on the Tendermint (server) side to allow some slowness in clients.
+	subBufferSize = 100
 )
 
 // Subscribe for events via WebSocket.
-//
-// To tell which events you want, you need to provide a query. query is a
-// string, which has a form: "condition AND condition ..." (no OR at the
-// moment). condition has a form: "key operation operand". key is a string with
-// a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
-// operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
-// string (escaped with single quotes), number, date or time.
-//
-// Examples:
-//		tm.event = 'NewBlock'               # new blocks
-//		tm.event = 'CompleteProposal'       # node got a complete proposal
-//		tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
-//		tm.event = 'Tx' AND tx.height = 5   # all txs of the fifth block
-//		tx.height = 5                       # all txs of the fifth block
-//
-// Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
-// Note for transactions, you can define additional keys by providing events with
-// DeliverTx response.
-//
-//  import (
-//	  abci "github.com/tendermint/tendermint/abci/types"
-// 	  "github.com/tendermint/tendermint/libs/pubsub/query"
-//  )
-//
-//  abci.ResponseDeliverTx{
-// 	Events: []abci.Event{
-// 		{
-// 			Type: "rewards.withdraw",
-// 			Attributes: cmn.KVPairs{
-// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
-// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
-// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
-// 			},
-// 		},
-// 		{
-// 			Type: "rewards.withdraw",
-// 			Attributes: cmn.KVPairs{
-// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
-// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
-// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
-// 			},
-// 		},
-// 		{
-// 			Type: "transfer",
-// 			Attributes: cmn.KVPairs{
-// 				cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
-// 				cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
-// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
-// 			},
-// 		},
-// 	},
-//  }
-//
-// All events are indexed by a composite key of the form {eventType}.{evenAttrKey}.
-// In the above examples, the following keys would be indexed:
-//     - rewards.withdraw.address
-//     - rewards.withdraw.source
-//     - rewards.withdraw.amount
-//     - rewards.withdraw.balance
-//     - transfer.sender
-//     - transfer.recipient
-//     - transfer.amount
-//
-// Multiple event types with duplicate keys are allowed and are meant to
-// categorize unique and distinct events. In the above example, all events
-// indexed under the key `rewards.withdraw.address` will have the following
-// values stored and queryable:
-//
-//     - AddrA
-//     - AddrB
-//
-// To create a query for txs where address AddrA withdrew rewards:
-//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
-//
-// To create a query for txs where address AddrA withdrew rewards from source Y:
-//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
-//
-// To create a query for txs where AddrA transferred funds:
-//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
-//
-// The following queries would return no results:
-//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
-//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
-//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
-//
-// See list of all possible events here
-// https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
-//
-// For complete query syntax, check out
-// https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
-//
-// ```go
-// import "github.com/tendermint/tendermint/types"
-//
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
-// defer cancel()
-// query := "tm.event = 'Tx' AND tx.height = 3"
-// txs, err := client.Subscribe(ctx, "test-client", query)
-// if err != nil {
-//   // handle error
-// }
-//
-// go func() {
-//   for e := range txs {
-//     fmt.Println("got ", e.Data.(types.EventDataTx))
-//	 }
-// }()
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type   | Default | Required | Description |
-// |-----------+--------+---------+----------+-------------|
-// | query     | string | ""      | true     | Query       |
-//
-// <aside class="notice">WebSocket only</aside>
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
 func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	addr := ctx.RemoteAddr()
 
-	if eventBus.NumClients() >= config.MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(addr) >= config.MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
+	if env.EventBus.NumClients() >= env.Config.MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
+	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
 	}
 
-	logger.Info("Subscribe to query", "remote", addr, "query", query)
+	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
 
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := eventBus.Subscribe(subCtx, addr, q)
+	sub, err := env.EventBus.Subscribe(subCtx, addr, q, subBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
+	// Capture the current ID, since it can change in the future.
+	subscriptionID := ctx.JSONReq.ID
 	go func() {
 		for {
 			select {
@@ -179,8 +50,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
-						ctx.WSConn.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						subscriptionID,
 						resultEvent,
 					))
 			case <-sub.Cancelled():
@@ -192,8 +62,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						reason = sub.Err().Error()
 					}
 					ctx.WSConn.TryWriteRPCResponse(
-						rpctypes.RPCServerError(rpctypes.JSONRPCStringID(
-							fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						rpctypes.RPCServerError(
+							subscriptionID,
 							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
 						))
 				}
@@ -206,84 +76,27 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 }
 
 // Unsubscribe from events via WebSocket.
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// query := "tm.event = 'Tx' AND tx.height = 3"
-// err = client.Unsubscribe(context.Background(), "test-client", query)
-// if err != nil {
-//   // handle error
-// }
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type   | Default | Required | Description |
-// |-----------+--------+---------+----------+-------------|
-// | query     | string | ""      | true     | Query       |
-//
-// <aside class="notice">WebSocket only</aside>
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe
 func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
-	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
+	env.Logger.Info("Unsubscribe from query", "remote", addr, "query", query)
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse query")
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
-	err = eventBus.Unsubscribe(context.Background(), addr, q)
+	err = env.EventBus.Unsubscribe(context.Background(), addr, q)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
 }
 
-// Unsubscribe from all events via WebSocket.
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// err = client.UnsubscribeAll(context.Background(), "test-client")
-// if err != nil {
-//   // handle error
-// }
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// <aside class="notice">WebSocket only</aside>
+// UnsubscribeAll from all events via WebSocket.
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe_all
 func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
-	logger.Info("Unsubscribe from all", "remote", addr)
-	err := eventBus.UnsubscribeAll(context.Background(), addr)
+	env.Logger.Info("Unsubscribe from all", "remote", addr)
+	err := env.EventBus.UnsubscribeAll(context.Background(), addr)
 	if err != nil {
 		return nil, err
 	}

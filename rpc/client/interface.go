@@ -23,7 +23,8 @@ implementation.
 import (
 	"context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,7 +32,7 @@ import (
 // Client wraps most important rpc calls a client would make if you want to
 // listen for events, test if it also implements events.EventSwitch.
 type Client interface {
-	cmn.Service
+	service.Service
 	ABCIClient
 	EventsClient
 	HistoryClient
@@ -39,6 +40,7 @@ type Client interface {
 	SignClient
 	StatusClient
 	EvidenceClient
+	MempoolClient
 }
 
 // ABCIClient groups together the functionality that principally affects the
@@ -49,8 +51,8 @@ type Client interface {
 type ABCIClient interface {
 	// Reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
-	ABCIQueryWithOptions(path string, data cmn.HexBytes,
+	ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error)
+	ABCIQueryWithOptions(path string, data bytes.HexBytes,
 		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// Writing to abci app
@@ -63,11 +65,12 @@ type ABCIClient interface {
 // and prove anything about the chain.
 type SignClient interface {
 	Block(height *int64) (*ctypes.ResultBlock, error)
+	BlockByHash(hash []byte) (*ctypes.ResultBlock, error)
 	BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	Commit(height *int64) (*ctypes.ResultCommit, error)
-	Validators(height *int64) (*ctypes.ResultValidators, error)
+	Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
-	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
+	TxSearch(query string, prove bool, page, perPage *int, orderBy string) (*ctypes.ResultTxSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
@@ -87,6 +90,7 @@ type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
 	ConsensusState() (*ctypes.ResultConsensusState, error)
+	ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error)
 	Health() (*ctypes.ResultHealth, error)
 }
 
@@ -109,12 +113,21 @@ type EventsClient interface {
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(limit *int) (*ctypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+	CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
 // behaviour.
 type EvidenceClient interface {
 	BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+}
+
+// RemoteClient is a Client, which can also return the remote network address.
+type RemoteClient interface {
+	Client
+
+	// Remote returns the remote network address in a string form.
+	Remote() string
 }

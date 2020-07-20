@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
-
+	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -61,10 +60,10 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 
 // BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
-	cmn.BaseService
+	service.BaseService
 	startTime time.Time
 
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 	// block requests
 	requesters map[int64]*bpRequester
 	height     int64 // the lowest key in requesters.
@@ -92,11 +91,11 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		requestsCh: requestsCh,
 		errorsCh:   errorsCh,
 	}
-	bp.BaseService = *cmn.NewBaseService(nil, "BlockPool", bp)
+	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
 }
 
-// OnStart implements cmn.Service by spawning requesters routine and recording
+// OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
 	go pool.makeRequestersRoutine()
@@ -112,17 +111,18 @@ func (pool *BlockPool) makeRequestersRoutine() {
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		if numPending >= maxPendingRequests {
+		switch {
+		case numPending >= maxPendingRequests:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else if lenRequesters >= maxTotalRequesters {
+		case lenRequesters >= maxTotalRequesters:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else {
+		default:
 			// request for more blocks.
 			pool.makeNextRequester()
 		}
@@ -246,7 +246,14 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.Logger.Info("peer sent us a block we didn't expect", "peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
+		pool.Logger.Info(
+			"peer sent us a block we didn't expect",
+			"peer",
+			peerID,
+			"curHeight",
+			pool.height,
+			"blockHeight",
+			block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
@@ -276,16 +283,17 @@ func (pool *BlockPool) MaxPeerHeight() int64 {
 	return pool.maxPeerHeight
 }
 
-// SetPeerHeight sets the peer's alleged blockchain height.
-func (pool *BlockPool) SetPeerHeight(peerID p2p.ID, height int64) {
+// SetPeerRange sets the peer's alleged blockchain base and height.
+func (pool *BlockPool) SetPeerRange(peerID p2p.ID, base int64, height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	peer := pool.peers[peerID]
 	if peer != nil {
+		peer.base = base
 		peer.height = height
 	} else {
-		peer = newBPPeer(pool, peerID, height)
+		peer = newBPPeer(pool, peerID, base, height)
 		peer.setLogger(pool.Logger.With("peer", peerID))
 		pool.peers[peerID] = peer
 	}
@@ -338,9 +346,9 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 	pool.maxPeerHeight = max
 }
 
-// Pick an available peer with at least the given minHeight.
+// Pick an available peer with the given height available.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(minHeight int64) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -352,7 +360,7 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int64) *bpPeer {
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
 		}
-		if peer.height < minHeight {
+		if height < peer.base || height > peer.height {
 			continue
 		}
 		peer.incrPending()
@@ -421,22 +429,24 @@ func (pool *BlockPool) debug() string {
 //-------------------------------------
 
 type bpPeer struct {
+	didTimeout  bool
+	numPending  int32
+	height      int64
+	base        int64
 	pool        *BlockPool
 	id          p2p.ID
 	recvMonitor *flow.Monitor
 
-	height     int64
-	numPending int32
-	timeout    *time.Timer
-	didTimeout bool
+	timeout *time.Timer
 
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID p2p.ID, height int64) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID p2p.ID, base int64, height int64) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
+		base:       base,
 		height:     height,
 		numPending: 0,
 		logger:     log.NewNopLogger(),
@@ -493,13 +503,13 @@ func (peer *bpPeer) onTimeout() {
 //-------------------------------------
 
 type bpRequester struct {
-	cmn.BaseService
+	service.BaseService
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
 	redoCh     chan p2p.ID //redo may send multitime, add peerId to identify repeat
 
-	mtx    sync.Mutex
+	mtx    tmsync.Mutex
 	peerID p2p.ID
 	block  *types.Block
 }
@@ -514,7 +524,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *cmn.NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
 	return bpr
 }
 
