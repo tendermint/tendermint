@@ -85,3 +85,12 @@ Proposed
 ### Neutral
 
 ## References
+
+## Appendix A. Alternative proposals
+
+The other proposal was to add `Hash bool` flag to the `Event`, similarly to
+`Index bool` EventAttribute's field. When `true`, Tendermint would hash it into
+the `LastResultsEvents`. The downside is that the logic is implicit and depends
+largely on the node's operator, who decides what application code to run. The
+above proposal makes it (the logic) explicit and easy to upgrade via
+governance.
