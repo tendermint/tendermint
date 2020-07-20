@@ -1640,10 +1640,10 @@ components:
                   info:
                     type: "string"
                     example: ""
-                  gasWanted:
+                  gas_wanted:
                     type: "string"
                     example: "100"
-                  gasUsed:
+                  gas_used:
                     type: "string"
                     example: "100"
                   events:
@@ -2707,17 +2707,17 @@ components:
                   tx_result:
                     required:
                       - "log"
-                      - "gasWanted"
-                      - "gasUsed"
+                      - "gas_wanted"
+                      - "gas_used"
                       - "tags"
                     properties:
                       log:
                         type: "string"
                         example: '[{"msg_index":"0","success":true,"log":""}]'
-                      gasWanted:
+                      gas_wanted:
                         type: "string"
                         example: "200000"
-                      gasUsed:
+                      gas_used:
                         type: "string"
                         example: "28596"
                       tags:
@@ -2808,17 +2808,17 @@ components:
             tx_result:
               required:
                 - "log"
-                - "gasWanted"
-                - "gasUsed"
+                - "gas_wanted"
+                - "gas_used"
                 - "tags"
               properties:
                 log:
                   type: "string"
                   example: '[{"msg_index":"0","success":true,"log":""}]'
-                gasWanted:
+                gas_wanted:
                   type: "string"
                   example: "200000"
-                gasUsed:
+                gas_used:
                   type: "string"
                   example: "28596"
                 tags:
