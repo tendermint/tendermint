@@ -15,6 +15,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [privval] \#4582 `round` in private_validator_state.json is no longer a string in json it is now a number
   - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
   - [rpc] \#4937 Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
+  - [rpc] \#5137 Make `gasWanted` & `gasUsed` in `ResponseCheckTx` & `ResponseDeliverTx` snake case. (`gas_wanted` & `gas_used`)
 
 - Apps
 
