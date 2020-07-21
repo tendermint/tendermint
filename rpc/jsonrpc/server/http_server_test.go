@@ -2,11 +2,13 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,7 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
+
+type sampleResult struct {
+	Value string `json:"value"`
+}
 
 func TestMaxOpenConnections(t *testing.T) {
 	const max = 5 // max simultaneous connections
@@ -92,4 +99,76 @@ func TestServeTLS(t *testing.T) {
 	body, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("some body"), body)
+}
+
+func TestWriteRPCResponseHTTP(t *testing.T) {
+	id := types.JSONRPCIntID(-1)
+
+	// one argument
+	w := httptest.NewRecorder()
+	WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	resp := w.Result()
+	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+    "value": "hello"
+  }
+}`, string(body))
+
+	// multiple arguments
+	w = httptest.NewRecorder()
+	WriteRPCResponseHTTP(w,
+		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
+		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
+	resp = w.Result()
+	body, err = ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `[
+  {
+    "jsonrpc": "2.0",
+    "id": -1,
+    "result": {
+      "value": "hello"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": -1,
+    "result": {
+      "value": "world"
+    }
+  }
+]`, string(body))
+}
+
+func TestWriteRPCResponseHTTPError(t *testing.T) {
+	w := httptest.NewRecorder()
+	WriteRPCResponseHTTPError(w,
+		http.StatusInternalServerError,
+		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	resp := w.Result()
+	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "error": {
+    "code": -32603,
+    "message": "Internal error",
+    "data": "foo"
+  }
+}`, string(body))
 }

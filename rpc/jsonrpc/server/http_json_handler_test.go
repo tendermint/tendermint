@@ -65,7 +65,7 @@ func TestRPCParams(t *testing.T) {
 		res := rec.Result()
 		defer res.Body.Close()
 		// Always expecting back a JSONRPCResponse
-		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
+		assert.NotZero(t, res.StatusCode, "#%d: should always return code", i)
 		blob, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			t.Errorf("#%d: err reading body: %v", i, err)
@@ -112,7 +112,7 @@ func TestJSONRPCID(t *testing.T) {
 		mux.ServeHTTP(rec, req)
 		res := rec.Result()
 		// Always expecting back a JSONRPCResponse
-		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
+		assert.NotZero(t, res.StatusCode, "#%d: should always return code", i)
 		blob, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			t.Errorf("#%d: err reading body: %v", i, err)
