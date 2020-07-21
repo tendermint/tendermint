@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,7 +21,7 @@ import (
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-type SampleResult struct {
+type sampleResult struct {
 	Value string `json:"value"`
 }
 
@@ -123,8 +124,8 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	// multiple arguments
 	w = httptest.NewRecorder()
 	WriteRPCResponseHTTP(w,
-		types.NewRPCSuccessResponse(id, &SampleResult{"hello"}),
-		types.NewRPCSuccessResponse(id, &SampleResult{"world"}))
+		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
+		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
 	resp = w.Result()
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -147,4 +148,25 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
     }
   }
 ]`, string(body))
+}
+
+func TestWriteRPCResponseHTTPError(t *testing.T) {
+	w := httptest.NewRecorder()
+	WriteRPCResponseHTTPError(w,
+		http.StatusInternalServerError,
+		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	resp := w.Result()
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "error": {
+    "code": -32603,
+    "message": "Internal error",
+    "data": "foo"
+  }
+}`, string(body))
 }

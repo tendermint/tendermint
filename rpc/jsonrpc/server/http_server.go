@@ -89,6 +89,9 @@ func ServeTLS(
 	return err
 }
 
+// WriteRPCResponseHTTPError marshals res as JSON and writes it to w.
+//
+// Panics if it can't Marshal res or write to w.
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
 	httpCode int,
