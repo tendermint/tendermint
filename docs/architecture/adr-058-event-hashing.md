@@ -66,6 +66,20 @@ func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx 
 For "transfer" event to be hashed, the `LastResultsEvents` must contain a
 string "transfer".
 
+### How events are hashed
+
+Since we do not expect `BeginBlock` and `EndBlock` to contain many events, these
+will be Protobuf encoded and included in the Merkle tree as leaves.
+
+`LastResultsHash` therefore is the root hash of a Merkle tree w/ 3 leafs:
+proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
+from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
+ignored), and proto-encoded `ResponseEndBlock#Events`.
+
+Order of events is unchanged - same as received from the ABCI application.
+
+[Spec PR](https://github.com/tendermint/spec/pull/97/files)
+
 ## Status
 
 Proposed
