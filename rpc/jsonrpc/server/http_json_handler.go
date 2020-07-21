@@ -107,7 +107,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 		}
 		if len(responses) > 0 {
-			WriteRPCResponseArrayHTTP(w, responses)
+			WriteRPCResponseHTTP(w, responses...)
 		}
 	}
 }
