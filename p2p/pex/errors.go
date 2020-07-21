@@ -21,7 +21,7 @@ type errAddrBookOldAddressNewBucket struct {
 }
 
 func (err errAddrBookOldAddressNewBucket) Error() string {
-	return fmt.Sprintf("Failed consistency check!"+
+	return fmt.Sprintf("failed consistency check!"+
 		" Cannot add pre-existing address %v into new bucket %v",
 		err.Addr, err.BucketID)
 }
