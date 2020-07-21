@@ -109,6 +109,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -127,6 +128,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
 	resp = w.Result()
 	body, err = ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	require.NoError(t, err)
 
 	assert.Equal(t, 200, resp.StatusCode)
@@ -156,6 +158,7 @@ func TestWriteRPCResponseHTTPError(t *testing.T) {
 		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
