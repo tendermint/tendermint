@@ -106,7 +106,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	// one argument
 	w := httptest.NewRecorder()
-	WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(id))
+	WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -115,9 +115,8 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	assert.Equal(t, `{
   "jsonrpc": "2.0",
   "id": -1,
-  "error": {
-    "code": -32601,
-    "message": "Method not found"
+  "result": {
+    "value": "hello"
   }
 }`, string(body))
 
