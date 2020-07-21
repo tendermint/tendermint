@@ -22,7 +22,8 @@ var (
 	ErrWriteTimeout = errors.New("endpoint write timed out")
 )
 
-// RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
+// RemoteSignerError allows (remote) validators to include meaningful error
+// descriptions in their reply.
 type RemoteSignerError struct {
 	// TODO(ismail): create an enum of known errors
 	Code        int
