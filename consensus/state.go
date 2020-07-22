@@ -275,7 +275,10 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	defer cs.mtx.Unlock()
 
 	cs.privValidator = priv
-	_ = cs.updatePrivValidatorPubKey()
+
+	if err := cs.updatePrivValidatorPubKey(); err != nil {
+		cs.Logger.Error("Can't get private validator pubkey", "err", err)
+	}
 }
 
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
