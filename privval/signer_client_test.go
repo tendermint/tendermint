@@ -433,6 +433,6 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		e := tc.signerClient.SignVote(tc.chainID, want.ToProto())
-		assert.EqualError(t, e, "received unexpected response")
+		assert.EqualError(t, e, "empty response")
 	}
 }
