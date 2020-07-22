@@ -518,11 +518,10 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 
 // Adds ka to new bucket. Returns false if it couldn't do it cuz buckets full.
 // NOTE: currently it always returns true.
-func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
-	// Sanity check
+func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) error {
+	// Consistency check to ensure we don't add an already known address
 	if ka.isOld() {
-		a.Logger.Error("Failed Sanity Check! Cant add old address to new bucket", "ka", ka, "bucket", bucketIdx)
-		return
+		return errAddrBookOldAddressNewBucket{ka.Addr, bucketIdx}
 	}
 
 	addrStr := ka.Addr.String()
@@ -530,7 +529,7 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 
 	// Already exists?
 	if _, ok := bucket[addrStr]; ok {
-		return
+		return nil
 	}
 
 	// Enforce max addresses.
@@ -548,6 +547,7 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 
 	// Add it to addrLookup
 	a.addrLookup[ka.ID()] = ka
+	return nil
 }
 
 // Adds ka to old bucket. Returns false if it couldn't do it cuz buckets full.
@@ -665,8 +665,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	ka := a.addrLookup[addr.ID]
 	if ka != nil {
-		// If its already old and the addr is the same, ignore it.
-		if ka.isOld() && ka.Addr.Equals(addr) {
+		// If its already old and the address ID's are the same, ignore it.
+		// Thereby avoiding issues with a node on the network attempting to change
+		// the IP of a known node ID. (Which could yield an eclipse attack on the node)
+		if ka.isOld() && ka.Addr.ID == addr.ID {
 			return nil
 		}
 		// Already in max new buckets.
@@ -686,8 +688,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if err != nil {
 		return err
 	}
-	a.addToNewBucket(ka, bucket)
-	return nil
+	return a.addToNewBucket(ka, bucket)
 }
 
 func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress {

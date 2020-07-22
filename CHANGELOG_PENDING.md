@@ -129,4 +129,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
 - [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
+- [p2p][\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [proxy] \#5078 Fix a bug, where TM does not exit when ABCI app crashes (@melekes)
