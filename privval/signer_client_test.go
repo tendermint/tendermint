@@ -257,6 +257,6 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
 		e := tc.signerClient.SignVote(tc.chainID, want)
-		assert.EqualError(t, e, "received unexpected response")
+		assert.EqualError(t, e, "empty response")
 	}
 }
