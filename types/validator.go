@@ -23,6 +23,7 @@ type Validator struct {
 	ProposerPriority int64 `json:"proposer_priority"`
 }
 
+// NewValidator returns a new validator with the given pubkey and voting power.
 func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
 	return &Validator{
 		Address:          pubKey.Address(),
@@ -32,6 +33,7 @@ func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
 	}
 }
 
+// ValidateBasic performs basic validation.
 func (v *Validator) ValidateBasic() error {
 	if v == nil {
 		return errors.New("nil validator")
