@@ -266,11 +266,14 @@ func (cs *State) GetValidators() (int64, []*types.Validator) {
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
-// SetPrivValidator sets the private validator account for signing votes.
+// SetPrivValidator sets the private validator account for signing votes. It
+// immediately requests pubkey and caches it.
 func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
 	cs.privValidator = priv
-	cs.mtx.Unlock()
+	_ = cs.updatePrivValidatorPubKey()
 }
 
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
@@ -360,11 +363,6 @@ func (cs *State) OnStart() error {
 
 	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
-
-	// Fetch pubkey and memoize it.
-	if err := cs.updatePrivValidatorPubKey(); err != nil {
-		cs.Logger.Error("Can't get private validator pubkey", "err", err)
-	}
 
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
