@@ -532,7 +532,7 @@ via light client.
 ### Validator
 
 - **Fields**:
-  - `Address ([]byte)`: Address of the validator (hash of the public key)
+  - `Address ([]byte)`: Address of the validator (the first 20 bytes of SHA256(public key))
   - `Power (int64)`: Voting power of the validator
 - **Usage**:
   - Validator identified by address
