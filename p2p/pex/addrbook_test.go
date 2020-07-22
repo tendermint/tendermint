@@ -589,6 +589,61 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	}
 }
 
+func TestAddrBookAddDoesNotOverwriteOldIP(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	// This test creates adds a peer to the address book and marks it good
+	// It then attempts to override the peer's IP, by adding a peer with the same ID
+	// but different IP. We distinguish the IP's by "RealIP" and "OverrideAttemptIP"
+	peerID := "678503e6c8f50db7279c7da3cb9b072aac4bc0d5"
+	peerRealIP := "1.1.1.1:26656"
+	peerOverrideAttemptIP := "2.2.2.2:26656"
+	SrcAddr := "b0dd378c3fbc4c156cd6d302a799f0d2e4227201@159.89.121.174:26656"
+
+	// There is a chance that AddAddress will ignore the new peer its given.
+	// So we repeat trying to override the peer several times,
+	// to ensure we aren't in a case that got probabilistically ignored
+	numOverrideAttempts := 10
+
+	peerRealAddr, err := p2p.NewNetAddressString(peerID + "@" + peerRealIP)
+	require.Nil(t, err)
+
+	peerOverrideAttemptAddr, err := p2p.NewNetAddressString(peerID + "@" + peerOverrideAttemptIP)
+	require.Nil(t, err)
+
+	src, err := p2p.NewNetAddressString(SrcAddr)
+	require.Nil(t, err)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	err = book.AddAddress(peerRealAddr, src)
+	require.Nil(t, err)
+	book.MarkAttempt(peerRealAddr)
+	book.MarkGood(peerRealAddr.ID)
+
+	// Double check that adding a peer again doesn't error
+	err = book.AddAddress(peerRealAddr, src)
+	require.Nil(t, err)
+
+	// Try changing ip but keeping the same node id. (change 1.1.1.1 to 2.2.2.2)
+	// This should just be ignored, and not error.
+	for i := 0; i < numOverrideAttempts; i++ {
+		err = book.AddAddress(peerOverrideAttemptAddr, src)
+		require.Nil(t, err)
+	}
+	// Now check that the IP was not overridden.
+	// This is done by sampling several peers from addr book
+	// and ensuring they all have the correct IP.
+	// In the expected functionality, this test should only have 1 Peer, hence will pass.
+	for i := 0; i < numOverrideAttempts; i++ {
+		selection := book.GetSelection()
+		for _, addr := range selection {
+			require.Equal(t, addr.IP, peerRealAddr.IP)
+		}
+	}
+}
+
 func TestAddrBookGroupKey(t *testing.T) {
 	// non-strict routability
 	testCases := []struct {
