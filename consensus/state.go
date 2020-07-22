@@ -103,7 +103,9 @@ type State struct {
 	// internal state
 	mtx tmsync.RWMutex
 	cstypes.RoundState
-	state               sm.State // State until height-1.
+	state sm.State // State until height-1.
+	// privValidator pubkey, memoized for the duration of one block
+	// to avoid extra requests to HSM
 	privValidatorPubKey crypto.PubKey
 
 	// state changes may be triggered by: msgs from peers,
@@ -2074,8 +2076,8 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 }
 
 // updatePrivValidatorPubKey get's the private validator public key and
-// memoizes it for the current height. It returns an error if private validator
-// is not responding or responds with an error.
+// memoizes it. This func returns an error if the private validator is not
+// responding or responds with an error.
 func (cs *State) updatePrivValidatorPubKey() error {
 	if cs.privValidator == nil {
 		return nil
