@@ -89,6 +89,9 @@ func ServeTLS(
 	return err
 }
 
+// WriteRPCResponseHTTPError marshals res as JSON and writes it to w.
+//
+// Panics if it can't Marshal res or write to w.
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
 	httpCode int,
@@ -106,8 +109,18 @@ func WriteRPCResponseHTTPError(
 	}
 }
 
-func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
+// WriteRPCResponseHTTP marshals res as JSON and writes it to w.
+//
+// Panics if it can't Marshal res or write to w.
+func WriteRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) {
+	var v interface{}
+	if len(res) == 1 {
+		v = res[0]
+	} else {
+		v = res
+	}
+
+	jsonBytes, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -115,25 +128,6 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	w.WriteHeader(200)
 	if _, err := w.Write(jsonBytes); err != nil {
 		panic(err)
-	}
-}
-
-// WriteRPCResponseArrayHTTP will do the same as WriteRPCResponseHTTP, except it
-// can write arrays of responses for batched request/response interactions via
-// the JSON RPC.
-func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
-	if len(res) == 1 {
-		WriteRPCResponseHTTP(w, res[0])
-	} else {
-		jsonBytes, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		if _, err := w.Write(jsonBytes); err != nil {
-			panic(err)
-		}
 	}
 }
 

@@ -89,6 +89,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4939 Block: `Round` is now `int32`
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now `int32`
   - [consensus] \#4582 HeightVoteSet: `round` is now `int32`
+  - [rpc/jsonrpc/server] \#5141 Remove `WriteRPCResponseArrayHTTP` (use `WriteRPCResponseHTTP` instead) (@melekes)
 
 ### FEATURES:
 
