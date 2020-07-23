@@ -176,13 +176,11 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 			if err != nil {
 				t.Errorf("connection failed: %v", err)
 			}
-		} else {
+		} else if err := <-errc; err == nil || !strings.Contains(err.Error(), "i/o timeout") {
 			// mt actually blocks forever on trying to accept a new peer into a full channel so
 			// expect the dialer to encounter a timeout error. Calling mt.Accept will block until
 			// mt is closed.
-			if err := <-errc; err == nil || !strings.Contains(err.Error(), "i/o timeout") {
-				t.Errorf("expected i/o timeout error, got %v", err)
-			}
+			t.Errorf("expected i/o timeout error, got %v", err)
 		}
 	}
 }
