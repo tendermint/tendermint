@@ -148,7 +148,6 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 			PrivKey: pv,
 		},
 	)
-	id := mt.nodeKey.ID()
 
 	MultiplexTransportMaxIncomingConnections(0)(mt)
 
