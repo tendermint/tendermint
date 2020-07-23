@@ -5,15 +5,12 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
-	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 var defaultNodeName = "host_peer"
@@ -81,10 +78,10 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 	_, err = mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsFiltered() {
-			t.Errorf("expected peer to be filtered, got %v", err)
+			t.Errorf("expected peer to be filtered")
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", err)
+		t.Errorf("expected ErrRejected")
 	}
 }
 
@@ -100,7 +97,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	MultiplexTransportFilterTimeout(5 * time.Millisecond)(mt)
 	MultiplexTransportConnFilters(
 		func(_ ConnSet, _ net.Conn, _ []net.IP) error {
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Millisecond)
 			return nil
 		},
 	)(mt)
@@ -115,6 +112,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	}
 
 	errc := make(chan error)
+
 	go func() {
 		addr := NewNetAddress(id, mt.listener.Addr())
 
@@ -133,51 +131,53 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 
 	_, err = mt.Accept(peerConfig{})
 	if _, ok := err.(ErrFilterTimeout); !ok {
-		t.Errorf("expected ErrFilterTimeout, got %v", err)
+		t.Errorf("expected ErrFilterTimeout")
 	}
 }
 
 func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
 	mt := newMultiplexTransport(
-		emptyNodeInfo(),
+		testNodeInfo(
+			id, "transport",
+		),
 		NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
+			PrivKey: pv,
 		},
 	)
-	id := mt.nodeKey.ID()
-
-	MultiplexTransportMaxIncomingConnections(0)(mt)
-
 	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	maxInbound := 2 // Setting max to 0 actually means unlimited incoming connections
+	MultiplexTransportMaxIncomingConnections(maxInbound)(mt)
 	if err := mt.Listen(*addr); err != nil {
 		t.Fatal(err)
 	}
+	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
-	errc := make(chan error)
+	// Connect more peers than max
+	for i := 0; i <= maxInbound; i++ {
+		errc := make(chan error)
+		go testDialer(*laddr, errc)
 
-	go func() {
-		addr := NewNetAddress(id, mt.listener.Addr())
-
-		_, err := addr.Dial()
-		if err != nil {
-			errc <- err
-			return
+		if i < maxInbound {
+			if err := <-errc; err != nil {
+				t.Errorf("dialer connection failed: %v", err)
+			}
+			_, err = mt.Accept(peerConfig{})
+			if err != nil {
+				t.Errorf("connection failed: %v", err)
+			}
+		} else {
+			// mt actually blocks forever on trying to accept a new peer into a full channel so
+			// expect the dialer to encounter a timeout error. Calling mt.Accept will block until
+			// mt is closed.
+			if err := <-errc; err == nil || !strings.Contains(err.Error(), "i/o timeout") {
+				t.Errorf("expected i/o timeout error, got %v", err)
+			}
 		}
-
-		close(errc)
-	}()
-
-	if err := <-errc; err != nil {
-		t.Errorf("connection failed: %v", err)
-	}
-
-	_, err = mt.Accept(peerConfig{})
-	if err == nil || !strings.Contains(err.Error(), "connection reset by peer") {
-		t.Errorf("expected connection reset by peer error, got %v", err)
 	}
 }
 
@@ -265,7 +265,6 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		errc         = make(chan error)
 		fastc        = make(chan struct{})
 		slowc        = make(chan struct{})
-		slowdonec    = make(chan struct{})
 	)
 
 	// Simulate slow Peer.
@@ -279,35 +278,32 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		close(slowc)
-		defer func() {
-			close(slowdonec)
-		}()
-
-		// Make sure we switch to fast peer goroutine.
-		runtime.Gosched()
 
 		select {
 		case <-fastc:
 			// Fast peer connected.
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(500 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
 			errc <- fmt.Errorf("fast peer timed out")
 		}
 
-		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
+		sc, err := upgradeSecretConn(c, 200*time.Millisecond, ed25519.GenPrivKey())
 		if err != nil {
 			errc <- err
 			return
 		}
 
-		_, err = handshake(sc, 20*time.Millisecond,
+		_, err = handshake(sc, 200*time.Millisecond,
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()),
 				"slow_peer",
 			))
 		if err != nil {
 			errc <- err
+			return
 		}
+
+		close(errc)
 	}()
 
 	// Simulate fast Peer.
@@ -331,12 +327,10 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		close(fastc)
-		<-slowdonec
-		close(errc)
 	}()
 
 	if err := <-errc; err != nil {
-		t.Logf("connection failed: %v", err)
+		t.Errorf("connection failed: %v", err)
 	}
 
 	p, err := mt.Accept(peerConfig{})
@@ -383,10 +377,10 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsNodeInfoInvalid() {
-			t.Errorf("expected NodeInfo to be invalid, got %v", err)
+			t.Errorf("expected NodeInfo to be invalid")
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", err)
+		t.Errorf("expected ErrRejected")
 	}
 }
 
@@ -422,10 +416,10 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsAuthFailure() {
-			t.Errorf("expected auth failure, got %v", err)
+			t.Errorf("expected auth failure")
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", err)
+		t.Errorf("expected ErrRejected")
 	}
 }
 
@@ -450,10 +444,10 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 		t.Logf("connection failed: %v", err)
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsAuthFailure() {
-				t.Errorf("expected auth failure, got %v", err)
+				t.Errorf("expected auth failure")
 			}
 		} else {
-			t.Errorf("expected ErrRejected, got %v", err)
+			t.Errorf("expected ErrRejected")
 		}
 	}
 }
@@ -487,10 +481,10 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsIncompatible() {
-			t.Errorf("expected to reject incompatible, got %v", err)
+			t.Errorf("expected to reject incompatible")
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", err)
+		t.Errorf("expected ErrRejected")
 	}
 }
 
@@ -517,7 +511,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 				t.Errorf("expected to reject self, got: %v", err)
 			}
 		} else {
-			t.Errorf("expected ErrRejected, got %v", err)
+			t.Errorf("expected ErrRejected")
 		}
 	} else {
 		t.Errorf("expected connection failure")
@@ -529,7 +523,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 			t.Errorf("expected to reject self, got: %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", nil)
+		t.Errorf("expected ErrRejected")
 	}
 }
 
@@ -577,24 +571,19 @@ func TestTransportHandshake(t *testing.T) {
 		}
 
 		go func(c net.Conn) {
-			_, err := protoio.NewDelimitedWriter(c).WriteMsg(peerNodeInfo.(DefaultNodeInfo).ToProto())
+			_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, peerNodeInfo.(DefaultNodeInfo))
 			if err != nil {
 				t.Error(err)
 			}
 		}(c)
 		go func(c net.Conn) {
-			var (
-				// ni   DefaultNodeInfo
-				pbni tmp2p.DefaultNodeInfo
+			var ni DefaultNodeInfo
+
+			_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
+				c,
+				&ni,
+				int64(MaxNodeInfoSize()),
 			)
-
-			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
-			err := protoReader.ReadMsg(&pbni)
-			if err != nil {
-				t.Error(err)
-			}
-
-			_, err = DefaultNodeInfoFromToProto(&pbni)
 			if err != nil {
 				t.Error(err)
 			}
@@ -639,9 +628,6 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	if err := mt.Listen(*addr); err != nil {
 		t.Fatal(err)
 	}
-
-	// give the listener some time to get ready
-	time.Sleep(20 * time.Millisecond)
 
 	return mt
 }
