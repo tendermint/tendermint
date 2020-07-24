@@ -33,16 +33,11 @@ All calls that can be tracked back to a block header by a proof
 will be verified before passing them back to the caller. Other than
 that, it will present the same interface as a full Tendermint node.
 
-Example:
+Furthermore to the chainID, a fresh instance of a light client will
+need a primary RPC address, a trusted hash and height and witness RPC addresses
+(if not using sequential verification). To restart the node, thereafter
+only the chainID is required. 
 
-start a fresh instance:
-
-light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
-	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD
-
-continue from latest state:
-
-light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 `,
 	RunE: runProxy,
 	Args: cobra.ExactArgs(1),
