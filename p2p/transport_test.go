@@ -155,8 +155,8 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	maxInbound := 2 // Setting max to 0 actually means unlimited incoming connections
-	MultiplexTransportMaxIncomingConnections(maxInbound)(mt)
+	const maxIncomingConns = 2
+	MultiplexTransportMaxIncomingConnections(maxIncomingConns)(mt)
 	if err := mt.Listen(*addr); err != nil {
 		t.Fatal(err)
 	}
@@ -164,19 +164,20 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 	// Connect more peers than max
-	for i := 0; i <= maxInbound; i++ {
+	for i := 0; i <= maxIncomingConns; i++ {
 		errc := make(chan error)
 		go testDialer(*laddr, errc)
 
-		if i < maxInbound {
-			if err := <-errc; err != nil {
+		err = <- errc
+		if i < maxIncomingConns {
+			if err != nil {
 				t.Errorf("dialer connection failed: %v", err)
 			}
 			_, err = mt.Accept(peerConfig{})
 			if err != nil {
 				t.Errorf("connection failed: %v", err)
 			}
-		} else if err := <-errc; err == nil || !strings.Contains(err.Error(), "i/o timeout") {
+		} else if err == nil || !strings.Contains(err.Error(), "i/o timeout") {
 			// mt actually blocks forever on trying to accept a new peer into a full channel so
 			// expect the dialer to encounter a timeout error. Calling mt.Accept will block until
 			// mt is closed.

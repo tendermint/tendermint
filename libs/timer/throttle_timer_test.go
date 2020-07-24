@@ -68,7 +68,7 @@ func TestThrottle(test *testing.T) {
 	assert.Equal(2, c.Count())
 
 	// send 12, over 2 delay sections, adds 3 or more. It
-	// is possible for more to be added more if the overhead
+	// is possible for more to be added if the overhead
 	// in executing the loop is large
 	short := time.Duration(ms/5) * time.Millisecond
 	for i := 0; i < 13; i++ {

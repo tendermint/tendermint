@@ -196,7 +196,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	maxBlockHeight := int64(148)
 
-	// Other chain needs a different valiator set
+	// Other chain needs a different valuator set
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
 	otherChain := newBlockchainReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
