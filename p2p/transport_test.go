@@ -168,7 +168,7 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 		errc := make(chan error)
 		go testDialer(*laddr, errc)
 
-		err = <- errc
+		err = <-errc
 		if i < maxIncomingConns {
 			if err != nil {
 				t.Errorf("dialer connection failed: %v", err)
