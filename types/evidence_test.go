@@ -375,7 +375,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 
 	var (
 		val      = NewMockPV()
-		val2	 = NewMockPV()
+		val2     = NewMockPV()
 		blockID  = makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		blockID2 = makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 		vote1    = makeVote(t, val, chainID, 0, height, 0, 2, blockID, defaultVoteTime)
@@ -410,8 +410,6 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.True(t, ev.Equal(ev2))
 	assert.Equal(t, ev.Hash(), ev2.Hash())
 
-	
-
 	ev3 := NewPotentialAmnesiaEvidence(vote2, vote1)
 	assert.True(t, ev3.Equal(ev))
 
@@ -427,26 +425,26 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	// bad evidence
 	badEv := []*PotentialAmnesiaEvidence{
 		// first vote is for a later time than the second vote
-		&PotentialAmnesiaEvidence{
+		{
 			VoteA: vote2,
 			VoteB: vote1,
 		},
 
 		// votes are for the same round
-		&PotentialAmnesiaEvidence{
-			VoteA: vote1, 
+		{
+			VoteA: vote1,
 			VoteB: makeVote(t, val, chainID, 0, height, 0, 2, blockID2, defaultVoteTime.Add(1*time.Second)),
 		},
 
 		// first vote was for a nil block - not locked
-		&PotentialAmnesiaEvidence{
-			VoteA: makeVote(t, val, chainID, 0, height, 0, 2, BlockID{}, defaultVoteTime.Add(1*time.Second)), 
+		{
+			VoteA: makeVote(t, val, chainID, 0, height, 0, 2, BlockID{}, defaultVoteTime.Add(1*time.Second)),
 			VoteB: vote2,
 		},
 
 		// second vote is from a different validator
-		&PotentialAmnesiaEvidence{
-			VoteA: vote1, 
+		{
+			VoteA: vote1,
 			VoteB: makeVote(t, val2, chainID, 0, height, 1, 2, blockID2, defaultVoteTime.Add(1*time.Second)),
 		},
 	}
