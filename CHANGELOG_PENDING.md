@@ -89,6 +89,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [types] \#4939 Block: `Round` is now `int32`
   - [consensus] \#4582 RoundState: `Round`, `LockedRound` & `CommitRound` are now `int32`
   - [consensus] \#4582 HeightVoteSet: `round` is now `int32`
+  - [rpc/jsonrpc/server] \#5141 Remove `WriteRPCResponseArrayHTTP` (use `WriteRPCResponseHTTP` instead) (@melekes)
 
 ### FEATURES:
 
@@ -128,4 +129,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v2] Correctly set block store base in status responses (@erikgrinaker)
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
 - [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
+- [p2p][\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [proxy] \#5078 Fix a bug, where TM does not exit when ABCI app crashes (@melekes)

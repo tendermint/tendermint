@@ -189,7 +189,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	}()
 	<-serverGotPing
 
-	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
+	pongTimerExpired := mconn.config.PongTimeout + 200*time.Millisecond
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected error, but got %v", msgBytes)

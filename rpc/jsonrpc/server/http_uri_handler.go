@@ -27,7 +27,8 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(dummyID))
+			WriteRPCResponseHTTPError(w, http.StatusNotFound,
+				types.RPCMethodNotFoundError(dummyID))
 		}
 	}
 
@@ -40,8 +41,9 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(
+			WriteRPCResponseHTTPError(
 				w,
+				http.StatusInternalServerError,
 				types.RPCInvalidParamsError(
 					dummyID,
 					fmt.Errorf("error converting http params to arguments: %w", err),
@@ -56,7 +58,8 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(dummyID, err))
+			WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
+				types.RPCInternalError(dummyID, err))
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
