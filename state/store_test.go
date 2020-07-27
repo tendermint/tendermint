@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +14,6 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -201,14 +199,15 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 
 	root := sm.ABCIResponsesResultsHash(responses)
 
-	bbeBytes, _ := proto.Marshal(responses.BeginBlock)
+	// root should be Merkle tree root of DeliverTxs responses
 	results := types.NewResults(responses.DeliverTxs)
-	ebeBytes, _ := proto.Marshal(responses.EndBlock)
+	assert.Equal(t, root, results.Hash())
 
-	root2, proofs := merkle.ProofsFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
-
-	assert.Equal(t, root2, root)
-	assert.NoError(t, proofs[1].Verify(root, results.Hash()))
+	// test we can prove first DeliverTx
+	proof := results.ProveResult(0)
+	bz, err := results[0].Marshal()
+	require.NoError(t, err)
+	assert.NoError(t, proof.Verify(root, bz))
 }
 
 func sliceToMap(s []int64) map[int64]bool {

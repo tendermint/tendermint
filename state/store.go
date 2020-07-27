@@ -7,7 +7,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -269,34 +268,12 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 
 //------------------------------------------------------------------------
 
-// ABCIResponsesResultsHash returns the root hash of a Merkle tree with 3 leafs:
-//   1) proto encoded ResponseBeginBlock.Events
-//   2) root hash of a Merkle tree of ResponseDeliverTx responses (see ABCIResults.Hash)
-//   3) proto encoded ResponseEndBlock.Events
+// ABCIResponsesResultsHash returns the root hash of a Merkle tree of
+// ResponseDeliverTx responses (see ABCIResults.Hash)
 //
 // See merkle.SimpleHashFromByteSlices
 func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	// proto-encode BeginBlock events.
-	bbeBytes, err := proto.Marshal(&abci.ResponseBeginBlock{
-		Events: ar.BeginBlock.Events,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
-	results := types.NewResults(ar.DeliverTxs)
-
-	// proto-encode EndBlock events.
-	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
-		Events: ar.EndBlock.Events,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	// Build a Merkle tree out of the above 3 binary slices.
-	return merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+	return types.NewResults(ar.DeliverTxs).Hash()
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
