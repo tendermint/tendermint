@@ -138,13 +138,16 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 }
 
 func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
 	mt := newMultiplexTransport(
-		emptyNodeInfo(),
+		testNodeInfo(
+			id, "transport",
+		),
 		NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
+			PrivKey: pv,
 		},
 	)
-	id := mt.nodeKey.ID()
 
 	MultiplexTransportMaxIncomingConnections(0)(mt)
 
@@ -152,32 +155,34 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	const maxIncomingConns = 2
+	MultiplexTransportMaxIncomingConnections(maxIncomingConns)(mt)
 	if err := mt.Listen(*addr); err != nil {
 		t.Fatal(err)
 	}
 
-	errc := make(chan error)
+	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
-	go func() {
-		addr := NewNetAddress(id, mt.listener.Addr())
+	// Connect more peers than max
+	for i := 0; i <= maxIncomingConns; i++ {
+		errc := make(chan error)
+		go testDialer(*laddr, errc)
 
-		_, err := addr.Dial()
-		if err != nil {
-			errc <- err
-			return
+		err = <-errc
+		if i < maxIncomingConns {
+			if err != nil {
+				t.Errorf("dialer connection failed: %v", err)
+			}
+			_, err = mt.Accept(peerConfig{})
+			if err != nil {
+				t.Errorf("connection failed: %v", err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "i/o timeout") {
+			// mt actually blocks forever on trying to accept a new peer into a full channel so
+			// expect the dialer to encounter a timeout error. Calling mt.Accept will block until
+			// mt is closed.
+			t.Errorf("expected i/o timeout error, got %v", err)
 		}
-
-		close(errc)
-	}()
-
-	if err := <-errc; err != nil {
-		t.Errorf("connection failed: %v", err)
-	}
-
-	_, err = mt.Accept(peerConfig{})
-	if err == nil || !strings.Contains(err.Error(), "connection reset by peer") {
-		t.Errorf("expected connection reset by peer error, got %v", err)
 	}
 }
 
@@ -294,13 +299,13 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			errc <- fmt.Errorf("fast peer timed out")
 		}
 
-		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
+		sc, err := upgradeSecretConn(c, 200*time.Millisecond, ed25519.GenPrivKey())
 		if err != nil {
 			errc <- err
 			return
 		}
 
-		_, err = handshake(sc, 20*time.Millisecond,
+		_, err = handshake(sc, 200*time.Millisecond,
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()),
 				"slow_peer",
