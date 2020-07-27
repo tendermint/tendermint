@@ -1154,7 +1154,7 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 	}
 
 	if e.VoteA.Round == e.VoteB.Round {
-		return fmt.Errorf("votes must be for different rounds: %d ",
+		return fmt.Errorf("votes must be for different rounds: %d",
 			e.VoteA.Round)
 	}
 
