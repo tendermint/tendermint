@@ -3,6 +3,7 @@
 ## Changelog
 
 - 2020-07-17: initial version
+- 2020-07-27: fixes after Ismail and Ethan's comments
 
 ## Context
 
@@ -18,8 +19,23 @@ information to blocks / transactions.
 Many applications seem to have started using them since.
 
 However, before [PR#4845](https://github.com/tendermint/tendermint/pull/4845)
-there was no way to prove that certain events were a part of the result. Hence,
-[PR#4845](https://github.com/tendermint/tendermint/pull/4845) was opened.
+there was no way to prove that certain events were a part of the result
+(_unless the application developer includes them into the state tree_).
+
+Hence, [PR#4845](https://github.com/tendermint/tendermint/pull/4845) was
+opened. In it, `GasWanted` along with `GasUsed` are included when hashing
+`DeliverTx` results. Also, events from `BeginBlock`, `EndBlock` and `DeliverTx`
+results are hashed into the `LastResultsHash` as follows:
+
+- Since we do not expect `BeginBlock` and `EndBlock` to contain many events,
+  these will be Protobuf encoded and included in the Merkle tree as leaves.
+- `LastResultsHash` therefore is the root hash of a Merkle tree w/ 3 leafs:
+  proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
+  from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
+  ignored), and proto-encoded `ResponseEndBlock#Events`.
+- Order of events is unchanged - same as received from the ABCI application.
+
+[Spec PR](https://github.com/tendermint/spec/pull/97/files)
 
 While it's certainly good to be able to prove something, introducing new events
 or removing such becomes difficult because it breaks the `LastResultsHash`. It
@@ -66,20 +82,6 @@ func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx 
 For "transfer" event to be hashed, the `LastResultsEvents` must contain a
 string "transfer".
 
-### How events are hashed
-
-Since we do not expect `BeginBlock` and `EndBlock` to contain many events, these
-will be Protobuf encoded and included in the Merkle tree as leaves.
-
-`LastResultsHash` therefore is the root hash of a Merkle tree w/ 3 leafs:
-proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
-from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
-ignored), and proto-encoded `ResponseEndBlock#Events`.
-
-Order of events is unchanged - same as received from the ABCI application.
-
-[Spec PR](https://github.com/tendermint/spec/pull/97/files)
-
 ## Status
 
 Proposed
@@ -94,7 +96,8 @@ Proposed
 
 ### Negative
 
-1. yet another consensus parameter.
+1. yet another consensus parameter
+2. more things to track in the tendermint state
 
 ### Neutral
 
