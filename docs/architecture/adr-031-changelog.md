@@ -1,4 +1,4 @@
-# ADR {ADR-NUMBER}: {TITLE}
+# ADR 031: Changelog Structure
 
 ## Changelog
 

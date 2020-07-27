@@ -1041,7 +1041,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 // in the same height. PotentialAmnesiaEvidence can then evolve into AmnesiaEvidence if the indicted validator
 // is incapable of providing the proof of lock change that validates voting twice in the allotted trial period.
 // Heightstamp is used for each node to keep a track of how much time has passed so as to know when the trial period
-// is finished and is set when the node first receives the evidence.
+// is finished and is set when the node first receives the evidence. Votes are ordered based on their timestamp
 type PotentialAmnesiaEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
@@ -1148,10 +1148,14 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 	}
 
 	// H/S must be the same
-	if e.VoteA.Height != e.VoteB.Height ||
-		e.VoteA.Type != e.VoteB.Type {
-		return fmt.Errorf("h/s do not match: %d/%v vs %d/%v",
-			e.VoteA.Height, e.VoteA.Type, e.VoteB.Height, e.VoteB.Type)
+	if e.VoteA.Height != e.VoteB.Height {
+		return fmt.Errorf("heights do not match: %d vs %d",
+			e.VoteA.Height, e.VoteB.Height)
+	}
+
+	if e.VoteA.Round == e.VoteB.Round {
+		return fmt.Errorf("votes must be for different rounds: %d",
+			e.VoteA.Round)
 	}
 
 	// Enforce that vote A came before vote B
@@ -1176,6 +1180,10 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 			e.VoteA.ValidatorIndex,
 			e.VoteB.ValidatorIndex,
 		)
+	}
+
+	if e.VoteA.BlockID.IsZero() {
+		return errors.New("first vote is for a nil block - voter hasn't locked on a block")
 	}
 
 	// BlockIDs must be different

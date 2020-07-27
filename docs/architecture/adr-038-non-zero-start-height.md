@@ -1,4 +1,4 @@
-# ADR {ADR-NUMBER}: {TITLE}
+# ADR 038: Non-zero start height
 
 ## Changelog
 
