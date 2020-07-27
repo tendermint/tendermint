@@ -32,7 +32,7 @@ import (
 // byzantine failures
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same validator
-func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
+func TestByzantinePrevoteEquivocation(t *testing.T) {
 	nValidators := 4
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
@@ -127,15 +127,16 @@ func TestByzantineSimplePrevoteEquivocation(t *testing.T) {
 	}
 
 	// Check that evidence is submitted and committed at the third height
-	for i := 1; i < 4; i++ {
+	for i := 0; i < 2; i++ {
 		timeoutWaitGroup(t, nValidators, func(j int) {
-			msg := <-blocksSubs[j].Out()
-			if i == 3 {
-				block := msg.Data().(types.EventDataNewBlock).Block
-				assert.True(t, len(block.Evidence.Evidence) == 1)
-			}
+			<-blocksSubs[j].Out()
 		}, css)
 	}
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
+		assert.True(t, len(block.Evidence.Evidence) == 1)
+	}, css)
 }
 
 // 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
