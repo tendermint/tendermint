@@ -60,6 +60,9 @@ var (
 	trustLevelStr  string
 
 	verbose bool
+
+	primaryKey   = []byte("primary")
+	witnessesKey = []byte("witnesses")
 )
 
 func init() {
@@ -102,11 +105,9 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	chainID = args[0]
 	logger.Info("Creating client...", "chainID", chainID)
 
-	witnessesAddrs := strings.Split(witnessAddrsJoined, ",")
-
-	// if no witnesses were provided make sure we pass an empty string
-	if witnessAddrsJoined == "" {
-		witnessesAddrs = []string{}
+	witnessesAddrs := []string{}
+	if witnessAddrsJoined != "" {
+		witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
 	}
 
 	db, err := dbm.NewGoLevelDB("light-client-db", home)
@@ -114,11 +115,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("can't create a db: %w", err)
 	}
 
-	if primaryAddr == "" {
+	if primaryAddr == "" { // check to see if we can start from an existing state
 		var err error
 		primaryAddr, witnessesAddrs, err = checkForExistingProviders(db)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve primary or witness from db. Error: %w", err)
+			return fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
 		}
 		if primaryAddr == "" {
 			return errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
@@ -131,64 +132,42 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	trustLevel, err := tmmath.NewFraction(trustLevelStr)
+	trustLevel, err := tmmath.ParseFraction(trustLevelStr)
 	if err != nil {
 		return fmt.Errorf("can't parse trust level: %w", err)
 	}
 
+	options := []light.Option{light.Logger(logger)}
+
+	if sequential {
+		options = append(options, light.SequentialVerification())
+	} else {
+		options = append(options, light.SkippingVerification(trustLevel))
+	}
+
 	var c *light.Client
 	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		if sequential {
-			c, err = light.NewHTTPClient(
-				chainID,
-				light.TrustOptions{
-					Period: trustingPeriod,
-					Height: trustedHeight,
-					Hash:   trustedHash,
-				},
-				primaryAddr,
-				witnessesAddrs,
-				dbs.New(db, chainID),
-				light.Logger(logger),
-				light.SequentialVerification(),
-			)
-		} else {
-			c, err = light.NewHTTPClient(
-				chainID,
-				light.TrustOptions{
-					Period: trustingPeriod,
-					Height: trustedHeight,
-					Hash:   trustedHash,
-				},
-				primaryAddr,
-				witnessesAddrs,
-				dbs.New(db, chainID),
-				light.Logger(logger),
-				light.SkippingVerification(trustLevel),
-			)
-		}
+		c, err = light.NewHTTPClient(
+			chainID,
+			light.TrustOptions{
+				Period: trustingPeriod,
+				Height: trustedHeight,
+				Hash:   trustedHash,
+			},
+			primaryAddr,
+			witnessesAddrs,
+			dbs.New(db, chainID),
+			options...,
+		)
 	} else { // continue from latest state
-		if sequential {
-			c, err = light.NewHTTPClientFromTrustedStore(
-				chainID,
-				trustingPeriod,
-				primaryAddr,
-				witnessesAddrs,
-				dbs.New(db, chainID),
-				light.Logger(logger),
-				light.SkippingVerification(trustLevel),
-			)
-		} else {
-			c, err = light.NewHTTPClientFromTrustedStore(
-				chainID,
-				trustingPeriod,
-				primaryAddr,
-				witnessesAddrs,
-				dbs.New(db, chainID),
-				light.Logger(logger),
-				light.SequentialVerification(),
-			)
-		}
+		c, err = light.NewHTTPClientFromTrustedStore(
+			chainID,
+			trustingPeriod,
+			primaryAddr,
+			witnessesAddrs,
+			dbs.New(db, chainID),
+			options...,
+		)
 	}
 	if err != nil {
 		return err
@@ -231,11 +210,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 }
 
 func checkForExistingProviders(db dbm.DB) (string, []string, error) {
-	primaryBytes, err := db.Get([]byte("p"))
+	primaryBytes, err := db.Get(primaryKey)
 	if err != nil {
 		return "", []string{""}, err
 	}
-	witnessesBytes, err := db.Get([]byte("w"))
+	witnessesBytes, err := db.Get(witnessesKey)
 	if err != nil {
 		return "", []string{""}, err
 	}
@@ -244,11 +223,11 @@ func checkForExistingProviders(db dbm.DB) (string, []string, error) {
 }
 
 func saveProviders(db dbm.DB, primaryAddr, witnessesAddrs string) error {
-	err := db.Set([]byte("p"), []byte(primaryAddr))
+	err := db.Set(primaryKey, []byte(primaryAddr))
 	if err != nil {
 		return fmt.Errorf("failed to save primary provider: %w", err)
 	}
-	err = db.Set([]byte("w"), []byte(witnessesAddrs))
+	err = db.Set(witnessesKey, []byte(witnessesAddrs))
 	if err != nil {
 		return fmt.Errorf("failed to save witness providers: %w", err)
 	}

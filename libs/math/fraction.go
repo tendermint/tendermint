@@ -21,7 +21,7 @@ func (fr Fraction) String() string {
 	return fmt.Sprintf("%d/%d", fr.Numerator, fr.Denominator)
 }
 
-func NewFraction(f string) (Fraction, error) {
+func ParseFraction(f string) (Fraction, error) {
 	o := strings.SplitN(f, "/", -1)
 	if len(o) != 2 {
 		return Fraction{}, errors.New("incorrect formating: should be like \"1/3\"")
