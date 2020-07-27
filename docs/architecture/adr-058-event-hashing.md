@@ -4,6 +4,7 @@
 
 - 2020-07-17: initial version
 - 2020-07-27: fixes after Ismail and Ethan's comments
+- 2020-07-27: declined
 
 ## Context
 
@@ -84,7 +85,14 @@ string "transfer".
 
 ## Status
 
-Proposed
+Declined
+
+**Until there's more stability/motivation/use-cases/demand, the decision is to
+push this entirely application side and just have apps which want events to be
+provable to insert them into their application-side merkle trees. Of course
+this puts more pressure on their application state and makes event proving
+application specific, but it might help built up a better sense of use-cases
+and how this ought to ultimately be done by Tendermint.**
 
 ## Consequences
 
@@ -98,10 +106,6 @@ Proposed
 
 1. yet another consensus parameter
 2. more things to track in the tendermint state
-
-### Neutral
-
--
 
 ## References
 
