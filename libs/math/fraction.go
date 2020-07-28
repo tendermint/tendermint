@@ -23,7 +23,7 @@ func (fr Fraction) String() string {
 
 // ParseFractions takes the string of a fraction as input i.e "2/3" and converts this
 // to the equivalent fraction else returns an error. The format of the string must be
-// one number followed by a slash (/) and then the other.
+// one number followed by a slash (/) and then the other number.
 func ParseFraction(f string) (Fraction, error) {
 	o := strings.SplitN(f, "/", -1)
 	if len(o) != 2 {
