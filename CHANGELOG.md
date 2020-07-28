@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.32.13
+
+### BUG FIXES
+
+- [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
+
 ## v0.32.12
 
 ### BUG FIXES
