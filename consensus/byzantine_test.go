@@ -34,6 +34,7 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same validator
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4
+	const byzantineNode = 0
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
@@ -91,24 +92,47 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		css[i] = cs
 	}
+	
+	// initialize the reactors for each of the validators
+	reactors := make([]*Reactor, nValidators)
+	blocksSubs := make([]types.Subscription, 0)
+	eventBuses := make([]*types.EventBus, nValidators)
+	for i := 0; i < nValidators; i++ {
+		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
+		reactors[i].SetLogger(css[i].Logger)
 
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+		// eventBus is already started with the cs
+		eventBuses[i] = css[i].eventBus
+		reactors[i].SetEventBus(eventBuses[i])
 
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		require.NoError(t, err)
+		blocksSubs = append(blocksSubs, blocksSub)
+
+		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+		}
+	}
+	// make connected switches and start all reactors
+	p2p.MakeConnectedSwitches(config.P2P, nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("CONSENSUS", reactors[i])
+		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
+		return s
+	}, p2p.Connect2Switches)
+	
 	// create byzantine validator
-	bcs := css[0]
+	bcs := css[byzantineNode]
 
+	// alter prevote so that the byzantine node double votes when height is 2
 	bcs.doPrevote = func(height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == 2 {
 			bcs.Logger.Info("Sending two votes")
-			// bcs.mtx.Lock()
 			prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
 			require.NoError(t, err)
 			prevote2, err := bcs.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			require.NoError(t, err)
-			// bcs.mtx.Unlock()
-			peerList := reactors[1].Switch.Peers().List()
+			peerList := reactors[byzantineNode].Switch.Peers().List()
 			bcs.Logger.Info("Getting peer list", "peers", peerList)
 			// send two votes to all peers (1st to one half, 2nd to another half)
 			for i, peer := range peerList {
@@ -125,6 +149,15 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			bcs.defaultDoPrevote(height, round)
 		}
 	}
+
+	// start the consensus reactors
+	for i := 0; i < nValidators; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s, false)
+	}
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	
 
 	// Check that evidence is submitted and committed at the third height
 	for i := 0; i < 2; i++ {
