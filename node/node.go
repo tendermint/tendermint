@@ -1196,18 +1196,6 @@ func makeNodeInfo(
 		txIndexerStatus = "off"
 	}
 
-	var bcChannel byte
-	switch config.FastSync.Version {
-	case "v0":
-		bcChannel = bc.BlockchainChannel
-	case "v1":
-		bcChannel = bc.BlockchainChannel
-	case "v2":
-		bcChannel = bc.BlockchainChannel
-	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
-	}
-
 	nodeInfo := p2p.DefaultNodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
@@ -1218,7 +1206,7 @@ func makeNodeInfo(
 		Network:       genDoc.ChainID,
 		Version:       version.TMCoreSemVer,
 		Channels: []byte{
-			bcChannel,
+			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
