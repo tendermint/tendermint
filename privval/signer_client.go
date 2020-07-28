@@ -50,7 +50,6 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 // Ping sends a ping request to the remote signer
 func (sc *SignerClient) Ping() error {
 	response, err := sc.endpoint.SendRequest(&PingRequest{})
-
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
 		return nil
@@ -58,7 +57,6 @@ func (sc *SignerClient) Ping() error {
 
 	_, ok := response.(*PingResponse)
 	if !ok {
-		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")
 		return err
 	}
 
@@ -91,16 +89,13 @@ func (sc *SignerClient) GetPubKey() crypto.PubKey {
 func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	response, err := sc.endpoint.SendRequest(&SignVoteRequest{Vote: vote})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::SignVote", "err", err)
 		return err
 	}
 
 	resp, ok := response.(*SignedVoteResponse)
 	if !ok {
-		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != SignedVoteResponse")
 		return ErrUnexpectedResponse
 	}
-
 	if resp.Error != nil {
 		return resp.Error
 	}
@@ -113,13 +108,11 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	response, err := sc.endpoint.SendRequest(&SignProposalRequest{Proposal: proposal})
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
 		return err
 	}
 
 	resp, ok := response.(*SignedProposalResponse)
 	if !ok {
-		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", "response != SignedProposalResponse")
 		return ErrUnexpectedResponse
 	}
 	if resp.Error != nil {

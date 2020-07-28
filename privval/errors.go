@@ -1,9 +1,11 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 )
 
+// EndpointTimeoutError occurs when endpoint times out.
 type EndpointTimeoutError struct{}
 
 // Implement the net.Error interface.
@@ -13,15 +15,15 @@ func (e EndpointTimeoutError) Temporary() bool { return true }
 
 // Socket errors.
 var (
-	ErrUnexpectedResponse = fmt.Errorf("received unexpected response")
-	ErrNoConnection       = fmt.Errorf("endpoint is not connected")
 	ErrConnectionTimeout  = EndpointTimeoutError{}
-
-	ErrReadTimeout  = fmt.Errorf("endpoint read timed out")
-	ErrWriteTimeout = fmt.Errorf("endpoint write timed out")
+	ErrNoConnection       = errors.New("endpoint is not connected")
+	ErrReadTimeout        = errors.New("endpoint read timed out")
+	ErrUnexpectedResponse = errors.New("empty response")
+	ErrWriteTimeout       = errors.New("endpoint write timed out")
 )
 
-// RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
+// RemoteSignerError allows (remote) validators to include meaningful error
+// descriptions in their reply.
 type RemoteSignerError struct {
 	// TODO(ismail): create an enum of known errors
 	Code        int

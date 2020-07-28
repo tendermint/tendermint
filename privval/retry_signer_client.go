@@ -60,6 +60,10 @@ func (sc *RetrySignerClient) SignVote(chainID string, vote *types.Vote) error {
 		if err == nil {
 			return nil
 		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return err
+		}
 		time.Sleep(sc.timeout)
 	}
 	return errors.New("exhausted all attempts to sign vote")
@@ -70,6 +74,10 @@ func (sc *RetrySignerClient) SignProposal(chainID string, proposal *types.Propos
 		err := sc.next.SignProposal(chainID, proposal)
 		if err == nil {
 			return nil
+		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return err
 		}
 		time.Sleep(sc.timeout)
 	}
