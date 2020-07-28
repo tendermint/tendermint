@@ -92,7 +92,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		css[i] = cs
 	}
-	
+
 	// initialize the reactors for each of the validators
 	reactors := make([]*Reactor, nValidators)
 	blocksSubs := make([]types.Subscription, 0)
@@ -119,7 +119,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
 	}, p2p.Connect2Switches)
-	
+
 	// create byzantine validator
 	bcs := css[byzantineNode]
 
@@ -156,8 +156,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		reactors[i].SwitchToConsensus(s, false)
 	}
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-	
 
 	// Check that evidence is submitted and committed at the third height
 	for i := 0; i < 2; i++ {
