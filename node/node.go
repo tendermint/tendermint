@@ -18,6 +18,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	bc "github.com/tendermint/tendermint/blockchain"
 	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
 	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
@@ -1198,11 +1199,11 @@ func makeNodeInfo(
 	var bcChannel byte
 	switch config.FastSync.Version {
 	case "v0":
-		bcChannel = bcv0.BlockchainChannel
+		bcChannel = bc.BlockchainChannel
 	case "v1":
-		bcChannel = bcv1.BlockchainChannel
+		bcChannel = bc.BlockchainChannel
 	case "v2":
-		bcChannel = bcv2.BlockchainChannel
+		bcChannel = bc.BlockchainChannel
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}

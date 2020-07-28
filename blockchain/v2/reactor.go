@@ -509,7 +509,7 @@ func (r *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                  BlockchainChannel,
+			ID:                  bc.BlockchainChannel,
 			Priority:            10,
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,

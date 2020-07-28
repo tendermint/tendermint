@@ -31,11 +31,6 @@ func newSwitchIo(sw *p2p.Switch) *switchIO {
 	}
 }
 
-const (
-	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
-	BlockchainChannel = byte(0x40)
-)
-
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
@@ -52,7 +47,7 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 		return err
 	}
 
-	queued := peer.TrySend(BlockchainChannel, msgBytes)
+	queued := peer.TrySend(bc.BlockchainChannel, msgBytes)
 	if !queued {
 		return fmt.Errorf("send queue full")
 	}
@@ -70,7 +65,7 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID)
 		return err
 	}
 
-	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
+	if queued := peer.TrySend(bc.BlockchainChannel, msgBytes); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 
@@ -95,7 +90,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	if err != nil {
 		return err
 	}
-	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
+	if queued := peer.TrySend(bc.BlockchainChannel, msgBytes); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 
@@ -112,7 +107,7 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 		return err
 	}
 
-	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
+	if queued := peer.TrySend(bc.BlockchainChannel, msgBytes); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 
@@ -134,7 +129,7 @@ func (sio *switchIO) broadcastStatusRequest() error {
 	}
 
 	// XXX: maybe we should use an io specific peer list here
-	sio.sw.Broadcast(BlockchainChannel, msgBytes)
+	sio.sw.Broadcast(bc.BlockchainChannel, msgBytes)
 
 	return nil
 }

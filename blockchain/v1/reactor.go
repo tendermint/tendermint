@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
-	BlockchainChannel = byte(0x40)
 	trySyncIntervalMS = 10
 	trySendIntervalMS = 10
 
@@ -164,7 +162,7 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                  BlockchainChannel,
+			ID:                  bc.BlockchainChannel,
 			Priority:            10,
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
@@ -183,7 +181,7 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 		return
 	}
-	peer.Send(BlockchainChannel, msgBytes)
+	peer.Send(bc.BlockchainChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -208,7 +206,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("unable to marshal msg", "err", err)
 			return false
 		}
-		return src.TrySend(BlockchainChannel, msgBytes)
+		return src.TrySend(bc.BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -218,7 +216,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 		bcR.Logger.Error("unable to marshal msg", "err", err)
 		return false
 	}
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return src.TrySend(bc.BlockchainChannel, msgBytes)
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
@@ -231,7 +229,7 @@ func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusReques
 		return false
 	}
 
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return src.TrySend(bc.BlockchainChannel, msgBytes)
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -484,7 +482,7 @@ func (bcR *BlockchainReactor) sendStatusRequest() {
 	if err != nil {
 		panic(err)
 	}
-	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
+	bcR.Switch.Broadcast(bc.BlockchainChannel, msgBytes)
 }
 
 // Implements bcRNotifier
@@ -499,7 +497,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 	if err != nil {
 		return err
 	}
-	queued := peer.TrySend(BlockchainChannel, msgBytes)
+	queued := peer.TrySend(bc.BlockchainChannel, msgBytes)
 	if !queued {
 		return errSendQueueFull
 	}
