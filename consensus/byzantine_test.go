@@ -33,7 +33,7 @@ import (
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same validator
 func TestByzantinePrevoteEquivocation(t *testing.T) {
-	nValidators := 4
+	const nValidators = 4
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
@@ -110,7 +110,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			// bcs.mtx.Unlock()
 			peerList := reactors[1].Switch.Peers().List()
 			bcs.Logger.Info("Getting peer list", "peers", peerList)
-			// send two votes to all peers
+			// send two votes to all peers (1st to one half, 2nd to another half)
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
@@ -135,7 +135,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	timeoutWaitGroup(t, nValidators, func(j int) {
 		msg := <-blocksSubs[j].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
+		// assert that we have evidence
 		assert.True(t, len(block.Evidence.Evidence) == 1)
+		// and that the evidence is of type DuplicateVoteEvidence
+		ev, ok := block.Evidence.Evidence[0].(*types.DuplicateVoteEvidence)
+		assert.True(t, ok)
+		// and that the address matches to that of the byzantine node
+		pubkey, _ := bcs.privValidator.GetPubKey()
+		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
 	}, css)
 }
 
