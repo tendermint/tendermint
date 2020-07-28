@@ -1,8 +1,6 @@
-# Blockchain
+# Data Structures
 
 Here we describe the data structures in the Tendermint blockchain and the rules for validating them.
-
-## Data Structures
 
 The Tendermint blockchains consists of a short list of basic data types:
 

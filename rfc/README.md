@@ -21,3 +21,5 @@ If recorded decisions turned out to be lacking, convene a discussion, record the
 Some RFC's will be presented at a Tendermint Dev Session. If you are an outside contributor and have submitted a RFC, you may be invited to present your RFC at one of these calls.
 
 ## Table of Contents
+
+[001-block-retention](./001-block-retention.md)

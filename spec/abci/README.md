@@ -10,7 +10,7 @@ _methods_, where each method has a corresponding `Request` and `Response`
 message type. Tendermint calls the ABCI methods on the ABCI application by sending the `Request*`
 messages and receiving the `Response*` messages in return.
 
-All message types are defined in a [protobuf file](https://github.com/tendermint/tendermint/blob/master/proto/abci/types.proto).
+All message types are defined in a [protobuf file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 This allows Tendermint to run applications written in any programming language.
 
 This specification is split as follows:

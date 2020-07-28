@@ -22,9 +22,9 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### Data Structures
 
-- [Encoding and Digests](./blockchain/encoding.md)
-- [Blockchain](./blockchain/blockchain.md)
-- [State](./blockchain/state.md)
+- [Encoding and Digests](./core/encoding.md)
+- [Blockchain](./core/data_structures.md)
+- [State](./core/state.md)
 
 ### Consensus Protocol
 

@@ -17,7 +17,7 @@
   vote](https://godoc.org/github.com/tendermint/tendermint/types#FirstPrecommit)
   for something.
 - A vote _at_ `(H,R)` is a vote signed with the bytes for `H` and `R`
-  included in its [sign-bytes](../blockchain/blockchain.md#vote).
+  included in its [sign-bytes](../core/data_structures.md#vote).
 - _+2/3_ is short for "more than 2/3"
 - _1/3+_ is short for "1/3 or more"
 - A set of +2/3 of prevotes for a particular block or `<nil>` at
@@ -251,7 +251,7 @@ commit-set) are each justified in the JSet with no duplicitous vote
 signatures (by the committers).
 
 - **Lemma**: When a fork is detected by the existence of two
-  conflicting [commits](../blockchain/blockchain.md#commit), the
+  conflicting [commits](../core/data_structures.md#commit), the
   union of the JSets for both commits (if they can be compiled) must
   include double-signing by at least 1/3+ of the validator set.
   **Proof**: The commit cannot be at the same round, because that

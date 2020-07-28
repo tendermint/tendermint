@@ -9,7 +9,7 @@ Applications](./apps.md).
 ## Message Protocol
 
 The message protocol consists of pairs of requests and responses defined in the
-[protobuf file](https://github.com/tendermint/tendermint/blob/master/proto/abci/types.proto).
+[protobuf file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 
 Some messages have no fields, while others may include byte-arrays, strings, integers,
 or custom protobuf types.
@@ -49,7 +49,7 @@ If GRPC is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
 To get started with GRPC, copy in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/proto/abci/types.proto)
+file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)
 and compile it using the GRPC plugin for your language. For instance,
 for golang, the command is `protoc --go_out=plugins=grpc:. types.proto`.
 See the [grpc documentation for more details](http://www.grpc.io/docs/).
