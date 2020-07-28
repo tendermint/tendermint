@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -53,7 +52,6 @@ type BlockchainReactor struct {
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
 	pool      *BlockPool
-	reporter  behaviour.Reporter
 	fastSync  bool
 
 	requestsCh <-chan BlockRequest
