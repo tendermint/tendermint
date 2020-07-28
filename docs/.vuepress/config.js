@@ -16,6 +16,9 @@ module.exports = {
     docsDir: "docs",
     editLinks: true,
     label: "core",
+    topbar: {
+      banner: false,
+    },
     sidebar: {
       auto: true,
       nav: [

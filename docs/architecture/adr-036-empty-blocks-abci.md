@@ -1,4 +1,4 @@
-# ADR {ADR-NUMBER}: {TITLE}
+# ADR 036: Empty Blocks via ABCI
 
 ## Changelog
 
