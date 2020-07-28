@@ -30,14 +30,17 @@ Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
-When the problem is well understood but the solution leads to large
-structural changes to the code base, these changes should be proposed in
-the form of an [Architectural Decision Record
-(ADR)](./docs/architecture/). The ADR will help build consensus on an
-overall strategy to ensure the code base maintains coherence
-in the larger context. If you are not comfortable with writing an ADR,
-you can open a less-formal issue and the maintainers will help you
-turn it into an ADR. ADR numbers can be registered [here](https://github.com/tendermint/tendermint/issues/2313).
+When the problem is well understood but the solution leads to large structural
+changes to the code base, these changes should be proposed in the form of an
+[Architectural Decision Record (ADR)](./docs/architecture/). The ADR will help
+build consensus on an overall strategy to ensure the code base maintains
+coherence in the larger context. If you are not comfortable with writing an
+ADR, you can open a less-formal issue and the maintainers will help you turn it
+into an ADR.
+
+> How to pick a number for the ADR?
+
+Find the largest existing ADR number and bump it by 1.
 
 When the problem as well as proposed solution are well understood,
 changes should start with a [draft
