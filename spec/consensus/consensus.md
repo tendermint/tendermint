@@ -337,3 +337,13 @@ where two conflicting reorg-proposals are signed.
 Assuming that the external coordination medium and protocol is robust,
 it follows that forks are less of a concern than [censorship
 attacks](#censorship-attacks).
+
+### Canonical vs subjective commit
+
+We distinguish between "canonical" and "subjective" commits. The latter is what
+each validator sees locally when they decide to commit a block. The former is
+what is included by the proposer of the next block in the `LastCommit` field of
+the block. This is what makes it canonical and ensures everyone agrees on it,
+even if its different from the first +2/3 votes they saw that caused them to
+commit a block. Each block contains a canonical +2/3 commit for the previous
+block.
