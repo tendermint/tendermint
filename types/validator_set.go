@@ -922,13 +922,11 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Validators = valsProto
 
-	// if vals.Proposer != nil {
 	valProposer, err := vals.Proposer.ToProto()
 	if err != nil {
 		return nil, fmt.Errorf("toProto: validatorSet proposer error: %w", err)
 	}
 	vp.Proposer = valProposer
-	// }
 
 	vp.TotalVotingPower = vals.totalVotingPower
 
