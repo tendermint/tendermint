@@ -188,11 +188,19 @@ func (b *Block) Size() int {
 }
 
 // String returns a string representation of the block
+//
+// See StringIndented.
 func (b *Block) String() string {
 	return b.StringIndented("")
 }
 
-// StringIndented returns a string representation of the block
+// StringIndented returns an indented String.
+//
+// Header
+// Data
+// Evidence
+// LastCommit
+// Hash
 func (b *Block) StringIndented(indent string) string {
 	if b == nil {
 		return "nil-Block"
@@ -210,12 +218,12 @@ func (b *Block) StringIndented(indent string) string {
 		indent, b.Hash())
 }
 
-// StringShort returns a shortened string representation of the block
+// StringShort returns a shortened string representation of the block.
 func (b *Block) StringShort() string {
 	if b == nil {
 		return "nil-Block"
 	}
-	return fmt.Sprintf("Block#%v", b.Hash())
+	return fmt.Sprintf("Block#%X", b.Hash())
 }
 
 // ToProto converts Block to protobuf
@@ -473,7 +481,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 	})
 }
 
-// StringIndented returns a string representation of the header
+// StringIndented returns an indented string representation of the header.
 func (h *Header) StringIndented(indent string) string {
 	if h == nil {
 		return "nil-Header"
@@ -618,6 +626,12 @@ func (cs CommitSig) Absent() bool {
 	return cs.BlockIDFlag == BlockIDFlagAbsent
 }
 
+// CommitSig returns a string representation of CommitSig.
+//
+// 1. first 6 bytes of signature
+// 2. first 6 bytes of validator address
+// 3. block ID flag
+// 4. timestamp
 func (cs CommitSig) String() string {
 	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
 		tmbytes.Fingerprint(cs.Signature),
@@ -890,7 +904,7 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	return commit.hash
 }
 
-// StringIndented returns a string representation of the commit
+// StringIndented returns a string representation of the commit.
 func (commit *Commit) StringIndented(indent string) string {
 	if commit == nil {
 		return "nil-Commit"
@@ -1019,11 +1033,15 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	return nil
 }
 
+// String returns a string representation of SignedHeader.
 func (sh SignedHeader) String() string {
 	return sh.StringIndented("")
 }
 
-// StringIndented returns a string representation of the SignedHeader.
+// StringIndented returns an indented string representation of SignedHeader.
+//
+// Header
+// Commit
 func (sh SignedHeader) StringIndented(indent string) string {
 	return fmt.Sprintf(`SignedHeader{
 %s  %v
@@ -1104,7 +1122,7 @@ func (data *Data) Hash() tmbytes.HexBytes {
 	return data.hash
 }
 
-// StringIndented returns a string representation of the transactions
+// StringIndented returns an indented string representation of the transactions.
 func (data *Data) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Data"
@@ -1299,7 +1317,12 @@ func (blockID BlockID) IsComplete() bool {
 		len(blockID.PartSetHeader.Hash) == tmhash.Size
 }
 
-// String returns a human readable string representation of the BlockID
+// String returns a human readable string representation of the BlockID.
+//
+// 1. hash
+// 2. part set header
+//
+// See PartSetHeader#String
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartSetHeader)
 }
