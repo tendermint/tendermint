@@ -846,11 +846,16 @@ func (e ErrNotEnoughVotingPowerSigned) Error() string {
 
 //----------------
 
+// String returns a string representation of ValidatorSet.
+//
+// See StringIndented.
 func (vals *ValidatorSet) String() string {
 	return vals.StringIndented("")
 }
 
-// StringIndented returns an intended string representation of ValidatorSet.
+// StringIndented returns an intended String.
+//
+// See Validator#String.
 func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"

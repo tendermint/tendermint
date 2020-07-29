@@ -442,6 +442,9 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 //--------------------------------------------------------------------------------
 // Strings and JSON
 
+// String returns a string representation of VoteSet.
+//
+// See StringIndented.
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
@@ -449,9 +452,18 @@ func (voteSet *VoteSet) String() string {
 	return voteSet.StringIndented("")
 }
 
+// StringIndented returns an indented String.
+//
+// Height Round Type
+// Votes
+// Votes bit array
+// 2/3+ majority
+//
+// See Vote#String.
 func (voteSet *VoteSet) StringIndented(indent string) string {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
+
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
@@ -528,6 +540,15 @@ func (voteSet *VoteSet) voteStrings() []string {
 	return voteStrings
 }
 
+// StringShort returns a short representation of VoteSet.
+//
+// 1. height
+// 2. round
+// 3. signed msg type
+// 4. first 2/3+ majority
+// 5. fraction of voted power
+// 6. votes bit array
+// 7. 2/3+ majority for each peer
 func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
 		return "nil-VoteSet"

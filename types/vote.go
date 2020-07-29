@@ -103,6 +103,17 @@ func (vote *Vote) Copy() *Vote {
 	return &voteCopy
 }
 
+// String returns a string representation of Vote.
+//
+// 1. validator index
+// 2. first 6 bytes of validator address
+// 3. height
+// 4. round,
+// 5. type byte
+// 6. type string
+// 7. first 6 bytes of block hash
+// 8. first 6 bytes of signature
+// 9. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
