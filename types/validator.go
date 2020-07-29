@@ -83,6 +83,12 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 	}
 }
 
+// String returns a string representation of String.
+//
+// 1. address
+// 2. public key
+// 3. voting power
+// 4. proposer priority
 func (v *Validator) String() string {
 	if v == nil {
 		return "nil-Validator"

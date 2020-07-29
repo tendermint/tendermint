@@ -37,10 +37,16 @@ func (part *Part) ValidateBasic() error {
 	return nil
 }
 
+// String returns a string representation of Part.
+//
+// See StringIndented.
 func (part *Part) String() string {
 	return part.StringIndented("")
 }
 
+// StringIndented returns an indented Part.
+//
+// See merkle.Proof#StringIndented
 func (part *Part) StringIndented(indent string) string {
 	return fmt.Sprintf(`Part{#%v
 %s  Bytes: %X...
@@ -90,6 +96,10 @@ type PartSetHeader struct {
 	Hash  tmbytes.HexBytes `json:"hash"`
 }
 
+// String returns a string representation of PartSetHeader.
+//
+// 1. total number of parts
+// 2. first 6 bytes of the hash
 func (psh PartSetHeader) String() string {
 	return fmt.Sprintf("%v:%X", psh.Total, tmbytes.Fingerprint(psh.Hash))
 }
@@ -322,6 +332,9 @@ func (psr *PartSetReader) Read(p []byte) (n int, err error) {
 	return psr.Read(p)
 }
 
+// StringShort returns a short version of String.
+//
+// (Count of Total)
 func (ps *PartSet) StringShort() string {
 	if ps == nil {
 		return "nil-PartSet"
