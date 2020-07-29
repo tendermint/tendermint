@@ -798,7 +798,10 @@ paths:
         Not safe to call from inside the ABCI application during a block execution.
       responses:
         200:
-          description: consensus state results.
+          description: |
+            Complete consensus state.
+
+            See https://pkg.go.dev/github.com/tendermint/tendermint/types?tab=doc#Vote.String for Vote string description.
           content:
             application/json:
               schema:
