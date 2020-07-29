@@ -340,10 +340,10 @@ attacks](#censorship-attacks).
 
 ### Canonical vs subjective commit
 
-We distinguish between "canonical" and "subjective" commits. The latter is what
-each validator sees locally when they decide to commit a block. The former is
+We distinguish between "canonical" and "subjective" commits. A subjective commit is what
+each validator sees locally when they decide to commit a block. The canonical commit is
 what is included by the proposer of the next block in the `LastCommit` field of
-the block. This is what makes it canonical and ensures everyone agrees on it,
-even if its different from the first +2/3 votes they saw that caused them to
-commit a block. Each block contains a canonical +2/3 commit for the previous
+the block. This is what makes it canonical and ensures every validator agrees on the canonical commit,
+even if it is different from the +2/3 votes a validator has seen, which caused the validator to
+commit the respective block. Each block contains a canonical +2/3 commit for the previous
 block.
