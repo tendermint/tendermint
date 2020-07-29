@@ -167,7 +167,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		msg := <-blocksSubs[j].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
 		// assert that we have evidence
-		assert.True(t, len(block.Evidence.Evidence) == 1)
+		require.True(t, len(block.Evidence.Evidence) == 1)
 		// and that the evidence is of type DuplicateVoteEvidence
 		ev, ok := block.Evidence.Evidence[0].(*types.DuplicateVoteEvidence)
 		assert.True(t, ok)

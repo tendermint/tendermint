@@ -1036,24 +1036,25 @@ func TestStateProto(t *testing.T) {
 	tc := []struct {
 		testName string
 		state    *sm.State
-		expPass  bool
+		expPass1 bool
+		expPass2 bool
 	}{
-		{"empty state", &sm.State{}, false},
-		{"nil failure state", nil, false},
-		{"success state", &state, true},
+		{"empty state", &sm.State{}, true, false},
+		{"nil failure state", nil, false, false},
+		{"success state", &state, true, true},
 	}
 
 	for _, tt := range tc {
 		tt := tt
 		pbs, err := tt.state.ToProto()
-		if !tt.expPass {
+		if !tt.expPass1 {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err, tt.testName)
 		}
 
 		smt, err := sm.StateFromProto(pbs)
-		if tt.expPass {
+		if tt.expPass2 {
 			require.NoError(t, err, tt.testName)
 			require.Equal(t, tt.state, smt, tt.testName)
 		} else {
