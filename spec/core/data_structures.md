@@ -522,17 +522,6 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 where `pubKey.Verify` performs the appropriate digital signature verification of the `pubKey`
 against the given signature and message bytes.
 
-## Evidence
-
-There is currently only one kind of evidence, `DuplicateVoteEvidence`.
-
-DuplicateVoteEvidence `ev` is valid if
-
-- `ev.VoteA` and `ev.VoteB` can be verified with `ev.PubKey`
-- `ev.VoteA` and `ev.VoteB` have the same `Height, Round, Address, Index, Type`
-- `ev.VoteA.BlockID != ev.VoteB.BlockID`
-- `(block.Height - ev.VoteA.Height) < MAX_EVIDENCE_AGE`
-
 # Execution
 
 Once a block is validated, it can be executed against the state.
