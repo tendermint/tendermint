@@ -709,7 +709,10 @@ paths:
         Get Commit.
       responses:
         200:
-          description: Commit results.
+          description: |
+            Commit results.
+
+            canonical switches from false to true for block H once block H+1 has been committed. Until then it's subjective and only reflects what this node has seen so far.
           content:
             application/json:
               schema:
