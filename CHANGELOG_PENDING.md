@@ -131,3 +131,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#4970 Stricter on `LastCommitRound` check (@cuonglm)
 - [p2p][\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [proxy] \#5078 Fix a bug, where TM does not exit when ABCI app crashes (@melekes)
+- [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) abci evidence time was being set as the time committed not the time the infraction happened (@cmwaters)

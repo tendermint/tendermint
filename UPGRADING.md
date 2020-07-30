@@ -21,6 +21,9 @@ if you want to learn more & support it (with cosmos-sdk you get it
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
 field allows ABCI applications to dictate which events should be indexed.
 
+`Evidence.Time` has been changed from the time that the evidence is committed on
+the chain to the time that the infraction happened
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. Check out the [TODO]() for
