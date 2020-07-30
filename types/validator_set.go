@@ -846,11 +846,16 @@ func (e ErrNotEnoughVotingPowerSigned) Error() string {
 
 //----------------
 
+// String returns a string representation of ValidatorSet.
+//
+// See StringIndented.
 func (vals *ValidatorSet) String() string {
 	return vals.StringIndented("")
 }
 
-// StringIndented returns an intended string representation of ValidatorSet.
+// StringIndented returns an intended String.
+//
+// See Validator#String.
 func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
@@ -907,12 +912,10 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 
 // ToProto converts ValidatorSet to protobuf
 func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
-	if vals == nil {
-		return nil, errors.New("nil validator set") // validator set should never be nil
+	if vals.IsNilOrEmpty() {
+		return &tmproto.ValidatorSet{}, nil // validator set should never be nil
 	}
-	if err := vals.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("validator set failed basic: %w", err)
-	}
+
 	vp := new(tmproto.ValidatorSet)
 	valsProto := make([]*tmproto.Validator, len(vals.Validators))
 	for i := 0; i < len(vals.Validators); i++ {
@@ -963,7 +966,7 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.totalVotingPower = vp.GetTotalVotingPower()
 
-	return vals, nil
+	return vals, vals.ValidateBasic()
 }
 
 //----------------------------------------

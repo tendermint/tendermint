@@ -849,3 +849,18 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 		}
 	}
 }
+
+func TestBlockIDEquals(t *testing.T) {
+	var (
+		blockID          = makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+		blockIDDuplicate = makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+		blockIDDifferent = makeBlockID([]byte("different_hash"), 2, []byte("part_set_hash"))
+		blockIDEmpty     = BlockID{}
+	)
+
+	assert.True(t, blockID.Equals(blockIDDuplicate))
+	assert.False(t, blockID.Equals(blockIDDifferent))
+	assert.False(t, blockID.Equals(blockIDEmpty))
+	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
+	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
+}

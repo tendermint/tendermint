@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/light"
 	lproxy "github.com/tendermint/tendermint/light/proxy"
@@ -31,16 +33,11 @@ All calls that can be tracked back to a block header by a proof
 will be verified before passing them back to the caller. Other than
 that, it will present the same interface as a full Tendermint node.
 
-Example:
+Furthermore to the chainID, a fresh instance of a light client will
+need a primary RPC address, a trusted hash and height and witness RPC addresses
+(if not using sequential verification). To restart the node, thereafter
+only the chainID is required. 
 
-start a fresh instance:
-
-light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
-	--height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948020CD
-
-continue from latest state:
-
-light cosmoshub-3 -p http://52.57.29.196:26657 -w http://public-seed-node.cosmoshub.certus.one:26657
 `,
 	RunE: runProxy,
 	Args: cobra.ExactArgs(1),
@@ -56,11 +53,16 @@ var (
 	home               string
 	maxOpenConnections int
 
+	sequential     bool
 	trustingPeriod time.Duration
 	trustedHeight  int64
 	trustedHash    []byte
+	trustLevelStr  string
 
 	verbose bool
+
+	primaryKey   = []byte("primary")
+	witnessesKey = []byte("witnesses")
 )
 
 func init() {
@@ -77,10 +79,16 @@ func init() {
 		900,
 		"Maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
-		"Trusting period. Should be significantly less than the unbonding period")
+		"Trusting period that headers can be verified within. Should be significantly less than the unbonding period")
 	LightCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
 	LightCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
+	LightCmd.Flags().StringVar(&trustLevelStr, "trust-level", "1/3",
+		"Trust level. Must be between 1/3 and 3/3",
+	)
+	LightCmd.Flags().BoolVar(&sequential, "sequential", false,
+		"Sequential Verification. Verify all headers sequentially as opposed to using skipping verification",
+	)
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -97,11 +105,44 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	chainID = args[0]
 	logger.Info("Creating client...", "chainID", chainID)
 
-	witnessesAddrs := strings.Split(witnessAddrsJoined, ",")
+	witnessesAddrs := []string{}
+	if witnessAddrsJoined != "" {
+		witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
+	}
 
 	db, err := dbm.NewGoLevelDB("light-client-db", home)
 	if err != nil {
 		return fmt.Errorf("can't create a db: %w", err)
+	}
+
+	if primaryAddr == "" { // check to see if we can start from an existing state
+		var err error
+		primaryAddr, witnessesAddrs, err = checkForExistingProviders(db)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
+		}
+		if primaryAddr == "" {
+			return errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
+				" Run the command: tendermint light --help for more information")
+		}
+	} else {
+		err := saveProviders(db, primaryAddr, witnessAddrsJoined)
+		if err != nil {
+			logger.Error("Unable to save primary and or witness addresses", "err", err)
+		}
+	}
+
+	trustLevel, err := tmmath.ParseFraction(trustLevelStr)
+	if err != nil {
+		return fmt.Errorf("can't parse trust level: %w", err)
+	}
+
+	options := []light.Option{light.Logger(logger)}
+
+	if sequential {
+		options = append(options, light.SequentialVerification())
+	} else {
+		options = append(options, light.SkippingVerification(trustLevel))
 	}
 
 	var c *light.Client
@@ -116,7 +157,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			primaryAddr,
 			witnessesAddrs,
 			dbs.New(db, chainID),
-			light.Logger(logger),
+			options...,
 		)
 	} else { // continue from latest state
 		c, err = light.NewHTTPClientFromTrustedStore(
@@ -125,7 +166,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			primaryAddr,
 			witnessesAddrs,
 			dbs.New(db, chainID),
-			light.Logger(logger),
+			options...,
 		)
 	}
 	if err != nil {
@@ -165,5 +206,30 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		logger.Error("proxy ListenAndServe", "err", err)
 	}
 
+	return nil
+}
+
+func checkForExistingProviders(db dbm.DB) (string, []string, error) {
+	primaryBytes, err := db.Get(primaryKey)
+	if err != nil {
+		return "", []string{""}, err
+	}
+	witnessesBytes, err := db.Get(witnessesKey)
+	if err != nil {
+		return "", []string{""}, err
+	}
+	witnessesAddrs := strings.Split(string(witnessesBytes), ",")
+	return string(primaryBytes), witnessesAddrs, nil
+}
+
+func saveProviders(db dbm.DB, primaryAddr, witnessesAddrs string) error {
+	err := db.Set(primaryKey, []byte(primaryAddr))
+	if err != nil {
+		return fmt.Errorf("failed to save primary provider: %w", err)
+	}
+	err = db.Set(witnessesKey, []byte(witnessesAddrs))
+	if err != nil {
+		return fmt.Errorf("failed to save witness providers: %w", err)
+	}
 	return nil
 }
