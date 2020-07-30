@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -360,13 +361,22 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	assert.Error(t, err)
 }
 
-var blockID = types.BlockID{
-	Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	PartSetHeader: types.PartSetHeader{
-		Total: 1,
-		Hash:  []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	},
-}
+var (
+	blockID = types.BlockID{
+		Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: types.PartSetHeader{
+			Total: 1,
+			Hash:  tmrand.Bytes(tmhash.Size),
+		},
+	}
+	differentBlockID = types.BlockID{
+		Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: types.PartSetHeader{
+			Total: 1,
+			Hash:  tmrand.Bytes(tmhash.Size),
+		},
+	}
+)
 
 func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	var height int64 = 1
@@ -377,7 +387,7 @@ func TestValidateUnseenAmnesiaEvidence(t *testing.T) {
 	err := vals[val.Address.String()].SignVote(chainID, vA)
 	voteA.Signature = vA.Signature
 	require.NoError(t, err)
-	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
+	voteB := makeVote(height, 2, 0, addr, differentBlockID)
 	vB := voteB.ToProto()
 	err = vals[val.Address.String()].SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
@@ -426,7 +436,7 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	err := vals[val.Address.String()].SignVote(chainID, vA)
 	require.NoError(t, err)
 	voteA.Signature = vA.Signature
-	voteB := makeVote(height, 2, 0, addr, types.BlockID{})
+	voteB := makeVote(height, 2, 0, addr, differentBlockID)
 	vB := voteB.ToProto()
 	err = vals[val.Address.String()].SignVote(chainID, vB)
 	voteB.Signature = vB.Signature

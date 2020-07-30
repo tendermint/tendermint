@@ -1,4 +1,4 @@
-# ADR {ADR-NUMBER}: {TITLE}
+# ADR 028: : LibP2P Integration
 
 ## Changelog
 

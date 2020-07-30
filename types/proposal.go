@@ -80,6 +80,15 @@ func (p *Proposal) ValidateBasic() error {
 }
 
 // String returns a string representation of the Proposal.
+//
+// 1. height
+// 2. round
+// 3. block ID
+// 4. POL round
+// 5. first 6 bytes of signature
+// 6. timestamp
+//
+// See BlockID#String.
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v (%v, %v) %X @ %s}",
 		p.Height,
