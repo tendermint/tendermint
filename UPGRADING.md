@@ -3,6 +3,14 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.34.1 
+
+### ABCI application changes
+
+A new form of evidence: amnesia evidence, has been added. Potential amnesia and
+mock evidence have been removed. Applications should be able to handle these
+evidence types.
+
 ## v0.34.0
 
 **This release is not compatible with previous blockchains** due to switching
