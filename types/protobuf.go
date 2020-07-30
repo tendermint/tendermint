@@ -16,10 +16,10 @@ import (
 // Use strings to distinguish types in ABCI messages
 
 const (
-	ABCIEvidenceTypeDuplicateVote    = "duplicate/vote"
-	ABCIEvidenceTypePhantom          = "phantom"
-	ABCIEvidenceTypeLunatic          = "lunatic"
-	ABCIEvidenceTypeAmnesia          = "amnesia"
+	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
+	ABCIEvidenceTypePhantom       = "phantom"
+	ABCIEvidenceTypeLunatic       = "lunatic"
+	ABCIEvidenceTypeAmnesia       = "amnesia"
 )
 
 const (
