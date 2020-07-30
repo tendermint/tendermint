@@ -64,6 +64,7 @@ message RequestInitChain {
   ConsensusParams          consensus_params = 3;
   repeated ValidatorUpdate validators       = 4 [(gogoproto.nullable) = false];
   bytes                    app_state_bytes  = 5;
+  int64                    initial_height   = 6;
 }
 
 message RequestQuery {
