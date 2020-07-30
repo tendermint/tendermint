@@ -2,7 +2,6 @@ package types
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +74,6 @@ func TestABCIEvidence(t *testing.T) {
 	abciEv := TM2PB.Evidence(
 		ev,
 		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
-		time.Now(),
 	)
 
 	assert.Equal(t, "duplicate/vote", abciEv.Type)
