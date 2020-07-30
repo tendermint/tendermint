@@ -19,6 +19,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [consensus] \#5143 Only call `privValidator.GetPubKey` once per block (@melekes)
+
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
