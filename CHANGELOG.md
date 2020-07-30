@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.34.0-rc1
+## v0.34.0-rc2
 
 *July 30, 2020*
 
@@ -135,6 +135,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] [\#4970](https://github.com/tendermint/tendermint/issues/4970) Stricter on `LastCommitRound` check (@cuonglm)
 - [p2p][\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [proxy] [\#5078](https://github.com/tendermint/tendermint/issues/5078) Fix a bug, where TM does not exit when ABCI app crashes (@melekes)
+
+
+## v0.34.0-rc1
+
+This release was removed, as a premature GitHub tag was recorded on sum.golang.org causing checksum errors.
 
 
 ## v0.33.6
