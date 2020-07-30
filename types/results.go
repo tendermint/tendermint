@@ -50,6 +50,5 @@ func deterministicResponseDeliverTx(response *abci.ResponseDeliverTx) *abci.Resp
 		Data:      response.Data,
 		GasWanted: response.GasWanted,
 		GasUsed:   response.GasUsed,
-		Events:    response.Events,
 	}
 }
