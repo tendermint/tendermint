@@ -19,8 +19,7 @@ const (
 	ABCIEvidenceTypeDuplicateVote    = "duplicate/vote"
 	ABCIEvidenceTypePhantom          = "phantom"
 	ABCIEvidenceTypeLunatic          = "lunatic"
-	ABCIEvidenceTypePotentialAmnesia = "potential_amnesia"
-	ABCIEvidenceTypeMock             = "mock/evidence"
+	ABCIEvidenceTypeAmnesia          = "amnesia"
 )
 
 const (
@@ -137,8 +136,8 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 		evType = ABCIEvidenceTypePhantom
 	case *LunaticValidatorEvidence:
 		evType = ABCIEvidenceTypeLunatic
-	case *PotentialAmnesiaEvidence:
-		evType = ABCIEvidenceTypePotentialAmnesia
+	case *AmnesiaEvidence:
+		evType = ABCIEvidenceTypeAmnesia
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
