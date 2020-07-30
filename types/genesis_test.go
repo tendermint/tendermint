@@ -19,7 +19,8 @@ func TestGenesisBad(t *testing.T) {
 		{},              // empty
 		{1, 1, 1, 1, 1}, // junk
 		[]byte(`{}`),    // empty
-		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // invalid validator
+		[]byte(`{"chain_id":"mychain","validators":[{}]}`),   // invalid validator
+		[]byte(`{"chain_id":"chain","initial_height":"-1"}`), // negative initial height
 		// missing pub_key type
 		[]byte(
 			`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`,
@@ -59,11 +60,19 @@ func TestGenesisBad(t *testing.T) {
 func TestGenesisGood(t *testing.T) {
 	// test a good one by raw json
 	genDocBytes := []byte(
-		`{"genesis_time":"0001-01-01T00:00:00Z","chain_id":"test-chain-QDKdJr","consensus_params":null,"validators":[` +
-			`{"pub_key":{` +
-			`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
-			`},"power":"10","name":""}` +
-			`],"app_hash":"","app_state":{"account_owner": "Bob"}}`,
+		`{
+			"genesis_time": "0001-01-01T00:00:00Z",
+			"chain_id": "test-chain-QDKdJr",
+			"initial_height": "1000",
+			"consensus_params": null,
+			"validators": [{
+				"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},
+				"power":"10",
+				"name":""
+			}],
+			"app_hash":"",
+			"app_state":{"account_owner": "Bob"}
+		}`,
 	)
 	_, err := GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for good genDoc json")
@@ -133,9 +142,7 @@ func TestGenesisSaveAs(t *testing.T) {
 	// load
 	genDoc2, err := GenesisDocFromFile(tmpfile.Name())
 	require.NoError(t, err)
-
-	// fails to unknown reason
-	// assert.EqualValues(t, genDoc2, genDoc)
+	assert.EqualValues(t, genDoc2, genDoc)
 	assert.Equal(t, genDoc2.Validators, genDoc.Validators)
 }
 
@@ -149,7 +156,9 @@ func randomGenesisDoc() *GenesisDoc {
 	return &GenesisDoc{
 		GenesisTime:     tmtime.Now(),
 		ChainID:         "abc",
+		InitialHeight:   1000,
 		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
+		AppHash:         []byte{1, 2, 3},
 	}
 }
