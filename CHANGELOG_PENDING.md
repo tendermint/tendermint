@@ -25,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
+- [consensus] \#5143 Only call `privValidator.GetPubKey` once per block (@melekes)
 
 ### BUG FIXES:
 
