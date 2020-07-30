@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/xenial64"
+  config.vm.box = "ubuntu/focal64"
 
   config.vm.provider "virtualbox" do |v|
     v.memory = 4096
@@ -19,20 +19,24 @@ Vagrant.configure("2") do |config|
 
     # install docker
     apt-get install -y --no-install-recommends apt-transport-https \
-      ca-certificates curl software-properties-common
+      ca-certificates \
+      curl \
+      gnupg-agent \
+      software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
     add-apt-repository \
       "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
       $(lsb_release -cs) \
       stable"
+    apt-get update
     apt-get install -y docker-ce
-    usermod -a -G docker vagrant
+    usermod -aG docker vagrant
 
     # install go
     wget -q https://dl.google.com/go/go1.14.linux-amd64.tar.gz
     tar -xvf go1.14.linux-amd64.tar.gz
     mv go /usr/local
-    rm -f go1.13.linux-amd64.tar.gz
+    rm -f go1.14.linux-amd64.tar.gz
 
     # install nodejs (for docs)
     curl -sL https://deb.nodesource.com/setup_11.x | bash -

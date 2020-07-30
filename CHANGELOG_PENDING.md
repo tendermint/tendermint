@@ -36,7 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
     - Add `max_num` to consensus evidence parameters (default: 50 items).
   - [evidence] \#4725 Remove `Pubkey` from `DuplicateVoteEvidence`
-  - [state] \#4845 Include `BeginBlock#Events`, `EndBlock#Events`, `DeliverTx#Events`, `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
+  - [state] \#4845 Include `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
 
 - On-disk serialization
