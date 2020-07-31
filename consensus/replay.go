@@ -253,7 +253,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		"protocol-version", res.AppVersion,
 	)
 
-	// Only set the version if we're starting from zero.
+	// Only set the version if there is no existing state.
 	if h.initialState.LastBlockHeight == 0 {
 		h.initialState.Version.Consensus.App = res.AppVersion
 	}
@@ -305,6 +305,7 @@ func (h *Handshaker) ReplayBlocks(
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
+			InitialHeight:   h.genDoc.InitialHeight,
 			ConsensusParams: csParams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
