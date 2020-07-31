@@ -83,7 +83,6 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case nil:
 		default:
 			evR.Logger.Error("Evidence has not been added", "evidence", evis, "err", err)
-			return
 		}
 	}
 }
