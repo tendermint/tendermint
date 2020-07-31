@@ -118,13 +118,6 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	// 	InvalidHeaderField: "",
 	// }
 
-	// evp := &PhantomValidatorEvidence{
-	// 	Header: makeHeaderRandom(),
-	// 	Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
-
-	// 	LastHeightValidatorWasInSet: math.MaxInt64,
-	// }
-
 	// signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
 	// evc := &ConflictingHeadersEvidence{
 	// 	H1: &signedHeader,
@@ -137,7 +130,6 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	}{
 		{"DuplicateVote", ev},
 		// {"LunaticValidatorEvidence", evl},
-		// {"PhantomValidatorEvidence", evp},
 		// {"ConflictingHeadersEvidence", evc},
 	}
 
@@ -268,33 +260,6 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 		assert.Error(t, ev.ValidateBasic(), "#%d", idx)
 	}
 
-}
-
-func TestPhantomValidatorEvidence(t *testing.T) {
-	var (
-		blockID = makeBlockIDRandom()
-		header  = makeHeaderRandom()
-		val     = NewMockPV()
-		vote    = makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
-	)
-
-	ev := NewPhantomValidatorEvidence(vote, header.Height-1)
-
-	assert.Equal(t, header.Height, ev.Height())
-	assert.Equal(t, defaultVoteTime, ev.Time())
-	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
-	assert.NotEmpty(t, ev.Hash())
-	assert.NotEmpty(t, ev.Bytes())
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
-	assert.Error(t, ev.Verify("other", pubKey))
-	privKey2 := ed25519.GenPrivKey()
-	pubKey2 := privKey2.PubKey()
-	assert.Error(t, ev.Verify("other", pubKey2))
-	assert.True(t, ev.Equal(ev))
-	assert.NoError(t, ev.ValidateBasic())
-	assert.NotEmpty(t, ev.String())
 }
 
 func TestConflictingHeadersEvidence(t *testing.T) {
@@ -739,11 +704,6 @@ func TestEvidenceProto(t *testing.T) {
 		{"PotentialAmnesiaEvidence nil VoteB", &PotentialAmnesiaEvidence{VoteA: v, VoteB: nil}, false, true},
 		{"PotentialAmnesiaEvidence nil VoteA", &PotentialAmnesiaEvidence{VoteA: nil, VoteB: v2}, false, true},
 		{"PotentialAmnesiaEvidence success", &PotentialAmnesiaEvidence{VoteA: v2, VoteB: v}, false, false},
-		{"PhantomValidatorEvidence empty fail", &PhantomValidatorEvidence{}, false, true},
-		{"PhantomValidatorEvidence nil LastHeightValidatorWasInSet", &PhantomValidatorEvidence{Vote: v}, false, true},
-		{"PhantomValidatorEvidence nil Vote", &PhantomValidatorEvidence{LastHeightValidatorWasInSet: 2}, false, true},
-		{"PhantomValidatorEvidence success", &PhantomValidatorEvidence{Vote: v2, LastHeightValidatorWasInSet: 2},
-			false, false},
 		{"AmnesiaEvidence nil ProofOfLockChange", &AmnesiaEvidence{PotentialAmnesiaEvidence: &PotentialAmnesiaEvidence{},
 			Polc: NewEmptyPOLC()}, false, true},
 		{"AmnesiaEvidence nil Polc",

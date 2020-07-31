@@ -17,7 +17,6 @@ import (
 
 const (
 	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-	ABCIEvidenceTypePhantom       = "phantom"
 	ABCIEvidenceTypeLunatic       = "lunatic"
 	ABCIEvidenceTypeAmnesia       = "amnesia"
 )
@@ -132,8 +131,6 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case *PhantomValidatorEvidence:
-		evType = ABCIEvidenceTypePhantom
 	case *LunaticValidatorEvidence:
 		evType = ABCIEvidenceTypeLunatic
 	case *AmnesiaEvidence:

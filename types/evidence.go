@@ -80,7 +80,7 @@ type Evidence interface {
 
 type CompositeEvidence interface {
 	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
-	Split(committedHeader *Header, valSet *ValidatorSet, valToLastHeight map[string]int64) []Evidence
+	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
 }
 
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
@@ -114,17 +114,6 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		tp := &tmproto.Evidence{
 			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
 				LunaticValidatorEvidence: pbevi,
-			},
-		}
-
-		return tp, nil
-
-	case *PhantomValidatorEvidence:
-		pbevi := evi.ToProto()
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_PhantomValidatorEvidence{
-				PhantomValidatorEvidence: pbevi,
 			},
 		}
 
@@ -172,8 +161,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
 	case *tmproto.Evidence_AmnesiaEvidence:
 		return AmnesiaEvidenceFromProto(evi.AmnesiaEvidence)
-	case *tmproto.Evidence_PhantomValidatorEvidence:
-		return PhantomValidatorEvidenceFromProto(evi.PhantomValidatorEvidence)
 	default:
 		return nil, errors.New("evidence is not recognized")
 	}
@@ -182,7 +169,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 func init() {
 	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
 	tmjson.RegisterType(&ConflictingHeadersEvidence{}, "tendermint/ConflictingHeadersEvidence")
-	tmjson.RegisterType(&PhantomValidatorEvidence{}, "tendermint/PhantomValidatorEvidence")
 	tmjson.RegisterType(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence")
 	tmjson.RegisterType(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence")
 	tmjson.RegisterType(&AmnesiaEvidence{}, "tendermint/AmnesiaEvidence")
@@ -417,17 +403,13 @@ func NewConflictingHeadersEvidence(h1, h2 *SignedHeader) *ConflictingHeadersEvid
 	return &ConflictingHeadersEvidence{H1: h1, H2: h2}
 }
 
-// Split breaks up evidence into smaller chunks (one per validator except for
-// PotentialAmnesiaEvidence): PhantomValidatorEvidence,
+// Split breaks up evidence into smaller chunks of evidence:
 // LunaticValidatorEvidence, DuplicateVoteEvidence and
 // PotentialAmnesiaEvidence.
 //
 // committedHeader - header at height H1.Height == H2.Height
 // valSet					 - validator set at height H1.Height == H2.Height
-// valToLastHeight - map between active validators and respective last heights
-func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet,
-	valToLastHeight map[string]int64) []Evidence {
-
+func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *ValidatorSet) []Evidence {
 	evList := make([]Evidence, 0)
 
 	var alternativeHeader *SignedHeader
@@ -435,28 +417,6 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 		alternativeHeader = ev.H2
 	} else {
 		alternativeHeader = ev.H1
-	}
-
-	// If there are signers(alternativeHeader) that are not part of
-	// validators(committedHeader), they misbehaved as they are signing protocol
-	// messages in heights they are not validators => immediately slashable
-	// (#F4).
-	for i, sig := range alternativeHeader.Commit.Signatures {
-		if sig.Absent() {
-			continue
-		}
-
-		lastHeightValidatorWasInSet, ok := valToLastHeight[string(sig.ValidatorAddress)]
-		if !ok {
-			continue
-		}
-
-		if !valSet.HasAddress(sig.ValidatorAddress) {
-			evList = append(evList, &PhantomValidatorEvidence{
-				Vote:                        alternativeHeader.Commit.GetVote(int32(i)),
-				LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
-			})
-		}
 	}
 
 	// If ValidatorsHash, NextValidatorsHash, ConsensusHash, AppHash, and
@@ -700,133 +660,6 @@ func ConflictingHeadersEvidenceFromProto(pb *tmproto.ConflictingHeadersEvidence)
 	tp := &ConflictingHeadersEvidence{
 		H1: h1,
 		H2: h2,
-	}
-
-	return tp, tp.ValidateBasic()
-}
-
-//-------------------------------------------
-
-type PhantomValidatorEvidence struct {
-	Vote                        *Vote `json:"vote"`
-	LastHeightValidatorWasInSet int64 `json:"last_height_validator_was_in_set"`
-}
-
-var _ Evidence = &PhantomValidatorEvidence{}
-
-// NewPhantomValidatorEvidence creates a new instance of the respective evidence
-func NewPhantomValidatorEvidence(vote *Vote, lastHeightValidatorWasInSet int64) *PhantomValidatorEvidence {
-	return &PhantomValidatorEvidence{
-		Vote:                        vote,
-		LastHeightValidatorWasInSet: lastHeightValidatorWasInSet,
-	}
-}
-
-func (e *PhantomValidatorEvidence) Height() int64 {
-	return e.Vote.Height
-}
-
-func (e *PhantomValidatorEvidence) Time() time.Time {
-	return e.Vote.Timestamp
-}
-
-func (e *PhantomValidatorEvidence) Address() []byte {
-	return e.Vote.ValidatorAddress
-}
-
-func (e *PhantomValidatorEvidence) Hash() []byte {
-	pbe := e.ToProto()
-
-	bz, err := pbe.Marshal()
-	if err != nil {
-		panic(err)
-	}
-	return tmhash.Sum(bz)
-}
-
-func (e *PhantomValidatorEvidence) Bytes() []byte {
-	pbe := e.ToProto()
-
-	bz, err := pbe.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return bz
-}
-
-func (e *PhantomValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-
-	v := e.Vote.ToProto()
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
-		return errors.New("invalid signature")
-	}
-
-	return nil
-}
-
-func (e *PhantomValidatorEvidence) Equal(ev Evidence) bool {
-	if e2, ok := ev.(*PhantomValidatorEvidence); ok {
-		return e.Vote.Height == e2.Vote.Height &&
-			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	}
-
-	return false
-}
-
-func (e *PhantomValidatorEvidence) ValidateBasic() error {
-	if e == nil {
-		return errors.New("empty phantom validator evidence")
-	}
-
-	if e.Vote == nil {
-		return errors.New("empty vote")
-	}
-
-	if err := e.Vote.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid vote: %w", err)
-	}
-
-	if !e.Vote.BlockID.IsComplete() {
-		return errors.New("expected vote for block")
-	}
-
-	if e.LastHeightValidatorWasInSet <= 0 {
-		return errors.New("negative or zero LastHeightValidatorWasInSet")
-	}
-
-	return nil
-}
-
-func (e *PhantomValidatorEvidence) String() string {
-	return fmt.Sprintf("PhantomValidatorEvidence{%X voted at height %d}",
-		e.Vote.ValidatorAddress, e.Vote.Height)
-}
-
-func (e *PhantomValidatorEvidence) ToProto() *tmproto.PhantomValidatorEvidence {
-	vpb := e.Vote.ToProto()
-
-	tp := &tmproto.PhantomValidatorEvidence{
-		Vote:                        vpb,
-		LastHeightValidatorWasInSet: e.LastHeightValidatorWasInSet,
-	}
-
-	return tp
-}
-
-func PhantomValidatorEvidenceFromProto(pb *tmproto.PhantomValidatorEvidence) (*PhantomValidatorEvidence, error) {
-	if pb == nil {
-		return nil, errors.New("nil PhantomValidatorEvidence")
-	}
-
-	vpb, err := VoteFromProto(pb.Vote)
-	if err != nil {
-		return nil, err
-	}
-
-	tp := &PhantomValidatorEvidence{
-		Vote:                        vpb,
-		LastHeightValidatorWasInSet: pb.LastHeightValidatorWasInSet,
 	}
 
 	return tp, tp.ValidateBasic()

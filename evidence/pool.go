@@ -39,17 +39,12 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
-	// a map of active validators and respective last heights validator is active
-	// if it was in validator set after EvidenceParams.MaxAgeNumBlocks or
-	// currently is (ie. [MaxAgeNumBlocks, CurrentHeight])
-	// In simple words, it means it's still bonded -> therefore slashable.
-	valToLastHeight valToLastHeightMap
 
+	// This is the closest height where at one or more of the current trial periods
+	// will have ended and we will need to then upgrade the evidence to amnesia evidence.
+	// It is set to -1 when we don't have any evidence on trial.
 	nextEvidenceTrialEndedHeight int64
 }
-
-// Validator.Address -> Last height it was in validator set
-type valToLastHeightMap map[string]int64
 
 // Creates a new pool. If using an existing evidence store, it will add all pending evidence
 // to the concurrent list.
@@ -58,11 +53,6 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 		state = sm.LoadState(stateDB)
 	)
 
-	valToLastHeight, err := buildValToLastHeightMap(state, stateDB, blockStore)
-	if err != nil {
-		return nil, err
-	}
-
 	pool := &Pool{
 		stateDB:                      stateDB,
 		blockStore:                   blockStore,
@@ -70,7 +60,6 @@ func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, e
 		logger:                       log.NewNopLogger(),
 		evidenceStore:                evidenceDB,
 		evidenceList:                 clist.New(),
-		valToLastHeight:              valToLastHeight,
 		nextEvidenceTrialEndedHeight: -1,
 	}
 
@@ -104,8 +93,8 @@ func (evpool *Pool) AllPendingEvidence() []types.Evidence {
 	return evidence
 }
 
-// Update uses the latest block & state to update its copy of the state,
-// validator to last height map and calls MarkEvidenceAsCommitted.
+// Update uses the latest block & state to update any evidence that has been committed, to prune all expired evidence
+// and to check if any trial period of potential amnesia evidence  has finished.
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
@@ -126,13 +115,14 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.logger.Debug("Pruning no longer necessary evidence")
 		evpool.pruneExpiredPOLC()
+		// NOTE: As this is periodic, this implies that there may be some pending evidence in the
+		// db that have already expired. However, expired evidence will also be removed whenever
+		// PendingEvidence() is called ensuring that no expired evidence is proposed.
 		evpool.removeExpiredPendingEvidence()
 	}
 
-	evpool.updateValToLastHeight(block.Height, state)
-
 	if evpool.nextEvidenceTrialEndedHeight > 0 && block.Height > evpool.nextEvidenceTrialEndedHeight {
-		evpool.logger.Debug("Upgrading all potential evidence that have served the trial period")
+		evpool.logger.Debug("Upgrading all potential amnesia evidence that have served the trial period")
 		evpool.nextEvidenceTrialEndedHeight = evpool.upgradePotentialAmnesiaEvidence()
 	}
 }
@@ -181,15 +171,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			return err
 		}
 
-		// XXX: Copy here since this should be a rare case.
-		evpool.mtx.Lock()
-		valToLastHeightCopy := make(valToLastHeightMap, len(evpool.valToLastHeight))
-		for k, v := range evpool.valToLastHeight {
-			valToLastHeightCopy[k] = v
-		}
-		evpool.mtx.Unlock()
-
-		evList = ce.Split(&blockMeta.Header, valSet, valToLastHeightCopy)
+		evList = ce.Split(&blockMeta.Header, valSet)
 	}
 
 	for _, ev := range evList {
@@ -224,6 +206,8 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 			continue
 		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
+			// we have received an new amnesia evidence that we have never seen before so we must extract out the
+			// potential amnesia evidence part and run our own trial
 			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
 				ae.PotentialAmnesiaEvidence.VoteB.Round {
 				if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
@@ -231,8 +215,9 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				}
 				continue
 			} else {
-				// we are going to add this amnesia evidence and check if we already have an amnesia evidence or potential
-				// amnesia evidence that addesses the same case
+				// we are going to add this amnesia evidence as it's already punishable.
+				// We also check if we already have an amnesia evidence or potential
+				// amnesia evidence that addesses the same case that we will need to remove
 				aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
 				if evpool.IsPending(aeWithoutPolc) {
 					evpool.removePendingEvidence(aeWithoutPolc)
@@ -402,21 +387,6 @@ func (evpool *Pool) Header(height int64) *types.Header {
 		return nil
 	}
 	return &blockMeta.Header
-}
-
-// ValidatorLastHeight returns the last height of the validator w/ the
-// given address. 0 - if address never was a validator or was such a
-// long time ago (> ConsensusParams.Evidence.MaxAgeDuration && >
-// ConsensusParams.Evidence.MaxAgeNumBlocks).
-func (evpool *Pool) ValidatorLastHeight(address []byte) int64 {
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
-
-	h, ok := evpool.valToLastHeight[string(address)]
-	if !ok {
-		return 0
-	}
-	return h
 }
 
 // State returns the current state of the evpool.
@@ -709,85 +679,6 @@ func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmn
 
 func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
-}
-
-func (evpool *Pool) updateValToLastHeight(blockHeight int64, state sm.State) {
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
-
-	// Update current validators & add new ones.
-	for _, val := range state.Validators.Validators {
-		evpool.valToLastHeight[string(val.Address)] = blockHeight
-	}
-
-	// Remove validators outside of MaxAgeNumBlocks & MaxAgeDuration.
-	removeHeight := blockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks
-	if removeHeight >= 1 {
-		for val, height := range evpool.valToLastHeight {
-			if height <= removeHeight {
-				delete(evpool.valToLastHeight, val)
-			}
-		}
-	}
-}
-
-func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.BlockStore) (valToLastHeightMap, error) {
-	var (
-		valToLastHeight = make(map[string]int64)
-		params          = state.ConsensusParams.Evidence
-
-		numBlocks  = int64(0)
-		minAgeTime = time.Now().Add(-params.MaxAgeDuration)
-		height     = state.LastBlockHeight
-	)
-
-	if height == 0 {
-		return valToLastHeight, nil
-	}
-
-	meta := blockStore.LoadBlockMeta(height)
-	if meta == nil {
-		return nil, fmt.Errorf("block meta for height %d not found", height)
-	}
-	blockTime := meta.Header.Time
-
-	// From state.LastBlockHeight, build a map of "active" validators until
-	// MaxAgeNumBlocks is passed and block time is less than now() -
-	// MaxAgeDuration.
-	for height >= 1 && (numBlocks <= params.MaxAgeNumBlocks || !blockTime.Before(minAgeTime)) {
-		valSet, err := sm.LoadValidators(stateDB, height)
-		if err != nil {
-			// last stored height -> return
-			if _, ok := err.(sm.ErrNoValSetForHeight); ok {
-				return valToLastHeight, nil
-			}
-			return nil, fmt.Errorf("validator set for height %d not found", height)
-		}
-
-		for _, val := range valSet.Validators {
-			key := string(val.Address)
-			if _, ok := valToLastHeight[key]; !ok {
-				valToLastHeight[key] = height
-			}
-		}
-
-		height--
-
-		if height > 0 {
-			// NOTE: we assume here blockStore and state.Validators are in sync. I.e if
-			// block N is stored, then validators for height N are also stored in
-			// state.
-			meta := blockStore.LoadBlockMeta(height)
-			if meta == nil {
-				return nil, fmt.Errorf("block meta for height %d not found", height)
-			}
-			blockTime = meta.Header.Time
-		}
-
-		numBlocks++
-	}
-
-	return valToLastHeight, nil
 }
 
 // big endian padded hex
