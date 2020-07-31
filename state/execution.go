@@ -283,35 +283,21 @@ func execBlockOnProxyApp(
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
 
-	// Begin block
 	var err error
 	pbh := block.Header.ToProto()
 	if pbh == nil {
 		return nil, errors.New("nil header")
 	}
-	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+	abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockAsync(abci.RequestDeliverBlock{
+		Height:        		 block.Height,
 		Hash:                block.Hash(),
 		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
+		Txs:				 block.Txs,
 	})
 	if err != nil {
-		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
-		return nil, err
-	}
-
-	// Run txs of block.
-	for _, tx := range block.Txs {
-		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
-		if err := proxyAppConn.Error(); err != nil {
-			return nil, err
-		}
-	}
-
-	// End block.
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
-	if err != nil {
-		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
+		logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
 		return nil, err
 	}
 
