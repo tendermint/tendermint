@@ -310,6 +310,12 @@ Consequences:
 
 **Remark.** We can have phantom-validator-based attacks as a follow up of equivocation or amnesia based attack where forked state contains validators that are not part of the validator set at the main chain. In this case, they keep signing messages contributed to a forked chain (the wrong branch) although they are not part of the validator set on the main chain. This attack can also be used to attack full node during a period of time it is eclipsed.
 
+**Remark.** Phantom validator evidence has been removed from implementation as it was deemed, although possibly a plausible form of evidence, not relevant. Any attack on
+the light client involving a phantom validator will have needed to be initiated by 1/3+ lunatic
+validators that can forge a new validator set that includes the phantom validator. Only in
+that case will the light client accept the phantom validators vote. We need only worry about
+punishing the 1/3+ lunatic cabal, that is the root cause of the attack. 
+
 ### Lunatic validator
 
 Lunatic validator agrees to sign commit messages for arbitrary application state. It is used to attack light clients.

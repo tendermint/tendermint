@@ -236,7 +236,7 @@ type DuplicateVoteEvidence struct {
 `AmnesiaEvidence` represents a validator that has incorrectly voted for another block in a 
 different round to the the block that the validator was previously locked on. This form
 of evidence is generated differently from the rest. See this 
-[ADR](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md).
+[ADR](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md) for more information.
 
 ```go
 type AmnesiaEvidence struct {
@@ -253,18 +253,6 @@ type LunaticValidatorEvidence struct {
 	Header             *Header 
 	Vote               *Vote  
 	InvalidHeaderField string
-}
-```
-
-`PhantomValidatorEvidence` represents a validator that has signed for a block where it was not part of the validator set. 
-This attack also only applies to Light clients. Phantom validators must still be staked. `LastHeightValidatorWasInSet` 
-indicated the height that they last voted.
-
-
-```go
-type PhantomValidatorEvidence struct {
-	Vote                        *Vote 
-	LastHeightValidatorWasInSet int64
 }
 ```
 
