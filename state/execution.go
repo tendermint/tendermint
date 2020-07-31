@@ -26,7 +26,8 @@ import (
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
 	// save state, validators, consensus params, abci responses here
-	db dbm.DB
+	db            dbm.DB
+	initialHeight int64
 
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
@@ -50,6 +51,13 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 	return func(blockExec *BlockExecutor) {
 		blockExec.metrics = metrics
 	}
+}
+
+func InitialHeight(initialHeight int64) BlockExecutorOption {
+	if initialHeight <= 0 {
+		initialHeight = 1
+	}
+	return func(blockExec *BlockExecutor) { blockExec.initialHeight = initialHeight }
 }
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
@@ -108,7 +116,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	return state.MakeBlock(height, txs, commit, evidence, proposerAddr, blockExec.initialHeight)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -116,7 +124,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
-	return validateBlock(blockExec.evpool, blockExec.db, state, block)
+	return validateBlock(blockExec.evpool, blockExec.db, state, block, blockExec.initialHeight)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -134,7 +142,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
+		blockExec.db, blockExec.initialHeight)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -254,6 +263,7 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
+	initialHeight int64,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -281,7 +291,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB, initialHeight)
 
 	// Begin block
 	var err error
@@ -320,12 +330,15 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
+func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB, initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// block.Height=1 -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
-	if block.Height > 1 {
+	if initialHeight <= 0 {
+		initialHeight = 1
+	}
+	if block.Height > initialHeight {
 		lastValSet, err := LoadValidators(stateDB, block.Height-1)
 		if err != nil {
 			panic(err)
@@ -515,8 +528,9 @@ func ExecCommitBlock(
 	block *types.Block,
 	logger log.Logger,
 	stateDB dbm.DB,
+	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, initialHeight)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

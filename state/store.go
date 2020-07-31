@@ -65,7 +65,7 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state)
+		BootstrapState(stateDB, state, genesisDoc.InitialHeight)
 	}
 
 	return state, nil
@@ -103,20 +103,17 @@ func loadState(db dbm.DB, key []byte) (state State) {
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-// This flushes the writes (e.g. calls SetSync).
+// This flushes the writes (e.g. calls SetSync). The initial state should be saved with
+// BootstrapState() in order to set up the validator sets for previous/current/next heights.
 func SaveState(db dbm.DB, state State) {
 	saveState(db, state, stateKey)
 }
 
 func saveState(db dbm.DB, state State, key []byte) {
-	nextHeight := state.LastBlockHeight + 1
-	// If first block, save validators for block 1.
-	if nextHeight == 1 {
-		// This extra logic due to Tendermint validator set changes being delayed 1 block.
-		// It may get overwritten due to InitChain validator updates.
-		lastHeightVoteChanged := int64(1)
-		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
+	if state.LastBlockHeight == 0 {
+		panic("can't save state with LastBlockHeight=0")
 	}
+	nextHeight := state.LastBlockHeight + 1
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
@@ -129,12 +126,13 @@ func saveState(db dbm.DB, state State, key []byte) {
 }
 
 // BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
-func BootstrapState(db dbm.DB, state State) error {
-	height := state.LastBlockHeight
-	saveValidatorsInfo(db, height, height, state.LastValidators)
-	saveValidatorsInfo(db, height+1, height+1, state.Validators)
-	saveValidatorsInfo(db, height+2, height+2, state.NextValidators)
-	saveConsensusParamsInfo(db, height+1, height+1, state.ConsensusParams)
+func BootstrapState(db dbm.DB, state State, height int64) error {
+	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
+		saveValidatorsInfo(db, height-1, height-1, state.LastValidators)
+	}
+	saveValidatorsInfo(db, height, height, state.Validators)
+	saveValidatorsInfo(db, height+1, height+1, state.NextValidators)
+	saveConsensusParamsInfo(db, height, height, state.ConsensusParams)
 	return db.SetSync(stateKey, state.Bytes())
 }
 

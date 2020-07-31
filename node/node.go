@@ -375,6 +375,7 @@ func createBlockchainReactor(config *cfg.Config,
 
 func createConsensusReactor(config *cfg.Config,
 	state sm.State,
+	genDoc *types.GenesisDoc,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mempool *mempl.CListMempool,
@@ -393,6 +394,7 @@ func createConsensusReactor(config *cfg.Config,
 		mempool,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
+		cs.InitialHeight(genDoc.InitialHeight),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
@@ -582,7 +584,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			ssR.Logger.Error("State sync failed", "err", err)
 			return
 		}
-		err = sm.BootstrapState(stateDB, state)
+		err = sm.BootstrapState(stateDB, state, state.LastBlockHeight+1)
 		if err != nil {
 			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
 			return
@@ -710,6 +712,7 @@ func NewNode(config *cfg.Config,
 		mempool,
 		evidencePool,
 		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.InitialHeight(genDoc.InitialHeight),
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
@@ -726,7 +729,7 @@ func NewNode(config *cfg.Config,
 		csMetrics.FastSyncing.Set(1)
 	}
 	consensusReactor, consensusState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evidencePool,
+		config, state, genDoc, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
 

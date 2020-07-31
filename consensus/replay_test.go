@@ -677,7 +677,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
-		wal, err := NewWAL(walFile)
+		wal, err := NewWAL(walFile, 0)
 		require.NoError(t, err)
 		wal.SetLogger(log.TestingLogger())
 		err = wal.Start()
@@ -969,7 +969,7 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
 
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address, 0)
 }
 
 type badApp struct {

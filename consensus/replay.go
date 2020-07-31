@@ -333,7 +333,7 @@ func (h *Handshaker) ReplayBlocks(
 				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
 				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
-			sm.SaveState(h.stateDB, state)
+			sm.BootstrapState(h.stateDB, state, h.genDoc.InitialHeight)
 		}
 	}
 
@@ -442,7 +442,7 @@ func (h *Handshaker) replayBlocks(
 			assertAppHashEqualsOneFromBlock(appHash, block)
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB, h.genDoc.InitialHeight)
 		if err != nil {
 			return nil, err
 		}

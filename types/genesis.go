@@ -77,6 +77,9 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.InitialHeight < 0 {
 		return fmt.Errorf("initial_height cannot be negative (got %v)", genDoc.InitialHeight)
 	}
+	if genDoc.InitialHeight == 0 {
+		genDoc.InitialHeight = 1
+	}
 
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
