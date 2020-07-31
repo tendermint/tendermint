@@ -113,7 +113,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 	// prune pending, committed and potential evidence and polc's periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
-		evpool.logger.Debug("Pruning no longer necessary evidence")
+		evpool.logger.Debug("Pruning expired evidence")
 		evpool.pruneExpiredPOLC()
 		// NOTE: As this is periodic, this implies that there may be some pending evidence in the
 		// db that have already expired. However, expired evidence will also be removed whenever
@@ -195,7 +195,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
-			return fmt.Errorf("failed to verify %v: %w", ev, err)
+			return types.NewErrEvidenceInvalid(ev, err)
 		}
 
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
@@ -708,13 +708,4 @@ func keyPOLCFromHeightAndRound(height int64, round int32) []byte {
 
 func keySuffix(evidence types.Evidence) []byte {
 	return []byte(fmt.Sprintf("%s/%X", bE(evidence.Height()), evidence.Hash()))
-}
-
-// ErrInvalidEvidence returns when evidence failed to validate
-type ErrInvalidEvidence struct {
-	Reason error
-}
-
-func (e ErrInvalidEvidence) Error() string {
-	return fmt.Sprintf("evidence is not valid: %v ", e.Reason)
 }
