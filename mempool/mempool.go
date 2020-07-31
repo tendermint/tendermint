@@ -41,7 +41,7 @@ type Mempool interface {
 	Update(
 		blockHeight int64,
 		blockTxs types.Txs,
-		deliverTxResponses []*abci.ResponseDeliverTx,
+		deliverBlockResponses []*abci.ResponseDeliverBlock,
 		newPreFn PreCheckFunc,
 		newPostFn PostCheckFunc,
 	) error

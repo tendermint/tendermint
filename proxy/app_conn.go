@@ -16,7 +16,7 @@ type AppConnConsensus interface {
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
-	DeliverBlockAsync(types.RequestDeliverTx) *abcicli.ReqRes
+	DeliverBlockAsync(types.RequestDeliverBlock) *abcicli.ReqRes
 }
 
 type AppConnMempool interface {

@@ -86,7 +86,7 @@ message RequestDeliverBlock {
   tendermint.types.Header header               = 3 [(gogoproto.nullable) = false];
   LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
-  repeated bytes          txs                   = 6;
+  repeated bytes          txs                  = 6;
 }
 
 
