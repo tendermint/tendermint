@@ -4,7 +4,7 @@ OUTPUT?=build/tendermint
 BUILD_TAGS?=tendermint
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
-HTTPS_GIT := https://github.com/tendermint/tendermint.git
+HTTPS_GIT := https://github.com/QuarkChain/tendermintx.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
 CGO_ENABLED ?= 0
 

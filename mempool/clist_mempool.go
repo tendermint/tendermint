@@ -68,6 +68,8 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	server *mempoolServer
 }
 
 var _ Mempool = &CListMempool{}
@@ -100,6 +102,14 @@ func NewCListMempool(
 	proxyAppConn.SetResponseCallback(mempool.globalCb)
 	for _, option := range options {
 		option(mempool)
+	}
+	// TODO: mempool server should be bound to balance tree-based mempool. use clist here for now
+	if config.ServerHostPort != "" {
+		server, err := newMempoolServer(config.ServerHostPort)
+		if err != nil {
+			panic(err)
+		}
+		mempool.server = server
 	}
 	return mempool
 }
