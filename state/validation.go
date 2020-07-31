@@ -225,51 +225,21 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 	addr := evidence.Address()
 	var val *types.Validator
 
-	// For PhantomValidatorEvidence, check evidence.Address was not part of the
-	// validator set at height evidence.Height, but was a validator before OR
-	// after.
-	if phve, ok := evidence.(*types.PhantomValidatorEvidence); ok {
-		// confirm that it hasn't been forged
-
-		_, val = valset.GetByAddress(addr)
-		if val != nil {
-			return fmt.Errorf("address %X was a validator at height %d", addr, evidence.Height())
-		}
-
-		// check if last height validator was in the validator set is within
-		// MaxAgeNumBlocks.
-		if height-phve.LastHeightValidatorWasInSet > evidenceParams.MaxAgeNumBlocks {
-			return fmt.Errorf("last time validator was in the set at height %d, min: %d",
-				phve.LastHeightValidatorWasInSet, height-phve.LastHeightValidatorWasInSet)
-		}
-
-		valset, err := LoadValidators(stateDB, phve.LastHeightValidatorWasInSet)
-		if err != nil {
-			// TODO: if err is just that we cant find it cuz we pruned, ignore.
-			// TODO: if its actually bad evidence, punish peer
-			return err
-		}
-		_, val = valset.GetByAddress(addr)
-		if val == nil {
-			return fmt.Errorf("phantom validator %X not found", addr)
-		}
-	} else {
-		if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
-			// check the validator set against the polc to make sure that a majority of valid votes was reached
-			if !ae.Polc.IsAbsent() {
-				err = ae.Polc.ValidateVotes(valset, state.ChainID)
-				if err != nil {
-					return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
-				}
+	if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
+		// check the validator set against the polc to make sure that a majority of valid votes was reached
+		if !ae.Polc.IsAbsent() {
+			err = ae.Polc.ValidateVotes(valset, state.ChainID)
+			if err != nil {
+				return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
 			}
 		}
+	}
 
-		// For all other types, expect evidence.Address to be a validator at height
-		// evidence.Height.
-		_, val = valset.GetByAddress(addr)
-		if val == nil {
-			return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
-		}
+	// For all other types, expect evidence.Address to be a validator at height
+	// evidence.Height.
+	_, val = valset.GetByAddress(addr)
+	if val == nil {
+		return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
 	}
 
 	if err := evidence.Verify(state.ChainID, val.PubKey); err != nil {
