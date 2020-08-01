@@ -27,8 +27,12 @@ message Request {
     RequestSetOption          set_option           = 5;
     RequestInitChain          init_chain           = 6;
     RequestQuery              query                = 7;
+    RequestBeginBlock         begin_block          = 8;
     RequestCheckTx            check_tx             = 9;
-    RequestDeliverBlock       deliver_block        = 19;
+    RequestDeliverTx          deliver_tx           = 19;
+    RequestDeliverBlock       deliver_block        = 20;
+    RequestEndBlock           end_block            = 11;
+    RequestCommit             commit               = 12;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
@@ -70,6 +74,13 @@ message RequestQuery {
   bool   prove  = 4;
 }
 
+message RequestBeginBlock {
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+}
+
 enum CheckTxType {
   NEW     = 0 [(gogoproto.enumvalue_customname) = "New"];
   RECHECK = 1 [(gogoproto.enumvalue_customname) = "Recheck"];
@@ -79,6 +90,16 @@ message RequestCheckTx {
   bytes       tx   = 1;
   CheckTxType type = 2;
 }
+
+message RequestDeliverTx {
+  bytes tx = 1;
+}
+
+message RequestEndBlock {
+  int64 height = 1;
+}
+
+message RequestCommit {}
 
 message RequestDeliverBlock {
   int64                   height               = 1;
@@ -126,12 +147,16 @@ message Response {
     ResponseSetOption          set_option           = 5;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
-    ResponseCheckTx            check_tx             = 8;
-    ResponseDeliverBlock          deliver_tx        = 9;
-    ResponseListSnapshots      list_snapshots       = 10;
-    ResponseOfferSnapshot      offer_snapshot       = 11;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 12;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 13;
+    ResponseBeginBlock         begin_block          = 8;
+    ResponseCheckTx            check_tx             = 9;
+    ResponseDeliverTx          deliver_tx           = 10;
+    ResponseEndBlock           end_block            = 11;
+    ResponseCommit             commit               = 12;
+    ResponseDeliverBlock       deliver_block        = 13;
+    ResponseListSnapshots      list_snapshots       = 14;
+    ResponseOfferSnapshot      offer_snapshot       = 15;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 16;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 17;
   }
 }
 
@@ -182,6 +207,11 @@ message ResponseQuery {
   string                     codespace = 10;
 }
 
+message ResponseBeginBlock {
+  repeated Event events = 1
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+}
+
 message ResponseCheckTx {
   uint32         code       = 1;
   bytes          data       = 2;
@@ -195,11 +225,22 @@ message ResponseCheckTx {
 }
 
 message  ResponseDeliverTx {
+  uint32         code       = 1;
   bytes          data       = 2;
   string         log        = 3;  // nondeterministic
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
+  repeated Event events     = 7
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  string codespace = 8;
+}
+
+message ResponseEndBlock {
+  repeated ValidatorUpdate validator_updates = 1
+    [(gogoproto.nullable) = false];
+  ConsensusParams consensus_param_updates = 2;
+  repeated Event  events                  = 3
 }
 
 message ResponseDeliverBlock {
@@ -215,6 +256,12 @@ message ResponseDeliverBlock {
   repeated        Event             events                  = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string                            codespace               = 8;
+}
+
+message ResponseCommit {
+  // reserve 1
+  bytes data          = 2;
+  int64 retain_height = 3;
 }
 
 message ResponseListSnapshots {
@@ -358,10 +405,14 @@ service ABCIApplication {
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
   rpc SetOption(RequestSetOption) returns (ResponseSetOption);
-  rpc DeliverBlock(RequestDeliverBlock) returns (ResponseDeliverBlock);
+  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
+  rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
+  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
+  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+  rpc DeliverBlock(RequestDeliverBlock) returns (ResponseDeliverBlock);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
