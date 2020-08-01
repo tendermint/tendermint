@@ -149,7 +149,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// validate the validator updates and convert to tendermint types
-	abciValUpdates := abciResponses.DeliverBlock.ValidatorUpdates
+	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
@@ -168,8 +168,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	// Lock and update mempool.
-	err = blockExec.MempoolUpdate(state, block, abciResponses.DeliverBlock)
+	// Lock mempool, commit app state, update mempoool.
+	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -180,7 +180,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// Update the app hash and save the state.
-	state.AppHash = abciResponses.DeliverBlock.Data
+	state.AppHash = appHash
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -189,7 +189,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
-	return state, abciResponses.DeliverBlock.RetainHeight, nil
+	return state, retainHeight, nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
@@ -198,6 +198,53 @@ func (blockExec *BlockExecutor) ApplyBlock(
 // The Mempool must be locked during commit and update because state is
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
+func (blockExec *BlockExecutor) Commit(
+	state State,
+	block *types.Block,
+	deliverTxResponses []*abci.ResponseDeliverTx,
+) ([]byte, int64, error) {
+	blockExec.mempool.Lock()
+	defer blockExec.mempool.Unlock()
+
+	// while mempool is Locked, flush to ensure all async requests have completed
+	// in the ABCI app before Commit.
+	err := blockExec.mempool.FlushAppConn()
+	if err != nil {
+		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
+		return nil, 0, err
+	}
+
+	// Commit block, get hash back
+	res, err := blockExec.proxyApp.CommitSync()
+	if err != nil {
+		blockExec.logger.Error(
+			"Client error during proxyAppConn.CommitSync",
+			"err", err,
+		)
+		return nil, 0, err
+	}
+	// ResponseCommit has no error code - just data
+
+	blockExec.logger.Info(
+		"Committed state",
+		"height", block.Height,
+		"txs", len(block.Txs),
+		"appHash", fmt.Sprintf("%X", res.Data),
+	)
+
+	// Update mempool.
+	err = blockExec.mempool.Update(
+		block.Height,
+		block.Txs,
+		deliverTxResponses,
+		TxPreCheck(state),
+		TxPostCheck(state),
+	)
+
+	return res.Data, res.RetainHeight, err
+}
+
+// MempoolUpdate without commit action
 func (blockExec *BlockExecutor) MempoolUpdate(
 	state State,
 	block *types.Block,
@@ -242,7 +289,7 @@ func execBlockOnProxyApp(
 	txIndex := 0
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
-	abciResponses.DeliverBlock.DeliverTxs = dtxs
+	abciResponses.DeliverTxs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -257,7 +304,7 @@ func execBlockOnProxyApp(
 				logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
-			abciResponses.DeliverBlock.DeliverTxs[txIndex] = txRes
+			abciResponses.DeliverTxs[txIndex] = txRes
 			txIndex++
 		}
 	}
@@ -265,25 +312,49 @@ func execBlockOnProxyApp(
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
 
+	// Begin block
+	var err error
 	pbh := block.Header.ToProto()
 	if pbh == nil {
 		return nil, errors.New("nil header")
 	}
-
-	var txs [][]byte
-	for _, tx := range block.Txs {
-		txs = append(txs, tx)
-	}
-	proxyAppConn.DeliverBlockAsync(abci.RequestDeliverBlock{
-		Height:        		 block.Height,
+	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
-		Txs:				 txs,
 	})
-	if err := proxyAppConn.Error(); err != nil {
-		logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
+	if err!= nil {
+		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
+	}
+
+	// Run txs of block
+	for _, tx := range block.Txs {
+		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
+		if err := proxyAppConn.Error(); err != nil {
+			return nil, err
+		}
+	}
+
+	// End block.
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
+	if err != nil {
+		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
+
+	//var txs [][]byte
+	//for _, tx := range block.Txs {
+	//	txs = append(txs, tx)
+	//}
+	//proxyAppConn.DeliverBlockAsync(abci.RequestDeliverBlock{
+	//	Height:        		 block.Height,
+	//	Hash:                block.Hash(),
+	//	Header:              *pbh,
+	//	LastCommitInfo:      commitInfo,
+	//	ByzantineValidators: byzVals,
+	//	Txs:				 txs,
+	//})
+	//if err := proxyAppConn.Error(); err != nil {
+	//	logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
 		return nil, err
 	}
 
@@ -396,6 +467,7 @@ func updateState(
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
+	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
 	if abciResponses.DeliverBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
 		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.DeliverBlock.ConsensusParamUpdates)
@@ -441,6 +513,7 @@ func fireEvents(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
+	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
 	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
 		ResultBeginBlock: *abciResponses.BeginBlock,
