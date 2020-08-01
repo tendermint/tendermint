@@ -324,11 +324,11 @@ func execBlockOnProxyApp(
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
-	if err!= nil {
+	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 	}
 
-	// Run txs of block
+	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
@@ -470,7 +470,7 @@ func updateState(
 	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
 	if abciResponses.DeliverBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.DeliverBlock.ConsensusParamUpdates)
+		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
 		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
