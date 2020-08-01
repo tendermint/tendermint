@@ -94,6 +94,10 @@ func (app *appConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 	return app.appConn.CommitSync()
 }
 
+func (app *appConnConsensus) DeliverBlockSync(req types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
+	return app.appConn.DeliverBlockSync(req)
+}
+
 //------------------------------------------------
 // Implements AppConnMempool (subset of abcicli.Client)
 
