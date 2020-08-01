@@ -185,7 +185,7 @@ func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Query{Query: res}})
-}
+}Begin
 
 func (cli *grpcClient) CommitAsync() *ReqRes {
 	req := types.ToRequestCommit()
@@ -207,7 +207,7 @@ func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 
 func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 	req := types.ToRequestBeginBlock(params)
-	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.WaitForReady(true))
+	res, err := cli.client.BeginBlock(context.Background(), req.GetBlock(), grpc.WaitForReady(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
