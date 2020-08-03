@@ -14,6 +14,7 @@ type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
+	CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
@@ -71,6 +72,10 @@ func (app *appConnConsensus) SetResponseCallback(cb abcicli.Callback) {
 
 func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
+}
+
+func (app *appConnConsensus) CreateBlockSync(req types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	return app.appConn.CreateBlockSync(req)
 }
 
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

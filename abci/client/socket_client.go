@@ -335,6 +335,10 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
+func (cli *socketClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
+}
+
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	reqres := cli.queueRequest(types.ToRequestInitChain(req))
 	cli.FlushSync()
