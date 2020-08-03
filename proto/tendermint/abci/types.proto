@@ -30,9 +30,9 @@ message Request {
     RequestBeginBlock         begin_block          = 8;
     RequestCheckTx            check_tx             = 9;
     RequestDeliverTx          deliver_tx           = 19;
-    RequestDeliverBlock       deliver_block        = 20;
     RequestEndBlock           end_block            = 11;
     RequestCommit             commit               = 12;
+    RequestDeliverTx          deliver_block        = 20;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
@@ -152,11 +152,11 @@ message Response {
     ResponseDeliverTx          deliver_tx           = 10;
     ResponseEndBlock           end_block            = 11;
     ResponseCommit             commit               = 12;
-    ResponseDeliverBlock       deliver_block        = 13;
-    ResponseListSnapshots      list_snapshots       = 14;
-    ResponseOfferSnapshot      offer_snapshot       = 15;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 16;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 17;
+    ResponseDeliverBlock       deliver_block        = 20;
+    ResponseListSnapshots      list_snapshots       = 13;
+    ResponseOfferSnapshot      offer_snapshot       = 14;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
