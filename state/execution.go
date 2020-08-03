@@ -116,7 +116,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr, blockExec.initialHeight)
+	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -458,6 +458,7 @@ func updateState(
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
+		InitialHeight:                    state.InitialHeight,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,

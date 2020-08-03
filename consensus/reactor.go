@@ -249,7 +249,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
-			if err = msg.ValidateHeight(conR.conS.initialHeight); err != nil {
+			if err = msg.ValidateHeight(conR.conS.state.InitialHeight); err != nil {
 				conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
 				conR.Switch.StopPeerForError(src, err)
 				return
@@ -1453,13 +1453,16 @@ func (m *NewRoundStepMessage) ValidateBasic() error {
 // ValidateHeight validates the height given the chain's initial height.
 func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
 	if m.Height < initialHeight {
-		return errors.New("invalid Height (lower than initial height)")
+		return fmt.Errorf("invalid Height %v (lower than initial height %v)",
+			m.Height, initialHeight)
 	}
 	if m.Height == initialHeight && m.LastCommitRound != -1 {
-		return errors.New("invalid LastCommitRound (must be -1 for initial height)")
+		return fmt.Errorf("invalid LastCommitRound %v (must be -1 for initial height %v)",
+			m.LastCommitRound, initialHeight)
 	}
 	if m.Height > initialHeight && m.LastCommitRound < 0 {
-		return errors.New("LastCommitRound can only be negative for initial height") // nolint
+		return fmt.Errorf("LastCommitRound can only be negative for initial height %v", // nolint
+			initialHeight)
 	}
 	return nil
 }

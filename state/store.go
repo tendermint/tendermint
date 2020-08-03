@@ -47,7 +47,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state)
+		BootstrapState(stateDB, state)
 	}
 
 	return state, nil
@@ -65,7 +65,7 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		if err != nil {
 			return state, err
 		}
-		BootstrapState(stateDB, state, genesisDoc.InitialHeight)
+		BootstrapState(stateDB, state)
 	}
 
 	return state, nil
@@ -126,7 +126,11 @@ func saveState(db dbm.DB, state State, key []byte) {
 }
 
 // BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
-func BootstrapState(db dbm.DB, state State, height int64) error {
+func BootstrapState(db dbm.DB, state State) error {
+	height := state.LastBlockHeight + 1
+	if height == 1 {
+		height = state.InitialHeight
+	}
 	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
 		saveValidatorsInfo(db, height-1, height-1, state.LastValidators)
 	}

@@ -35,16 +35,18 @@ type StateProvider interface {
 
 // lightClientStateProvider is a state provider using the light client.
 type lightClientStateProvider struct {
-	tmsync.Mutex // light.Client is not concurrency-safe
-	lc           *light.Client
-	version      tmstate.Version
-	providers    map[lightprovider.Provider]string
+	tmsync.Mutex  // light.Client is not concurrency-safe
+	lc            *light.Client
+	version       tmstate.Version
+	initialHeight int64
+	providers     map[lightprovider.Provider]string
 }
 
 // NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
 func NewLightClientStateProvider(
 	chainID string,
 	version tmstate.Version,
+	initialHeight int64,
 	servers []string,
 	trustOptions light.TrustOptions,
 	logger log.Logger,
@@ -73,9 +75,10 @@ func NewLightClientStateProvider(
 		return nil, err
 	}
 	return &lightClientStateProvider{
-		lc:        lc,
-		version:   version,
-		providers: providerRemotes,
+		lc:            lc,
+		version:       version,
+		initialHeight: initialHeight,
+		providers:     providerRemotes,
 	}, nil
 }
 
@@ -109,8 +112,12 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 	defer s.Unlock()
 
 	state := sm.State{
-		ChainID: s.lc.ChainID(),
-		Version: s.version,
+		ChainID:       s.lc.ChainID(),
+		Version:       s.version,
+		InitialHeight: s.initialHeight,
+	}
+	if state.InitialHeight == 0 {
+		state.InitialHeight = 1
 	}
 
 	// We need to verify up until h+2, to get the validator set. This also prefetches the headers

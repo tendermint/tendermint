@@ -394,7 +394,6 @@ func createConsensusReactor(config *cfg.Config,
 		mempool,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
-		cs.InitialHeight(genDoc.InitialHeight),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
@@ -559,15 +558,16 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateDB dbm.DB, blockStore *store.BlockStore) error {
+func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor,
+	conR *cs.Reactor, stateProvider statesync.StateProvider, config *cfg.StateSyncConfig,
+	fastSync bool, stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
 	state := sm.LoadState(stateDB)
 	if stateProvider == nil {
 		var err error
-		stateProvider, err = statesync.NewLightClientStateProvider(state.ChainID, state.Version,
+		stateProvider, err = statesync.NewLightClientStateProvider(
+			state.ChainID, state.Version, state.InitialHeight,
 			config.RPCServers, light.TrustOptions{
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,
@@ -584,7 +584,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			ssR.Logger.Error("State sync failed", "err", err)
 			return
 		}
-		err = sm.BootstrapState(stateDB, state, state.LastBlockHeight+1)
+		err = sm.BootstrapState(stateDB, state)
 		if err != nil {
 			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
 			return

@@ -86,7 +86,6 @@ type State struct {
 	// config details
 	config        *cfg.ConsensusConfig
 	privValidator types.PrivValidator // for signing votes
-	initialHeight int64
 
 	// store blocks and commits
 	blockStore sm.BlockStore
@@ -190,12 +189,12 @@ func NewState(
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 
+	cs.updateToState(state)
+
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
-
-	cs.updateToState(state)
 
 	return cs
 }
@@ -218,17 +217,6 @@ func (cs *State) SetEventBus(b *types.EventBus) {
 // StateMetrics sets the metrics.
 func StateMetrics(metrics *Metrics) StateOption {
 	return func(cs *State) { cs.metrics = metrics }
-}
-
-// InitialHeight sets the initial height
-func InitialHeight(initialHeight int64) StateOption {
-	if initialHeight == 0 {
-		initialHeight = 1
-	}
-	if initialHeight < 0 {
-		panic(fmt.Sprintf("Initial height cannot be negative (got %v)", initialHeight))
-	}
-	return func(cs *State) { cs.initialHeight = initialHeight }
 }
 
 // String returns a string.
@@ -428,7 +416,7 @@ func (cs *State) Wait() {
 // OpenWAL opens a file to log all consensus messages and timeouts for
 // deterministic accountability.
 func (cs *State) OpenWAL(walFile string) (WAL, error) {
-	wal, err := NewWAL(walFile, cs.initialHeight)
+	wal, err := NewWAL(walFile, cs.state.InitialHeight)
 	if err != nil {
 		cs.Logger.Error("Failed to open WAL", "file", walFile, "err", err)
 		return nil, err
@@ -574,9 +562,9 @@ func (cs *State) updateToState(state sm.State) {
 			// Someone forgot to pass in state.Copy() somewhere?!
 			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
 				cs.state.LastBlockHeight+1, cs.Height))
-		} else if cs.Height == cs.initialHeight && cs.state.LastBlockHeight > 0 {
+		} else if cs.Height == cs.state.InitialHeight && cs.state.LastBlockHeight > 0 {
 			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
-				cs.state.LastBlockHeight, cs.initialHeight))
+				cs.state.LastBlockHeight, cs.state.InitialHeight))
 		}
 
 		// If state isn't further out than cs.state, just ignore.
@@ -621,7 +609,7 @@ func (cs *State) updateToState(state sm.State) {
 	// Next desired block height
 	height := state.LastBlockHeight + 1
 	if height == 1 {
-		height = cs.initialHeight
+		height = state.InitialHeight
 	}
 
 	// RoundState fields
@@ -954,7 +942,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
 func (cs *State) needProofBlock(height int64) bool {
-	if height == cs.initialHeight {
+	if height == cs.state.InitialHeight {
 		return true
 	}
 
@@ -1111,7 +1099,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 	var commit *types.Commit
 	switch {
-	case cs.Height == cs.initialHeight:
+	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -1628,7 +1616,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
 	// Remember that the first LastCommit is intentionally empty, so it's not
 	// fair to increment missing validators number.
-	if height > cs.initialHeight {
+	if height > cs.state.InitialHeight {
 		// Sanity check that commit size matches validator set size - only applies
 		// after first block.
 		var (
