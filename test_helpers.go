@@ -16,7 +16,7 @@ func randStr(length int) string {
 	chars := []byte{}
 MAIN_LOOP:
 	for {
-		val := rand.Int63()
+		val := rand.Int63() // nolint:gosec // G404: Use of weak random number generator
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
