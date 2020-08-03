@@ -249,7 +249,7 @@ func (blockExec *BlockExecutor) MempoolUpdate(
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-) (error) {
+) error {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -341,20 +341,20 @@ func execBlockOnProxyApp(
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 
-	//var txs [][]byte
-	//for _, tx := range block.Txs {
-	//	txs = append(txs, tx)
-	//}
-	//proxyAppConn.DeliverBlockAsync(abci.RequestDeliverBlock{
-	//	Height:        		 block.Height,
-	//	Hash:                block.Hash(),
-	//	Header:              *pbh,
-	//	LastCommitInfo:      commitInfo,
-	//	ByzantineValidators: byzVals,
-	//	Txs:				 txs,
-	//})
-	//if err := proxyAppConn.Error(); err != nil {
-	//	logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
+		//var txs [][]byte
+		//for _, tx := range block.Txs {
+		//	txs = append(txs, tx)
+		//}
+		//proxyAppConn.DeliverBlockAsync(abci.RequestDeliverBlock{
+		//	Height:        		 block.Height,
+		//	Hash:                block.Hash(),
+		//	Header:              *pbh,
+		//	LastCommitInfo:      commitInfo,
+		//	ByzantineValidators: byzVals,
+		//	Txs:				 txs,
+		//})
+		//if err := proxyAppConn.Error(); err != nil {
+		//	logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
 		return nil, err
 	}
 
