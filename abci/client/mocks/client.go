@@ -319,7 +319,7 @@ func (_m *Client) DeliverBlockSync(_a0 types.RequestDeliverBlock) (*types.Respon
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestEndBlock) error); ok {
+	if rf, ok := ret.Get(1).(func(types.RequestDeliverBlock) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
