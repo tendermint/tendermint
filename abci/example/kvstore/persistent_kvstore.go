@@ -151,6 +151,11 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
+func (app *PersistentKVStoreApplication) DeliverBlock(req types.RequestDeliverBlock) types.ResponseDeliverBlock {
+	// FIXME
+	return types.ResponseDeliverBlock{}
+}
+
 func (app *PersistentKVStoreApplication) ListSnapshots(
 	req types.RequestListSnapshots) types.ResponseListSnapshots {
 	return types.ResponseListSnapshots{}

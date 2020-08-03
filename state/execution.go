@@ -248,7 +248,7 @@ func (blockExec *BlockExecutor) Commit(
 func (blockExec *BlockExecutor) MempoolUpdate(
 	state State,
 	block *types.Block,
-	deliverBlockResponses []*abci.ResponseDeliverBlock,
+	deliverTxResponses []*abci.ResponseDeliverTx,
 ) (error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -265,7 +265,7 @@ func (blockExec *BlockExecutor) MempoolUpdate(
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		deliverBlockResponses,
+		deliverTxResponses,
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
