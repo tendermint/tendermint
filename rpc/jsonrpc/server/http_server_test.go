@@ -88,7 +88,7 @@ func TestServeTLS(t *testing.T) {
 	go ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	c := &http.Client{Transport: tr}
 	res, err := c.Get("https://" + ln.Addr().String())

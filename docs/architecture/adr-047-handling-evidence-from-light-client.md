@@ -4,11 +4,12 @@
 * 18-02-2020: Initial draft
 * 24-02-2020: Second version
 * 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
+* 31-07-2020: Remove PhantomValidatorEvidence
 
 ## Context
 
-If the light client is under attack, either directly -> lunatic/phantom
-validators (light fork) or indirectly -> full fork, it's supposed to halt and
+If the light client is under attack, either directly -> lunatic
+attack (light fork) or indirectly -> full fork, it's supposed to halt and
 send evidence of misbehavior to a correct full node. Upon receiving an
 evidence, the full node should punish malicious validators (if possible).
 
@@ -102,21 +103,6 @@ If we'd go with breaking evidence, here are the types we'll need:
 
 Existing `DuplicateVoteEvidence` needs to be created and gossiped.
 
-### F4. Phantom validators
-
-A new type of evidence needs to be created:
-
-```go
-type PhantomValidatorEvidence struct {
-	Header                      types.Header
-	Vote                        types.Vote
-	LastHeightValidatorWasInSet int64
-}
-```
-
-It contains a validator's public key and a vote for a block, where this
-validator is not part of the validator set. `LastHeightValidatorWasInSet`
-indicates the last height validator was in the validator set.
 
 ### F5. Lunatic validator
 
@@ -184,7 +170,10 @@ accountability process should then use this evidence to request additional
 information from offended validators and construct a new type of evidence to
 punish those who conducted an amnesia attack.
 
-See ADR-056 for the architecture of the fork accountability procedure.
+See ADR-056 for the architecture of the handling amnesia attacks.
+
+NOTE: Conflicting headers evidence used to also create PhantomValidatorEvidence
+but this has since been removed. Refer to Appendix B.  
 
 ## Status
 
@@ -216,3 +205,19 @@ If there is an actual fork (full fork), a full node may follow either one or
 another branch. So both H1 or H2 can be considered committed depending on which
 branch the full node is following. It's supposed to halt if it notices an
 actual fork, but there's a small chance it doesn't.
+
+## Appendix B
+
+PhantomValidatorEvidence was used to capture when a validator that was still staked
+(i.e. within the bonded period) but was not in the current validator set had voted for a block.
+
+In later discussions it was argued that although possible to keep phantom validator
+evidence, any case a phantom validator that could have the capacity to be involved
+in fooling a light client would have to be aided by 1/3+ lunatic validators.
+
+It would also be very unlikely that the new validators injected by the lunatic attack
+would be validators that currently still have something staked.
+
+Not only this but there was a large degree of extra computation required in storing all
+the currently staked validators that could possibly fall into the group of being
+a phantom validator. Given this, it was removed.

@@ -529,7 +529,9 @@ func (w *WSEvents) OnStart() error {
 
 // OnStop implements service.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
-	_ = w.ws.Stop()
+	if err := w.ws.Stop(); err != nil {
+		w.Logger.Error("Can't stop ws client", "err", err)
+	}
 }
 
 // Subscribe implements EventsClient by using WSClient to subscribe given

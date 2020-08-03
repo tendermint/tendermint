@@ -15,11 +15,9 @@ import (
 // Use strings to distinguish types in ABCI messages
 
 const (
-	ABCIEvidenceTypeDuplicateVote    = "duplicate/vote"
-	ABCIEvidenceTypePhantom          = "phantom"
-	ABCIEvidenceTypeLunatic          = "lunatic"
-	ABCIEvidenceTypePotentialAmnesia = "potential_amnesia"
-	ABCIEvidenceTypeMock             = "mock/evidence"
+	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
+	ABCIEvidenceTypeLunatic       = "lunatic"
+	ABCIEvidenceTypeAmnesia       = "amnesia"
 )
 
 const (
@@ -132,12 +130,10 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case *PhantomValidatorEvidence:
-		evType = ABCIEvidenceTypePhantom
 	case *LunaticValidatorEvidence:
 		evType = ABCIEvidenceTypeLunatic
-	case *PotentialAmnesiaEvidence:
-		evType = ABCIEvidenceTypePotentialAmnesia
+	case *AmnesiaEvidence:
+		evType = ABCIEvidenceTypeAmnesia
 	default:
 		panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
