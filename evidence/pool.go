@@ -754,7 +754,7 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.B
 	// From state.LastBlockHeight, build a map of "active" validators until
 	// MaxAgeNumBlocks is passed and block time is less than now() -
 	// MaxAgeDuration.
-	for height >= 1 && (numBlocks <= params.MaxAgeNumBlocks || !blockTime.Before(minAgeTime)) {
+	for height >= state.InitialHeight && (numBlocks <= params.MaxAgeNumBlocks || !blockTime.Before(minAgeTime)) {
 		valSet, err := sm.LoadValidators(stateDB, height)
 		if err != nil {
 			// last stored height -> return
@@ -773,7 +773,7 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.B
 
 		height--
 
-		if height > 0 {
+		if height >= state.InitialHeight {
 			// NOTE: we assume here blockStore and state.Validators are in sync. I.e if
 			// block N is stored, then validators for height N are also stored in
 			// state.
