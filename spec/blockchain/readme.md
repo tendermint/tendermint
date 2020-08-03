@@ -6,6 +6,6 @@ cards: false
 
 This section describes the core types and functionality of the Tendermint protocol implementation.
 
-[Core Data Structures](./data_structures.md)
-[Encoding](./encoding.md)
-[State](./state.md)
+[Core Data Structures](../core/data_structures.md)
+[Encoding](../core/encoding.md)
+[State](../core/state.md)
