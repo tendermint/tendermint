@@ -213,6 +213,10 @@ type BaseConfig struct { //nolint: maligned
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
+
+	// If true, call DeliverBlock function of Tendermintx
+	// which includes BeginBlock, Commit and EndBlock
+	DeliverBlock bool `mapstructure:"deliver_block"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -232,6 +236,7 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
+		DeliverBlock:       false,
 	}
 }
 
@@ -242,6 +247,7 @@ func TestBaseConfig() BaseConfig {
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
+	cfg.DeliverBlock = false
 	return cfg
 }
 
