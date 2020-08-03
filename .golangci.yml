@@ -44,6 +44,9 @@ linters:
 
 issues:
   exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
     - linters:
         - lll
       source: "https://"
@@ -58,7 +61,3 @@ linters-settings:
   #   check-shadowing: true
   golint:
     min-confidence: 0
-  #   gocyclo:
-  #     min-complexity: 10
-  #   misspell:
-  #     locale: US
