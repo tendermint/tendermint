@@ -10,6 +10,11 @@ var (
 	innerPrefix = []byte{1}
 )
 
+// returns tmhash(<empty>)
+func emptyHash() []byte {
+	return tmhash.Sum([]byte{})
+}
+
 // returns tmhash(0x00 || leaf)
 func leafHash(leaf []byte) []byte {
 	return tmhash.Sum(append(leafPrefix, leaf...))

@@ -2,8 +2,6 @@ package merkle
 
 import (
 	"math/bits"
-
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // HashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
@@ -11,7 +9,7 @@ import (
 func HashFromByteSlices(items [][]byte) []byte {
 	switch len(items) {
 	case 0:
-		return tmhash.Sum([]byte{})
+		return emptyHash()
 	case 1:
 		return leafHash(items[0])
 	default:
