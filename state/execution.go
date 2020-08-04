@@ -352,12 +352,7 @@ func execBlockOnProxyApp(
 	txIndex := 0
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
-	if config.DeliverBlock {
-		// Deliver block
-		abciResponses.DeliverBlock.DeliverTxs = dtxs
-	} else {
-		abciResponses.DeliverTxs = dtxs
-	}
+	abciResponses.UpdateDeliverTx(dtxs)
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -372,12 +367,7 @@ func execBlockOnProxyApp(
 				logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
-			if config.DeliverBlock {
-				// Deliver block
-				abciResponses.DeliverBlock.DeliverTxs[txIndex] = txRes
-			} else {
-				abciResponses.DeliverTxs[txIndex] = txRes
-			}
+			abciResponses.UpdateDeliverTxByIndex(txRes, txIndex)
 			txIndex++
 		}
 	}
