@@ -351,8 +351,11 @@ message VoteInfo {
 
 message Evidence {
   string                    type      = 1;
+  // The offending validator
   Validator                 validator = 2 [(gogoproto.nullable) = false];
+  // The height when the offense occurred 
   int64                     height    = 3;
+  // The corresponding time where the offense occurred
   google.protobuf.Timestamp time      = 4 [
     (gogoproto.nullable) = false,
     (gogoproto.stdtime)  = true
