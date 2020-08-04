@@ -582,29 +582,17 @@ func fireEvents(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
-	if abciResponses.DeliverBlock != nil {
-		eventBus.PublishEventNewBlockX(types.EventDataNewBlockX{
-			Block:              block,
-			ResultDeliverBlock: *abciResponses.DeliverBlock,
-		})
-		eventBus.PublishEventNewBlockHeaderX(types.EventDataNewBlockHeaderX{
-			Header:           block.Header,
-			NumTxs:           int64(len(block.Txs)),
-			ResultDeliverBlock: *abciResponses.DeliverBlock,
-		})
-	} else {
-		eventBus.PublishEventNewBlock(types.EventDataNewBlock{
-			Block:            block,
-			ResultBeginBlock: *abciResponses.BeginBlock,
-			ResultEndBlock:   *abciResponses.EndBlock,
-		})
-		eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-			Header:           block.Header,
-			NumTxs:           int64(len(block.Txs)),
-			ResultBeginBlock: *abciResponses.BeginBlock,
-			ResultEndBlock:   *abciResponses.EndBlock,
-		})
-	}
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+		Block:            block,
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+		Header:           block.Header,
+		NumTxs:           int64(len(block.Txs)),
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
 
 	for i, tx := range block.Data.Txs {
 		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
