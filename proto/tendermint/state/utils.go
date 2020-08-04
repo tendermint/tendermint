@@ -12,7 +12,6 @@ func (m *ABCIResponses) ValidatorUpdates() types.ValidatorUpdates {
 		return m.EndBlock.ValidatorUpdates
 	}
 	return m.DeliverBlock.ValidatorUpdates
-
 }
 
 func (m *ABCIResponses) ConsensusParamUpdates() *types.ConsensusParams {
@@ -20,7 +19,6 @@ func (m *ABCIResponses) ConsensusParamUpdates() *types.ConsensusParams {
 		return m.EndBlock.ConsensusParamUpdates
 	}
 	return m.DeliverBlock.ConsensusParamUpdates
-
 }
 
 func (m *ABCIResponses) UpdateDeliverTx(dtxs []*types.ResponseDeliverTx) {
