@@ -70,7 +70,7 @@ func HashFromByteSlicesIterative(input [][]byte) []byte {
 	for {
 		switch size {
 		case 0:
-			return nil
+			return emptyHash()
 		case 1:
 			return items[0]
 		default:
