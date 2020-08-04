@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.33.7
+
+*August 4, 2020*
+
+### BUG FIXES:
+
+- [go] Build release binary using Go 1.14.4, to avoid halt caused by Go 1.14.1 (https://github.com/golang/go/issues/38223)
+- [privval] [\#5140](https://github.com/tendermint/tendermint/pull/5140) `RemoteSignerError` from remote signers are no longer retried (@melekes)
+
 ## v0.33.6
 
 *July 2, 2020*
