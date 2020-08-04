@@ -32,11 +32,12 @@ message Request {
     RequestDeliverTx          deliver_tx           = 19;
     RequestEndBlock           end_block            = 11;
     RequestCommit             commit               = 12;
-    RequestDeliverTx          deliver_block        = 20;
+    RequestDeliverBlock       deliver_block        = 20;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
     RequestApplySnapshotChunk apply_snapshot_chunk = 16;
+    RequestCreateBlock        create_block         = 17;
   }
 }
 
@@ -72,6 +73,13 @@ message RequestQuery {
   string path   = 2;
   int64  height = 3;
   bool   prove  = 4;
+}
+
+message RequestCreateBlock {
+  int64             height                = 1;
+  LastCommitInfo    last_commit_info      = 2 [(gogoproto.nullable) = false];
+  repeated Evidence byzantine_validators  = 3 [(gogoproto.nullable) = false];
+  MempoolIter       mempool_iter          = 4;
 }
 
 message RequestBeginBlock {
@@ -157,6 +165,7 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 14;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
+    ResponseCreateBlock        create_block         = 17;
   }
 }
 
@@ -205,6 +214,14 @@ message ResponseQuery {
   tendermint.crypto.ProofOps proof_ops = 8;
   int64                      height    = 9;
   string                     codespace = 10;
+}
+
+message ResponseCreateBlock {
+  repeated bytes txs         = 1;
+  repeated bytes invalid_txs = 2;
+  bytes          hash        = 3;
+  repeated Event events      = 4
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseBeginBlock {
@@ -351,6 +368,9 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
+// MempoolIter
+message MempoolIter {}
+
 //----------------------------------------
 // Blockchain Types
 
@@ -410,6 +430,7 @@ service ABCIApplication {
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
+  rpc CreateBlock(RequestCreateBlock) returns (ResponseCreateBlock);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
