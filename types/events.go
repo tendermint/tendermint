@@ -68,24 +68,12 @@ type EventDataNewBlock struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
-type EventDataNewBlockX struct {
-	Block              *Block                    `json:"block"`
-	ResultDeliverBlock abci.ResponseDeliverBlock `json:"result_deliver_block"`
-}
-
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
 	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
-}
-
-type EventDataNewBlockHeaderX struct {
-	Header Header `json:"header"`
-
-	NumTxs             int64                     `json:"num_txs"` // Number of txs in a block
-	ResultDeliverBlock abci.ResponseDeliverBlock `json:"result_deliver_block"`
 }
 
 // All txs fire EventDataTx
@@ -176,8 +164,6 @@ func QueryForEvent(eventType string) tmpubsub.Query {
 type BlockEventPublisher interface {
 	PublishEventNewBlock(block EventDataNewBlock) error
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
-	PublishEventNewBlockX(block EventDataNewBlockX) error
-	PublishEventNewBlockHeaderX(header EventDataNewBlockHeaderX) error
 	PublishEventTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
 }
