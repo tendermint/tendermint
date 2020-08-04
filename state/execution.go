@@ -172,7 +172,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	var appHash []byte
+	var retainHeight int64
+	if config.DeliverBlock {
+		err = blockExec.mempoolUpdate(state, block, abciResponses.DeliverBlock)
+		appHash = abciResponses.DeliverBlock.Data
+		retainHeight = abciResponses.DeliverBlock.RetainHeight
+	} else {
+		appHash, retainHeight, err = blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	}
+
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -184,6 +193,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
+
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -484,7 +494,6 @@ func updateState(
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
-	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
 	if abciResponses.ConsensusParamUpdates() != nil {
 		// NOTE: must not mutate s.ConsensusParams
 		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.ConsensusParamUpdates())
@@ -530,18 +539,29 @@ func fireEvents(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
-	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
-		Block:            block,
-		ResultBeginBlock: *abciResponses.BeginBlock,
-		ResultEndBlock:   *abciResponses.EndBlock,
-	})
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header:           block.Header,
-		NumTxs:           int64(len(block.Txs)),
-		ResultBeginBlock: *abciResponses.BeginBlock,
-		ResultEndBlock:   *abciResponses.EndBlock,
-	})
+	if abciResponses.DeliverBlock != nil {
+		eventBus.PublishEventNewBlockX(types.EventDataNewBlockX{
+			Block:              block,
+			ResultDeliverBlock: *abciResponses.DeliverBlock,
+		})
+		eventBus.PublishEventNewBlockHeaderX(types.EventDataNewBlockHeaderX{
+			Header:           block.Header,
+			NumTxs:           int64(len(block.Txs)),
+			ResultDeliverBlock: *abciResponses.DeliverBlock,
+		})
+	} else {
+		eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+			Block:            block,
+			ResultBeginBlock: *abciResponses.BeginBlock,
+			ResultEndBlock:   *abciResponses.EndBlock,
+		})
+		eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+			Header:           block.Header,
+			NumTxs:           int64(len(block.Txs)),
+			ResultBeginBlock: *abciResponses.BeginBlock,
+			ResultEndBlock:   *abciResponses.EndBlock,
+		})
+	}
 
 	for i, tx := range block.Data.Txs {
 		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
