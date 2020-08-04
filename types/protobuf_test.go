@@ -76,7 +76,10 @@ func TestABCIEvidence(t *testing.T) {
 		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
 	)
 
-	assert.Equal(t, "duplicate/vote", abciEv.Type)
+	assert.Equal(t, ABCIEvidenceTypeDuplicateVote, abciEv.Type)
+	assert.Equal(t, ev.Time(), abciEv.GetTime())
+	assert.Equal(t, ev.Address(), abciEv.Validator.GetAddress())
+	assert.Equal(t, ev.Height(), abciEv.GetHeight())
 }
 
 type pubKeyEddie struct{}
