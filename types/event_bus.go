@@ -249,6 +249,15 @@ func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	return nil
 }
 
+func (NopEventBus) PublishEventNewBlockX(data EventDataNewBlockX) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewBlockHeaderX(data EventDataNewBlockHeaderX) error {
+	return nil
+}
+
+
 func (NopEventBus) PublishEventVote(data EventDataVote) error {
 	return nil
 }

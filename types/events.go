@@ -69,7 +69,7 @@ type EventDataNewBlock struct {
 }
 
 type EventDataNewBlockX struct {
-	Block *Block `json:"block"`
+	Block              *Block                    `json:"block"`
 	ResultDeliverBlock abci.ResponseDeliverBlock `json:"result_deliver_block"`
 }
 
@@ -84,9 +84,10 @@ type EventDataNewBlockHeader struct {
 type EventDataNewBlockHeaderX struct {
 	Header Header `json:"header"`
 
-	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
+	NumTxs             int64                     `json:"num_txs"` // Number of txs in a block
 	ResultDeliverBlock abci.ResponseDeliverBlock `json:"result_deliver_block"`
 }
+
 // All txs fire EventDataTx
 type EventDataTx struct {
 	abci.TxResult

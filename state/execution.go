@@ -605,8 +605,8 @@ func fireEvents(
 			ResultDeliverBlock: *abciResponses.DeliverBlock,
 		})
 		eventBus.PublishEventNewBlockHeaderX(types.EventDataNewBlockHeaderX{
-			Header:           block.Header,
-			NumTxs:           int64(len(block.Txs)),
+			Header:             block.Header,
+			NumTxs:             int64(len(block.Txs)),
 			ResultDeliverBlock: *abciResponses.DeliverBlock,
 		})
 	} else {
