@@ -158,17 +158,6 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	)
 }
 
-func (app *localClient) DeliverBlockAsync(req types.RequestDeliverBlock) *ReqRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverBlock(req)
-	return app.callback(
-		types.ToRequestDeliverBlock(req),
-		types.ToResponseDeliverBlock(res),
-	)
-}
-
 func (app *localClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -292,14 +281,6 @@ func (app *localClient) EndBlockSync(req types.RequestEndBlock) (*types.Response
 	defer app.mtx.Unlock()
 
 	res := app.Application.EndBlock(req)
-	return &res, nil
-}
-
-func (app *localClient) DeliverBlockSync(req types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverBlock(req)
 	return &res, nil
 }
 

@@ -312,6 +312,45 @@ func (_m *Client) EndBlockSync(_a0 types.RequestEndBlock) (*types.ResponseEndBlo
 	return r0, r1
 }
 
+// DeliverBlockAsync provides a mock function with given fields: _a0
+func (_m *Client) DeliverBlockAsync(_a0 types.RequestDeliverBlock) *abcicli.ReqRes {
+	ret := _m.Called(_a0)
+
+	var r0 *abcicli.ReqRes
+	if rf, ok := ret.Get(0).(func(types.RequestDeliverBlock) *abcicli.ReqRes); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*abcicli.ReqRes)
+		}
+	}
+
+	return r0
+}
+
+// DeliverBlockSync provides a mock function with given fields: _a0
+func (_m *Client) DeliverBlockSync(_a0 types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *types.ResponseDeliverBlock
+	if rf, ok := ret.Get(0).(func(types.RequestDeliverBlock) *types.ResponseDeliverBlock); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseDeliverBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.RequestDeliverBlock) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Error provides a mock function with given fields:
 func (_m *Client) Error() error {
 	ret := _m.Called()

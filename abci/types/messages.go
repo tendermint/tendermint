@@ -135,12 +135,6 @@ func ToRequestEndBlock(req RequestEndBlock) *Request {
 	}
 }
 
-func ToRequestDeliverBlock(req RequestDeliverBlock) *Request {
-	return &Request{
-		Value: &Request_DeliverBlock{&req},
-	}
-}
-
 func ToRequestListSnapshots(req RequestListSnapshots) *Request {
 	return &Request{
 		Value: &Request_ListSnapshots{&req},
@@ -236,12 +230,6 @@ func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
 func ToResponseEndBlock(res ResponseEndBlock) *Response {
 	return &Response{
 		Value: &Response_EndBlock{&res},
-	}
-}
-
-func ToResponseDeliverBlock(res ResponseDeliverBlock) *Response {
-	return &Response{
-		Value: &Response_DeliverBlock{&res},
 	}
 }
 

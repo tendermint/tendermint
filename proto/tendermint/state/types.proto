@@ -18,7 +18,6 @@ message ABCIResponses {
   repeated tendermint.abci.ResponseDeliverTx deliver_txs = 1;
   tendermint.abci.ResponseEndBlock           end_block   = 2;
   tendermint.abci.ResponseBeginBlock         begin_block = 3;
-  tendermint.abci.ResponseDeliverBlock       deliver_block = 4;
 }
 
 // ValidatorsInfo represents the latest validator set, or the last height it changed

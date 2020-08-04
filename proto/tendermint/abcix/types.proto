@@ -31,6 +31,7 @@ message Request {
     RequestCheckTx            check_tx             = 9;
     RequestDeliverTx          deliver_tx           = 19;
     RequestEndBlock           end_block            = 11;
+    RequestDeliverBlock       deliver_block        = 20;
     RequestCommit             commit               = 12;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
@@ -108,6 +109,15 @@ message RequestEndBlock {
 
 message RequestCommit {}
 
+message RequestDeliverBlock {
+  int64                   height               = 1;
+  bytes                   hash                 = 2;
+  tendermint.types.Header header               = 3 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 6;
+}
+
 // lists available snapshots
 message RequestListSnapshots {
 }
@@ -149,6 +159,7 @@ message Response {
     ResponseDeliverTx          deliver_tx           = 10;
     ResponseEndBlock           end_block            = 11;
     ResponseCommit             commit               = 12;
+    ResponseDeliverBlock       deliver_block        = 20;
     ResponseListSnapshots      list_snapshots       = 13;
     ResponseOfferSnapshot      offer_snapshot       = 14;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
@@ -253,6 +264,21 @@ message ResponseCommit {
   // reserve 1
   bytes data          = 2;
   int64 retain_height = 3;
+}
+
+message ResponseDeliverBlock {
+  uint32                            code                    = 1;
+  repeated        ResponseDeliverTx deliver_txs             = 2;
+  // endBlock
+  repeated        ValidatorUpdate   validator_updates       = 3
+  [(gogoproto.nullable) = false];
+  ConsensusParams                   consensus_param_updates = 4;
+  // commit
+  bytes                             data                    = 5;
+  int64                             retain_height           = 6;
+  repeated        Event             events                  = 7
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  string                            codespace               = 8;
 }
 
 message ResponseListSnapshots {
@@ -407,6 +433,7 @@ service ABCIApplication {
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+  rpc DeliverBlock(RequestDeliverBlock) returns (ResponseDeliverBlock);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);

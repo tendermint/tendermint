@@ -35,6 +35,7 @@ type Client interface {
 	InitChainAsync(types.RequestInitChain) *ReqRes
 	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
 	EndBlockAsync(types.RequestEndBlock) *ReqRes
+	DeliverBlockSync(types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error)
 	ListSnapshotsAsync(types.RequestListSnapshots) *ReqRes
 	OfferSnapshotAsync(types.RequestOfferSnapshot) *ReqRes
 	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) *ReqRes

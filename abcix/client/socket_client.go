@@ -266,6 +266,10 @@ func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
+func (cli *socketClient) DeliverBlockAsync(req types.RequestDeliverBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverBlock(req))
+}
+
 func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
 	return cli.queueRequest(types.ToRequestListSnapshots(req))
 }
@@ -355,6 +359,12 @@ func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.Respons
 	reqres := cli.queueRequest(types.ToRequestEndBlock(req))
 	cli.FlushSync()
 	return reqres.Response.GetEndBlock(), cli.Error()
+}
+
+func (cli *socketClient) DeliverBlockSync(req types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
+	reqres := cli.queueRequest(types.ToRequestDeliverBlock(req))
+	cli.FlushSync()
+	return reqres.Response.GetDeliverBlock(), cli.Error()
 }
 
 func (cli *socketClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {

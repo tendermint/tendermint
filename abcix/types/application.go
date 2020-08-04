@@ -84,6 +84,10 @@ func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
 }
 
+func (BaseApplication) DeliverBlock(req RequestDeliverBlock) ResponseDeliverBlock {
+	return ResponseDeliverBlock{}
+}
+
 func (BaseApplication) ListSnapshots(req RequestListSnapshots) ResponseListSnapshots {
 	return ResponseListSnapshots{}
 }
@@ -165,6 +169,11 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	res := app.app.EndBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) DeliverBlock(ctx context.Context, req *RequestDeliverBlock) (*ResponseDeliverBlock, error) {
+	res := app.app.DeliverBlock(*req)
 	return &res, nil
 }
 
