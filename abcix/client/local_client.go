@@ -3,7 +3,7 @@ package abcicli
 import (
 	"sync"
 
-	types "github.com/tendermint/tendermint/abci/types"
+	types "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -258,6 +258,10 @@ func (app *localClient) CommitSync() (*types.ResponseCommit, error) {
 
 	res := app.Application.Commit()
 	return &res, nil
+}
+
+func (app *localClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
 }
 
 func (app *localClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

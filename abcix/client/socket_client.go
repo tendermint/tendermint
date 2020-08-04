@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/timer"
@@ -333,6 +333,10 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
 	return reqres.Response.GetCommit(), cli.Error()
+}
+
+func (cli *socketClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
 }
 
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

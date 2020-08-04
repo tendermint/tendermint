@@ -8,6 +8,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -103,7 +104,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	var timestamp time.Time
 	evidence := blockExec.evpool.PendingEvidence(state.ConsensusParams.Evidence.MaxNum)
 	if createBlockFromApp {
-		voteInfos := make([]abci.VoteInfo, commit.Size())
+		voteInfos := make([]abcix.VoteInfo, commit.Size())
 		// block.Height=1 -> LastCommitInfo.Votes are empty.
 		// Remember that the first LastCommit is intentionally empty, so it makes
 		// sense for LastCommitInfo.Votes to also be empty.
@@ -129,30 +130,30 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 			for i, val := range lastValSet.Validators {
 				commitSig := commit.Signatures[i]
-				voteInfos[i] = abci.VoteInfo{
-					Validator:       types.TM2PB.Validator(val),
+				voteInfos[i] = abcix.VoteInfo{
+					Validator:       abcix.Validator(types.TM2PB.Validator(val)),
 					SignedLastBlock: !commitSig.Absent(),
 				}
 			}
 		}
-		byzVals := make([]abci.Evidence, len(evidence))
+		byzVals := make([]abcix.Evidence, len(evidence))
 		for i, ev := range evidence {
 			valset, err := LoadValidators(blockExec.db, ev.Height())
 			if err != nil {
 				panic(err)
 			}
-			byzVals[i] = types.TM2PB.Evidence(ev, valset, timestamp)
+			byzVals[i] = types.TM2PB.XEvidence(ev, valset, timestamp)
 		}
 
-		lastCommitInfo := abci.LastCommitInfo{
+		lastCommitInfo := abcix.LastCommitInfo{
 			Round: commit.Round,
 			Votes: voteInfos,
 		}
-		resp, err := blockExec.proxyApp.CreateBlockSync(abci.RequestCreateBlock{
+		resp, err := blockExec.proxyApp.CreateBlockSync(abcix.RequestCreateBlock{
 			Height:              height,
 			LastCommitInfo:      lastCommitInfo,
 			ByzantineValidators: byzVals,
-			MempoolIter:         &abci.MempoolIter{},
+			MempoolIter:         &abcix.MempoolIter{},
 		})
 		if err != nil {
 			panic(err)

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/proxy"
+
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/require"
 
@@ -391,7 +393,8 @@ func newStateWithConfigAndBlockStore(
 	// Make State
 	stateDB := blockDB
 	sm.SaveState(stateDB, state) //for save height 1's validators info
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -451,7 +454,8 @@ func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.P
 	}
 	stateDB := dbm.NewMemDB()
 	evpool, _ := evidence.NewPool(stateDB, evidenceDB, blockStore)
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
 	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(privVals[0])

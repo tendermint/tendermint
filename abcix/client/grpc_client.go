@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -324,6 +324,10 @@ func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, 
 func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 	reqres := cli.CommitAsync()
 	return reqres.Response.GetCommit(), cli.Error()
+}
+
+func (cli *grpcClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
 }
 
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {

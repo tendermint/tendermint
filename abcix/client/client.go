@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -48,6 +48,7 @@ type Client interface {
 	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
+	CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
