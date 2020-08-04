@@ -152,12 +152,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// validate the validator updates and convert to tendermint types
-	var abciValUpdates []abci.ValidatorUpdate
-	if config.DeliverBlock {
-		abciValUpdates = abciResponses.DeliverBlock.ValidatorUpdates
-	} else {
-		abciValUpdates =abciResponses.EndBlock.ValidatorUpdates
-	}
+	abciValUpdates := abciResponses.ValidatorUpdates()
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
@@ -256,7 +251,7 @@ func (blockExec *BlockExecutor) Commit(
 func (blockExec *BlockExecutor) mempoolUpdate(
 	state State,
 	block *types.Block,
-	deliverBlockResponses abci.ResponseDeliverBlock,
+	deliverBlockResponses *abci.ResponseDeliverBlock,
 ) error {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -490,9 +485,9 @@ func updateState(
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	// TODO: decide whether to call deliverBlock or other functions based on the fields of the input response
-	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
+	if abciResponses.ConsensusParamUpdates() != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
+		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.ConsensusParamUpdates())
 		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
