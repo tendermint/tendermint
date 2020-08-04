@@ -32,7 +32,7 @@ message Request {
     RequestDeliverTx          deliver_tx           = 19;
     RequestEndBlock           end_block            = 11;
     RequestCommit             commit               = 12;
-    RequestDeliverTx          deliver_block        = 20;
+    RequestDeliverBlock       deliver_block        = 20;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
