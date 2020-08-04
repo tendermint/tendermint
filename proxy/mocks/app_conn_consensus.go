@@ -60,6 +60,29 @@ func (_m *AppConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 	return r0, r1
 }
 
+// CreateBlockSync provides a mock function with given fields: _a0
+func (_m *AppConnConsensus) CreateBlockSync(_a0 types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *types.ResponseCreateBlock
+	if rf, ok := ret.Get(0).(func(types.RequestCreateBlock) *types.ResponseCreateBlock); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseCreateBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.RequestCreateBlock) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // DeliverTxAsync provides a mock function with given fields: _a0
 func (_m *AppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) *abcicli.ReqRes {
 	ret := _m.Called(_a0)

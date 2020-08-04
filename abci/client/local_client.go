@@ -271,6 +271,10 @@ func (app *localClient) CommitSync() (*types.ResponseCommit, error) {
 	return &res, nil
 }
 
+func (app *localClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
+}
+
 func (app *localClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()

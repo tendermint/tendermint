@@ -139,6 +139,8 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	createBlockFromApp bool
 }
 
 // StateOption sets an optional parameter on the State.
@@ -1099,7 +1101,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 	proposerAddr := pubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.createBlockFromApp)
 }
 
 // Enter: `timeoutPropose` after entering Propose.

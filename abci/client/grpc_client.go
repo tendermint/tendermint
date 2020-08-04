@@ -335,6 +335,10 @@ func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
+func (cli *grpcClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
+}
+
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {
 	reqres := cli.InitChainAsync(params)
 	return reqres.Response.GetInitChain(), cli.Error()

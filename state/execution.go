@@ -94,23 +94,83 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 
 // CreateProposalBlock calls state.MakeBlock with evidence from the evpool
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
-// Up to 1/10th of the block space is allcoated for maximum sized evidence.
+// Up to 1/10th of the block space is allocated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
+	createBlockFromApp bool,
 ) (*types.Block, *types.PartSet) {
-
-	maxBytes := state.ConsensusParams.Block.MaxBytes
-	maxGas := state.ConsensusParams.Block.MaxGas
-
+	var txs types.Txs
+	var timestamp time.Time
 	evidence := blockExec.evpool.PendingEvidence(state.ConsensusParams.Evidence.MaxNum)
+	if createBlockFromApp {
+		voteInfos := make([]abci.VoteInfo, commit.Size())
+		// block.Height=1 -> LastCommitInfo.Votes are empty.
+		// Remember that the first LastCommit is intentionally empty, so it makes
+		// sense for LastCommitInfo.Votes to also be empty.
+		if height == 1 {
+			timestamp = state.LastBlockTime // genesis time
+		} else {
+			timestamp = MedianTime(commit, state.LastValidators)
+			lastValSet, err := LoadValidators(blockExec.db, height-1)
+			if err != nil {
+				panic(err)
+			}
 
-	// Fetch a limited amount of valid txs
-	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
-	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+			// Sanity check that commit size matches validator set size - only applies
+			// after first block.
+			var (
+				commitSize = commit.Size()
+				valSetLen  = len(lastValSet.Validators)
+			)
+			if commitSize != valSetLen {
+				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
+			}
 
+			for i, val := range lastValSet.Validators {
+				commitSig := commit.Signatures[i]
+				voteInfos[i] = abci.VoteInfo{
+					Validator:       types.TM2PB.Validator(val),
+					SignedLastBlock: !commitSig.Absent(),
+				}
+			}
+		}
+		byzVals := make([]abci.Evidence, len(evidence))
+		for i, ev := range evidence {
+			valset, err := LoadValidators(blockExec.db, ev.Height())
+			if err != nil {
+				panic(err)
+			}
+			byzVals[i] = types.TM2PB.Evidence(ev, valset, timestamp)
+		}
+
+		lastCommitInfo := abci.LastCommitInfo{
+			Round: commit.Round,
+			Votes: voteInfos,
+		}
+		resp, err := blockExec.proxyApp.CreateBlockSync(abci.RequestCreateBlock{
+			Height:              height,
+			LastCommitInfo:      lastCommitInfo,
+			ByzantineValidators: byzVals,
+			MempoolIter:         &abci.MempoolIter{},
+		})
+		if err != nil {
+			panic(err)
+		}
+		for _, txBytes := range resp.Txs {
+			txs = append(txs, txBytes)
+		}
+	} else {
+		maxBytes := state.ConsensusParams.Block.MaxBytes
+		maxGas := state.ConsensusParams.Block.MaxGas
+
+		// Fetch a limited amount of valid txs
+		maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
+		txs = blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	}
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
