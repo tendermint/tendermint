@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"time"
 
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -149,6 +151,20 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 		Height:           ev.Height(),
 		Time:             evTime,
 		TotalVotingPower: valSet.TotalVotingPower(),
+	}
+}
+
+// ABCIX Evidence includes information from the past that's not included in the evidence itself
+// so Evidence types stays compact.
+// XXX: panics on nil or unknown pubkey type
+func (t *tm2pb) XEvidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abcix.Evidence {
+	abciEV := t.Evidence(ev, valSet, evTime)
+	return abcix.Evidence{
+		Type:             abciEV.Type,
+		Validator:        abcix.Validator(abciEV.Validator),
+		Height:           abciEV.Height,
+		Time:             abciEV.Time,
+		TotalVotingPower: abciEV.TotalVotingPower,
 	}
 }
 

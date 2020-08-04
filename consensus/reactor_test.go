@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/proxy"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -157,7 +159,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
+		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)

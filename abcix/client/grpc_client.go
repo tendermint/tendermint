@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -223,15 +223,6 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
 }
 
-func (cli *grpcClient) DeliverBlockAsync(params types.RequestDeliverBlock) *ReqRes {
-	req := types.ToRequestDeliverBlock(params)
-	res, err := cli.client.DeliverBlock(context.Background(), req.GetDeliverBlock(), grpc.WaitForReady(true))
-	if err != nil {
-		cli.StopForError(err)
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverBlock{DeliverBlock: res}})
-}
-
 func (cli *grpcClient) ListSnapshotsAsync(params types.RequestListSnapshots) *ReqRes {
 	req := types.ToRequestListSnapshots(params)
 	res, err := cli.client.ListSnapshots(context.Background(), req.GetListSnapshots(), grpc.WaitForReady(true))
@@ -335,6 +326,10 @@ func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
+func (cli *grpcClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
+}
+
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {
 	reqres := cli.InitChainAsync(params)
 	return reqres.Response.GetInitChain(), cli.Error()
@@ -348,11 +343,6 @@ func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (*types.Re
 func (cli *grpcClient) EndBlockSync(params types.RequestEndBlock) (*types.ResponseEndBlock, error) {
 	reqres := cli.EndBlockAsync(params)
 	return reqres.Response.GetEndBlock(), cli.Error()
-}
-
-func (cli *grpcClient) DeliverBlockSync(params types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
-	reqres := cli.DeliverBlockAsync(params)
-	return reqres.Response.GetDeliverBlock(), cli.Error()
 }
 
 func (cli *grpcClient) ListSnapshotsSync(params types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {

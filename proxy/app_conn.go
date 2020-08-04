@@ -3,6 +3,8 @@ package proxy
 import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
+	abcixcli "github.com/tendermint/tendermint/abcix/client"
+	xtypes "github.com/tendermint/tendermint/abcix/types"
 )
 
 //go:generate mockery -case underscore -name AppConnConsensus|AppConnMempool|AppConnQuery|AppConnSnapshot
@@ -14,7 +16,7 @@ type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
-	CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error)
+	CreateBlockSync(xtypes.RequestCreateBlock) (*xtypes.ResponseCreateBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
@@ -58,7 +60,9 @@ type AppConnSnapshot interface {
 // Implements AppConnConsensus (subset of abcicli.Client)
 
 type appConnConsensus struct {
-	appConn abcicli.Client
+	// TODO: for now we use both clients from abci and abcix, in the future will only be abcix
+	xappConn abcixcli.Client
+	appConn  abcicli.Client
 }
 
 func NewAppConnConsensus(appConn abcicli.Client) AppConnConsensus {
@@ -75,8 +79,8 @@ func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnConsensus) CreateBlockSync(req types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
-	return app.appConn.CreateBlockSync(req)
+func (app *appConnConsensus) CreateBlockSync(req xtypes.RequestCreateBlock) (*xtypes.ResponseCreateBlock, error) {
+	return app.xappConn.CreateBlockSync(req)
 }
 
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

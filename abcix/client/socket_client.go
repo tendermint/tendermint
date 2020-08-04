@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/timer"
@@ -266,10 +266,6 @@ func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
-func (cli *socketClient) DeliverBlockAsync(req types.RequestDeliverBlock) *ReqRes {
-	return cli.queueRequest(types.ToRequestDeliverBlock(req))
-}
-
 func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
 	return cli.queueRequest(types.ToRequestListSnapshots(req))
 }
@@ -339,6 +335,10 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
+func (cli *socketClient) CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
+}
+
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	reqres := cli.queueRequest(types.ToRequestInitChain(req))
 	cli.FlushSync()
@@ -355,12 +355,6 @@ func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.Respons
 	reqres := cli.queueRequest(types.ToRequestEndBlock(req))
 	cli.FlushSync()
 	return reqres.Response.GetEndBlock(), cli.Error()
-}
-
-func (cli *socketClient) DeliverBlockSync(req types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
-	reqres := cli.queueRequest(types.ToRequestDeliverBlock(req))
-	cli.FlushSync()
-	return reqres.Response.GetDeliverBlock(), cli.Error()
 }
 
 func (cli *socketClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
