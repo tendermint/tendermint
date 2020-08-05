@@ -629,6 +629,8 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 
 ## v0.32.11
 
+*April 29, 2020*
+
 ### BUG FIXES:
 
 - [privval] [\#4275](https://github.com/tendermint/tendermint/issues/4275) Fix consensus failure when remote signer drops (@melekes)
