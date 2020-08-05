@@ -2,17 +2,23 @@
 
 ## v0.32.13
 
+*August 5, 2020*
+
 ### BUG FIXES
 
 - [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
 
 ## v0.32.12
 
+*May 19, 2020*
+
 ### BUG FIXES
 
 - [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
 
 ## v0.32.11
+
+*April 29, 2020*
 
 ### BUG FIXES:
 
