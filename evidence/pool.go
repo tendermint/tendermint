@@ -184,13 +184,12 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 		}
 
-		// For lunatic validator evidence, a header needs to be fetched.
-		var header *types.Header
-		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			header = evpool.Header(ev.Height())
-			if header == nil {
-				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
-			}
+		// A header needs to be fetched. For lunatic evidence this is so we can verify
+		// that some of the fields are different to the ones we have. For all evidence it
+		// it so we can verify that the time of the evidence is correct
+		header := evpool.Header(ev.Height())
+		if header == nil {
+			return fmt.Errorf("don't have block meta at height #%d", ev.Height())
 		}
 
 		// 1) Verify against state.

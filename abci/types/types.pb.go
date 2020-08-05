@@ -2944,10 +2944,13 @@ func (m *VoteInfo) GetSignedLastBlock() bool {
 }
 
 type Evidence struct {
-	Type      string    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// The offending validator
 	Validator Validator `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator"`
-	Height    int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	Time      time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
+	// The height when the offense occurred
+	Height int64 `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	// The corresponding time where the offense occurred
+	Time time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
 	// Total voting power of the validator set in case the ABCI application does
 	// not store historical validators.
 	// https://github.com/tendermint/tendermint/issues/4581

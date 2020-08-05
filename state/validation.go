@@ -94,6 +94,21 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		}
 	}
 
+	// NOTE: We can't actually verify it's the right proposer because we dont
+	// know what round the block was first proposed. So just check that it's
+	// a legit address and a known validator.
+	if len(block.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ProposerAddress size %d, got %d",
+			crypto.AddressSize,
+			len(block.ProposerAddress),
+		)
+	}
+	if !state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
+			block.ProposerAddress,
+		)
+	}
+
 	// Validate block Time
 	if block.Height > 1 {
 		if !block.Time.After(state.LastBlockTime) {
@@ -154,33 +169,18 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return types.NewErrEvidenceInvalid(ev, errors.New("amnesia evidence is new and hasn't undergone trial period yet"))
 		}
 
-		var header *types.Header
-		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			header = evidencePool.Header(ev.Height())
-			if header == nil {
-				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
-			}
+		// A header needs to be fetched. For lunatic evidence this is so we can verify
+		// that some of the fields are different to the ones we have. For all evidence it
+		// it so we can verify that the time of the evidence is correct
+		header := evidencePool.Header(ev.Height())
+		if header == nil {
+			return fmt.Errorf("don't have block meta at height #%d", ev.Height())
 		}
 
 		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 
-	}
-
-	// NOTE: We can't actually verify it's the right proposer because we dont
-	// know what round the block was first proposed. So just check that it's
-	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected ProposerAddress size %d, got %d",
-			crypto.AddressSize,
-			len(block.ProposerAddress),
-		)
-	}
-	if !state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
-			block.ProposerAddress,
-		)
 	}
 
 	return nil
@@ -199,6 +199,13 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence, commit
 		ageDuration  = state.LastBlockTime.Sub(evidence.Time())
 		ageNumBlocks = height - evidence.Height()
 	)
+
+	if committedHeader.Time != evidence.Time() {
+		return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
+			evidence.Time(),
+			committedHeader.Time,
+		)
+	}
 
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
 		return fmt.Errorf(

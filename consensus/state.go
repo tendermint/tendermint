@@ -1817,7 +1817,13 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 					vote.Type)
 				return added, err
 			}
-			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			var timestamp time.Time
+			if voteErr.VoteA.Height == 1 {
+				timestamp = cs.state.LastBlockTime // genesis time
+			} else {
+				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
+			}
+			cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {
 			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)

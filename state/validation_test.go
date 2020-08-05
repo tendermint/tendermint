@@ -229,7 +229,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
-		t.Log(maxNumEvidence)
 		if height > 1 {
 			/*
 				A block with too much evidence fails
@@ -283,12 +282,15 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 		privVals[val.Address.String()], chainID)
 	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
 		privVals[val2.Address.String()], chainID)
+		
+	header := &types.Header{Time: defaultTestTime}
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", ev).Return(false)
 	evpool.On("IsPending", ev2).Return(false)
 	evpool.On("IsCommitted", ev).Return(false)
 	evpool.On("IsCommitted", ev2).Return(true)
+	evpool.On("Header", height).Return(header)
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
