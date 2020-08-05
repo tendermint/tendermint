@@ -48,6 +48,11 @@ Merkle tree built from:
     GasWanted, GasUsed, Events)` responses;
 - `BeginBlock#Events`.
 
+Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
+to conform with RFC-6962. This mainly affects `Header#DataHash`, `Header#LastResultsHash`, and 
+`Header#EvidenceHash`, which are often empty. Non-empty hashes can also be affected, e.g. if their
+inputs depend on other (empty) Merkle hashes, giving different results.
+
 ### Tx Indexing
 
 - Tendermint will now rely on the application entirely to tell it what txs to index. This means that in the `config.toml`,
@@ -99,6 +104,9 @@ The multisig that was previously located in Tendermint has now migrated to a new
 #### Merkle
 
 From the merkle package `SimpleHashFromMap()` and `SimpleProofsFromMap()` were removed along with all the prefixes of `Simple`. If you are looking for `SimpleProof` it has been renamed to `Proof` within the merkle pkg. Previously there were protobuf messages located in the merkle pkg, these have since been moved to the `/proto` directory. The protobuf message `Proof` that contained multiple ProofOp's has been renamed to `ProofOps`. This change effects the ABCI type `ResponseQuery`, the field that was named Proof is now named `ProofOps`.
+
+`HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, to conform with
+RFC-6962.
 
 ### Libs
 
