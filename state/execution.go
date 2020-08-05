@@ -89,7 +89,11 @@ func (blockExec *BlockExecutor) DB() dbm.DB {
 
 // SetEventBus - sets the event bus for publishing block related events.
 // If not called, it defaults to types.NopEventBus.
-salBlock calls state.MakeBlock with evidence from the evpool
+func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
+	blockExec.eventBus = eventBus
+}
+
+// CreateProposalBlock calls state.MakeBlock with evidence from the evpool
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
 // Up to 1/10th of the block space is allocated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
@@ -126,7 +130,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
 			}
-				voteInfos[i] = abcix.VoteInfo{:       abcix.Validator(types.TM2PB.Validator(val)),
+
+			for i, val := range lastValSet.Validators {
+				commitSig := commit.Signatures[i]
+				voteInfos[i] = abcix.VoteInfo{
+					Validator:       abcix.Validator(types.TM2PB.Validator(val)),
 					SignedLastBlock: !commitSig.Absent(),
 				}
 			}
