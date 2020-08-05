@@ -22,7 +22,7 @@ type Application interface {
 	InitChain(RequestInitChain) ResponseInitChain          // Init blockchain w validators/other info from TendermintCore
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock       // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx          // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock             // Signals the end of a block, returns changes to the validator set
+	EndBlock(RequestEndBlock) ResponseEndBlock             // Signals the end of a block, returns changes to validator set
 	DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock // Deliver a block for full processing
 	Commit() ResponseCommit                                // Commit the state and return the application Merkle root hash
 

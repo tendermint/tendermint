@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"fmt"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"

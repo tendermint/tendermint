@@ -8,8 +8,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
 	abcix "github.com/tendermint/tendermint/abcix/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -130,7 +130,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
 			}
-
 			for i, val := range lastValSet.Validators {
 				commitSig := commit.Signatures[i]
 				voteInfos[i] = abcix.VoteInfo{
@@ -322,7 +321,7 @@ func (blockExec *BlockExecutor) Commit(
 func (blockExec *BlockExecutor) mempoolUpdate(
 	state State,
 	block *types.Block,
-	deliverBlockResponses *abci.ResponseDeliverBlock,
+	deliverBlockResponses *abcix.ResponseDeliverBlock,
 ) error {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -334,12 +333,15 @@ func (blockExec *BlockExecutor) mempoolUpdate(
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
 		return err
 	}
-
+	var deliverTxs []*abci.ResponseDeliverTx
+	for i, d := range deliverBlockResponses.DeliverTxs {
+		tmstate.CopyFields(deliverTxs[i], d)
+	}
 	// Update mempool.
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		deliverBlockResponses.DeliverTxs,
+		deliverTxs,
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
@@ -394,12 +396,18 @@ func execBlockOnProxyApp(
 		for _, tx := range block.Txs {
 			txs = append(txs, tx)
 		}
-		abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockSync(abci.RequestDeliverBlock{
+		var commitInfoX abcix.LastCommitInfo
+		tmstate.CopyFields(commitInfoX, commitInfo)
+		var byzValsX []abcix.Evidence
+		for i, e := range byzVals {
+			tmstate.CopyFields(byzValsX[i], e)
+		}
+		abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockSync(abcix.RequestDeliverBlock{
 			Height:              block.Height,
 			Hash:                block.Hash(),
 			Header:              *pbh,
-			LastCommitInfo:      commitInfo,
-			ByzantineValidators: byzVals,
+			LastCommitInfo:      commitInfoX,
+			ByzantineValidators: byzValsX,
 			Txs:                 txs,
 		})
 		if err != nil {
