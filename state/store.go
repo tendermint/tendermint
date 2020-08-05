@@ -47,7 +47,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 		if err != nil {
 			return state, err
 		}
-		BootstrapState(stateDB, state)
+		SaveState(stateDB, state)
 	}
 
 	return state, nil
@@ -65,7 +65,7 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		if err != nil {
 			return state, err
 		}
-		BootstrapState(stateDB, state)
+		SaveState(stateDB, state)
 	}
 
 	return state, nil
@@ -110,10 +110,14 @@ func SaveState(db dbm.DB, state State) {
 }
 
 func saveState(db dbm.DB, state State, key []byte) {
-	if state.LastBlockHeight == 0 {
-		panic("can't save state with LastBlockHeight=0")
-	}
 	nextHeight := state.LastBlockHeight + 1
+	// If first block, save validators for the block.
+	if nextHeight == 1 {
+		nextHeight = state.InitialHeight
+		// This extra logic due to Tendermint validator set changes being delayed 1 block.
+		// It may get overwritten due to InitChain validator updates.
+		saveValidatorsInfo(db, nextHeight, nextHeight, state.Validators)
+	}
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
