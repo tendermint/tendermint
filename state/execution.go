@@ -8,8 +8,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
 	abcix "github.com/tendermint/tendermint/abcix/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -89,7 +89,11 @@ func (blockExec *BlockExecutor) DB() dbm.DB {
 
 // SetEventBus - sets the event bus for publishing block related events.
 // If not called, it defaults to types.NopEventBus.
-salBlock calls state.MakeBlock with evidence from the evpool
+func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
+	blockExec.eventBus = eventBus
+}
+
+// CreateProposalBlock calls state.MakeBlock with evidence from the evpool
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
 // Up to 1/10th of the block space is allocated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
@@ -126,7 +130,10 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
 			}
-				voteInfos[i] = abcix.VoteInfo{:       abcix.Validator(types.TM2PB.Validator(val)),
+			for i, val := range lastValSet.Validators {
+				commitSig := commit.Signatures[i]
+				voteInfos[i] = abcix.VoteInfo{
+					Validator:       abcix.Validator(types.TM2PB.Validator(val)),
 					SignedLastBlock: !commitSig.Absent(),
 				}
 			}
@@ -314,7 +321,7 @@ func (blockExec *BlockExecutor) Commit(
 func (blockExec *BlockExecutor) mempoolUpdate(
 	state State,
 	block *types.Block,
-	deliverBlockResponses *abci.ResponseDeliverBlock,
+	deliverBlockResponses *abcix.ResponseDeliverBlock,
 ) error {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -326,12 +333,15 @@ func (blockExec *BlockExecutor) mempoolUpdate(
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
 		return err
 	}
-
+	var deliverTxs []*abci.ResponseDeliverTx
+	for i, d := range deliverBlockResponses.DeliverTxs {
+		tmstate.CopyFields(deliverTxs[i], d)
+	}
 	// Update mempool.
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		deliverBlockResponses.DeliverTxs,
+		deliverTxs,
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
@@ -386,12 +396,18 @@ func execBlockOnProxyApp(
 		for _, tx := range block.Txs {
 			txs = append(txs, tx)
 		}
-		abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockSync(abci.RequestDeliverBlock{
+		var commitInfoX abcix.LastCommitInfo
+		tmstate.CopyFields(commitInfoX, commitInfo)
+		var byzValsX []abcix.Evidence
+		for i, e := range byzVals {
+			tmstate.CopyFields(byzValsX[i], e)
+		}
+		abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockSync(abcix.RequestDeliverBlock{
 			Height:              block.Height,
 			Hash:                block.Hash(),
 			Header:              *pbh,
-			LastCommitInfo:      commitInfo,
-			ByzantineValidators: byzVals,
+			LastCommitInfo:      commitInfoX,
+			ByzantineValidators: byzValsX,
 			Txs:                 txs,
 		})
 		if err != nil {
