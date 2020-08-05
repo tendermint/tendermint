@@ -611,6 +611,14 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
 
+## v0.32.13
+
+*August 5, 2020*
+
+ ### BUG FIXES
+
+ - [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
+
 ## v0.32.12
 
 *May 19, 2020*
