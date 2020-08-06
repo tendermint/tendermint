@@ -835,6 +835,9 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	// A flag to control mempool behavior, if true, the state will get txs from mempool iterator
+	CreateBlockFromApp bool `mapstructure:"create_block_from_app"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -853,6 +856,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		CreateBlockFromApp:          false,
 	}
 }
 

@@ -73,6 +73,14 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
+func (t *tm2pb) XValidator(val *Validator) abcix.Validator {
+	abciV := t.Validator(val)
+	return abcix.Validator{
+		Address: abciV.Address,
+		Power:   abciV.Power,
+	}
+}
+
 func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
 	return tmproto.BlockID{
 		Hash:          blockID.Hash,
