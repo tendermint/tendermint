@@ -506,7 +506,7 @@ via light client.
   - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
     Merkle root of the application state after executing the previous block's
     transactions
-  - `LastResultsHash ([]byte)`: Root hash of `BeginBlock` events, root hash of all results from the txs from the previous block, and `EndBlock` events
+  - `LastResultsHash ([]byte)`: Root hash of all results from the txs from the previous block.
   - `EvidenceHash ([]byte)`: Hash of the evidence included in this block
   - `ProposerAddress ([]byte)`: Original proposer for the block
 - **Usage**:
@@ -515,10 +515,7 @@ via light client.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
-  - `LastResultsHash` is the root hash of a Merkle tree w/ 3 leafs:
-    proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
-    from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
-    ignored), and proto-encoded `ResponseEndBlock#Events`.
+  - `LastResultsHash` is the root hash of a Merkle tree built from `ResponseDeliverTx` responses (`Log`, `Info`, `Codespace` and `Events` fields are ignored).
 
 ### Version
 

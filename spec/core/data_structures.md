@@ -54,7 +54,7 @@ type Header struct {
 	NextValidatorsHash []byte // validators for the next block
 	ConsensusHash      []byte // consensus params for current block
 	AppHash            []byte // state after txs from the previous block
-	LastResultsHash    []byte // root hash of BeginBlock events, root hash of all results from the txs from the previous block, and EndBlock events
+	LastResultsHash    []byte // root hash of all results from the txs from the previous block
 
 	// consensus info
 	EvidenceHash    []byte // evidence included in the block
@@ -413,13 +413,10 @@ The first block has `block.Header.AppHash == []byte{}`.
 ### LastResultsHash
 
 ```go
-block.LastResultsHash == MerkleRoot(ResponseBeginBlock.Events, MerkleRoot([]ResponseDeliverTx), ResponseEndBlock.Events)
+block.LastResultsHash == MerkleRoot([]ResponseDeliverTx)
 ```
 
-`LastResultsHash` is the root hash of a Merkle tree w/ 3 leafs: proto-encoded
-`ResponseBeginBlock#Events`, root hash of a Merkle tree build from
-`ResponseDeliverTx` responses (Log, Info and Codespace fields are ignored), and
-proto-encoded `ResponseEndBlock#Events`.
+`LastResultsHash` is the root hash of a Merkle tree built from `ResponseDeliverTx` responses (`Log`,`Info`, `Codespace` and `Events` fields are ignored).
 
 The first block has `block.Header.ResultsHash == []byte{}`.
 
