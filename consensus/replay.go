@@ -116,6 +116,11 @@ func (cs *State) catchupReplay(csHeight int64) error {
 		return fmt.Errorf("wal should not contain #ENDHEIGHT %d", csHeight)
 	}
 
+	// If this is the initial height, skip replay
+	if csHeight <= cs.state.InitialHeight {
+		return nil
+	}
+
 	// Search for last height marker.
 	//
 	// Ignore data corruption errors in previous heights because we only care about last height

@@ -76,8 +76,7 @@ type WAL interface {
 type BaseWAL struct {
 	service.BaseService
 
-	group         *auto.Group
-	initialHeight int64
+	group *auto.Group
 
 	enc *WALEncoder
 
@@ -89,7 +88,7 @@ var _ WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
-func NewWAL(walFile string, initialHeight int64, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
+func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure WAL directory is in place: %w", err)
@@ -103,7 +102,6 @@ func NewWAL(walFile string, initialHeight int64, groupOptions ...func(*auto.Grou
 		group:         group,
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
-		initialHeight: initialHeight,
 	}
 	wal.BaseService = *service.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
@@ -124,17 +122,7 @@ func (wal *BaseWAL) SetLogger(l log.Logger) {
 }
 
 func (wal *BaseWAL) OnStart() error {
-	size, err := wal.group.Head.Size()
-	if err != nil {
-		return err
-	} else if size == 0 {
-		prevHeight := wal.initialHeight - 1
-		if prevHeight < 0 {
-			prevHeight = 0
-		}
-		wal.WriteSync(EndHeightMessage{prevHeight})
-	}
-	err = wal.group.Start()
+	err := wal.group.Start()
 	if err != nil {
 		return err
 	}
