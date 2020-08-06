@@ -69,7 +69,7 @@ func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 }
 
 func (BaseApplication) CreateBlock(req RequestCreateBlock) ResponseCreateBlock {
-	panic("unimplemented!")
+	return ResponseCreateBlock{}
 }
 
 func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
@@ -150,7 +150,8 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 }
 
 func (app *GRPCApplication) CreateBlock(ctx context.Context, req *RequestCreateBlock) (*ResponseCreateBlock, error) {
-	panic("unimplemented!")
+	res := app.app.CreateBlock(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {

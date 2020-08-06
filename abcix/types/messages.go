@@ -117,6 +117,12 @@ func ToRequestQuery(req RequestQuery) *Request {
 	}
 }
 
+func ToRequestCreateBlock(req RequestCreateBlock) *Request {
+	return &Request{
+		Value: &Request_CreateBlock{&req},
+	}
+}
+
 func ToRequestInitChain(req RequestInitChain) *Request {
 	return &Request{
 		Value: &Request_InitChain{&req},

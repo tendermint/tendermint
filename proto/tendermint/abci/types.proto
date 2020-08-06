@@ -36,7 +36,6 @@ message Request {
     RequestOfferSnapshot      offer_snapshot       = 14;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
     RequestApplySnapshotChunk apply_snapshot_chunk = 16;
-    RequestCreateBlock        create_block         = 17;
   }
 }
 
@@ -60,7 +59,7 @@ message RequestSetOption {
 
 message RequestInitChain {
   google.protobuf.Timestamp time = 1
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                   chain_id         = 2;
   ConsensusParams          consensus_params = 3;
   repeated ValidatorUpdate validators       = 4 [(gogoproto.nullable) = false];
@@ -72,13 +71,6 @@ message RequestQuery {
   string path   = 2;
   int64  height = 3;
   bool   prove  = 4;
-}
-
-message RequestCreateBlock {
-  int64             height                = 1;
-  LastCommitInfo    last_commit_info      = 2 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators  = 3 [(gogoproto.nullable) = false];
-  MempoolIter       mempool_iter          = 4;
 }
 
 message RequestBeginBlock {
@@ -153,7 +145,6 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 14;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
-    ResponseCreateBlock        create_block         = 17;
   }
 }
 
@@ -204,17 +195,9 @@ message ResponseQuery {
   string                     codespace = 10;
 }
 
-message ResponseCreateBlock {
-  repeated bytes txs         = 1;
-  repeated bytes invalid_txs = 2;
-  bytes          hash        = 3;
-  repeated Event events      = 4
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseBeginBlock {
   repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -225,7 +208,7 @@ message ResponseCheckTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
@@ -237,16 +220,16 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
 }
 
 message ResponseEndBlock {
   repeated ValidatorUpdate validator_updates = 1
-      [(gogoproto.nullable) = false];
+  [(gogoproto.nullable) = false];
   ConsensusParams consensus_param_updates = 2;
   repeated Event  events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -341,9 +324,6 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
-// MempoolIter
-message MempoolIter {}
-
 //----------------------------------------
 // Blockchain Types
 
@@ -403,7 +383,6 @@ service ABCIApplication {
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
-  rpc CreateBlock(RequestCreateBlock) returns (ResponseCreateBlock);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);

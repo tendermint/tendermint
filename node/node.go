@@ -393,6 +393,7 @@ func createConsensusReactor(config *cfg.Config,
 		mempool,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
+		cs.StateCreateBlockFromApp(config.Consensus.CreateBlockFromApp),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
