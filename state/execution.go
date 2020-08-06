@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	abcix "github.com/tendermint/tendermint/abcix/types"
-	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -107,50 +107,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	var timestamp time.Time
 	evidence := blockExec.evpool.PendingEvidence(state.ConsensusParams.Evidence.MaxNum)
 	if createBlockFromApp {
-		voteInfos := make([]abcix.VoteInfo, commit.Size())
-		// block.Height=1 -> LastCommitInfo.Votes are empty.
-		// Remember that the first LastCommit is intentionally empty, so it makes
-		// sense for LastCommitInfo.Votes to also be empty.
 		if height == 1 {
 			timestamp = state.LastBlockTime // genesis time
 		} else {
 			timestamp = MedianTime(commit, state.LastValidators)
-			lastValSet, err := LoadValidators(blockExec.db, height-1)
-			if err != nil {
-				panic(err)
-			}
-
-			// Sanity check that commit size matches validator set size - only applies
-			// after first block.
-			var (
-				commitSize = commit.Size()
-				valSetLen  = len(lastValSet.Validators)
-			)
-			if commitSize != valSetLen {
-				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
-			}
-			for i, val := range lastValSet.Validators {
-				commitSig := commit.Signatures[i]
-				voteInfos[i] = abcix.VoteInfo{
-					Validator:       abcix.Validator(types.TM2PB.Validator(val)),
-					SignedLastBlock: !commitSig.Absent(),
-				}
-			}
 		}
-		byzVals := make([]abcix.Evidence, len(evidence))
-		for i, ev := range evidence {
-			valset, err := LoadValidators(blockExec.db, ev.Height())
-			if err != nil {
-				panic(err)
-			}
-			byzVals[i] = types.TM2PB.XEvidence(ev, valset, timestamp)
-		}
-
-		lastCommitInfo := abcix.LastCommitInfo{
-			Round: commit.Round,
-			Votes: voteInfos,
-		}
+		lastCommitInfo, byzVals := getCreateBlockValidatorInfo(timestamp, height, commit, evidence, blockExec.db)
 		resp, err := blockExec.proxyApp.CreateBlockSync(abcix.RequestCreateBlock{
 			Height:              height,
 			LastCommitInfo:      lastCommitInfo,
@@ -166,7 +128,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	} else {
 		maxBytes := state.ConsensusParams.Block.MaxBytes
 		maxGas := state.ConsensusParams.Block.MaxGas
-
 		// Fetch a limited amount of valid txs
 		maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 		txs = blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
@@ -447,6 +408,57 @@ func execBlockOnProxyApp(
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
+}
+
+// TODO: In the future we may want to combine this part of code with BeginBlock
+func getCreateBlockValidatorInfo(
+	time time.Time,
+	height int64,
+	lastCommit *types.Commit,
+	evidence []types.Evidence,
+	stateDB dbm.DB,
+) (abcix.LastCommitInfo, []abcix.Evidence) {
+	voteInfos := make([]abcix.VoteInfo, lastCommit.Size())
+	// block.Height=1 -> LastCommitInfo.Votes are empty.
+	// Remember that the first LastCommit is intentionally empty, so it makes
+	// sense for LastCommitInfo.Votes to also be empty.
+	if height > 1 {
+		lastValSet, err := LoadValidators(stateDB, height-1)
+		if err != nil {
+			panic(err)
+		}
+
+		var (
+			commitSize = lastCommit.Size()
+			valSetLen  = len(lastValSet.Validators)
+		)
+		if commitSize != valSetLen {
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, height, lastCommit.Signatures, lastValSet.Validators))
+		}
+
+		for i, val := range lastValSet.Validators {
+			commitSig := lastCommit.Signatures[i]
+			voteInfos[i] = abcix.VoteInfo{
+				Validator:       types.TM2PB.XValidator(val),
+				SignedLastBlock: !commitSig.Absent(),
+			}
+		}
+	}
+
+	byzVals := make([]abcix.Evidence, len(evidence))
+	for i, ev := range evidence {
+		valset, err := LoadValidators(stateDB, ev.Height())
+		if err != nil {
+			panic(err)
+		}
+		byzVals[i] = types.TM2PB.XEvidence(ev, valset, time)
+	}
+
+	return abcix.LastCommitInfo{
+		Round: lastCommit.Round,
+		Votes: voteInfos,
+	}, byzVals
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {

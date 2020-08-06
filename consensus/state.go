@@ -157,20 +157,21 @@ func NewState(
 	options ...StateOption,
 ) *State {
 	cs := &State{
-		config:           config,
-		blockExec:        blockExec,
-		blockStore:       blockStore,
-		txNotifier:       txNotifier,
-		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
-		internalMsgQueue: make(chan msgInfo, msgQueueSize),
-		timeoutTicker:    NewTimeoutTicker(),
-		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
-		done:             make(chan struct{}),
-		doWALCatchup:     true,
-		wal:              nilWAL{},
-		evpool:           evpool,
-		evsw:             tmevents.NewEventSwitch(),
-		metrics:          NopMetrics(),
+		config:             config,
+		blockExec:          blockExec,
+		blockStore:         blockStore,
+		txNotifier:         txNotifier,
+		peerMsgQueue:       make(chan msgInfo, msgQueueSize),
+		internalMsgQueue:   make(chan msgInfo, msgQueueSize),
+		timeoutTicker:      NewTimeoutTicker(),
+		statsMsgQueue:      make(chan msgInfo, msgQueueSize),
+		done:               make(chan struct{}),
+		doWALCatchup:       true,
+		wal:                nilWAL{},
+		evpool:             evpool,
+		evsw:               tmevents.NewEventSwitch(),
+		metrics:            NopMetrics(),
+		createBlockFromApp: false,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -212,6 +213,11 @@ func (cs *State) SetEventBus(b *types.EventBus) {
 // StateMetrics sets the metrics.
 func StateMetrics(metrics *Metrics) StateOption {
 	return func(cs *State) { cs.metrics = metrics }
+}
+
+// StateCreateBlockFromApp sets the flag for createBlock from app.
+func StateCreateBlockFromApp(create bool) StateOption {
+	return func(cs *State) { cs.createBlockFromApp = create }
 }
 
 // String returns a string.
