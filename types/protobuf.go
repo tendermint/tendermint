@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 	"reflect"
-	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -17,7 +16,6 @@ import (
 
 const (
 	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-	ABCIEvidenceTypePhantom       = "phantom"
 	ABCIEvidenceTypeLunatic       = "lunatic"
 	ABCIEvidenceTypeAmnesia       = "amnesia"
 )
@@ -119,12 +117,12 @@ func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusPar
 // ABCI Evidence includes information from the past that's not included in the evidence itself
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
+func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
 	addr := ev.Address()
 	_, val := valSet.GetByAddress(addr)
 	if val == nil {
 		// should already have checked this
-		panic(val)
+		panic(fmt.Sprintf("validator in evidence is not in val set, val addr: %v", addr))
 	}
 
 	// set type
@@ -132,21 +130,19 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case *PhantomValidatorEvidence:
-		evType = ABCIEvidenceTypePhantom
 	case *LunaticValidatorEvidence:
 		evType = ABCIEvidenceTypeLunatic
 	case *AmnesiaEvidence:
 		evType = ABCIEvidenceTypeAmnesia
 	default:
-		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
+		panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
 
 	return abci.Evidence{
 		Type:             evType,
 		Validator:        TM2PB.Validator(val),
 		Height:           ev.Height(),
-		Time:             evTime,
+		Time:             ev.Time(),
 		TotalVotingPower: valSet.TotalVotingPower(),
 	}
 }

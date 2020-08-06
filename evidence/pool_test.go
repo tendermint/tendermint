@@ -182,27 +182,6 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 	// a) Update marks evidence as committed
 	assert.True(t, pool.IsCommitted(evidence))
-	// b) Update updates valToLastHeight map
-	assert.Equal(t, height+1, pool.ValidatorLastHeight(valAddr))
-}
-
-func TestEvidencePoolNewPool(t *testing.T) {
-	var (
-		val          = types.NewMockPV()
-		valAddr      = val.PrivKey.PubKey().Address()
-		height       = int64(1)
-		stateDB      = initializeValidatorState(val, height)
-		evidenceDB   = dbm.NewMemDB()
-		blockStoreDB = dbm.NewMemDB()
-		state        = sm.LoadState(stateDB)
-		blockStore   = initializeBlockStore(blockStoreDB, state, valAddr)
-	)
-
-	pool, err := NewPool(stateDB, evidenceDB, blockStore)
-	require.NoError(t, err)
-
-	assert.Equal(t, height, pool.ValidatorLastHeight(valAddr))
-	assert.EqualValues(t, 0, pool.ValidatorLastHeight([]byte("non-existent-validator")))
 }
 
 func TestAddingAndPruningPOLC(t *testing.T) {

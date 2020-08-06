@@ -365,7 +365,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB, initialHeigh
 		if err != nil {
 			panic(err)
 		}
-		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
+		byzVals[i] = types.TM2PB.Evidence(ev, valset)
 	}
 
 	return abci.LastCommitInfo{
