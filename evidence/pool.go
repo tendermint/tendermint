@@ -741,7 +741,7 @@ func buildValToLastHeightMap(state sm.State, stateDB dbm.DB, blockStore *store.B
 		height     = state.LastBlockHeight
 	)
 
-	if height == 0 {
+	if height < state.InitialHeight {
 		return valToLastHeight, nil
 	}
 
