@@ -325,9 +325,6 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
-// MempoolIter
-message MempoolIter {}
-
 //----------------------------------------
 // Blockchain Types
 
