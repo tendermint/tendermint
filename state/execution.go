@@ -13,7 +13,11 @@ import (
 	abcix "github.com/tendermint/tendermint/abcix/types"
 	dbm "github.com/tendermint/tm-db"
 	abci "github.com/tendermint/tendermint/abci/types"
+<<<<<<< HEAD
 	cfg "github.com/tendermint/tendermint/config"
+=======
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+>>>>>>> a844cec5bf91f57ffcb61f9ae61ed6b1a9e7ecaf
 	"github.com/tendermint/tendermint/libs/fail"
 	mempl "github.com/tendermint/tendermint/mempool"
 )
@@ -109,41 +113,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			timestamp = state.LastBlockTime // genesis time
 		} else {
 			timestamp = MedianTime(commit, state.LastValidators)
-			lastValSet, err := LoadValidators(blockExec.db, height-1)
-			if err != nil {
-				panic(err)
-			}
-
-			// Sanity check that commit size matches validator set size - only applies
-			// after first block.
-			var (
-				commitSize = commit.Size()
-				valSetLen  = len(lastValSet.Validators)
-			)
-			if commitSize != valSetLen {
-				panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-					commitSize, valSetLen, height, commit.Signatures, lastValSet.Validators))
-			}
-			for i, val := range lastValSet.Validators {
-				commitSig := commit.Signatures[i]
-				voteInfos[i] = abcix.VoteInfo{
-					Validator:       abcix.Validator(types.TM2PB.Validator(val)),
-					SignedLastBlock: !commitSig.Absent(),
-				}
-			}
-		}
-		byzVals := make([]abcix.Evidence, len(evidence))
-		for i, ev := range evidence {
-			valset, err := LoadValidators(blockExec.db, ev.Height())
-			if err != nil {
-				panic(err)
-			}
-			byzVals[i] = types.TM2PB.XEvidence(ev, valset, timestamp)
-		}
-
-		lastCommitInfo := abcix.LastCommitInfo{
-			Round: commit.Round,
-			Votes: voteInfos,
 		}
 		lastCommitInfo, byzVals := getCreateBlockValidatorInfo(timestamp, height, commit, evidence, blockExec.db)
 		resp, err := blockExec.proxyApp.CreateBlockSync(abcix.RequestCreateBlock{

@@ -3,7 +3,7 @@
 package mocks
 
 import abcicli "github.com/tendermint/tendermint/abci/client"
-import abcixtypes "github.com/tendermint/tendermint/abcix/types"
+import xtypes "github.com/tendermint/tendermint/abcix/types"
 import mock "github.com/stretchr/testify/mock"
 
 import types "github.com/tendermint/tendermint/abci/types"
@@ -60,20 +60,20 @@ func (_m *AppConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 }
 
 // CreateBlockSync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) CreateBlockSync(_a0 abcixtypes.RequestCreateBlock) (*abcixtypes.ResponseCreateBlock, error) {
+func (_m *AppConnConsensus) CreateBlockSync(_a0 xtypes.RequestCreateBlock) (*xtypes.ResponseCreateBlock, error) {
 	ret := _m.Called(_a0)
 
-	var r0 *abcixtypes.ResponseCreateBlock
-	if rf, ok := ret.Get(0).(func(abcixtypes.RequestCreateBlock) *abcixtypes.ResponseCreateBlock); ok {
+	var r0 *xtypes.ResponseCreateBlock
+	if rf, ok := ret.Get(0).(func(xtypes.RequestCreateBlock) *xtypes.ResponseCreateBlock); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abcixtypes.ResponseCreateBlock)
+			r0 = ret.Get(0).(*xtypes.ResponseCreateBlock)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(abcixtypes.RequestCreateBlock) error); ok {
+	if rf, ok := ret.Get(1).(func(xtypes.RequestCreateBlock) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -113,6 +113,29 @@ func (_m *AppConnConsensus) EndBlockSync(_a0 types.RequestEndBlock) (*types.Resp
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(types.RequestEndBlock) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DeliverBlockSync provides a mock function with given fields: _a0
+func (_m *AppConnConsensus) DeliverBlockSync(_a0 xtypes.RequestDeliverBlock) (*xtypes.ResponseDeliverBlock, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *xtypes.ResponseDeliverBlock
+	if rf, ok := ret.Get(0).(func(xtypes.RequestDeliverBlock) *xtypes.ResponseDeliverBlock); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*xtypes.ResponseDeliverBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(xtypes.RequestDeliverBlock) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
