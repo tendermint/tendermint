@@ -186,16 +186,15 @@ func NewState(
 		cs.reconstructLastCommit(state)
 	}
 
+	cs.updateToState(state)
+
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
-
-	cs.updateToState(state)
 
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
-
 	return cs
 }
 

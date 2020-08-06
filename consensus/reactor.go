@@ -249,7 +249,11 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
-			if err = msg.ValidateHeight(conR.conS.state.InitialHeight); err != nil {
+			conR.conS.mtx.Lock()
+			// FIXME This usually doesn't change, so maybe pass as constructor to avoid grabbing mutex.
+			initialHeight := conR.conS.state.InitialHeight
+			conR.conS.mtx.Unlock()
+			if err = msg.ValidateHeight(initialHeight); err != nil {
 				conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
 				conR.Switch.StopPeerForError(src, err)
 				return
