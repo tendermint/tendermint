@@ -551,7 +551,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 // Updates State and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes cstypes.RoundStepNewHeight.
 func (cs *State) updateToState(state sm.State) {
-	if cs.CommitRound > -1 && cs.Height > 0 && cs.Height != state.LastBlockHeight {
+	if cs.CommitRound > -1 && 0 < cs.Height && cs.Height != state.LastBlockHeight {
 		panic(fmt.Sprintf("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
@@ -561,7 +561,8 @@ func (cs *State) updateToState(state sm.State) {
 			// Someone forgot to pass in state.Copy() somewhere?!
 			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
 				cs.state.LastBlockHeight+1, cs.Height))
-		} else if cs.Height == cs.state.InitialHeight && cs.state.LastBlockHeight > 0 {
+		}
+		if cs.state.LastBlockHeight > 0 && cs.Height == cs.state.InitialHeight {
 			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
 				cs.state.LastBlockHeight, cs.state.InitialHeight))
 		}
@@ -600,7 +601,7 @@ func (cs *State) updateToState(state sm.State) {
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
 		// must be called to reconstruct LastCommit from SeenCommit.
-		panic(fmt.Sprintf("LastCommit cannot be empty in heights > 1 (H:%d)",
+		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
 			state.LastBlockHeight+1,
 		))
 	}

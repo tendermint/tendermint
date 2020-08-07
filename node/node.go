@@ -375,7 +375,6 @@ func createBlockchainReactor(config *cfg.Config,
 
 func createConsensusReactor(config *cfg.Config,
 	state sm.State,
-	genDoc *types.GenesisDoc,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mempool *mempl.CListMempool,
@@ -558,9 +557,9 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor,
-	conR *cs.Reactor, stateProvider statesync.StateProvider, config *cfg.StateSyncConfig,
-	fastSync bool, stateDB dbm.DB, blockStore *store.BlockStore) error {
+func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
+	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
+	stateDB dbm.DB, blockStore *store.BlockStore) error {
 	ssR.Logger.Info("Starting state sync")
 
 	state := sm.LoadState(stateDB)
@@ -730,7 +729,7 @@ func NewNode(config *cfg.Config,
 		csMetrics.FastSyncing.Set(1)
 	}
 	consensusReactor, consensusState := createConsensusReactor(
-		config, state, genDoc, blockExec, blockStore, mempool, evidencePool,
+		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
 
