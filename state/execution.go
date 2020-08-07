@@ -13,11 +13,7 @@ import (
 	abcix "github.com/tendermint/tendermint/abcix/types"
 	dbm "github.com/tendermint/tm-db"
 	abci "github.com/tendermint/tendermint/abci/types"
-<<<<<<< HEAD
 	cfg "github.com/tendermint/tendermint/config"
-=======
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
->>>>>>> a844cec5bf91f57ffcb61f9ae61ed6b1a9e7ecaf
 	"github.com/tendermint/tendermint/libs/fail"
 	mempl "github.com/tendermint/tendermint/mempool"
 )

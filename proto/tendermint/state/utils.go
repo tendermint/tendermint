@@ -25,7 +25,7 @@ func CopyFields(dst interface{}, src interface{}) {
 }
 
 func (m *ABCIResponses) ValidatorUpdates() types.ValidatorUpdates {
-	if m.EndBlock.ValidatorUpdates != nil {
+	if m.EndBlock != nil {
 		return m.EndBlock.ValidatorUpdates
 	}
 	var deliverBlockValidatorUpdates types.ValidatorUpdates
@@ -36,7 +36,7 @@ func (m *ABCIResponses) ValidatorUpdates() types.ValidatorUpdates {
 }
 
 func (m *ABCIResponses) ConsensusParamUpdates() *types.ConsensusParams {
-	if m.EndBlock.ConsensusParamUpdates != nil {
+	if m.EndBlock != nil {
 		return m.EndBlock.ConsensusParamUpdates
 	}
 	var deliverBlockConsensusParamUpdates *types.ConsensusParams
