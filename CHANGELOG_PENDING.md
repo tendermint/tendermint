@@ -8,7 +8,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
 
-    - [evidence] [\#5181](https://github.com/tendermint/tendermint/pull/5181) Phantom validator evidence was removed (also from abci) (@cmwaters)  
+    - [evidence] [\#5181](https://github.com/tendermint/tendermint/pull/5181) Phantom validator evidence was removed (also from abci) (@cmwaters) 
+    - [crypto] [\#5214] Change `GenPrivKeySecp256k1` to `GenPrivKeyFromSecret` to be consistent with other keys
 
 ### FEATURES:
 
