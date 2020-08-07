@@ -126,6 +126,12 @@ functions) and `Client` object, which represents the complete light client.
 RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 `/proxy` directory.
 
+### State
+
+A field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
+(not `0`) if starting from height `1`. This can be configured via the genesis field 
+`initial_height`.
+
 ## v0.33.4
 
 ### Go API
