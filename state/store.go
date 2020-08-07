@@ -103,8 +103,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-// This flushes the writes (e.g. calls SetSync). The initial state should be saved with
-// BootstrapState() in order to set up the validator sets for previous/current/next heights.
+// This flushes the writes (e.g. calls SetSync).
 func SaveState(db dbm.DB, state State) {
 	saveState(db, state, stateKey)
 }
