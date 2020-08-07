@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,9 +31,9 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB dbm.DB
+	stateDB StateStore
 	// needed to load headers to verify evidence
-	blockStore *store.BlockStore
+	blockStore BlockStore
 
 	mtx sync.Mutex
 	// latest state
@@ -48,9 +47,9 @@ type Pool struct {
 
 // Creates a new pool. If using an existing evidence store, it will add all pending evidence
 // to the concurrent list.
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
+func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Pool, error) {
 	var (
-		state = sm.LoadState(stateDB)
+		state = stateDB.LoadState()
 	)
 
 	pool := &Pool{
@@ -147,13 +146,12 @@ func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 // into smaller pieces.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	var (
-		state  = evpool.State()
 		evList = []types.Evidence{evidence}
 	)
 
 	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
 
-	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
 	if err != nil {
 		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
 	}
@@ -194,7 +192,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		}
 
 		// 1) Verify against state.
-		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
+		if err := evpool.Verify(ev); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 
@@ -242,6 +240,10 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	}
 
 	return nil
+}
+
+func (evpool *Pool) Verify(evidence types.Evidence) error {
+	return VerifyEvidence(evidence, evpool.State(), evpool.stateDB, evpool.blockStore)
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
