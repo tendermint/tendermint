@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	abcix "github.com/tendermint/tendermint/abcix/types"
-
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -18,12 +16,15 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
 // It exposes ApplyBlock(), which validates & executes the block, updates state w/ ABCI responses,
 // then commits and updates the mempool atomically, then saves state.
+
+var config = cfg.DefaultBaseConfig()
 
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
@@ -171,7 +172,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// validate the validator updates and convert to tendermint types
-	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	abciValUpdates := abciResponses.ValidatorUpdates()
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
@@ -191,7 +192,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	var appHash []byte
+	var retainHeight int64
+	if config.DeliverBlock {
+		err = blockExec.mempoolUpdate(state, block, abciResponses.DeliverBlock)
+		appHash = abciResponses.DeliverBlock.Data
+		retainHeight = abciResponses.DeliverBlock.RetainHeight
+	} else {
+		appHash, retainHeight, err = blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	}
+
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -203,6 +213,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
+
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -266,6 +277,38 @@ func (blockExec *BlockExecutor) Commit(
 	return res.Data, res.RetainHeight, err
 }
 
+// MempoolUpdate without commit action
+func (blockExec *BlockExecutor) mempoolUpdate(
+	state State,
+	block *types.Block,
+	deliverBlockResponses *abcix.ResponseDeliverBlock,
+) error {
+	blockExec.mempool.Lock()
+	defer blockExec.mempool.Unlock()
+
+	// while mempool is Locked, flush to ensure all async requests have completed
+	// in the ABCI app before Commit.
+	err := blockExec.mempool.FlushAppConn()
+	if err != nil {
+		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
+		return err
+	}
+	var deliverTxs []*abci.ResponseDeliverTx
+	for i, d := range deliverBlockResponses.DeliverTxs {
+		tmstate.CopyFields(deliverTxs[i], d)
+	}
+	// Update mempool.
+	err = blockExec.mempool.Update(
+		block.Height,
+		block.Txs,
+		deliverTxs,
+		TxPreCheck(state),
+		TxPostCheck(state),
+	)
+
+	return err
+}
+
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
 
@@ -282,7 +325,7 @@ func execBlockOnProxyApp(
 	txIndex := 0
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
-	abciResponses.DeliverTxs = dtxs
+	abciResponses.UpdateDeliverTx(dtxs)
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -297,44 +340,68 @@ func execBlockOnProxyApp(
 				logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
-			abciResponses.DeliverTxs[txIndex] = txRes
+			abciResponses.UpdateDeliverTxByIndex(txRes, txIndex)
 			txIndex++
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
-
-	// Begin block
-	var err error
 	pbh := block.Header.ToProto()
-	if pbh == nil {
-		return nil, errors.New("nil header")
-	}
-	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              *pbh,
-		LastCommitInfo:      commitInfo,
-		ByzantineValidators: byzVals,
-	})
-	if err != nil {
-		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
-		return nil, err
-	}
+	var err error
 
-	// Run txs of block.
-	for _, tx := range block.Txs {
-		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
-		if err := proxyAppConn.Error(); err != nil {
+	if config.DeliverBlock {
+		// Deliver block.
+		var txs [][]byte
+		for _, tx := range block.Txs {
+			txs = append(txs, tx)
+		}
+		var commitInfoX abcix.LastCommitInfo
+		tmstate.CopyFields(commitInfoX, commitInfo)
+		var byzValsX []abcix.Evidence
+		for i, e := range byzVals {
+			tmstate.CopyFields(byzValsX[i], e)
+		}
+		abciResponses.DeliverBlock, err = proxyAppConn.DeliverBlockSync(abcix.RequestDeliverBlock{
+			Height:              block.Height,
+			Hash:                block.Hash(),
+			Header:              *pbh,
+			LastCommitInfo:      commitInfoX,
+			ByzantineValidators: byzValsX,
+			Txs:                 txs,
+		})
+		if err != nil {
+			logger.Error("Error in proxyAppConn.DeliverBlock", "err", err)
+		}
+	} else {
+		// Begin block.
+		if pbh == nil {
+			return nil, errors.New("nil header")
+		}
+		abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+			Hash:                block.Hash(),
+			Header:              *pbh,
+			LastCommitInfo:      commitInfo,
+			ByzantineValidators: byzVals,
+		})
+		if err != nil {
+			logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
+		}
+
+		// Run txs of block.
+		for _, tx := range block.Txs {
+			proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
+			if err := proxyAppConn.Error(); err != nil {
+				return nil, err
+			}
+		}
+
+		// End block.
+		abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
+		if err != nil {
+			logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 			return nil, err
 		}
-	}
-
-	// End block.
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
-	if err != nil {
-		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
-		return nil, err
 	}
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
@@ -497,9 +564,9 @@ func updateState(
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
-	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
+	if abciResponses.ConsensusParamUpdates() != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
+		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.ConsensusParamUpdates())
 		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
