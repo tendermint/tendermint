@@ -100,7 +100,6 @@ message RequestEndBlock {
 
 message RequestCommit {}
 
-
 // lists available snapshots
 message RequestListSnapshots {
 }

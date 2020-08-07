@@ -226,7 +226,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
-// mempool. TODO: update comments
+// mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
 // The Mempool must be locked during commit and update because state is
 // typically reset on Commit and old txs must be replayed against committed
