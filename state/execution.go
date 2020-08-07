@@ -325,12 +325,9 @@ func execBlockOnProxyApp(
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
-	// block.Height=1 -> LastCommitInfo.Votes are empty.
+	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
-	if initialHeight <= 0 {
-		initialHeight = 1
-	}
 	if block.Height > initialHeight {
 		lastValSet, err := LoadValidators(stateDB, block.Height-1)
 		if err != nil {

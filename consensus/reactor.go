@@ -250,7 +250,6 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
 			conR.conS.mtx.Lock()
-			// FIXME This usually doesn't change, so maybe pass as constructor to avoid grabbing mutex.
 			initialHeight := conR.conS.state.InitialHeight
 			conR.conS.mtx.Unlock()
 			if err = msg.ValidateHeight(initialHeight); err != nil {
