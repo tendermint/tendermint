@@ -236,7 +236,7 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
-		DeliverBlock:       false,
+		DeliverBlock:       true,
 	}
 }
 
