@@ -3,19 +3,20 @@ package state
 import (
 	"errors"
 	"fmt"
+	"time"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"time"
-	abcix "github.com/tendermint/tendermint/abcix/types"
 	dbm "github.com/tendermint/tm-db"
-	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/fail"
-	mempl "github.com/tendermint/tendermint/mempool"
 )
 
 //-----------------------------------------------------------------------------
