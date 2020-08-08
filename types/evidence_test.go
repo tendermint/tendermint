@@ -68,7 +68,7 @@ func TestDuplicateVoteEvidence(t *testing.T) {
 			VoteA: c.vote1,
 			VoteB: c.vote2,
 
-			time: defaultVoteTime,
+			Timestamp: defaultVoteTime,
 		}
 		if c.valid {
 			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")

@@ -182,7 +182,7 @@ type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
 
-	time time.Time
+	Timestamp time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
@@ -205,14 +205,13 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVote
 		VoteA: voteA,
 		VoteB: voteB,
 
-		time: time,
+		Timestamp: time,
 	}
 }
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
-
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v, Time: %v}", dve.VoteA, dve.VoteB, dve.Timestamp)
 }
 
 // Height returns the height this evidence refers to.
@@ -222,7 +221,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 
 // Time returns time of the latest vote.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.time
+	return dve.Timestamp
 }
 
 // Address returns the address of the validator.
@@ -364,7 +363,7 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	tp := tmproto.DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
-		Time:  dve.time,
+		Time:  dve.Timestamp,
 	}
 	return &tp
 }
@@ -676,7 +675,7 @@ type LunaticValidatorEvidence struct {
 	Vote               *Vote   `json:"vote"`
 	InvalidHeaderField string  `json:"invalid_header_field"`
 
-	time time.Time
+	Timestamp time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &LunaticValidatorEvidence{}
@@ -688,7 +687,7 @@ func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField 
 		Vote:               vote,
 		InvalidHeaderField: invalidHeaderField,
 
-		time: time,
+		Timestamp: time,
 	}
 }
 
@@ -698,7 +697,7 @@ func (e *LunaticValidatorEvidence) Height() int64 {
 
 // Time returns the maximum between the header's time and vote's time.
 func (e *LunaticValidatorEvidence) Time() time.Time {
-	return e.time
+	return e.Timestamp
 }
 
 func (e *LunaticValidatorEvidence) Address() []byte {
@@ -847,7 +846,7 @@ func (e *LunaticValidatorEvidence) ToProto() *tmproto.LunaticValidatorEvidence {
 		Header:             h,
 		Vote:               v,
 		InvalidHeaderField: e.InvalidHeaderField,
-		Time:               e.time,
+		Time:               e.Timestamp,
 	}
 
 	return tp
@@ -872,7 +871,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 		Header:             &h,
 		Vote:               v,
 		InvalidHeaderField: pb.InvalidHeaderField,
-		time:               pb.Time,
+		Timestamp:          pb.Time,
 	}
 
 	return &tp, tp.ValidateBasic()
@@ -890,7 +889,7 @@ type PotentialAmnesiaEvidence struct {
 	VoteB *Vote `json:"vote_b"`
 
 	HeightStamp int64
-	time        time.Time
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
@@ -902,9 +901,9 @@ func NewPotentialAmnesiaEvidence(voteA, voteB *Vote, time time.Time) *PotentialA
 	}
 
 	if voteA.Timestamp.Before(voteB.Timestamp) {
-		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB, time: time}
+		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB, Timestamp: time}
 	}
-	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA, time: time}
+	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA, Timestamp: time}
 }
 
 func (e *PotentialAmnesiaEvidence) Height() int64 {
@@ -912,7 +911,7 @@ func (e *PotentialAmnesiaEvidence) Height() int64 {
 }
 
 func (e *PotentialAmnesiaEvidence) Time() time.Time {
-	return e.time
+	return e.Timestamp
 }
 
 func (e *PotentialAmnesiaEvidence) Address() []byte {
@@ -1068,7 +1067,7 @@ func (e *PotentialAmnesiaEvidence) ToProto() *tmproto.PotentialAmnesiaEvidence {
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: e.HeightStamp,
-		Time:        e.time,
+		Time:        e.Timestamp,
 	}
 
 	return tp
@@ -1463,7 +1462,7 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: pb.GetHeightStamp(),
-		time:        pb.Time,
+		Timestamp:        pb.Time,
 	}
 
 	return &tp, tp.ValidateBasic()
