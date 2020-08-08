@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -14,7 +16,6 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 const (

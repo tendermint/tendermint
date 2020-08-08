@@ -79,7 +79,6 @@ message RequestCreateBlock {
   int64             height                = 1;
   LastCommitInfo    last_commit_info      = 2 [(gogoproto.nullable) = false];
   repeated Evidence byzantine_validators  = 3 [(gogoproto.nullable) = false];
-  MempoolIter       mempool_iter          = 4;
 }
 
 message RequestBeginBlock {
@@ -366,9 +365,6 @@ message TxResult {
   bytes             tx     = 3;
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
-
-// MempoolIter
-message MempoolIter {}
 
 //----------------------------------------
 // Blockchain Types

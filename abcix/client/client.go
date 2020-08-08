@@ -49,7 +49,7 @@ type Client interface {
 	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
-	CreateBlockSync(types.RequestCreateBlock) (*types.ResponseCreateBlock, error)
+	CreateBlockSync(types.RequestCreateBlock, types.MempoolIter) (*types.ResponseCreateBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
