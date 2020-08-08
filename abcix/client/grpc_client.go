@@ -196,7 +196,7 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Commit{Commit: res}})
 }
 
-func (cli *grpcClient) CreateBlockAsync(params types.RequestCreateBlock) *ReqRes {
+func (cli *grpcClient) CreateBlockAsync(params types.RequestCreateBlock, mempool types.MempoolIter) *ReqRes {
 	req := types.ToRequestCreateBlock(params)
 	res, err := cli.client.CreateBlock(context.Background(), req.GetCreateBlock(), grpc.WaitForReady(true))
 	if err != nil {
@@ -335,9 +335,11 @@ func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
-func (cli *grpcClient) CreateBlockSync(req types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
-	reqres := cli.CreateBlockAsync(req)
-	return reqres.Response.GetCreateBlock(), cli.Error()
+func (cli *grpcClient) CreateBlockSync(
+	req types.RequestCreateBlock,
+	mempool types.MempoolIter,
+) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
 }
 
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {

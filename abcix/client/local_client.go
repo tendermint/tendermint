@@ -260,11 +260,14 @@ func (app *localClient) CommitSync() (*types.ResponseCommit, error) {
 	return &res, nil
 }
 
-func (app *localClient) CreateBlockSync(req types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
+func (app *localClient) CreateBlockSync(
+	req types.RequestCreateBlock,
+	mempool types.MempoolIter,
+) (*types.ResponseCreateBlock, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.CreateBlock(req)
+	res := app.Application.CreateBlock(req, mempool)
 	return &res, nil
 }
 

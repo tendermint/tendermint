@@ -335,10 +335,11 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
-func (cli *socketClient) CreateBlockSync(req types.RequestCreateBlock) (*types.ResponseCreateBlock, error) {
-	reqres := cli.queueRequest(types.ToRequestCreateBlock(req))
-	cli.FlushSync()
-	return reqres.Response.GetCreateBlock(), cli.Error()
+func (cli *socketClient) CreateBlockSync(
+	req types.RequestCreateBlock,
+	mempool types.MempoolIter,
+) (*types.ResponseCreateBlock, error) {
+	panic("unimplemented!")
 }
 
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

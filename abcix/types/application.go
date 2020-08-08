@@ -4,6 +4,9 @@ import (
 	context "golang.org/x/net/context"
 )
 
+type MempoolIter interface {
+}
+
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
@@ -18,12 +21,13 @@ type Application interface {
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	CreateBlock(RequestCreateBlock) ResponseCreateBlock // Create block and include tx by priority
-	InitChain(RequestInitChain) ResponseInitChain       // Init blockchain w validators/other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock    // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx       // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock          // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                             // Commit the state and return the application Merkle root hash
+	CreateBlock(RequestCreateBlock,
+		MempoolIter) ResponseCreateBlock // Create block and include tx by priority
+	InitChain(RequestInitChain) ResponseInitChain    // Init blockchain w validators/other info from TendermintCore
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -68,7 +72,7 @@ func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 	return ResponseQuery{Code: CodeTypeOK}
 }
 
-func (BaseApplication) CreateBlock(req RequestCreateBlock) ResponseCreateBlock {
+func (BaseApplication) CreateBlock(req RequestCreateBlock, mempool MempoolIter) ResponseCreateBlock {
 	return ResponseCreateBlock{}
 }
 
@@ -150,8 +154,7 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 }
 
 func (app *GRPCApplication) CreateBlock(ctx context.Context, req *RequestCreateBlock) (*ResponseCreateBlock, error) {
-	res := app.app.CreateBlock(*req)
-	return &res, nil
+	panic("unimplemented!")
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
