@@ -17,13 +17,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-/*
-SignVoteRequest
-SignedVoteResponse
-SignProposalRequest
-SignedProposalResponse
-*/
-
 var stamp = time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC)
 
 func exampleVote() *types.Vote {
