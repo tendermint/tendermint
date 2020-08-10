@@ -116,22 +116,24 @@ func (cs *State) catchupReplay(csHeight int64) error {
 		return fmt.Errorf("wal should not contain #ENDHEIGHT %d", csHeight)
 	}
 
-	// If this is the initial height, skip replay
-	if csHeight <= cs.state.InitialHeight {
-		return nil
-	}
-
 	// Search for last height marker.
 	//
 	// Ignore data corruption errors in previous heights because we only care about last height
-	gr, found, err = cs.wal.SearchForEndHeight(csHeight-1, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
+	if csHeight < cs.state.InitialHeight {
+		return fmt.Errorf("cannot replay height %v, below initial height %v", csHeight, cs.state.InitialHeight)
+	}
+	endHeight := csHeight - 1
+	if csHeight == cs.state.InitialHeight {
+		endHeight = 0
+	}
+	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err == io.EOF {
-		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
+		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", endHeight)
 	} else if err != nil {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
+		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, endHeight)
 	}
 	defer gr.Close()
 
