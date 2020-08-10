@@ -237,6 +237,7 @@ message ResponseCheckTx {
   repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
+  int64  priority  = 9;
 }
 
 message ResponseDeliverTx {
