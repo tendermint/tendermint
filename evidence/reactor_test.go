@@ -234,7 +234,7 @@ func exampleVote(t byte) *types.Vote {
 }
 
 func exampleHeader() *types.Header {
-	blockID := types.BlockID{[]byte{0}, types.PartSetHeader{123, []byte{0}}}
+	blockID := types.BlockID{Hash: []byte{0}, PartSetHeader: types.PartSetHeader{Total: 123, Hash: []byte{0}}}
 
 	h := &types.Header{
 		Version:            version.Consensus{Block: 1, App: 2},

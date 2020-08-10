@@ -43,7 +43,7 @@ message SignedVoteResponse {
 
 // SignProposalRequest is a request to sign a proposal
 message SignProposalRequest {
-  tendermint.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  tendermint.types.Proposal proposal = 1;
 }
 
 // SignedProposalResponse is response containing a signed proposal or an error
@@ -70,4 +70,3 @@ message Message {
     PingResponse           ping_response            = 8;
   }
 }
-
