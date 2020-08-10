@@ -44,7 +44,9 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 	for i := 0; i < N; i++ {
 		evidenceDB := dbm.NewMemDB()
 		blockStore := &mocks.BlockStore{}
-		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
+		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+		)
 		pool, err := NewPool(stateDBs[i], evidenceDB, blockStore)
 		if err != nil {
 			panic(err)
@@ -117,7 +119,8 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *Pool, val types.PrivValidator, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1), time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev

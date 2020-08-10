@@ -681,7 +681,8 @@ type LunaticValidatorEvidence struct {
 var _ Evidence = &LunaticValidatorEvidence{}
 
 // NewLunaticValidatorEvidence creates a new instance of the respective evidence
-func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string, time time.Time) *LunaticValidatorEvidence {
+func NewLunaticValidatorEvidence(header *Header,
+	vote *Vote, invalidHeaderField string, time time.Time) *LunaticValidatorEvidence {
 	return &LunaticValidatorEvidence{
 		Header:             header,
 		Vote:               vote,

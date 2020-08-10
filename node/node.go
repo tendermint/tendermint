@@ -334,7 +334,7 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, blockStore *store.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
+	stateDB dbm.DB, blockStore evidence.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {

@@ -45,7 +45,9 @@ func TestEvidencePool(t *testing.T) {
 		badEvidence  = types.NewMockDuplicateVoteEvidenceWithValidator(1, evidenceTime, val, evidenceChainID)
 	)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
@@ -92,7 +94,9 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
 	require.NoError(t, err)
@@ -326,7 +330,9 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+	)
 
 	// TEST SETUP
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
