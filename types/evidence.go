@@ -1462,7 +1462,7 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: pb.GetHeightStamp(),
-		Timestamp:        pb.Time,
+		Timestamp:   pb.Time,
 	}
 
 	return &tp, tp.ValidateBasic()

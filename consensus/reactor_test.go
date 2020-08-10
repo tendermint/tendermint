@@ -39,7 +39,7 @@ import (
 //----------------------------------------------
 // in-process testnets
 
-var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC) 
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func startConsensusNet(t *testing.T, css []*State, n int) (
 	[]*Reactor,
@@ -236,7 +236,7 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	return false
 }
 func (m *mockEvidencePool) AddPOLC(*types.ProofOfLockChange) error { return nil }
-func (m *mockEvidencePool) Header(int64) *types.Header             { return &types.Header{Time: defaultTestTime } }
+func (m *mockEvidencePool) Header(int64) *types.Header             { return &types.Header{Time: defaultTestTime} }
 
 //------------------------------------
 

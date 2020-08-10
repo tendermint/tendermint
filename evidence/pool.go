@@ -186,11 +186,11 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// A header needs to be fetched. For lunatic evidence this is so we can verify
 		// that some of the fields are different to the ones we have. For all evidence it
 		// it so we can verify that the time of the evidence is correct
-		
+
 		var header *types.Header
 		// if the evidence is from the current height - this means the evidence is fresh from the consensus
 		// and we won't have it in the block store. We thus check that the time isn't before the previous block
-		if ev.Height() == evpool.State().LastBlockHeight + 1 {
+		if ev.Height() == evpool.State().LastBlockHeight+1 {
 			if ev.Time().Before(evpool.State().LastBlockTime) {
 				return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
 					ev.Time(),
@@ -203,7 +203,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 				return fmt.Errorf("don't have header at height #%d", ev.Height())
 			}
 		}
-		
+
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
 			evpool.logger.Debug("Inbound evidence is invalid", "evidence", ev, "err", err)

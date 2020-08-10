@@ -214,22 +214,22 @@ func TestValidateBlockCommit(t *testing.T) {
 func TestValidateBlockEvidence(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests 
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	evpool := &mocks.EvidencePool{}
 	evpool.On("IsPending", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(false)
 	evpool.On("IsCommitted", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(false)
 	evpool.On("Header", mock.AnythingOfType("int64")).Return(func(height int64) *types.Header {
 		return &types.Header{
-			Time: defaultEvidenceTime,
+			Time:   defaultEvidenceTime,
 			Height: height,
 		}
 	})
 	evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
-	
+
 	state.ConsensusParams.Evidence.MaxNum = 3
 	blockExec := sm.NewBlockExecutor(
 		stateDB,
@@ -298,7 +298,7 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 		privVals[val.Address.String()], chainID)
 	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
 		privVals[val2.Address.String()], chainID)
-		
+
 	header := &types.Header{Time: defaultTestTime}
 
 	evpool := &mocks.EvidencePool{}
@@ -474,7 +474,6 @@ func TestValidatePrimedAmnesiaEvidence(t *testing.T) {
 	evpool.On("AddEvidence", ae).Return(nil)
 	evpool.On("AddEvidence", pe).Return(nil)
 	evpool.On("Header", height).Return(header)
-	
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB, log.TestingLogger(),
@@ -495,7 +494,7 @@ func TestVerifyEvidenceWrongAddress(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := makeState(1, int(height))
 	ev := types.NewMockDuplicateVoteEvidence(height, defaultTestTime, chainID)
-	
+
 	header := &types.Header{Time: defaultTestTime}
 
 	evpool := &mocks.EvidencePool{}
@@ -547,9 +546,9 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	err = vals[val.Address.String()].SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
 	require.NoError(t, err)
-	
+
 	pae := types.NewPotentialAmnesiaEvidence(voteA, voteB, defaultTestTime)
-	
+
 	voteC := makeVote(height, 2, 1, addr2, blockID)
 	vC := voteC.ToProto()
 	err = vals[val2.Address.String()].SignVote(chainID, vC)
@@ -593,7 +592,7 @@ func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 
 	goodAe = &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: pae,
-		Polc: types.NewEmptyPOLC(),
+		Polc:                     types.NewEmptyPOLC(),
 	}
 	err = sm.VerifyEvidence(stateDB, state, goodAe, &types.Header{Time: defaultTestTime})
 	assert.NoError(t, err)

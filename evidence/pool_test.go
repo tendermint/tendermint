@@ -44,7 +44,7 @@ func TestEvidencePool(t *testing.T) {
 		goodEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(height, evidenceTime, val, evidenceChainID)
 		badEvidence  = types.NewMockDuplicateVoteEvidenceWithValidator(1, evidenceTime, val, evidenceChainID)
 	)
-	
+
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -91,7 +91,7 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 		blockStore   = &mocks.BlockStore{}
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
-	
+
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -303,11 +303,11 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 			},
 			Proposer: val.ExtractIntoValidator(1),
 		}
-		height       = int64(30)
-		stateDB      = initializeStateFromValidatorSet(valSet, height)
-		evidenceDB   = dbm.NewMemDB()
-		state        = sm.LoadState(stateDB)
-		blockStore   = &mocks.BlockStore{}
+		height     = int64(30)
+		stateDB    = initializeStateFromValidatorSet(valSet, height)
+		evidenceDB = dbm.NewMemDB()
+		state      = sm.LoadState(stateDB)
+		blockStore = &mocks.BlockStore{}
 		//evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
 			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
@@ -325,7 +325,7 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 		}
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	)
-	
+
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(&types.BlockMeta{Header: types.Header{Time: evidenceTime}})
 
 	// TEST SETUP
@@ -350,8 +350,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	ev := &types.PotentialAmnesiaEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:     voteA,
+		VoteB:     voteB,
 		Timestamp: evidenceTime,
 	}
 
@@ -415,8 +415,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	pool.logger.Info("CASE D")
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
 	ev2 := &types.PotentialAmnesiaEvidence{
-		VoteA: voteC,
-		VoteB: voteB,
+		VoteA:     voteC,
+		VoteB:     voteB,
 		Timestamp: evidenceTime,
 	}
 	err = pool.AddEvidence(ev2)
@@ -451,8 +451,8 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
 	// and start our own trial
 	newPe := &types.PotentialAmnesiaEvidence{
-		VoteA: voteB,
-		VoteB: voteD,
+		VoteA:     voteB,
+		VoteB:     voteD,
 		Timestamp: evidenceTime,
 	}
 	newAe := &types.AmnesiaEvidence{
