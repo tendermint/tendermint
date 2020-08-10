@@ -256,7 +256,7 @@ func exampleHeader() *types.Header {
 	return h
 }
 
-// nolint:ll //ignore line length for tests
+// nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
 	dupl := types.NewDuplicateVoteEvidence(exampleVote(1), exampleVote(2))
