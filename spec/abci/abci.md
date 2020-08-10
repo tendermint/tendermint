@@ -574,9 +574,8 @@ via light client.
   - `Type (string)`: Type of the evidence. A hierarchical path like
     "duplicate/vote".
   - `Validator (Validator`: The offending validator
-  - `Height (int64)`: Height when the offense was committed
-  - `Time (google.protobuf.Timestamp)`: Time of the block at height `Height`.
-    It is the proposer's local time when block was created.
+  - `Height (int64)`: Height when the offense occured
+  - `Time (google.protobuf.Timestamp)`: Time of the block that was committed at the height that the offense occured
   - `TotalVotingPower (int64)`: Total voting power of the validator set at
     height `Height`
 
