@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -34,7 +33,7 @@ type Pool struct {
 	// needed to load validators to verify evidence
 	stateDB dbm.DB
 	// needed to load headers to verify evidence
-	blockStore *store.BlockStore
+	blockStore BlockStore
 
 	mtx sync.Mutex
 	// latest state
@@ -48,7 +47,7 @@ type Pool struct {
 
 // Creates a new pool. If using an existing evidence store, it will add all pending evidence
 // to the concurrent list.
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
+func NewPool(stateDB, evidenceDB dbm.DB, blockStore BlockStore) (*Pool, error) {
 	var (
 		state = sm.LoadState(stateDB)
 	)
