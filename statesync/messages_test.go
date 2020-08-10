@@ -83,13 +83,6 @@ func TestValidateMsg(t *testing.T) {
 	}
 }
 
-/*
-SnapshotsRequest
-SnapshotsResponse
-ChunkRequest
-ChunkResponse
-*/
-
 //nolint:lll // ignore line length
 func TestStateSyncVectors(t *testing.T) {
 

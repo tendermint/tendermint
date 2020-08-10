@@ -1,11 +1,13 @@
 package conn
 
 import (
+	"encoding/hex"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -560,4 +562,28 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.False(t, mconn.CanSend(0x01))
 	assert.False(t, mconn.TrySend(0x01, msg))
 	assert.Equal(t, "TrySend", <-resultCh)
+}
+
+// nolint:lll //ignore line length for tests
+func TestConnVectors(t *testing.T) {
+
+	testCases := []struct {
+		testName string
+		msg      proto.Message
+		expBytes string
+	}{
+		{"PacketPing", &tmp2p.PacketPing{}, "0a00"},
+		{"PacketPong", &tmp2p.PacketPong{}, "1200"},
+		{"PacketMsg", &tmp2p.PacketMsg{ChannelID: 1, EOF: false, Data: []byte("data transmitted over the wire")}, "1a2208011a1e64617461207472616e736d6974746564206f766572207468652077697265"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		pm := mustWrapPacket(tc.msg)
+		bz, err := pm.Marshal()
+		require.NoError(t, err, tc.testName)
+
+		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
+	}
 }
