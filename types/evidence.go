@@ -361,9 +361,9 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
-		Timestamp:  dve.Timestamp,
+		VoteA:     voteA,
+		VoteB:     voteB,
+		Timestamp: dve.Timestamp,
 	}
 	return &tp
 }
