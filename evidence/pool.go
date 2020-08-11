@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -34,7 +33,7 @@ type Pool struct {
 	// needed to load validators to verify evidence
 	stateDB dbm.DB
 	// needed to load headers to verify evidence
-	blockStore *store.BlockStore
+	blockStore BlockStore
 
 	mtx sync.Mutex
 	// latest state
@@ -48,7 +47,7 @@ type Pool struct {
 
 // Creates a new pool. If using an existing evidence store, it will add all pending evidence
 // to the concurrent list.
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
+func NewPool(stateDB, evidenceDB dbm.DB, blockStore BlockStore) (*Pool, error) {
 	var (
 		state = sm.LoadState(stateDB)
 	)
@@ -184,17 +183,30 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 		}
 
-		// For lunatic validator evidence, a header needs to be fetched.
+		// A header needs to be fetched. For lunatic evidence this is so we can verify
+		// that some of the fields are different to the ones we have. For all evidence it
+		// it so we can verify that the time of the evidence is correct
+
 		var header *types.Header
-		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
+		// if the evidence is from the current height - this means the evidence is fresh from the consensus
+		// and we won't have it in the block store. We thus check that the time isn't before the previous block
+		if ev.Height() == evpool.State().LastBlockHeight+1 {
+			if ev.Time().Before(evpool.State().LastBlockTime) {
+				return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
+					ev.Time(),
+					evpool.State().LastBlockTime)
+			}
+			header = &types.Header{Time: ev.Time()}
+		} else { // if the evidence is from a prior height
 			header = evpool.Header(ev.Height())
 			if header == nil {
-				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
+				return fmt.Errorf("don't have header at height #%d", ev.Height())
 			}
 		}
 
 		// 1) Verify against state.
 		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
+			evpool.logger.Debug("Inbound evidence is invalid", "evidence", ev, "err", err)
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 
@@ -238,7 +250,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// 3) Add evidence to clist.
 		evpool.evidenceList.PushBack(ev)
 
-		evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", ev)
+		evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 	}
 
 	return nil
