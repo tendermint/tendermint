@@ -32,6 +32,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	require.NoError(t, err)
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
+	sm.SaveState(stateDB, state)
 
 	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
 

@@ -37,8 +37,7 @@ func calcABCIResponsesKey(height int64) []byte {
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
-// or creates a new one from the given genesisFilePath and persists the result
-// to the database.
+// or creates a new one from the given genesisFilePath.
 func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
 	state := LoadState(stateDB)
 	if state.IsEmpty() {
@@ -47,15 +46,13 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state)
 	}
 
 	return state, nil
 }
 
 // LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
-// or creates a new one from the given genesisDoc and persists the result
-// to the database.
+// or creates a new one from the given genesisDoc.
 func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
 	state := LoadState(stateDB)
 
@@ -65,7 +62,6 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state)
 	}
 
 	return state, nil
