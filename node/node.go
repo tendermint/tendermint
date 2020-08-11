@@ -666,9 +666,7 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
-	// Determine whether we should do state and/or fast sync.
-	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	// Determine whether we should attempt state sync.
 	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
@@ -688,6 +686,10 @@ func NewNode(config *cfg.Config,
 		// what happened during block replay).
 		state = sm.LoadState(stateDB)
 	}
+
+	// Determine whether we should do fast sync. This must happen after the handshake, since the
+	// app may modify the validator set, specifying ourself as the only validator.
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 

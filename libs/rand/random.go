@@ -149,6 +149,10 @@ func (r *Rand) Seed(seed int64) {
 
 // Str constructs a random alphanumeric string of given length.
 func (r *Rand) Str(length int) string {
+	if length <= 0 {
+		return ""
+	}
+
 	chars := []byte{}
 MAIN_LOOP:
 	for {
