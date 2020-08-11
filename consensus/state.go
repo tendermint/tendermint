@@ -1825,7 +1825,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			}
 			evidenceErr := cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
 			if evidenceErr != nil {
-				cs.Logger.Debug("Failed to add evidence to the evidence pool", "err", evidenceErr)
+				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			}
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {

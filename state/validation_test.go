@@ -531,6 +531,19 @@ func TestVerifyEvidenceExpiredEvidence(t *testing.T) {
 	}
 }
 
+func TestVerifyEvidenceInvalidTime(t *testing.T) {
+	height := 4
+	state, stateDB, _ := makeState(1, height)
+	differentTime := time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)
+	ev := types.NewMockDuplicateVoteEvidence(int64(height), differentTime, chainID)
+	err := sm.VerifyEvidence(stateDB, state, ev, &types.Header{Time: defaultTestTime})
+	errMsg := "evidence time (2019-02-01 00:00:00 +0000 UTC) is different to the time" +
+		" of the header we have for the same height (2019-01-01 00:00:00 +0000 UTC)"
+	if assert.Error(t, err) {
+		assert.Equal(t, errMsg, err.Error())
+	}
+}
+
 func TestVerifyEvidenceWithAmnesiaEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, vals := makeState(4, int(height))

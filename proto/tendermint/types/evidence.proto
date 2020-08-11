@@ -14,7 +14,7 @@ message DuplicateVoteEvidence {
   Vote vote_a = 1;
   Vote vote_b = 2;
   
-  google.protobuf.Timestamp time = 3
+  google.protobuf.Timestamp timestamp = 3
     [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 
@@ -23,7 +23,7 @@ message PotentialAmnesiaEvidence {
   Vote vote_b = 2;
 
   int64 height_stamp = 3;
-  google.protobuf.Timestamp time = 4
+  google.protobuf.Timestamp timestamp = 4
     [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 
@@ -42,7 +42,7 @@ message LunaticValidatorEvidence {
   Vote   vote                 = 2;
   string invalid_header_field = 3;
   
-  google.protobuf.Timestamp time = 4
+  google.protobuf.Timestamp timestamp = 4
     [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 

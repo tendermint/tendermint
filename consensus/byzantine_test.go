@@ -186,20 +186,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		pubkey, _ := bcs.privValidator.GetPubKey()
 		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
 	}
-
-	// timeoutWaitGroup(t, nValidators, func(j int) {
-	// 	msg := <-blocksSubs[j].Out()
-	// 	block := msg.Data().(types.EventDataNewBlock).Block
-	// 	// assert that we have evidence
-	// 	if assert.True(t, len(block.Evidence.Evidence) == 1) {
-	// 		// and that the evidence is of type DuplicateVoteEvidence
-	// 		ev, ok := block.Evidence.Evidence[0].(*types.DuplicateVoteEvidence)
-	// 		assert.True(t, ok)
-	// 		// and that the address matches to that of the byzantine node
-	// 		pubkey, _ := bcs.privValidator.GetPubKey()
-	// 		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
-	// 	}
-	// }, css)
 }
 
 // 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
