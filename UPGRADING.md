@@ -29,6 +29,9 @@ if you want to learn more & support it (with cosmos-sdk you get it
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
 field allows ABCI applications to dictate which events should be indexed.
 
+The blockchain can now start from an arbitrary initial height, provided to the
+application via `RequestInitChain.InitialHeight`.
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. Check out the [TODO]() for
