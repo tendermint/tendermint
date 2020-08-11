@@ -26,6 +26,9 @@ if you want to learn more & support it (with cosmos-sdk you get it
  automatically). If you don't want to support it, just leave these methods
  empty.
 
+ `ResponseInitChain.app_hash` has been added, which must match the genesis app
+ hash and is recorded in the genesis block.
+
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
 field allows ABCI applications to dictate which events should be indexed.
 

@@ -6,6 +6,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BREAKING CHANGES
 
+- ABCI
+    - [\#5227](https://github.com/tendermint/tendermint/pull/5227) Added `ResponseInitChain.app_hash` which must match genesis app hash and is recorded in genesis block (@erikgrinaker)
+
 - Blockchain Protocol
     - [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
 
