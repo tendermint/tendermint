@@ -1827,7 +1827,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 				return added, err
 			}
 			var timestamp time.Time
-			if voteErr.VoteA.Height == 1 {
+			if voteErr.VoteA.Height == cs.state.InitialHeight {
 				timestamp = cs.state.LastBlockTime // genesis time
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
