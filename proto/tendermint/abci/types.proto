@@ -180,6 +180,7 @@ message ResponseSetOption {
 message ResponseInitChain {
   ConsensusParams          consensus_params = 1;
   repeated ValidatorUpdate validators       = 2 [(gogoproto.nullable) = false];
+  bytes                    app_hash         = 3;
 }
 
 message ResponseQuery {

@@ -315,7 +315,15 @@ func (h *Handshaker) ReplayBlocks(
 			return nil, err
 		}
 
+		if !bytes.Equal(res.AppHash, h.genDoc.AppHash) {
+			return nil, fmt.Errorf(
+				"app hash from InitChain does not match genesis, got %X expected %X",
+				res.AppHash, h.genDoc.AppHash)
+		}
+		appHash = res.AppHash
+
 		if stateBlockHeight == 0 { //we only update state when we are in initial state
+			state.AppHash = res.AppHash
 			// If the app returned validators or consensus params, update the state.
 			if len(res.Validators) > 0 {
 				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
