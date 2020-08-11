@@ -142,6 +142,16 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 This release was removed, as a premature GitHub tag was recorded on sum.golang.org causing checksum errors.
 
 
+## v0.33.7
+
+ *August 4, 2020*
+
+ ### BUG FIXES:
+
+ - [go] Build release binary using Go 1.14.4, to avoid halt caused by Go 1.14.1 (https://github.com/golang/go/issues/38223)
+ - [privval] [\#5140](https://github.com/tendermint/tendermint/pull/5140) `RemoteSignerError` from remote signers are no longer retried (@melekes)
+
+
 ## v0.33.6
 
 *July 2, 2020*
@@ -601,6 +611,14 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
 
+## v0.32.13
+
+*August 5, 2020*
+
+ ### BUG FIXES
+
+ - [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
+
 ## v0.32.12
 
 *May 19, 2020*
@@ -610,6 +628,8 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
 
 ## v0.32.11
+
+*April 29, 2020*
 
 ### BUG FIXES:
 
