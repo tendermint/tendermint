@@ -5,11 +5,11 @@ import (
 )
 
 // HashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
-// in the provided order.
+// in the provided order. It follows RFC-6962.
 func HashFromByteSlices(items [][]byte) []byte {
 	switch len(items) {
 	case 0:
-		return nil
+		return emptyHash()
 	case 1:
 		return leafHash(items[0])
 	default:
@@ -70,7 +70,7 @@ func HashFromByteSlicesIterative(input [][]byte) []byte {
 	for {
 		switch size {
 		case 0:
-			return nil
+			return emptyHash()
 		case 1:
 			return items[0]
 		default:
