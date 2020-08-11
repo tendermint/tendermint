@@ -288,8 +288,6 @@ func TestEvidenceVectors(t *testing.T) {
 		bz, err := epl.Marshal()
 		require.NoError(t, err, tc.testName)
 
-		fmt.Println(hex.EncodeToString(bz), tc.testName)
-
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 
 	}
