@@ -160,9 +160,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first five just in case
 	var evidence types.Evidence
-	
+
 	for i := 0; i < 5; i++ {
-		msg := <-blocksSubs[nValidators - 1].Out()
+		msg := <-blocksSubs[nValidators-1].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
 		if len(block.Evidence.Evidence) > 0 {
 			evidence = block.Evidence.Evidence[0]
