@@ -84,7 +84,7 @@ func TestSecp256k1LoadPrivkeyAndSerializeIsIdentity(t *testing.T) {
 	}
 }
 
-func TestGenPrivKeySecp256k1(t *testing.T) {
+func TestGenPrivKeyFromSecret(t *testing.T) {
 	// curve oder N
 	N := underlyingSecp256k1.S256().N
 	tests := []struct {
@@ -104,7 +104,7 @@ func TestGenPrivKeySecp256k1(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			gotPrivKey := secp256k1.GenPrivKeySecp256k1(tt.secret)
+			gotPrivKey := secp256k1.GenPrivKeyFromSecret(tt.secret)
 			require.NotNil(t, gotPrivKey)
 			// interpret as a big.Int and make sure it is a valid field element:
 			fe := new(big.Int).SetBytes(gotPrivKey[:])

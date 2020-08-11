@@ -20,6 +20,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// For some reason the empty node used in tests has a time of
+// 2018-10-10 08:20:13.695936996 +0000 UTC
+// this is because the test genesis time is set here
+// so in order to validate evidence we need evidence to be the same time
+var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
+
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
 	chainID string) *types.DuplicateVoteEvidence {
@@ -35,7 +41,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(vote, vote2)
+	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime)
 }
 
 func makeEvidences(
@@ -49,7 +55,7 @@ func makeEvidences(
 		Height:           1,
 		Round:            0,
 		Type:             tmproto.PrevoteType,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        defaultTestTime,
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
 			PartSetHeader: types.PartSetHeader{
@@ -120,6 +126,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
+
+		t.Log(correct.Time())
 
 		result, err := c.BroadcastEvidence(correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)

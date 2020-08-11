@@ -217,7 +217,7 @@ func trailsFromByteSlices(items [][]byte) (trails []*ProofNode, root *ProofNode)
 	// Recursive impl.
 	switch len(items) {
 	case 0:
-		return nil, nil
+		return []*ProofNode{}, &ProofNode{emptyHash(), nil, nil, nil}
 	case 1:
 		trail := &ProofNode{leafHash(items[0]), nil, nil, nil}
 		return []*ProofNode{trail}, trail

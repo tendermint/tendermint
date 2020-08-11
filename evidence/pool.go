@@ -182,12 +182,24 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 			}
 		}
 
-		// For lunatic validator evidence, a header needs to be fetched.
+		// A header needs to be fetched. For lunatic evidence this is so we can verify
+		// that some of the fields are different to the ones we have. For all evidence it
+		// it so we can verify that the time of the evidence is correct
+
 		var header *types.Header
-		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
+		// if the evidence is from the current height - this means the evidence is fresh from the consensus
+		// and we won't have it in the block store. We thus check that the time isn't before the previous block
+		if ev.Height() == evpool.State().LastBlockHeight+1 {
+			if ev.Time().Before(evpool.State().LastBlockTime) {
+				return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
+					ev.Time(),
+					evpool.State().LastBlockTime)
+			}
+			header = &types.Header{Time: ev.Time()}
+		} else { // if the evidence is from a prior height
 			header = evpool.Header(ev.Height())
 			if header == nil {
-				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
+				return fmt.Errorf("don't have header at height #%d", ev.Height())
 			}
 		}
 
@@ -236,7 +248,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// 3) Add evidence to clist.
 		evpool.evidenceList.PushBack(ev)
 
-		evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", ev)
+		evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 	}
 
 	return nil
