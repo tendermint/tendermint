@@ -32,6 +32,9 @@ if you want to learn more & support it (with cosmos-sdk you get it
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
 field allows ABCI applications to dictate which events should be indexed.
 
+The blockchain can now start from an arbitrary initial height, provided to the
+application via `RequestInitChain.InitialHeight`.
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. Check out the [TODO]() for
@@ -136,6 +139,12 @@ functions) and `Client` object, which represents the complete light client.
 
 RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 `/proxy` directory.
+
+### State
+
+A field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
+(not `0`) if starting from height `1`. This can be configured via the genesis field 
+`initial_height`.
 
 ## v0.33.4
 

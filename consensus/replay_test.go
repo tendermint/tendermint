@@ -153,7 +153,8 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
 			consensusReplayConfig,

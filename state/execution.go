@@ -134,7 +134,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
+		blockExec.db, state.InitialHeight)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -254,6 +255,7 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
+	initialHeight int64,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -281,7 +283,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB, initialHeight)
 
 	// Begin block
 	var err error
@@ -320,12 +322,13 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
+func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
+	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
-	// block.Height=1 -> LastCommitInfo.Votes are empty.
+	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
-	if block.Height > 1 {
+	if block.Height > initialHeight {
 		lastValSet, err := LoadValidators(stateDB, block.Height-1)
 		if err != nil {
 			panic(err)
@@ -445,6 +448,7 @@ func updateState(
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
+		InitialHeight:                    state.InitialHeight,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
@@ -515,8 +519,9 @@ func ExecCommitBlock(
 	block *types.Block,
 	logger log.Logger,
 	stateDB dbm.DB,
+	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, initialHeight)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

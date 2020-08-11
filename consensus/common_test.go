@@ -430,7 +430,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	return cs, vss
 }
 
-func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.Pool) {
+func randStateWithEvpool(t *testing.T, nValidators int) (*State, []*validatorStub, *evidence.Pool) {
 	state, privVals := randGenesisState(nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
@@ -451,7 +451,9 @@ func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.P
 		mempool.EnableTxsAvailable()
 	}
 	stateDB := dbm.NewMemDB()
-	evpool, _ := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	sm.SaveState(stateDB, state)
+	evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	require.NoError(t, err)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -821,9 +823,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
+		GenesisTime:   tmtime.Now(),
+		InitialHeight: 1,
+		ChainID:       config.ChainID(),
+		Validators:    validators,
 	}, privValidators
 }
 

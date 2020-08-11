@@ -710,8 +710,9 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
 		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
 		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
-		{true, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
-		{true, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
+		// The following cases will be handled by ValidateHeight
+		{false, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
+		{false, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
 	}
 
 	for _, tc := range testCases {
@@ -724,7 +725,47 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 				LastCommitRound: tc.messageLastCommitRound,
 			}
 
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			err := message.ValidateBasic()
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNewRoundStepMessageValidateHeight(t *testing.T) {
+	initialHeight := int64(10)
+	testCases := []struct { // nolint: maligned
+		expectErr              bool
+		messageLastCommitRound int32
+		messageHeight          int64
+		testName               string
+	}{
+		{false, 0, 11, "Valid Message"},
+		{true, 0, -1, "Negative height"},
+		{true, 0, 0, "Zero height"},
+		{true, 0, 10, "Initial height but LCR != -1 "},
+		{true, -1, 11, "Normal height but LCR < 0"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           0,
+				Step:            cstypes.RoundStepNewHeight,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			err := message.ValidateHeight(initialHeight)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

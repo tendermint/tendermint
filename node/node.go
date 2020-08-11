@@ -564,7 +564,8 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	state := sm.LoadState(stateDB)
 	if stateProvider == nil {
 		var err error
-		stateProvider, err = statesync.NewLightClientStateProvider(state.ChainID, state.Version,
+		stateProvider, err = statesync.NewLightClientStateProvider(
+			state.ChainID, state.Version, state.InitialHeight,
 			config.RPCServers, light.TrustOptions{
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,

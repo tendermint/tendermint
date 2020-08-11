@@ -34,7 +34,11 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			block.ChainID,
 		)
 	}
-	if block.Height != state.LastBlockHeight+1 {
+	if state.LastBlockHeight == 0 && block.Height != state.InitialHeight {
+		return fmt.Errorf("wrong Block.Header.Height. Expected %v for initial block, got %v",
+			block.Height, state.InitialHeight)
+	}
+	if state.LastBlockHeight > 0 && block.Height != state.LastBlockHeight+1 {
 		return fmt.Errorf("wrong Block.Header.Height. Expected %v, got %v",
 			state.LastBlockHeight+1,
 			block.Height,
@@ -82,9 +86,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate block LastCommit.
-	if block.Height == 1 {
+	if block.Height == state.InitialHeight {
 		if len(block.LastCommit.Signatures) != 0 {
-			return errors.New("block at height 1 can't have LastCommit signatures")
+			return errors.New("initial block can't have LastCommit signatures")
 		}
 	} else {
 		// LastCommit.Signatures length is checked in VerifyCommit.
@@ -110,7 +114,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate block Time
-	if block.Height > 1 {
+	switch {
+	case block.Height > state.InitialHeight:
 		if !block.Time.After(state.LastBlockTime) {
 			return fmt.Errorf("block time %v not greater than last block time %v",
 				block.Time,
@@ -124,7 +129,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				block.Time,
 			)
 		}
-	} else if block.Height == 1 {
+
+	case block.Height == state.InitialHeight:
 		genesisTime := state.LastBlockTime
 		if !block.Time.Equal(genesisTime) {
 			return fmt.Errorf("block time %v is not equal to genesis time %v",
@@ -132,6 +138,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				genesisTime,
 			)
 		}
+
+	default:
+		return fmt.Errorf("block height %v lower than initial height %v",
+			block.Height, state.InitialHeight)
 	}
 
 	// Limit the amount of evidence

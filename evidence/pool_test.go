@@ -491,6 +491,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) d
 	stateDB := dbm.NewMemDB()
 	state := sm.State{
 		ChainID:                     evidenceChainID,
+		InitialHeight:               1,
 		LastBlockHeight:             height,
 		LastBlockTime:               tmtime.Now(),
 		Validators:                  valSet,
