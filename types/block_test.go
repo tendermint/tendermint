@@ -644,7 +644,8 @@ func TestBlockProtoBuf(t *testing.T) {
 
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
-	evi := NewMockDuplicateVoteEvidence(h, time.Now(), "block-test-chain")
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
@@ -714,7 +715,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
-	ev := NewDuplicateVoteEvidence(v2, v)
+	ev := NewDuplicateVoteEvidence(v2, v, v2.Timestamp)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.Hash()
 	testCases := []struct {
