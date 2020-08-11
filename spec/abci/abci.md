@@ -243,6 +243,7 @@ via light client.
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters (optional).
   - `Validators ([]ValidatorUpdate)`: Initial validator set (optional).
+  - `AppHash ([]byte)`: Initial application hash.
 - **Usage**:
   - Called once upon genesis.
   - If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
@@ -252,6 +253,8 @@ via light client.
     set proposed by tendermint (ie. in the genesis file), or if it wants to use
     a different one (perhaps computed based on some application specific
     information in the genesis file).
+  - The returned `AppHash` must match the hash specified in the genesis file, and will be
+    recorded in the initial genesis block.
 
 ### Query
 

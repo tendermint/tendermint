@@ -413,7 +413,7 @@ block.AppHash == state.AppHash
 
 Arbitrary byte array returned by the application after executing and commiting the previous block. It serves as the basis for validating any merkle proofs that comes from the ABCI application and represents the state of the actual application rather than the state of the blockchain itself.
 
-The first block has `block.Header.AppHash == []byte{}`.
+The first block's `block.Header.AppHash` is given by `ResponseInitChain.app_hash`, which must match the app hash specified in the genesis file.
 
 ### LastResultsHash
 
