@@ -31,7 +31,7 @@ func mustEncodeMsg(pb proto.Message) []byte {
 	default:
 		panic(fmt.Errorf("unknown message type %T", pb))
 	}
-	bz, err := proto.Marshal(&msg)
+	bz, err := msg.Marshal()
 	if err != nil {
 		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
 	}
