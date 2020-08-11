@@ -23,6 +23,13 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		blockMeta = blockStore.LoadBlockMeta(evidence.Height())
 		committedHeader = &blockMeta.Header
 	)
+	
+	if committedHeader.Time != evidence.Time() {
+		return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
+			evidence.Time(),
+			committedHeader.Time,
+		)
+	}
 
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
 		return fmt.Errorf(
