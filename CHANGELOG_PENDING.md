@@ -20,7 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
-- [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219/checks?check_run_id=970936099) Change the source of evidence time to block time (@cmwaters)
+- [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219) Change the source of evidence time to block time (@cmwaters)
 
 ### BUG FIXES:
 
