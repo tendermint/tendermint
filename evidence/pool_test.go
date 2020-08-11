@@ -7,11 +7,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -33,16 +35,18 @@ const evidenceChainID = "test_chain"
 func TestEvidencePool(t *testing.T) {
 	var (
 		val          = types.NewMockPV()
-		valAddr      = val.PrivKey.PubKey().Address()
 		height       = int64(52)
 		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
-		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), valAddr)
+		blockStore   = &mocks.BlockStore{}
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 		goodEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(height, evidenceTime, val, evidenceChainID)
 		badEvidence  = types.NewMockDuplicateVoteEvidenceWithValidator(1, evidenceTime, val, evidenceChainID)
+	)
+
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -86,9 +90,12 @@ func TestProposingAndCommittingEvidence(t *testing.T) {
 		height       = int64(1)
 		stateDB      = initializeValidatorState(val, height)
 		evidenceDB   = dbm.NewMemDB()
-		blockStoreDB = dbm.NewMemDB()
-		blockStore   = initializeBlockStore(blockStoreDB, sm.LoadState(stateDB), val.PrivKey.PubKey().Address())
+		blockStore   = &mocks.BlockStore{}
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 	)
 
 	pool, err := NewPool(stateDB, evidenceDB, blockStore)
@@ -300,12 +307,11 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 			},
 			Proposer: val.ExtractIntoValidator(1),
 		}
-		height       = int64(30)
-		stateDB      = initializeStateFromValidatorSet(valSet, height)
-		evidenceDB   = dbm.NewMemDB()
-		blockStoreDB = dbm.NewMemDB()
-		state        = sm.LoadState(stateDB)
-		blockStore   = initializeBlockStore(blockStoreDB, state, pubKey.Address())
+		height     = int64(30)
+		stateDB    = initializeStateFromValidatorSet(valSet, height)
+		evidenceDB = dbm.NewMemDB()
+		state      = sm.LoadState(stateDB)
+		blockStore = &mocks.BlockStore{}
 		//evidenceTime    = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 		firstBlockID = types.BlockID{
 			Hash: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
@@ -322,6 +328,10 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 			},
 		}
 		evidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 	)
 
 	// TEST SETUP
@@ -346,8 +356,9 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	voteC.Signature = vC.Signature
 	require.NoError(t, err)
 	ev := &types.PotentialAmnesiaEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:     voteA,
+		VoteB:     voteB,
+		Timestamp: evidenceTime,
 	}
 
 	polc := &types.ProofOfLockChange{
@@ -410,8 +421,9 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	pool.logger.Info("CASE D")
 	// evidence of voting back in the past which is instantly punishable -> amnesia evidence is made directly
 	ev2 := &types.PotentialAmnesiaEvidence{
-		VoteA: voteC,
-		VoteB: voteB,
+		VoteA:     voteC,
+		VoteB:     voteB,
+		Timestamp: evidenceTime,
 	}
 	err = pool.AddEvidence(ev2)
 	assert.NoError(t, err)
@@ -445,8 +457,9 @@ func TestAddingPotentialAmnesiaEvidence(t *testing.T) {
 	// a new amnesia evidence is seen. It has an empty polc so we should extract the potential amnesia evidence
 	// and start our own trial
 	newPe := &types.PotentialAmnesiaEvidence{
-		VoteA: voteB,
-		VoteB: voteD,
+		VoteA:     voteB,
+		VoteB:     voteD,
+		Timestamp: evidenceTime,
 	}
 	newAe := &types.AmnesiaEvidence{
 		PotentialAmnesiaEvidence: newPe,

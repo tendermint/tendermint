@@ -23,7 +23,7 @@ type voteData struct {
 
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-func TestEvidence(t *testing.T) {
+func TestDuplicateVoteEvidence(t *testing.T) {
 	val := NewMockPV()
 	val2 := NewMockPV()
 
@@ -67,6 +67,8 @@ func TestEvidence(t *testing.T) {
 		ev := &DuplicateVoteEvidence{
 			VoteA: c.vote1,
 			VoteB: c.vote2,
+
+			Timestamp: defaultVoteTime,
 		}
 		if c.valid {
 			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")
@@ -74,19 +76,12 @@ func TestEvidence(t *testing.T) {
 			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
 		}
 	}
-}
 
-func TestDuplicatedVoteEvidence(t *testing.T) {
 	ev := randomDuplicatedVoteEvidence(t)
 
 	assert.True(t, ev.Equal(ev))
 	assert.False(t, ev.Equal(&DuplicateVoteEvidence{}))
 
-	maxTime := ev.VoteB.Timestamp
-	if ev.VoteA.Timestamp.After(ev.VoteB.Timestamp) {
-		maxTime = ev.VoteA.Timestamp
-	}
-	assert.Equal(t, maxTime, ev.Time(), "expected time of the latest vote")
 }
 
 func TestEvidenceList(t *testing.T) {
@@ -187,7 +182,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
-			ev := NewDuplicateVoteEvidence(vote1, vote2)
+			ev := NewDuplicateVoteEvidence(vote1, vote2, vote1.Timestamp)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -220,11 +215,11 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 
 	vote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
 
-	ev := NewLunaticValidatorEvidence(header, vote, "AppHash")
+	ev := NewLunaticValidatorEvidence(header, vote, "AppHash", bTime)
 
 	//happy path
 	assert.Equal(t, header.Height, ev.Height())
-	assert.Equal(t, defaultVoteTime, ev.Time())
+	assert.Equal(t, bTime, ev.Time())
 	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
@@ -248,12 +243,12 @@ func TestLunaticValidatorEvidence(t *testing.T) {
 	emptyBlockVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, BlockID{}, defaultVoteTime)
 
 	invalidLunaticEvidence := []*LunaticValidatorEvidence{
-		NewLunaticValidatorEvidence(header, invalidVote, "AppHash"),
-		NewLunaticValidatorEvidence(header, invalidHeightVote, "AppHash"),
-		NewLunaticValidatorEvidence(nil, vote, "AppHash"),
-		NewLunaticValidatorEvidence(header, nil, "AppHash"),
-		NewLunaticValidatorEvidence(header, vote, "other"),
-		NewLunaticValidatorEvidence(header, emptyBlockVote, "AppHash"),
+		NewLunaticValidatorEvidence(header, invalidVote, "AppHash", header.Time),
+		NewLunaticValidatorEvidence(header, invalidHeightVote, "AppHash", header.Time),
+		NewLunaticValidatorEvidence(nil, vote, "AppHash", vote.Timestamp),
+		NewLunaticValidatorEvidence(header, nil, "AppHash", header.Time),
+		NewLunaticValidatorEvidence(header, vote, "other", header.Time),
+		NewLunaticValidatorEvidence(header, emptyBlockVote, "AppHash", header.Time),
 	}
 
 	for idx, ev := range invalidLunaticEvidence {
@@ -348,10 +343,10 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 		vote3    = makeVote(t, val, chainID, 0, height, 2, 2, blockID, defaultVoteTime)
 	)
 
-	ev := NewPotentialAmnesiaEvidence(vote1, vote2)
+	ev := NewPotentialAmnesiaEvidence(vote1, vote2, vote1.Timestamp)
 
 	assert.Equal(t, height, ev.Height())
-	assert.Equal(t, vote2.Timestamp, ev.Time())
+	assert.Equal(t, vote1.Timestamp, ev.Time())
 	assert.EqualValues(t, vote1.ValidatorAddress, ev.Address())
 	assert.NotEmpty(t, ev.Hash())
 	assert.NotEmpty(t, ev.Bytes())
@@ -375,7 +370,7 @@ func TestPotentialAmnesiaEvidence(t *testing.T) {
 	assert.True(t, ev.Equal(ev2))
 	assert.Equal(t, ev.Hash(), ev2.Hash())
 
-	ev3 := NewPotentialAmnesiaEvidence(vote2, vote1)
+	ev3 := NewPotentialAmnesiaEvidence(vote2, vote1, vote1.Timestamp)
 	assert.True(t, ev3.Equal(ev))
 
 	ev4 := &PotentialAmnesiaEvidence{

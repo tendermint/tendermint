@@ -157,25 +157,25 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	// Check that evidence is submitted and committed at the third height
-	for i := 0; i < 2; i++ {
-		timeoutWaitGroup(t, nValidators, func(j int) {
-			<-blocksSubs[j].Out()
-		}, css)
-	}
-	timeoutWaitGroup(t, nValidators, func(j int) {
-		msg := <-blocksSubs[j].Out()
+	// Evidence should be submitted and committed at the third height but
+	// we will check the first five just in case
+	var evidence types.Evidence
+
+	for i := 0; i < 5; i++ {
+		msg := <-blocksSubs[nValidators-1].Out()
 		block := msg.Data().(types.EventDataNewBlock).Block
-		// assert that we have evidence
-		if assert.True(t, len(block.Evidence.Evidence) == 1) {
-			// and that the evidence is of type DuplicateVoteEvidence
-			ev, ok := block.Evidence.Evidence[0].(*types.DuplicateVoteEvidence)
-			assert.True(t, ok)
-			// and that the address matches to that of the byzantine node
-			pubkey, _ := bcs.privValidator.GetPubKey()
-			assert.Equal(t, []byte(pubkey.Address()), ev.Address())
+		if len(block.Evidence.Evidence) > 0 {
+			evidence = block.Evidence.Evidence[0]
+			break
 		}
-	}, css)
+	}
+
+	if assert.NotNil(t, evidence) {
+		ev, ok := evidence.(*types.DuplicateVoteEvidence)
+		assert.True(t, ok)
+		pubkey, _ := bcs.privValidator.GetPubKey()
+		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
+	}
 }
 
 // 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
