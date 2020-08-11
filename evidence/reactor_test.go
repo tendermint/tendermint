@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
@@ -16,12 +17,12 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -44,11 +45,14 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 
 	reactors := make([]*Reactor, N)
 	logger := evidenceLogger()
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	for i := 0; i < N; i++ {
 		evidenceDB := dbm.NewMemDB()
-		blockStoreDB := dbm.NewMemDB()
-		blockStore := initializeBlockStore(blockStoreDB, sm.LoadState(stateDBs[i]), []byte("myval"))
+		blockStore := &mocks.BlockStore{}
+		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+		)
 		pool, err := NewPool(stateDBs[i], evidenceDB, blockStore)
 		if err != nil {
 			panic(err)
@@ -121,7 +125,8 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *Pool, val types.PrivValidator, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1), time.Now().UTC(), val, evidenceChainID)
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
