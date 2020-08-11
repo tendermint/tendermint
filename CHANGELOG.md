@@ -6,7 +6,7 @@
 
 ## Go security update
 
-Go reported a security vulnerability that effected the `encoding/binary` package. The most recent binaries for tendermint is using 1.14.6, for this
+Go reported a security vulnerability that affected the `encoding/binary` package. The most recent binary for tendermint is using 1.14.6, for this
 reason the Tendermint engineering team has opted to conduct a release to aid users in using the correct version of Go. Read more about the security issue [here](https://github.com/golang/go/issues/40618).
 
 ## v0.33.7
