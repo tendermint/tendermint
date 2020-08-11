@@ -286,6 +286,8 @@ Minor releases are done differently from major releases: They are built off of l
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the release branch into master.
+7. Delete the former long lived release candidate branch once the release has been made.
+8. Create a new release candidate branch to be used for the next release.
 
 #### Backport Release
 
