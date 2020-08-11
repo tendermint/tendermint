@@ -363,7 +363,7 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	tp := tmproto.DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
-		Time:  dve.Timestamp,
+		Timestamp:  dve.Timestamp,
 	}
 	return &tp
 }
@@ -383,7 +383,7 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, err
 	}
 
-	dve := NewDuplicateVoteEvidence(vA, vB, pb.Time)
+	dve := NewDuplicateVoteEvidence(vA, vB, pb.Timestamp)
 
 	return dve, dve.ValidateBasic()
 }
@@ -847,7 +847,7 @@ func (e *LunaticValidatorEvidence) ToProto() *tmproto.LunaticValidatorEvidence {
 		Header:             h,
 		Vote:               v,
 		InvalidHeaderField: e.InvalidHeaderField,
-		Time:               e.Timestamp,
+		Timestamp:          e.Timestamp,
 	}
 
 	return tp
@@ -872,7 +872,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 		Header:             &h,
 		Vote:               v,
 		InvalidHeaderField: pb.InvalidHeaderField,
-		Timestamp:          pb.Time,
+		Timestamp:          pb.Timestamp,
 	}
 
 	return &tp, tp.ValidateBasic()
@@ -1068,7 +1068,7 @@ func (e *PotentialAmnesiaEvidence) ToProto() *tmproto.PotentialAmnesiaEvidence {
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: e.HeightStamp,
-		Time:        e.Timestamp,
+		Timestamp:   e.Timestamp,
 	}
 
 	return tp
@@ -1463,7 +1463,7 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: pb.GetHeightStamp(),
-		Timestamp:   pb.Time,
+		Timestamp:   pb.Timestamp,
 	}
 
 	return &tp, tp.ValidateBasic()
