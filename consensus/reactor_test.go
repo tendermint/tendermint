@@ -39,6 +39,8 @@ import (
 //----------------------------------------------
 // in-process testnets
 
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func startConsensusNet(t *testing.T, css []*State, n int) (
 	[]*Reactor,
 	[]types.Subscription,
@@ -202,7 +204,7 @@ type mockEvidencePool struct {
 
 func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
 	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().UTC(), val, config.ChainID())},
+		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, val, config.ChainID())},
 	}
 }
 
@@ -234,7 +236,7 @@ func (m *mockEvidencePool) IsPending(evidence types.Evidence) bool {
 	return false
 }
 func (m *mockEvidencePool) AddPOLC(*types.ProofOfLockChange) error { return nil }
-func (m *mockEvidencePool) Header(int64) *types.Header             { return nil }
+func (m *mockEvidencePool) Header(int64) *types.Header             { return &types.Header{Time: defaultTestTime} }
 
 //------------------------------------
 

@@ -49,12 +49,12 @@ func DefaultValidationRequestHandler(
 	case *privvalproto.Message_SignProposalRequest:
 		proposal := r.SignProposalRequest.Proposal
 
-		err = privVal.SignProposal(chainID, &proposal)
+		err = privVal.SignProposal(chainID, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: nil, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
-			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: &proposal, Error: nil})
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: proposal, Error: nil})
 		}
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})

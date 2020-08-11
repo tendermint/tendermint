@@ -29,16 +29,18 @@ var (
 )
 
 type ErrVoteConflictingVotes struct {
-	*DuplicateVoteEvidence
+	VoteA *Vote
+	VoteB *Vote
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("conflicting votes from validator %X", err.VoteA.ValidatorAddress)
 }
 
-func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		NewDuplicateVoteEvidence(vote1, vote2),
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 }
 
