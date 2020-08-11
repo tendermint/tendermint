@@ -157,25 +157,15 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	var blocks []*types.Block
-
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first five just in case
-	for i := 0; i < 5; i++ {
-		timeoutWaitGroup(t, nValidators, func(j int) {
-			msg := <-blocksSubs[j].Out()
-			newBlock := msg.Data().(types.EventDataNewBlock).Block
-			if len(blocks) == 0 || blocks[len(blocks)-1].Header.Height != newBlock.Header.Height {
-				blocks = append(blocks, newBlock)
-			}
-		}, css)
-	}
-
 	var evidence types.Evidence
-
+	
 	for i := 0; i < 5; i++ {
-		if len(blocks[i].Evidence.Evidence) > 0 {
-			evidence = blocks[i].Evidence.Evidence[0]
+		msg := <-blocksSubs[nValidators - 1].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
+		if len(block.Evidence.Evidence) > 0 {
+			evidence = block.Evidence.Evidence[0]
 			break
 		}
 	}
