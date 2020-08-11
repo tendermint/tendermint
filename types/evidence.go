@@ -273,15 +273,6 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 		)
 	}
 
-	// Index must be the same
-	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
-		return fmt.Errorf(
-			"validator indices do not match: %d and %d",
-			dve.VoteA.ValidatorIndex,
-			dve.VoteB.ValidatorIndex,
-		)
-	}
-
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
 		return fmt.Errorf(
@@ -1013,16 +1004,6 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 		return fmt.Errorf("validator addresses do not match: %X vs %X",
 			e.VoteA.ValidatorAddress,
 			e.VoteB.ValidatorAddress,
-		)
-	}
-
-	// Index must be the same
-	// https://github.com/tendermint/tendermint/issues/4619
-	if e.VoteA.ValidatorIndex != e.VoteB.ValidatorIndex {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
-			e.VoteA.ValidatorIndex,
-			e.VoteB.ValidatorIndex,
 		)
 	}
 
