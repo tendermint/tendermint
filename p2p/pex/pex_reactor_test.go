@@ -1,6 +1,7 @@
 package pex
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -672,4 +674,30 @@ func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
 		r.SetSwitch(sw)
 	}
 	return sw
+}
+
+func TestPexVectors(t *testing.T) {
+
+	addr := tmp2p.NetAddress{
+		ID:   "1",
+		IP:   "127.0.0.1",
+		Port: 9090,
+	}
+
+	testCases := []struct {
+		testName string
+		msg      proto.Message
+		expBytes string
+	}{
+		{"PexRequest", &tmp2p.PexRequest{}, "0a00"},
+		{"PexAddrs", &tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{addr}}, "12130a110a013112093132372e302e302e31188247"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		bz := mustEncode(tc.msg)
+
+		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
+	}
 }
