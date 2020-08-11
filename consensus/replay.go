@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -332,6 +333,8 @@ func (h *Handshaker) ReplayBlocks(
 				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
 				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
+			// We update the last results hash with the empty hash, to conform with RFC-6962.
+			state.LastResultsHash = merkle.HashFromByteSlices(nil)
 			sm.SaveState(h.stateDB, state)
 		}
 	}
