@@ -79,7 +79,7 @@ func genPrivKey(rand io.Reader) PrivKey {
 
 var one = new(big.Int).SetInt64(1)
 
-// GenPrivKeySecp256k1 hashes the secret with SHA2, and uses
+// GenPrivKeyFromSecret hashes the secret with SHA2, and uses
 // that 32 byte output to create the private key.
 //
 // It makes sure the private key is a valid field element by setting:
@@ -89,7 +89,7 @@ var one = new(big.Int).SetInt64(1)
 //
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-func GenPrivKeySecp256k1(secret []byte) PrivKey {
+func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	secHash := sha256.Sum256(secret)
 	// to guarantee that we have a valid field element, we use the approach of:
 	// "Suite B Implementer’s Guide to FIPS 186-3", A.2.1
