@@ -216,6 +216,11 @@ h0  h1  h2 h3                      h0  h1  h2  h3  h4  h5
 The function `MerkleRoot` is a simple recursive function defined as follows:
 
 ```go
+// SHA256([]byte{})
+func emptyHash() []byte {
+    return tmhash.Sum([]byte{})
+}
+
 // SHA256(0x00 || leaf)
 func leafHash(leaf []byte) []byte {
 	return tmhash.Sum(append(0x00, leaf...))
@@ -232,7 +237,7 @@ func getSplitPoint(k int) { ... }
 func MerkleRoot(items [][]byte) []byte{
 	switch len(items) {
 	case 0:
-		return nil
+		return empthHash()
 	case 1:
 		return leafHash(items[0])
 	default:

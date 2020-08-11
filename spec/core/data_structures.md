@@ -423,7 +423,7 @@ block.LastResultsHash == MerkleRoot([]ResponseDeliverTx)
 
 `LastResultsHash` is the root hash of a Merkle tree built from `ResponseDeliverTx` responses (`Log`,`Info`, `Codespace` and `Events` fields are ignored).
 
-The first block has `block.Header.ResultsHash == []byte{}`.
+The first block has `block.Header.ResultsHash == MerkleRoot(nil)`, i.e. the hash of an empty input, for RFC-6962 conformance.
 
 ## EvidenceHash
 
