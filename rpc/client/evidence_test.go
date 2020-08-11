@@ -78,13 +78,6 @@ func makeEvidences(
 		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
 	}
 
-	// different index
-	{
-		v := vote2
-		v.ValidatorIndex = vote.ValidatorIndex + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
-	}
-
 	// different height
 	{
 		v := vote2
