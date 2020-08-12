@@ -177,6 +177,9 @@ type BaseConfig struct { //nolint: maligned
 	//   - EXPERIMENTAL
 	//   - requires gcc
 	//   - use rocksdb build tag (go build -tags rocksdb)
+	// * badgerdb (uses github.com/dgraph-io/badger)
+	//   - EXPERIMENTAL
+	//   - use badgerdb build tag (go build -tags badgerdb)
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
