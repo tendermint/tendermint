@@ -18,12 +18,14 @@ type StateStore interface {
 	LoadState() state.State
 }
 
+
 type stateStore struct {
 	db dbm.DB
 }
 
 var _ StateStore = &stateStore{}
 
+// This is a temporary measure until stateDB becomes a store and we don't need this
 func NewEvidenceStateStore(db dbm.DB) StateStore {
 	return &stateStore{db}
 }
