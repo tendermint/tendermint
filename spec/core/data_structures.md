@@ -221,8 +221,10 @@ type Evidence interface {
 
 All evidence can be encoded and decoded to and from Protobuf with the `EvidenceToProto()` 
 and `EvidenceFromProto()` functions. The [Fork Accountability](../consensus/light-client/accountability.md) 
-document provides a good overview for the types of evidence and how they occur. Each evidence uses
+document provides a good overview for the types of evidence and how they occur. For evidence to be committed onchain, it must adhere to the validation rules of each evidence and must not be expired. The expiration age, measured in both block height and time is set in `EvidenceParams`. Each evidence uses
 the timestamp of the block that the evidence occured at to indicate the age of the evidence. 
+
+### DuplicateVoteEvidence 
 
 `DuplicateVoteEvidence` represents a validator that has voted for two different blocks 
 in the same round of the same height. Votes are lexicographically sorted on `BlockID`.
@@ -236,6 +238,20 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
+Valid Duplicate Vote Evidence must adhere to the following rules:
+
+- Validator Address, Height, Round and Type of vote must be the same for both votes
+
+- BlockID must be different for both votes (BlockID can be for a nil block)
+
+- Validator must have been in the validator set at that height
+
+- Vote signature must be valid (using the chainID)
+
+- Time must be equal to the block time
+
+### AmensiaEvidence
+
 `AmnesiaEvidence` represents a validator that has incorrectly voted for another block in a 
 different round to the the block that the validator was previously locked on. This form
 of evidence is generated differently from the rest. See this 
@@ -247,6 +263,22 @@ type AmnesiaEvidence struct {
 	Polc *ProofOfLockChange
 }
 ```
+
+Valid Amnesia Evidence must adhere to the following rules:
+
+- Validator Address and Height must be the same and the Round must be different.
+
+- The BlockID's must be different and the BlockID of the first vote must not be nil.
+
+- The vote signature must be valid (using the chainID).
+
+- The evidence either must have a complete and valid `ProofOfLockChange` or have stood in the nodes evidence pool for the `ProofTrialPeriod`.
+
+- The validator must have been in the validator set.
+
+- Time must be equal to the corresponding block time.
+
+### LunaticValidatorEvidence
 
 `LunaticValidatorEvidence` represents a validator that has signed for an arbitrary application state. 
 This attack only applies to Light clients.
@@ -260,6 +292,18 @@ type LunaticValidatorEvidence struct {
 	Timestamp time.Time
 }
 ```
+
+Valid Lunatic Validator Evidence must adhere to the following rules:
+
+- Header must have an invalid field compared to the correctly derived header that the node has in either the `ValidatorHash`, `NextValidatorHash`, `ConsensusHash`, `AppHash`, or `LastResultsHash`.
+
+- The vote must be for the incorrect header (BlockID of the vote must match the hash of the header).
+
+- The vote must be correcly signed (using the chainID).
+
+- The validator must have been in a correct validator set within the bonding period.
+
+- Time must be equal to the corresponding block time of the header that the node has (not the incorrect header).
 
 ## Validation
 
