@@ -17,7 +17,7 @@ docs/_build
 docs/dist
 docs/.vuepress/dist
 *.log
-abci-cli
+/abci-cli
 docs/node_modules/
 index.html.md
 
