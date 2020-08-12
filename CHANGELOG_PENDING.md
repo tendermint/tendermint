@@ -24,6 +24,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] [\#5174](https://github.com/tendermint/tendermint/pull/5174) Add amnesia evidence and remove mock and potential amnesia evidence from abci (@cmwaters)
 - [abci] [\#5191](https://github.com/tendermint/tendermint/pull/5191/files) Add `InitChain.InitialHeight` field giving the initial block height (@erikgrinaker)
 - [genesis] [\#5191](https://github.com/tendermint/tendermint/pull/5191/files) Add `initial_height` field to specify the initial chain height (defaults to `1`) (@erikgrinaker)
+- [db] Add support for `badgerdb` database backend (@erikgrinaker)
 
 ### IMPROVEMENTS:
 
