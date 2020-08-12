@@ -119,6 +119,7 @@ func TestPruneStates(t *testing.T) {
 				}
 
 				state := sm.State{
+					InitialHeight:   1,
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,

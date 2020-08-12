@@ -779,7 +779,7 @@ func mustEncode(pb proto.Message) []byte {
 		panic(fmt.Sprintf("Unknown message type %T", pb))
 	}
 
-	bz, err := proto.Marshal(&msg)
+	bz, err := msg.Marshal()
 	if err != nil {
 		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
 	}
@@ -788,10 +788,12 @@ func mustEncode(pb proto.Message) []byte {
 
 func decodeMsg(bz []byte) (proto.Message, error) {
 	pb := &tmp2p.Message{}
-	err := proto.Unmarshal(bz, pb)
+
+	err := pb.Unmarshal(bz)
 	if err != nil {
 		return nil, err
 	}
+
 	switch msg := pb.Sum.(type) {
 	case *tmp2p.Message_PexRequest:
 		return msg.PexRequest, nil

@@ -564,7 +564,8 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	state := sm.LoadState(stateDB)
 	if stateProvider == nil {
 		var err error
-		stateProvider, err = statesync.NewLightClientStateProvider(state.ChainID, state.Version,
+		stateProvider, err = statesync.NewLightClientStateProvider(
+			state.ChainID, state.Version, state.InitialHeight,
 			config.RPCServers, light.TrustOptions{
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,
@@ -1254,9 +1255,8 @@ var (
 )
 
 // LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
-// database, or creates one using the given genesisDocProvider and persists the
-// result to the database. On success this also returns the genesis doc loaded
-// through the given provider.
+// database, or creates one using the given genesisDocProvider. On success this also
+// returns the genesis doc loaded through the given provider.
 func LoadStateFromDBOrGenesisDocProvider(
 	stateDB dbm.DB,
 	genesisDocProvider GenesisDocProvider,

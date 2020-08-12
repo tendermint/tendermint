@@ -22,6 +22,7 @@ import (
 var (
 	nValidators    int
 	nNonValidators int
+	initialHeight  int64
 	configFile     string
 	outputDir      string
 	nodeDirPrefix  string
@@ -50,6 +51,8 @@ func init() {
 		"Directory to store initialization data for the testnet")
 	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node-dir-prefix", "node",
 		"Prefix the directory name for each node with (node results in node0, node1, ...)")
+	TestnetFilesCmd.Flags().Int64Var(&initialHeight, "initial-height", 0,
+		"Initial height of the first block")
 
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
 		"Update config of each node with the list of persistent peers build using either"+
@@ -175,6 +178,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		ChainID:         "chain-" + tmrand.Str(6),
 		ConsensusParams: types.DefaultConsensusParams(),
 		GenesisTime:     tmtime.Now(),
+		InitialHeight:   initialHeight,
 		Validators:      genVals,
 	}
 
