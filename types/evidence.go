@@ -36,8 +36,6 @@ type CompositeEvidence interface {
 	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
 }
 
-
-
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 444

@@ -134,50 +134,23 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		}
 	}
 
-	// Limit the amount of evidence
-	numEvidence := len(block.Evidence.Evidence)
-	// MaxNumEvidence is capped at uint16, so conversion is always safe.
-	if maxEvidence := int(state.ConsensusParams.Evidence.MaxNum); numEvidence > maxEvidence {
+	// Check evidence doesn't exceed the limit. MaxNumEvidence is capped at uint16, so conversion is always safe.
+	if maxEvidence, numEvidence := int(state.ConsensusParams.Evidence.MaxNum), len(block.Evidence.Evidence); numEvidence > maxEvidence {
 		return types.NewErrEvidenceOverflow(maxEvidence, numEvidence)
 	}
 
 	// Validate all evidence.
 	for idx, ev := range block.Evidence.Evidence {
-		// check that no evidence has been submitted more than once
+		// Check that no evidence has been submitted more than once
 		for i := idx + 1; i < len(block.Evidence.Evidence); i++ {
 			if ev.Equal(block.Evidence.Evidence[i]) {
 				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was submitted twice"))
 			}
 		}
-		if evidencePool != nil {
-			if evidencePool.IsCommitted(ev) {
-				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
-			}
-			if evidencePool.IsPending(ev) {
-				continue
-			}
-		}
-		// if we don't already have amnesia evidence we need to add it to start our own trial period unless
-		// a) a valid polc has already been attached
-		// b) the accused node voted back on an earlier round
-		if ae, ok := ev.(*types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
-			ae.PotentialAmnesiaEvidence.VoteB.Round {
-			if err := evidencePool.AddEvidence(ae.PotentialAmnesiaEvidence); err != nil {
-				return types.NewErrEvidenceInvalid(ev,
-					fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err))
-			}
-			return types.NewErrEvidenceInvalid(ev, errors.New("amnesia evidence is new and hasn't undergone trial period yet"))
-		}
 
-		// A header needs to be fetched. For lunatic evidence this is so we can verify
-		// that some of the fields are different to the ones we have. For all evidence it
-		// it so we can verify that the time of the evidence is correct
-		header := evidencePool.Header(ev.Height())
-		if header == nil {
-			return fmt.Errorf("don't have block meta at height #%d", ev.Height())
-		}
-
-		if err := VerifyEvidence(stateDB, state, ev, header); err != nil {
+		// Verify evidence using the evidence pool
+		err := evidencePool.Verify(ev)
+		if err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
 		}
 

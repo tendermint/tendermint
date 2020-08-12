@@ -451,7 +451,7 @@ func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.P
 		mempool.EnableTxsAvailable()
 	}
 	stateDB := dbm.NewMemDB()
-	evpool, _ := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	evpool, _ := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))

@@ -34,8 +34,8 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
-	N := len(stateDBs)
+func makeAndConnectReactors(config *cfg.Config, stateStores []StateStore) []*Reactor {
+	N := len(stateStores)
 
 	reactors := make([]*Reactor, N)
 	logger := evidenceLogger()
@@ -47,7 +47,7 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
-		pool, err := NewPool(stateDBs[i], evidenceDB, blockStore)
+		pool, err := NewPool(evidenceDB, stateStores[i], blockStore)
 		if err != nil {
 			panic(err)
 		}
@@ -138,7 +138,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	N := 7
 
 	// create statedb for everyone
-	stateDBs := make([]dbm.DB, N)
+	stateDBs := make([]StateStore, N)
 	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
@@ -183,7 +183,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
-	reactors := makeAndConnectReactors(config, []dbm.DB{stateDB1, stateDB2})
+	reactors := makeAndConnectReactors(config, []StateStore{stateDB1, stateDB2})
 
 	// set the peer height on each reactor
 	for _, r := range reactors {

@@ -19,16 +19,31 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 
 		ageDuration  = state.LastBlockTime.Sub(evidence.Time())
 		ageNumBlocks = height - evidence.Height()
-		
-		blockMeta = blockStore.LoadBlockMeta(evidence.Height())
-		committedHeader = &blockMeta.Header
+
+		header *types.Header
 	)
-	
-	if committedHeader.Time != evidence.Time() {
-		return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
-			evidence.Time(),
-			committedHeader.Time,
-		)
+
+	// if the evidence is from the current height - this means the evidence is fresh from the consensus
+	// and we won't have it in the block store. We thus check that the time isn't before the previous block
+	if evidence.Height() == height+1 {
+		if evidence.Time().Before(state.LastBlockTime) {
+			return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
+				evidence.Time(),
+				state.LastBlockTime)
+		}
+	} else {
+		// if the evidence is from a prior height or if in the future and we don't have it then we will return an error regardless
+		blockMeta := blockStore.LoadBlockMeta(evidence.Height())
+		header = &blockMeta.Header
+		if header == nil {
+			return fmt.Errorf("don't have header at height #%d", evidence.Height())
+		}
+		if header.Time != evidence.Time() {
+			return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
+				evidence.Time(),
+				header.Time,
+			)
+		}
 	}
 
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
@@ -40,21 +55,18 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
+
+	// If in the case of lunatic validator evidence we need our committed header again to verify the evidence
 	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
-		if err := ev.VerifyHeader(committedHeader); err != nil {
+		if err := ev.VerifyHeader(header); err != nil {
 			return err
 		}
 	}
 
 	valset, err := stateDB.LoadValidators(evidence.Height())
 	if err != nil {
-		// TODO: if err is just that we cant find it cuz we pruned, ignore.
-		// TODO: if its actually bad evidence, punish peer
 		return err
 	}
-
-	addr := evidence.Address()
-	var val *types.Validator
 
 	if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
 		// check the validator set against the polc to make sure that a majority of valid votes was reached
@@ -65,6 +77,9 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 			}
 		}
 	}
+
+	addr := evidence.Address()
+	var val *types.Validator
 
 	// For all other types, expect evidence.Address to be a validator at height
 	// evidence.Height.
