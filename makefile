@@ -24,9 +24,13 @@ test-boltdb:
 	@echo "--> Running go test"
 	@go test $(PACKAGES) -tags boltdb -v
 
+test-badgerdb:
+	@echo "--> Running go test"
+	@go test $(PACKAGES) -tags badgerdb -v
+
 test-all:
 	@echo "--> Running go test"
-	@go test $(PACKAGES) -tags cleveldb,boltdb,rocksdb -v
+	@go test $(PACKAGES) -tags cleveldb,boltdb,rocksdb,badgerdb -v
 
 lint:
 	@echo "--> Running linter"

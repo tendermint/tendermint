@@ -1,3 +1,5 @@
+// +build badgerdb
+
 package db
 
 import (
