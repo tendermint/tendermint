@@ -146,9 +146,7 @@ func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 // evidence is composite (ConflictingHeadersEvidence), it will be broken up
 // into smaller pieces.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	var (
-		evList = []types.Evidence{evidence}
-	)
+	var evList = []types.Evidence{evidence}
 
 	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
 
