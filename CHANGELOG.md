@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.1
+
+**2020-08-12**
+
+### Improvements
+
 - [\#115](https://github.com/tendermint/tm-db/pull/115) Add a `BadgerDB` backend with build tag `badgerdb` (@mvdan)
 
 ## 0.6.0
