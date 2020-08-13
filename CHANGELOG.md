@@ -39,6 +39,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [node] [\#5211](https://github.com/tendermint/tendermint/issues/5211) Don't attempt fast sync when the ABCI application specifies ourself as the only validator via `InitChain` (@erikgrinaker)
 - [libs/rand] [\#5215](https://github.com/tendermint/tendermint/pull/5215) Fix out-of-memory error on unexpected argument of Str() (@SadPencil)
 
+
 ## v0.34.0-rc2
 
 *July 30, 2020*
@@ -179,6 +180,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## v0.34.0-rc1
 
 This release was removed, as a premature GitHub tag was recorded on sum.golang.org causing checksum errors.
+
+## v0.33.8
+
+*August 11, 2020*
+
+## Go security update
+
+Go reported a security vulnerability that affected the `encoding/binary` package. The most recent binary for tendermint is using 1.14.6, for this
+reason the Tendermint engineering team has opted to conduct a release to aid users in using the correct version of Go. Read more about the security issue [here](https://github.com/golang/go/issues/40618).
 
 
 ## v0.33.7
