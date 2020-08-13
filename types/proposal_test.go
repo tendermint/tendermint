@@ -71,7 +71,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	prop.Signature = p.Signature
 
 	// verify the same proposal
-	valid := pubKey.VerifyBytes(signBytes, prop.Signature)
+	valid := pubKey.VerifySignature(signBytes, prop.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -90,7 +90,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	// verify the transmitted proposal
 	newSignBytes := ProposalSignBytes("test_chain_id", pb)
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifyBytes(newSignBytes, np.Signature)
+	valid = pubKey.VerifySignature(newSignBytes, np.Signature)
 	require.True(t, valid)
 }
 
@@ -118,7 +118,7 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		pubKey.VerifyBytes(ProposalSignBytes("test_chain_id", pbp), testProposal.Signature)
+		pubKey.VerifySignature(ProposalSignBytes("test_chain_id", pbp), testProposal.Signature)
 	}
 }
 

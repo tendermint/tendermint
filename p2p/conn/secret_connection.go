@@ -170,7 +170,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if _, ok := remPubKey.(ed25519.PubKey); !ok {
 		return nil, fmt.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
-	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
+	if !remPubKey.VerifySignature(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
 	}
 
