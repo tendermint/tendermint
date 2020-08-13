@@ -239,6 +239,7 @@ via light client.
   - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
   - `Validators ([]ValidatorUpdate)`: Initial genesis validators, sorted by voting power.
   - `AppStateBytes ([]byte)`: Serialized initial application state. Amino-encoded JSON bytes.
+  - `InitialHeight (int64)`: Height of the initial block (typically `1`).
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters (optional).
@@ -498,9 +499,8 @@ via light client.
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the previous block.
-    For heights > 1, it's the weighted median of the timestamps of the valid
-    votes in the block.LastCommit.
-    For height == 1, it's genesis time.
+    For most blocks it's the weighted median of the timestamps of the valid votes in the
+    block.LastCommit, except for the initial height where it's the genesis time.
   - `LastBlockID (BlockID)`: Hash of the previous (parent) block
   - `LastCommitHash ([]byte)`: Hash of the previous block's commit
   - `ValidatorsHash ([]byte)`: Hash of the validator set for this block

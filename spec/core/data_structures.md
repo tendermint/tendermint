@@ -349,10 +349,11 @@ ChainID must be less than 50 bytes.
 
 ```go
 block.Header.Height > 0
+block.Header.Height >= state.InitialHeight
 block.Header.Height == prevBlock.Header.Height + 1
 ```
 
-The height is an incrementing integer. The first block has `block.Header.Height == 1`.
+The height is an incrementing integer. The first block has `block.Header.Height == state.InitialHeight`, derived from the genesis file.
 
 ### Time
 
@@ -371,7 +372,7 @@ The timestamp of the first block must be equal to the genesis time (since
 there's no votes to compute the median).
 
 ```
-if block.Header.Height == 1 {
+if block.Header.Height == state.InitialHeight {
     block.Header.Timestamp == genesisTime
 }
 ```
@@ -494,7 +495,7 @@ Arbitrary length array of arbitrary length byte-arrays.
 The first height is an exception - it requires the `LastCommit` to be empty:
 
 ```go
-if block.Header.Height == 1 {
+if block.Header.Height == state.InitialHeight {
   len(b.LastCommit) == 0
 }
 ```
@@ -563,7 +564,7 @@ Once a block is validated, it can be executed against the state.
 The state follows this recursive equation:
 
 ```go
-state(1) = InitialState
+state(initialHeight) = InitialState
 state(h+1) <- Execute(state(h), ABCIApp, block(h))
 ```
 
@@ -579,8 +580,11 @@ func Execute(s State, app ABCIApp, block Block) State {
 
 	nextConsensusParams := UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges)
 	return State{
+		ChainID:         state.ChainID,
+		InitialHeight:   state.InitialHeight,
 		LastResults:     abciResponses.DeliverTxResults,
 		AppHash:         AppHash,
+		InitialHeight:   state.InitialHeight,
 		LastValidators:  state.Validators,
 		Validators:      state.NextValidators,
 		NextValidators:  UpdateValidators(state.NextValidators, ValidatorChanges),
