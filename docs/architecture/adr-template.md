@@ -14,10 +14,8 @@
 
 ## Decision
 
-> This section explains all of the details of the proposed solution, including implementation details.
-> It should also describe affects / corollary items that may need to be changed as a part of this.
-> If the proposed change will be large, please also indicate a way to do the change to maximize ease of review.
-> (e.g. the optimal split of things to do between separate PR's)
+> This section records the decision that was made.
+> It is best to record as much info as possible from the discussion that happened. This aids in not having to go back to the Pull Request to get the needed information.
 
 ## Detailed Design
 
@@ -45,13 +43,15 @@ Here are some common questions that get answered as part of the detailed design:
 
 - How will the changes be tested?
 
+- If the change is large, how will the changes be broken up for ease of review?
+
 - Will these changes require a breaking (major) release?
 
 - Does this change require coordination with the SDK or other?
 
 ## Status
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon. If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
+> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon and "implemented" once it has been implemented. If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
 
 {Deprecated|Proposed|Accepted|Declined}
 
