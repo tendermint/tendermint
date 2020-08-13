@@ -23,5 +23,6 @@ updates:
     reviewers:
       - melekes
       - tessr
+      - erikgrinaker
     labels:
       - T:dependencies
