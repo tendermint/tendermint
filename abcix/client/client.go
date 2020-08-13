@@ -45,7 +45,7 @@ type Client interface {
 	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
-	CreateBlockSync(types.RequestCreateBlock, types.MempoolIter) (*types.ResponseCreateBlock, error)
+	CreateBlockSync(types.RequestCreateBlock, *types.MempoolIter) (*types.ResponseCreateBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	ListSnapshotsSync(types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
 	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)

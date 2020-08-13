@@ -14,7 +14,7 @@ type AppConnConsensus interface {
 	SetResponseCallback(abcixcli.Callback)
 	Error() error
 
-	CreateBlockSync(xtypes.RequestCreateBlock, xtypes.MempoolIter) (*xtypes.ResponseCreateBlock, error)
+	CreateBlockSync(xtypes.RequestCreateBlock, *xtypes.MempoolIter) (*xtypes.ResponseCreateBlock, error)
 	InitChainSync(xtypes.RequestInitChain) (*xtypes.ResponseInitChain, error)
 	DeliverBlockSync(xtypes.RequestDeliverBlock) (*xtypes.ResponseDeliverBlock, error)
 	CommitSync() (*xtypes.ResponseCommit, error)
@@ -71,7 +71,7 @@ func (app *appConnConsensus) Error() error {
 
 func (app *appConnConsensus) CreateBlockSync(
 	req xtypes.RequestCreateBlock,
-	mempool xtypes.MempoolIter,
+	mempool *xtypes.MempoolIter,
 ) (*xtypes.ResponseCreateBlock, error) {
 	return app.appConn.CreateBlockSync(req, mempool)
 }

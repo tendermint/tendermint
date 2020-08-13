@@ -323,7 +323,7 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 
 func (cli *socketClient) CreateBlockSync(
 	req types.RequestCreateBlock,
-	mempool types.MempoolIter,
+	mempool *types.MempoolIter,
 ) (*types.ResponseCreateBlock, error) {
 	panic("unimplemented!")
 }

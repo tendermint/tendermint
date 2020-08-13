@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"crypto/sha256"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 
@@ -362,8 +363,8 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx) {
-	e := mem.txs.PushBack(memTx)
+func (mem *CListMempool) addTx(memTx *mempoolTx, priority uint64) {
+	e := mem.txs.PushBackWithPriority(memTx, priority)
 	mem.txsMap.Store(TxKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
@@ -441,7 +442,7 @@ func (mem *CListMempool) resCbFirstTime(
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
-			mem.addTx(memTx)
+			mem.addTx(memTx, r.CheckTx.Priority)
 			mem.logger.Info("Added good transaction",
 				"tx", txID(tx),
 				"res", r,
@@ -660,6 +661,43 @@ func (mem *CListMempool) recheckTxs() {
 	}
 
 	mem.proxyAppConn.FlushAsync()
+}
+
+// GetNextTxBytes finds satisfied tx with two iterations which cost O(N) time, will be optimized with balance tree
+// or other techniques to reduce the time complexity to O(logN) or even O(1)
+func (mem *CListMempool) GetNextTxBytes(remainBytes int64, remainGas int64, starter []byte) ([]byte, error) {
+
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	prevIdx, prevPriority := -1, uint64(math.MaxUint64)
+	if len(starter) > 0 {
+		for elem, idx := mem.txs.Front(), 0; elem != nil; elem, idx = elem.Next(), idx+1 {
+			if bytes.Equal(elem.Value.(*mempoolTx).tx, starter) {
+				prevIdx = idx
+				prevPriority = elem.Priority
+				break
+			}
+		}
+	}
+
+	var candidate *clist.CElement
+	for elem, idx := mem.txs.Front(), 0; elem != nil; elem, idx = elem.Next(), idx+1 {
+		mTx := elem.Value.(*mempoolTx)
+		if (mTx.gasWanted > remainGas || int64(len(mTx.tx)) > remainBytes) || // tx requirement not met
+			(elem.Priority > prevPriority) || // higher priority should have been iterated before
+			(elem.Priority == prevPriority && idx <= prevIdx) { // equal priority but already sent
+			continue
+		}
+		if candidate == nil || elem.Priority > candidate.Priority {
+			candidate = elem
+		}
+	}
+	if candidate == nil {
+		// Target tx not found
+		return nil, nil
+	}
+	return candidate.Value.(*mempoolTx).tx, nil
 }
 
 //--------------------------------------------------------------------------------

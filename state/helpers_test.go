@@ -236,7 +236,7 @@ func (app *testApp) Info(req abcix.RequestInfo) (resInfo abcix.ResponseInfo) {
 	return abcix.ResponseInfo{}
 }
 
-func (app *testApp) CreateBlock(req abcix.RequestCreateBlock, mempool abcix.MempoolIter) abcix.ResponseCreateBlock {
+func (app *testApp) CreateBlock(req abcix.RequestCreateBlock, mempool *abcix.MempoolIter) abcix.ResponseCreateBlock {
 	return abcix.ResponseCreateBlock{}
 }
 

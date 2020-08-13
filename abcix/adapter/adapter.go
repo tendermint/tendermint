@@ -75,7 +75,7 @@ func (app *adaptedApp) CheckTx(req abcix.RequestCheckTx) (resp abcix.ResponseChe
 	return
 }
 
-func (app *adaptedApp) CreateBlock(req abcix.RequestCreateBlock, iter abcix.MempoolIter) abcix.ResponseCreateBlock {
+func (app *adaptedApp) CreateBlock(req abcix.RequestCreateBlock, iter *abcix.MempoolIter) abcix.ResponseCreateBlock {
 	// TODO: defer to consensus engine for now
 	panic("implement me")
 }

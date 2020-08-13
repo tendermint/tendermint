@@ -4,8 +4,35 @@ import (
 	context "golang.org/x/net/context"
 )
 
-type MempoolIter interface {
-	// GetNextTransaction(remainBytes int64, remainGas int64, starter []byte) types.Tx
+type mempool interface {
+	// An embedded interface to access mempool.Mempool
+	GetNextTxBytes(remainBytes int64, remainGas int64, starter []byte) ([]byte, error)
+}
+
+type MempoolIter struct {
+	starter  []byte
+	mp       mempool
+	finished bool
+}
+
+func NewMempoolIter(mp mempool) *MempoolIter {
+	return &MempoolIter{mp: mp}
+}
+
+func (mi *MempoolIter) GetNextTransaction(remainBytes int64, remainGas int64) ([]byte, error) {
+	s, err := mi.mp.GetNextTxBytes(remainBytes, remainGas, mi.starter)
+	if err != nil {
+		return nil, err
+	}
+	mi.starter = s
+	if len(s) == 0 {
+		mi.finished = true
+	}
+	return s, nil
+}
+
+func (mi *MempoolIter) HasNext() bool {
+	return !mi.finished
 }
 
 // Application is an interface that enables any finite, deterministic state machine
@@ -23,7 +50,7 @@ type Application interface {
 
 	// Consensus Connection
 	CreateBlock(RequestCreateBlock,
-		MempoolIter) ResponseCreateBlock // Create block and include tx by priority
+		*MempoolIter) ResponseCreateBlock // Create block and include tx by priority
 	InitChain(RequestInitChain) ResponseInitChain          // Init blockchain w validators/other info from TendermintCore
 	DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock // Deliver a block for full processing
 	Commit() ResponseCommit                                // Commit the state and return the application Merkle root hash
@@ -67,7 +94,7 @@ func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 	return ResponseQuery{Code: CodeTypeOK}
 }
 
-func (BaseApplication) CreateBlock(req RequestCreateBlock, mempool MempoolIter) ResponseCreateBlock {
+func (BaseApplication) CreateBlock(req RequestCreateBlock, mempool *MempoolIter) ResponseCreateBlock {
 	return ResponseCreateBlock{}
 }
 

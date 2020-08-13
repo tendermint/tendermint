@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -537,6 +538,91 @@ func TestMempoolTxsBytes(t *testing.T) {
 	mempool.RemoveTxByKey(TxKey([]byte{0x06}), true)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 
+}
+
+func generateTxsWithPriority(t *testing.T, mempool *CListMempool, priorityList []uint64) []types.Tx {
+	l := len(priorityList)
+	// Each tx has default gas 1, bytes len 20, priority 0
+	checkTxs(t, mempool, l, UnknownPeerID)
+	var txs []types.Tx
+	// Add priority to each element
+	for front, i := mempool.TxsFront(), 0; front != nil; front, i = front.Next(), i+1 {
+		front.Priority = priorityList[i]
+		txs = append(txs, front.Value.(*mempoolTx).tx)
+	}
+	return txs
+}
+
+func getTxswithPriority(mempool *CListMempool, remainBytes int64) []types.Tx {
+	var txs []types.Tx
+	starter, _ := mempool.GetNextTxBytes(remainBytes, 1, nil)
+	for starter != nil {
+		txs = append(txs, starter)
+		starter, _ = mempool.GetNextTxBytes(remainBytes, 1, starter)
+	}
+	return txs
+}
+
+func TestCListMempool_GetNextTxBytes(t *testing.T) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLegacyLocalClientCreator(app)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
+	testCases := []struct {
+		priorities []uint64
+		order      []uint64
+		hasError   bool
+	}{
+		// error case by wrong gas/bytes limit
+		{
+			priorities: []uint64{0, 0, 0, 0, 0},
+			hasError:   true,
+		},
+		// same priority would present as FIFO
+		{
+			priorities: []uint64{0, 0, 0, 0, 0},
+			order:      []uint64{0, 1, 2, 3, 4},
+		},
+		{
+			priorities: []uint64{1, 0, 1, 0, 1},
+			order:      []uint64{0, 3, 1, 4, 2},
+		},
+		{
+			priorities: []uint64{1, 2, 3, 4, 5},
+			order:      []uint64{4, 3, 2, 1, 0},
+		},
+		{
+			priorities: []uint64{5, 4, 3, 2, 1},
+			order:      []uint64{0, 1, 2, 3, 4},
+		},
+		{
+			priorities: []uint64{1, 3, 5, 4, 2},
+			order:      []uint64{4, 2, 0, 1, 3},
+		},
+		{
+			priorities: []uint64{math.MaxUint64, math.MaxUint64, math.MaxUint64, 1},
+			order:      []uint64{0, 1, 2, 3},
+		},
+	}
+
+	for i, testCase := range testCases {
+		originalTxs := generateTxsWithPriority(t, mempool, testCase.priorities)
+		remainBytes := 20
+		if testCase.hasError {
+			remainBytes = 10
+		}
+		orderedTxs := getTxswithPriority(mempool, int64(remainBytes))
+		if testCase.hasError {
+			require.Nil(t, orderedTxs, "Failed at testcase %d", i)
+			mempool.Flush()
+			continue
+		}
+		for j, k := range testCase.order {
+			require.Equal(t, originalTxs[j], orderedTxs[k], "Failed at testcase %d", i)
+		}
+		mempool.Flush()
+	}
 }
 
 func checksumIt(data []byte) string {

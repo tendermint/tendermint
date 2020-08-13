@@ -87,7 +87,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 
 	if checkTxRes.Code != abcix.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes, // TODO: should broadcast new checkTxResp
+			CheckTx:   *checkTxRes,
 			DeliverTx: abcix.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, nil
