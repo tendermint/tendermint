@@ -36,20 +36,15 @@ module.exports = {
             },
             // TODO: remove once https://github.com/cosmos/vuepress-theme-cosmos/issues/91 is closed
             {
-              title: 'v0.32',
+              title: 'Version 0.32',
               path: '/v0.32',
               static: true
             },
             {
-              title: 'v0.33',
+              title: 'Version 0.33',
               path: '/v0.33',
               static: true
             },
-            {
-              title: 'Master',
-              path: '/master',
-              static: true
-            }
           ]
         }
       ]
