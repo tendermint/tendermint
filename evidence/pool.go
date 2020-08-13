@@ -46,8 +46,8 @@ type Pool struct {
 	nextEvidenceTrialEndedHeight int64
 }
 
-// Creates a new pool. If using an existing evidence store, it will add all pending evidence
-// to the concurrent list.
+// NewPool creates an evidence pool. If using an existing evidence store,
+// it will add all pending evidence to the concurrent list.
 func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Pool, error) {
 	var (
 		state = stateDB.LoadState()
@@ -232,10 +232,15 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	return nil
 }
 
+// Verify verifies the evidence against the node's (or evidence pool's) state. More specifically, to validate
+// evidence against state is to validate it against the nodes own header and validator set for that height. This ensures
+// as well as meeting the evidence's own validation rules, that the evidence hasn't expired, that the validator is still
+// bonded and that the evidence can be committed to the chain.
 func (evpool *Pool) Verify(evidence types.Evidence) error {
 	if evpool.IsCommitted(evidence) {
 		return errors.New("evidence was already committed")
 	}
+	// We have already verified this piece of evidence - no need to do it again
 	if evpool.IsPending(evidence) {
 		return nil
 	}

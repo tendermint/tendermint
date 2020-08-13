@@ -32,7 +32,7 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 				state.LastBlockTime)
 		}
 	} else {
-		// if the evidence is from a prior height or if in the future and we don't have it then we will return an error regardless
+		// try to retrieve header from blockstore
 		blockMeta := blockStore.LoadBlockMeta(evidence.Height())
 		header = &blockMeta.Header
 		if header == nil {

@@ -63,7 +63,7 @@ func TestVerifyEvidenceInvalidTime(t *testing.T) {
 	)
 
 	differentTime := time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(height), differentTime, val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, differentTime, val, evidenceChainID)
 	err := VerifyEvidence(ev, state, stateStore, blockStore)
 	errMsg := "evidence time (2019-02-01 00:00:00 +0000 UTC) is different to the time" +
 		" of the header we have for the same height (2019-01-01 00:00:00 +0000 UTC)"
@@ -116,42 +116,44 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 	badH2.DataHash = tmhash.Sum([]byte("different_data_hash"))
 
 	testCases := []struct {
-		ev     *types.LunaticValidatorEvidence
-		expErr bool
-		errMsg string
+		Header *types.Header
+		ExpErr bool
+		ErrMsg string
 	}{
 		{
-			types.NewLunaticValidatorEvidence(h, makeValidVoteForHeader(h, val), "ValidatorsHash", defaultEvidenceTime),
+			h,
 			true,
 			"ValidatorsHash matches committed hash",
 		},
 		{
-			types.NewLunaticValidatorEvidence(&validH1, makeValidVoteForHeader(&validH1, val), "ValidatorsHash", defaultEvidenceTime),
+			&validH1,
 			false,
 			"",
 		},
 		{
-			types.NewLunaticValidatorEvidence(&validH2, makeValidVoteForHeader(&validH2, val), "ValidatorsHash", defaultEvidenceTime),
+			&validH2,
 			false,
 			"",
 		},
 		{
-			types.NewLunaticValidatorEvidence(&badH1, makeValidVoteForHeader(&badH1, val), "ValidatorsHash", defaultEvidenceTime),
+			&badH1,
 			true,
 			"chainID do not match: test_chain vs different_chain_id",
 		},
 		{
-			types.NewLunaticValidatorEvidence(&badH2, makeValidVoteForHeader(&badH2, val), "ValidatorsHash", defaultEvidenceTime),
+			&badH2,
 			true,
 			"ValidatorsHash matches committed hash", // it doesn't recognise that the data hashes are different
 		},
 	}
 
 	for idx, tc := range testCases {
-		err := VerifyEvidence(tc.ev, stateStore.LoadState(), stateStore, blockStore)
-		if tc.expErr {
+		ev := types.NewLunaticValidatorEvidence(tc.Header,
+			makeValidVoteForHeader(tc.Header, val), "ValidatorHash", defaultEvidenceTime)
+		err := VerifyEvidence(ev, stateStore.LoadState(), stateStore, blockStore)
+		if tc.ExpErr {
 			if assert.Error(t, err, fmt.Sprintf("expected an error for case: %d", idx)) {
-				assert.Equal(t, tc.errMsg, err.Error(), fmt.Sprintf("case: %d", idx))
+				assert.Equal(t, tc.ErrMsg, err.Error(), fmt.Sprintf("case: %d", idx))
 			}
 		} else {
 			assert.NoError(t, err, fmt.Sprintf("did not expect an error for case: %d", idx))

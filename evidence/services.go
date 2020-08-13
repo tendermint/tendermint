@@ -18,7 +18,6 @@ type StateStore interface {
 	LoadState() state.State
 }
 
-
 type stateStore struct {
 	db dbm.DB
 }

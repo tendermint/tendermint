@@ -107,9 +107,8 @@ func TestAddExpiredEvidence(t *testing.T) {
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
 		if h == height || h == expiredHeight {
 			return &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}}
-		} else {
-			return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
 		}
+		return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
 	})
 
 	pool, err := NewPool(evidenceDB, stateStore, blockStore)
@@ -273,8 +272,10 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		state               = stateStore.LoadState()
 		blockStore          = initializeBlockStore(blockStoreDB, state, valAddr)
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-		goodEvidence        = types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-		expiredEvidence     = types.NewMockDuplicateVoteEvidenceWithValidator(int64(1), expiredEvidenceTime, val, evidenceChainID)
+		goodEvidence        = types.NewMockDuplicateVoteEvidenceWithValidator(height,
+			defaultEvidenceTime, val, evidenceChainID)
+		expiredEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
+			expiredEvidenceTime, val, evidenceChainID)
 	)
 
 	// load good evidence
