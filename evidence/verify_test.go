@@ -149,7 +149,7 @@ func TestVerifyEvidenceWithLunaticValidatorEvidence(t *testing.T) {
 
 	for idx, tc := range testCases {
 		ev := types.NewLunaticValidatorEvidence(tc.Header,
-			makeValidVoteForHeader(tc.Header, val), "ValidatorHash", defaultEvidenceTime)
+			makeValidVoteForHeader(tc.Header, val), "ValidatorsHash", defaultEvidenceTime)
 		err := VerifyEvidence(ev, stateStore.LoadState(), stateStore, blockStore)
 		if tc.ExpErr {
 			if assert.Error(t, err, fmt.Sprintf("expected an error for case: %d", idx)) {
