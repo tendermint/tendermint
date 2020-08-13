@@ -53,6 +53,7 @@ type Application interface {
 		*MempoolIter) ResponseCreateBlock // Create block and include tx by priority
 	InitChain(RequestInitChain) ResponseInitChain          // Init blockchain w validators/other info from TendermintCore
 	DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock // Deliver a block for full processing
+	CheckBlock(RequestCheckBlock) ResponseCheckBlock       // Check a block for full processing
 	Commit() ResponseCommit                                // Commit the state and return the application Merkle root hash
 
 	// State Sync Connection
@@ -104,6 +105,10 @@ func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
 
 func (BaseApplication) DeliverBlock(req RequestDeliverBlock) ResponseDeliverBlock {
 	return ResponseDeliverBlock{}
+}
+
+func (BaseApplication) CheckBlock(req RequestCheckBlock) ResponseCheckBlock {
+	return ResponseCheckBlock{}
 }
 
 func (BaseApplication) ListSnapshots(req RequestListSnapshots) ResponseListSnapshots {
@@ -177,6 +182,11 @@ func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain
 
 func (app *GRPCApplication) DeliverBlock(ctx context.Context, req *RequestDeliverBlock) (*ResponseDeliverBlock, error) {
 	res := app.app.DeliverBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) CheckBlock(ctx context.Context, req *RequestCheckBlock) (*ResponseCheckBlock, error) {
+	res := app.app.CheckBlock(*req)
 	return &res, nil
 }
 

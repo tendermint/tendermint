@@ -340,6 +340,12 @@ func (cli *socketClient) DeliverBlockSync(req types.RequestDeliverBlock) (*types
 	return reqres.Response.GetDeliverBlock(), cli.Error()
 }
 
+func (cli *socketClient) CheckBlockSync(req types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckBlock(req))
+	cli.FlushSync()
+	return reqres.Response.GetCheckBlock(), cli.Error()
+}
+
 func (cli *socketClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	reqres := cli.queueRequest(types.ToRequestListSnapshots(req))
 	cli.FlushSync()

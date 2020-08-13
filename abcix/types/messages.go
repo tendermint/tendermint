@@ -129,6 +129,12 @@ func ToRequestDeliverBlock(req RequestDeliverBlock) *Request {
 	}
 }
 
+func ToRequestCheckBlock(req RequestCheckBlock) *Request {
+	return &Request{
+		Value: &Request_CheckBlock{&req},
+	}
+}
+
 func ToRequestListSnapshots(req RequestListSnapshots) *Request {
 	return &Request{
 		Value: &Request_ListSnapshots{&req},
@@ -218,6 +224,12 @@ func ToResponseCreateBlock(res ResponseCreateBlock) *Response {
 func ToResponseDeliverBlock(res ResponseDeliverBlock) *Response {
 	return &Response{
 		Value: &Response_DeliverBlock{&res},
+	}
+}
+
+func ToResponseCheckBlock(res ResponseCheckBlock) *Response {
+	return &Response{
+		Value: &Response_CheckBlock{&res},
 	}
 }
 

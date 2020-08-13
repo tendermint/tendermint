@@ -29,6 +29,7 @@ message Request {
     RequestQuery              query                = 7;
     RequestCheckTx            check_tx             = 9;
     RequestDeliverBlock       deliver_block        = 20;
+    RequestCheckBlock         check_block          = 21;
     RequestCommit             commit               = 12;
     RequestListSnapshots      list_snapshots       = 13;
     RequestOfferSnapshot      offer_snapshot       = 14;
@@ -99,6 +100,9 @@ message RequestDeliverBlock {
   repeated bytes          txs                  = 6;
 }
 
+message RequestCheckBlock {
+}
+
 // lists available snapshots
 message RequestListSnapshots {
 }
@@ -138,6 +142,7 @@ message Response {
     ResponseCheckTx            check_tx             = 9;
     ResponseCommit             commit               = 12;
     ResponseDeliverBlock       deliver_block        = 20;
+    ResponseCheckBlock         check_block          = 21;
     ResponseListSnapshots      list_snapshots       = 13;
     ResponseOfferSnapshot      offer_snapshot       = 14;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
@@ -242,6 +247,11 @@ message ResponseDeliverBlock {
   repeated        Event             events                  = 5
   [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string                            codespace               = 6;
+}
+
+message ResponseCheckBlock {
+  uint32 code = 1;
+  string codespace = 2;
 }
 
 message ResponseListSnapshots {
@@ -391,6 +401,7 @@ service ABCIApplication {
   rpc CreateBlock(RequestCreateBlock) returns (ResponseCreateBlock);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc DeliverBlock(RequestDeliverBlock) returns (ResponseDeliverBlock);
+  rpc CheckBlock(RequestCheckBlock) returns (ResponseCheckBlock);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);

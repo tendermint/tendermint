@@ -214,6 +214,15 @@ func (cli *grpcClient) DeliverBlockAsync(params types.RequestDeliverBlock) *ReqR
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverBlock{DeliverBlock: res}})
 }
 
+func (cli *grpcClient) CheckBlockAsync(params types.RequestCheckBlock) *ReqRes {
+	req := types.ToRequestCheckBlock(params)
+	res, err := cli.client.CheckBlock(context.Background(), req.GetCheckBlock(), grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckBlock{CheckBlock: res}})
+}
+
 func (cli *grpcClient) ListSnapshotsAsync(params types.RequestListSnapshots) *ReqRes {
 	req := types.ToRequestListSnapshots(params)
 	res, err := cli.client.ListSnapshots(context.Background(), req.GetListSnapshots(), grpc.WaitForReady(true))
@@ -327,6 +336,11 @@ func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.Resp
 func (cli *grpcClient) DeliverBlockSync(params types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error) {
 	reqres := cli.DeliverBlockAsync(params)
 	return reqres.Response.GetDeliverBlock(), cli.Error()
+}
+
+func (cli *grpcClient) CheckBlockSync(params types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
+	reqres := cli.CheckBlockAsync(params)
+	return reqres.Response.GetCheckBlock(), cli.Error()
 }
 
 func (cli *grpcClient) ListSnapshotsSync(params types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {

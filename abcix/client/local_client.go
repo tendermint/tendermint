@@ -257,6 +257,14 @@ func (app *localClient) DeliverBlockSync(req types.RequestDeliverBlock) (*types.
 	return &res, nil
 }
 
+func (app *localClient) CheckBlockSync(req types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.CheckBlock(req)
+	return &res, nil
+}
+
 func (app *localClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()

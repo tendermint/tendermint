@@ -13,18 +13,14 @@ import (
 	"testing"
 	"time"
 
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-
-	"github.com/tendermint/tendermint/abcix/adapter"
-	abcix "github.com/tendermint/tendermint/abcix/types"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/adapter"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -32,10 +28,12 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestMain(m *testing.M) {

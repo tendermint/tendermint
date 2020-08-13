@@ -8,6 +8,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+//go:generate mockery -case underscore -name Client
+
 const (
 	dialRetryIntervalSeconds = 3
 	echoRetryIntervalSeconds = 1
@@ -32,7 +34,6 @@ type Client interface {
 	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 	InitChainAsync(types.RequestInitChain) *ReqRes
-	DeliverBlockSync(types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error)
 	ListSnapshotsAsync(types.RequestListSnapshots) *ReqRes
 	OfferSnapshotAsync(types.RequestOfferSnapshot) *ReqRes
 	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) *ReqRes
@@ -46,6 +47,8 @@ type Client interface {
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
 	CreateBlockSync(types.RequestCreateBlock, *types.MempoolIter) (*types.ResponseCreateBlock, error)
+	DeliverBlockSync(types.RequestDeliverBlock) (*types.ResponseDeliverBlock, error)
+	CheckBlockSync(types.RequestCheckBlock) (*types.ResponseCheckBlock, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	ListSnapshotsSync(types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
 	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
