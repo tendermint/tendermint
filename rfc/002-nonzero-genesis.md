@@ -58,7 +58,7 @@ block may fail.
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
 
